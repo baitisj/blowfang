@@ -219,7 +219,7 @@ def test_xdmrlisten_module_mutes_a_repeaters_dmr_off_the_stack():
     _, end = line(said, "DMR end")
     assert int(re.search(r"lost=(\d+)", end)[1]) <= 3, end
     assert line(said, "DMR diag e=")[1] is not None, txt
-    assert stack < 1536, stack
+    assert stack < 1536, stack                        # the listener's state is on it, the ring is not
     n, said, _, _ = listen(s, run_s=3, built=built, scratch=(5376 - 24 - len(built[0])) & ~3 if
                            5376 - 24 > len(built[0]) else 0)
     assert n == (1 << 32) - 6 and said[0][1].startswith("xdmr scratch "), said
