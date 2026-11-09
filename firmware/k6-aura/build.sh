@@ -263,6 +263,7 @@ aiscap_fm      # level 2, aiscap on two FM broadcast stations (can RDS reach the
 aiscap_sweep   # level 2, aiscap tuned off the AIS base station in steps: the IF's width
 aisclk         # level 2 (screen at 6, LED at 7), the K6's clock from AIS, docs/k6-ais.md
 aisships       # level 2 (screen at 6, LED at 7), the ships around the K6 from AIS, both channels
+alarm          # level 8 (screen at 6, LED at 7), the BLOWFANG alarm clock: midi at a UTC time, time set by tools/k6_midi.py alarm
 aprsclk        # level 2 (screen at 6, LED at 7), docs/k6-aprs-clock.md
 aprsclk_440    # level 2, aprsclk on 440.850 for the on-air loopback
 bandreg        # level 2, patched by tools/k6_hf.py

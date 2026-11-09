@@ -34,7 +34,9 @@
    Returns the songs played to the end, -2 (a held key stopped it), -3 (scratch too small),
    -4 (TIM1 already running: something else is playing), -5 (no song table).
    SPDX-License-Identifier: MIT */
+#ifndef K6_MODULE_LEVEL
 #define K6_MODULE_LEVEL 2
+#endif
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "midi_songs.h"             /* const uint8_t midi_table[] in section .k6tail: last in the code */
@@ -278,6 +280,125 @@ static int quiet(run_t *r, uint32_t n) {
   return 0;
 }
 
+#ifdef MIDI_ALARM
+/* ---- the alarm clock (alarm.c): wait for a UTC time on the core's clock, then play ---- */
+
+#define DAY_MS 86400000u
+/* the alarm's time, UTC minutes of the day (u16 LE after the tag; 0xFFFF: not set).
+   `tools/k6_midi.py alarm IN.bin OUT.bin --at 07:30` rewrites it, no compiler needed */
+#ifndef ALARM_MIN
+#define ALARM_MIN 0xFFFF
+#endif
+static const uint8_t alarm_at[10] = {'K', '6', 'A', 'L', 'A', 'R', 'M', 0, ALARM_MIN & 0xFF, ALARM_MIN >> 8};
+
+/* n / d by shift and subtract (a module has no run-time library) */
+static uint32_t udiv(uint32_t n, uint32_t d) {
+  uint32_t q = 0, bit = 1;
+  while (d < n && !(d & 0x80000000u)) d <<= 1, bit <<= 1;
+  while (bit) {
+    if (n >= d) n -= d, q |= bit;
+    d >>= 1, bit >>= 1;
+  }
+  return q;
+}
+
+static char *two(char *p, uint32_t v) {
+  uint32_t t = udiv(v, 10);
+  *p++ = (char)('0' + t);
+  *p++ = (char)('0' + v - 10 * t);
+  return p;
+}
+
+/* "hh:mm:ss" (secs < 360000) */
+static char *hms(char *p, uint32_t secs) {
+  uint32_t m = udiv(secs, 60), h = udiv(m, 60);
+  p = two(p, h);
+  *p++ = ':';
+  p = two(p, m - 60 * h);
+  *p++ = ':';
+  return two(p, secs - 60 * m);
+}
+
+/* the alarm screen, redrawn each second (level 6):
+     BLOWFANG ALARM
+     UTC 14:32:07
+     alarm 07:30 UTC
+     in 16:57:53
+     clock +-0.4 s
+     hold a key: cancel */
+static void alarm_screen(run_t *r, uint32_t now_ms, uint32_t at_min, uint32_t left_ms, uint32_t w) {
+  char ln[24], *p;
+  uint32_t ws;
+  if (r->level < 6) return;
+  r->api->lcd_text(0, " BLOWFANG ALARM");
+  p = hms(put(ln, "UTC "), udiv(now_ms, 1000));
+  *p = 0;
+  r->api->lcd_text(1, ln);
+  p = two(put(ln, "alarm "), udiv(at_min, 60));
+  *p++ = ':';
+  p = two(p, at_min - 60 * udiv(at_min, 60));
+  put(p, " UTC")[0] = 0;
+  r->api->lcd_text(2, ln);
+  p = hms(put(ln, "in "), udiv(left_ms + 999, 1000));
+  *p = 0;
+  r->api->lcd_text(3, ln);
+  ws = udiv(w, 100);                                /* the bound in tenths of a second */
+  p = dec(put(ln, "clock +-"), udiv(ws, 10));
+  *p++ = '.';
+  *p++ = (char)('0' + ws - 10 * udiv(ws, 10));
+  put(p, " s")[0] = 0;
+  r->api->lcd_text(4, ln);
+  r->api->lcd_text(5, "hold a key: cancel");
+  r->api->lcd_flush();
+}
+
+/* wait for the alarm: 0 at its time, -2 a held key, -6 no clock (or it was lost), -7 no time
+   set, -8 an image before level 8 */
+static int alarm_wait(run_t *r) {
+  const k6_api_t *api = r->api;
+  const uint8_t *a = alarm_at;
+  uint32_t at_min, ms, w, left, shown = 0xFFFFFFFFu, t, held = 0, said_min = 0xFFFFFFFFu;
+  char line[64], *p;
+  __asm__("" : "+r"(a));            /* k6_midi.py alarm rewrites it: read it at run time */
+  at_min = a[8] | (uint32_t)a[9] << 8;
+  if (r->level < 8) return -8;
+  if (at_min >= 1440) {
+    api->say("alarm: no time set (k6_midi.py alarm)");
+    return -7;
+  }
+  for (;;) {
+    if (api->clock_get(&ms, 0, &w) < 0) {
+      api->say("alarm: no clock (run aisclk or aprsclk first)");
+      return -6;
+    }
+    t = at_min * 60000u;
+    left = t >= ms ? t - ms : t + DAY_MS - ms;
+    if (left < 150u || left > DAY_MS - 2000u) return 0;      /* its time (or just past it) */
+    if (said_min == 0xFFFFFFFFu || udiv(left, 600000) != said_min) {   /* every 10 min */
+      said_min = udiv(left, 600000);
+      p = two(put(line, "alarm at "), udiv(at_min, 60));
+      *p++ = ':';
+      p = two(p, at_min - 60 * udiv(at_min, 60));
+      p = hms(put(p, " utc now "), udiv(ms, 1000));
+      p = dec(put(p, " w="), w > 99999 ? 99999 : w);
+      *p = 0;
+      api->say(line);
+    }
+    if (udiv(ms, 1000) != shown) {
+      shown = udiv(ms, 1000);
+      alarm_screen(r, ms, at_min, left, w);
+    }
+    if (api->key_down()) {
+      held += 100;
+      if (held >= HOLD_MS) return -2;
+    } else {
+      held = 0;
+    }
+    api->delay_us(left < 100u ? left * 1000u : 100000u);
+  }
+}
+#endif
+
 static void screen(run_t *r, const char *title, uint32_t i, uint32_t n) {
   char ln[24], *p;
   if (r->level < 6) return;
@@ -323,6 +444,10 @@ int k6_main(const k6_api_t *api) {
   }
   r.api = api, r.level = api->level, r.vol = t[11], r.late = 0, r.notes = 0, r.blocks = 0;
   r.held = 0, r.armed = 0, r.led = 0, r.key = 0;
+#ifdef MIDI_ALARM
+  if ((ret = alarm_wait(&r)) != 0) return ret;
+  api->say("alarm ring");
+#endif
   p = put(line, "midi songs=");
   p = dec(p, n);
   p = put(p, " bytes=");
