@@ -110,11 +110,12 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   on 443.525 and 110.9 Hz on 442.025, and muted 440.925's DMR at +250 to +425 ms, so the first
   quarter second of a burst still reached the speaker. From PR #160 on (txdog in every image) it
   stopped hearing DMR: hal::txdog's MEM_MODE remap turns off the flash prefetch, flash code runs
-  ~12% slower, and the detector fell behind the DMA ring (`DMR end ... lost=` ~30 a step and no
-  hits, against ~0.4 a step on a no-txdog image, 2026-11-09). Its hot path (xdmr.c's ring wait,
-  resync and rate, dmrsync.h's count, grid and confirm: 1,940 B) now runs from SRAM, copied with
-  `.data` at boot (`XD_RAM`, `DS_FAST`), which costs the EXPLORE image that much stack (2,016 B
-  to spare under the deepest call).
+  ~12% slower, and the tone detector's read between two ring drains (xl_step_w, every 2 ms) took
+  longer than the 2,048-byte DMA ring's 356 us lap. Every read overran it (`DMR end ... lost=` 30
+  a step, one per read, and no hits, against ~0.4 a step on a no-txdog build, 2026-11-09). The
+  detector itself kept up: running its hot path from SRAM (PR #19, taken out again) halved its
+  `busy` (45 to 25) and left `lost` at exactly 30 a step. The ring is now 4,096 bytes (736 us
+  lap), on xd_step's stack as before.
 - **DMR by default** (Jeff 2026-11-08: "if we figure out a repeater is dmr we can mute by default
   until listening to it for a longer duration reveals that it's not actually a dmr repeater"): a
   row marked DMR, on the candidate (`EX_F_DMR`) or in the saved entry (`RT_F_DMR`), starts every

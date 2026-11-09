@@ -39,8 +39,10 @@
 extern "C" {
 #endif
 
-#define XD_RSZ 2048u          /* the DMA ring on the stack: 370 us at 5.5 MS/s, room for a tone
-                                 detector read (2-4 FD6818 calls) between drains */
+#define XD_RSZ 4096u          /* the DMA ring on the stack: 760 us at 5.39 MS/s, room for a tone
+                                 detector read (2-4 FD6818 calls) between drains. 2048 (380 us)
+                                 overran at every one of a step's 30 reads on txdog images, whose
+                                 flash code runs ~12% slower (2026-11-09, docs/k6-explore-app.md) */
 #define XD_FREEZE_DBM (-60)   /* freeze the gain for carriers this loud or weaker */
 #define XD_HOLD_MS 150u       /* the speaker stays shut this long into a listen, so a DMR
                                  carrier's first syncs can keep it shut */
