@@ -118,6 +118,12 @@ typedef struct {
 #define IFP_RING 1216u                 /* 19 counts of 64 samples: 206 us at 5.9 MS/s */
 int ifp_session(const k6_api_t *api, uint8_t *ring, uint32_t wait_ms, uint32_t max_ms, int flags,
                 ifp_result_t *res);
+/* The same with the session's state and its RAM copy of the receiver (ifp_work_bytes(), 2.7 KB)
+   in work (4-byte aligned) instead of on the stack: the voice images lend it the decoder's pool,
+   which nothing uses while a session runs (it stores, the decoder starts when it plays) */
+int ifp_session_in(const k6_api_t *api, uint8_t *ring, uint32_t wait_ms, uint32_t max_ms, int flags,
+                   ifp_result_t *res, void *work);
+uint32_t ifp_work_bytes(void);
 #endif
 
 #ifdef __cplusplus

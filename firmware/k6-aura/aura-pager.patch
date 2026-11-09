@@ -1,8 +1,8 @@
 diff --git a/Cargo.toml b/Cargo.toml
-index 785c441..eff045c 100644
+index 785c441..8ee3035 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
-@@ -21,6 +21,29 @@ st7565 = "0.6"
+@@ -21,6 +21,34 @@ st7565 = "0.6"
  embedded-graphics = "0.8"
  profont = "0.7"
  
@@ -17,6 +17,11 @@ index 785c441..eff045c 100644
 +# screen. sotto's build links it with a library that has no voice decoder (K6_VOICE=0), the
 +# room the explorer needs: VOICE MSG keeps its packets, modules and control, but plays nothing
 +explore = ["pager-only"]
++# EXPLORE in the 8 kHz voice image (Jeff 2026-11-09: one image, no switching): explore with the
++# voice library and the voice images' 11,776-byte shared block and shared page buffer. A size
++# report for now (build.sh): it doesn't fit yet, and EXPLORE's sweep still holds the PWM ring
++# while it draws, which the shared page buffer needs
++voice-explore = ["explore"]
 +# the hiss band image (docs/k6-hiss-port.md): sotto 1200, 600 and 400 played at 16 kHz through the
 +# K6 hiss layer, with a library built K6_HISS=1 (320-sample frames; the PWM ring is 3 of them)
 +hiss = []
@@ -33,10 +38,10 @@ index 785c441..eff045c 100644
  opt-level = "z"
  lto = true
 diff --git a/build.rs b/build.rs
-index 34078b1..86605f2 100644
+index 34078b1..500f5fc 100644
 --- a/build.rs
 +++ b/build.rs
-@@ -50,6 +50,22 @@ fn main() {
+@@ -50,6 +50,28 @@ fn main() {
      println!("cargo:rerun-if-changed=memory.x");
      println!("cargo:rerun-if-changed=build.rs");
  
@@ -52,8 +57,14 @@ index 34078b1..86605f2 100644
 +    // MCU-flash table images), not EXPLORE (its sweep keeps the ring while it draws)
 +    println!("cargo:rustc-check-cfg=cfg(shared_lcd)");
 +    let feat = |f: &str| env::var_os(format!("CARGO_FEATURE_{f}")).is_some();
-+    if feat("PAGER_ONLY") && !feat("LEAN") && !feat("EXPLORE") {
++    if feat("PAGER_ONLY") && !feat("LEAN") && (!feat("EXPLORE") || feat("VOICE_EXPLORE")) {
 +        println!("cargo:rustc-cfg=shared_lcd");
++    }
++    // `small_arena`: the shared block is only the store and the ring (hal::arena): the lean
++    // images and EXPLORE without voice
++    println!("cargo:rustc-check-cfg=cfg(small_arena)");
++    if feat("LEAN") || (feat("EXPLORE") && !feat("VOICE_EXPLORE")) {
++        println!("cargo:rustc-cfg=small_arena");
 +    }
 +
      println!("cargo:rustc-env=GIT_VERSION={}", git_version());
@@ -271,10 +282,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..86eadcb
+index 0000000..b6ec4d8
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4397 @@
+@@ -0,0 +1,4415 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -485,6 +496,8 @@ index 0000000..86eadcb
 +        pub fn sp_vlr_expected() -> u32;
 +        #[cfg(not(feature = "lean"))]
 +        pub fn ifp_session(api: *const K6Api, ring: *mut u8, wait_ms: u32, max_ms: u32, r23: i32, res: *mut IfpResult) -> i32;
++        pub fn ifp_session_in(api: *const K6Api, ring: *mut u8, wait_ms: u32, max_ms: u32, r23: i32, res: *mut IfpResult, work: *mut u8) -> i32;
++        pub fn ifp_work_bytes() -> u32;
 +    }
 +    /// c/k6/ifpager.h: a coded 4FSK receive session's results
 +    #[repr(C)]
@@ -1536,6 +1549,10 @@ index 0000000..86eadcb
 +/// reads, takes GP0 code 13's stream, decodes each packet with the soft Viterbi decoder into the
 +/// message store, and plays the message when the burst is over. Receive only
 +const CTL_ACT_IFRX: u8 = 10;
++/// c/k6/ifpager.h ifp_work_bytes() is about 2.7 KB: a shared block whose decoder pool holds this
++/// lends it the pool (if_session)
++#[cfg(not(feature = "lean"))]
++const IFP_WORK_MIN: usize = 3072;
 +/// Action 11 (images with the spilib feature): run the module in SPI library slot byte 4 (0-11), or
 +/// with 255 print the slots (c/k6/k6_lib.h)
 +#[cfg(feature = "spilib")]
@@ -3442,7 +3459,19 @@ index 0000000..86eadcb
 +    paint_free_ram();
 +    let ring = (pwm_audio::idle_bytes() as usize + 3) & !3;
 +    let mut res: ffi::IfpResult = unsafe { core::mem::zeroed() };
-+    let r = unsafe { ffi::ifp_session(&MOD_API, ring as *mut u8, IFRX_WAIT_MS, max_ms, app.pager.ifrx_flags as i32, &mut res) };
++    // the session's 2.7 KB of state and RAM code: in the decoder's pool where the shared block has
++    // one (nothing decodes while the session stores; the decoder starts when the message plays),
++    // so it isn't on the stack under main's frame; on the stack in the images without (EXPLORE)
++    let fl = app.pager.ifrx_flags as i32;
++    let r = if arena::DEC_BYTES >= IFP_WORK_MIN {
++        if unsafe { ffi::ifp_work_bytes() } as usize <= arena::DEC_BYTES {
++            unsafe { ffi::ifp_session_in(&MOD_API, ring as *mut u8, IFRX_WAIT_MS, max_ms, fl, &mut res, arena::dec()) }
++        } else {
++            -8 // the library's state outgrew the pool: refused, not run on a short stack
++        }
++    } else {
++        unsafe { ffi::ifp_session(&MOD_API, ring as *mut u8, IFRX_WAIT_MS, max_ms, fl, &mut res) }
++    };
 +    unsafe { (*addr_of_mut!(MOD_CTX)).app = core::ptr::null_mut() };
 +    let sfree = free_ram();
 +    report_line(format_args!(
@@ -6876,7 +6905,7 @@ index 73a6de2..65c81cc 100644
  /// prompt has run
 diff --git a/src/hal/arena.rs b/src/hal/arena.rs
 new file mode 100644
-index 0000000..680cd58
+index 0000000..2f79998
 --- /dev/null
 +++ b/src/hal/arena.rs
 @@ -0,0 +1,98 @@
@@ -6922,9 +6951,9 @@ index 0000000..680cd58
 +pub const STORE_BYTES: usize = 4096;
 +/// the PWM audio ring (hal::pwm_audio)
 +pub const RING_BYTES: usize = super::pwm_audio::RING_BYTES;
-+#[cfg(not(any(feature = "explore", feature = "lean")))]
++#[cfg(not(small_arena))]
 +pub const ARENA_BYTES: usize = 11776;
-+#[cfg(any(feature = "explore", feature = "lean"))]
++#[cfg(small_arena)]
 +pub const ARENA_BYTES: usize = STORE_BYTES + RING_BYTES;
 +/// the decoder's pool: what is left after the store and the ring
 +pub const DEC_OFF: usize = STORE_BYTES + RING_BYTES;
@@ -6936,7 +6965,7 @@ index 0000000..680cd58
 +const _: () = assert!(ARENA_BYTES >= DEC_OFF);
 +#[cfg(feature = "hiss")]
 +const _: () = assert!(DEC_BYTES >= 2232); // sotto_pager.c's SP_DEC_MAX with SP_HISS
-+#[cfg(not(any(feature = "explore", feature = "lean")))]
++#[cfg(not(small_arena))]
 +const _: () = assert!(ARENA_BYTES - TLM_BYTES >= DEC_OFF); // telemetry clear of the ring
 +
 +static mut ARENA: [u32; ARENA_BYTES / 4] = [0; ARENA_BYTES / 4];

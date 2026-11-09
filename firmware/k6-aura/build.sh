@@ -208,6 +208,11 @@ if [ "${VLR:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbs
   variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog,spilib
+  # the target (Jeff 2026-11-09): EXPLORE in this 8 kHz voice image, so nobody switches images.
+  # A report until it fits: its line in size-aura-voice-explore.txt is the flash and RAM still
+  # to find (docs/k6-voice-explore.md)
+  variant aura-voice-explore "8 kHz voice + EXPLORE image (target; report only until it fits)" \
+    --features voice-explore,txdog,spilib || echo "(8 kHz voice + EXPLORE doesn't fit yet: report only)"
   K6_CODEC=vlr K6_CB=install sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbi
   # it holds sotto 600 / 400's 21 KB of codebooks: lean, as the other install image

@@ -72,7 +72,10 @@ int k6_main(const k6_api_t *api) {
   int r;
   *(volatile uint32_t *)(scr + IFP_RING) = 0;
   /* the test puts the flags (IFP_R23, IFP_NODECODE, IFP_R34) after the packets' store */
-  r = ifp_session(api, scr, 8000, 60000, (int)*(volatile uint32_t *)(scr + IFP_RING + 4 + 128 * 64), &res);
+  /* the session's state in scratch RAM after the yield's slots and sp_packet's copy, as the voice
+     images lend it the decoder's pool (ifp_session_in) */
+  r = ifp_session_in(api, scr, 8000, 60000, (int)*(volatile uint32_t *)(scr + IFP_RING + 4 + 128 * 64), &res,
+                     scr + IFP_RING + 4 + 128 * 64 + 4 + 8 + 128);
   v[0] = r, v[1] = (int32_t)res.syncs, v[2] = (int32_t)res.syms, v[3] = (int32_t)res.lost;
   v[4] = res.acq_q, v[5] = res.acq_rej, v[6] = res.afc_hz, v[7] = res.idle_pct, v[8] = res.ks;
   v[9] = (int32_t)res.ms, v[10] = res.ram, v[11] = res.lag, v[12] = res.gap_us, v[13] = res.gap_i;

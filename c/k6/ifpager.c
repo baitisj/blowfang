@@ -343,32 +343,29 @@ IFRX_NOINLINE static void hand(ifp_t *p, ifp_result_t *res) {
 }
 
 IFRX_NOINLINE static int run(const k6_api_t *api, uint8_t *rb, uint32_t wait_ms, uint32_t max_ms,
-                            int flags, ifp_result_t *res) {
-  svc_t s;
-  ifp_t p;
+                            int flags, ifp_result_t *res, svc_t *s, ifp_t *p, uint32_t *code) {
   int nodec = flags & IFP_NODECODE;
   uint32_t k = 0, kq = 0, idle = 0, bp = 0, bt = 0, t0 = api->ms();
   int r = 0;
-  uint32_t code[IFP_RAM_MAX / 4];
-  ifrx_zero(&s, sizeof(s) / 4);
-  s.p = &p, s.res = res, s.rb = rb, s.cnt = count, s.ks = KS0 * 16;
-  ifrx_init(&s.rx, IFRX_ONLY, s.ks);
+  ifrx_zero(s, sizeof(*s) / 4);
+  s->p = p, s->res = res, s->rb = rb, s->cnt = count, s->ks = KS0 * 16;
+  ifrx_init(&s->rx, IFRX_ONLY, s->ks);
 #ifndef IFP_NO_RAM
-  res->ram = (int32_t)ram_block(&s.rx, code, &s.cnt);
+  res->ram = (int32_t)ram_block(&s->rx, code, &s->cnt);
 #else
   (void)code, (void)ram_block;
 #endif
-  ifp_init(&p);
-  p.rate = (flags & IFP_R23) ? 1 : (flags & IFP_R34) ? 2 : 0;
+  ifp_init(p);
+  p->rate = (flags & IFP_R23) ? 1 : (flags & IFP_R34) ? 2 : 0;
 #ifdef SP_PKT_YIELD
-  sp_set_packet_yield(svc_yield, &s);
+  sp_set_packet_yield(svc_yield, s);
 #endif
   start(rb);
-  s.c0 = tim();
+  s->c0 = tim();
   for (;;) {
-    uint32_t d = svc_poll(&s);
+    uint32_t d = svc_poll(s);
     if (d >> 31) continue;
-    if (s.produced - s.consumed < L) {
+    if (s->produced - s->consumed < L) {
       /* caught up: the last symbol into the decoder, a trellis step (~30 us in RAM, ~40 from
          flash), or a decoded packet into the store (sp_packet, ~400 us on the K6: in images
          with SP_PKT_YIELD it hands the counts that come meanwhile to the receiver), but not
@@ -377,36 +374,36 @@ IFRX_NOINLINE static int run(const k6_api_t *api, uint8_t *rb, uint32_t wait_ms,
          decoder must keep within one interleave block of the symbols), the store's work and a
          step that ends in a traceback (every 16th, and a packet's last: 80 entries of the ring)
          only where the next burst is three or more samples away */
-      int i = s.rx.i, far = (i >= 0 && i <= IFRX_TL / 2 - 4) || (i >= IFRX_TL / 2 + 1 && i <= IFRX_TL - 4);
-      if (s.pend) {
-        s.pend = 0;
-        svc_sym(&s);
-        if ((int32_t)(p.ready - p.step) > res->lag) res->lag = (int32_t)(p.ready - p.step);
+      int i = s->rx.i, far = (i >= 0 && i <= IFRX_TL / 2 - 4) || (i >= IFRX_TL / 2 + 1 && i <= IFRX_TL - 4);
+      if (s->pend) {
+        s->pend = 0;
+        svc_sym(s);
+        if ((int32_t)(p->ready - p->step) > res->lag) res->lag = (int32_t)(p->ready - p->step);
         continue;
       }
       if (nodec) {
-      } else if (p.have) {
+      } else if (p->have) {
         if (far) {
-          hand(&p, res);
+          hand(p, res);
           r++;
           continue;
         }
-      } else if (i != IFRX_TL / 2 - 1 && i < IFRX_TL - 1 && (far || !ifp_tb_next(&p)) && ifp_work(&p) >= 0)
+      } else if (i != IFRX_TL / 2 - 1 && i < IFRX_TL - 1 && (far || !ifp_tb_next(p)) && ifp_work(p) >= 0)
         continue;
       idle += d;
       if (++kq & 0xFFFF) continue;
     } else {
-      svc_push(&s);
+      svc_push(s);
       /* the checks every 256 counts, a third into a symbol (away from the receiver's bursts) */
-      if (++k < 256 || (s.rx.i != IFRX_TL / 3 && k < 1024)) continue;
+      if (++k < 256 || (s->rx.i != IFRX_TL / 3 && k < 1024)) continue;
     }
     k = 0;
-    if (s.tot - bt >= BLK_US) {
-      s.ks = ifrx_udiv((s.produced - bp) * 2000u, (s.tot - bt) >> 3); /* 1/16 kS/s */
+    if (s->tot - bt >= BLK_US) {
+      s->ks = ifrx_udiv((s->produced - bp) * 2000u, (s->tot - bt) >> 3); /* 1/16 kS/s */
 #ifndef IFP_NO_RATE
-      ifrx_rate(&s.rx, s.ks);
+      ifrx_rate(&s->rx, s->ks);
 #endif
-      bp = s.produced, bt = s.tot;
+      bp = s->produced, bt = s->tot;
       continue;
     }
     if (api->key_poll()) {
@@ -416,15 +413,15 @@ IFRX_NOINLINE static int run(const k6_api_t *api, uint8_t *rb, uint32_t wait_ms,
     if (api->ms() - t0 > max_ms) break;
     /* no state of its own (the session's stack is at its limit): set from the last sync word on
        every check, ~3 ms apart; a GPIO write */
-    if (api->level >= 7) api->led(p.syncs && p.syms - p.last_sync < LED_SYMS);
-    if (!s.locked) {
+    if (api->level >= 7) api->led(p->syncs && p->syms - p->last_sync < LED_SYMS);
+    if (!s->locked) {
       if (api->ms() - t0 > wait_ms) {
         r = -6;
         break;
       }
       continue;
     }
-    if (p.syncs ? p.syms - p.last_sync > END_SYMS(p.rate) : p.syms - s.lock_sym > FIRST_SYMS(p.rate)) break;
+    if (p->syncs ? p->syms - p->last_sync > END_SYMS(p->rate) : p->syms - s->lock_sym > FIRST_SYMS(p->rate)) break;
   }
   stop();
   if (api->level >= 7) api->led(0);
@@ -432,25 +429,36 @@ IFRX_NOINLINE static int run(const k6_api_t *api, uint8_t *rb, uint32_t wait_ms,
   sp_set_packet_yield(0, 0);
 #endif
   /* the burst is over (or the time): the packets whose blocks are all in */
-  if (s.pend) svc_sym(&s);
+  if (s->pend) svc_sym(s);
   if (r >= 0 && !nodec)
     for (;;) {
-      if (p.have) hand(&p, res), r++;
-      else if (ifp_work(&p) < 0) break;
+      if (p->have) hand(p, res), r++;
+      else if (ifp_work(p) < 0) break;
     }
-  res->syncs = p.syncs;
-  res->syms = p.syms;
-  res->acq_q = s.rx.acq_q;
-  res->acq_rej = s.rx.acq_rej;
-  res->afc_hz = ifrx_afc_hz(&s.rx);
-  res->idle_pct = (int32_t)ifrx_udiv(idle >> 8, (s.tot >> 16) | 1) * 100 >> 8;
-  res->ks = (int32_t)(s.ks >> 4);
-  res->lead_ser = (int32_t)ifrx_udiv(p.lead_bad * 1000u, p.lead_n | 1);
+  res->syncs = p->syncs;
+  res->syms = p->syms;
+  res->acq_q = s->rx.acq_q;
+  res->acq_rej = s->rx.acq_rej;
+  res->afc_hz = ifrx_afc_hz(&s->rx);
+  res->idle_pct = (int32_t)ifrx_udiv(idle >> 8, (s->tot >> 16) | 1) * 100 >> 8;
+  res->ks = (int32_t)(s->ks >> 4);
+  res->lead_ser = (int32_t)ifrx_udiv(p->lead_bad * 1000u, p->lead_n | 1);
   return r;
 }
 
-int ifp_session(const k6_api_t *api, uint8_t *ring, uint32_t wait_ms, uint32_t max_ms, int flags,
-                ifp_result_t *res) {
+
+/* the session's state and the RAM copy of the receiver's hot loops (2.7 KB): on the stack, or in
+   memory the caller lends (ifp_session_in) */
+typedef struct {
+  svc_t s;
+  ifp_t p;
+  uint32_t code[IFP_RAM_MAX / 4];
+} ifp_work_t;
+
+uint32_t ifp_work_bytes(void) { return (uint32_t)sizeof(ifp_work_t); }
+
+IFRX_NOINLINE static int session(const k6_api_t *api, uint8_t *ring, uint32_t wait_ms, uint32_t max_ms,
+                                int flags, ifp_result_t *res, ifp_work_t *w) {
   uint32_t ahb, apb2, t0 = api->ms();
   uint16_t r33, r34;
   ifrx_zero(res, sizeof(*res) / 4);
@@ -467,7 +475,7 @@ int ifp_session(const k6_api_t *api, uint8_t *ring, uint32_t wait_ms, uint32_t m
   if ((r33 & 0x0100) && api->fd_write(0x33, (uint16_t)(r33 & ~0x0100)) != 0) goto out_ahb;
   api->fd_write(0x34, (uint16_t)((r34 & 0xFFF0) | 13));
   wr(RCC_APB2ENR, apb2 | TIM17EN);
-  res->ret = run(api, ring, wait_ms, max_ms, flags, res);
+  res->ret = run(api, ring, wait_ms, max_ms, flags, res, &w->s, &w->p, w->code);
   wr(RCC_APB2ENR, apb2);
   api->fd_write(0x34, r34);
   api->fd_write(0x33, r33);
@@ -475,5 +483,16 @@ out_ahb:
   wr(RCC_AHBENR, ahb);
   res->ms = api->ms() - t0;
   return res->ret;
+}
+
+int ifp_session(const k6_api_t *api, uint8_t *ring, uint32_t wait_ms, uint32_t max_ms, int flags,
+                ifp_result_t *res) {
+  ifp_work_t w;
+  return session(api, ring, wait_ms, max_ms, flags, res, &w);
+}
+
+int ifp_session_in(const k6_api_t *api, uint8_t *ring, uint32_t wait_ms, uint32_t max_ms, int flags,
+                   ifp_result_t *res, void *work) {
+  return session(api, ring, wait_ms, max_ms, flags, res, (ifp_work_t *)work);
 }
 #endif
