@@ -1,7 +1,9 @@
 #!/bin/sh
 # Build the K6 voice pager's receive library for the Baofeng UV-K6 (KD32F328, Cortex-M0):
 # c/k6/build/libsotto_k6.a, the v3.7 8 kHz fixed-point decoder (FX_NARROW_MUL, fx_oa_block;
-# FX_CS512_CONST keeps its 2 KB cos|sin table in flash, ~1 MHz more, for the radio's stack)
+# FX_CS512_CONST keeps its 2 KB cos|sin table in flash, ~1 MHz more, for the radio's stack;
+# FX_MP_ROWGEN reads min_phase's cos / sin rows from fx_cos512 instead of linking the two 4 KB
+# tables: the same output bit for bit, about 8.3 KB less flash, ~2.8 MHz more on the M0 model)
 # plus the packet reassembly and playback in c/k6/sotto_pager.c, for Aura (Rust) to link.
 # Also c/k6/build/bench.elf, the same code linked alone for c/k6/bench_k6.py's cycle count.
 #
@@ -86,6 +88,12 @@ PKY=
 # the SPI images, which take RAM modules of up to 8.7 KB; the lean images (install, table, rom)
 # keep the library's own static pool and give modules the store and the PWM ring only
 [ "${K6_CB:-}" = spi ] && PKY="$PKY -DSP_DEC_POOL"
+# min_phase's 8 KB of cos / sin tables (sotto's FX_MP_ROWGEN, the same output bit for bit): read
+# from fx_cos512 in every build but the hiss band one, which keeps the tables. On the M0 model the
+# row build costs 2.8 MHz (v3.7: 57.5 -> 60.3 mean, 76.3 -> 79.1 worst, c/k6/bench_k6.py), and the
+# hiss image is the one that has none to spare (docs/k6-hiss-port.md); it has never needed the flash
+ROWGEN=-DFX_MP_ROWGEN
+[ -n "$HISS" ] && ROWGEN=
 CC=${K6_CC:-clang}
 AR=${K6_AR:-llvm-ar}
 OBJCOPY=${K6_OBJCOPY:-llvm-objcopy}
@@ -93,7 +101,7 @@ RES=$("$CC" -print-resource-dir)
 CFLAGS="--target=thumbv6m-none-eabi -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -nostdinc
   -isystem $ROOT/c/fixed/cm4/inc -isystem $RES/include -ffunction-sections -fdata-sections -std=c99
   -ffreestanding -fno-builtin-calloc -fno-builtin-free -Wall -Wno-unused-function
-  -DSOTTO_V36 -DSOTTO_PITCH_THIRD -DFX_CS512_CONST -DFX_YIELD_HOOK $LR -I$ROOT/c -O2 $NOPAR $PKY $*"
+  -DSOTTO_V36 -DSOTTO_PITCH_THIRD -DFX_CS512_CONST $ROWGEN -DFX_YIELD_HOOK $LR -I$ROOT/c -O2 $NOPAR $PKY $*"
 mkdir -p "$OUT"
 if [ -n "${K6_CB:-}" ]; then
   # the codebook image and its CRC, from this tree's fx_tables.c (a host build of c/k6/sp_cb.c)
