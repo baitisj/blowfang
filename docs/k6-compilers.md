@@ -1,9 +1,18 @@
 # K6 compilers: is clang the best choice?
 
-Study, 2026-11-09. Nothing here changes how CI builds the images: `k6-firmware.yml` still uses
-Ubuntu's clang. `tools/k6_cc/compare.sh` repeats the comparison, and the workflow
-`K6 compiler study` (`.github/workflows/k6-compilers.yml`) runs it in CI by hand or when the
-study's files change. Nothing was flashed to a radio.
+Study, 2026-11-09. Since then, CI's M0 builds use the **Arm Toolchain for Embedded 22.1.0**,
+with the size files at `-Oz` (provisional, Jeff 2026-11-09). That covers the C library, the
+RAM modules and the tests' module builds. `ifpager.c` and `xdmr.c` stay at `-Os`, as their
+emulator timing tests build them. `tools/k6_cc/bin/clang` sends every `--target=thumb...`
+compile to ATfE's clang (`K6_ATFE`), and host compiles to the next clang on `PATH`.
+`k6-firmware.yml` downloads ATfE once and caches it. To build the same way by hand:
+
+    export K6_ATFE=/path/to/ATfE-22.1.0-Linux-x86_64/bin PATH=$PWD/tools/k6_cc/bin:$PATH
+
+Without that, the builds use whatever clang is on `PATH`, as before. `tools/k6_cc/compare.sh`
+repeats the comparison below, and the workflow `K6 compiler study`
+(`.github/workflows/k6-compilers.yml`) runs it in CI by hand or when the study's files
+change. Nothing was flashed to a radio.
 
 ## What the compiler can change
 
