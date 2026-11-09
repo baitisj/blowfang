@@ -258,8 +258,10 @@ every call down to 48 dB-Hz.
 | Scratch | the filter's 512-byte ring, the decoder's 1,032-byte state and the 512-byte DMA ring (2,056 B), or it returns -6 and says `dmr scratch N need M`: never on the stack |
 | Stack | 1,288 B emulated, of the 3,112 B the module call gets on the vlrh image |
 
-Serial lines, besides dmrdet's (the summary line gains `L=` and `E=` counts, and every line ends
-in ` @` and tenths of a second since the start):
+Serial lines, besides dmrdet's (every line ends in ` @` and tenths of a second since the start;
+`D off` gains the decoder's counts so far, `D off 6906 r=51 g=50 t=6 d=0`: data and LC bursts
+read, slot types that passed, BPTC decodes tried, and decodable bursts dropped because one was
+still waiting):
 
     L TS1 CC1 TG 3027 src 3025107 F0 @52     voice LC header or terminator (comb N: only the soft sum decoded)
     E TS1 TG 3027 src 3025107 @131           embedded LC, when it says something new (late entry)
@@ -280,6 +282,24 @@ the air (every housekeeping: the radio's API calls outlast the 1 KB ring, which 
 of those laps restarted the ~90 ms rate measurement). Fixed after: everything in scratch, the
 stack at 1,288 B, housekeeping's laps not counted and the rate measured over each ~45 ms
 stretch between them. The repeater was quiet (at most 11 syncs a summary), so nothing decoded yet.
+
+**Second run (22:31-22:41Z 2026-11-08, image 006ee1b, no telemetry).** Clean: the full 600 s,
+`stack_free=1828`, the upload report sent. With telemetry 12 it refuses (`dmr scratch 1468 need
+2056`). One 501 ms data burst came up (`D on` / `D off`), nothing decoded; the key had nothing
+decodable either.
+
+**Third run (17:44-17:54Z 2026-11-09, image cf9516e).** One real GPS packet at -84 dBm: `D on
+bs d` 120 ms after the carrier, 78 syncs in its 7 s (a third of the bursts), `lost=82` over it,
+no K or H line; the IC-7100's key has the data header at 17:45:36.66Z. Two causes, from the
+model of such a packet (`dmrdec.data_packet_symbols`: 5 CSBK preambles, the header, 8 blocks):
+- A third of the syncs is ~46 dB-Hz on the K6 model, where the decoder reads few bursts and
+  decodes none (52 dB-Hz: 5/5 preambles and the header in every packet; 50: 28/30 and 4/6; 48:
+  9/30 and 2/6; 46: 0). The K6's own antenna is the lever there.
+- One burst waits for housekeeping at a time, and housekeeping skipped the decode whenever it
+  had another line to say. The header came 70.66 s in; `D on` was said at 70.4 s, so a preamble
+  was still waiting and the header (if its sync was heard) was dropped. Emulated at 52 dB-Hz, 2
+  of the 6 were dropped that way. Now a decode goes before the other lines (`D on` waits a
+  housekeeping): 6 of 6, `d=0`.
 
 **Scoring a bench run.** On hamlet, `tools/k6_dmrwatch.py` turns the IC-7100's 440.925
 recordings into the answer key. `tools/k6_dmrscore.py --key KEY.jsonl --log K6.log` then lines

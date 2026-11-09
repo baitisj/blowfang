@@ -103,6 +103,8 @@ def build(defs, src=MOD):
         w = os.path.join(d, "w.c")
         with open(w, "w") as f:
             f.writelines(f"#define {k} {v}\n" for k, v in defs)
+            # the optimisation the source asks for, as build.sh builds it (the wrapper hid it)
+            f.write(f"#define K6_MODULE_OPT {k6mod.source_opt(src)}\n")
             f.write(f'#include "{src}"\n')
         return k6mod.build(w)
 
