@@ -281,6 +281,7 @@ dogfault       # level 1, bench test of the crash backstop (hal::txdog)
 dogtx          # level 3, bench test of the stuck key-up backstop (hal::txdog)
 fdirq          # level 2, fdtime plus interrupt state and the CPU share interrupts take
 fdtime         # level 2, how long the module API's calls take (xdmr's gap between waits)
+fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
 ft8tx          # level 3
 ft8wf
 ft8wf_inv

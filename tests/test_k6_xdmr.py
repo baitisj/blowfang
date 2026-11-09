@@ -250,8 +250,23 @@ def test_fdirq_module_adds_the_interrupt_lines():
     r = e.run()
     assert r is not None and r[0] == 0, e.said
     names = [ln.split()[1] for ln in e.said]
-    assert names == ["rd0B", "td", "ms", "tk", "irq", "td-cli", "spin"], e.said
-    td = int(re.search(r"avg=(\d+)", e.said[5])[1])
-    on, off = (int(v) for v in re.findall(r"=(\d+)", e.said[6]))
+    assert names == ["rd0B", "td", "ms", "tk", "irq", "syst=00000000", "td-cli", "spin"], e.said
+    td = int(re.search(r"avg=(\d+)", e.said[6])[1])
+    on, off = (int(v) for v in re.findall(r"=(\d+)", e.said[7]))
     assert abs(td - 400) <= 20 and on > 0 and off > 0, e.said
-    assert all(len(ln) < 96 for ln in e.said), e.said
+    assert all(len(ln) < 60 for ln in e.said), e.said
+
+
+def test_fdtick_module_clears_tickint_first():
+    """c/k6/mod/fdtick.c: SysTick CSR's TICKINT cleared and left so, then fdirq's lines"""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    code, entry = k6mod.build(os.path.join(K6, "mod", "fdtick.c"))
+    e = le.Emu(code, entry, np.zeros(int(fe.FDMA * 2), np.uint8), 0, fe.FDMA, 1.5, max_s=3, level=2,
+               fd_us=20)
+    e.mu.mem_map(0xE000E000, 0x1000)
+    e.mu.mem_write(0xE000E010, (0x00010006).to_bytes(4, "little"))
+    r = e.run()
+    assert r is not None and r[0] == 0, e.said
+    assert e.said[0] == "fdt tickint was=1" and len(e.said) == 9, e.said
+    assert int.from_bytes(e.mu.mem_read(0xE000E010, 4), "little") == 0x00010004, e.said

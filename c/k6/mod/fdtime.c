@@ -18,7 +18,14 @@
      fdt td-cli min= avg= max=                 the td pair with interrupts off (PRIMASK)
      fdt spin on=1234 off=1234                 a counting loop's passes in 2 ms, interrupts on
                                                and off: on/off is the CPU share left to code
+   fdtick (FD_TICKOFF, 2026-11-09): fdirq read SysTick CSR 0x00010006 between delays, TICKINT
+   on, so each 1 us delay of the FD6818 bit-bang ended in a SysTick exception through the
+   bootloader's table (td 382 us; 196 us under PRIMASK). It clears TICKINT first, for good
+   (until the next reboot), then runs as fdirq, and says `fdt tickint was=1` (or 0).
    SPDX-License-Identifier: MIT */
+#ifdef FD_TICKOFF
+#define FD_IRQ
+#endif
 #define K6_MODULE_LEVEL 2
 #include "../k6_mod.h"
 
@@ -125,7 +132,9 @@ static void irq(const k6_api_t *api, clk_t *c) {
   uint32_t on, off;
   p = hex(put(line, "fdt irq iser="), rd(0xE000E100u));
   p = hex(put(p, " ispr="), rd(0xE000E200u));
-  p = hex(put(p, " syst="), rd(0xE000E010u));
+  *p = 0;
+  api->say(line);
+  p = hex(put(line, "fdt syst="), rd(0xE000E010u));
   p = hex(put(p, " rvr="), rd(0xE000E014u));
   p = hex(put(p, " icsr="), rd(0xE000ED04u));
   *p = 0;
@@ -141,6 +150,11 @@ static void irq(const k6_api_t *api, clk_t *c) {
 
 int k6_main(const k6_api_t *api) {
   uint32_t apb2 = rd(RCC_APB2ENR), r[4], i;
+#ifdef FD_TICKOFF
+  uint32_t csr = rd(0xE000E010u);
+  wr(0xE000E010u, csr & ~2u);
+  api->say((csr & 2u) ? "fdt tickint was=1" : "fdt tickint was=0");
+#endif
   static const uint32_t off[4] = {0x00, 0x28, 0x2C, 0x0C};   /* CR1 PSC ARR DIER */
   clk_t c;
   wr(RCC_APB2ENR, apb2 | TIM17EN);
