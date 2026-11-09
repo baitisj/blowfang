@@ -13,6 +13,7 @@ c/k6/pager_host
 c/k6/host-lr/
 c/k6/pager_host_lr
 c/k6/km_host
+c/k6/kl_host
 c/k6/build-lr/
 c/k6/build-cbi/
 c/k6/build-cbs/

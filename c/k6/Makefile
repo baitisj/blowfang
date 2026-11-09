@@ -3,6 +3,7 @@
 #                           with the Cortex-M0 decoder path (FX_NARROW_MUL), for the tests
 #   sh tools/k6_build.sh    libsotto_k6.a for the radio (thumbv6m, clang)
 #   km_host                 the module loader (k6_mod.c) with the test key 00..0f
+#   kl_host                 the SPI module library (k6_lib.c) on an emulated SPI flash, the same key
 #   pager_host_lr           the same with -DSP_LR: plays sotto 1200 (magic 0xA9) messages
 #   pager_host_cbs, pager_host_lr_cbs   the same two with the codebook in (emulated) SPI flash
 #                           and not linked (-DFX_CB_SPI, sp_cb.c, flash_host.c): -F IMAGE loads it
@@ -26,11 +27,14 @@ OBJS = host/sotto_pager.o host/sotto_fx_dec.o host/sp_cb.o host/sp_vlr.o host/fx
 
 LR_OBJS = host-lr/sotto_pager.o host-lr/sotto_fx_dec.o host-lr/sotto_fx_lr.o host/sp_cb.o host/sp_vlr.o host/fx_math.o host/fx_tables.o
 
-all: pager_host pager_host_lr km_host cb_image pager_host_cbs pager_host_lr_cbs pager_host_cbi \
+all: pager_host pager_host_lr km_host kl_host cb_image pager_host_cbs pager_host_lr_cbs pager_host_cbi \
 	vlr_image pager_host_vlr pager_host_vlr_cbs pager_host_vlr_cbi pager_host_vlrh
 km_host: host/km_host.o host/k6_mod_test.o $(OBJS)
 	$(CC) -o $@ $^
-host/k6_mod_test.o: k6_mod.c k6_mod.h sotto_pager.h
+kl_host: host/kl_host.o host/k6_lib.o host/k6_mod_test.o $(OBJS)
+	$(CC) -o $@ $^
+host/kl_host.o host/k6_lib.o: k6_lib.h k6_mod.h
+host/k6_mod_test.o: k6_mod.c k6_mod.h k6_lib.h sotto_pager.h
 	@mkdir -p host
 	$(CC) $(CFLAGS) $(K6FLAGS) -DKM_KEY=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 -c -o $@ $<
 pager_host: host/pager_host.o $(OBJS)
@@ -160,7 +164,7 @@ host-vlrcbi/%.o: ../fixed/%.c $(VLR_FX_HDRS) host-cb/cb_crc.h
 	@mkdir -p host-vlrcbi
 	$(CC) $(CFLAGS) $(K6FLAGS) $(VCBIFLAGS) $(DECFLAGS) -c -o $@ $<
 clean:
-	rm -rf host host-lr pager_host pager_host_lr km_host build build-lr \
+	rm -rf host host-lr pager_host pager_host_lr km_host kl_host build build-lr \
 	  host-cb host-cbs host-lrcbs host-cbi cb_image pager_host_cbs pager_host_lr_cbs pager_host_cbi \
 	  host-vlr host-vlrcbs host-vlrcbi vlr_image pager_host_vlr pager_host_vlr_cbs pager_host_vlr_cbi host-vlrh pager_host_vlrh \
 	  build-vlr build-vlr-cbs build-vlr-cbi
