@@ -7553,7 +7553,7 @@ index 131f932..99ae011 100644
  
  /// Pull one byte received on USART1 since the last call, if any.
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..ac90cd2 100644
+index 9d2b0c0..68a5907 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -14,7 +14,7 @@ mod ui;
@@ -7601,7 +7601,7 @@ index 9d2b0c0..ac90cd2 100644
  #[entry]
  fn main() -> ! {
      let _dp = unsafe { Peripherals::steal() };
-@@ -79,6 +108,19 @@ fn main() -> ! {
+@@ -79,8 +108,25 @@ fn main() -> ! {
      uart::install_bootloader_trampoline();
      unsafe { cortex_m::peripheral::NVIC::unmask(kd32f328_pac::Interrupt::USART1) };
      writeln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ).ok();
@@ -7620,8 +7620,14 @@ index 9d2b0c0..ac90cd2 100644
 +    hal::txdog::install();
  
      let mut cp = cortex_m::Peripherals::take().unwrap();
++    // The bootloader leaves SysTick's interrupt on (CSR 0x00010006, sotto's fdirq module,
++    // 2026-11-09): every delay::us then ended in an exception through its table, and an FD6818
++    // register read took 193 us instead of 98 (fdtick: 196 us a pair with it off)
++    cp.SYST.disable_interrupt();
      unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
-@@ -98,9 +140,16 @@ fn main() -> ! {
+     // Enabled this early (rather than just before the main loop, as before)
+     // so UART RX -- hence CPS handshake detection -- already works during
+@@ -98,9 +144,16 @@ fn main() -> ! {
          .unwrap_or_else(|_| unreachable!());
      let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
  
@@ -7639,7 +7645,7 @@ index 9d2b0c0..ac90cd2 100644
  
      {
          let mut syst_delay = SystDelay(&mut cp.SYST);
-@@ -109,6 +158,7 @@ fn main() -> ! {
+@@ -109,6 +162,7 @@ fn main() -> ! {
      lcd.flush().ok();
      lcd.set_display_on(true).ok();
      let mut display = Display::new(lcd);
@@ -7647,7 +7653,7 @@ index 9d2b0c0..ac90cd2 100644
      writeln!(dbg, "lcd init done").ok();
  
      // rfic
-@@ -149,12 +199,17 @@ fn main() -> ! {
+@@ -149,12 +203,17 @@ fn main() -> ! {
      }
  
      let cal_buf = storage.read_calibration();
@@ -7665,7 +7671,7 @@ index 9d2b0c0..ac90cd2 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -234,7 +289,11 @@ fn main() -> ! {
+@@ -234,7 +293,11 @@ fn main() -> ! {
      }
  
      // app class
@@ -7678,7 +7684,7 @@ index 9d2b0c0..ac90cd2 100644
          radio,
          chip_id,
          keypad,
-@@ -265,8 +324,7 @@ fn main() -> ! {
+@@ -265,8 +328,7 @@ fn main() -> ! {
              display.flush();
          }
          3 => {
@@ -7688,7 +7694,7 @@ index 9d2b0c0..ac90cd2 100644
              display.flush();
          }
          _ => {}
-@@ -301,6 +359,67 @@ fn main() -> ! {
+@@ -301,6 +363,67 @@ fn main() -> ! {
      )
      .ok();
  
@@ -7756,7 +7762,7 @@ index 9d2b0c0..ac90cd2 100644
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
      let mut applied_contrast: u8 = u8::MAX;
-@@ -309,6 +428,8 @@ fn main() -> ! {
+@@ -309,6 +432,8 @@ fn main() -> ! {
  
      loop {
          let due = scheduler.tick();
@@ -7765,7 +7771,7 @@ index 9d2b0c0..ac90cd2 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,6 +450,19 @@ fn main() -> ! {
+@@ -329,6 +454,19 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -7785,7 +7791,7 @@ index 9d2b0c0..ac90cd2 100644
          // power sw
          if power.debounced_off(&mut cp.SYST) {
              writeln!(dbg, "power switch off, shutting down").ok();
-@@ -401,6 +535,8 @@ fn main() -> ! {
+@@ -401,6 +539,8 @@ fn main() -> ! {
              }
          } else if app.mode() == app::Mode::Sstv {
              app.handle_sstv_ptt(&mut cp.SYST);
@@ -7794,7 +7800,7 @@ index 9d2b0c0..ac90cd2 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -465,9 +601,13 @@ fn main() -> ! {
+@@ -465,9 +605,13 @@ fn main() -> ! {
              }
          }
  

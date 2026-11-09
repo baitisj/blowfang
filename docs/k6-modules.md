@@ -320,6 +320,11 @@ them only on 8 or more; `clkget` (level 8) says the clock. The emulator
   prefetch (a LISTEN slot module hears DMR). The `K6 TXDOG remap` boot line is gone (for room).
   A fault at rest hangs the radio as before txdog, with the transmitter off (every key-up arms
   it first): `dogfault` now only reboots the radio when it faults keyed.
+- **SysTick's interrupt off at boot (2026-11-09).** With the prefetch back (ACR 0x32 at rest),
+  `fdtime` still timed td_read's pair at 382 us; `fdirq` timed it at 196 us under PRIMASK, with
+  a counting loop losing only 3% to interrupts, and read SysTick CSR 0x00010006: the bootloader
+  leaves TICKINT on and Aura never cleared it, so every 1 us `delay::us` of the FD6818 bit-bang
+  ended in a SysTick exception through the bootloader's table. main now clears it.
 - **Part 97.** The code goes out in the clear and this format is published; the tag only
   proves who sent it.
 
