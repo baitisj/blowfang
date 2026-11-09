@@ -313,6 +313,9 @@ iflive_tsweep
 loram          # level 1, does anything write 0x20000000-0x20000FFF (hal::txdog)
 midi           # level 2 (screen at 6, LED at 7), songs patched by tools/k6_midi.py, docs/k6-midi.md
 morse          # level 6, docs/k6-morse.md
+pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRFTBE (stage 3)
+pfprobe_hsi    # level 2, pfprobe stage 1: SYSCLK to HSI and back only
+pfprobe_pf     # level 2, pfprobe stage 2: also PRFTBE while on HSI
 ramprobe
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)
