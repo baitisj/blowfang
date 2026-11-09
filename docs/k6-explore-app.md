@@ -118,13 +118,23 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   a row of 10 s or more with no DMR (`ex_dmr_heard`, `EX_CLEAN_N`, `EX_CLEAN_S`) clear the mark
   and the saved flag (`rt_heard_apply` with dmr < 0, logged `K6 EX dmr clear`). A listen by hand
   never counts towards clearing, since it may sit on a dead carrier.
+- **DMR auto save** (Jeff 2026-11-09: "saving a DMR channel table to SPI after two listens makes
+  sense, but I think we should be able to delete these entries in case we move out of the
+  repeater's area"): the second listen that hears DMR on a row not in the table (`EX_DMR_SAVE_N`,
+  by hand or automatic; clean listens in between don't reset the count) saves the row as a new
+  entry with `RT_F_DMR` and `RT_F_AUTO` (`K6 EX autosave`, screen `DMR SAVED (6 6: DEL)`). So a
+  DMR repeater starts muted after the next power-up too. Key 6 twice deletes every `RT_F_AUTO`
+  entry at once (`DELETED 4 (12 LEFT)`, `K6 EX delauto`), for leaving an area; key 3 twice deletes
+  one. Save (key 5) on an auto entry makes it the user's: it loses `RT_F_AUTO` and key 6 keeps it.
+  A row deleted by hand isn't auto-saved again until EXPLORE next starts (`dmr_n` counts on past
+  2). If later listens clear the DMR mark, the entry stays, without `RT_F_DMR`.
 - **The table** (`c/k6/rt.c`): Save writes one 64-byte record in SPI flash at 0x0F0000-0x0FFFFF,
   through the same checks as module API level 5. A confirmed CW ID follows Jeff's rule: a saved
   entry with no call takes it at once, and a different saved call waits for MENU. With no saved
   entry, the frequency is saved with its call as a new entry (Jeff 2026-11-07 22:46), so it
   goes under the rule. Key 3 twice on a saved row deletes its entry (`rt_delete`, `ex_unknow`)
-  and the row is new again. A listen's CTCSS tone and DMR update a saved entry as above. Nothing
-  else writes flash. On entry,
+  and the row is new again. A listen's CTCSS tone and DMR update a saved entry as above, and a
+  second DMR listen saves a new one (DMR auto save). Nothing else writes flash. On entry,
   the table mounts. If 0x0F0000-0x0FFFFF holds anything that isn't blank or a table, the screen
   says `TABLE AREA NOT BLANK`, and Save stays off.
 
@@ -181,6 +191,9 @@ s 146.520   S  ======
 | # | next band set: ALL (2 m, 1.25 m outputs, 70 cm 440-445), 2M, 70CM (440-450), 1.25M |
 | 1 | automatic Listen for ID off or on (on at power-on) |
 | 7 | the list and the saved table on the serial report (`K6 CAND`, `K6 RT` lines) |
+| 3 twice | delete the saved row's table entry (`3 AGAIN: DELETE`) |
+| 6 twice | delete every entry the explorer saved on its own for DMR (`6 AGAIN: DEL AUTO DMR`) |
+| 9 | the automatic listen's speaker on or off |
 | EXIT twice | VOICE MSG (the list is in RAM and goes when you leave or power off); EXPLORE again after 2 quiet minutes |
 
 On the Listen screen: `ID? 440.850 1:23` (or `AUTO`), the tone detector's state, the last text
@@ -214,6 +227,8 @@ K6 MOD say DMR end n=1 h=41 lost=0 steps=50
 K6 MOD say DMR rate busy=24 ks=5490 ctcss=1000/40
 K6 EX heard 440925000 tone=1000 dmr=1 rt=2 saved_tone=1000   the saved entry took the tone
 K6 EX dmr clear 440925000             3 long listens heard no DMR: mark and saved flag cleared (dmr=-1)
+K6 EX autosave 440925000 id=4 slot=3 live=4   a second listen heard DMR: saved with RT_F_AUTO
+K6 EX delauto n=4 r=0 live=12        key 6 twice: the auto-saved entries deleted
 K6 EX save 146940000 id=1 slot=0 live=1 erases=0/32
 K6 CAND 0 R 146940000 off=-600000 tone=0 call=W7ABC/R score=8 overs=5 ...
 ```
