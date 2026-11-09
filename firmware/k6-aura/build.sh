@@ -203,6 +203,9 @@ if [ "${EXPLORE:-1}" = 1 ]; then
   K6_VOICE=0 K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-explore
   variant aura-explore "EXPLORE image: the signal explorer, pager packets and modules, no voice" --features explore,txdog
+  # DIAGNOSTIC ONLY (not for merge): the same image without txdog, to tell whether txdog costs
+  # EXPLORE's DMR detector its samples (30 lost per step since f70e79e). Receive-only bench use.
+  variant aura-explore-notxdog "EXPLORE image without txdog (diagnostic)" --features explore
 fi
 if [ "${VLR:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi sh "$ROOT/tools/k6_build.sh"
