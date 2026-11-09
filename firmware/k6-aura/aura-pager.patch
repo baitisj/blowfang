@@ -284,7 +284,7 @@ index 0000000..55c4d31
 +//! the calibration transmit.
 +//!
 +//! Keys: MENU play (again), EXIT leave (or stop playback), UP/DOWN volume,
-+//! 1 PHY D/F, 2 frames L/S, 3 RX invert, 4 pre-emphasis, 5 1200/2400 baud
++//! 1 PHY D/F, 2 frames XL/L, 3 RX invert, 4 pre-emphasis, 5 1200/2400 baud
 +//! (profile D), 6 raw packet bytes on the screen (hiss image: the hiss band off and
 +//! on, an A/B on the speaker), * clear the message, PTT transmit the calibration packet
 +//! (twice in profile D, then twice in F).
@@ -1571,7 +1571,7 @@ index 0000000..55c4d31
 +    /// typing a frequency (#), in kHz like Aura's VFO entry; RAM only, never saved
 +    pub freq_entry: bool,
 +    pub phy_ffsk: bool,
-+    /// key 2: profile XL (128-byte packets, 20 frames) instead of L (64 bytes, 8 frames)
++    /// key 2: profile XL (128-byte packets, 20 frames, the power-on default) or L (64 bytes, 8 frames)
 +    pub xl: bool,
 +    /// key 5: 2400 baud (D: direct FSK; F: FFSK 1200/2400 Hz tones)
 +    pub baud_2400: bool,
@@ -1767,7 +1767,7 @@ index 0000000..55c4d31
 +            chip_ok: false,
 +            cb: 0,
 +            phy_ffsk: true, // F: the mode that works over the IC-7100's USB audio
-+            xl: false,
++            xl: true, // XL from power-on: every sotto 1200/600/400 send uses it (2026-11-09)
 +            baud_2400: false,
 +            f2400_var: 0,
 +            reg2b_base: None,

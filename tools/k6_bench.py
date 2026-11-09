@@ -18,7 +18,7 @@ What they share, under $BLOWFANG_WORK/state/ (it outlives reboots, unlike a sess
   ptt.lock.last_id  when the last CW ID ended
   txlog.txt         one line per data transmission: start, end, what
   cwid.wav          'AG7EW SOTTO TEST', MCW 800 Hz, 20 wpm, level 0.4
-  reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset)
+  reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset), XL then L
 and $BLOWFANG_WORK/logs/k6-cwid.txt, one line per CW ID (~/k6-cwid.txt links there).
 
 The keeper (FCC 97.119): a session is active while a data TX ended less than 10 min ago. While
@@ -311,9 +311,19 @@ def make_wavs(only_id=False):
     print("wrote", path("cwid_wav"), f"'{ID_TEXT}'")
     if only_id:
         return
-    subprocess.run([sys.executable, "-m", "modem.k6", "ctl", path("reset_wav"), "--phy", "F", "--seq", "201",
-                    "--action", "reset"], cwd=r, check=True)
-    print("wrote", path("reset_wav"))
+    # XL first (images from 2026-11-09 boot with frames=XL), then L for older images and for a
+    # radio someone switched to L with key 2: the K6 resets on the first copy it reads
+    import numpy as np
+    parts = []
+    for payload in ("XL", "L"):
+        tmp = path("reset_wav") + f".{payload}.tmp.wav"
+        subprocess.run([sys.executable, "-m", "modem.k6", "ctl", tmp, "--phy", "F", "--seq", "201",
+                        "--action", "reset", "--payload", payload], cwd=r, check=True)
+        with wave.open(tmp) as w:
+            parts.append(np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767)
+        os.remove(tmp)
+    write_wav(path("reset_wav"), np.concatenate([parts[0], np.zeros(48000), parts[1]]))
+    print("wrote", path("reset_wav"), "(XL, then L)")
 
 
 # ---- the commands ----
