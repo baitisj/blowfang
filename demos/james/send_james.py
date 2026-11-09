@@ -44,6 +44,13 @@ def rfpower():
     return float(out.stdout.split()[0])
 
 
+def k6_frames(k6log):
+    """frames= from the K6's last CFG line in the log ("L" or "XL"), or None"""
+    with open(k6log, errors="replace") as f:
+        hits = re.findall(r"K6 CFG .*?frames=(\w+)", f.read())
+    return hits[-1] if hits else None
+
+
 def wait_play(k6log, msg_id, since, timeout):
     """the K6 PLAY line for msg_id written after byte offset since, or None"""
     pat = re.compile(r"K6 PLAY id=%02x .*" % msg_id)
@@ -83,6 +90,9 @@ def main():
         p = rfpower()
         if p > 0.0:
             raise SystemExit(f"refusing: IC-7100 RFPOWER reads {p}, must be 0 (stub antenna)")
+        if a.k6log and k6_frames(a.k6log) not in (None, "XL"):
+            raise SystemExit(f"refusing: the K6's last CFG says frames={k6_frames(a.k6log)}; these are XL "
+                             "packets (key 2 on the K6, or modem.k6 ctl --set frames=XL)")
         since = os.path.getsize(a.k6log) if a.k6log else 0
         t0 = time.time()
         subprocess.run([sys.executable, os.path.join(ROOT, "tools", "k6_bench.py"), "send", wav,
