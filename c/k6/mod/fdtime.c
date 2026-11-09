@@ -10,7 +10,15 @@
      fdt ms min= avg= max=                     api->ms()
      fdt tk min= avg= max=                     api->ticks()
    TIM17 and its clock enable are put back. Receive only, writes no radio register. Level 2
-   (fd_read). SPDX-License-Identifier: MIT */
+   (fd_read).
+   fdirq (FD_IRQ, 2026-11-09): PR #23's image read ACR 0x32 at rest, yet the td pair took 382 us
+   with interrupts on against pfprobe stage 4's 195 us with them off. It also says
+     fdt irq iser=........ ispr=........ syst=........ rvr=........ icsr=........
+                                               NVIC enabled/pending, SysTick CSR/RVR, ICSR
+     fdt td-cli min= avg= max=                 the td pair with interrupts off (PRIMASK)
+     fdt spin on=1234 off=1234                 a counting loop's passes in 2 ms, interrupts on
+                                               and off: on/off is the CPU share left to code
+   SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
 #include "../k6_mod.h"
 
@@ -67,9 +75,10 @@ static char *dec(char *p, uint32_t v) {
 /* cycles -> 0.1 us */
 static uint32_t tenths(uint32_t cyc) { return udiv(cyc * 10u + 48u, 96u); }
 
-static void one(const k6_api_t *api, clk_t *c, int what, const char *name) {
+static void one(const k6_api_t *api, clk_t *c, int what, const char *name, int cli) {
   uint32_t i, t0, dt, mn = 0xFFFFFFFFu, mx = 0, sum = 0, s = 0;
   char line[60], *p;
+  if (cli) __asm volatile("cpsid i" ::: "memory");
   for (i = 0; i < N; i++) {
     t0 = now(c);
     if (what == 0) s += api->fd_read(0x0B);
@@ -81,6 +90,7 @@ static void one(const k6_api_t *api, clk_t *c, int what, const char *name) {
     if (dt > mx) mx = dt;
     sum += dt;
   }
+  if (cli) __asm volatile("cpsie i" ::: "memory");   /* before say: its queue drains by IRQ */
   __asm volatile("" : : "r"(s));
   p = put(put(put(line, "fdt "), name), " min=");
   p = put(dec(p, tenths(mn)), " avg=");
@@ -89,6 +99,45 @@ static void one(const k6_api_t *api, clk_t *c, int what, const char *name) {
   *p = 0;
   api->say(line);
 }
+
+#ifdef FD_IRQ
+static char *hex(char *p, uint32_t v) {
+  int i;
+  for (i = 28; i >= 0; i -= 4) {
+    uint32_t d = (v >> i) & 15u;
+    *p++ = (char)(d < 10u ? '0' + d : 'a' + d - 10u);
+  }
+  return p;
+}
+
+/* passes of a counting loop in 2 ms of TIM17 */
+static uint32_t spin(clk_t *c, int cli) {
+  uint32_t t0, n = 0;
+  if (cli) __asm volatile("cpsid i" ::: "memory");
+  t0 = now(c);
+  while (now(c) - t0 < 96u * 2000u) n++;
+  if (cli) __asm volatile("cpsie i" ::: "memory");
+  return n;
+}
+
+static void irq(const k6_api_t *api, clk_t *c) {
+  char line[96], *p;
+  uint32_t on, off;
+  p = hex(put(line, "fdt irq iser="), rd(0xE000E100u));
+  p = hex(put(p, " ispr="), rd(0xE000E200u));
+  p = hex(put(p, " syst="), rd(0xE000E010u));
+  p = hex(put(p, " rvr="), rd(0xE000E014u));
+  p = hex(put(p, " icsr="), rd(0xE000ED04u));
+  *p = 0;
+  api->say(line);
+  one(api, c, 1, "td-cli", 1);
+  on = spin(c, 0), off = spin(c, 1);
+  p = dec(put(line, "fdt spin on="), on);
+  p = dec(put(p, " off="), off);
+  *p = 0;
+  api->say(line);
+}
+#endif
 
 int k6_main(const k6_api_t *api) {
   uint32_t apb2 = rd(RCC_APB2ENR), r[4], i;
@@ -99,10 +148,13 @@ int k6_main(const k6_api_t *api) {
   wr(TIM17 + 0x00, 0), wr(TIM17 + 0x0C, 0), wr(TIM17 + 0x28, 0), wr(TIM17 + 0x2C, 0xFFFF);
   wr(TIM17 + 0x14, 1), wr(TIM17 + 0x10, 0), wr(TIM17 + 0x00, 1);
   c.t = 0, c.c17 = rd(TIM17_CNT) & 0xFFFF, c.c14 = rd(TIM14_CNT) & 0xFFFF;
-  one(api, &c, 0, "rd0B");
-  one(api, &c, 1, "td");
-  one(api, &c, 2, "ms");
-  one(api, &c, 3, "tk");
+  one(api, &c, 0, "rd0B", 0);
+  one(api, &c, 1, "td", 0);
+  one(api, &c, 2, "ms", 0);
+  one(api, &c, 3, "tk", 0);
+#ifdef FD_IRQ
+  irq(api, &c);
+#endif
   wr(TIM17 + 0x00, 0);
   for (i = 3; i < 4; i--) wr(TIM17 + off[i], r[i]);
   wr(RCC_APB2ENR, apb2);
