@@ -41,7 +41,8 @@ class Cand(ctypes.Structure):
                 ("score", ctypes.c_int8), ("grade", ctypes.c_char), ("call", ctypes.c_char * 10),
                 ("listens", ctypes.c_uint8),
                 ("heard_s", ctypes.c_uint16),
-                ("clean", ctypes.c_uint8)]
+                ("clean", ctypes.c_uint8),
+                ("dmr_n", ctypes.c_uint8)]
 
 
 class Ex(ctypes.Structure):
