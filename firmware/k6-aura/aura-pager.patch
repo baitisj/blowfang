@@ -268,10 +268,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..90d133d
+index 0000000..3799461
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4240 @@
+@@ -0,0 +1,4242 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -3194,8 +3194,10 @@ index 0000000..90d133d
 +            tlm_start(st.tlm as usize * KM_TLM_PART);
 +        }
 +        mod_screen_clear();
++        crate::hal::txdog::hold(true); // the crash backstop's table mapped while it runs
 +        let ret = unsafe { ffi::km_run(arena::base(), &MOD_API) };
 +        unsafe { mod_tx_off() }; // a module that left the transmitter on
++        crate::hal::txdog::hold(false);
 +        rx_led(false); // or the LED lit
 +        mod_screen_clear(); // its waterfall rows were in its own memory
 +        let ms = unsafe { mod_ms() };
@@ -7015,10 +7017,10 @@ index 0000000..37404d9
 +}
 diff --git a/src/hal/txdog.rs b/src/hal/txdog.rs
 new file mode 100644
-index 0000000..6923e0b
+index 0000000..e459510
 --- /dev/null
 +++ b/src/hal/txdog.rs
-@@ -0,0 +1,308 @@
+@@ -0,0 +1,393 @@
 +//! Crash and stuck-transmitter backstop (2026-11-08: a module overran its stack, the report
 +//! key-up after it hung, and the K6 sent a bare carrier on 440.850 for 16 minutes).
 +//!
@@ -7050,6 +7052,17 @@ index 0000000..6923e0b
 +//! difference left. The `txdog` feature turns it on (sotto's build: every image that transmits);
 +//! without it the key-up clock still runs (it costs nothing) but no table is installed.
 +//!
++//! 2026-11-09: on the K6 the flash prefetch (FLASH_ACR PRFTBE) only works while main flash is at
++//! address 0 (MEM_MODE 2, as the bootloader leaves it): MEM_MODE 3 clears it and it won't set
++//! again there (sotto's pfprobe module: ACR 0x12 in mode 2, 0x02 in mode 3). With the table
++//! mapped all the time, flash code ran slow enough that one FD6818 register read took 369 us
++//! (fdtime) and EXPLORE's DMR detector never heard DMR. So the table is mapped only while it is
++//! needed, "armed": from a key-up (`keyed*`) to `unkeyed`, and while a RAM module runs (`hold`).
++//! The rest of the time ("at rest") main flash is at 0 with the prefetch on, TIM14's interrupt
++//! masked (the bootloader's table has no handler for it) and its wraps counted by `poll` (the
++//! main loops, and every `ticks`). A fault at rest hangs the radio as before txdog, with the
++//! transmitter off (any key-up arms it).
++//!
 +//! The note lives at 0x2000_5FF0, at the top of SRAM, out of Aura's RAM and out of the
 +//! bootloader's reach. It isn't in the vector slots or anywhere else below 0x2000_1028, because
 +//! that is the bootloader's own RAM and it clears all of it at every reset.
@@ -7070,6 +7083,13 @@ index 0000000..6923e0b
 +const TIM14_SR: u32 = 0x4000_2010;
 +const TIM14_CNT: u32 = 0x4000_2024;
 +const NVIC_ISER: u32 = 0xE000_E100;
++const NVIC_ICER: u32 = 0xE000_E180;
++const NVIC_ICPR: u32 = 0xE000_E280;
++const FLASH_ACR: u32 = 0x4002_2000;
++const ACR_PRFTBE: u32 = 1 << 4;
++/// why the table is mapped: a key-up, a module running
++const ARM_TX: u32 = 1;
++const ARM_MOD: u32 = 2;
 +/// the last reboot's reason (magic, a, b), kept across the reset: 0x2000_5FF0, the top 16 bytes of
 +/// SRAM, which memory.x leaves out of Aura's RAM (the stack starts below them). The bootloader's
 +/// stack starts at 0x2000_4028 and grows down, so it never reaches them. Not the bootloader's own
@@ -7092,6 +7112,8 @@ index 0000000..6923e0b
 +pub const DEFAULT_LIMIT_MS: u32 = 200_000;
 +
 +static LIVE: AtomicBool = AtomicBool::new(false);
++/// ARM_TX | ARM_MOD while the table is mapped; 0 at rest
++static ARMED: AtomicU32 = AtomicU32::new(0);
 +static BOOT_CFGR1: AtomicU32 = AtomicU32::new(0);
 +/// what install found, for the boot report (the debug UART prints nothing in release builds)
 +static BOOT: AtomicU32 = AtomicU32::new(0);
@@ -7144,7 +7166,6 @@ index 0000000..6923e0b
 +        wr(SRAM0 + 4 * V_TIM14, tim14 as unsafe extern "C" fn() as usize as u32);
 +        wr(SYSCFG_CFGR1, (cfgr1 & !3) | 3); // SRAM at address 0
 +    });
-+    raw(b"K6 TXDOG remap", cfgr1, rd(4 * 15));
 +    let ok = rd(4 * V_HARDFAULT) == rd(SRAM0 + 4 * V_HARDFAULT)
 +        && rd(4 * V_TIM14) == rd(SRAM0 + 4 * V_TIM14)
 +        && rd(4 * V_HARDFAULT) != rd(BOOT_VEC + 4 * V_HARDFAULT);
@@ -7155,15 +7176,75 @@ index 0000000..6923e0b
 +    BOOT_CFGR1.store(cfgr1, Ordering::Relaxed);
 +    LIVE.store(true, Ordering::Relaxed);
 +    wr(TIM14_SR, 0);
-+    wr(TIM14_DIER, rd(TIM14_DIER) | 1); // update interrupt: one per wrap
-+    wr(NVIC_ISER, 1 << 19);
++    wr(TIM14_DIER, rd(TIM14_DIER) | 1); // update flag (and, when armed, interrupt): one per wrap
 +    raw(b"K6 TXDOG on", rd(4 * V_HARDFAULT), rd(4 * V_TIM14));
++    cortex_m::interrupt::free(|_| apply(false)); // at rest until the first key-up or module
 +    (note, cfgr1, true)
++}
++
++/// Armed (`armed`: MEM_MODE 3, TIM14's interrupt unmasked) or at rest (main flash at 0 again,
++/// the prefetch on, TIM14 masked). Interrupts off.
++#[cfg(not(feature = "lean"))]
++fn apply(armed: bool) {
++    if armed {
++        count_wrap(); // a wrap seen at rest is counted here, not again by the interrupt
++        wr(SYSCFG_CFGR1, (BOOT_CFGR1.load(Ordering::Relaxed) & !3) | 3);
++        wr(NVIC_ICPR, 1 << 19);
++        wr(NVIC_ISER, 1 << 19);
++    } else {
++        wr(NVIC_ICER, 1 << 19);
++        wr(SYSCFG_CFGR1, BOOT_CFGR1.load(Ordering::Relaxed));
++        wr(FLASH_ACR, rd(FLASH_ACR) | ACR_PRFTBE);
++    }
++}
++
++/// `why` (ARM_TX, ARM_MOD) starts (`on`) or ends; armed while any is on
++#[cfg(not(feature = "lean"))]
++fn arm(why: u32, on: bool) {
++    if !LIVE.load(Ordering::Relaxed) {
++        return;
++    }
++    cortex_m::interrupt::free(|_| {
++        let was = ARMED.load(Ordering::Relaxed);
++        let now = if on { was | why } else { was & !why };
++        ARMED.store(now, Ordering::Relaxed);
++        if (was == 0) != (now == 0) {
++            apply(now != 0);
++        }
++    });
++}
++
++/// At rest: a wrap's update flag counted and cleared (the interrupt does it when armed).
++/// Interrupts off.
++#[cfg(not(feature = "lean"))]
++#[inline(never)]
++fn count_wrap() {
++    if rd(TIM14_SR) & 1 != 0 {
++        wr(TIM14_SR, 0);
++        WRAPS.store(WRAPS.load(Ordering::Relaxed).wrapping_add(1), Ordering::Relaxed);
++    }
++}
++
++/// The main loops call this (at least once a wrap, 6.5 s): at rest, it counts TIM14's wraps.
++/// Only the main context arms, so the state can't change between the test and the count
++#[cfg(not(feature = "lean"))]
++#[inline(never)]
++pub fn poll() {
++    if LIVE.load(Ordering::Relaxed) && ARMED.load(Ordering::Relaxed) == 0 {
++        cortex_m::interrupt::free(|_| count_wrap());
++    }
++}
++
++/// A RAM module is about to run (true) or has returned (false): the table is mapped meanwhile
++#[cfg(not(feature = "lean"))]
++pub fn hold(on: bool) {
++    arm(ARM_MOD, on)
 +}
 +
 +/// (wraps, CNT): uptime's TIM14 counter unwrapped
 +#[cfg(not(feature = "lean"))]
 +fn now2() -> (u32, u32) {
++    poll();
 +    // WRAPS and CNT read so a wrap between them is seen: read WRAPS again after CNT
 +    loop {
 +        let w = WRAPS.load(Ordering::Relaxed);
@@ -7203,6 +7284,7 @@ index 0000000..6923e0b
 +/// The same with a longer cap (an SSTV picture: PD290 takes 290 s)
 +#[cfg(not(feature = "lean"))]
 +pub fn keyed_for(ms: u32) {
++    arm(ARM_TX, true);
 +    LIMIT.store(ms * 10, Ordering::Relaxed);
 +    KEYED_AT.store(now() | 1, Ordering::Relaxed);
 +}
@@ -7218,6 +7300,7 @@ index 0000000..6923e0b
 +#[cfg(not(feature = "lean"))]
 +pub fn unkeyed() {
 +    KEYED_AT.store(0, Ordering::Relaxed);
++    arm(ARM_TX, false);
 +}
 +
 +/// TIM14 update: one per 6.5536 s
@@ -7252,6 +7335,10 @@ index 0000000..6923e0b
 +pub fn limit(_ms: u32) {}
 +#[cfg(feature = "lean")]
 +pub fn unkeyed() {}
++#[cfg(feature = "lean")]
++pub fn poll() {}
++#[cfg(feature = "lean")]
++pub fn hold(_on: bool) {}
 +#[cfg(feature = "lean")]
 +pub fn ticks() -> Option<(u32, u32)> {
 +    None
@@ -7474,7 +7561,7 @@ index 131f932..99ae011 100644
  
  /// Pull one byte received on USART1 since the last call, if any.
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..83d0c51 100644
+index 9d2b0c0..ac90cd2 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -14,7 +14,7 @@ mod ui;
@@ -7609,7 +7696,7 @@ index 9d2b0c0..83d0c51 100644
              display.flush();
          }
          _ => {}
-@@ -301,6 +359,65 @@ fn main() -> ! {
+@@ -301,6 +359,67 @@ fn main() -> ! {
      )
      .ok();
  
@@ -7623,6 +7710,8 @@ index 9d2b0c0..83d0c51 100644
 +        let mut scheduler = scheduler::Scheduler::new();
 +        loop {
 +            let due = scheduler.tick();
++            #[cfg(not(feature = "lean"))]
++            hal::txdog::poll(); // TIM14's wraps while the backstop is at rest
 +            // EXPLORE (app/pager/explore.rs): its sweep a block at a time, the keys between, the
 +            // screen when it asks; the pager's receiver is off meanwhile
 +            if app.exploring() {
@@ -7675,7 +7764,16 @@ index 9d2b0c0..83d0c51 100644
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
      let mut applied_contrast: u8 = u8::MAX;
-@@ -329,6 +446,19 @@ fn main() -> ! {
+@@ -309,6 +428,8 @@ fn main() -> ! {
+ 
+     loop {
+         let due = scheduler.tick();
++        #[cfg(not(feature = "lean"))]
++        hal::txdog::poll(); // TIM14's wraps while the backstop is at rest
+ 
+         if cps_handshake.poll() {
+             cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
+@@ -329,6 +450,19 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -7695,7 +7793,7 @@ index 9d2b0c0..83d0c51 100644
          // power sw
          if power.debounced_off(&mut cp.SYST) {
              writeln!(dbg, "power switch off, shutting down").ok();
-@@ -401,6 +531,8 @@ fn main() -> ! {
+@@ -401,6 +535,8 @@ fn main() -> ! {
              }
          } else if app.mode() == app::Mode::Sstv {
              app.handle_sstv_ptt(&mut cp.SYST);
@@ -7704,7 +7802,7 @@ index 9d2b0c0..83d0c51 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -465,9 +597,13 @@ fn main() -> ! {
+@@ -465,9 +601,13 @@ fn main() -> ! {
              }
          }
  

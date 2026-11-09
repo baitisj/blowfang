@@ -305,6 +305,19 @@ them only on 8 or more; `clkget` (level 8) says the clock. The emulator
   images (codebook install, -table fallbacks) never transmit and leave txdog out for room. Bench
   tests: `dogfault` (a deliberate UDF) and `dogtx` (CW ID, then keyed with the PA off and hung),
   both uploaded without ARQ.
+- **txdog armed only around key-ups and modules (2026-11-09).** On the K6, MEM_MODE 3 turns the
+  flash prefetch off (FLASH_ACR 0x12 -> 0x02) and it won't come back in that mode; in MEM_MODE 2
+  it does. RAM modules measured it on 0b2a94c vlrh: `fdtime` timed one FD6818 register read at
+  369 us and td_read's pair at 734 us; `pfprobe_m2` (MEM_MODE 2, PRFTBE) got the pair to 195 us
+  and ACR 0x12, back to 0x02 in mode 3; the HSI switch PR #18 tried made no difference
+  (`pfprobe_hsi`, `pfprobe_pf`, `pfprobe`: the K6 stayed up, ACR stayed 0x02). With the table
+  mapped all the time, every txdog image ran flash code slower, and EXPLORE's DMR detector,
+  which drains its DMA ring (356 us a lap) between those reads, never heard DMR. Now the table
+  is mapped ("armed") from each key-up (`keyed*`) to `unkeyed` and while a RAM module runs
+  (`hold`); at rest main flash is at 0 with the prefetch on, TIM14's interrupt is masked (the
+  bootloader has no handler for it) and its wraps are counted by `txdog::poll` in the main loops
+  and in every `ticks`. The `K6 TXDOG remap` boot line is gone (for room). A fault at rest hangs the radio as
+  before txdog, with the transmitter off (every key-up arms it first).
 - **Part 97.** The code goes out in the clear and this format is published; the tag only
   proves who sent it.
 
