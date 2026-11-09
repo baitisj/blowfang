@@ -142,3 +142,65 @@ The GROUNDWAVE modules each lose about 320 B. `gw` goes from 11,681 to 11,357 B,
    ROPI modules.
 4. **If flash gets tight again:** selective unrolling in the decoder, worth up to about 5 KB
    more.
+
+## Would porting Aura's Rust to C save flash?
+
+Measured 2026-11-09 on the pager-only and EXPLORE images (clang 18 library, rustc 1.97 at
+`opt-level = "z"` with fat LTO).
+
+### Where the bytes go
+
+Symbol sizes, in bytes:
+
+| | pager-only | EXPLORE |
+|---|---|---|
+| Aura's own Rust (`aura::*`: app, UI, drivers) | 34,990 | 47,769 |
+| Rust crates (embedded-graphics 4.4 KB, st7565, display-interface, trait impls) | 11,016 | 11,294 |
+| `core`: formatting, panics, str | 3,416 | 3,708 |
+| `core`: everything else | 1,910 | 1,986 |
+| `compiler_builtins` (memcpy family, division; the C needs these too) | 3,776 | 5,036 |
+| C library | 41,112 | 33,241 |
+
+RAM has no Rust overhead. Static RAM is:
+
+- the shared block (11,776 B)
+- the App (2,164 B)
+- the UART rings (864 B)
+- a few small statics
+
+A C version would need the same buffers.
+
+### The Rust-only overhead, measured by removing it
+
+| Experiment | pager-only | EXPLORE | Cost |
+|---|---|---|---|
+| Panic handler that prints only `K6 PANIC build=` (stable) | −2,984 | −3,428 | loses file:line and message in the crash report |
+| Handler printing file:line but not the message | −40 | −40 | none |
+| Nightly `-Cpanic=immediate-abort` with `-Zbuild-std=core` | −5,684 | −5,996 | no crash report, nightly toolchain |
+| A 268-byte memcpy/memset/memmove/memcmp replacing compiler_builtins' | −1,508 | (similar) | not language-specific; needs a timing check (byte copies when unaligned) |
+
+The panic machinery (Location records, the message formatting the bounds checks carry, and
+`core::fmt` behind the handler) is the real Rust tax: about 6 KB. `core::fmt` itself stays
+after that (about 3.2 KB), because the serial reports use `format_args!`. A C port would
+need its own small formatter instead, of about 0.5-1 KB.
+
+### Estimate
+
+The best case for a full C port of the Rust half is about 8-9 KB:
+
+- about 6 KB of panic machinery
+- about 2.5 KB of formatting
+
+The code generation is otherwise the same LLVM at the same size level, and the drivers and
+UI would come out about the same size in C. The cost would be a rewrite of 50-70 KB of
+firmware, including Aura's drivers, and the end of upstream Aura updates.
+
+Most of that saving can be had inside Rust in a few lines:
+
+- a slimmer panic handler: 3 KB on stable, about 6 KB with immediate-abort
+- a lean formatter for the reports (e.g. `ufmt`): about 2.5 KB
+- the compact memory routines: 1.5 KB
+
+**Recommendation:** don't port. Take the in-Rust savings when flash is needed, starting
+with the panic handler. A HardFault-style note could keep the address of the panic site
+(pc/lr at 0x20005FF0) rather than its file and line.
