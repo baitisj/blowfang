@@ -1,8 +1,8 @@
 diff --git a/Cargo.toml b/Cargo.toml
-index 785c441..eff045c 100644
+index 785c441..8ee3035 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
-@@ -21,6 +21,29 @@ st7565 = "0.6"
+@@ -21,6 +21,34 @@ st7565 = "0.6"
  embedded-graphics = "0.8"
  profont = "0.7"
  
@@ -17,6 +17,11 @@ index 785c441..eff045c 100644
 +# screen. sotto's build links it with a library that has no voice decoder (K6_VOICE=0), the
 +# room the explorer needs: VOICE MSG keeps its packets, modules and control, but plays nothing
 +explore = ["pager-only"]
++# EXPLORE in the 8 kHz voice image (Jeff 2026-11-09: one image, no switching): explore with the
++# voice library and the voice images' 11,776-byte shared block and shared page buffer. A size
++# report for now (build.sh): it doesn't fit yet, and EXPLORE's sweep still holds the PWM ring
++# while it draws, which the shared page buffer needs
++voice-explore = ["explore"]
 +# the hiss band image (docs/k6-hiss-port.md): sotto 1200, 600 and 400 played at 16 kHz through the
 +# K6 hiss layer, with a library built K6_HISS=1 (320-sample frames; the PWM ring is 3 of them)
 +hiss = []
@@ -33,10 +38,10 @@ index 785c441..eff045c 100644
  opt-level = "z"
  lto = true
 diff --git a/build.rs b/build.rs
-index 34078b1..86605f2 100644
+index 34078b1..500f5fc 100644
 --- a/build.rs
 +++ b/build.rs
-@@ -50,6 +50,22 @@ fn main() {
+@@ -50,6 +50,28 @@ fn main() {
      println!("cargo:rerun-if-changed=memory.x");
      println!("cargo:rerun-if-changed=build.rs");
  
@@ -52,8 +57,14 @@ index 34078b1..86605f2 100644
 +    // MCU-flash table images), not EXPLORE (its sweep keeps the ring while it draws)
 +    println!("cargo:rustc-check-cfg=cfg(shared_lcd)");
 +    let feat = |f: &str| env::var_os(format!("CARGO_FEATURE_{f}")).is_some();
-+    if feat("PAGER_ONLY") && !feat("LEAN") && !feat("EXPLORE") {
++    if feat("PAGER_ONLY") && !feat("LEAN") && (!feat("EXPLORE") || feat("VOICE_EXPLORE")) {
 +        println!("cargo:rustc-cfg=shared_lcd");
++    }
++    // `small_arena`: the shared block is only the store and the ring (hal::arena): the lean
++    // images and EXPLORE without voice
++    println!("cargo:rustc-check-cfg=cfg(small_arena)");
++    if feat("LEAN") || (feat("EXPLORE") && !feat("VOICE_EXPLORE")) {
++        println!("cargo:rustc-cfg=small_arena");
 +    }
 +
      println!("cargo:rustc-env=GIT_VERSION={}", git_version());
@@ -6875,7 +6886,7 @@ index 73a6de2..65c81cc 100644
  /// prompt has run
 diff --git a/src/hal/arena.rs b/src/hal/arena.rs
 new file mode 100644
-index 0000000..680cd58
+index 0000000..2f79998
 --- /dev/null
 +++ b/src/hal/arena.rs
 @@ -0,0 +1,98 @@
@@ -6921,9 +6932,9 @@ index 0000000..680cd58
 +pub const STORE_BYTES: usize = 4096;
 +/// the PWM audio ring (hal::pwm_audio)
 +pub const RING_BYTES: usize = super::pwm_audio::RING_BYTES;
-+#[cfg(not(any(feature = "explore", feature = "lean")))]
++#[cfg(not(small_arena))]
 +pub const ARENA_BYTES: usize = 11776;
-+#[cfg(any(feature = "explore", feature = "lean"))]
++#[cfg(small_arena)]
 +pub const ARENA_BYTES: usize = STORE_BYTES + RING_BYTES;
 +/// the decoder's pool: what is left after the store and the ring
 +pub const DEC_OFF: usize = STORE_BYTES + RING_BYTES;
@@ -6935,7 +6946,7 @@ index 0000000..680cd58
 +const _: () = assert!(ARENA_BYTES >= DEC_OFF);
 +#[cfg(feature = "hiss")]
 +const _: () = assert!(DEC_BYTES >= 2232); // sotto_pager.c's SP_DEC_MAX with SP_HISS
-+#[cfg(not(any(feature = "explore", feature = "lean")))]
++#[cfg(not(small_arena))]
 +const _: () = assert!(ARENA_BYTES - TLM_BYTES >= DEC_OFF); // telemetry clear of the ring
 +
 +static mut ARENA: [u32; ARENA_BYTES / 4] = [0; ARENA_BYTES / 4];
