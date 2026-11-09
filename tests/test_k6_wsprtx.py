@@ -204,7 +204,7 @@ def test_beacon_screen_on_a_level_6_image(tmp_path):
     assert ret == 2, said
     fr = lcd["frames"]
     assert all(f["text"][0] == "WSPR BEACON  440.850" and f["text"][1] == "AG7EW CN87 10 dBm"
-               and f["text"][5] == "hold a key to stop" for f in fr)
+               and f["text"][5] == "key or PC: stop" for f in fr)
     sync = [f for f in fr if f["text"][2] == "waiting for sync"]
     assert sync and sync[0]["text"][3] == "PC: k6_wspr.py sync"
     assert sync[0]["text"][4] in ("else start in 2:30", "else start in 2:29"), sync[0]["text"]

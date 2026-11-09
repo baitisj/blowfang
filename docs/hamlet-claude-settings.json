@@ -11,6 +11,8 @@
       "Bash(python3 tools/k6_bench.py wavs)",
       "Bash(python3 tools/k6_bench.py install)",
       "Bash(python3 tools/k6_bench.py owner)",
+      "Bash(python3 tools/k6_bench.py stop)",
+      "Bash(python3 tools/k6_bench.py stop *)",
       "Bash(python3 tools/k6_bench.py claim *)",
       "Bash(python3 tools/k6_bench.py release *)",
       "Bash(systemctl --user status k6-idkeeper)",

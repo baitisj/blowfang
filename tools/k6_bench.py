@@ -11,6 +11,8 @@ they share. Every tool that keys the IC-7100 goes through here (docs/hamlet-perm
   python3 tools/k6_bench.py wavs               (re)make the ID and K6 reset WAVs (needs the checkout)
   python3 tools/k6_bench.py install [--unit]   copy this file and the reset trigger into
                                                $BLOWFANG_WORK/bin, make the WAVs, write the unit
+  python3 tools/k6_bench.py stop [--freq HZ]   stop a running K6 module that listens for it
+                                               (c/k6/mod/k6_stop.h): two PSK31 'AG7EW STOP' bursts
   python3 tools/k6_bench.py owner              who holds the bench, until when, doing what
   python3 tools/k6_bench.py claim WHO MIN WHAT  hold the bench for MIN minutes (WHO: a short name,
                                                such as the thread's; again by WHO extends it)
@@ -23,6 +25,7 @@ What they share, under $BLOWFANG_WORK/state/ (it outlives reboots, unlike a sess
   txlog.txt         one line per data transmission: start, end, what
   cwid.wav          'AG7EW SOTTO TEST', MCW 800 Hz, 20 wpm, level 0.4
   reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset)
+  stop.wav          one burst of the module stop signal: PSK31 'AG7EW STOP', 1000 Hz, level 0.3
   bench.owner       who holds the bench and until when (JSON: who, what, since, until; epoch s)
 
 The bench owner: a session that will use the radios for a while claims the bench first. While a
@@ -62,6 +65,9 @@ END_STALE_S = 1800                            # no "end of session" ID for a TX 
                                               # (state left from before a reboot or a keeper outage)
 ID_FIRST_S = 510                              # send: ID first when the last one is older (8.5 min)
 LOCK_WAIT_S = 90.0
+STOP_TEXT = "AG7EW STOP"                      # each of the stop signal's two bursts (k6_stop.h)
+STOP_GAP_S = 2.0                              # between them (the K6 takes 1-5 s; the rig's
+                                              # read-backs before the second key-up add ~0.3 s)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -81,7 +87,7 @@ def path(name):
             "last_id": os.path.join(st, "ptt.lock.last_id"), "txlog": os.path.join(st, "txlog.txt"),
             "cwid_wav": os.path.join(st, "cwid.wav"), "reset_wav": os.path.join(st, "reset.wav"),
             "keeper": os.path.join(st, "idkeeper.pid"), "owner": os.path.join(st, "bench.owner"),
-            "cwid_log": os.path.join(w, "logs", "k6-cwid.txt"),
+            "cwid_log": os.path.join(w, "logs", "k6-cwid.txt"), "stop_wav": os.path.join(st, "stop.wav"),
             "bin": os.path.join(w, "bin")}[name]
 
 
@@ -393,6 +399,13 @@ def write_wav(p, x, fs=48000):
         w.writeframes((np.clip(x, -1, 1) * 32767).astype("<i2").tobytes())
 
 
+def stop_wav():
+    p = path("stop_wav")
+    if not os.path.exists(p):
+        make_wavs(only_id=True)
+    return p
+
+
 def make_wavs(only_id=False):
     r = repo()
     if not os.path.isdir(os.path.join(r, "modem")):
@@ -401,6 +414,9 @@ def make_wavs(only_id=False):
     from modem import k6
     write_wav(path("cwid_wav"), k6.cw(ID_TEXT, 48000, 20, 800.0, 0.4))
     print("wrote", path("cwid_wav"), f"'{ID_TEXT}'")
+    from modem import psk31
+    write_wav(path("stop_wav"), psk31.modulate(STOP_TEXT, 48000, 1000.0, 0.3, lead_s=0.3, tail_s=0.1))
+    print("wrote", path("stop_wav"), f"'{STOP_TEXT}' (PSK31)")
     if only_id:
         return
     subprocess.run([sys.executable, "-m", "modem.k6", "ctl", path("reset_wav"), "--phy", "F", "--seq", "201",
@@ -412,7 +428,19 @@ def make_wavs(only_id=False):
 
 def cmd_paths(a):
     print("BLOWFANG_WORK", work())
-    for n in ("bin", "lock", "last_tx", "last_id", "txlog", "cwid_wav", "reset_wav", "keeper", "cwid_log", "owner"):
+    for n in (
+            "bin",
+            "lock",
+            "last_tx",
+            "last_id",
+            "txlog",
+            "cwid_wav",
+            "reset_wav",
+            "stop_wav",
+            "keeper",
+            "cwid_log",
+            "owner",
+    ):
         print(f"{n:9s} {path(n)}{'' if os.path.exists(path(n)) else '  (missing)'}")
 
 
@@ -487,6 +515,33 @@ def cmd_send(a):
         t0 = time.time()
         key_and_play(rig, a.wav, a.device, tail=a.tail, max_s=a.max_s)
     print(f"sent {a.wav} ({dur:.1f} s) on {hz} Hz from {utc(t0)} UTC; t0={t0:.3f}; PTT now {rig('t')}")
+
+
+def send_stop(rig, device=SINK, gap=STOP_GAP_S, dry_run=False):
+    """the module stop signal (c/k6/mod/k6_stop.h): two key-ups, each a PSK31 'AG7EW STOP' burst
+    (about 3.5 s keyed; the K6 takes 2-6 s), `gap` s apart (1-5 s)"""
+    wav = stop_wav()
+    with (contextlib.nullcontext() if dry_run else ptt_lock()):
+        for i in range(2):
+            if i:
+                time.sleep(gap)
+            key_and_play(rig, wav, device, dry_run, what=f"module stop signal {i + 1}/2")
+
+
+def cmd_stop(a):
+    rig = rigctl(a.rigctld)
+    check_owner()
+    with ptt_lock():
+        hz = rig_hz(rig)
+        if not in_band(hz):
+            raise SystemExit(f"refusing: IC-7100 on {hz} Hz, outside 430.010-449.990 MHz")
+        if a.freq and hz != a.freq:
+            raise SystemExit(f"refusing: IC-7100 on {hz} Hz, not {a.freq} (the module's frequency)")
+        t0 = time.time()
+        send_stop(rig, a.device, a.gap)
+    print(f"stop signal on {hz} Hz from {utc(t0)} UTC, {time.time() - t0:.1f} s; PTT now {rig('t')}."
+          " A module hears it only while it listens (a beacon: between frames); send it again if"
+          " the serial log shows no stop")
 
 
 def cmd_id(a):
@@ -601,6 +656,10 @@ def main(argv=None):
     k.add_argument("--every", type=float, default=10.0, help="check every so many s (10)")
     k.set_defaults(fn=cmd_idkeeper)
     sub.add_parser("wavs").set_defaults(fn=cmd_wavs)
+    st = sub.add_parser("stop", help="the stop signal for a running module (k6_stop.h)")
+    st.add_argument("--freq", type=int, default=PAGER_HZ, help="the rig must read this (Hz, 440850000)")
+    st.add_argument("--gap", type=float, default=STOP_GAP_S, help="s between the two bursts (2)")
+    st.set_defaults(fn=cmd_stop)
     sub.add_parser("owner", help="who holds the bench").set_defaults(fn=cmd_owner)
     c = sub.add_parser("claim", help="hold the bench for a while")
     c.add_argument("who", help="one word, such as the thread's name; set K6_BENCH_AS to it for your sends")
