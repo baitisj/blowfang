@@ -268,7 +268,7 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..55c4d31
+index 0000000..90d133d
 --- /dev/null
 +++ b/src/app/pager.rs
 @@ -0,0 +1,4240 @@
@@ -619,8 +619,8 @@ index 0000000..55c4d31
 +static mut CLK: Clk = Clk { wraps: 0, cnt: 0, ms: 0, date: 0, w: u32::MAX };
 +
 +/// The clock now: (UTC ms of day, date, bound ms); None if never set, this image has no clock,
-+/// or the fix is 32,768 wraps (59.6 h) old
-+fn clk_now() -> Option<(u32, u32, u32)> {
++/// or the fix is 32,768 wraps (59.6 h) old. The VOICE MSG screen shows it (ui/pager.rs).
++pub(crate) fn clk_now() -> Option<(u32, u32, u32)> {
 +    let (wraps, cnt) = crate::hal::txdog::ticks()?;
 +    let c = unsafe { &*addr_of!(CLK) };
 +    let dw = wraps.wrapping_sub(c.wraps);
@@ -7806,10 +7806,10 @@ index cdfa0f7..e9a1165 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..1482539
+index 0000000..ce27d3e
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,364 @@
+@@ -0,0 +1,372 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -8002,8 +8002,16 @@ index 0000000..1482539
 +        )
 +        .ok();
 +    } else {
-+        // and the image's sotto commit, as on the serial report's BOOT/CFG lines
-+        write!(b, "ok {} bad {} {}", st.good_packets, st.bad_packets, crate::app::pager::build_short()).ok();
++        // and UTC once a module (aisclk, aprsclk) has set the clock, else the image's sotto
++        // commit, as on the serial report's BOOT/CFG lines
++        write!(b, "ok {} bad {} ", st.good_packets, st.bad_packets).ok();
++        match crate::app::pager::clk_now() {
++            Some((ms, _, _)) => {
++                let s = ms / 1000;
++                write!(b, "{:02}:{:02}:{:02}Z", s / 3600, s / 60 % 60, s % 60).ok()
++            }
++            None => write!(b, "{}", crate::app::pager::build_short()).ok(),
++        };
 +    }
 +    line(lcd, 49, b.as_str());
 +
