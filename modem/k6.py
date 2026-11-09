@@ -343,6 +343,8 @@ def main(argv=None):
                    help="write one FD6818 receive register, hex, e.g. 58=73e9 (allowed: 2b 43 44 58 59 5c 5e 72 73 7e 96 9b; 43 on images after 647a60e, 44 73 7e after 691c237, 5e 96 9b after that; 5e also switches to interrupt FIFO reads; "
                         "59 low byte only; 0=0 drops every write); the K6 prints K6 REGS and undoes "
                         "the writes after 60 s without a good packet. --action regs only prints them")
+    k.add_argument("--slot", type=int, help="with --action lib: the SPI library slot to run (0-11), "
+                                            "or 255 to print the slots")
     k.add_argument("--seq", type=int, help="0-255; the K6 applies one seq once (default: from the clock)")
     k.add_argument("--copies", type=int, default=3, help="packets per PHY (default 3)")
     k.add_argument("--also", choices="DF", help="send the same packets again in this PHY after --phy "
@@ -372,6 +374,10 @@ def main(argv=None):
     m.add_argument("--telemetry", type=int, default=0, metavar="N",
                    help="with --arq: send back up to N parts (57 characters each, 12 at most) of the "
                         "module's say lines after it runs, so no serial cable is needed")
+    m.add_argument("--install", type=int, metavar="SLOT",
+                   help="keep the module in the K6's SPI module library, slot 0-11 (16 KB each), "
+                        "instead of running it; run it later with `ctl --action lib --slot SLOT`. "
+                        "Written to SPI once per install, never while the K6 transmits")
     rp = sub.add_parser("reports", help="a recording of the K6 (the IC-7100's receive audio) -> the "
                                         "K6's 0xAF reports after an --arq upload")
     rp.add_argument("input")
@@ -472,7 +478,11 @@ def main(argv=None):
         seq = a.seq if a.seq is not None else int(time.time()) & 0xFF
         length = pager.PROFILES[a.payload].payload
         reg = tuple(int(v, 16) for v in a.reg.split("=", 1)) if a.reg else None
-        pk = pager.control_packet(seq, settings, a.action, length, reg=reg)
+        if (a.action == "lib") != (a.slot is not None):
+            sys.exit("--action lib takes --slot N (and --slot goes only with it)")
+        if a.slot is not None and not (0 <= a.slot < 12 or a.slot == 255):
+            sys.exit("--slot 0-11, or 255 to print the slots")
+        pk = pager.control_packet(seq, settings, a.action, length, reg=reg, arg=a.slot)
         cw_id, a.cw_id = a.cw_id, None
         parts = []
         for phy in [a.phy] + ([a.also] if a.also and a.also != a.phy else []):
@@ -486,7 +496,8 @@ def main(argv=None):
         if cw_id:
             x = np.concatenate([x, cw(cw_id, a.rate, a.cw_wpm, level=min(a.level, 0.4))])
         _write(a.output, x, a.rate)
-        rec = pager.control_reg_record(seq, *reg) if reg else pager.control_record(seq, settings, a.action)
+        rec = pager.control_reg_record(seq, *reg) if reg else pager.control_record(seq, settings, a.action,
+                                                                                 arg=a.slot)
         log(f"control seq {seq} record {rec.hex()}: "
             f"{(len(parts) + 1) // 2 * a.copies} packets, {len(x) / a.rate:.1f} s on air")
         return 0
@@ -528,7 +539,8 @@ def main(argv=None):
         serial = a.serial if a.serial is not None else int(time.time())
         if a.telemetry and not a.arq:
             sys.exit("--telemetry comes back with the reply: add --arq")
-        img = k6mod.image(code, entry, serial, k6mod.read_key(a.key_file), level, tlm=a.telemetry)
+        img = k6mod.image(code, entry, serial, k6mod.read_key(a.key_file), level, tlm=a.telemetry,
+                          lib=a.install)
         pk = k6mod.packets(img, a.xfer if a.xfer is not None else serial & 0xFF,
                            pager.PROFILES[a.payload].payload, arq=a.arq)
         n = len(pk)
@@ -539,7 +551,8 @@ def main(argv=None):
         log(f"module {a.source}: {len(code)} B code, entry +{entry}, API level {level}, serial {serial}, "
             f"xfer {a.xfer if a.xfer is not None else serial & 0xFF}, "
             f"{len(img)} B image in {n} {a.payload} chunks; {len(pk) * a.copies} packets, "
-            f"{len(x) / a.rate:.1f} s on air" + ("; reply asked" if a.arq else ""))
+            f"{len(x) / a.rate:.1f} s on air" + ("; reply asked" if a.arq else "")
+            + (f"; into library slot {a.install}" if a.install is not None else ""))
         return 0
 
     if a.cmd == "reports":
