@@ -459,3 +459,20 @@ def test_a_key_ends_an_over():
     assert any(ln.endswith("r=-4") for ln in said)
     last = {r: v for r, v, us in tx["w"] if us <= t_off2}    # the modem quiet at the key-down
     assert last.get(0x70, 0) == 0 and last.get(0x58, 0) == 0
+
+
+@need_clang
+def test_radio_game_against_the_pc_opponent():
+    """tools/k6_gw.py play's opponent (k6gw.Aimer, hard, and k6gw.buy) against gw_answer: its
+    shopping and weapons stay in step with the radio's own game"""
+    air = Air()
+    air.peer.aim = k6gw.Aimer("hard", seed=3)
+    bought = []
+    air.peer.shop = lambda g, me: bought.extend(k6gw.buy(g, me))
+    air.peer.call(0x2468ACE, rounds=1)
+    ret, said, regs, tx, lcd = play("gw_answer", air, GW_ROUNDS=1)
+    assert air.peer.done and air.peer.desync == 0 and "gw desync" not in said
+    assert ret == 1 and any(ln.startswith("gw end") for ln in said)
+    assert bought == [k6gw.FARADAY]                       # the PC bought its shield (in step)
+    assert air.peer.game.state().p[0].wins == 1, said     # and won the round
+    check_tx_rules(tx, air)

@@ -18,7 +18,8 @@ two ways:
 | `c/k6/mod/gw_call.c` | Bot build that calls over the radio. |
 | `c/k6/mod/gw_answer.c` | Bot build that answers a call. |
 | `c/k6/gw_host.c` | The same rules built for the PC, for the tests and a PC opponent. |
-| `modem/k6gw.py` | Packets, the rules through ctypes, and `Peer`, a PC opponent that follows the protocol. |
+| `modem/k6gw.py` | Packets, the rules through ctypes, `Peer` (the protocol), `Aimer` and `buy` (a PC opponent worth playing), and `Link` (when the PC's packets go on air). |
+| `tools/k6_gw.py` | `decode` a recording; `play` the K6 from the PC over the IC-7100; `sim` the PC against itself. |
 | `tests/test_k6_gw.py` | Host rules, hot seat, and radio play against `Peer` over a modelled FSK modem. |
 
 ## The field and the screen
@@ -182,8 +183,7 @@ has to be 0: its 696 B at the top of the block don't fit beside the code.
    doesn't count as a try. Record the overs on the IC-7100 (receive only) with
    `k6_upload.py --keep RUN.raw`; each over is two FSK packets, then AG7EW in MCW.
    `python3 tools/k6_gw.py decode RUN.raw` reads the packets back.
-4. **Two radios**: a second K6, or a PC peer on the IC-7100 (`modem/k6gw.py`'s `Peer` with the
-   FSK modem of modem/fsk.py; not written yet), once the IC-7100 has an antenna back.
+4. **Two radios**: a second K6, or the PC on the IC-7100 (`tools/k6_gw.py play`, below).
 
 **Bench run 1** (2026-11-09 ~06:50Z, image cf9516e vlrh, CI modules from e82a129, IC-7100 at RF
 POWER 0 receiving only):
@@ -204,3 +204,41 @@ POWER 0 receiving only):
   packet is now 500 ms instead of 300 ms (300 ms may have clipped over 3's first copy).
 - **Still to see**: a bot that varies its angle. The bots aim at 45° and 135° and learn only
   the power.
+
+## Playing the PC
+
+`python3 tools/k6_gw.py play` is a PC opponent on the IC-7100 (2026-11-09, from the thread
+clean-up). Start `mod-gw.bin` on the K6, pick 2 (radio), then run `play` on hamlet and call from
+the K6 with MENU. `play --call` makes the PC call instead, and the K6 answers.
+
+- **It aims by trying.** `k6gw.Aimer` fires every angle toward the K6 at every power on a copy of
+  the game (the same C rules, so the copy shows exactly what the shot will do), refines the best
+  few, and keeps the aim that still hits when it is a little off. Then it tries each weapon it
+  holds near that aim, and uses one when it clearly does better. About 50 ms a move.
+- **Skill** is how far it misses on purpose: `--skill easy` (about 5 degrees and 6 power points),
+  `fair` (2 and 2, the default), `hard` (none). Hard won every game against easy in the tests,
+  and fair won 6 or more of 8 against the bots' fixed 45/135 degree shot.
+- **It shops** (`k6gw.buy`): a Faraday Cage first, then the big weapons, down a fixed list.
+  `--no-shop` buys nothing.
+- **On the air** (`k6gw.Link`, the same rules as gw.c and the test model): one packet an over,
+  sent twice, then AG7EW in MCW at 25 wpm. ACKs go first. Nothing goes while the S-meter reads
+  busy (`--busy-db`, -40 dB over S9) or for 3.5 s after the K6's last packet (its ID and key-down
+  are still to come). A packet waits for its ACK and goes again after 14 s, at most 8 times.
+  Every over goes through `tools/k6_bench.py`: the PTT lock, the bench owner and 70 cm. `play`
+  refuses unless the IC-7100 reads 440.850.
+- **What it keeps**: `$BLOWFANG_WORK/runs/gw-play-<UTC>/` holds the receive recording
+  (`rx.raw`), every over it sent as a WAV, and `result.txt` (the score and every packet each way).
+- `python3 tools/k6_gw.py sim --skill hard` plays the PC against a second PC through two Links,
+  with no radio, to see a game and its timing.
+
+Tests: `tests/test_k6_gw_pc.py` (aiming, skill order, shopping, Link's timing and resends, an
+over decoding as the K6 hears it, whole games through Links) and
+`test_radio_game_against_the_pc_opponent` in `tests/test_k6_gw.py`: the hard Aimer with its
+shopping against `gw_answer` on the emulated M0, hashes in step, the PC winning the round.
+
+**The pattern for other turn games** (insight 47): both sides run the same deterministic rules,
+here one C header built for the M0 and the PC, and only the moves cross the air, each with the
+sender's game hash so a desync shows at once. A PC side is then three parts: the rules through
+ctypes, a player that tries moves on copies of the game (`Aimer`), and `Link` for the overs.
+Chess or battleship as RAM modules would reuse `Link` and `tools/k6_gw.py`'s `play` loop as
+they are, with a new packet type and rules header.

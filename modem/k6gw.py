@@ -10,8 +10,16 @@ The packets are 64 bytes, PN9-whitened as the pager's, sent by the FD6818's FSK 
   46-51 the call ("AG7EW")   62-63 CRC-16/CCITT-FALSE of 0-61, big-endian
 
 Game(): the rules themselves, c/k6/mod/gw_game.h built for this machine (c/k6/gw_host.c), so a
-PC opponent stays in step with the radio's game to the bit. SPDX-License-Identifier: MIT
+PC opponent stays in step with the radio's game to the bit.
+
+Aimer: a PC opponent worth playing. It tries every angle and power on a copy of the game (the
+same rules, so what it sees is what will happen), then each weapon it holds, and misses on
+purpose by a skill-dependent amount. buy(): its shopping. Link: when the PC's packets go on air
+(tools/k6_gw.py play). The same "send moves, not state" pattern (insight 47) fits any turn game:
+both sides run the same deterministic rules and only the moves cross the air.
+SPDX-License-Identifier: MIT
 """
+import random
 import ctypes
 import os
 import struct
@@ -113,6 +121,13 @@ class Game:
     def state(self):
         return GwState.from_buffer_copy(self.g.raw[:ctypes.sizeof(GwState)])
 
+    def clone(self):
+        """a copy to try a shot on (the real game is left alone)"""
+        c = Game.__new__(Game)
+        c.L = self.L
+        c.g = ctypes.create_string_buffer(self.g.raw, len(self.g.raw))
+        return c
+
     def set_shop(self, j, sh, inv, money):
         self.L.gw_h_set_shop(self.g, j, sh, (ctypes.c_uint8 * NI)(*inv), money)
 
@@ -145,14 +160,130 @@ def body_shop(body):
     return body[0], list(body[1:1 + NI]), struct.unpack("<H", body[15:17])[0]
 
 
+# ---- a PC opponent worth playing ----
+
+KILOWATT, FCC, CHARGER, CW_STRIKE, BEVERAGE, LID, SKIP, REPEATER, YAGI, COAX, TROPO = range(1, 12)
+GROUND_ROD, FARADAY = 12, 13
+SHOPPING = [
+    FARADAY,
+    KILOWATT,
+    REPEATER,
+    CHARGER,
+    BEVERAGE,
+    CW_STRIKE,
+    GROUND_ROD,
+    TROPO,
+]
+SKILL_ERR = {"easy": (5.0, 6.0), "fair": (2.0, 2.0), "hard": (0.0, 0.0)}
+
+
+def buy(game, me, plan=SHOPPING, keep=0):
+    """spend station `me`'s money down the shopping list, one lot of each it can afford, the
+    shields only when it has none; returns what it bought"""
+    got = []
+    for item in plan:
+        sh, inv, money = game.shop_of(me)
+        if item >= GROUND_ROD and sh:
+            continue
+        if money - keep >= ITEM_PRICES[item] and game.buy(me, item) == 0:
+            got.append(item)
+    return got
+
+
+ITEM_PRICES = [0, 60, 35, 45, 30, 40, 15, 30, 55, 35, 20, 25, 30, 70]
+
+
+def score(before, after, me):
+    """what a shot did, from `me`'s side: damage to the other station less twice our own, and a
+    big bonus for taking it off the air while we stay on"""
+    them = 1 - me
+    dealt = before.p[them].hp - after.p[them].hp
+    took = before.p[me].hp - after.p[me].hp
+    s = dealt - 2 * took
+    if after.p[them].hp == 0 and after.p[me].hp > 0:
+        s += 1000
+    return s
+
+
+class Aimer:
+    """aim(game, me) -> (angle, power, item). It searches the angles toward the other station
+    and every power on copies of the game, refines the best few, and of those keeps the aim that
+    still hits when it is off by its own error (the mean over the angles and powers around it).
+    Then it tries each weapon it holds near that aim. skill easy / fair / hard sets how far it
+    misses on purpose (degrees and power points, Gaussian); seed makes it repeatable."""
+
+    def __init__(self, skill="fair", seed=None, coarse=(4, 5)):
+        self.err = SKILL_ERR[skill]
+        self.rng = random.Random(seed)
+        self.coarse = coarse
+        self.last = None
+
+    def _try(self, game, me, a, pw, w, memo):
+        a, pw = max(0, min(180, a)), max(0, min(100, pw))
+        k = (a, pw, w)
+        if k not in memo:
+            c = game.clone()
+            before = c.state()
+            c.shot(a, pw, w)
+            memo[k] = score(before, c.state(), me)
+        return memo[k]
+
+    def _robust(self, game, me, a, pw, w, memo):
+        ka, kp = (max(1, int(round(e))) for e in self.err)
+        vals = [self._try(game, me, a + i, pw + j, w, memo)
+                for i in range(-ka, ka + 1, max(1, ka // 2)) for j in range(-kp, kp + 1, max(1, kp // 2))]
+        return sum(vals) / len(vals)
+
+    def best(self, game, me):
+        s = game.state()
+        right = s.p[1 - me].x > s.p[me].x
+        da, dp = self.coarse
+        memo = {}
+        angles = range(5, 90, da) if right else range(91, 176, da)
+        tries = sorted(((self._try(game, me, a, pw, 0, memo), a, pw) for a in angles
+                        for pw in range(15, 101, dp)), reverse=True)
+        for _, a0, p0 in tries[:3]:
+            for a in range(a0 - da + 1, a0 + da):
+                for pw in range(p0 - dp + 1, p0 + dp):
+                    self._try(game, me, a, pw, 0, memo)
+        top = sorted(((v, k) for k, v in memo.items() if k[2] == 0 and v > 0), reverse=True)[:8]
+        if not top:
+            v, a, pw = tries[0]
+            return a, pw, 0, v
+        rob = sorted(((self._robust(game, me, a, pw, 0, memo), a, pw) for _, (a, pw, _) in top), reverse=True)
+        v0, a0, p0 = rob[0]
+        best, item = rob[0], 0
+        for w in range(1, 12):
+            if w == COAX or not s.p[me].inv[w]:
+                continue
+            for a in range(a0 - 6, a0 + 7, 2):
+                for pw in range(p0 - 10, p0 + 11, 2):
+                    if self._try(game, me, a, pw, w, memo) > best[0] + 5:
+                        v = self._robust(game, me, a, pw, w, memo)
+                        if v > best[0] + 5:       # a weapon only when it does clearly better
+                            best, item = (v, max(0, min(180, a)), max(0, min(100, pw))), w
+        return best[1], best[2], item, best[0]
+
+    def __call__(self, game, me):
+        a, pw, item, v = self.best(game, me)
+        ea, ep = self.err
+        if ea:
+            a = int(round(a + self.rng.gauss(0, ea)))
+            pw = int(round(pw + self.rng.gauss(0, ep)))
+        a, pw = max(0, min(180, a)), max(0, min(100, pw))
+        self.last = (a, pw, item, v)
+        return a, pw, item
+
+
 class Peer:
     """The other radio, as a program: it follows GROUNDWAVE's protocol from the packets it hears
     and answers with packets of its own. send(pkt, reliable) is how it transmits (whitened
-    packets); hear(pkt) takes what it receives. It shops for nothing and aims with aim(game, me)
-    -> (angle, power, item); call() starts a game as the caller."""
+    packets); hear(pkt) takes what it receives. It aims with aim(game, me) -> (angle, power,
+    item) and shops with shop(game, me) (default: nothing); call() starts a game as the caller."""
 
-    def __init__(self, send, aim=None, me=1):
+    def __init__(self, send, aim=None, me=1, shop=None):
         self.send, self.me, self.aim = send, me, aim or (lambda g, me: (135 if me else 45, 70, 0))
+        self.shop = shop
         self.seq, self.peer_seq, self.gid, self.game = 0, None, 0, None
         self.got_shop, self.sent_shop, self.log, self.done = False, False, [], False
         self.desync = 0
@@ -170,6 +301,8 @@ class Peer:
         self.send(self._pkt(HELLO, struct.pack("<IB", seed, rounds)), True)
 
     def _shop(self):
+        if self.shop:
+            self.shop(self.game, self.me)
         sh, inv, money = self.game.shop_of(self.me)
         self.sent_shop = True
         self.send(self._pkt(SHOP, shop_body(sh, inv, money)), True)
@@ -235,3 +368,81 @@ class Peer:
         elif t == BYE:
             self.done = True
         return d
+
+
+# ---- when the PC's packets go on air ----
+
+class Link:
+    """The PC's side of the air, as gw.c's overs and tests/test_k6_gw.py's model run it: one
+    packet an over (sent twice, then the CW ID); ACKs go before anything else; a reliable packet
+    waits for its ACK and goes again after RETRY_S, at most TRIES times; nothing goes while the
+    channel is busy or until QUIET_S after the last packet heard (the K6's over still has its ID
+    to send and its key-down). heard() takes every decoded packet with its time; the two copies
+    of one over, and the PC's own packets heard back, are dropped. due(t, busy) gives the next
+    packet to send, or None; sent(t) says it went."""
+    QUIET_S = 3.5
+    RETRY_S = 14.0
+    TRIES = 8
+    COPY_S = 3.0
+
+    def __init__(self, peer):
+        self.peer = peer
+        peer.send = self._queue
+        self.acks, self.queue = [], []
+        self.pending = None                     # (seq, t) of the reliable packet on the air
+        self.t_heard = -1e9
+        self.t_sent = -1e9
+        self.recent = []                        # (t, bytes) heard, for the copies
+        self.mine = []                          # bytes sent, to drop our own echo
+        self.log = []                           # (t, "rx" / "tx", parsed)
+
+    def _queue(self, pkt, reliable):
+        (self.queue if reliable else self.acks).append([pkt, reliable, 0])
+
+    def heard(self, pkt, t):
+        pkt = bytes(pkt)
+        if pkt in self.mine:
+            return None
+        self.recent = [(u, b) for u, b in self.recent if t - u < self.COPY_S]
+        if any(b == pkt for _, b in self.recent):
+            self.t_heard = max(self.t_heard, t)
+            return None
+        d = parse(pkt)
+        if d is None:
+            return None
+        self.recent.append((t, pkt))
+        self.t_heard = max(self.t_heard, t)
+        self.log.append((t, "rx", d))
+        if (d["type"] == ACK and self.pending and self.queue and d["body"][0] == self.pending[0]
+                and d["body"][1] == parse(self.queue[0][0])["type"]):
+            self.queue.pop(0)
+            self.pending = None
+        self.peer.hear(pkt)
+        return d
+
+    def due(self, t, busy=False):
+        if busy or t - self.t_heard < self.QUIET_S:
+            return None
+        if self.pending and t - self.pending[1] >= self.RETRY_S:
+            self.pending = None
+            if self.queue and self.queue[0][2] >= self.TRIES:
+                self.queue.pop(0)               # never ACKed: give up on it
+        if self.acks:
+            return self.acks[0][0]
+        if self.queue and not self.pending:
+            return self.queue[0][0]
+        return None
+
+    def sent(self, t):
+        if self.acks:
+            item = self.acks.pop(0)
+        else:
+            item = self.queue[0]
+            self.pending = (parse(item[0])["seq"], t)
+        item[2] += 1
+        self.mine = (self.mine + [item[0]])[-16:]
+        self.t_sent = t
+        self.log.append((t, "tx", parse(item[0])))
+
+    def idle(self):
+        return not self.acks and not self.queue
