@@ -30,6 +30,7 @@ If you'd rather keep the rules to the sotto checkout only, put the same JSON in
 |---|---|
 | `sh tools/k6_send.sh FILE.wav` | The keying helper (formerly the `send()` shell function), now a wrapper for `k6_bench.py send`. It takes the PTT lock, refuses unless `rigctl f` reads 430.010-449.990 MHz and `rigctl t` reads 0, refuses a WAV over 180 s, sends the CW ID first when the last one is over 8.5 min old, and always unkeys. It keys through rigctld on ttyUSB0 and opens no serial port. |
 | `python3 tools/k6_bench.py send FILE.wav ...`, `id ...`, `status`, `paths`, `install`, `wavs` | The bench helpers (see below). `send` has the same checks as `k6_send.sh` (plus `--k6log`/`--freq`); `id` keys only on 70 cm or 2 m. |
+| `python3 tools/k6_bench.py stop [--freq HZ]` | The module stop signal (`c/k6/mod/k6_stop.h`): two PSK31 'AG7EW STOP' key-ups 2 s apart, through the same lock, owner and 70 cm checks as `send`. |
 | `python3 tools/k6_bench.py owner`, `claim ...`, `release ...` | The bench owner file (below). It writes only `~/blowfang-work/state/bench.owner` and a `txlog.txt` line. |
 | `systemctl --user status k6-idkeeper`, `restart k6-idkeeper`, `journalctl --user -u k6-idkeeper ...` | The CW ID keeper's unit. |
 | `sh tools/hamlet_prune_worktrees.sh` | Lists the worktrees it could remove. It removes nothing without `--yes`, which prompts. |
