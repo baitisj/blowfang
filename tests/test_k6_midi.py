@@ -24,7 +24,7 @@ mel: C5:1/2 D5 E5 | C4+E4+G4+C5+E5:1 | !60 A5:2
 """
 
 
-def emulate(code, keys=(), level=7, tim_busy=False, spare=1024):
+def emulate(code, keys=(), level=7, tim_busy=False, spare=1024, clock=None):
     """run the module: (ret, said, chip writes, log) with log = {"ccr4": [values written],
     "spk": [(on, index in ccr4)], "tim", "rcc", "gpioa": theirs at the end, "lcd", "led"}"""
     log = {"ccr4": [], "spk": [], "tim": {0x00: int(tim_busy)}, "updates": 0,
@@ -64,7 +64,7 @@ def emulate(code, keys=(), level=7, tim_busy=False, spare=1024):
             (GPIOA, 0x400, reg_r("gpioa"), reg_w("gpioa"))]
     ret, said, regs, writes = run({**START, 0x47: 0x6140}, mmio=mmio, keys=keys, gpiob=gpiob, level=level,
                                   lcd=log["lcd"] if level >= 6 else None, led=log["led"], code=code,
-                                  spare=spare, count=2_000_000_000)
+                                  spare=spare, count=2_000_000_000, clock=clock)
     return ret, said, writes, log
 
 

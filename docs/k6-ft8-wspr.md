@@ -590,7 +590,7 @@ without a screen. Frames the emulated modules drew:
   by phase: waiting for the sync mark with its 150 s countdown (no redraws while a mark is up,
   so its drop stays timed to 5 ms); `next slot in 7:58`, redrawn each second; `TX` with a bar
   over the 162 symbols, every 4 symbols (2.7 s); `ID AG7EW`. Below: frames sent, whether it is
-  on the UTC grid, and "hold a key to stop". 2.3 KB (`wsprbcn` 2.8 KB).
+  on the UTC grid, and "key or PC: stop". 2.3 KB (`wsprbcn` 2.8 KB).
 - **Receive:** `WSPR RX  440850 kHz`, the window and calibration (`1500Hz +-99  cal -166`), a
   24-row waterfall (0.64 s a row, 15 s in all) and the time and lost lines. Each 40 ms row
   takes a 32-point DFT of the newest 32 samples (6.2 Hz bins, 4 px each, centre at x = 64),

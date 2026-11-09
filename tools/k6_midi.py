@@ -4,6 +4,10 @@
   python3 tools/k6_midi.py patch IN.bin OUT.bin SONG...
                                                       CI's mod-midi.bin with these songs in place
                                                       of its own (no compiler needed: hamlet)
+  python3 tools/k6_midi.py alarm IN.bin OUT.bin --at HH:MM [SONG...]
+                                                      CI's mod-alarm.bin (the BLOWFANG alarm clock,
+                                                      c/k6/mod/alarm.c) ringing at HH:MM UTC, with
+                                                      these songs if any
   python3 tools/k6_midi.py wav OUT.wav SONG...        what the K6 will play, sample for sample
                                                       (its PWM values at 16 kHz, before the speaker)
   python3 tools/k6_midi.py mid SONG.txt OUT.mid       a text score as a standard MIDI file
@@ -388,6 +392,26 @@ def patch(code, blob):
     return out
 
 
+ALARM_TAG = b"K6ALARM\0"
+
+
+def set_alarm(code, minutes):
+    """the alarm module's code ringing at `minutes` (UTC minutes of the day, 0-1439)"""
+    if not 0 <= minutes < 1440:
+        raise ValueError("the alarm time is 00:00-23:59 UTC")
+    at = code.find(ALARM_TAG)
+    if at < 0 or code.find(ALARM_TAG, at + 1) >= 0:
+        raise ValueError("not the alarm module (no single K6ALARM tag)")
+    return code[:at + 8] + struct.pack("<H", minutes) + code[at + 10:]
+
+
+def parse_hhmm(text):
+    m = re.fullmatch(r"(\d{1,2}):(\d{2})", text.strip())
+    if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
+        raise argparse.ArgumentTypeError("HH:MM, 24-hour UTC")
+    return int(m.group(1)) * 60 + int(m.group(2))
+
+
 # ---- the module, sample for sample -------------------------------------------------------
 
 def sin_q15(ph):
@@ -553,6 +577,12 @@ def main(argv=None):
     p.add_argument("out")
     p.add_argument("songs", nargs="+")
     song_opts(p)
+    p = sub.add_parser("alarm")
+    p.add_argument("inp")
+    p.add_argument("out")
+    p.add_argument("--at", type=parse_hhmm, required=True, help="HH:MM UTC")
+    p.add_argument("songs", nargs="*")
+    song_opts(p)
     p = sub.add_parser("wav")
     p.add_argument("out")
     p.add_argument("songs", nargs="+")
@@ -570,6 +600,15 @@ def main(argv=None):
         return 0
     if a.cmd == "mid":
         open(a.out, "wb").write(write_midi(load(a.song)))
+        return 0
+    if a.cmd == "alarm":
+        code = open(a.inp, "rb").read()
+        if a.songs:
+            code = patch(code, table(_songs(a), a.volume))
+        out = set_alarm(code, a.at)
+        open(a.out, "wb").write(out)
+        print(f"{a.out}: rings at {a.at // 60:02d}:{a.at % 60:02d} UTC, {len(out)} B code. Send it with"
+              " modem.k6 mod --api-level 8 (an image with the core clock, set by aisclk or aprsclk)")
         return 0
     songs = _songs(a)
     blob = table(songs, a.volume)

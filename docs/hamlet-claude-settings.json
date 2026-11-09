@@ -11,6 +11,8 @@
       "Bash(python3 tools/k6_bench.py wavs)",
       "Bash(python3 tools/k6_bench.py install)",
       "Bash(python3 tools/k6_bench.py owner)",
+      "Bash(python3 tools/k6_bench.py stop)",
+      "Bash(python3 tools/k6_bench.py stop *)",
       "Bash(python3 tools/k6_bench.py claim *)",
       "Bash(python3 tools/k6_bench.py release *)",
       "Bash(python3 tools/k6_air.py add *)",
@@ -70,6 +72,7 @@
       "Bash(date +%s)"
     ],
     "ask": [
+      "Bash(python3 tools/k6_talk.py *)",
       "Bash(python3 tools/k6_rxmap.py cal *)",
       "Bash(python3 tools/k6_rxmap.py * --south-of-line-a*)"
     ],

@@ -30,6 +30,7 @@ If you'd rather keep the rules to the sotto checkout only, put the same JSON in
 |---|---|
 | `sh tools/k6_send.sh FILE.wav` | The keying helper (formerly the `send()` shell function), now a wrapper for `k6_bench.py send`. It takes the PTT lock, refuses unless `rigctl f` reads 430.010-449.990 MHz and `rigctl t` reads 0, refuses a WAV over 180 s, sends the CW ID first when the last one is over 8.5 min old, and always unkeys. It keys through rigctld on ttyUSB0 and opens no serial port. |
 | `python3 tools/k6_bench.py send FILE.wav ...`, `id ...`, `status`, `paths`, `install`, `wavs` | The bench helpers (see below). `send` has the same checks as `k6_send.sh` (plus `--k6log`/`--freq`); `id` keys only on 70 cm or 2 m. |
+| `python3 tools/k6_bench.py stop [--freq HZ]` | The module stop signal (`c/k6/mod/k6_stop.h`): two PSK31 'AG7EW STOP' key-ups 2 s apart, through the same lock, owner and 70 cm checks as `send`. |
 | `python3 tools/k6_bench.py owner`, `claim ...`, `release ...` | The bench owner file (below). It writes only `~/blowfang-work/state/bench.owner` and a `txlog.txt` line. |
 | `systemctl --user status k6-idkeeper`, `restart k6-idkeeper`, `journalctl --user -u k6-idkeeper ...` | The CW ID keeper's unit. |
 | `sh tools/hamlet_prune_worktrees.sh` | Lists the worktrees it could remove. It removes nothing without `--yes`, which prompts. |
@@ -42,6 +43,10 @@ If you'd rather keep the rules to the sotto checkout only, put the same JSON in
 | `python -m modem.k6_harness listen --k6 /dev/ttyUSB2 ...` | The logger, which only reads the port. |
 | `python3 tools/k6_update.py IMAGE ... --trigger "sh ~/blowfang-work/bin/k6-reset-trigger.sh" --window 0.6` | Flashing, only when the last `--trigger` is the reset script (`tools/k6-reset-trigger.sh`, installed there), which sends the reset packet through `k6_bench.py send`: it checks the frequency, takes the PTT lock and sends the CW ID when one is due. The tool writes to the cable only after `K6 RESET`, while the bootloader is listening. |
 | `make -C c/k6`, `git fetch origin ...`, `git checkout FETCH_HEAD`, `mkdir -p ~/blowfang-work/...`, `unzip -o ~/Downloads/aura-pager-*.zip ...`, `date +%s` | Housekeeping used in the bench keys. |
+
+`python3 tools/k6_talk.py ...` (live talk-through) always asks: it puts the room's microphone on
+the air for as long as it runs. It keys through `k6_bench` like the rest (PTT lock, bench owner,
+CW ID before and after) and refuses unless the rig reads 440.850.
 
 Reading files (`grep`, `tail`, `cat`, `head`) is already allowed by Claude Code itself.
 
