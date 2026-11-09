@@ -8,6 +8,10 @@
      1  SYSCLK to HSI and back to the PLL, nothing else
      2  also FLASH_ACR |= PRFTBE while on HSI
      3  also SYSCFG_CFGR1 written again (MEM_MODE as it is) before PRFTBE, as txdog does
+     4  no clock switch: MEM_MODE 2 (main flash at 0), PRFTBE, the pair timed there (n1, in
+        0.1 us; interrupts off), then MEM_MODE as it was (n2: CFGR1 read back). On stages 1-3,
+        PRFTBE never stuck, even on HSI (22:00Z: acr 02 02 02, td 740 us): is it the remap
+        that refuses it?
    Interrupts are off from the switch to HSI until the PLL is back. Says (0.1 us, hex regs):
      pf s=2 acr 02 12 12 cfgr 0000000a n 3 5
      pf td before=1234 after=1234
@@ -90,7 +94,7 @@ static uint32_t td_avg(const k6_api_t *api, clk_t *c) {
   return udiv((now(c) - t0) * 10u, 96u * 50u);
 }
 
-static uint32_t wait_sws(uint32_t sws) {
+__attribute__((unused)) static uint32_t wait_sws(uint32_t sws) {
   uint32_t n = 0;
   while ((rd(RCC_CFGR) & 0xCu) != sws && n < WAIT_MAX) n++;
   return n;
@@ -110,6 +114,17 @@ int k6_main(const k6_api_t *api) {
 
   acr0 = rd(FLASH_ACR), cfgr = rd(RCC_CFGR), m = rd(SYSCFG_CFGR1);
   __asm volatile("cpsid i" ::: "memory");
+#if STAGE == 4
+  /* no clock switch: MEM_MODE back to main flash (2, as the bootloader leaves it), PRFTBE,
+     the pair timed there, then MEM_MODE as it was */
+  wr(SYSCFG_CFGR1, (m & ~3u) | 2u);
+  wr(FLASH_ACR, rd(FLASH_ACR) | PRFTBE);
+  acr_h = rd(FLASH_ACR);
+  n1 = td_avg(api, &c);                           /* 0.1 us, in MEM_MODE 2 (interrupts off) */
+  wr(SYSCFG_CFGR1, m);
+  n2 = rd(SYSCFG_CFGR1);
+  __asm volatile("cpsie i" ::: "memory");
+#else
   wr(RCC_CR, rd(RCC_CR) | 1u);                    /* HSION (on since reset; made sure) */
   for (i = 0; i < WAIT_MAX && !(rd(RCC_CR) & 2u); i++) {}
   wr(RCC_CFGR, cfgr & ~3u);                       /* SW = HSI */
@@ -124,6 +139,7 @@ int k6_main(const k6_api_t *api) {
   wr(RCC_CFGR, cfgr);                             /* SW as it was */
   n2 = wait_sws((cfgr & 3u) << 2);
   __asm volatile("cpsie i" ::: "memory");
+#endif
   acr1 = rd(FLASH_ACR);
 
   c.c17 = rd(TIM17_CNT) & 0xFFFF, c.c14 = rd(TIM14_CNT) & 0xFFFF;

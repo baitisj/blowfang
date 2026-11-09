@@ -315,6 +315,7 @@ midi           # level 2 (screen at 6, LED at 7), songs patched by tools/k6_midi
 morse          # level 6, docs/k6-morse.md
 pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRFTBE (stage 3)
 pfprobe_hsi    # level 2, pfprobe stage 1: SYSCLK to HSI and back only
+pfprobe_m2     # level 2, pfprobe stage 4: PRFTBE with MEM_MODE back at 2 (main flash), timed there
 pfprobe_pf     # level 2, pfprobe stage 2: also PRFTBE while on HSI
 ramprobe
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
