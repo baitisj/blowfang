@@ -241,3 +241,87 @@ def test_tools_key_through_the_bench():
         s = open(os.path.join(TOOLS, f)).read()
         assert "bench.key" in s, f
         assert '"T", 1)' not in s, f
+
+
+# ---- the bench owner ----
+
+def test_bench_is_free_with_no_claim(work, monkeypatch):
+    monkeypatch.delenv("K6_BENCH_AS", raising=False)
+    assert b.owner() is None
+    b.check_owner()
+    b.key_and_play(Rig(), "x.wav")
+
+
+def test_a_claim_shuts_out_other_senders(work, monkeypatch):
+    b.claim("explore", 30, "DMR run")
+    o = b.owner()
+    assert o["who"] == "explore" and o["what"] == "DMR run"
+    monkeypatch.delenv("K6_BENCH_AS", raising=False)
+    r = Rig()
+    with pytest.raises(SystemExit, match="held by explore"):
+        b.key_and_play(r, "x.wav")
+    monkeypatch.setenv("K6_BENCH_AS", "surf")
+    with pytest.raises(SystemExit, match="you are surf"):
+        _send(work, monkeypatch, r, "--no-id")
+    assert "T 1" not in r.calls
+    _send(work, monkeypatch, r, "--no-id", "--as", "explore")
+    assert r.calls.count("T 1") == 1
+    monkeypatch.setenv("K6_BENCH_AS", "explore")
+    b.key_and_play(r, "x.wav")
+    assert r.calls.count("T 1") == 2
+
+
+def test_the_keeper_ids_whoever_holds_the_bench(work, monkeypatch):
+    b.claim("explore", 30)
+    monkeypatch.delenv("K6_BENCH_AS", raising=False)
+    r = Rig()
+    b.send_id(r, "9-min periodic")
+    assert r.calls.count("T 1") == 1
+
+
+def test_claim_rules(work):
+    b.claim("explore", 10)
+    with pytest.raises(SystemExit):
+        b.claim("surf", 10)
+    since = b.owner()["since"]
+    b.claim("explore", 60, "longer")
+    assert b.owner()["since"] == since and b.owner()["until"] - time.time() > 3500
+    with pytest.raises(SystemExit):
+        b.release("surf")
+    assert b.release("explore") and b.owner() is None
+    assert not b.release("explore")
+    for bad in (("two words", 10), ("x", 0), ("x", 721)):
+        with pytest.raises(SystemExit):
+            b.claim(*bad)
+
+
+def test_force_release_and_expiry(work):
+    b.claim("explore", 10)
+    assert b.release("jeff", force=True) and b.owner() is None
+    b.claim("surf", 1)
+    assert b.owner(now=time.time() + 61) is None
+    b.claim("explore", 5, now=time.time() + 61)
+    assert b.owner(now=time.time() + 62)["who"] == "explore"
+
+
+def test_claims_are_logged(work):
+    b.claim("explore", 10, "DMR run")
+    b.release("explore")
+    log = open(b.path("txlog")).read()
+    assert "bench claimed by explore for 10 min: DMR run" in log and "bench released by explore" in log
+
+
+def test_status_and_owner_say_who_holds_it(work, capsys, monkeypatch):
+    monkeypatch.setenv("K6_BENCH_AS", "surf")
+    b.main(["claim", "explore", "20", "DMR", "run"])
+    b.main(["owner"])
+    b.main(["status"])
+    out = capsys.readouterr().out
+    assert "explore until" in out and ": DMR run" in out
+    assert "you are surf" in out and "bench owner   explore" in out
+
+
+def test_a_corrupt_owner_file_means_free(work):
+    os.makedirs(os.path.dirname(b.path("owner")), exist_ok=True)
+    open(b.path("owner"), "w").write("{not json")
+    assert b.owner() is None
