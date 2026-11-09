@@ -16,10 +16,11 @@
      4  code length        u16, little-endian
      6  entry              u16, byte offset of the entry function in the code (even)
      8  serial             u32, must be newer than the last module this boot accepted
-     12 API level, flags   u8 (the k6_api_t level it needs, at most KM_LEVEL), u8 (flags: 0),
+     12 API level, flags   u8 (the k6_api_t level it needs, at most KM_LEVEL), u8 (flags: 0, or
+                           KM_F_LIB to keep it in the SPI library instead of running it, k6_lib.h),
                            u8 telemetry parts (0-12: with a reply-wanted upload, the K6 sends
                            this many 0xAF text packets of the module's say lines after it runs),
-                           1 reserved byte
+                           1 byte: the library slot with KM_F_LIB, else 0
      16 code               position-independent Thumb (clang -fropi), no data or bss
      16 + code length      SipHash-2-4 tag (8 bytes, little-endian) of bytes 0 .. 15 + code length
                            under the 16-byte key the library was built with (KM_KEY)
@@ -203,6 +204,7 @@ int km_packet(const uint8_t *payload, int len, void *arena, unsigned arena_bytes
    or on a machine that can't run Thumb code). */
 int km_run(void *arena, const k6_api_t *api);
 void km_reset(void);                  /* drop a transfer partway */
+int km_armed(void);                   /* 1 while km_run would run a module */
 const km_status_t *km_status(void);
 /* The report packets, whitened and ready for the chip's FIFO (64 bytes). status: from km_status
    and the chunks held; call: up to 6 characters. text: n bytes of tlm at part (1..parts-1). */
@@ -210,6 +212,11 @@ void km_report_status(uint8_t out[64], uint8_t seq, uint8_t parts, uint8_t state
                       int32_t ret, uint32_t ms, uint16_t stack_free);
 void km_report_text(uint8_t out[64], uint8_t seq, uint8_t part, uint8_t parts, const char *text,
                     unsigned n);
+/* For the SPI library (k6_lib.c): the tag check alone (0, KM_NO_KEY or KM_BAD_TAG), and arming
+   km_run for a checked image already in the block (air 0: from the library, no serial check and
+   no upload reply: k6_lib.h) */
+int km_tag_check(const uint8_t *a, unsigned code);
+void km_arm(const uint8_t *a, int air);
 /* SipHash-2-4 (Aumasson and Bernstein), for the tag and the tests */
 uint64_t km_siphash(const uint8_t key[16], const uint8_t *m, unsigned n);
 

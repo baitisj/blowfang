@@ -89,6 +89,7 @@ jobs:
             tests/test_k6_ifpager.py \
             tests/test_k6_ifrx.py \
             tests/test_k6_insights.py \
+            tests/test_k6_lib.py \
             tests/test_k6_live.py \
             tests/test_k6_midi.py \
             tests/test_k6_mod.py \

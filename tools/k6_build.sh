@@ -131,6 +131,8 @@ else
   echo "module loader: no K6_MOD_KEY_FILE, so it refuses every module"
 fi
 $CC $CFLAGS -Os ${KM:+-DKM_KEY=$KM} -c "$ROOT/c/k6/k6_mod.c" -o "$OUT/k6_mod.o"
+# the SPI module library (k6_lib.h): install / load a module image in its SPI slot
+$CC $CFLAGS -Os -c "$ROOT/c/k6/k6_lib.c" -o "$OUT/k6_lib.o"
 # per packet, not per sample (the PWM conversion is 160 samples in 20 ms): -Os, about 2 KB less
 $CC $CFLAGS ${K6_PAGER_OPT:--Os} -c "$ROOT/c/k6/sotto_pager.c" -o "$OUT/sotto_pager.o"
 $CC $CFLAGS -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_dec.c" -o "$OUT/sotto_fx_dec.o"
@@ -155,6 +157,7 @@ $CC $CFLAGS -Oz -c "$ROOT/c/k6/rt.c" -o "$OUT/k6_rt.o"
 $CC $CFLAGS -Os -c "$ROOT/c/k6/xdmr.c" -o "$OUT/xdmr.o"
 LIBOBJS="$OUT/sotto_pager.o $OUT/k6_mod.o $OUT/sotto_fx_dec.o $OUT/sp_cb.o $OUT/sp_vlr.o $OUT/fx_math.o $OUT/fx_tables.o $OUT/ifpager.o
   $OUT/xscan.o $OUT/xlisten.o $OUT/xdmr.o $OUT/explore.o $OUT/cwid.o $OUT/k6_rt.o"
+LIBOBJS="$LIBOBJS $OUT/k6_lib.o"
 if [ -n "$LR" ]; then     # not hot (field unpacking and shape sums once per 40 ms): -Os
   $CC $CFLAGS -Os -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_lr.c" -o "$OUT/sotto_fx_lr.o"
   LIBOBJS="$LIBOBJS $OUT/sotto_fx_lr.o"

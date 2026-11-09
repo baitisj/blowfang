@@ -188,12 +188,12 @@ fi
 #                      SPI flash needed; lean (no module TX, ARQ reports or calibration
 #                      writes), with little flash to spare (TABLE=0 skips them)
 variant aura-pager-only "pager-only image (Aura drivers + VOICE MSG), v3.7, codebook in SPI flash" \
-  --features pager-only,txdog
+  --features pager-only,txdog,spilib
 if [ -n "$SOTTO_K6_LIB" ]; then LR=0; INSTALL=0; TABLE=0; VLR=0; EXPLORE=0; fi
 if [ "${LR:-1}" = 1 ]; then
   K6_CODEC=1200 K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-lr-cbs
-  variant aura-pager-lr "pager-only image, sotto 1200, codebook in SPI flash" --features pager-only,txdog
+  variant aura-pager-lr "pager-only image, sotto 1200, codebook in SPI flash" --features pager-only,txdog,spilib
 fi
 # aura-explore: EXPLORE, the K6 signal explorer (docs/k6-explore-app.md), in a pager-only image
 # (VOICE MSG first, EXPLORE after 2 quiet minutes) whose library has no voice decoder
@@ -202,12 +202,12 @@ fi
 if [ "${EXPLORE:-1}" = 1 ]; then
   K6_VOICE=0 K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-explore
-  variant aura-explore "EXPLORE image: the signal explorer, pager packets and modules, no voice" --features explore,txdog
+  variant aura-explore "EXPLORE image: the signal explorer, pager packets and modules, no voice" --features explore,txdog,spilib
 fi
 if [ "${VLR:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbs
-  variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog
+  variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog,spilib
   K6_CODEC=vlr K6_CB=install sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbi
   # it holds sotto 600 / 400's 21 KB of codebooks: lean, as the other install image

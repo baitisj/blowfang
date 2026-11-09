@@ -438,7 +438,10 @@ CTL_MAGIC = 0xA8
 CTL_BITS = {"phy": 1, "frames": 2, "baud": 4, "auto": 8, "emph": 16, "var": 32, "vol": 64,
             "idlekeep": 128}
 CTL_ACTIONS = {"none": 0, "play": 1, "clear": 2, "report": 3, "reg": 4, "regs": 5, "boot": 6,
-               "reset": 7, "stream-on": 8, "stream-off": 9, "ifrx": 10}
+               "reset": 7, "stream-on": 8, "stream-off": 9, "ifrx": 10, "lib": 11}
+# "lib" (images with the SPI module library, c/k6/k6_lib.h; not lean): run the module kept in
+# library slot byte 4 (0-11; `k6 mod --install SLOT` puts one there), as one sent over the air;
+# byte 4 = 255 only prints the slots (`K6 LIB slot=` lines)
 # "ifrx" (images from 2026-11-07 that aren't lean): a coded 4FSK receive session on the IF for up
 # to byte 4 x 2 s (modem/k6g.py, PHY G): the burst follows the control packet on the same carrier
 # "stream-on" / "stream-off" (images with streaming): sotto 1200 messages play while their later
