@@ -223,3 +223,17 @@ def test_xdmrlisten_module_mutes_a_repeaters_dmr_off_the_stack():
     n, said, _, _ = listen(s, run_s=3, built=built, scratch=(5376 - 24 - len(built[0])) & ~3 if
                            5376 - 24 > len(built[0]) else 0)
     assert n == (1 << 32) - 6 and said[0][1].startswith("xdmr scratch "), said
+
+
+def test_fdtime_module_times_the_api_calls():
+    """c/k6/mod/fdtime.c: the emulator's 20 us register reads come out as 20.0 us (0.1 us units)"""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    code, entry = k6mod.build(os.path.join(K6, "mod", "fdtime.c"))
+    e = le.Emu(code, entry, np.zeros(int(fe.FDMA * 2), np.uint8), 0, fe.FDMA, 1.5, max_s=3, level=2,
+               fd_us=20)
+    r = e.run()
+    assert r is not None and r[0] == 0, e.said
+    got = {ln.split()[1]: int(re.search(r"avg=(\d+)", ln)[1]) for ln in e.said}
+    assert abs(got["rd0B"] - 200) <= 10 and abs(got["td"] - 400) <= 20, e.said
+    assert all(len(ln) < 60 for ln in e.said), e.said
