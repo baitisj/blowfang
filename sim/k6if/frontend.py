@@ -27,7 +27,11 @@ def lib():
         src = os.path.join(HERE, "sdm.c")
         if not os.path.exists(so) or os.path.getmtime(so) < os.path.getmtime(src):
             os.makedirs(os.path.dirname(so), exist_ok=True)
-            subprocess.run(["cc", "-O2", "-shared", "-fPIC", "-o", so, src, "-lm"], check=True)
+            # built under a name of its own and renamed into place: parallel test workers
+            # (pytest -n) build it at once, and one loaded another's half-written file
+            tmp = "%s.%d.tmp" % (so, os.getpid())
+            subprocess.run(["cc", "-O2", "-shared", "-fPIC", "-o", tmp, src, "-lm"], check=True)
+            os.replace(tmp, so)
         _lib = ctypes.CDLL(so)
         d, i, p = ctypes.c_double, ctypes.c_int, ctypes.c_void_p
         _lib.k6_frontend.argtypes = [p, p, i, d, d, d, d, d, i, i, p, i, ctypes.c_uint]

@@ -1,8 +1,8 @@
 diff --git a/Cargo.toml b/Cargo.toml
-index 785c441..d0cf1ee 100644
+index 785c441..eff045c 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
-@@ -21,6 +21,26 @@ st7565 = "0.6"
+@@ -21,6 +21,29 @@ st7565 = "0.6"
  embedded-graphics = "0.8"
  profont = "0.7"
  
@@ -25,6 +25,9 @@ index 785c441..d0cf1ee 100644
 +txdog = []
 +# with txdog: no lines straight to USART1 (the boot-loop hunt: does their time at boot matter?)
 +txdog-quiet = ["txdog"]
++# the SPI module library (c/k6/k6_lib.h): install a module image in an SPI slot, run it on
++# control action 11. Every image but the lean ones and hiss (no flash left there)
++spilib = []
 +
  [profile.release]
  opt-level = "z"
@@ -268,10 +271,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..912238b
+index 0000000..d88dbf5
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4258 @@
+@@ -0,0 +1,4414 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -465,6 +468,12 @@ index 0000000..912238b
 +        pub fn km_run(arena: *mut u8, api: *const K6Api) -> i32;
 +        pub fn km_reset();
 +        pub fn km_status() -> *const KmStatus;
++        #[cfg(feature = "spilib")]
++        pub fn kl_install(img: *const u8, fl: *const KlFlash) -> i32;
++        #[cfg(feature = "spilib")]
++        pub fn kl_load(slot: i32, fl: *const KlFlash, dst: *mut u8, cap: u32) -> i32;
++        #[cfg(feature = "spilib")]
++        pub fn kl_info(slot: i32, fl: *const KlFlash, out: *mut KlInfo) -> i32;
 +        pub fn sp_cb_setup() -> i32;
 +        pub fn sp_cb_mode() -> i32;
 +        pub fn sp_cb_bench(n: u32) -> u32;
@@ -539,6 +548,22 @@ index 0000000..912238b
 +        // level 8: the radio's UTC clock
 +        pub clock_set: unsafe extern "C" fn(u32, u32, u32) -> i32,
 +        pub clock_get: unsafe extern "C" fn(*mut u32, *mut u32, *mut u32) -> i32,
++    }
++    /// c/k6/k6_lib.h kl_flash_t and kl_info_t
++    #[repr(C)]
++    pub struct KlFlash {
++        pub read: unsafe extern "C" fn(u32, *mut u8, u32) -> i32,
++        pub prog: unsafe extern "C" fn(u32, *const u8, u32) -> i32,
++        pub erase: unsafe extern "C" fn(u32) -> i32,
++    }
++    #[repr(C)]
++    #[derive(Default)]
++    pub struct KlInfo {
++        pub code_len: u16,
++        pub entry: u16,
++        pub serial: u32,
++        pub level: u8,
++        pub flags: u8,
 +    }
 +    #[repr(C)]
 +    pub struct KmStatus {
@@ -1516,6 +1541,10 @@ index 0000000..912238b
 +/// lends it the pool (if_session)
 +#[cfg(not(feature = "lean"))]
 +const IFP_WORK_MIN: usize = 3072;
++/// Action 11 (images with the spilib feature): run the module in SPI library slot byte 4 (0-11), or
++/// with 255 print the slots (c/k6/k6_lib.h)
++#[cfg(feature = "spilib")]
++const CTL_ACT_LIB: u8 = 11;
 +/// c/k6/ifpager.h IFP_RING: the session's DMA ring, in the PWM ring (rounded up to a word)
 +#[cfg(not(feature = "lean"))]
 +const IFP_RING: usize = 1216;
@@ -2175,6 +2204,8 @@ index 0000000..912238b
 +        ));
 +        #[cfg(not(feature = "lean"))]
 +        crate::hal::txdog::report(|a| report_line(a));
++        #[cfg(feature = "spilib")]
++        lib_list();
 +        app.pager.store_frames =
 +            unsafe { ffi::sp_init(arena::base(), STORE_BYTES as u32) } as u16;
 +        app.pager.stream_play = unsafe { ffi::sp_stream() } != 0;
@@ -3165,64 +3196,19 @@ index 0000000..912238b
 +        app.pager.ctl_prev = None;
 +    }
 +    if r == KM_READY {
-+        let at = (arena::base() as usize) + 16;
-+        // 8-byte tag after the code, then word aligned
-+        let scratch = (at + st.code_len as usize + 8 + 3) & !3;
-+        let room = cortex_m::register::msp::read() as usize - ((addr_of!(__sheap) as usize + 3) & !3);
-+        report_line(format_args!(
-+            "K6 MOD run serial={} code={} B at {:#010x} stack={} B scratch={} B",
-+            st.serial,
-+            st.code_len,
-+            at,
-+            room,
-+            scratch_end().saturating_sub(scratch)
-+        ));
-+        let gpio = app.radio.fd6818.reg_read(syst, MOD_GPIO);
-+        let t0 = uptime::now();
-+        unsafe {
-+            *addr_of_mut!(MOD_CTX) = ModCtx {
-+                app: app as *mut App,
-+                syst: syst as *mut SYST,
-+                rx_hz: app.master_freq_hz(),
-+                t_last: t0,
-+                ticks: 0,
-+                scratch,
-+                tx_until: 0,
-+                tx: false,
-+                cal_written: false,
-+                fl_erases: 0,
-+                tlm_cap: 0,
-+            };
++        // an image for the SPI module library (k6_lib.h, header flag KM_F_LIB): kept, not run
++        // (km_packet left km_run unarmed for it)
++        #[cfg(feature = "spilib")]
++        if unsafe { *arena::base().add(13) } & KM_F_LIB != 0 {
++            let n = lib_install(app);
++            if st.reply != 0 {
++                arq_owe(KM_ST_RAN, n, 0, free_ram().min(0xFFFF) as u16);
++            }
++        } else {
++            run_module(app, syst);
 +        }
-+        // a reply-wanted upload whose header asks for telemetry: keep the say lines
-+        #[cfg(not(feature = "lean"))]
-+        if st.reply != 0 && st.tlm != 0 {
-+            tlm_start(st.tlm as usize * KM_TLM_PART);
-+        }
-+        mod_screen_clear();
-+        let ret = unsafe { ffi::km_run(arena::base(), &MOD_API) };
-+        unsafe { mod_tx_off() }; // a module that left the transmitter on
-+        rx_led(false); // or the LED lit
-+        mod_screen_clear(); // its waterfall rows were in its own memory
-+        let ms = unsafe { mod_ms() };
-+        unsafe {
-+            let c = &mut *addr_of_mut!(MOD_CTX);
-+            c.app = core::ptr::null_mut();
-+            c.tlm_cap = 0;
-+        }
-+        // free_ram: the stack never reached since VOICE MSG was entered (painted then)
-+        let sfree = free_ram();
-+        report_line(format_args!("K6 MOD ret={} ({:#x}) in {} ms stack_free={} B", ret, ret, ms, sfree));
-+        ram_check(sfree);
-+        #[cfg(not(feature = "lean"))]
-+        if st.reply != 0 {
-+            arq_owe(KM_ST_RAN, ret, ms, sfree.min(0xFFFF) as u16);
-+        }
-+        // a level 2 module may have moved the radio: back to the pager's frequency and set-up,
-+        // and GP0 as it was
-+        app.radio.fd6818.reg_write(syst, MOD_GPIO, gpio);
-+        app.sync_watching_to_master(syst);
-+        arm(app, syst);
++        #[cfg(not(feature = "spilib"))]
++        run_module(app, syst);
 +    }
 +    #[cfg(not(feature = "lean"))]
 +    if st.reply != 0 && r != KM_READY {
@@ -3240,6 +3226,173 @@ index 0000000..912238b
 +    } else {
 +        refresh_status(app); // the store is empty while the chunks arrive
 +    }
++}
++
++/// Run the module that km_packet (over the air) or kl_load (from the SPI library) armed in
++/// the shared block, and report how it went.
++#[inline(never)] // its locals only while it runs, not in main's frame for good
++fn run_module(app: &mut App, syst: &mut SYST) {
++    let st = unsafe { &*ffi::km_status() };
++    let at = (arena::base() as usize) + 16;
++    // 8-byte tag after the code, then word aligned
++    let scratch = (at + st.code_len as usize + 8 + 3) & !3;
++    let room = cortex_m::register::msp::read() as usize - ((addr_of!(__sheap) as usize + 3) & !3);
++    report_line(format_args!(
++        "K6 MOD run serial={} code={} B at {:#010x} stack={} B scratch={} B",
++        st.serial,
++        st.code_len,
++        at,
++        room,
++        scratch_end().saturating_sub(scratch)
++    ));
++    let gpio = app.radio.fd6818.reg_read(syst, MOD_GPIO);
++    let t0 = uptime::now();
++    unsafe {
++        *addr_of_mut!(MOD_CTX) = ModCtx {
++            app: app as *mut App,
++            syst: syst as *mut SYST,
++            rx_hz: app.master_freq_hz(),
++            t_last: t0,
++            ticks: 0,
++            scratch,
++            tx_until: 0,
++            tx: false,
++            cal_written: false,
++            fl_erases: 0,
++            tlm_cap: 0,
++        };
++    }
++    // a reply-wanted upload whose header asks for telemetry: keep the say lines
++    #[cfg(not(feature = "lean"))]
++    if st.reply != 0 && st.tlm != 0 {
++        tlm_start(st.tlm as usize * KM_TLM_PART);
++    }
++    mod_screen_clear();
++    let ret = unsafe { ffi::km_run(arena::base(), &MOD_API) };
++    unsafe { mod_tx_off() }; // a module that left the transmitter on
++    rx_led(false); // or the LED lit
++    mod_screen_clear(); // its waterfall rows were in its own memory
++    let ms = unsafe { mod_ms() };
++    unsafe {
++        let c = &mut *addr_of_mut!(MOD_CTX);
++        c.app = core::ptr::null_mut();
++        c.tlm_cap = 0;
++    }
++    // free_ram: the stack never reached since VOICE MSG was entered (painted then)
++    let sfree = free_ram();
++    report_line(format_args!("K6 MOD ret={} ({:#x}) in {} ms stack_free={} B", ret, ret, ms, sfree));
++    ram_check(sfree);
++    #[cfg(not(feature = "lean"))]
++    if st.reply != 0 {
++        arq_owe(KM_ST_RAN, ret, ms, sfree.min(0xFFFF) as u16);
++    }
++    // a level 2 module may have moved the radio: back to the pager's frequency and set-up,
++    // and GP0 as it was
++    app.radio.fd6818.reg_write(syst, MOD_GPIO, gpio);
++    app.sync_watching_to_master(syst);
++    arm(app, syst);
++}
++
++// ---- the SPI module library (c/k6/k6_lib.h; Jeff approved it, 2026-11-08) ----
++//
++// A module sent with header flag KM_F_LIB is checked as any module (km_packet) and written to
++// its 16 KB slot at 0x110000 + slot * 0x4000 instead of being run; control action lib (11)
++// reads a slot back into the shared block, checks its tag again and runs it as one sent over
++// the air. The only SPI writes are an install's (its sectors, once), never while keyed, and
++// only inside 0x110000-0x13FFFF; the message store never goes to SPI.
++
++#[cfg(feature = "spilib")]
++const KM_F_LIB: u8 = 1;
++#[cfg(feature = "spilib")]
++const KL_LO: u32 = 0x11_0000;
++#[cfg(feature = "spilib")]
++const KL_HI: u32 = 0x14_0000;
++#[cfg(feature = "spilib")]
++const KL_SLOTS: i32 = 12;
++/// writes allowed: set only around kl_install, and only while not transmitting
++#[cfg(feature = "spilib")]
++static mut LIB_WRITE: bool = false;
++
++#[cfg(feature = "spilib")]
++unsafe extern "C" fn lib_fl_read(addr: u32, buf: *mut u8, n: u32) -> i32 {
++    if CB_NOR.is_null() || addr < KL_LO || addr >= KL_HI || n > KL_HI - addr {
++        return -1;
++    }
++    (*CB_NOR).read_bytes(addr, core::slice::from_raw_parts_mut(buf, n as usize));
++    0
++}
++#[cfg(feature = "spilib")]
++unsafe extern "C" fn lib_fl_prog(addr: u32, buf: *const u8, n: u32) -> i32 {
++    if !LIB_WRITE || CB_NOR.is_null() || addr < KL_LO || addr >= KL_HI || n == 0 || n > FL_PAGE
++        || (addr % FL_PAGE) + n > FL_PAGE
++    {
++        return -1;
++    }
++    (*CB_NOR).write_bytes(addr, core::slice::from_raw_parts(buf, n as usize));
++    0
++}
++#[cfg(feature = "spilib")]
++unsafe extern "C" fn lib_fl_erase(addr: u32) -> i32 {
++    if !LIB_WRITE || CB_NOR.is_null() || addr < KL_LO || addr >= KL_HI || addr % FL_SECTOR != 0 {
++        return -1;
++    }
++    (*CB_NOR).erase_sector(addr);
++    0
++}
++#[cfg(feature = "spilib")]
++static LIB_FL: ffi::KlFlash = ffi::KlFlash { read: lib_fl_read, prog: lib_fl_prog, erase: lib_fl_erase };
++
++/// The checked image in the shared block into its slot: its length, or k6_lib.h KL_*
++#[cfg(feature = "spilib")]
++#[inline(never)]
++fn lib_install(app: &mut App) -> i32 {
++    let slot = unsafe { *arena::base().add(15) };
++    unsafe { LIB_WRITE = !app.is_transmitting() };
++    let r = unsafe { ffi::kl_install(arena::base(), &LIB_FL) };
++    unsafe { LIB_WRITE = false };
++    report_line(format_args!("K6 LIB put slot={} r={}", slot, r));
++    r
++}
++
++/// The used slots, one `K6 LIB slot=` line each, then `K6 LIB used=N`
++#[cfg(feature = "spilib")]
++#[inline(never)]
++fn lib_list() {
++    let mut used = 0;
++    for n in 0..KL_SLOTS {
++        let mut i = ffi::KlInfo::default();
++        let r = unsafe { ffi::kl_info(n, &LIB_FL, &mut i) };
++        if r != -1 {
++            used += 1;
++            report_line(format_args!(
++                "K6 LIB slot={} r={} code={} serial={} level={}",
++                n, r, i.code_len, i.serial, i.level
++            ));
++        }
++    }
++    report_line(format_args!("K6 LIB used={}", used));
++}
++
++/// Control action lib: run slot n (or 255: list the slots). Not while a message plays: the
++/// slot is read into the shared block, over the store, as a module sent over the air
++#[cfg(feature = "spilib")]
++#[inline(never)]
++fn lib_run(app: &mut App, syst: &mut SYST, n: u8) {
++    if n == 255 {
++        lib_list();
++        return;
++    }
++    if app.pager.play_pending || stream_on() {
++        report_line(format_args!("K6 LIB run slot={} refused: a message plays", n));
++        return;
++    }
++    unsafe { ffi::km_reset() };
++    let r = unsafe { ffi::kl_load(n as i32, &LIB_FL, arena::base(), arena::ARENA_BYTES as u32) };
++    report_line(format_args!("K6 LIB run slot={} r={}", n, r));
++    if r > 0 {
++        run_module(app, syst);
++    }
++    clear_store(app); // the slot was read over it
 +}
 +
 +// ---- the coded 4FSK receiver (PHY G) ----
@@ -3514,6 +3667,12 @@ index 0000000..912238b
 +        }
 +        report_line(format_args!("K6 CTL seq={} ifrx ms={}", seq, app.pager.ifrx_ms));
 +        app.pager.idle_ticks = 0;
++        return;
++    }
++    #[cfg(feature = "spilib")]
++    if action == CTL_ACT_LIB {
++        report_line(format_args!("K6 CTL seq={} lib slot={}", seq, vv));
++        lib_run(app, syst, vv);
 +        return;
 +    }
 +    if action == CTL_ACT_REG || action == CTL_ACT_REGS {
