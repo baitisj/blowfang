@@ -44,6 +44,13 @@
 #define DS_BP_B0 5574
 #define DS_BP_A1 (-7904)
 #define DS_BP_A2 5235
+/* DS_FAST: where the hot functions go. Empty by default (the RAM modules already run from
+   SRAM); EXPLORE's xdmr.c puts them in SRAM: on txdog images flash code runs ~12% slower
+   (docs/k6-modules.md, prefetch) and the detector fell behind the DMA ring. */
+#ifndef DS_FAST
+#define DS_FAST
+#endif
+
 #ifdef DS_FRING
 /* the decoder's matched filter (DMR_DECODE builds, c/k6/mod/dmrdec.inc): a 13-tap RRC (alpha
    0.2) at 2 points a symbol, Q14, centre tap first; its output for grid point g, a quarter of
@@ -94,7 +101,7 @@ typedef struct {
   uint8_t nlast[DS_NFAM];
 } ds_t;
 
-__attribute__((noinline)) static uint32_t ds_udiv(uint32_t n, uint32_t d) {
+DS_FAST __attribute__((noinline)) static uint32_t ds_udiv(uint32_t n, uint32_t d) {
   uint32_t q = 0, bit = 1;
   if (!d) return 0;
   while (d < n && !(d & 0x80000000u)) d <<= 1, bit <<= 1;
@@ -129,7 +136,7 @@ __attribute__((unused)) static void ds_skip(ds_t *d, uint32_t n) { d->n += n; }
 static int32_t ds_clamp(int32_t v) { return v > DS_YMAX ? DS_YMAX : v < -DS_YMAX ? -DS_YMAX : v; }
 
 /* a confirmed DMR hit? (and keep it in its family's history) */
-static int ds_confirm(ds_t *d, uint32_t j, int32_t f) {
+DS_FAST static int ds_confirm(ds_t *d, uint32_t j, int32_t f) {
   uint32_t i, n = d->nlast[f], ok = 0, keep = 0;
   uint32_t *h = d->last[f];
   for (i = 0; i < n; i++) {
@@ -153,7 +160,7 @@ static int ds_confirm(ds_t *d, uint32_t j, int32_t f) {
 }
 
 /* one grid value; returns DS_HIT or DS_CONF when a hit comes out (in d->h*) */
-__attribute__((noinline)) static int ds_grid(ds_t *d, int32_t y) {
+DS_FAST __attribute__((noinline)) static int ds_grid(ds_t *d, int32_t y) {
   uint32_t j = d->j++, par = j & 1, old = (j - 48u) & (DS_RING - 1);
   /* after a gap the sums start over and fill for 48 grid points before anything leaves */
   int32_t yo = d->okg >= 48 ? d->y[old] : 0, f, ret = DS_NONE;
@@ -207,7 +214,7 @@ __attribute__((noinline)) static int ds_grid(ds_t *d, int32_t y) {
 
 /* one count; returns what ds_grid said for the grid points it made (the last that wasn't
    DS_NONE) */
-__attribute__((noinline)) static int ds_count(ds_t *d, int32_t x) {
+DS_FAST __attribute__((noinline)) static int ds_count(ds_t *d, int32_t x) {
   int ret = DS_NONE;
   {
     int32_t v = (DS_BP_B0 * ((x - d->x2) << 8) - DS_BP_A1 * d->y1 - DS_BP_A2 * d->y2) >> 14;

@@ -1,6 +1,17 @@
 /* xdmr: DMR detect-and-mute inside Listen for ID (xdmr.h). The DMA and clock set-up are the
    dmrdet module's (c/k6/mod/dmrdet.c), which muted real DMR on 440.925 on the K6 (2026-11-08).
    SPDX-License-Identifier: MIT */
+/* the detector's hot path runs from SRAM (copied with .data at boot): on txdog images flash code
+   runs ~12% slower, and from flash it fell behind the DMA ring, 30 samples lost per step against
+   0.4 without txdog (2026-11-09, docs/k6-explore-app.md). The RAM modules (dmrrx) kept up. */
+#ifdef K6_MODULE_LEVEL   /* built into a RAM module (tests/test_k6_xdmr.py): in SRAM already */
+#define XD_RAM __attribute__((noinline))
+#define XD_RAM_I
+#else
+#define XD_RAM __attribute__((section(".data.xdram"), noinline))
+#define XD_RAM_I __attribute__((section(".data.xdram")))   /* small: may inline */
+#endif
+#define DS_FAST XD_RAM
 #include "xdmr.h"
 #include "cwid.h"
 
@@ -58,7 +69,7 @@ static void xd_say(xd_t *s, char *line, char *p) {
 
 static int xd_rssi(const k6_api_t *api) { return KM_RSSI_DBM(api->fd_read(0x67)); }
 
-static uint32_t xd_now(xd_t *s) {
+XD_RAM_I static uint32_t xd_now(xd_t *s) {
   uint32_t c17 = rd(TIM17_CNT) & 0xFFFF, c14 = rd(TIM14_CNT) & 0xFFFF;
   uint32_t coarse = ((c14 - s->c14) & 0xFFFF) * 9600u, fine = (c17 - s->c17) & 0xFFFF;
   int32_t d = (int32_t)(int16_t)(uint16_t)(fine - coarse);
@@ -81,7 +92,7 @@ typedef struct {
   uint32_t laps, lastw, consumed, p0, t0, tp, lap, busy;
 } xd_run_t;
 
-static uint32_t xd_poll(xd_run_t *r) {
+XD_RAM_I static uint32_t xd_poll(xd_run_t *r) {
   uint32_t w = XD_RSZ - (rd(DMA_CNDTR1) & 0xFFFF);
   if (w < r->lastw) r->laps++;
   r->lastw = w;
@@ -89,7 +100,7 @@ static uint32_t xd_poll(xd_run_t *r) {
 }
 
 /* the DMA's rate over the gap-free stretch that ends now */
-static void xd_rate(xd_run_t *r, uint32_t t) {
+XD_RAM static void xd_rate(xd_run_t *r, uint32_t t) {
   xd_t *s = r->s;
   uint32_t dt = t - r->t0, dp = r->laps * XD_RSZ + r->lastw - r->p0, c;
   if (dt < RATE_MIN || dt >= (1u << 24) || !dp) return;
@@ -104,7 +115,7 @@ static void xd_rate(xd_run_t *r, uint32_t t) {
 /* count again from where the DMA is now (the step's start, an overrun, a long pause). The
    samples in between are lost: the detector's clocks (its grid index and count number) move on
    by that time, so its slot raster still holds; after more than ~2.8 s it starts afresh. */
-__attribute__((noinline)) static void xd_resync(xd_run_t *r, uint32_t t) {
+XD_RAM static void xd_resync(xd_run_t *r, uint32_t t) {
   xd_t *s = r->s;
   ds_t *d = &s->d;
   uint32_t w = XD_RSZ - (rd(DMA_CNDTR1) & 0xFFFF), gap;
@@ -138,7 +149,7 @@ static int xd_ones64(const uint8_t *q) {
 
 /* a sync came out: a confirmed one, or one of DMR's family while it lasts, holds DMR (and the
    mute) XD_KEEP_MS more */
-static void xd_hit(xd_run_t *r, int k) {
+XD_RAM static void xd_hit(xd_run_t *r, int k) {
   xd_t *s = r->s;
   ds_t *d = &s->d;
   uint32_t ms = s->api->ms();
@@ -154,7 +165,7 @@ static void xd_hit(xd_run_t *r, int k) {
 }
 
 /* xl_step's wait between tone detector polls: the ring through the detector for us */
-static void xd_wait(void *c, uint32_t us) {
+XD_RAM static void xd_wait(void *c, uint32_t us) {
   xd_run_t *r = (xd_run_t *)c;
   xd_t *s = r->s;
   uint32_t t = xd_now(s), end = t + us * 96u, i, k = 0;
