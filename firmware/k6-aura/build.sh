@@ -188,12 +188,12 @@ fi
 #                      SPI flash needed; lean (no module TX, ARQ reports or calibration
 #                      writes), with little flash to spare (TABLE=0 skips them)
 variant aura-pager-only "pager-only image (Aura drivers + VOICE MSG), v3.7, codebook in SPI flash" \
-  --features pager-only,txdog
+  --features pager-only,txdog,spilib
 if [ -n "$SOTTO_K6_LIB" ]; then LR=0; INSTALL=0; TABLE=0; VLR=0; EXPLORE=0; fi
 if [ "${LR:-1}" = 1 ]; then
   K6_CODEC=1200 K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-lr-cbs
-  variant aura-pager-lr "pager-only image, sotto 1200, codebook in SPI flash" --features pager-only,txdog
+  variant aura-pager-lr "pager-only image, sotto 1200, codebook in SPI flash" --features pager-only,txdog,spilib
 fi
 # aura-explore: EXPLORE, the K6 signal explorer (docs/k6-explore-app.md), in a pager-only image
 # (VOICE MSG first, EXPLORE after 2 quiet minutes) whose library has no voice decoder
@@ -202,12 +202,12 @@ fi
 if [ "${EXPLORE:-1}" = 1 ]; then
   K6_VOICE=0 K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-explore
-  variant aura-explore "EXPLORE image: the signal explorer, pager packets and modules, no voice" --features explore,txdog
+  variant aura-explore "EXPLORE image: the signal explorer, pager packets and modules, no voice" --features explore,txdog,spilib
 fi
 if [ "${VLR:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbs
-  variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog
+  variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog,spilib
   K6_CODEC=vlr K6_CB=install sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbi
   # it holds sotto 600 / 400's 21 KB of codebooks: lean, as the other install image
@@ -281,6 +281,9 @@ dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md
 dogfault       # level 1, bench test of the crash backstop (hal::txdog)
 dogtx          # level 3, bench test of the stuck key-up backstop (hal::txdog)
+fdirq          # level 2, fdtime plus interrupt state and the CPU share interrupts take
+fdtime         # level 2, how long the module API's calls take (xdmr's gap between waits)
+fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
 ft8tx          # level 3
 ft8wf
 ft8wf_inv
@@ -314,6 +317,10 @@ iflive_tsweep
 loram          # level 1, does anything write 0x20000000-0x20000FFF (hal::txdog)
 midi           # level 2 (screen at 6, LED at 7), songs patched by tools/k6_midi.py, docs/k6-midi.md
 morse          # level 6, docs/k6-morse.md
+pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRFTBE (stage 3)
+pfprobe_hsi    # level 2, pfprobe stage 1: SYSCLK to HSI and back only
+pfprobe_m2     # level 2, pfprobe stage 4: PRFTBE with MEM_MODE back at 2 (main flash), timed there
+pfprobe_pf     # level 2, pfprobe stage 2: also PRFTBE while on HSI
 ramprobe
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)
@@ -329,6 +336,7 @@ vectab         # level 1, is 0x08000000's vector table the live one (hal::txdog)
 wsprbcn
 wspriq
 wsprtx
+xdmrlisten     # level 2, EXPLORE's listen + DMR detector as a module (voice images), docs/k6-explore-app.md
 xtalstep
 EOF
 )

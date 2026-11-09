@@ -214,6 +214,44 @@ them only on 8 or more; `clkget` (level 8) says the clock. The emulator
 (`tests/k6_live_emu.py`) keeps the same clock: set `Emu.clock` to start with one, and
 `Emu.clock_sets` records each call.
 
+## The SPI module library
+
+Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).
+`c/k6/k6_lib.c` keeps up to 12 module images in the radio's SPI flash, so a module that runs
+often (an EXPLORE page, a decoder) goes over the air once and then runs from the radio's own
+flash on a control packet. The SPI flash isn't memory-mapped, so a run still copies the image
+into the shared block first, as an upload does; reading 11.7 KB takes about 16 ms.
+
+- **Where:** slot n at `0x110000 + n * 0x4000` (16 KB each, 0x110000-0x13FFFF), above sotto's
+  codebooks (0x100000-0x10D320) and the calibration sector (0x10F000). A slot holds the image
+  exactly as it arrived (header, code, tag) and 0xFF after it.
+- **Install:** `python -m modem.k6 mod OUT.wav SRC.c --key-file KEY --install N` sets header
+  flag `KM_F_LIB` (byte 13) and the slot in byte 15. The K6 checks it as any module (tag,
+  serial), then, instead of running it, erases the sectors it needs, programs it a page at a
+  time and reads it back: `K6 LIB put slot=N r=LEN` (or a negative `KL_*` from
+  `c/k6/k6_lib.h`). With `--arq` the report says `ran` with that number as its return. A
+  module image never runs straight from an install packet, even on an image without the
+  library (km_packet leaves it unarmed).
+- **Run:** `python -m modem.k6 ctl OUT.wav --action lib --slot N` (control action 11, the slot
+  in byte 4) reads the slot into the shared block, checks the header and the tag again and runs
+  it through the same path as an upload (`K6 LIB run slot=N r=CODE_LEN`, then the usual
+  `K6 MOD run` / `K6 MOD ret` lines). Refused while a message plays; the stored message is
+  dropped, as by an upload. `--slot 255` only prints the slots, as the boot does:
+  `K6 LIB slot=N r=0 code= serial= level=` for each used one, then `K6 LIB used=N`.
+- **Rules:** the only SPI writes are an install's, inside 0x110000-0x13FFFF, page and sector
+  aligned, never while the radio transmits (the core's flash calls refuse them). Nothing else of
+  the radio's state goes there: never the message store. A worn or overwritten slot fails its
+  tag (`r=-3`) and doesn't run.
+- **Serials:** a run from a slot skips the serial check (the slot was checked when it went in;
+  the serial guards the air), and never lowers the loader's last serial, so loading an old slot
+  doesn't let an old recording replay.
+- **Images:** the `spilib` feature: pager-only, lr, vlr and explore. Not the lean images (cbi,
+  -table: they never take modules that need it) nor vlrh (hiss: about 1.3 KB of code and lines
+  against its 328 B of free flash). On those an install image checks but never runs (`K6 MOD
+  ret=-100`), and nothing is written.
+- **Tests:** `tests/test_k6_lib.py` runs the library and the loader on this machine against an
+  emulated NOR flash (`c/k6/kl_host`), checking every write against the rules above.
+
 ## Security
 
 - **Signed.** A module runs only if its SipHash tag checks under the key the image was built
@@ -305,6 +343,8 @@ them only on 8 or more; `clkget` (level 8) says the clock. The emulator
   images (codebook install, -table fallbacks) never transmit and leave txdog out for room. Bench
   tests: `dogfault` (a deliberate UDF) and `dogtx` (CW ID, then keyed with the PA off and hung),
   both uploaded without ARQ.
+- **The SPI library** (above) holds only images whose tag checked when they arrived, and checks
+  the tag again on every run; a run from a slot doesn't lower the replay serial.
 - **Part 97.** The code goes out in the clear and this format is published; the tag only
   proves who sent it.
 

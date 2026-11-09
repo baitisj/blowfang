@@ -1,6 +1,7 @@
 /* k6_mod: run a small native module from the K6's RAM, sent over the air (see k6_mod.h).
    SPDX-License-Identifier: MIT */
 #include "k6_mod.h"
+#include "k6_lib.h"
 #include "sotto_pager.h"
 #include <stddef.h>
 
@@ -64,19 +65,34 @@ static int check(const uint8_t *a, unsigned have_bytes, unsigned dl) {
       total > have_bytes || total + dl <= have_bytes || entry >= code || (entry & 1))
     return KM_BAD_HDR;
   {
-    const volatile uint8_t *kp = key_store;
-    uint8_t key[16];
-    int i, same = 1;
-    for (i = 0; i < 16; i++) key[i] = kp[i], same &= key[i] == (uint8_t)~placeholder_inv[i];
-    if (same) return KM_NO_KEY;
-    if (km_siphash(key, a, KM_HDR + code) != le64(a + KM_HDR + code)) return KM_BAD_TAG;
+    int t = km_tag_check(a, code);
+    if (t) return t;
   }
   if (serial <= K.serial) return KM_OLD;
-  K.serial = serial;
-  K.code_len = (uint16_t)code;
-  K.tlm = a[14] > KM_TLM_MAX ? KM_TLM_MAX : a[14];
-  ready = 1;
+  km_arm(a, 1);
+  /* an image for the SPI library (k6_lib.h): the caller writes it to its slot; it never runs
+     from here, even on a caller that doesn't know the flag */
+  if (a[13] & KM_F_LIB) ready = 0;
   return KM_READY;
+}
+
+int km_tag_check(const uint8_t *a, unsigned code) {
+  const volatile uint8_t *kp = key_store;
+  uint8_t key[16];
+  int i, same = 1;
+  for (i = 0; i < 16; i++) key[i] = kp[i], same &= key[i] == (uint8_t)~placeholder_inv[i];
+  if (same) return KM_NO_KEY;
+  if (km_siphash(key, a, KM_HDR + code) != le64(a + KM_HDR + code)) return KM_BAD_TAG;
+  return 0;
+}
+
+void km_arm(const uint8_t *a, int air) {
+  uint32_t serial = (uint32_t)a[8] | (uint32_t)a[9] << 8 | (uint32_t)a[10] << 16 | (uint32_t)a[11] << 24;
+  if (serial > K.serial) K.serial = serial;   /* a slot's older serial never reopens a replay */
+  K.code_len = (uint16_t)(a[4] | a[5] << 8);
+  K.tlm = a[14] > KM_TLM_MAX ? KM_TLM_MAX : a[14];
+  if (!air) K.reply = 0, K.tlm = 0, K.active = 0;   /* from the library: no upload to answer */
+  ready = 1;
 }
 
 int km_packet(const uint8_t *payload, int len, void *arena, unsigned arena_bytes) {
@@ -129,6 +145,7 @@ int km_run(void *arena, const k6_api_t *api) {
 }
 
 void km_reset(void) { K.active = 0, ready = 0; }
+int km_armed(void) { return ready; }
 
 static void report_seal(uint8_t *out, uint8_t kind, uint8_t seq, uint8_t part, uint8_t parts) {
   const uint8_t *w = sp_pn9();

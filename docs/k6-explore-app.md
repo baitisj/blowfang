@@ -109,12 +109,22 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   (tests/test_k6_xdmr.py). On the radio (image 3a20b61, 2026-11-08 14:00-14:31Z) it read 136.5 Hz
   on 443.525 and 110.9 Hz on 442.025, and muted 440.925's DMR at +250 to +425 ms, so the first
   quarter second of a burst still reached the speaker. From PR #160 on (txdog in every image) it
-  stopped hearing DMR: hal::txdog's MEM_MODE remap turns off the flash prefetch, flash code runs
-  ~12% slower, and the detector fell behind the DMA ring (`DMR end ... lost=` ~30 a step and no
-  hits, against ~0.4 a step on a no-txdog image, 2026-11-09). Its hot path (xdmr.c's ring wait,
-  resync and rate, dmrsync.h's count, grid and confirm: 1,940 B) now runs from SRAM, copied with
-  `.data` at boot (`XD_RAM`, `DS_FAST`), which costs the EXPLORE image that much stack (2,016 B
-  to spare under the deepest call).
+  stopped hearing DMR: `DMR end ... lost=` is one resync at every one of a step's 30 waits
+  (60 ms / 2 ms), so the detector's sums never fill, and `ks=5389` is only CPS8_0, the rate
+  never measured (that takes 40 ms without a resync). The same build without txdog loses ~0.4 a
+  step and measures ks=5885 (2026-11-09). Not the cause: the detector's CPU (its hot path in SRAM,
+  PR #19, halved `busy` and left `lost` at 30 a step) or the ring's size (4,096 bytes, PR #20's
+  first try: the same). The cause was the FD6818 reads between waits (td_read's REG_0B + REG_0C
+  pair), measured by RAM modules on the radio: 734 us a pair with txdog, two ring laps. Two
+  things doubled them: MEM_MODE 3 (txdog's SRAM table) turns the flash prefetch off
+  (`pfprobe_m2`), and the bootloader leaves SysTick's interrupt on, so every 1 us bit-bang delay
+  ended in an exception (`fdirq`, `fdtick`). PR #23 maps the table only while keyed and clears
+  TICKINT at boot: 197 us a pair, and `xdmrlisten` lost 0.03 a step with sync hits (2026-11-09
+  23:09Z), against ~2 a step before txdog. The `DMR diag` line says which check fires and why.
+  `c/k6/mod/xdmrlisten.c` is the same listen (xlisten + xdmr, the EXPLORE image's code) as a RAM
+  module, ring and states in its scratch: 9.0 KB, so a voice image's 11,776-byte block, not
+  EXPLORE's 5,376. It listens 60 s on 440.925 and says the same DMR end / rate / diag lines, so
+  the detector can be measured and changed on the radio without a flash.
 - **DMR by default** (Jeff 2026-11-08: "if we figure out a repeater is dmr we can mute by default
   until listening to it for a longer duration reveals that it's not actually a dmr repeater"): a
   row marked DMR, on the candidate (`EX_F_DMR`) or in the saved entry (`RT_F_DMR`), starts every
@@ -231,6 +241,7 @@ K6 MOD say DMR off 2630
 K6 MOD say CTCSS 1000                 the carrier's tone, 0.1 Hz
 K6 MOD say DMR end n=1 h=41 lost=0 steps=50
 K6 MOD say DMR rate busy=24 ks=5490 ctcss=1000/40
+K6 MOD say DMR diag e=0 o=0 g=74 clk=999 kx=5486   resyncs at a wait's entry / at an overrun, the longest gap between waits (us), the 96 MHz clock against ms (per mille), DMA transfers a ms
 K6 EX heard 440925000 tone=1000 dmr=1 rt=2 saved_tone=1000   the saved entry took the tone
 K6 EX dmr clear 440925000             3 long listens heard no DMR: mark and saved flag cleared (dmr=-1)
 K6 EX autosave 440925000 id=4 slot=3 live=4   a second listen heard DMR: saved with RT_F_AUTO
