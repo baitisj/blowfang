@@ -7175,10 +7175,10 @@ index 0000000..37404d9
 +}
 diff --git a/src/hal/txdog.rs b/src/hal/txdog.rs
 new file mode 100644
-index 0000000..7011e01
+index 0000000..12bdcde
 --- /dev/null
 +++ b/src/hal/txdog.rs
-@@ -0,0 +1,386 @@
+@@ -0,0 +1,385 @@
 +//! Crash and stuck-transmitter backstop (2026-11-08: a module overran its stack, the report
 +//! key-up after it hung, and the K6 sent a bare carrier on 440.850 for 16 minutes).
 +//!
@@ -7335,7 +7335,6 @@ index 0000000..7011e01
 +    LIVE.store(true, Ordering::Relaxed);
 +    wr(TIM14_SR, 0);
 +    wr(TIM14_DIER, rd(TIM14_DIER) | 1); // update flag (and, when armed, interrupt): one per wrap
-+    raw(b"K6 TXDOG on", rd(4 * V_HARDFAULT), rd(4 * V_TIM14));
 +    cortex_m::interrupt::free(|_| apply(false)); // at rest until the first key-up
 +    (note, cfgr1, true)
 +}
@@ -7473,7 +7472,7 @@ index 0000000..7011e01
 +        wr(n + 4, on / 10);
 +        wr(n + 8, lim / 10);
 +        wr(n, NOTE_TX);
-+        raw(b"K6 TXDOG key-up over its limit: ms limit", on / 10, lim / 10);
++        raw(b"K6 TXDOG over limit", on / 10, lim / 10);
 +        reset();
 +    }
 +}
@@ -7499,7 +7498,7 @@ index 0000000..7011e01
 +/// last boot's note
 +pub fn report(mut line: impl FnMut(core::fmt::Arguments)) {
 +    let on = if LIVE.load(Ordering::Relaxed) { "on" } else { "OFF" };
-+    line(format_args!("K6 TXDOG {} cfgr1={:08x} limit={} ms", on, BOOT.load(Ordering::Relaxed), DEFAULT_LIMIT_MS));
++    line(format_args!("K6 TXDOG {} cfgr1={:08x}", on, BOOT.load(Ordering::Relaxed)));
 +    let (a, b) = (NOTE_A.load(Ordering::Relaxed), NOTE_B.load(Ordering::Relaxed));
 +    match NOTE_K.load(Ordering::Relaxed) {
 +        1 => line(format_args!("K6 FAULT last boot pc={:08x} lr={:08x}", a, b)),

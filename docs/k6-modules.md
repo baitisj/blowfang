@@ -355,7 +355,9 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   rest main flash is at 0 with the prefetch on, TIM14's interrupt is masked (the bootloader has
   no handler for it) and its wraps are counted by `txdog::poll` in the main loops, in a module's
   `ms`/`ticks` calls and in every `ticks`. A module that doesn't key runs at rest, with the
-  prefetch (a LISTEN slot module hears DMR). The `K6 TXDOG remap` boot line is gone (for room).
+  prefetch (a LISTEN slot module hears DMR). For room the `K6 TXDOG remap` and raw `K6 TXDOG on`
+  boot lines are gone, the report's `limit=` with them, and the over-limit line is
+  `K6 TXDOG over limit`.
   A fault at rest hangs the radio as before txdog, with the transmitter off (every key-up arms
   it first): `dogfault` now only reboots the radio when it faults keyed.
 - **SysTick's interrupt off at boot (2026-11-09).** With the prefetch back (ACR 0x32 at rest),
