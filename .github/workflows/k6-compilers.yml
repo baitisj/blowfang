@@ -1,0 +1,66 @@
+# The compiler study (tools/k6_cc/compare.sh, docs/k6-compilers.md): the main K6 images with clang
+# (as k6-firmware.yml builds them), clang at -Oz, the Arm Toolchain for Embedded, arm-none-eabi-gcc
+# and a gcc/clang mix, with flash, RAM, stack and the emulated v3.7 decoder's speed. Runs by hand
+# or when the study's own files change; it never changes what k6-firmware.yml builds.
+name: K6 compiler study
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - tools/k6_cc/**
+      - .github/workflows/k6-compilers.yml
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    env:
+      ATFE_VERSION: 22.1.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python packages
+        run: |
+          pip install \
+            numpy \
+            scipy \
+            soundfile \
+            unicorn \
+            capstone
+      - name: toolchains (clang/lld, arm-none-eabi-gcc, Rust for Aura)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            clang \
+            lld \
+            llvm \
+            gcc-arm-none-eabi
+          rustup toolchain install stable --profile minimal --target thumbv6m-none-eabi
+          clang --version | head -1
+          arm-none-eabi-gcc --version | head -1
+      - name: Arm Toolchain for Embedded
+        run: |
+          curl -sSL -o "$RUNNER_TEMP/atfe.tar.xz" \
+            "https://github.com/arm/arm-toolchain/releases/download/release-$ATFE_VERSION-ATfE/ATfE-$ATFE_VERSION-Linux-x86_64.tar.xz"
+          tar -C "$RUNNER_TEMP" -xf "$RUNNER_TEMP/atfe.tar.xz"
+          echo "ATFE=$RUNNER_TEMP/ATfE-$ATFE_VERSION-Linux-x86_64/bin" >> "$GITHUB_ENV"
+      - name: the v3.7 encoder the bench feeds the decoder from
+        run: make -C sotto/c VARIANT=v3.7 fixed PYTHON=false
+      - name: build and compare
+        run: BENCH=1 sh tools/k6_cc/compare.sh cc-compare
+      - name: summary
+        if: always()
+        run: |
+          { echo '```'; cat cc-compare/table.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-compilers
+          path: |
+            cc-compare/table.txt
+            cc-compare/*/size-*.txt
+            cc-compare/*/log.txt
+            cc-compare/*/bench-*.json

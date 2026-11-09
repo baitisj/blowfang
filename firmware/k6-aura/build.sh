@@ -250,6 +250,8 @@ fi
 [ -f "$OUT/sotto-cb.bin" ] && (cd "$OUT" && sha256sum sotto-cb.bin | tee sotto-cb.bin.sha256)
 [ -f "$OUT/sotto-vlr.bin" ] && (cd "$OUT" && sha256sum sotto-vlr.bin | tee sotto-vlr.bin.sha256)
 
+# MODULES=0 stops here (tools/k6_cc/compare.sh: the images only)
+[ "${MODULES:-1}" = 1 ] || exit 0
 # The RAM modules (docs/k6-modules.md), built from c/k6/mod/<name>.c. Each module sets its
 # own API level; the notes say which tool patches it or which doc covers it. Keep the list
 # one module per line, in alphabetical order, so PRs that add modules don't collide:

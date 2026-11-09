@@ -169,6 +169,8 @@ if [ "${K6_VOICE:-1}" = 0 ]; then
   $CC $CFLAGS -Os -c "$ROOT/c/k6/sp_novoice.c" -o "$OUT/sp_novoice.o"
   LIBOBJS=$(echo $LIBOBJS | sed "s# [^ ]*/sotto_fx_dec.o# $OUT/sp_novoice.o#; s# [^ ]*/fx_math.o##")
 fi
+# K6_LIBEXTRA: objects the compiler needs beside the library (gcc's Thumb-1 switch helpers)
+LIBOBJS="$LIBOBJS ${K6_LIBEXTRA:-}"
 rm -f "$OUT/libsotto_k6.a"
 $AR rcs "$OUT/libsotto_k6.a" $LIBOBJS
 echo "built $OUT/libsotto_k6.a"
