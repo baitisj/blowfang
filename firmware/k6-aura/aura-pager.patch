@@ -282,10 +282,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..cfdb138
+index 0000000..d88dbf5
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4396 @@
+@@ -0,0 +1,4414 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -496,6 +496,8 @@ index 0000000..cfdb138
 +        pub fn sp_vlr_expected() -> u32;
 +        #[cfg(not(feature = "lean"))]
 +        pub fn ifp_session(api: *const K6Api, ring: *mut u8, wait_ms: u32, max_ms: u32, r23: i32, res: *mut IfpResult) -> i32;
++        pub fn ifp_session_in(api: *const K6Api, ring: *mut u8, wait_ms: u32, max_ms: u32, r23: i32, res: *mut IfpResult, work: *mut u8) -> i32;
++        pub fn ifp_work_bytes() -> u32;
 +    }
 +    /// c/k6/ifpager.h: a coded 4FSK receive session's results
 +    #[repr(C)]
@@ -1546,6 +1548,10 @@ index 0000000..cfdb138
 +/// reads, takes GP0 code 13's stream, decodes each packet with the soft Viterbi decoder into the
 +/// message store, and plays the message when the burst is over. Receive only
 +const CTL_ACT_IFRX: u8 = 10;
++/// c/k6/ifpager.h ifp_work_bytes() is about 2.7 KB: a shared block whose decoder pool holds this
++/// lends it the pool (if_session)
++#[cfg(not(feature = "lean"))]
++const IFP_WORK_MIN: usize = 3072;
 +/// Action 11 (images with the spilib feature): run the module in SPI library slot byte 4 (0-11), or
 +/// with 255 print the slots (c/k6/k6_lib.h)
 +#[cfg(feature = "spilib")]
@@ -3452,7 +3458,19 @@ index 0000000..cfdb138
 +    paint_free_ram();
 +    let ring = (pwm_audio::idle_bytes() as usize + 3) & !3;
 +    let mut res: ffi::IfpResult = unsafe { core::mem::zeroed() };
-+    let r = unsafe { ffi::ifp_session(&MOD_API, ring as *mut u8, IFRX_WAIT_MS, max_ms, app.pager.ifrx_flags as i32, &mut res) };
++    // the session's 2.7 KB of state and RAM code: in the decoder's pool where the shared block has
++    // one (nothing decodes while the session stores; the decoder starts when the message plays),
++    // so it isn't on the stack under main's frame; on the stack in the images without (EXPLORE)
++    let fl = app.pager.ifrx_flags as i32;
++    let r = if arena::DEC_BYTES >= IFP_WORK_MIN {
++        if unsafe { ffi::ifp_work_bytes() } as usize <= arena::DEC_BYTES {
++            unsafe { ffi::ifp_session_in(&MOD_API, ring as *mut u8, IFRX_WAIT_MS, max_ms, fl, &mut res, arena::dec()) }
++        } else {
++            -8 // the library's state outgrew the pool: refused, not run on a short stack
++        }
++    } else {
++        unsafe { ffi::ifp_session(&MOD_API, ring as *mut u8, IFRX_WAIT_MS, max_ms, fl, &mut res) }
++    };
 +    unsafe { (*addr_of_mut!(MOD_CTX)).app = core::ptr::null_mut() };
 +    let sfree = free_ram();
 +    report_line(format_args!(
