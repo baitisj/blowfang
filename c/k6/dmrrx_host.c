@@ -1,7 +1,8 @@
 /* dmrrx_host: the K6's DMR decoder (c/k6/dmrsync.h + c/k6/mod/dmrdec.inc) on the host, for
    tests/test_k6_dmrdec.py. Reads int16 counts (2 * ones - 64, little-endian) on stdin and
    writes dmrrx's decode lines (L, E, A, K, H) as they come, then one summary line:
-     n rd= g= L= E= mids=/ok=
+     n rd= g= t= d= L= E= mids=/ok=  (data bursts read, slot types passed, decodes tried, dropped
+     while one waited)
    argv[1]: cps8 (96 MHz cycles a DMA transfer, Q8; default 4476 = 5.49 MS/s). No DMA, no
    pauses: housekeeping's share runs every 4096 counts as on the radio (~48 ms).
    SPDX-License-Identifier: MIT */
@@ -44,6 +45,7 @@ int main(int argc, char **argv) {
       }
     }
   while ((p = dx_house(&x, line)) != 0) *p = 0, puts(line);
-  printf("n rd=%u g=%u L=%u E=%u mids=%u/%u\n", x.nrd, x.ngol, x.nlc, x.nemb, x.nmid, x.nmok);
+  printf("n rd=%u g=%u t=%u d=%u L=%u E=%u mids=%u/%u\n", x.nrd, x.ngol, x.ntry, x.ndrop, x.nlc, x.nemb, x.nmid,
+         x.nmok);
   return 0;
 }

@@ -290,6 +290,15 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
 #endif
       p = kv(kv(kv(line, "c ", s->cdb), " ", g2ms(j - s->car_j)), " h=", (int)s->chits);
     }
+  }
+  if (p != line) {
+    /* the carrier went: that line */
+#ifdef DMR_DECODE
+  } else if ((q8 = dx_house(s->x, line)) != 0) {
+    /* a decode before the other lines: the burst waiting holds back the next one (on 440.925
+       a GPS packet's one data header came while the line was "D on", 2026-11-09) */
+    p = q8;
+#endif
   } else if (s->pend) {
     s->pend = 0, s->nd++;
     p = put(put(put(line, "D on "), FAM[s->fam]), s->sign > 0 ? " v" : " d");
@@ -299,9 +308,15 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
     s->dmr = 0;
     p = kv(line, "D off ", g2ms(j - s->on_j));
 #ifdef DMR_DECODE
+    /* the decoder so far: data and LC bursts read, slot types passed, BPTC decodes tried, and
+       dropped while one waited */
+    {
+      static const char K[4][4] = {" r=", " g=", " t=", " d="};
+      const uint32_t *v = &s->x->nrd;
+      int i;
+      for (i = 0; i < 4; i++) p = kv(p, K[i], (int)v[i]);
+    }
     dx_end(s->x);
-  } else if ((q8 = dx_house(s->x, line)) != 0) {
-    p = q8;
 #endif
   } else if (s->ms >= s->next_s) {
     s->next_s += S_MS;
@@ -309,9 +324,6 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
     p = kv(kv(p, " lost=", (int)s->lost), " idle=",
            (int)ds_udiv((s->idle >> 8) * 100u, (s->win >> 8) + 1u));
     p = kv(p, " ks=", (int)ds_udiv(96000u * 256u, s->cps8));
-#ifdef DMR_DECODE
-    p = kv(kv(p, " L=", (int)s->x->nlc), " E=", (int)s->x->nemb);
-#endif
     s->idle = s->win = 0;
   }
   af = s->car && !s->dmr && j - s->car_j >= HOLD_MS * 96u / 10u;

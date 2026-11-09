@@ -63,7 +63,8 @@ typedef struct {
   uint8_t ta[4][7];
   uint32_t tamask;
   char alias[32];
-  uint32_t nlc, nemb, ncsbk, nrd, ngol, nmid, nmok;
+  uint32_t nlc, nemb, ncsbk, nmid, nmok;
+  uint32_t nrd, ngol, ntry, ndrop;     /* in this order: D off's counts */
   /* the last good TACT: its burst (grid point of the sync) and slot; the pending burst's sync,
      the voice's slot */
   uint32_t tsj, psj;
@@ -298,7 +299,10 @@ NOINLINE static void dx_poll(dx_t *x, ds_t *d) {
       if (err > 3) continue;
       x->ngol++;
       dx_cach(x, d, P, c, inv, q.sj);
-      if (x->pend) continue;                                /* one waiting: only its slot and timing */
+      if (x->pend) {                                        /* one waiting: only its slot and timing */
+        x->ndrop += (0x4Eu >> (st & 15)) & 1;                /* a data type 1 2 3 6: lost */
+        continue;
+      }
       x->dtype = (int)(st & 15), x->cc = (int)(st >> 4);
       x->slot = dx_slotof(x, q.sj), x->psj = q.sj;
       if (x->dtype == 1 || x->dtype == 2 || x->dtype == 3 || x->dtype == 6)
@@ -390,7 +394,7 @@ DX_COLD static char *dx_house(dx_t *x, char *line) {
     return p == line ? 0 : p;
   }
   if (!x->pend) return 0;
-  x->pend = 0;
+  x->pend = 0, x->ntry++;
   if (!x->slot) x->slot = dx_slotof(x, x->psj);             /* a later burst's TACT, if its own missed */
   for (j = 0; j < 196; j++) hb[j] = x->soft[j] >= 0;          /* the hard bits: db_soft's signs */
   db_bptc196(hb, by);

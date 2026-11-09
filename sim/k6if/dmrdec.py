@@ -603,6 +603,33 @@ def voice_call_symbols(cc=1, tg=91, src=3112345, superframes=4, alias=None, seed
     return np.concatenate(out)
 
 
+def csbk_bits(by10, mask):
+    """10 bytes + their CRC (init 0, inverted, masked: 0xA5A5 a CSBK, 0xCCCC a data header) ->
+    the 196 BPTC bits"""
+    c = crc_ccitt(by10, 0, 0xFFFF) ^ mask
+    by = list(by10) + [c >> 8, c & 255]
+    return bptc196_encode(np.array([(b >> (7 - i)) & 1 for b in by for i in range(8)], np.uint8))
+
+
+def data_packet_symbols(cc=1, dst=311999, src=3100001, npre=5, nblk=8, idle_s=0.3, seed=0):
+    """a repeater's unconfirmed data packet on slot 1 (slot 2 idle), as 440.925's GPS reports
+    come: npre CSBK preambles (0x3D, counting down the bursts to follow), a data header (DPF 2,
+    SAP 3), nblk rate-1/2 blocks (random here), then idle; as 4800/s symbols"""
+    rng = np.random.default_rng(seed)
+    ds = bits(-np.array(dmr.PAT["bs"]))
+    a = [dst >> 16 & 255, dst >> 8 & 255, dst & 255, src >> 16 & 255, src >> 8 & 255, src & 255]
+    s1 = [burst_bits(cc, 3, csbk_bits([0x3D, 0, 0x80, npre - k + nblk] + a, 0xA5A5), ds, rng=rng)
+          for k in range(npre)]
+    s1.append(burst_bits(cc, 6, csbk_bits([0x02, 0x30] + a + [0x80 | nblk, 0], 0xCCCC), ds, rng=rng))
+    s1 += [burst_bits(cc, 7, rng.integers(0, 2, 196), ds, rng=rng) for _ in range(nblk)]
+    s1 += [burst_bits(cc, 9, rng.integers(0, 2, 196), ds, rng=rng) for _ in range(int(idle_s / 0.06))]
+    out = []
+    for b in s1:
+        out.append(bits_to_symbols(b))
+        out.append(bits_to_symbols(burst_bits(cc, 9, rng.integers(0, 2, 196), ds, tc=1, rng=rng)))
+    return np.concatenate(out)
+
+
 # ---- a stream of bursts: polarity, voice superframes, calls ----
 
 def stream_polarity(y, syncs, layout="dpp", sps=SPS):
