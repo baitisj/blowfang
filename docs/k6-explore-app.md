@@ -115,6 +115,10 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   step and measures ks=5885 (2026-11-09). Not the cause: the detector's CPU (its hot path in SRAM,
   PR #19, halved `busy` and left `lost` at 30 a step) or the ring's size (4,096 bytes, PR #20's
   first try: the same). Still open; the `DMR diag` line says which check fires and why.
+  `c/k6/mod/xdmrlisten.c` is the same listen (xlisten + xdmr, the EXPLORE image's code) as a RAM
+  module, ring and states in its scratch: 9.0 KB, so a voice image's 11,776-byte block, not
+  EXPLORE's 5,376. It listens 60 s on 440.925 and says the same DMR end / rate / diag lines, so
+  the detector can be measured and changed on the radio without a flash.
 - **DMR by default** (Jeff 2026-11-08: "if we figure out a repeater is dmr we can mute by default
   until listening to it for a longer duration reveals that it's not actually a dmr repeater"): a
   row marked DMR, on the candidate (`EX_F_DMR`) or in the saved entry (`RT_F_DMR`), starts every

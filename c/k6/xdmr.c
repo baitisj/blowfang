@@ -221,7 +221,11 @@ static void xd_ctcss(xd_t *s) {
 }
 
 int xd_step(xd_t *s, xl_t *x) {
+#ifdef XD_RING_EXT
+  uint32_t *ring = s->ring, t, t1, ms, ms0, i;  /* the xdmrlisten module's: in its scratch */
+#else
   uint32_t ring[XD_RSZ / 4], t, t1, ms, ms0, i;
+#endif
   xd_run_t r;
   char line[48], *p = line;
   int res;

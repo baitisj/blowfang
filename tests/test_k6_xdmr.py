@@ -67,7 +67,8 @@ def stream(s, cn0, pre_s, post_s, seed=1):
     return ib, a, a + len(bits)
 
 
-def listen(s, run_s=3, cn0=60.0, pre_s=0.0, post_s=0.5, level=-85, tone=0, known=False):
+def listen(s, run_s=3, cn0=60.0, pre_s=0.0, post_s=0.5, level=-85, tone=0, known=False, built=None,
+           scratch=4096):
     """-> (DMR transmissions, say lines (ms, text), REG_47 writes (ms, value), stack bytes)"""
     import k6_live_emu as le
 
@@ -90,9 +91,9 @@ def listen(s, run_s=3, cn0=60.0, pre_s=0.0, post_s=0.5, level=-85, tone=0, known
 
     w47, at = [], []
 
-    code, entry = build(run_s, known)
+    code, entry = built or build(run_s, known)
     ib, on, off = stream(s, cn0, pre_s, post_s)
-    e = Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=run_s + 1.0)
+    e = Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=run_s + 1.0, scratch=scratch)
     e.rssi = lambda: level if on <= e.sample_now() < off else -120
     # paint 8 KB under the stack: the 2 KB ring and the listener's state are on it
     lo = e.sp0 - 8192
@@ -192,3 +193,33 @@ def test_a_known_dmr_row_opens_for_fm_voice_after_the_clear_time():
     t_open = next((t for t, v in w47 if v == OPEN), None)
     assert w47[0][1] == SHUT and t_open is not None and 3000 <= t_open <= 3300, w47
 
+
+
+def build_module(run_s):
+    """c/k6/mod/xdmrlisten.c, the same listen as a RAM module (ring and states in the scratch)"""
+    with tempfile.TemporaryDirectory() as d:
+        w = os.path.join(d, "w.c")
+        with open(w, "w") as f:
+            f.write(f'#define RUN_S {run_s}u\n#include "{K6}/mod/xdmrlisten.c"\n')
+        return k6mod.build(w)
+
+
+def test_xdmrlisten_module_mutes_a_repeaters_dmr_off_the_stack():
+    """the module (for measuring the detector on the radio without a flash) hears what the
+    EXPLORE listen hears, fits a voice image's 11,776-byte block, keeps the ring off the ~3 KB
+    module stack, and refuses EXPLORE's 5,376-byte block with a line saying why"""
+    pytest.importorskip("unicorn")
+    sy, _ = dmr.bs_symbols(2.0, ("voice", "idle"), seed=7)
+    s, _ = dmr.dmr_baseband(sy, pre_s=0.0, post_s=0.0)
+    built = build_module(3)
+    n, said, _, stack = listen(s, run_s=3, built=built, scratch=(11776 - 24 - len(built[0])) & ~3)
+    txt = "\n".join(ln for _, ln in said)
+    print(len(built[0]), stack, txt)
+    assert n == 1, txt
+    _, end = line(said, "DMR end")
+    assert int(re.search(r"lost=(\d+)", end)[1]) <= 3, end
+    assert line(said, "DMR diag e=")[1] is not None, txt
+    assert stack < 1536, stack
+    n, said, _, _ = listen(s, run_s=3, built=built, scratch=(5376 - 24 - len(built[0])) & ~3 if
+                           5376 - 24 > len(built[0]) else 0)
+    assert n == (1 << 32) - 6 and said[0][1].startswith("xdmr scratch "), said

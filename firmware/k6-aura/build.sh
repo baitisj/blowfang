@@ -327,6 +327,7 @@ vectab         # level 1, is 0x08000000's vector table the live one (hal::txdog)
 wsprbcn
 wspriq
 wsprtx
+xdmrlisten     # level 2, EXPLORE's listen + DMR detector as a module (voice images), docs/k6-explore-app.md
 xtalstep
 EOF
 )
