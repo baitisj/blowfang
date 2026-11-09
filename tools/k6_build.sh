@@ -186,8 +186,10 @@ if [ "${K6_VOICE:-1}" = 0 ]; then
 fi
 # K6_LIBEXTRA: objects the compiler needs beside the library (gcc's Thumb-1 switch helpers)
 LIBOBJS="$LIBOBJS ${K6_LIBEXTRA:-}"
+# the images' memcpy family (c/k6/k6_mem.c): in the archive only, the bench links shim.c's
+$CC $CFLAGS -Oz -fno-builtin -c "$ROOT/c/k6/k6_mem.c" -o "$OUT/k6_mem.o"
 rm -f "$OUT/libsotto_k6.a"
-$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS
+$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS "$OUT/k6_mem.o"
 echo "built $OUT/libsotto_k6.a"
 # no bench for the EXPLORE image's library: it has no decoder to time
 [ "${K6_VOICE:-1}" = 0 ] && exit 0

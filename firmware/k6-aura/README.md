@@ -540,7 +540,8 @@ path that doesn't run can't lock up the radio.
 **First playback on the radio (2026-11-04).** After good 16-byte packets, the first
 auto-playback hung the K6 before its playback loop, and only pulling the battery cleared it.
 The image now prints `K6 STEP ...` lines through playback, so the serial report shows how far
-it got. A Rust panic prints `K6 PANIC file:line message` and reboots the radio instead of hanging.
+it got. A Rust panic prints `K6 PANIC at a b c d build=...` (return addresses on the stack, innermost
+first; `llvm-addr2line -fipe out/NAME.elf a b c d` names them) and reboots the radio instead of hanging.
 A CPU fault should print `K6 FAULT pc=... lr=...` and reboot. That only works if the
 bootloader's HardFault handler forwards to ours, though: this MCU has no VTOR, and the
 exception vectors belong to the bootloader. Either way, the last `K6 STEP` line says how far
