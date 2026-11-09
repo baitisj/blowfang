@@ -284,7 +284,7 @@ index 0000000..55c4d31
 +//! the calibration transmit.
 +//!
 +//! Keys: MENU play (again), EXIT leave (or stop playback), UP/DOWN volume,
-+//! 1 PHY D/F, 2 frames L/S, 3 RX invert, 4 pre-emphasis, 5 1200/2400 baud
++//! 1 PHY D/F, 2 frames XL/L, 3 RX invert, 4 pre-emphasis, 5 1200/2400 baud
 +//! (profile D), 6 raw packet bytes on the screen (hiss image: the hiss band off and
 +//! on, an A/B on the speaker), * clear the message, PTT transmit the calibration packet
 +//! (twice in profile D, then twice in F).
@@ -1571,7 +1571,7 @@ index 0000000..55c4d31
 +    /// typing a frequency (#), in kHz like Aura's VFO entry; RAM only, never saved
 +    pub freq_entry: bool,
 +    pub phy_ffsk: bool,
-+    /// key 2: profile XL (128-byte packets, 20 frames) instead of L (64 bytes, 8 frames)
++    /// key 2: profile XL (128-byte packets, 20 frames, the power-on default) or L (64 bytes, 8 frames)
 +    pub xl: bool,
 +    /// key 5: 2400 baud (D: direct FSK; F: FFSK 1200/2400 Hz tones)
 +    pub baud_2400: bool,
@@ -1767,7 +1767,7 @@ index 0000000..55c4d31
 +            chip_ok: false,
 +            cb: 0,
 +            phy_ffsk: true, // F: the mode that works over the IC-7100's USB audio
-+            xl: false,
++            xl: true, // XL from power-on: every sotto 1200/600/400 send uses it (2026-11-09)
 +            baud_2400: false,
 +            f2400_var: 0,
 +            reg2b_base: None,
@@ -4514,10 +4514,10 @@ index 0000000..55c4d31
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..91a4e00
+index 0000000..0586129
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,1863 @@
+@@ -0,0 +1,1959 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -4589,6 +4589,7 @@ index 0000000..91a4e00
 +        pub listens: u8,
 +        pub heard_s: u16,
 +        pub clean: u8,
++        pub dmr_n: u8,
 +    }
 +    #[repr(C)]
 +    pub struct Ex {
@@ -4815,6 +4816,11 @@ index 0000000..91a4e00
 +const RT_F_CALL_USER: u16 = 0x0010;
 +const RT_F_DMR: u16 = 0x0020;
 +const RT_F_NAME_USER: u16 = 0x0008;
++/// saved by the explorer on its own (DMR on EX_DMR_SAVE_N listens), not by Save (rt.h)
++const RT_F_AUTO: u16 = 0x0080;
++/// ex_dmr_heard results (explore.h)
++const EX_DMR_CLEARED: i32 = 1;
++const EX_DMR_SAVE: i32 = 2;
 +const RT_C_FROM_CW: u8 = 0x08;
 +const RT_C_TWICE: u8 = 0x10;
 +/// xs_step / xl_step results
@@ -4884,6 +4890,8 @@ index 0000000..91a4e00
 +    beacon_n: u8,
 +    /// key 3 pressed once on a saved row: a second press deletes its table entry
 +    del_armed: bool,
++    /// key 6 pressed once: a second press deletes every auto-saved entry (RT_F_AUTO)
++    adel_armed: bool,
 +    dirty: bool,
 +    last_draw: u16,
 +    msg: [u8; 21],
@@ -4946,6 +4954,7 @@ index 0000000..91a4e00
 +    beacon_ms: 0,
 +    beacon_n: 0,
 +    del_armed: false,
++    adel_armed: false,
 +    dirty: true,
 +    last_draw: 0,
 +    msg: [0; 21],
@@ -5366,7 +5375,7 @@ index 0000000..91a4e00
 +    }
 +    // EXIT counts presses, not repeats: on the bench one held EXIT armed, left, and its next
 +    // repeat opened EXPLORE again from VOICE MSG (2026-11-07 18:20)
-+    if matches!(ev.key, KeyId::Exit | KeyId::Digit3) && !matches!(ev.kind, KeyEventKind::Single) {
++    if matches!(ev.key, KeyId::Exit | KeyId::Digit3 | KeyId::Digit6) && !matches!(ev.kind, KeyEventKind::Single) {
 +        return;
 +    }
 +    let t = st();
@@ -5376,6 +5385,9 @@ index 0000000..91a4e00
 +    }
 +    if ev.key != KeyId::Digit3 {
 +        t.del_armed = false;
++    }
++    if ev.key != KeyId::Digit6 {
++        t.adel_armed = false;
 +    }
 +    match t.view {
 +        // the arrows move along the list while the automatic listen goes on, wrapping at
@@ -5444,6 +5456,7 @@ index 0000000..91a4e00
 +                note(if t.auto { "AUTO ID ON" } else { "AUTO ID OFF" });
 +            }
 +            KeyId::Digit3 => delete(app, syst),
++            KeyId::Digit6 => delete_auto(app, syst),
 +            KeyId::Digit9 => {
 +                t.auto_spk = !t.auto_spk;
 +                note(if t.auto_spk { "AUTO ID SPEAKER ON" } else { "AUTO ID SPEAKER OFF" });
@@ -5728,9 +5741,13 @@ index 0000000..91a4e00
 +    // the row's DMR mark: set by any DMR, cleared after EX_CLEAN_N automatic listens of
 +    // EX_CLEAN_S or more with none (a listen by hand never counts: it may sit on dead air)
 +    let secs = if t.auto_now { now_ms().wrapping_sub(t.auto_start_ms) / 1000 } else { 0 };
-+    let cleared = unsafe { ffi::ex_dmr_heard(&mut t.ex, t.hz, dmr as i32, secs) } != 0;
++    let h = unsafe { ffi::ex_dmr_heard(&mut t.ex, t.hz, dmr as i32, secs) };
++    let cleared = h == EX_DMR_CLEARED;
 +    if cleared {
 +        say(format_args!("K6 EX dmr clear {}", t.hz));
++    }
++    if h == EX_DMR_SAVE && t.rt_res >= 0 {
++        auto_save();
 +    }
 +    if t.rt_res < 0 || (tone == 0 && !dmr && !cleared) {
 +        return;
@@ -5745,6 +5762,27 @@ index 0000000..91a4e00
 +    } else if k == RT_TONE_DIFFERS {
 +        note("TONE DIFFERS FROM SAVED");
 +    }
++}
++
++/// DMR heard on a second listen at a row not in the table (Jeff 2026-11-09: "saving a DMR
++/// channel table to SPI after two listens makes sense"): a new entry marked RT_F_AUTO, so it
++/// starts muted after the next power-up too; key 6 twice deletes them all, key 3 twice one.
++/// Inside ctx_on (side_end).
++fn auto_save() {
++    let t = st();
++    let p = unsafe { ffi::ex_find(&mut t.ex, t.hz) };
++    if p.is_null() {
++        return;
++    }
++    let mut r: RtRec = unsafe { core::mem::zeroed() };
++    unsafe { ffi::ex_to_rt(p, &mut r) };
++    r.flags |= RT_F_AUTO | RT_F_DMR;
++    let slot = unsafe { ffi::rt_put(&mut t.rt, &mut r) };
++    if slot >= 0 {
++        unsafe { ffi::ex_know(&mut t.ex, t.hz) };
++    }
++    say(format_args!("K6 EX autosave {} id={} slot={} live={}", t.hz, r.id, slot, t.rt.live));
++    note(if slot >= 0 { "DMR SAVED (6 6: DEL)" } else { "DMR SAVE FAILED" });
 +}
 +
 +/// An automatic listen ended: the next pick waits for a whole pass, and the time it took counts
@@ -5955,6 +5993,64 @@ index 0000000..91a4e00
 +    let mut b: TextBuf<21> = TextBuf::new();
 +    if r >= 0 {
 +        write!(b, "DELETED ({} in table)", t.rt.live).ok();
++    } else {
++        write!(b, "DELETE FAILED {}", r).ok();
++    }
++    note(b.as_str());
++}
++
++/// Key 6 twice: every entry the explorer saved on its own (RT_F_AUTO) goes, for leaving a
++/// repeater's area (Jeff 2026-11-09: "we should be able to delete these entries in case we
++/// move out of the repeater's area"); an entry Saved by hand since is the user's and stays
++fn delete_auto(app: &mut App, syst: &mut SYST) {
++    let t = st();
++    if t.rt_res < 0 {
++        note("NO TABLE");
++        return;
++    }
++    if !t.adel_armed {
++        t.adel_armed = true;
++        note("6 AGAIN: DEL AUTO DMR");
++        return;
++    }
++    t.adel_armed = false;
++    ctx_on(app, syst);
++    let mut n = 0u32;
++    let mut r = 0;
++    // at most 128 batches of 8: more than the table's ~960 slots
++    'outer: for _ in 0..128 {
++        // a batch of ids first, then the deletes: rt_next walks slots, which a delete changes
++        let mut ids = [(0u16, 0u32); 8];
++        let mut k = 0;
++        let mut rec: RtRec = unsafe { core::mem::zeroed() };
++        let mut slot = -1;
++        while k < ids.len() {
++            slot = unsafe { ffi::rt_next(&mut t.rt, slot, &mut rec) };
++            if slot < 0 {
++                break;
++            }
++            if rec.flags & RT_F_AUTO != 0 {
++                ids[k] = (rec.id, rec.rx_hz);
++                k += 1;
++            }
++        }
++        if k == 0 {
++            break;
++        }
++        for &(id, hz) in &ids[..k] {
++            r = unsafe { ffi::rt_delete(&mut t.rt, id) };
++            if r < 0 {
++                break 'outer;
++            }
++            unsafe { ffi::ex_unknow(&mut t.ex, hz) };
++            n += 1;
++        }
++    }
++    ctx_off();
++    say(format_args!("K6 EX delauto n={} r={} live={}", n, r, t.rt.live));
++    let mut b: TextBuf<21> = TextBuf::new();
++    if r >= 0 {
++        write!(b, "DELETED {} ({} LEFT)", n, t.rt.live).ok();
 +    } else {
 +        write!(b, "DELETE FAILED {}", r).ok();
 +    }
