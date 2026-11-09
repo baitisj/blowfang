@@ -48,11 +48,31 @@ Where the docs say `c/sotto_enc` or `c/sotto_dec`, build them with `make -C sott
 ```sh
 make -C sotto/c VARIANT=v3.7 fixed PYTHON=false   # the codec's host decoders the tests use
 make -C c/k6                                       # the K6 library's host builds
-python -m pytest -q -n auto tests/                 # needs numpy scipy soundfile pytest pytest-xdist unicorn capstone
+python -m pytest -q -n auto tests/                 # needs numpy scipy soundfile pytest pytest-xdist unicorn capstone (CI adds pytest-split)
 sh firmware/k6-aura/build.sh                       # the radio images (Rust + clang/lld); see its README
 ```
 
 CI (`.github/workflows/k6-firmware.yml`) runs the same and keeps each image as an artifact.
+
+### Iterating quickly
+
+While working on one area, run only its test file; most finish in seconds:
+
+```sh
+python -m pytest -q tests/test_k6_air.py tests/test_k6_air_cases.py   # on-air recordings, about 2 s
+python -m pytest -q -n auto tests/test_k6_ifpager.py                  # an emulated-M0 module, about 1 min
+python -m pytest -q -k "not on_m0 and not emulated" tests/test_k6_ifrx.py   # skip the emulated sessions
+```
+
+CI splits the host tests into four shards that run side by side, so a full run takes about
+2.5 minutes. Each shard's share comes from `tests/durations.json` (pytest-split). A new test
+counts as average until that file is refreshed, so after adding a test that takes more than
+about 20 s, refresh it:
+
+```sh
+python -m pytest -q -n auto --store-durations --durations-path tests/durations.json \
+    $(grep -o 'tests/test_[a-z0-9_]*\.py' .github/workflows/k6-firmware.yml)
+```
 
 ## History
 
