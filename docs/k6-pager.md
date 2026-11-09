@@ -89,6 +89,48 @@ with the receiver firmware. The test vectors in that spec are in `tests/test_k6.
 | 1200 baud, XL, stream | 880 ms | 400 ms | 35 s |
 | 2400 baud, XL, stream | 440 ms | 400 ms | 18 s |
 
+## Live talk-through (`tools/k6_talk.py`)
+
+*2026-11-09. Code: `modem/k6live.py`, `tools/k6_talk.py`. Tests: `tests/test_k6_live.py`. Not on
+the air yet.*
+
+Speak into a microphone on hamlet and the K6 plays it about 6 s later, for as long as you talk:
+
+```
+python3 tools/k6_talk.py                         # until Ctrl-C, at most --seconds (120; max 540)
+python3 tools/k6_talk.py --in speech.wav         # a file, paced as if spoken
+python3 tools/k6_talk.py --in speech.wav --out send.wav   # no radio: the send as audio
+```
+
+- **One open-ended message.** parec feeds `sotto_enc -1200 - -` (unbuffered), and every 80
+  frames (3.2 s of speech at depth 4) make one interleave group of 4 XL packets with total =
+  0xFFFF in their headers. The K6 streams it through its ring (the vlr/vlrh images stream by
+  default, and the send starts with a `stream-on` control packet anyway) and plays each group
+  while the next one arrives.
+- **Keeping up.** A group's 4 packets take 2.63 s on air at F/1800 against 3.2 s of speech
+  (0.82). Group 0 is held back 0.5 s (`--slack`), so every later group arrives 0.5 s before
+  the K6 needs it. Sotto 2400 (1.64) and depth 4 with parity (1.02) can't keep up and are
+  refused.
+- **Between groups** the carrier carries pseudo-random filler with no 0x55 run and no sync
+  word (noise, to the K6's receiver), and, while the next group is more than a packet away, the
+  last group's packets again. The repeats are duplicates to the K6, and they keep its 2 s
+  end-of-stream timer from running out between a slow codec's groups (sotto 400 at depth 1:
+  2.4 s of speech a packet; the longest gap between packets stays under 1.6 s).
+- **The end.** Ctrl-C (or `--seconds`, or the file's end) pads the group being filled with zero
+  frames (energy 0, as quiet as sotto gets), sends it and 300 ms of tail. The K6 plays to the end
+  of that group. `sp_stream_end` now ends an open-ended stream there
+  (`c/k6/sotto_pager.c` `update_avail`); images built before it keep waiting after the last
+  group, silent, until EXIT or the next message.
+- **The bench rules.** One key-up through `k6_bench` (PTT lock, bench owner, simplex), only when
+  the rig reads `--freq` (440.850). A CW ID goes first unless one went out in the last minute,
+  and again at the end, and a session is at most 9 minutes. The run is saved to
+  `$BLOWFANG_WORK/runs/talk-<UTC>/` (the frames sent, and the timeline). The Claude allow list
+  template asks before every run, since it puts the room on the air.
+- **Latency** is a group's speech, the slack and the group's air time: about 6.3 s at depth 4,
+  3.5 s at depth 2 (a lost packet then costs every other 40 ms slot for 1.6 s) and 2.0 s at depth
+  1 (a lost packet costs 0.8 s of speech outright). Sotto 400 at depth 1 starts about 3.6 s
+  after the talker.
+
 ## Two ways to put the bits on air
 
 | | `--phy D` (primary): direct NRZ 2-FSK | `--phy F` (fallback): FFSK 1200/1800 Hz tones |
