@@ -1,0 +1,22 @@
+#!/bin/sh
+# `clang` for the K6 builds and tests when the Arm Toolchain for Embedded is in use
+# (docs/k6-compilers.md): with tools/k6_cc/bin first on PATH and K6_ATFE set to ATfE's bin
+# directory, every M0 compile (--target=thumb..., and -print-resource-dir, which the builds use
+# for the M0's headers) goes to ATfE's clang, and host compiles go to the next clang on PATH.
+# Without K6_ATFE everything goes to the next clang on PATH. SPDX-License-Identifier: MIT
+HERE=$(cd "$(dirname "$0")" && pwd)
+m0=
+if [ -n "$K6_ATFE" ]; then
+  for a; do
+    case "$a" in --target=thumb*|--target=arm*|-print-resource-dir) m0=1 ;; esac
+  done
+fi
+[ -n "$m0" ] && exec "$K6_ATFE/clang" "$@"
+# the next clang on PATH that isn't this one
+IFS=:
+for d in $PATH; do
+  [ "$d" = "$HERE" ] && continue
+  [ -x "$d/clang" ] && exec "$d/clang" "$@"
+done
+echo "tools/k6_cc/bin/clang: no other clang on PATH" >&2
+exit 127

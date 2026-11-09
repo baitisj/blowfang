@@ -1,0 +1,28 @@
+#!/bin/sh
+# One compiler per file for tools/k6_build.sh's K6_CC (tools/k6_cc/compare.sh): the file's last -O flag
+# picks it. HOT_CC compiles the speed files (-O2, the decoder's hot loops), COLD_CC the size files
+# (-Os, -Oz); both default to clang. COLD_OS replaces -Os for the cold files (e.g. -Oz), HOT_O
+# replaces -O2 and HOT_EXTRA is added to the hot files' flags (e.g. -fno-unroll-loops). Assembly always goes to clang. SPDX-License-Identifier: MIT
+HOT_CC=${HOT_CC:-clang}
+COLD_CC=${COLD_CC:-clang}
+CRES=$($HOT_CC -print-resource-dir)
+for a; do [ "$a" = -print-resource-dir ] && { echo "$CRES"; exit 0; }; done
+last=
+for a; do case "$a" in -O*) last=$a ;; esac; done
+case "$last" in -Os|-Oz) cc=$COLD_CC ;; *) cc=$HOT_CC ;; esac
+case "$*" in *.s) cc=clang ;; esac
+res=$("$cc" -print-resource-dir)
+set -- "$@" --END--
+while [ "$1" != --END-- ]; do
+  a=$1; shift
+  case "$a" in
+    -Os) [ "$last" = -Os ] && a=${COLD_OS:--Os} ;;
+    -Oz) [ "$last" = -Oz ] && a=${COLD_OZ:--Oz} ;;
+    -O2) [ "$last" = -O2 ] && a=${HOT_O:--O2} ;;
+    "$CRES/include") a="$res/include" ;;
+  esac
+  set -- "$@" "$a"
+done
+shift
+[ "$cc" = "$HOT_CC" ] && [ -n "$HOT_EXTRA" ] && set -- "$@" $HOT_EXTRA
+exec $cc "$@"

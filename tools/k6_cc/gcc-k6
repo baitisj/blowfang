@@ -1,0 +1,13 @@
+#!/bin/sh
+# arm-none-eabi-gcc behind clang's command line, for tools/k6_build.sh's K6_CC (tools/k6_cc/compare.sh):
+# drops --target=..., and answers -print-resource-dir with gcc's own header directory.
+# K6_GCC picks the gcc (default arm-none-eabi-gcc). SPDX-License-Identifier: MIT
+GCC=${K6_GCC:-arm-none-eabi-gcc}
+for a; do [ "$a" = -print-resource-dir ] && { dirname "$($GCC -print-file-name=include)"; exit 0; }; done
+set -- "$@" --END--
+while [ "$1" != --END-- ]; do
+  a=$1; shift
+  case "$a" in --target=*) ;; *) set -- "$@" "$a" ;; esac
+done
+shift
+exec $GCC "$@"

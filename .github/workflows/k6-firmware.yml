@@ -3,6 +3,10 @@
 # The sotto codec comes from the submodule at sotto/ (c/fixed and the c/sotto_* headers are
 # symlinks into it), so every checkout here takes submodules: true.
 name: K6 pager firmware
+env:
+  # the Arm Toolchain for Embedded release the M0 builds use (docs/k6-compilers.md)
+  ATFE_VERSION: 22.1.0
+
 on:
   # Everything in this repository is K6 firmware or its tooling, so every push to main and every
   # PR runs it (no path filters).
@@ -39,6 +43,26 @@ jobs:
       - run: pip install numpy scipy soundfile pytest pytest-xdist pytest-split unicorn capstone
       - name: clang and lld (the modules' builds and their emulated runs)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq clang lld llvm
+      # Every M0 compile (the C library, the RAM modules, the tests' module builds) uses the Arm
+      # Toolchain for Embedded's clang (docs/k6-compilers.md): tools/k6_cc/bin/clang sends
+      # --target=thumb... compiles there and host compiles to Ubuntu's clang
+      - name: Arm Toolchain for Embedded (cached)
+        id: atfe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/atfe
+          key: atfe-${{ env.ATFE_VERSION }}
+      - name: Arm Toolchain for Embedded (download)
+        if: steps.atfe-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/atfe
+          curl -sSL "https://github.com/arm/arm-toolchain/releases/download/release-$ATFE_VERSION-ATfE/ATfE-$ATFE_VERSION-Linux-x86_64.tar.xz" \
+            | tar -C ~/atfe -xJ
+      - name: Arm Toolchain for Embedded (on PATH for M0 compiles)
+        run: |
+          echo "K6_ATFE=$HOME/atfe/ATfE-$ATFE_VERSION-Linux-x86_64/bin" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/tools/k6_cc/bin" >> "$GITHUB_PATH"
+          "$HOME/atfe/ATfE-$ATFE_VERSION-Linux-x86_64/bin/clang" --version | head -1
       # The weekly run (sotto canary): the codec at sotto main instead of the pinned commit, so a
       # codec change that breaks the K6 shows up before anyone bumps the submodule.
       - name: sotto main (scheduled runs only)
@@ -126,6 +150,26 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq clang lld llvm
           rustup toolchain install stable --profile minimal --target thumbv6m-none-eabi
+      # Every M0 compile (the C library, the RAM modules, the tests' module builds) uses the Arm
+      # Toolchain for Embedded's clang (docs/k6-compilers.md): tools/k6_cc/bin/clang sends
+      # --target=thumb... compiles there and host compiles to Ubuntu's clang
+      - name: Arm Toolchain for Embedded (cached)
+        id: atfe-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/atfe
+          key: atfe-${{ env.ATFE_VERSION }}
+      - name: Arm Toolchain for Embedded (download)
+        if: steps.atfe-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/atfe
+          curl -sSL "https://github.com/arm/arm-toolchain/releases/download/release-$ATFE_VERSION-ATfE/ATfE-$ATFE_VERSION-Linux-x86_64.tar.xz" \
+            | tar -C ~/atfe -xJ
+      - name: Arm Toolchain for Embedded (on PATH for M0 compiles)
+        run: |
+          echo "K6_ATFE=$HOME/atfe/ATfE-$ATFE_VERSION-Linux-x86_64/bin" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/tools/k6_cc/bin" >> "$GITHUB_PATH"
+          "$HOME/atfe/ATfE-$ATFE_VERSION-Linux-x86_64/bin/clang" --version | head -1
       - name: build ID (the commit the images report as build=)
         id: bid
         run: |
