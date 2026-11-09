@@ -136,3 +136,41 @@ million missed their 62.5 us slot. The report said it ran 4,779 ms: the module c
 once a second to keep the core's count, but the core sums the run time only in `ms()` and
 `delay_us()`, so 96 s wrapped. It calls `ms()` now. Two telemetry parts held only the last say
 lines; use `--telemetry 3`. Nothing on hamlet hears the K6's speaker, so there is no recording.
+
+## The BLOWFANG alarm clock (alarm)
+
+`c/k6/mod/alarm.c` (2026-11-09, from the thread clean-up) is the MIDI player with an alarm in
+front: `midi.c` built with `MIDI_ALARM`, module API level 8 (the screen at 6, the LED at 7). It
+reads the core's UTC clock (`clock_get`, set by `aisclk` or `aprsclk`: docs/k6-aprs-clock.md),
+waits for its time, then plays its songs as `midi` does. Receive side only: it never keys.
+
+```text
+ BLOWFANG ALARM
+UTC 06:58:30
+alarm 07:00 UTC
+in 00:01:30
+clock +-0.4 s
+hold a key: cancel
+```
+
+- The screen is redrawn once a second. The countdown is to the next 07:00, so an alarm whose time
+  has just passed is a day away.
+- It polls the clock every 100 ms and rings within 0.1 s of its time. The clock's own error is
+  the bound on line 5 (AIS gave about 1 ms; it grows 1 ms every 4 s, 250 ppm, until the next fix).
+- A key held for a second cancels it (-2). Once it rings, a press skips a song and a hold stops,
+  as in `midi`.
+- The time lives in the module, so no compiler is needed on hamlet:
+  `python3 tools/k6_midi.py alarm mod-alarm.bin alarm.bin --at 07:00 [SONG ...]` sets it (and the
+  songs, as `patch` does). CI's `mod-alarm.bin` has no time and refuses to run (-7).
+- It refuses with no clock (-6: run `aisclk` or `aprsclk` first) and on an image before level 8
+  (-8). While it waits the pager hears no packets, as with any module (the PC stop signal of
+  `c/k6/mod/k6_stop.h` could end it from hamlet once that lands).
+- Serial: `alarm at 07:00 utc now 06:58:30 w=400` (then every 10 minutes), `alarm ring`, then
+  midi's lines.
+
+On the bench: `aisclk` (or `aprsclk`) first, `clkget` to see the clock, then
+`python -m modem.k6 mod alarm.wav alarm.bin --api-level 8 --key-file ~/.config/sotto/k6-mod.key`
+and play it to the K6. Tests: `tests/test_k6_alarm.py` (the countdown screen, ringing on time
+and playing sample for sample as the model, tomorrow's alarm, a key cancelling, the refusals,
+and the tool), on the emulated M0 with a modelled core clock (`run(clock=...)` in
+tests/test_k6_i2s.py).
