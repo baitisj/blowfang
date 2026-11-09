@@ -114,7 +114,13 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   never measured (that takes 40 ms without a resync). The same build without txdog loses ~0.4 a
   step and measures ks=5885 (2026-11-09). Not the cause: the detector's CPU (its hot path in SRAM,
   PR #19, halved `busy` and left `lost` at 30 a step) or the ring's size (4,096 bytes, PR #20's
-  first try: the same). Still open; the `DMR diag` line says which check fires and why.
+  first try: the same). The cause was the FD6818 reads between waits (td_read's REG_0B + REG_0C
+  pair), measured by RAM modules on the radio: 734 us a pair with txdog, two ring laps. Two
+  things doubled them: MEM_MODE 3 (txdog's SRAM table) turns the flash prefetch off
+  (`pfprobe_m2`), and the bootloader leaves SysTick's interrupt on, so every 1 us bit-bang delay
+  ended in an exception (`fdirq`, `fdtick`). PR #23 maps the table only while keyed and clears
+  TICKINT at boot: 197 us a pair, and `xdmrlisten` lost 0.03 a step with sync hits (2026-11-09
+  23:09Z), against ~2 a step before txdog. The `DMR diag` line says which check fires and why.
   `c/k6/mod/xdmrlisten.c` is the same listen (xlisten + xdmr, the EXPLORE image's code) as a RAM
   module, ring and states in its scratch: 9.0 KB, so a voice image's 11,776-byte block, not
   EXPLORE's 5,376. It listens 60 s on 440.925 and says the same DMR end / rate / diag lines, so
