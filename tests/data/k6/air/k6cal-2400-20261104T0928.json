@@ -1,0 +1,19 @@
+{
+ "file": "k6cal-2400-20261104T0928.flac",
+ "what": "the K6's own CAL burst at 2400 baud as the IC-7100 heard it (FM-D, USB audio): two D/2400 then two F/2400 spec test packets",
+ "when": "2026-11-04 09:28 UTC",
+ "image": "f190a46",
+ "source": "9.6-12.4 s of the bench recording, samples unchanged",
+ "checks": [
+  {
+   "decoder": "fsk",
+   "opts": {"phy": "D", "baud": 2400, "payload": "L"},
+   "expect": {"good": 2, "messages": [66]}
+  },
+  {
+   "decoder": "fsk",
+   "opts": {"phy": "F", "baud": 2400, "payload": "L"},
+   "expect": {"good": 2, "messages": [66]}
+  }
+ ]
+}

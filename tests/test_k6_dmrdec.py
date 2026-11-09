@@ -287,6 +287,35 @@ def test_dmrrx_module_on_the_emulated_k6():
     assert lost and lost[-1] == 0, e.said
 
 
+def test_dmrrx_module_reads_a_data_packet():
+    """a GPS-style packet (5 CSBK preambles, a data header, 8 blocks) through the emulated
+    dmrrx at 52 dB-Hz with the radio's slow register reads: every preamble and the header, none
+    dropped while another waited (on 440.925, 2026-11-09, the one header came while
+    housekeeping's line was "D on" and was lost), and D off's counts"""
+    import shutil
+    if not (shutil.which("clang") and shutil.which("ld.lld")):
+        pytest.skip("needs clang and ld.lld")
+    pytest.importorskip("unicorn")
+    import test_k6_dmr as T
+    import k6_live_emu as le
+    from sim.k6if import frontend as fe
+    src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "c", "k6", "mod", "dmrrx.c")
+    code, entry = T.build([("RUN_S", "3u"), ("S_MS", "1000u")], src)
+    _, (ib, on, off) = k6_counts(dd.data_packet_symbols(seed=1, idle_s=1.0), 52.0)
+    e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=6, stack_win=7000,
+               scratch=(11776 - 24 - len(code)) & ~3, fd_us=300)
+    e.rssi = lambda: -60 if on <= e.sample_now() < off else -125
+    e.run()
+    txt = "\n".join(e.said)
+    print(txt)
+    k = [ln for ln in e.said if ln.startswith("K TS1 3d0080")]
+    h = [ln for ln in e.said if ln.startswith("H TS1 023004c2bf2f4d61")]
+    assert len(k) == 5 and len(h) == 1, txt
+    off_ln = next(ln for ln in e.said if ln.startswith("D off "))
+    n = dict(kv.split("=") for kv in off_ln.split()[3:-1])
+    assert n["t"] == "6" and n["d"] == "0", off_ln
+
+
 def test_dmrscore_against_a_key(tmp_path):
     """tools/k6_dmrscore.py: the K6's lines lined up with the answer key by themselves, a
     right call, a missed one, a wrong line, a stray one, a data header, the alias"""

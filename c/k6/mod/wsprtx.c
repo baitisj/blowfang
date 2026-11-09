@@ -40,16 +40,20 @@
                                                             mark: starting now" if none came)
      K6 MOD say wspr next 480 s                              (a beacon, between frames)
      K6 MOD say wspr busy, slot skipped                     (a beacon: the channel wasn't clear)
+     K6 MOD say wspr stopped by the PC after 2 sent         (k6_stop.h's two carriers, between frames)
    and returns the frames sent, or a negative error:
      -1  the image has no level-3 transmitter      -2  not on WSPR_HZ
      -3  tx_on refused                             -4  a key was pressed (keyed down at once)
      -5  the core keyed down partway (time up)      -7  the channel stayed busy (WSPR_WAIT_MS)
+     -8  the PC's stop signal (tools/k6_bench.py stop: two short carriers; k6_stop.h), heard
+         while waiting for the sync mark or a slot (not while transmitting)
 
    Build: python -m modem.k6 mod out.wav c/k6/mod/wsprtx.c --api-level 3 --key-file KEY
    (or CI's mod-wsprtx.bin; mod-wsprbcn.bin is the beacon build). SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 3
 #include "../k6_mod.h"
 #include "wsprtx_msg.h"   /* WSPR_TEXT, WSPR_TONES[162] */
+#include "k6_stop.h"      /* the PC's stop signal */
 
 #ifndef WSPR_HZ
 #define WSPR_HZ 440850000u
@@ -164,12 +168,13 @@ static int keyed(const k6_api_t *api) {
    next slot in 7:58  /  TX [=====     ]  /  ID AG7EW  /  waiting for sync
    sent 1 of 6        /  PC: k6_wspr.py sync
    on the UTC grid    /  else start in 2:24
-   hold a key to stop */
+   key or PC: stop */
 enum { UI_SYNC, UI_WAIT, UI_TX, UI_ID };
 typedef struct {
   uint32_t until;   /* UI_SYNC, UI_WAIT: the countdown's end (ms()) */
   uint16_t k;       /* UI_TX: symbols sent */
   uint8_t phase, sent, synced;
+  k6stop_t stop;    /* the PC's stop signal, fed while waiting */
 } ui_t;
 
 static char *mss(char *p, uint32_t s) {     /* "7:58", no divide */
@@ -211,18 +216,28 @@ static void ui(const k6_api_t *api, const ui_t *u) {
     api->lcd_text(3, l);
     api->lcd_text(4, u->synced ? "on the UTC grid" : WSPR_SYNC_MS ? "no sync mark" : "");
   }
-  api->lcd_text(5, "hold a key to stop");
+  api->lcd_text(5, "key or PC: stop");
   api->lcd_flush();
 }
 
-/* until() with the screen's countdown redrawn every second */
-static int wait_ui(const k6_api_t *api, uint32_t t, const ui_t *u) {
+/* the RSSI to the stop signal; -8 when it is complete */
+static int heard_stop(const k6_api_t *api, ui_t *u) {
+  return k6stop_feed(&u->stop, api->ms(), KM_RSSI_DBM(api->fd_read(0x67))) ? -8 : 0;
+}
+
+/* until() with the screen's countdown redrawn every second and the stop signal fed every 100 ms */
+static int wait_ui(const k6_api_t *api, uint32_t t, ui_t *u) {
   int r;
-  while ((int32_t)(t - api->ms()) > 1000) {
-    ui(api, u);
-    if ((r = until(api, api->ms() + 1000u)) != 0) return r;
+  uint32_t now, shown = api->ms() - 1000u;
+  while ((int32_t)(t - (now = api->ms())) > 0) {
+    if (now - shown >= 1000u) {
+      shown = now;
+      ui(api, u);
+    }
+    if ((r = until(api, (int32_t)(t - now) > 100 ? now + 100u : t)) != 0) return r;
+    if ((r = heard_stop(api, u)) != 0) return r;
   }
-  return until(api, t);
+  return 0;
 }
 
 /* the channel clear for WSPR_CLEAR_MS: 0, -4 on a key, -7 if it is busy after wait_ms */
@@ -267,7 +282,8 @@ static int mcw(const k6_api_t *api) {
 
 #if WSPR_SYNC_MS
 /* the sync mark: a carrier held for at least half a second, then dropped. *td = the first ms()
-   it read clear (polled every 5 ms); 0, -4 on a key, -7 if none came in WSPR_SYNC_WAIT_MS */
+   it read clear (polled every 5 ms); 0, -4 on a key, -7 if none came in WSPR_SYNC_WAIT_MS.
+   The stop signal's first carrier passes for a mark; wait_ui hears the second one */
 static int sync(const k6_api_t *api, uint32_t *td, ui_t *u) {
   uint32_t t0 = api->ms(), up = 0, now, shown = t0 - 1000u;
   u->until = t0 + WSPR_SYNC_WAIT_MS;
@@ -277,6 +293,7 @@ static int sync(const k6_api_t *api, uint32_t *td, ui_t *u) {
       shown = now;
       ui(api, u);
     }
+    if (heard_stop(api, u)) return -8;
     if (KM_RSSI_DBM(api->fd_read(0x67)) >= WSPR_CLEAR_DBM) {
       if (!up) up = now | 1;
     } else if (up) {
@@ -356,7 +373,7 @@ int k6_main(const k6_api_t *api) {
     r = sync(api, &td, &u);
     u.phase = UI_WAIT;
     u.synced = !r;
-    if (r == -4) return r;
+    if (r == -4 || r == -8) goto out;
     next = r ? api->ms() + KEYUP_MS : td + WSPR_SYNC_MS; /* dropped WSPR_SYNC_MS before a slot */
     if (r) api->say("wspr no sync mark: starting now");
   }
@@ -371,7 +388,7 @@ int k6_main(const k6_api_t *api) {
     }
     u.until = next;
     u.k = 0;
-    if ((r = wait_ui(api, next - KEYUP_MS, &u)) != 0) return r;
+    if ((r = wait_ui(api, next - KEYUP_MS, &u)) != 0) goto out;
     r = clear(api, 200u);                       /* 1 s clear, then key-up for the slot's tones */
     if (r == -4) return r;
     if (r) {
@@ -396,4 +413,11 @@ int k6_main(const k6_api_t *api) {
     api->say(line);
   }
   return sent;
+out:
+  if (r == -8) {
+    p = dec(put(line, "wspr stopped by the PC after "), (uint32_t)sent);
+    put(p, " sent")[0] = 0;
+    api->say(line);
+  }
+  return r;
 }

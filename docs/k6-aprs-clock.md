@@ -158,8 +158,10 @@ Both are inside their bounds. The bound grew 84 ms in 337 s, the 250 ppm it is s
 clock carried across module runs ten and fifteen minutes after the last fix. Log:
 `tests/data/k6/air/clkget-20261109T0543Z.log.gz` (on the AIS thread's branch).
 
-Next uses: the pager screen can show UTC, and the WSPR and FT8 modules can start on their slots
-from `clock_get` instead of the bench's CW ID.
+Uses: the VOICE MSG screen shows UTC (`hh:mm:ssZ` on its fourth line, in place of the build)
+once a fix is in, and the alarm module (`mod-alarm.bin`, docs/k6-midi.md) plays a tune at a set
+time. Next: the WSPR and FT8 modules can start on their slots from `clock_get` instead of the
+bench's CW ID.
 
 ## Bench
 
