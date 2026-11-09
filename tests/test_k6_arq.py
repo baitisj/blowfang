@@ -67,7 +67,7 @@ def test_cli_arq_upload_and_reports(tmp_path):
     code.write_bytes(bytes(150))
     w = tmp_path / "up.wav"
     r = subprocess.run([sys.executable, "-m", "modem.k6", "mod", str(w), str(code), "--key-file", str(key),
-                        "--serial", "321", "--xfer", "7", "--phy", "F", "--baud", "1800", "--arq",
+                        "--serial", "321", "--xfer", "7", "--phy", "F", "--baud", "1800", "--payload", "L", "--arq",
                         "--telemetry", "3", "--copies", "1"], cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert "reply asked" in r.stderr
