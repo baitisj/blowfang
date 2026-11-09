@@ -42,6 +42,10 @@ If you'd rather keep the rules to the sotto checkout only, put the same JSON in
 | `python3 tools/k6_update.py IMAGE ... --trigger "sh ~/blowfang-work/bin/k6-reset-trigger.sh" --window 0.6` | Flashing, only when the last `--trigger` is the reset script (`tools/k6-reset-trigger.sh`, installed there), which sends the reset packet through `k6_bench.py send`: it checks the frequency, takes the PTT lock and sends the CW ID when one is due. The tool writes to the cable only after `K6 RESET`, while the bootloader is listening. |
 | `make -C c/k6`, `git fetch origin ...`, `git checkout FETCH_HEAD`, `mkdir -p ~/blowfang-work/...`, `unzip -o ~/Downloads/aura-pager-*.zip ...`, `date +%s` | Housekeeping used in the bench keys. |
 
+`python3 tools/k6_talk.py ...` (live talk-through) always asks: it puts the room's microphone on
+the air for as long as it runs. It keys through `k6_bench` like the rest (PTT lock, bench owner,
+CW ID before and after) and refuses unless the rig reads 440.850.
+
 Reading files (`grep`, `tail`, `cat`, `head`) is already allowed by Claude Code itself.
 
 ## What still prompts
