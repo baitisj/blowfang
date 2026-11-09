@@ -2,7 +2,7 @@
 """The K6's AIS sentences (c/k6/mod/aisships.c says each frame as !AIVDM) out of a serial log,
 to a chart plotter: OpenCPN, for one, takes NMEA over UDP (Connections: UDP, port 10110).
 
-  tail -F ~/sotto-work/runs/<run>/serial.log | python3 tools/k6_aivdm.py --udp 127.0.0.1:10110
+  tail -F ~/blowfang-work/runs/<run>/serial.log | python3 tools/k6_aivdm.py --udp 127.0.0.1:10110
   python3 tools/k6_aivdm.py LOG                print the sentences only
 
 A line counts when it holds a whole sentence with a good checksum, whatever comes before it (the

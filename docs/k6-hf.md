@@ -54,7 +54,7 @@ the wrong place. A hung PLL shows as a flat line in `hflo`.
 ## Running it (hamlet)
 
 ```sh
-cd ~/sotto
+cd ~/blowfang
 python3 tools/k6_rxmap.py map hf hflo --bin mod-rxmap.bin --key-file ~/.config/sotto/k6-mod.key   # ~30 s + ~10 s
 python3 tools/k6_hf.py plan
 python3 tools/k6_hf.py probe --bin mod-hfprobe.bin --key-file ~/.config/sotto/k6-mod.key          # ~10 s

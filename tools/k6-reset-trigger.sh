@@ -1,12 +1,12 @@
 #!/bin/sh
 # Transmit the K6 reset control packet (action 7, F/1800) through the IC-7100: the --trigger for
-#   python3 tools/k6_update.py IMAGE --trigger "sh ~/sotto-work/bin/k6-reset-trigger.sh" --window 0.6
+#   python3 tools/k6_update.py IMAGE --trigger "sh ~/blowfang-work/bin/k6-reset-trigger.sh" --window 0.6
 # k6_bench.py send takes the PTT lock, checks the IC-7100 is on 70 cm and on the K6's frequency
 # (the last CFG in $K6LOG when that is set, else 440.850), and sends the CW ID first when one is
-# due. `python3 tools/k6_bench.py install` copies this script and k6_bench.py to $SOTTO_WORK/bin
-# (default ~/sotto-work/bin) and makes $SOTTO_WORK/state/reset.wav. Opens no serial port.
+# due. `python3 tools/k6_bench.py install` copies this script and k6_bench.py to $BLOWFANG_WORK/bin
+# (default ~/blowfang-work/bin) and makes $BLOWFANG_WORK/state/reset.wav. Opens no serial port.
 set -eu
-W=${SOTTO_WORK:-$HOME/sotto-work}
+W=${BLOWFANG_WORK:-$HOME/blowfang-work}
 B=$(dirname "$0")
 WAV=$W/state/reset.wav
 [ -f "$WAV" ] || python3 "$B/k6_bench.py" wavs

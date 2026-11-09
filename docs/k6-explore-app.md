@@ -247,7 +247,7 @@ apart.
 ## First bench check (2026-11-07 17:53-18:03 UTC, main ac2acdd)
 
 The flash took one OTA reset and booted into EXPLORE. The K6 only received; the IC-7100 sent
-three AG7EW CW IDs on 440.850. Log: `~/sotto-work/runs/explore-bench-1/serial.log` on hamlet.
+three AG7EW CW IDs on 440.850. Log: `~/blowfang-work/runs/explore-bench-1/serial.log` on hamlet.
 
 - **Sweep:** 70CM (928 bins) at about 1.1 s a pass, floors -104 to -111 dBm.
 - **Automatic Listen for ID:** it went to 440.850 by itself on the second and third IDs and
@@ -276,7 +276,7 @@ above.
 ## Bench 3: false 2 m hits after a listen (2026-11-07 20:22-20:33 UTC, main 8a8c677)
 
 The new header showed, but the K6 spent its time listening to 2 m noise. Log:
-`~/sotto-work/runs/explore-bench-3/serial.log`. Each time an automatic listen ended, about 22
+`~/blowfang-work/runs/explore-bench-3/serial.log`. Each time an automatic listen ended, about 22
 "new" 2 m carriers showed at once (146.900 to 147.990, -88 to -91 dBm, all against fl-101). The
 listener sat 2 minutes on one of them, and then the same thing happened again. 2 m's real floor
 was -93 (the first F0 line, at 20:27:14). Three faults locked together, all fixed in xscan:
@@ -380,7 +380,7 @@ line `K6 EX auto` now shows `heard=` and `max=`.
 
 The floor fix and the birdie fix worked: 2 m read -92 to -94 every minute, no 2 m phantoms, and
 144.000 was a spur on the first sweep (21:07:36), never picked. The AG7EW entry survived the
-reflash, and an ID sent at 21:11:32 decoded clean. Log: `~/sotto-work/runs/explore-bench-4/`.
+reflash, and an ID sent at 21:11:32 decoded clean. Log: `~/blowfang-work/runs/explore-bench-4/`.
 Two faults turned up around the keeper's ID at 21:09:24, both fixed in #122:
 
 - **The automatic listen on 440.850 ended after 3 s with the ID still on air.** A carrier keyed
@@ -393,7 +393,7 @@ Two faults turned up around the keeper's ID at 21:09:24, both fixed in #122:
 
 ## Birdies (2026-11-07)
 
-birdie-path-1 (hamlet `~/sotto-work/runs/birdie-path-1/`, hfprobe, RX only, the IC-7100 sending
+birdie-path-1 (hamlet `~/blowfang-work/runs/birdie-path-1/`, hfprobe, RX only, the IC-7100 sending
 PSK31 AG7EW TEST on 440.850 as a reference) read each birdie with the RX front end on and off
 (PA13 and PA14 low):
 

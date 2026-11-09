@@ -427,7 +427,7 @@ while 440.925 is busy, with the IC-7100 recording alongside for ground truth.
 ## Bench plan (receive only; done, kept for reruns)
 
 1. Real DMR first: the explorer thread's hamlet recorder rotates through 440.925 and is cutting
-   DMR and analog clips into `~/sotto-work/clips/dmr-real/`. The IC-7100's FM audio is
+   DMR and analog clips into `~/blowfang-work/clips/dmr-real/`. The IC-7100's FM audio is
    de-emphasised and band-limited (300-3000 Hz), so the clips check timing and framing, not
    the K6's discriminator. A flat (9600 bps DATA) output would be better if the rig offers one
    over USB.

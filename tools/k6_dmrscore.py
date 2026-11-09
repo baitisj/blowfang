@@ -1,7 +1,7 @@
 """Score the K6's DMR decode (dmrrx's serial lines) against the IC-7100's answer key
 (tools/k6_dmrwatch.py's JSONL) from the same stretch of time.
 
-  python tools/k6_dmrscore.py --key ~/sotto-work/runs/dmr-key.jsonl --log k6-serial.log
+  python tools/k6_dmrscore.py --key ~/blowfang-work/runs/dmr-key.jsonl --log k6-serial.log
   python tools/k6_dmrscore.py --key key.jsonl --log k6.log --start 2026-11-09T03:12:40Z
 
 dmrrx ends every line in " @" and its time since it started, in tenths of a second. The log

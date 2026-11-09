@@ -179,8 +179,8 @@ makes, so a quiet channel and a deaf demodulator look different.
 440.850 for 5 minutes). The IC-7100 sends three AG7EW stations whose stamps are hamlet's UTC at
 each frame's first bit:
 
-    python3 -m modem.aprs wav ~/sotto-work/runs/aprs-loop/loop.wav --now
-    sh tools/k6_send.sh ~/sotto-work/runs/aprs-loop/loop.wav
+    python3 -m modem.aprs wav ~/blowfang-work/runs/aprs-loop/loop.wav --now
+    sh tools/k6_send.sh ~/blowfang-work/runs/aprs-loop/loop.wav
 
 The first prints `start` (the time the stamps assume the audio starts) and each frame's end
 offset; the second prints `t0`, and the audio starts about 0.2 s after it (PTT settling). The

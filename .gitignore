@@ -7,18 +7,7 @@ vw_results_*.json
 build/
 .pytest_cache/
 *.flac
-!docs/samples/**/*.flac
-!docs/course/audio/*.flac
 !tests/data/k6/air/*.flac
-c/fixed/c55x/build*/
-c/fixed/c55x/run*/
-c/fixed/c55x/b3*/
-c/fixed/c55x/o_*/
-c/fixed/c55x/f8/
-c/fixed/c55x/f16/
-c/fixed/c55x/*.buildlog
-c/wasm/objfx/
-c/wasm/sotto_fx.wasm
 c/k6/host/
 c/k6/pager_host
 c/k6/host-lr/
@@ -51,8 +40,12 @@ c/k6/pager_host_vlr_cbs
 c/k6/pager_host_vlr_cbi
 firmware/k6-aura/out/
 firmware/k6-aura/lib/
-c/k6/build-vlr-rom/
 c/k6/build-vlrh-cbs/
 c/k6/host-vlrh/
 c/k6/pager_host_vlrh
-c/fixed/sotto_dec_fx_k6
+
+# never in this repository (the Forbidden files workflow checks it too)
+private/
+*.bin
+*.elf
+*.key

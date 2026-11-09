@@ -248,7 +248,7 @@ Both receive only, RF POWER 0 before and after.
   162.350-162.650 and 161.900-162.150 MHz in 2.5 kHz steps for 3 minutes, reading the chip's RSSI.
   Three NOAA weather carriers (162.425, .475, .525 MHz, -91 to -97 dBm on a -114 floor) read 10-20
   dB over the floor out to ±5 kHz and were back in the floor by ±7.5-10 kHz. That's the channel
-  filter the RSSI reading sits behind. (Files on hamlet: `~/sotto-work/runs/20261109T0507Z-ifskirt/`.)
+  filter the RSSI reading sits behind. (Files on hamlet: `~/blowfang-work/runs/20261109T0507Z-ifskirt/`.)
 - **The GP0 tap is much wider** (`aiscap_sweep` 9e28202, log `tests/data/k6/air/sweep2-20261109T0514Z.log.gz`).
   Tuned 0-200 kHz above the base station, the strongest bursts kept its 20.00 s cadence out to
   +60 kHz: r = 10-11 dB over the floor at +10, 12 at +20, 11 at +30, 9-10 at +40, 8 at +50, 7 at

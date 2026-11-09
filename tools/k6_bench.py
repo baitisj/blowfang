@@ -2,7 +2,7 @@
 """The hamlet bench's transmit rules in one place: the PTT lock, the CW ID keeper, and the state
 they share. Every tool that keys the IC-7100 goes through here (docs/hamlet-permissions.md).
 
-  python3 tools/k6_bench.py paths              where everything lives (SOTTO_WORK, default ~/sotto-work)
+  python3 tools/k6_bench.py paths              where everything lives (BLOWFANG_WORK, default ~/blowfang-work)
   python3 tools/k6_bench.py status             last CW ID, last data TX, the keeper, the lock
   python3 tools/k6_bench.py send WAV           key and play one WAV on 70 cm (sh tools/k6_send.sh)
          [--k6log LOG | --freq HZ]             ... and only if the rig matches the K6's last CFG / HZ
@@ -10,23 +10,23 @@ they share. Every tool that keys the IC-7100 goes through here (docs/hamlet-perm
   python3 tools/k6_bench.py idkeeper           the CW ID keeper (the k6-idkeeper user unit runs it)
   python3 tools/k6_bench.py wavs               (re)make the ID and K6 reset WAVs (needs the checkout)
   python3 tools/k6_bench.py install [--unit]   copy this file and the reset trigger into
-                                               $SOTTO_WORK/bin, make the WAVs, write the unit
+                                               $BLOWFANG_WORK/bin, make the WAVs, write the unit
 
-What they share, under $SOTTO_WORK/state/ (it outlives reboots, unlike a session's /tmp):
+What they share, under $BLOWFANG_WORK/state/ (it outlives reboots, unlike a session's /tmp):
   ptt.lock          flock: one keyer at a time, data or CW ID
   ptt.lock.last_tx  when the last data transmission ended (epoch s)
   ptt.lock.last_id  when the last CW ID ended
   txlog.txt         one line per data transmission: start, end, what
   cwid.wav          'AG7EW SOTTO TEST', MCW 800 Hz, 20 wpm, level 0.4
   reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset)
-and $SOTTO_WORK/logs/k6-cwid.txt, one line per CW ID (~/k6-cwid.txt links there).
+and $BLOWFANG_WORK/logs/k6-cwid.txt, one line per CW ID (~/k6-cwid.txt links there).
 
 The keeper (FCC 97.119): a session is active while a data TX ended less than 10 min ago. While
 active, it IDs when 9 min have passed since the last ID; 2 min after the last data TX it sends a
 final ID unless one came after it (but not for a TX over 30 min old, such as one from before a
 reboot). It only keys on 70 cm or 2 m, never anywhere else.
 
-Standard library only, so the copy in $SOTTO_WORK/bin keeps working whatever commit ~/sotto has
+Standard library only, so the copy in $BLOWFANG_WORK/bin keeps working whatever commit ~/blowfang has
 checked out. Opens no serial port: PTT goes through rigctld (/dev/ttyUSB0), never /dev/ttyUSB2.
 SPDX-License-Identifier: MIT
 """
@@ -56,8 +56,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # ---- where things live ----
 
 def work():
-    """$SOTTO_WORK, default ~/sotto-work: every bench file outside the checkout goes under it"""
-    return os.path.abspath(os.path.expanduser(os.environ.get("SOTTO_WORK") or "~/sotto-work"))
+    """$BLOWFANG_WORK, default ~/blowfang-work: every bench file outside the checkout goes under it"""
+    return os.path.abspath(os.path.expanduser(os.environ.get("BLOWFANG_WORK") or "~/blowfang-work"))
 
 
 def path(name):
@@ -73,12 +73,12 @@ def path(name):
 
 
 def repo():
-    """the sotto checkout (for modem.k6): this file's parent when it is in one, else $SOTTO_REPO
-    or ~/sotto"""
+    """the blowfang checkout (for modem.k6): this file's parent when it is in one, else $BLOWFANG_REPO
+    or ~/blowfang"""
     up = os.path.dirname(HERE)
     if os.path.isdir(os.path.join(up, "modem")):
         return up
-    return os.path.abspath(os.path.expanduser(os.environ.get("SOTTO_REPO") or "~/sotto"))
+    return os.path.abspath(os.path.expanduser(os.environ.get("BLOWFANG_REPO") or "~/blowfang"))
 
 
 def _read(name):
@@ -304,7 +304,7 @@ def write_wav(p, x, fs=48000):
 def make_wavs(only_id=False):
     r = repo()
     if not os.path.isdir(os.path.join(r, "modem")):
-        raise SystemExit(f"no sotto checkout at {r} to make the WAVs from: set SOTTO_REPO")
+        raise SystemExit(f"no blowfang checkout at {r} to make the WAVs from: set BLOWFANG_REPO")
     sys.path.insert(0, r)
     from modem import k6
     write_wav(path("cwid_wav"), k6.cw(ID_TEXT, 48000, 20, 800.0, 0.4))
@@ -319,7 +319,7 @@ def make_wavs(only_id=False):
 # ---- the commands ----
 
 def cmd_paths(a):
-    print("SOTTO_WORK", work())
+    print("BLOWFANG_WORK", work())
     for n in ("bin", "lock", "last_tx", "last_id", "txlog", "cwid_wav", "reset_wav", "keeper", "cwid_log"):
         print(f"{n:9s} {path(n)}{'' if os.path.exists(path(n)) else '  (missing)'}")
 
@@ -434,7 +434,7 @@ After=rigctld.service
 Wants=rigctld.service
 
 [Service]
-Environment=SOTTO_WORK={w}
+Environment=BLOWFANG_WORK={w}
 ExecStart=/usr/bin/python3 {os.path.join(w, 'bin', 'k6_bench.py')} idkeeper
 Restart=always
 RestartSec=10

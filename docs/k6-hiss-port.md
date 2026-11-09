@@ -459,7 +459,7 @@ fit. So 1200 messages longer than 13 s went at `--depth 4` on that image (`modem
 the 4 KB store back (below) the limit is the plain images' 25.6 s again.
 Decode times: 14.7-18.3 ms mean per 20 ms frame across the rates (Lynden, continuous speech,
 18.2-18.3 at every rate; the female voice 14.7), worst single frame 39.4 ms. `ram_free` while
-playing: 332 (600), 388 (1200), 588 (400) B. Run dir on hamlet: `~/sotto-work/runs/2026-11-07-hiss1/`.
+playing: 332 (600), 388 (1200), 588 (400) B. Run dir on hamlet: `~/blowfang-work/runs/2026-11-07-hiss1/`.
 
 **What Jeff heard (23:30 UTC, cable out).** The female and male clips were clean at all three rates.
 Every Lynden clip popped and snapped, at 600, 1200 and 400 alike, 1200 worst. Replayed from the

@@ -397,7 +397,7 @@ def main():
     r.add_argument("--no-refine", action="store_true")
     r.add_argument("--no-rows", action="store_true", help="no R lines (the waterfall), only S and the rest")
     r.add_argument("--rigctld", default="localhost:4532")
-    r.add_argument("--out", default=".", help="where the log goes (on hamlet: a run folder in ~/sotto-work/runs)")
+    r.add_argument("--out", default=".", help="where the log goes (on hamlet: a run folder in ~/blowfang-work/runs)")
     r.add_argument("--dry-run", action="store_true")
     d = sub.add_parser("decode")
     d.add_argument("logs", nargs="+")

@@ -148,7 +148,7 @@ def dmr_baseband(sym, on=None, f_off=0.0, pre_s=0.05, post_s=0.05):
 
 def speech(name="ears_p047_f", dur_s=None):
     import soundfile as sf
-    for d in (os.path.join(ROOT, "docs", "samples"), "/mnt/project-files/vocoder/samples-clean"):
+    for d in (os.path.join(ROOT, "sotto", "docs", "samples"), "/mnt/project-files/vocoder/samples-clean"):  # sotto submodule
         p = os.path.join(d, name + ".flac")
         if os.path.exists(p):
             x, fs = sf.read(p)

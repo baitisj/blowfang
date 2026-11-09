@@ -1,8 +1,8 @@
 """DMR answer key: decode receive recordings (the IC-7100's FM audio of 440.925) into one JSON
 line a call or data packet, so the K6's own DMR decoder can be scored against them later.
 
-  python tools/k6_dmrwatch.py ~/sotto-work/runs/*/*.wav -o ~/sotto-work/runs/dmr-key.jsonl
-  python tools/k6_dmrwatch.py --watch ~/sotto-work/runs/cwbench-20261108 -o key.jsonl
+  python tools/k6_dmrwatch.py ~/blowfang-work/runs/*/*.wav -o ~/blowfang-work/runs/dmr-key.jsonl
+  python tools/k6_dmrwatch.py --watch ~/blowfang-work/runs/cwbench-20261108 -o key.jsonl
 
 Files already in the output are skipped, so it can be rerun (or left in --watch) as the
 recorder adds cuts. Each line: file, its start time (UTC, from the name's 20261108T042456Z or
