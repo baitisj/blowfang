@@ -264,6 +264,15 @@ them only on 8 or more; `clkget` (level 8) says the clock. The emulator
     `K6 TXDOG key-up over its limit` at 19.4 s against 18 s, the carrier gone the same second,
     then `K6 TXDOG last boot: key-up ran 19403 ms, limit 18000 ms: rebooted`.
   - `remapspeed`: code runs as fast with SRAM at 0 as with flash (`rsp m3=00ca m2=00ca`).
+    Wrong conclusion, corrected 2026-11-09: both were slow. On a build without txdog it reads
+    `rsp m2=00b4 m3=00ca again=00c6`, so the first MEM_MODE change costs ~12% and it stays.
+    `acrprobe` found why: the change clears FLASH_ACR's PRFTBE (ACR reads 0x02, the bootloader
+    sets 0x12), and at 96 MHz a write won't set it again. Every txdog image ran flash code ~12%
+    slower (boot CB bench 40 us a read against 34) and its DMA ~9% slower (EXPLORE's DMR rate
+    ks=5389 against 5885), enough to starve EXPLORE's DMR detector: 30 samples lost per step
+    against 0.4, so it never heard DMR. txdog now changes MEM_MODE on HSI and turns PRFTBE back
+    on before SYSCLK goes back to the PLL (`mem_mode`), and says `K6 TXDOG acr <before> <after>`
+    at boot (before has bit 8 set; after should read 0x12 or 0x32).
 
   Why acd06ba looped is still open. It loops at every flash (again at 22:14Z), while
   `aura-pager-vlrh-txdogq` (vlrh-txdog without its USART1 lines, 61cc53a) boots and passes

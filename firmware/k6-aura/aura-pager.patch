@@ -7015,10 +7015,10 @@ index 0000000..37404d9
 +}
 diff --git a/src/hal/txdog.rs b/src/hal/txdog.rs
 new file mode 100644
-index 0000000..6923e0b
+index 0000000..6231bea
 --- /dev/null
 +++ b/src/hal/txdog.rs
-@@ -0,0 +1,308 @@
+@@ -0,0 +1,346 @@
 +//! Crash and stuck-transmitter backstop (2026-11-08: a module overran its stack, the report
 +//! key-up after it hung, and the K6 sent a bare carrier on 440.850 for 16 minutes).
 +//!
@@ -7066,6 +7066,10 @@ index 0000000..6923e0b
 +const V_TIM14: u32 = 16 + 19;
 +const RCC_APB2ENR: u32 = 0x4002_1018;
 +const SYSCFG_CFGR1: u32 = 0x4001_0000;
++const RCC_CR: u32 = 0x4002_1000;
++const RCC_CFGR: u32 = 0x4002_1004;
++const FLASH_ACR: u32 = 0x4002_2000;
++const ACR_PRFTBE: u32 = 1 << 4;
 +const TIM14_DIER: u32 = 0x4000_200C;
 +const TIM14_SR: u32 = 0x4000_2010;
 +const TIM14_CNT: u32 = 0x4000_2024;
@@ -7142,14 +7146,14 @@ index 0000000..6923e0b
 +        }
 +        wr(SRAM0 + 4 * V_HARDFAULT, rd(APP_VEC + 4 * V_HARDFAULT));
 +        wr(SRAM0 + 4 * V_TIM14, tim14 as unsafe extern "C" fn() as usize as u32);
-+        wr(SYSCFG_CFGR1, (cfgr1 & !3) | 3); // SRAM at address 0
++        mem_mode(cfgr1, 3); // SRAM at address 0
 +    });
 +    raw(b"K6 TXDOG remap", cfgr1, rd(4 * 15));
 +    let ok = rd(4 * V_HARDFAULT) == rd(SRAM0 + 4 * V_HARDFAULT)
 +        && rd(4 * V_TIM14) == rd(SRAM0 + 4 * V_TIM14)
 +        && rd(4 * V_HARDFAULT) != rd(BOOT_VEC + 4 * V_HARDFAULT);
 +    if !ok {
-+        wr(SYSCFG_CFGR1, cfgr1); // the bootloader's table again: leave everything as it was
++        cortex_m::interrupt::free(|_| mem_mode(cfgr1, cfgr1 & 3)); // the bootloader's table again
 +        return (note, cfgr1, false);
 +    }
 +    BOOT_CFGR1.store(cfgr1, Ordering::Relaxed);
@@ -7158,6 +7162,7 @@ index 0000000..6923e0b
 +    wr(TIM14_DIER, rd(TIM14_DIER) | 1); // update interrupt: one per wrap
 +    wr(NVIC_ISER, 1 << 19);
 +    raw(b"K6 TXDOG on", rd(4 * V_HARDFAULT), rd(4 * V_TIM14));
++    raw(b"K6 TXDOG acr", ACR_BOOT.load(Ordering::Relaxed), rd(FLASH_ACR));
 +    (note, cfgr1, true)
 +}
 +
@@ -7279,6 +7284,39 @@ index 0000000..6923e0b
 +    wr(n, NOTE_FAULT);
 +    raw(b"K6 FAULT pc lr", pc, lr);
 +    reset()
++}
++
++/// FLASH_ACR before the first MEM_MODE change, for the boot line
++static ACR_BOOT: AtomicU32 = AtomicU32::new(0);
++
++/// SYSCFG MEM_MODE = mode, with the flash prefetch kept on (interrupts off). On the K6 a
++/// MEM_MODE change clears FLASH_ACR's PRFTBE, and at 96 MHz the bit won't set again (sotto's
++/// acrprobe module, 2026-11-09: ACR read 0x02, a write of 0x12 stayed 0x02): flash code ran
++/// ~12% slower and DMA ~9% slower in every txdog image, enough to starve EXPLORE's DMR
++/// detector (30 lost per step against 0.4). So the change runs on HSI: SYSCLK to HSI, the
++/// mode, PRFTBE on again, SYSCLK back to the PLL (which stays locked throughout).
++fn mem_mode(cfgr1: u32, mode: u32) {
++    if ACR_BOOT.load(Ordering::Relaxed) == 0 {
++        ACR_BOOT.store(rd(FLASH_ACR) | 0x100, Ordering::Relaxed); // bit 8: read (ACR can be 0)
++    }
++    let mut n = 0u32;
++    wr(RCC_CR, rd(RCC_CR) | 1); // HSION (on from reset; made sure)
++    while rd(RCC_CR) & 2 == 0 && n < 100_000 {
++        n += 1;
++    }
++    let cfgr = rd(RCC_CFGR);
++    wr(RCC_CFGR, cfgr & !3); // SW = HSI
++    n = 0;
++    while rd(RCC_CFGR) & 0xC != 0 && n < 100_000 {
++        n += 1;
++    }
++    wr(SYSCFG_CFGR1, (cfgr1 & !3) | mode);
++    wr(FLASH_ACR, rd(FLASH_ACR) | ACR_PRFTBE);
++    wr(RCC_CFGR, cfgr); // SW as it was (the PLL)
++    n = 0;
++    while rd(RCC_CFGR) & 0xC != (cfgr & 3) << 2 && n < 100_000 {
++        n += 1;
++    }
 +}
 +
 +/// A line straight to USART1, waiting on each byte (with a time-out): from a fault or before
