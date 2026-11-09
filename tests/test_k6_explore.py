@@ -329,11 +329,38 @@ def test_dmr_mark_clears_only_after_long_clean_listens(lib):
     assert lib.ex_dmr_heard(E, hz, 0, 0) == 0 and x.find(hz).clean == 0   # by hand: never counts
     assert lib.ex_dmr_heard(E, hz, 0, 10) == 0 and lib.ex_dmr_heard(E, hz, 0, 120) == 0
     assert x.find(hz).clean == 2 and dmr()
-    assert lib.ex_dmr_heard(E, hz, 1, 30) == 0 and x.find(hz).clean == 0  # DMR again: start over
+    assert lib.ex_dmr_heard(E, hz, 1, 30) == 2 and x.find(hz).clean == 0  # DMR again: start over
+    # (and the second DMR listen on a row not in the table asks for the auto save)
     assert [lib.ex_dmr_heard(E, hz, 0, 20) for _ in range(3)] == [0, 0, 1]
     assert not dmr() and x.find(hz).clean == 0
     assert lib.ex_dmr_heard(E, 147_000_000, 1, 10) == 0          # no candidate there: nothing
-    assert ctypes.sizeof(kx.Cand) == 52                          # clean sits in the tail padding
+    assert ctypes.sizeof(kx.Cand) == 52                          # clean and dmr_n sit in the tail padding
+
+
+def test_dmr_auto_save_after_two_listens(lib):
+    # Jeff 2026-11-09: "saving a DMR channel table to SPI after two listens makes sense, but I
+    # think we should be able to delete these entries in case we move out of the repeater's area"
+    x = List(lib)
+    for hz in (440_925_000, 441_000_000, 442_100_000):
+        x.over(hz, 0, 20_000, -90)
+    E = ctypes.byref(x.e)
+    hz = 440_925_000
+    assert lib.ex_dmr_heard(E, hz, 1, 0) == 0                    # one listen: in RAM only
+    assert lib.ex_dmr_heard(E, hz, 0, 20) == 0                   # clean listens in between don't reset it
+    assert lib.ex_dmr_heard(E, hz, 1, 0) == 2                    # the second, even by hand: save
+    assert x.find(hz).dmr_n == 2
+    lib.ex_know(E, hz)                                           # the caller saved it
+    assert lib.ex_dmr_heard(E, hz, 1, 30) == 0                   # in the table: nothing more to save
+    lib.ex_unknow(E, hz)                                         # deleted by hand (key 3 or 6)
+    assert [lib.ex_dmr_heard(E, hz, 1, 30) for _ in range(3)] == [0, 0, 0]   # not again this session
+    assert x.find(hz).dmr_n == 6
+    hz2 = 441_000_000                                            # saved by hand before any DMR
+    lib.ex_know(E, hz2)
+    assert [lib.ex_dmr_heard(E, hz2, 1, 30) for _ in range(2)] == [0, 0]
+    hz3 = 442_100_000                                            # the count saturates
+    for _ in range(300):
+        lib.ex_dmr_heard(E, hz3, 1, 30)
+    assert x.find(hz3).dmr_n == 255
 
 
 def test_listen_for_id_picks_a_first_key_up_and_only_repeater_outputs(lib):

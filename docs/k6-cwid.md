@@ -202,7 +202,7 @@ then `r=3` on chunk 5), so no `--only` resend was needed.
 
 **Bench notes.**
 
-- This image boots with frames=L, so a run needs `ctl --set frames=XL` (sent as L) and an
+- This image boots with frames=L (images from 2026-11-09 boot with XL), so a run needs `ctl --set frames=XL` (sent as L) and an
   `--action none` confirm (sent as XL) before the XL module packets.
 - Send a station ID just before the first module, so the ID keeper doesn't key its own ID
   during a run.

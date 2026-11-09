@@ -341,6 +341,9 @@ static void update_avail(void) {
   if (ended || S.st.complete) a = S.st.total == 0xFFFF ? (long)(hi_group + 1) * fpg_now : S.st.stored;
   if (a > S.st.stored) a = S.st.stored;
   if (a > avail) avail = (int)a;
+  /* an open-ended stream (total 0xFFFF) that the sender has stopped ends after its last group,
+     not at 65,535 frames of waiting (tools/k6_talk.py) */
+  if (ended && S.st.total == 0xFFFF && play_end > avail) play_end = avail;
 }
 
 static int finish_packet(int seq, int was_new, unsigned before) {
@@ -576,6 +579,7 @@ void sp_play_start(void) {
   play_pos = 0;
   /* -1: the other codec's message, or no tables to decode with (sp_cb.h, sp_vlr.h) */
   play_end = S.st.have && MSG_PLAYS && TABLES_READY ? S.st.stored : -1;
+  if (ring) update_avail();         /* an open-ended stream already over: up to its last group */
   playing = 1;
   fill_good = -1, fill_left = 0;
   memset(emph1, 0, sizeof emph1), memset(emph2, 0, sizeof emph2);

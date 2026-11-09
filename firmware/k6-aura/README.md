@@ -165,8 +165,8 @@ The K6 takes the first copy whose CRC checks, in any byte order or polarity, so 
 get through even on D/1200, where errors build up later in a packet.
 
 ```
-python -m modem.k6 ctl ctl.wav --phy F --set frames=XL            # F/L -> F/XL
-python -m modem.k6 ctl ok.wav --phy F --payload XL                # confirm (no change)
+python -m modem.k6 ctl ctl.wav --phy F --payload L --set frames=XL   # F/L -> F/XL (older images)
+python -m modem.k6 ctl ok.wav --phy F                             # confirm (no change), XL
 python -m modem.k6 ctl ctl.wav --phy D --also F --set phy=F       # PHY unknown: D, then F
 python -m modem.k6 ctl play.wav --phy F --action play             # play the stored message
 ```
@@ -483,7 +483,9 @@ python -m modem.k6_harness listen --file k6.txt     # score a saved log again
 **Which image is running.** Every image reports its build: the sotto commit it was built
 from, then the UTC build time (`K6 BOOT build=72b6e3b-20261104T0555Z` at power-on, and
 `build=` at the end of each `CFG` line). The commit also shows on the VOICE MSG screen's
-fourth line, after `ok n bad n`. CI names the artifact `aura-pager-<commit>` and stores each
+fourth line, after `ok n bad n`, until a module (aisclk, aprsclk) sets the radio's clock: from
+then on that spot shows UTC as `hh:mm:ssZ` (until the next reboot). The serial lines keep the
+build either way. CI names the artifact `aura-pager-<commit>` and stores each
 .bin's SHA-256 next to it. `listen` and `sweep` print the build when it changes, and every
 `--log` line carries it. With `sweep --expect-build <commit>`, nothing is transmitted until the
 K6 reports that build, and the sweep stops if the K6 reboots into another one. Images from
@@ -613,7 +615,10 @@ only XL works on air so far, see below:
   uses key 5's rate, so a PTT press with F/2400 set, recorded on the IC-7100, shows what the
   chip really sends.
 - **Profile XL** (key 2): 128-byte packets with 20 frames, 120 of 128 bytes speech (L: 48 of
-  64). Timed reads and the re-arm rule work for it as for L.
+  64). Timed reads and the re-arm rule work for it as for L. Images from 2026-11-09 boot with
+  XL (key 2 switches to L); before that every boot came up at L, and an XL send to a freshly
+  booted radio stored nothing (the James run, 2026-11-09 14:17Z). `modem.k6` defaults to
+  `--payload XL` to match, and the bench's reset packet goes as XL, then L.
 - **Stream mode for whole messages** (key 7 pressed twice, or three times for REG_5D 0xFFE0):
   the chip is armed once, and the firmware searches every bit for the sync word, takes the
   payload and searches again, so the sender (`modem.k6 --stream`) puts only a sync word between

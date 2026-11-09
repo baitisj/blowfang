@@ -12,10 +12,10 @@ cwprobe-20261106T0506.log.gz is the probe run before it; its event log has REG_0
 for the start of the 13 wpm ID (A, then the first dashes of G), which pin down the detector's
 lag model that tests/test_k6_cwid.py uses (marks 10 ms long, spaces 10 ms short).
 
-k6cal-2400-20261104T0928.flac is the IC-7100's recording (FM-D, USB audio, 48 kHz) of the K6's
-own CAL burst at 2400 baud, 2026-11-04 09:28 UTC (image f190a46): two D/2400 then two F/2400
-test packets, sent by the FD6818 with its FIFO low byte first. modem.k6 rx must decode all four
-as spec test packet 0.
+k6cal-1200-20261104T0148.flac and k6cal-2400-20261104T0928.flac are the IC-7100's recordings
+(FM-D, USB audio) of the K6's own CAL bursts: the first one on 2026-11-04 at 01:48 UTC, two D/1200
+then two F/1200 test packets (44.1 kHz), and the 09:28 UTC one at 2400 baud (image f190a46,
+48 kHz). modem.k6 rx must decode all eight as spec test packet 0.
 
 None of these files hold firmware: serial text and audio only.
 Needs a C compiler, clang, ld.lld and unicorn for the module replay; numpy and soundfile for
@@ -37,6 +37,7 @@ from modem import k6mod  # noqa: E402
 AIR = os.path.join(ROOT, "tests", "data", "k6", "air")
 CWLISTEN_LOG = os.path.join(AIR, "cwlisten-20261106T0529.log.gz")
 CWPROBE_LOG = os.path.join(AIR, "cwprobe-20261106T0506.log.gz")
+CAL1200 = os.path.join(AIR, "k6cal-1200-20261104T0148.flac")
 CAL2400 = os.path.join(AIR, "k6cal-2400-20261104T0928.flac")
 CW_END_MS = 1200           # cwid.h: key up this long ends a transmission
 TONE_LO, TONE_STEP = 600, 50
@@ -226,32 +227,36 @@ def test_probe_edges_match_lag_model():
 
 # ---- the K6's own CAL burst, as the IC-7100 heard it ----
 
-def cal_audio():
+def cal_audio(path):
     sf = pytest.importorskip("soundfile")
-    if not os.path.exists(CAL2400):
+    if not os.path.exists(path):
         pytest.skip("no CAL recording in tests/data/k6/air")
-    x, fs = sf.read(CAL2400, dtype="float64")
+    x, fs = sf.read(path, dtype="float64")
     return (x if x.ndim == 1 else x[:, 0]), fs
 
 
-@pytest.mark.parametrize("phy", ["D", "F"])
-def test_k6_cal_burst_2400_decodes(phy):
-    """modem.k6 rx on the K6's own CAL burst: both packets of each PHY at 2400 baud decode as
-    spec test packet 0 (msg_id 0x42, frames 0-7), with their 16-bit words byte-swapped (the
-    FD6818 sends its FIFO low byte first); D arrives inverted, as on the bench (REG_59 bit 10)."""
+@pytest.mark.parametrize("path,baud,phy,swapped,gap", [
+    (CAL1200, 1200.0, "D", 2, 0.69), (CAL1200, 1200.0, "F", 2, 0.69),
+    (CAL2400, 2400.0, "D", 0, 0.41), (CAL2400, 2400.0, "F", 0, 0.41)])
+def test_k6_cal_burst_decodes(path, baud, phy, swapped, gap):
+    """modem.k6 rx on the K6's own CAL bursts: two packets of each PHY decode as spec test
+    packet 0 (msg_id 0x42, frames 0-7), D inverted (REG_59 bit 10). The first burst (01:48 UTC,
+    1200 baud) came from an image that packed its FIFO high byte first, so its 16-bit words
+    arrive byte-swapped (the FD6818 sends the low byte first; fixed in PR #30); the 09:28 one at
+    2400 baud is after that fix and needs no swap."""
     from modem import fsk, pager
     import types
     from modem import k6
-    x, fs = cal_audio()
-    asm, times = fsk.receive(x, fs, phy, 2400.0, pager.L)
+    x, fs = cal_audio(path)
+    asm, times = fsk.receive(x, fs, phy, baud, pager.L)
     good = [t for t in times if t[1]]
     assert len(good) == 2, times
     assert all(t[2] == (phy == "D") for t in good)
-    assert asm.bad == 0 and asm.swapped == 0
+    assert asm.bad == 0 and asm.swapped == swapped
     assert list(asm.messages) == [0x42]
     ref = pager.L.unpack(k6._test_payloads(types.SimpleNamespace(payload="L", message=False, repeat=1,
                                                                   codec="2400"))[0])
     assert asm.messages[0x42]["pk"] == {ref["seq"]: ref["frames"]}
-    # the two packets 410 ms apart, D before F
+    # the burst's two packets of this PHY, one packet time plus the gap apart
     starts = [t[0] for t in good]
-    assert 0.39 < starts[1] - starts[0] < 0.43
+    assert abs(starts[1] - starts[0] - gap) < 0.02, starts
