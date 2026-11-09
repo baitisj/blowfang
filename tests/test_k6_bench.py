@@ -18,7 +18,7 @@ spec.loader.exec_module(b)
 
 @pytest.fixture(autouse=True)
 def work(tmp_path, monkeypatch):
-    monkeypatch.setenv("SOTTO_WORK", str(tmp_path))
+    monkeypatch.setenv("BLOWFANG_WORK", str(tmp_path))
     monkeypatch.setattr(b, "play", lambda wav, device=None, dry_run=False, max_s=None: None)
     return tmp_path
 
@@ -52,15 +52,15 @@ class Rig:
 KEY = ["t", "V VFOA", "S 0 VFOA", "R 0", "r", "s", "T 1", "T 0"]
 
 
-def test_paths_follow_sotto_work(work):
+def test_paths_follow_blowfang_work(work):
     assert b.work() == str(work)
     assert b.path("lock") == os.path.join(str(work), "state", "ptt.lock")
     assert b.path("cwid_log") == os.path.join(str(work), "logs", "k6-cwid.txt")
 
 
-def test_default_is_sotto_work_in_home(monkeypatch):
-    monkeypatch.delenv("SOTTO_WORK")
-    assert b.work() == os.path.expanduser("~/sotto-work")
+def test_default_is_blowfang_work_in_home(monkeypatch):
+    monkeypatch.delenv("BLOWFANG_WORK")
+    assert b.work() == os.path.expanduser("~/blowfang-work")
 
 
 def test_key_and_play_records_data_and_id(work):
@@ -232,7 +232,7 @@ def test_installed_copy_needs_only_the_standard_library():
 def test_unit_runs_the_installed_copy(work):
     u = b.unit_text()
     assert f"ExecStart=/usr/bin/python3 {work}/bin/k6_bench.py idkeeper" in u
-    assert f"Environment=SOTTO_WORK={work}" in u and "Restart=always" in u
+    assert f"Environment=BLOWFANG_WORK={work}" in u and "Restart=always" in u
 
 
 def test_tools_key_through_the_bench():

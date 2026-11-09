@@ -1,0 +1,1 @@
+../sotto/c/sotto_lr_dec.inc

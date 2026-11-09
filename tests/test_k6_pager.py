@@ -216,8 +216,8 @@ def test_cs512_const_table_matches():
     """c/fixed/fx_cs512.inc (FX_CS512_CONST, the K6 build) is fx_cos512 packed as fx_cs512() does it."""
     import subprocess
     import sys as _sys
-    r = subprocess.run([_sys.executable, os.path.join(ROOT, "tools", "gen_cs512.py"), "--check"])
-    assert r.returncode == 0, "regenerate with python3 tools/gen_cs512.py"
+    r = subprocess.run([_sys.executable, os.path.join(ROOT, "sotto", "tools", "gen_cs512.py"), "--check"])  # sotto submodule
+    assert r.returncode == 0, "regenerate with python3 tools/gen_cs512.py in sotto"
 
 
 def run_control(packets, xl=False):

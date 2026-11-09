@@ -1,0 +1,4 @@
+[submodule "sotto"]
+	path = sotto
+	url = https://github.com/baitisj/sotto
+	ignore = dirty

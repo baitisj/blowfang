@@ -207,7 +207,7 @@ then `r=3` on chunk 5), so no `--only` resend was needed.
 - Send a station ID just before the first module, so the ID keeper doesn't key its own ID
   during a run.
 - The raw logs are in the repo, gzipped: `tests/data/k6/air/cwprobe-20261106T0506.log.gz` and
-  `cwlisten-20261106T0529.log.gz` (originals on hamlet under `~/sotto-work/logs/`).
+  `cwlisten-20261106T0529.log.gz` (originals on hamlet under `~/blowfang-work/logs/`).
 
 **Replayed in CI** (`tests/test_k6_air.py`). The listener's `CWID d` lines are the tone
 detector's own marks and spaces, so each run's REG_0B timeline can be rebuilt from them and fed

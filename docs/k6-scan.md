@@ -36,7 +36,7 @@ Each bin of a segment:
 ```
 python3 tools/k6_scan.py plan                     # segments, fit, estimated sweep times
 python3 tools/k6_scan.py run 2m --bin mod-scan.bin --key-file ~/.config/sotto/k6-mod.key \
-    --seconds 120 --out ~/sotto-work/runs/<run-folder>
+    --seconds 120 --out ~/blowfang-work/runs/<run-folder>
 python3 tools/k6_scan.py run 2mo 70a --seconds 300 ...   # two segments in turn
 python3 tools/k6_scan.py decode LOG --segments 2m --svg wf.svg --csv hits.csv
 python3 tools/k6_scan.py watch LOG                # live terminal waterfall from a growing log
@@ -150,13 +150,13 @@ segment floor read -94, the same as the first run's `F -93` (the bench's floor; 
   Also, a confirm that misses now raises that bin's quick floor to 3 dB under its read, which
   helps quick reads that jump about.
 
-The logs are on hamlet in `~/sotto-work/runs/explorer-scan-2/`.
+The logs are on hamlet in `~/blowfang-work/runs/explorer-scan-2/`.
 
 ## Third bench run (2026-11-07 08:37 UTC)
 
 The module was 9c296dd, CI run 42355911841 (3,516 B, sha256 c1c0e42a...). It had the row on the
 stack, the 1 s settle and `--no-rows`, but not yet the full-list fix. Logs:
-`~/sotto-work/runs/explorer-scan-3/`.
+`~/blowfang-work/runs/explorer-scan-3/`.
 
 - **2 m, 60 s, `--no-rows`:** `F0 -94 q-136`, `Z sw=62 bins=24800 ms=60978 bps=406 hot=1`,
   stack_free 1,140 B. Bin 0 lit up just the same with no R lines: `N 144.000 -72 fl-94 z1 b0`,
@@ -192,7 +192,7 @@ stack, the 1 s settle and `--no-rows`, but not yet the full-list fix. Logs:
 ## Fourth bench run (2026-11-07 08:49 UTC)
 
 The module was 55835eb (the full-list fix, but not yet the floor fix), CI run 42356625870, 3,516 B.
-Logs: `~/sotto-work/runs/explorer-scan-4/`.
+Logs: `~/blowfang-work/runs/explorer-scan-4/`.
 
 - **2 m, 60 s, `--no-rows`:** `F0 -93 q-135`, `Z sw=61 bins=24400 ms=60150 bps=405 hot=1`.
   144.000 again on every sweep (`T 144.000 n60 t0 -71 d1`), one H line a sweep.
@@ -209,7 +209,7 @@ Logs: `~/sotto-work/runs/explorer-scan-4/`.
 
 The module was f16ff0c, CI run 42357086797, 3,532 B. The K6 was on the new pager image fe25ec8
 (PR #108); the scan's environment is the same. 70 cm for 120 s. There were two CW IDs: the ID
-keeper's at 0.5 s in and ours at 40.5 s. Logs: `~/sotto-work/runs/explorer-scan-5/`.
+keeper's at 0.5 s in and ours at 40.5 s. Logs: `~/blowfang-work/runs/explorer-scan-5/`.
 
 - **The floor held at -105** (`F0 -105 q-141`) on every N line, through both -22 dBm IDs. The
   bench noise at 440.0-440.2 never came in as hits.
@@ -231,7 +231,7 @@ repeater-like entry, and about 1 s a sweep.
 The module was mod-scan.bin from CI on main 5cde22e (3,532 B), on the K6's usual image 4709d7e.
 It swept 440-445 MHz in 12.5 kHz bins for 1,800 s: `Z sw=1450 bins=580000 ms=1800805 bps=322
 hot=10`, sweep median 1,221 ms, settled floor -104 dBm, stack_free 1,052 B, 10 candidates and no
-spurs. Logs: `~/sotto-work/runs/explorer-scan-6/` (serial log, replay.txt, wf.svg, hits.csv).
+spurs. Logs: `~/blowfang-work/runs/explorer-scan-6/` (serial log, replay.txt, wf.svg, hits.csv).
 
 - **Real signals: two.** 440.925 at -90 to -92 dBm keyed every 2-5 minutes (13:17, 13:19, 13:29,
   13:34, 13:39; 7 overs, graded r), and 442.025 at -82 once (13:29, 2.6 s). Neither is ours.

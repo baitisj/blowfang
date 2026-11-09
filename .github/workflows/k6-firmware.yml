@@ -1,66 +1,43 @@
 # K6 voice pager: the receive library's host tests, then Aura (Baofeng UV-K6 firmware, Rust)
 # built with the pager patch, with its flash and RAM fit; the .bin is kept as a build artifact.
+# The sotto codec comes from the submodule at sotto/ (c/fixed and the c/sotto_* headers are
+# symlinks into it), so every checkout here takes submodules: true.
 name: K6 pager firmware
 on:
-  # Globs, one per line, so a new test or tool needs no edit here (and PRs don't collide on it).
+  # Everything in this repository is K6 firmware or its tooling, so every push to main and every
+  # PR runs it (no path filters).
   push:
     branches: [main]
-    paths:
-      - "c/k6/**"
-      - "c/fixed/**"
-      - "c/sotto.h"
-      - "c/sotto_lr_*"
-      - "c/sotto_vlr*"
-      - "firmware/k6-aura/**"
-      - "modem/fsk.py"
-      - "modem/k6*.py"
-      - "modem/pager.py"
-      - "modem/psk31.py"
-      - "sim/k6digi/**"
-      - "sim/k6if/**"
-      - "tests/data/k6/air/**"
-      - "tests/k6_live_emu.py"
-      - "tests/test_k6_*.py"
-      - "tests/test_psk31.py"
-      - "tools/k6_*"
-      - "tools/midi_songs/**"
-      - ".github/workflows/k6-firmware.yml"
   pull_request:
-    paths:
-      - "c/k6/**"
-      - "c/fixed/**"
-      - "c/sotto.h"
-      - "c/sotto_lr_*"
-      - "c/sotto_vlr*"
-      - "firmware/k6-aura/**"
-      - "modem/fsk.py"
-      - "modem/k6*.py"
-      - "modem/pager.py"
-      - "modem/psk31.py"
-      - "sim/k6digi/**"
-      - "sim/k6if/**"
-      - "tests/data/k6/air/**"
-      - "tests/k6_live_emu.py"
-      - "tests/test_k6_*.py"
-      - "tests/test_psk31.py"
-      - "tools/k6_*"
-      - "tools/midi_songs/**"
-      - ".github/workflows/k6-firmware.yml"
+  # weekly: the host tests against sotto main, not the pinned submodule (see sotto-canary below)
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
 
 jobs:
   host-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install numpy scipy soundfile pytest pytest-xdist unicorn capstone
       - name: clang and lld (the modules' builds and their emulated runs)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq clang lld llvm
+      # The weekly run (sotto canary): the codec at sotto main instead of the pinned commit, so a
+      # codec change that breaks the K6 shows up before anyone bumps the submodule.
+      - name: sotto main (scheduled runs only)
+        if: github.event_name == 'schedule'
+        run: |
+          git -C sotto fetch -q origin main
+          git -C sotto checkout -q FETCH_HEAD
+          git -C sotto log --oneline -1
       - name: host libraries the tests call
         run: |
-          make -C c VARIANT=v3.7 fixed PYTHON=false
+          make -C sotto/c VARIANT=v3.7 fixed PYTHON=false
           make -C c/k6
       # One pytest run over every test, spread over the runner's cores (-n auto, work stealing), so the long
       # emulated-M0 sessions (ifpager, ifrx, ft8wf, dmr, ifcal: 30-60 s each) run side by side.
@@ -70,6 +47,7 @@ jobs:
       - name: pager, IF modem, FT8 and modules on an emulated M0 (transmit rules, Morse RTX, IF tap, calibration, upload ARQ)
         run: |
           python -m pytest -q -n auto --dist worksteal --durations=8 \
+            tests/test_k6.py \
             tests/test_k6_air.py \
             tests/test_k6_ais.py \
             tests/test_k6_aprsclk.py \
@@ -111,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: toolchains (clang/lld for the C library, Rust for Aura)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq clang lld llvm

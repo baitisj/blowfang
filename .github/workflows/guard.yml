@@ -1,0 +1,32 @@
+# Files that must never be committed here: K6 bootloader dumps, Yaesu firmware, module signing
+# keys and built images (CI keeps those as artifacts). Add a pattern as one line.
+name: Forbidden files
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: no binaries, bootloaders, Yaesu images or keys
+        run: |
+          bad=$(git ls-files | grep -iE \
+            -e '\.bin$' \
+            -e '\.elf$' \
+            -e '\.hex$' \
+            -e '\.key$' \
+            -e '\.a$' \
+            -e 'boot\.bin' \
+            -e 'k6-boot' \
+            -e 'yaesu' \
+            -e 'ftm-?300' \
+            || true)
+          if [ -n "$bad" ]; then
+            echo "These files must not be in the repository:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "clean"
