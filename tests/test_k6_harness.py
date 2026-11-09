@@ -143,7 +143,7 @@ def test_sweep_with_fake_k6():
     import argparse
     ap = argparse.ArgumentParser()
     k6._tx_opts(ap)
-    a = ap.parse_args(["--phy", "F"])
+    a = ap.parse_args(["--phy", "F", "--payload", "L"])
     a.speeds, a.levels, a.repeat, a.message, a.settle, a.gap = "0,1", None, 3, False, 0.01, 0.0
     fake = FakeK6()
     out = []

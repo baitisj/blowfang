@@ -183,8 +183,9 @@ def _tx_opts(p):
                    help="--phy G: the lead's length in seconds (default 2.0). The K6's session starts "
                         "at the control packet (after its burst, before PR #108) and must lock on "
                         "the lead within 6 s")
-    p.add_argument("--payload", choices=("L", "XL", "S"), default="L",
-                   help="L: 64-byte packets, 8 frames; XL: 128-byte, 20 frames (K6 key 2); "
+    p.add_argument("--payload", choices=("L", "XL", "S"), default="XL",
+                   help="XL (default): 128-byte packets, 20 frames, as the K6 boots since 2026-11-09 "
+                        "(older images boot L); L: 64-byte, 8 frames (K6 key 2); "
                         "S: 16-byte (the K6 no longer takes it)")
     p.add_argument("--baud", type=float, default=None,
                    help="bit rate (default: the K6's default for --phy, F 1800 and D 1200; 2400 with "
@@ -406,7 +407,7 @@ def main(argv=None):
     r.add_argument("input")
     r.add_argument("output", nargs="?")
     r.add_argument("--phy", choices="DF", default="D")
-    r.add_argument("--payload", choices=("L", "XL", "S"), default="L")
+    r.add_argument("--payload", choices=("L", "XL", "S"), default="XL")
     r.add_argument("--stream", action="store_true", help="the packets were sent with --stream")
     r.add_argument("--codec", choices=tuple(pager.CODECS), default="2400",
                    help="the codec the packets carry (1200: magic 0xA9, 600: 0xAC, 400: 0xAD), as tx")

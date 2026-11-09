@@ -74,6 +74,8 @@ typedef struct {
   uint16_t heard_s;              /* seconds those listens lasted (ex_heard) */
   uint8_t clean;                 /* long automatic listens with no DMR since it was marked
                                     EX_F_DMR (ex_dmr_heard); in the struct's tail padding */
+  uint8_t dmr_n;                 /* listens that heard DMR (ex_dmr_heard, for the auto save);
+                                    the last byte of the tail padding: the size stays 52 */
 } ex_cand_t;
 
 typedef struct {
@@ -142,10 +144,17 @@ void ex_heard(ex_t *e, uint32_t hz, unsigned s);
    EX_F_DMR, and the next listens there start with the speaker shut (xd_known). An automatic
    listen of at least EX_CLEAN_S with no DMR counts towards clearing the mark; EX_CLEAN_N of
    them in a row clear it, and any DMR starts the count again. s: the listen's seconds (0 for a
-   listen by hand, which never counts: it may sit on a dead carrier). Returns 1 when this
-   listen cleared the mark (the caller clears the saved entry's RT_F_DMR too), else 0. */
+   listen by hand, which never counts: it may sit on a dead carrier). Returns EX_DMR_CLEARED
+   when this listen cleared the mark (the caller clears the saved entry's RT_F_DMR too).
+   Auto save (Jeff 2026-11-09: "saving a DMR channel table to SPI after two listens makes sense,
+   but ... we should be able to delete these entries in case we move out of the repeater's
+   area"): the EX_DMR_SAVE_N-th listen that heard DMR on a row not in the table returns
+   EX_DMR_SAVE, once a session (dmr_n counts on past it, so an entry deleted by hand isn't saved
+   again until the next start), and the caller saves it with RT_F_AUTO. Else EX_DMR_NONE. */
 #define EX_CLEAN_S 10
 #define EX_CLEAN_N 3
+#define EX_DMR_SAVE_N 2
+enum { EX_DMR_NONE = 0, EX_DMR_CLEARED = 1, EX_DMR_SAVE = 2 };
 int ex_dmr_heard(ex_t *e, uint32_t hz, int dmr, unsigned s);
 /* a repeater table record from a candidate, for Save (id 0: rt_put makes it a new entry) */
 void ex_to_rt(const ex_cand_t *c, rt_rec_t *r);

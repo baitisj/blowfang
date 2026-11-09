@@ -24,16 +24,16 @@ What they share, under $BLOWFANG_WORK/state/ (it outlives reboots, unlike a sess
   ptt.lock.last_id  when the last CW ID ended
   txlog.txt         one line per data transmission: start, end, what
   cwid.wav          'AG7EW SOTTO TEST', MCW 800 Hz, 20 wpm, level 0.4
-  reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset)
+  reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset), XL then L
   stop.wav          one burst of the module stop signal: PSK31 'AG7EW STOP', 1000 Hz, level 0.3
   bench.owner       who holds the bench and until when (JSON: who, what, since, until; epoch s)
+and $BLOWFANG_WORK/logs/k6-cwid.txt, one line per CW ID (~/k6-cwid.txt links there).
 
 The bench owner: a session that will use the radios for a while claims the bench first. While a
 claim runs, a data key-up through this file (send, the reset trigger, k6_upload, k6_ifcap,
 k6_afsweep, k6_rxmap) is refused unless $K6_BENCH_AS (or send's --as) names the holder. The CW ID keeper never
 asks: an ID is the law, whoever holds the bench. A claim ends by itself at its time, so a session
 that dies leaves nothing stuck. With no claim the bench is free to anyone, as before.
-and $BLOWFANG_WORK/logs/k6-cwid.txt, one line per CW ID (~/k6-cwid.txt links there).
 
 The keeper (FCC 97.119): a session is active while a data TX ended less than 10 min ago. While
 active, it IDs when 9 min have passed since the last ID; 2 min after the last data TX it sends a
@@ -419,9 +419,19 @@ def make_wavs(only_id=False):
     print("wrote", path("stop_wav"), f"'{STOP_TEXT}' (PSK31)")
     if only_id:
         return
-    subprocess.run([sys.executable, "-m", "modem.k6", "ctl", path("reset_wav"), "--phy", "F", "--seq", "201",
-                    "--action", "reset"], cwd=r, check=True)
-    print("wrote", path("reset_wav"))
+    # XL first (images from 2026-11-09 boot with frames=XL), then L for older images and for a
+    # radio someone switched to L with key 2: the K6 resets on the first copy it reads
+    import numpy as np
+    parts = []
+    for payload in ("XL", "L"):
+        tmp = path("reset_wav") + f".{payload}.tmp.wav"
+        subprocess.run([sys.executable, "-m", "modem.k6", "ctl", tmp, "--phy", "F", "--seq", "201",
+                        "--action", "reset", "--payload", payload], cwd=r, check=True)
+        with wave.open(tmp) as w:
+            parts.append(np.frombuffer(w.readframes(w.getnframes()), "<i2") / 32767)
+        os.remove(tmp)
+    write_wav(path("reset_wav"), np.concatenate([parts[0], np.zeros(48000), parts[1]]))
+    print("wrote", path("reset_wav"), "(XL, then L)")
 
 
 # ---- the commands ----

@@ -288,15 +288,16 @@ void ex_heard(ex_t *e, uint32_t hz, unsigned s) {
 
 int ex_dmr_heard(ex_t *e, uint32_t hz, int dmr, unsigned s) {
   ex_cand_t *c = ex_find(e, hz);
-  if (!c) return 0;
+  if (!c) return EX_DMR_NONE;
   if (dmr) {
     c->flags |= EX_F_DMR, c->clean = 0;
-    return 0;
+    if (c->dmr_n < 0xff) c->dmr_n++;
+    return c->dmr_n == EX_DMR_SAVE_N && !(c->flags & EX_F_KNOWN) ? EX_DMR_SAVE : EX_DMR_NONE;
   }
-  if (!(c->flags & EX_F_DMR) || s < EX_CLEAN_S) return 0;
-  if (++c->clean < EX_CLEAN_N) return 0;
+  if (!(c->flags & EX_F_DMR) || s < EX_CLEAN_S) return EX_DMR_NONE;
+  if (++c->clean < EX_CLEAN_N) return EX_DMR_NONE;
   c->flags &= (uint8_t)~EX_F_DMR, c->clean = 0;
-  return 1;
+  return EX_DMR_CLEARED;
 }
 
 void ex_to_rt(const ex_cand_t *c, rt_rec_t *r) {

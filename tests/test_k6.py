@@ -185,7 +185,7 @@ def test_cli(tmp_path):
     assert cli(["rx", wav, back, "--good", good]) == 0
     assert open(back, "rb").read() == VOICE
     assert np.fromfile(good, np.uint8).all()
-    assert cli(["test", wav, "--repeat", "3", "--phy", "F"]) == 0
+    assert cli(["test", wav, "--repeat", "3", "--phy", "F", "--payload", "L"]) == 0
     from modem.k6 import _read
     x, fs = _read(wav)
     asm, t = fsk.receive(x, fs, "F", 1800)
@@ -211,11 +211,11 @@ def test_prime_sends_a_throwaway_first_copy(tmp_path):
     from modem.k6 import _read
     wav = str(tmp_path / "p.wav")
     for prime, n in ((["--no-prime"], 3), (["--prime"], 4)):
-        assert cli(["test", wav, "--repeat", "3", "--phy", "F"] + prime) == 0
+        assert cli(["test", wav, "--repeat", "3", "--phy", "F", "--payload", "L"] + prime) == 0
         x, fs = _read(wav)
         asm, t = fsk.receive(x, fs, "F", 1800)
         assert sum(t_[1] for t_ in t) == n
-    assert cli(["test", wav, "--repeat", "3", "--phy", "F", "--no-prime", "--first-preamble", "32"]) == 0
+    assert cli(["test", wav, "--repeat", "3", "--phy", "F", "--payload", "L", "--no-prime", "--first-preamble", "32"]) == 0
     x, fs = _read(wav)
     assert sum(t_[1] for t_ in fsk.receive(x, fs, "F", 1800)[1]) == 3
 
