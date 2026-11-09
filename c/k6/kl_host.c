@@ -4,10 +4,12 @@
      pkt HEX        a whitened module packet into the block (km_packet); when the image checks
                     and asks for the library (KM_F_LIB), kl_install writes it to its slot
      load N         kl_load slot N into the block (armed: whether km_run would run it now)
+     page N         kl_page slot N into the block (never armed; code: its first word, little-endian)
      info N         kl_info slot N
      flip ADDR      flip the low bit of one SPI flash byte (a worn or overwritten slot)
      keyed 0|1      while keyed the flash calls refuse to program or erase (as the radio's do)
-   stdout: one line a command (pkt: r= armed=, and install= for an install; load: r= armed= code_len=; info: r=
+   stdout: one line a command (pkt: r= armed=, and install= for an install; load: r= armed= code_len=; page: r= armed=
+   code=; info: r=
    code_len= entry= serial= level= flags=), and at the end "erases= progs=" and every write that
    broke a rule ("RULE ..."): outside the library, a program across a page, an erase off a sector.
    SPDX-License-Identifier: MIT */
@@ -63,6 +65,13 @@ int main(void) {
       memset(arena, 0xEE, sizeof arena);
       int r = kl_load((int)v, &FL, a, sizeof arena);
       printf("r=%d armed=%d code_len=%u\n", r, km_armed(), km_status()->code_len);
+    } else if (sscanf(line, "page %u", &v) == 1) {
+      memset(arena, 0xEE, sizeof arena);
+      km_reset();
+      int r = kl_page((int)v, &FL, a, sizeof arena);
+      printf("r=%d armed=%d code=%u\n", r, km_armed(),
+             (unsigned)a[KM_HDR] | (unsigned)a[KM_HDR + 1] << 8 | (unsigned)a[KM_HDR + 2] << 16 |
+                 (unsigned)a[KM_HDR + 3] << 24);
     } else if (sscanf(line, "info %u", &v) == 1) {
       kl_info_t i;
       int r = kl_info((int)v, &FL, &i);

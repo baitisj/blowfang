@@ -159,6 +159,12 @@ $CC $CFLAGS -Oz -c "$ROOT/c/k6/rt.c" -o "$OUT/k6_rt.o"
 # Listen for ID's side detectors (DMR syncs on the GP0 IF, the CTCSS read): -Os, the DMR
 # detector runs on every count (as the emulator's timing of it, tests/test_k6_xdmr.py)
 $CC $CFLAGS -Os -c "$ROOT/c/k6/xdmr.c" -o "$OUT/xdmr.o"
+# EXPLORE's code pages' tables (c/k6/kp.h), for the 8 kHz voice + EXPLORE image: not in the
+# library; tools/k6_pages.py links each first in its page: the sweep's with xscan.o, Listen for
+# ID's with xlisten.o and xdmr.o, the repeater table's with k6_rt.o
+$CC $CFLAGS -DKP_PAGE=KP_SWEEP -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_sweep.o"
+$CC $CFLAGS -DKP_PAGE=KP_LISTEN -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_listen.o"
+$CC $CFLAGS -DKP_PAGE=KP_TABLE -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_table.o"
 LIBOBJS="$OUT/sotto_pager.o $OUT/k6_mod.o $OUT/sotto_fx_dec.o $OUT/sp_cb.o $OUT/sp_vlr.o $OUT/fx_math.o $OUT/fx_tables.o $OUT/ifpager.o
   $OUT/xscan.o $OUT/xlisten.o $OUT/xdmr.o $OUT/explore.o $OUT/cwid.o $OUT/k6_rt.o"
 LIBOBJS="$LIBOBJS $OUT/k6_lib.o"

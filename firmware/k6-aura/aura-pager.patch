@@ -38,10 +38,10 @@ index 785c441..8ee3035 100644
  opt-level = "z"
  lto = true
 diff --git a/build.rs b/build.rs
-index 34078b1..500f5fc 100644
+index 34078b1..6009ff4 100644
 --- a/build.rs
 +++ b/build.rs
-@@ -50,6 +50,28 @@ fn main() {
+@@ -50,6 +50,55 @@ fn main() {
      println!("cargo:rerun-if-changed=memory.x");
      println!("cargo:rerun-if-changed=build.rs");
  
@@ -60,11 +60,38 @@ index 34078b1..500f5fc 100644
 +    if feat("PAGER_ONLY") && !feat("LEAN") && (!feat("EXPLORE") || feat("VOICE_EXPLORE")) {
 +        println!("cargo:rustc-cfg=shared_lcd");
 +    }
++    // `banded`: every screen drawn a controller page (8 rows) at a time, 128 bytes of stack
++    // (ui::Band, ui::screen!), no page buffer at all: the 8 kHz voice + EXPLORE image, whose
++    // EXPLORE keeps its sweep and Listen for ID state in the ring (the shared page buffer's home)
++    println!("cargo:rustc-check-cfg=cfg(banded)");
++    if feat("VOICE_EXPLORE") {
++        println!("cargo:rustc-cfg=banded");
++    }
 +    // `small_arena`: the shared block is only the store and the ring (hal::arena): the lean
 +    // images and EXPLORE without voice
 +    println!("cargo:rustc-check-cfg=cfg(small_arena)");
 +    if feat("LEAN") || (feat("EXPLORE") && !feat("VOICE_EXPLORE")) {
 +        println!("cargo:rustc-cfg=small_arena");
++    }
++
++    // The 8 kHz voice + EXPLORE image runs EXPLORE's sweep and Listen for ID from code pages in
++    // SPI flash (app::pager::explore `page`, sotto's tools/k6_pages.py): its build ID in MCU flash
++    // (k6_build_id, the note's 8 bytes), which each page made for it ends with, and the image's
++    // functions the pages call kept although nothing here calls them (K6_PAGE_IMPORTS: a linker
++    // script of EXTERN lines that build.sh writes)
++    println!("cargo:rerun-if-env-changed=K6_PAGE_IMPORTS");
++    if feat("VOICE_EXPLORE") {
++        File::create(out.join("k6id.x"))
++            .unwrap()
++            .write_all(
++                b"SECTIONS {\n  .k6_id : ALIGN(4) { k6_build_id = . + 16; KEEP(*(.note.gnu.build-id)) } > FLASH\n} INSERT AFTER .rodata;\n",
++            )
++            .unwrap();
++        println!("cargo:rustc-link-arg=--build-id=fast");
++        println!("cargo:rustc-link-arg=-Tk6id.x");
++        if let Some(x) = env::var_os("K6_PAGE_IMPORTS") {
++            println!("cargo:rustc-link-arg=-T{}", PathBuf::from(x).display());
++        }
 +    }
 +
      println!("cargo:rustc-env=GIT_VERSION={}", git_version());
@@ -282,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..d88dbf5
+index 0000000..1a40483
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4414 @@
+@@ -0,0 +1,4416 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -485,6 +512,8 @@ index 0000000..d88dbf5
 +        pub fn kl_load(slot: i32, fl: *const KlFlash, dst: *mut u8, cap: u32) -> i32;
 +        #[cfg(feature = "spilib")]
 +        pub fn kl_info(slot: i32, fl: *const KlFlash, out: *mut KlInfo) -> i32;
++        #[cfg(feature = "voice-explore")]
++        pub fn kl_page(slot: i32, fl: *const KlFlash, dst: *mut u8, cap: u32) -> i32;
 +        pub fn sp_cb_setup() -> i32;
 +        pub fn sp_cb_mode() -> i32;
 +        pub fn sp_cb_bench(n: u32) -> u32;
@@ -4702,10 +4731,10 @@ index 0000000..d88dbf5
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..0586129
+index 0000000..74a7953
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,1959 @@
+@@ -0,0 +1,2120 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -4751,6 +4780,140 @@ index 0000000..0586129
 +use embedded_graphics::prelude::*;
 +use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
 +use embedded_graphics::text::{Baseline, Text};
++
++/// The sweep's and Listen for ID's C functions: declared as linked in, or (the 8 kHz voice +
++/// EXPLORE image) called through the table of the code page that holds them, which `page`
++/// loads first when another is in the pool
++macro_rules! paged {
++    ($page:ident: $($i:literal fn $name:ident($($a:ident: $t:ty),*) $(-> $r:ty)?;)*) => {
++        #[cfg(not(feature = "voice-explore"))]
++        extern "C" {
++            $(pub fn $name($($a: $t),*) $(-> $r)?;)*
++        }
++        $(
++            #[cfg(feature = "voice-explore")]
++            #[inline(never)]
++            pub unsafe fn $name($($a: $t),*) $(-> $r)? {
++                let f: unsafe extern "C" fn($($t),*) $(-> $r)? =
++                    unsafe { core::mem::transmute(super::page::func(super::page::$page, $i)) };
++                unsafe { f($($a),*) }
++            }
++        )*
++    };
++}
++
++/// EXPLORE's code pages (c/k6/kp.h), in the 8 kHz voice + EXPLORE image: the sweep (xscan.c),
++/// Listen for ID (xlisten.c, xdmr.c) and the repeater table (rt.c) don't fit its MCU flash, so
++/// they sit in SPI library slots 10, 11 and 9 (k6_lib.h, flag KM_F_PAGE), linked for this image
++/// (tools/k6_pages.py), and run from the decoder pool, which no message uses while EXPLORE
++/// runs. One is there at a time: the sweep in the list view, Listen for ID in a listen, the
++/// table for a look-up or a write (a listen loads three or four, a few ms each).
++#[cfg(feature = "voice-explore")]
++mod page {
++    use crate::hal::arena;
++    use core::ptr::{addr_of, addr_of_mut};
++
++    pub const SWEEP: u8 = 1;
++    pub const LISTEN: u8 = 2;
++    pub const TABLE: u8 = 3;
++    /// the library slot and the number of functions of each page (kp.h)
++    const SLOT: [i32; 4] = [0, 10, 11, 9];
++    const FNS: [u32; 4] = [0, 12, 14, 8];
++    const KM_HDR: usize = 16;
++    const ID_BYTES: usize = 8;
++    /// the page in the pool now (0: none, or the pool was lent out)
++    static mut NOW: u8 = 0;
++    extern "C" {
++        /// this image's build ID (build.rs: the note's first 8 bytes), which a page made for it ends with
++        static k6_build_id: [u8; ID_BYTES];
++    }
++
++    fn magic(p: u8) -> u32 {
++        0x504B | (p as u32) << 16 | FNS[p as usize] << 24
++    }
++
++    fn table() -> *const u32 {
++        unsafe { arena::dec().add(KM_HDR) as *const u32 }
++    }
++
++    /// The pool may hold something else now (EXPLORE starts, or leaves)
++    pub fn forget() {
++        unsafe { *addr_of_mut!(NOW) = 0 };
++    }
++
++    /// Whether slot p holds a page made for this image, from its header and its last bytes
++    /// alone (the pool untouched): 0, a k6_lib.h KL_* (-1 the slot is empty), -10 made for
++    /// another image, -11 not this page. load checks the rest (the tag, the table).
++    pub fn check(p: u8) -> i32 {
++        let fl = &super::super::LIB_FL;
++        let mut i = super::pffi::KlInfo::default();
++        let r = unsafe { super::pffi::kl_info(SLOT[p as usize], fl, &mut i) };
++        if r != 0 {
++            return r;
++        }
++        let n = i.code_len as usize;
++        if i.flags & 2 == 0 || KM_HDR + n + 8 > arena::DEC_BYTES || n < 8 + 4 * FNS[p as usize] as usize + ID_BYTES {
++            return -11;
++        }
++        let base = 0x11_0000 + 0x4000 * SLOT[p as usize] as u32 + KM_HDR as u32;
++        let mut w = [0u32; 1];
++        let mut id = [0u8; ID_BYTES];
++        unsafe {
++            if (fl.read)(base, w.as_mut_ptr() as *mut u8, 4) != 0
++                || (fl.read)(base + (n - ID_BYTES) as u32, id.as_mut_ptr(), ID_BYTES as u32) != 0
++            {
++                return -4;
++            }
++        }
++        if id != unsafe { *addr_of!(k6_build_id) } {
++            return -10;
++        }
++        if w[0] != magic(p) {
++            return -11;
++        }
++        0
++    }
++
++    /// Page p into the decoder pool and check it: 0, a k6_lib.h KL_* (-1 the slot is empty),
++    /// -10 made for another image, -11 a bad table
++    pub fn load(p: u8) -> i32 {
++        forget();
++        let dst = arena::dec();
++        let r = unsafe { super::pffi::kl_page(SLOT[p as usize], &super::super::LIB_FL, dst, arena::DEC_BYTES as u32) };
++        if r < 0 {
++            return r;
++        }
++        let n = r as usize;
++        if n < 8 + 4 * FNS[p as usize] as usize + ID_BYTES {
++            return -11;
++        }
++        let id = unsafe { core::slice::from_raw_parts(dst.add(KM_HDR + n - ID_BYTES), ID_BYTES) };
++        if id != unsafe { &*addr_of!(k6_build_id) } {
++            return -10;
++        }
++        let t = table();
++        if unsafe { *t } != magic(p) || unsafe { *t.add(1) } != t as u32 {
++            return -11;
++        }
++        unsafe { *addr_of_mut!(NOW) = p };
++        0
++    }
++
++    /// Function i of page p, the page loaded first if the pool holds another (or was lent out).
++    /// Both pages loaded when EXPLORE started, so a failure here is the SPI flash's: the radio
++    /// restarts (it comes back in VOICE MSG) rather than run what the pool holds.
++    pub fn func(p: u8, i: usize) -> usize {
++        let t = table();
++        if unsafe { *addr_of!(NOW) } != p || unsafe { *t } != magic(p) {
++            let r = load(p);
++            if r != 0 {
++                super::super::report_line(format_args!("K6 EX page {} load r={}: restart", p, r));
++                cortex_m::peripheral::SCB::sys_reset();
++            }
++        }
++        unsafe { *t.add(2 + i) as usize }
++    }
++}
 +
 +mod ffi {
 +    use super::pffi::K6Api;
@@ -4886,24 +5049,7 @@ index 0000000..0586129
 +        pub text: [u8; 21],
 +    }
 +    extern "C" {
-+        pub fn xs_defaults(s: *mut u8);
-+        pub fn xs_state_bytes() -> u32;
-+        pub fn xs_mem_bytes(s: *const u8) -> u32;
-+        pub fn xs_init(s: *mut u8, api: *const K6Api, ex: *mut Ex, mem: *mut u8, bytes: u32) -> i32;
-+        pub fn xs_step(s: *mut u8) -> i32;
-+        pub fn xs_close(s: *mut u8);
-+        pub fn xs_tone(s: *mut u8, peek_ms: u32) -> u32;
-+        pub fn xs_resume(s: *mut u8);
-+        pub fn xs_summary(s: *mut u8);
-+        pub fn xs_info(s: *const u8, out: *mut XsInfo);
-+        pub fn xs_up(s: *const u8, out: *mut u32, max: u32) -> u32;
-+        pub fn xs_level(s: *mut u8, hz: u32) -> i32;
 +        pub fn ex_pick_id(e: *mut Ex, up_hz: *const u32, n: u32) -> *mut Cand;
-+        pub fn xl_state_bytes() -> u32;
-+        pub fn xl_start(x: *mut u8, api: *const K6Api, rx_hz: u32, max_s: u32);
-+        pub fn xl_step(x: *mut u8) -> i32;
-+        pub fn xl_stop(x: *mut u8, why: i32);
-+        pub fn xl_info(x: *const u8, out: *mut XlInfo);
 +        pub fn ex_init(e: *mut Ex, store: *mut Cand, cap: u32);
 +        pub fn ex_known_store(e: *mut Ex, buf: *mut u32, cap: u32);
 +        pub fn ex_know(e: *mut Ex, hz: u32);
@@ -4918,34 +5064,54 @@ index 0000000..0586129
 +        pub fn ex_heard(e: *mut Ex, hz: u32, s: u32);
 +        pub fn ex_dmr_heard(e: *mut Ex, hz: u32, dmr: i32, s: u32) -> i32;
 +        pub fn ex_to_rt(c: *const Cand, r: *mut RtRec);
-+        pub fn rt_mount(t: *mut Rt, fl: *const RtFlash, base: u32, force: i32) -> i32;
-+        pub fn rt_find(t: *mut Rt, id: u16, rx_hz: u32, tol: u32, out: *mut RtRec) -> i32;
-+        pub fn rt_next(t: *mut Rt, slot: i32, out: *mut RtRec) -> i32;
-+        pub fn rt_put(t: *mut Rt, r: *mut RtRec) -> i32;
-+        pub fn rt_delete(t: *mut Rt, id: u16) -> i32;
-+        pub fn rt_cw_check(t: *mut Rt, rx_hz: u32, tol: u32, call: *const u8, out: *mut RtRec) -> i32;
-+        pub fn rt_cw_apply(
-+            t: *mut Rt,
-+            rx_hz: u32,
-+            tol: u32,
-+            call: *const u8,
-+            call_flags: u8,
-+            tone_hz: i32,
-+            wpm: i32,
-+            confirmed: i32,
-+            out: *mut RtRec,
-+        ) -> i32;
-+        pub fn rt_heard_apply(t: *mut Rt, rx_hz: u32, tol: u32, tone: u16, dmr: i32, out: *mut RtRec) -> i32;
 +        pub fn ex_tone(e: *mut Ex, hz: u32, tone: u16);
-+        pub fn xd_state_bytes() -> u32;
-+        pub fn xd_start(s: *mut u8, api: *const K6Api, spk: i32, cps8: u32);
-+        pub fn xd_step(s: *mut u8, x: *mut u8) -> i32;
-+        pub fn xd_stop(s: *mut u8) -> i32;
-+        pub fn xd_known(s: *mut u8);
-+        pub fn xd_flags(s: *const u8) -> u32;
-+        pub fn xd_adj(s: *const u8) -> i32;
-+        pub fn xd_rate8(s: *const u8) -> u32;
-+        pub fn xd_tone(s: *const u8) -> u32;
++    }
++    // The sweep (c/k6/xscan.c), Listen for ID (xlisten.c, xdmr.c) and the repeater table (rt.c):
++    // linked in, or in the 8 kHz voice + EXPLORE image three code pages in SPI flash
++    // (super::page; c/k6/kp.h, the same order)
++    paged! {
++        SWEEP:
++        0 fn xs_defaults(s: *mut u8);
++        1 fn xs_state_bytes() -> u32;
++        2 fn xs_mem_bytes(s: *const u8) -> u32;
++        3 fn xs_init(s: *mut u8, api: *const K6Api, ex: *mut Ex, mem: *mut u8, bytes: u32) -> i32;
++        4 fn xs_step(s: *mut u8) -> i32;
++        5 fn xs_close(s: *mut u8);
++        6 fn xs_tone(s: *mut u8, peek_ms: u32) -> u32;
++        7 fn xs_resume(s: *mut u8);
++        8 fn xs_summary(s: *mut u8);
++        9 fn xs_info(s: *const u8, out: *mut XsInfo);
++        10 fn xs_up(s: *const u8, out: *mut u32, max: u32) -> u32;
++        11 fn xs_level(s: *mut u8, hz: u32) -> i32;
++    }
++    paged! {
++        LISTEN:
++        0 fn xl_state_bytes() -> u32;
++        1 fn xl_start(x: *mut u8, api: *const K6Api, rx_hz: u32, max_s: u32);
++        2 fn xl_step(x: *mut u8) -> i32;
++        3 fn xl_stop(x: *mut u8, why: i32);
++        4 fn xl_info(x: *const u8, out: *mut XlInfo);
++        5 fn xd_state_bytes() -> u32;
++        6 fn xd_start(s: *mut u8, api: *const K6Api, spk: i32, cps8: u32);
++        7 fn xd_step(s: *mut u8, x: *mut u8) -> i32;
++        8 fn xd_stop(s: *mut u8) -> i32;
++        9 fn xd_known(s: *mut u8);
++        10 fn xd_flags(s: *const u8) -> u32;
++        11 fn xd_adj(s: *const u8) -> i32;
++        12 fn xd_rate8(s: *const u8) -> u32;
++        13 fn xd_tone(s: *const u8) -> u32;
++    }
++    // the repeater table (c/k6/rt.c)
++    paged! {
++        TABLE:
++        0 fn rt_mount(t: *mut Rt, fl: *const RtFlash, base: u32, force: i32) -> i32;
++        1 fn rt_find(t: *mut Rt, id: u16, rx_hz: u32, tol: u32, out: *mut RtRec) -> i32;
++        2 fn rt_next(t: *mut Rt, slot: i32, out: *mut RtRec) -> i32;
++        3 fn rt_put(t: *mut Rt, r: *mut RtRec) -> i32;
++        4 fn rt_delete(t: *mut Rt, id: u16) -> i32;
++        5 fn rt_cw_check(t: *mut Rt, rx_hz: u32, tol: u32, call: *const u8, out: *mut RtRec) -> i32;
++        6 fn rt_cw_apply(t: *mut Rt, rx_hz: u32, tol: u32, call: *const u8, call_flags: u8, tone_hz: i32, wpm: i32, confirmed: i32, out: *mut RtRec) -> i32;
++        7 fn rt_heard_apply(t: *mut Rt, rx_hz: u32, tol: u32, tone: u16, dmr: i32, out: *mut RtRec) -> i32;
 +    }
 +}
 +use ffi::{Cand, Ex, Rt, RtFlash, RtRec, Seg, XsHead, XsInfo, XlInfo};
@@ -5346,9 +5512,27 @@ index 0000000..0586129
 +    if stream_on() || app.pager.play_pending {
 +        return;
 +    }
++    // the 8 kHz voice + EXPLORE image: both code pages there and made for this image, before
++    // anything is borrowed (the pool too: a refusal leaves VOICE MSG as it was)
++    #[cfg(feature = "voice-explore")]
++    {
++        page::forget();
++        let (w, l, r) = (page::check(page::SWEEP), page::check(page::LISTEN), page::check(page::TABLE));
++        if w != 0 || l != 0 || r != 0 {
++            say(format_args!(
++                "K6 EX pages missing: sweep r={} listen r={} table r={}; install this image's out/page-*.bin (k6 mod PAGE --page --install 10 / 11 / 9)",
++                w, l, r
++            ));
++            voice_wait(VOICE_IDLE_MS);
++            return;
++        }
++    }
 +    disarm(app, syst);
 +    app.radio.set_speaker(false);
 +    unsafe { pffi::km_reset() };
++    // Listen for ID's state sizes first, then the sweep's page, which stays
++    #[cfg(feature = "voice-explore")]
++    let (xl_bytes, xd_raw) = unsafe { (ffi::xl_state_bytes(), ffi::xd_state_bytes()) };
 +    unsafe {
 +        *addr_of_mut!(MOD_CTX) = super::ModCtx {
 +            app: null_mut(),
@@ -5370,7 +5554,9 @@ index 0000000..0586129
 +    t.xs = store;
 +    let cands = unsafe { store.add(xs_bytes) } as *mut Cand;
 +    // the side detectors' state at the store's end, if the candidates can spare it
-+    let xd_bytes = (unsafe { ffi::xd_state_bytes() } as usize + 3) & !3;
++    #[cfg(not(feature = "voice-explore"))]
++    let (xl_bytes, xd_raw) = unsafe { (ffi::xl_state_bytes(), ffi::xd_state_bytes()) };
++    let xd_bytes = (xd_raw as usize + 3) & !3;
 +    let room = STORE_BYTES - xs_bytes;
 +    let cap = (room.saturating_sub(xd_bytes) / core::mem::size_of::<Cand>()).min(CAP);
 +    t.xd = if room >= xd_bytes + cap * core::mem::size_of::<Cand>() {
@@ -5407,7 +5593,7 @@ index 0000000..0586129
 +    ctx_off();
 +    say(format_args!(
 +        "K6 EX enter cap={} rt={} live={} repairs={} xl={} xd={}",
-+        cap, t.rt_res, t.rt.live, t.rt.repairs, unsafe { ffi::xl_state_bytes() }, if t.xd.is_null() { 0 } else { xd_bytes }
++        cap, t.rt_res, t.rt.live, t.rt.repairs, xl_bytes, if t.xd.is_null() { 0 } else { xd_bytes }
 +    ));
 +    if t.rt_res < 0 {
 +        note(if t.rt_res == -5 { "TABLE AREA NOT BLANK" } else { "TABLE READ FAILED" });
@@ -5424,6 +5610,8 @@ index 0000000..0586129
 +    }
 +    ctx_off();
 +    dump();
++    #[cfg(feature = "voice-explore")]
++    page::forget(); // the pool is the decoder's again
 +    t.on = false;
 +    monitor_off(app, syst);
 +    clear_store(app);
@@ -5861,13 +6049,10 @@ index 0000000..0586129
 +    if t.xd.is_null() {
 +        return;
 +    }
-+    unsafe {
-+        TRACE_N = 0;
-+        ffi::xd_start(t.xd, &MOD_API, spk as i32, t.cps8);
-+        DMR_ADJ = ffi::xd_adj(t.xd) as i16;
-+    }
 +    // DMR by default (Jeff 2026-11-08): a row a listen heard DMR on, now or in the saved table,
-+    // starts shut and opens only once XD_CLEAR_MS go by with no DMR sync (xdmr.c xd_known)
++    // starts shut and opens only once XD_CLEAR_MS go by with no DMR sync (xdmr.c xd_known). The
++    // table is looked up first: in the voice + EXPLORE image its code is a page of its own, and
++    // loading it once the detector runs would cost the detector its first syncs
 +    let p = unsafe { ffi::ex_find(&mut t.ex, t.hz) };
 +    let mut known = !p.is_null() && unsafe { (*p).flags } & EX_F_DMR != 0;
 +    if !known && t.rt_res >= 0 {
@@ -5878,6 +6063,11 @@ index 0000000..0586129
 +                unsafe { (*p).flags |= EX_F_DMR };
 +            }
 +        }
++    }
++    unsafe {
++        TRACE_N = 0;
++        ffi::xd_start(t.xd, &MOD_API, spk as i32, t.cps8);
++        DMR_ADJ = ffi::xd_adj(t.xd) as i16;
 +    }
 +    if known {
 +        unsafe { ffi::xd_known(t.xd) };
@@ -6904,10 +7094,10 @@ index 73a6de2..65c81cc 100644
  /// prompt has run
 diff --git a/src/hal/arena.rs b/src/hal/arena.rs
 new file mode 100644
-index 0000000..2f79998
+index 0000000..27c00a6
 --- /dev/null
 +++ b/src/hal/arena.rs
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,101 @@
 +//! One block of RAM shared by the things that never run at the same time.
 +//!
 +//! A voice message needs the message store, the PWM audio ring and the decoder's working
@@ -6967,6 +7157,9 @@ index 0000000..2f79998
 +#[cfg(not(small_arena))]
 +const _: () = assert!(ARENA_BYTES - TLM_BYTES >= DEC_OFF); // telemetry clear of the ring
 +
++// k6_arena: tools/k6_pages.py links EXPLORE's code pages at its decoder pool (8 kHz voice +
++// EXPLORE image)
++#[cfg_attr(feature = "voice-explore", export_name = "k6_arena")]
 +static mut ARENA: [u32; ARENA_BYTES / 4] = [0; ARENA_BYTES / 4];
 +
 +/// The block's first byte (word aligned): the message store, and a module's header
@@ -7662,7 +7855,7 @@ index 131f932..99ae011 100644
  
  /// Pull one byte received on USART1 since the last call, if any.
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..83d0c51 100644
+index 9d2b0c0..91e383b 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -14,7 +14,7 @@ mod ui;
@@ -7756,7 +7949,28 @@ index 9d2b0c0..83d0c51 100644
      writeln!(dbg, "lcd init done").ok();
  
      // rfic
-@@ -149,12 +199,17 @@ fn main() -> ! {
+@@ -124,17 +174,14 @@ fn main() -> ! {
+     // First-boot format gate
+     if !storage.is_first_boot_done() {
+         writeln!(dbg, "first boot: awaiting MENU press or CPS dump").ok();
+-        ui::boot::draw_format_prompt(display.as_draw_target());
+-        display.flush();
++        screen!(display, |lcd| ui::boot::draw_format_prompt(lcd));
+ 
+         let mut cps_handshake = cps::HandshakeDetector::new();
+         while !keypad.is_pressed(&mut cp.SYST, KeyId::Menu) {
+             if cps_handshake.poll() {
+-                ui::cps::draw_programming(display.as_draw_target());
+-                display.flush();
++                screen!(display, |lcd| ui::cps::draw_programming(lcd));
+                 cps::run_preboot_dump_session(&mut storage, &mut cp.SYST, &mut dbg);
+-                ui::boot::draw_format_prompt(display.as_draw_target());
+-                display.flush();
++                screen!(display, |lcd| ui::boot::draw_format_prompt(lcd));
+             }
+             delay::ms(&mut cp.SYST, 10);
+         }
+@@ -149,12 +196,17 @@ fn main() -> ! {
      }
  
      let cal_buf = storage.read_calibration();
@@ -7774,7 +7988,17 @@ index 9d2b0c0..83d0c51 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -234,7 +289,11 @@ fn main() -> ! {
+@@ -220,8 +272,7 @@ fn main() -> ! {
+ 
+     if radio.ptt_asserted() || keypad.any_pressed(&mut cp.SYST) {
+         writeln!(dbg, "PTT/key held at boot, waiting for release").ok();
+-        ui::boot::draw_release_keys(display.as_draw_target());
+-        display.flush();
++        screen!(display, |lcd| ui::boot::draw_release_keys(lcd));
+         let mut released_ticks = 0u32;
+         while released_ticks < 50 {
+             delay::ms(&mut cp.SYST, 10);
+@@ -234,7 +285,11 @@ fn main() -> ! {
      }
  
      // app class
@@ -7787,17 +8011,28 @@ index 9d2b0c0..83d0c51 100644
          radio,
          chip_id,
          keypad,
-@@ -265,8 +324,7 @@ fn main() -> ! {
-             display.flush();
+@@ -257,17 +312,13 @@ fn main() -> ! {
+     let boot_mode = app.settings().boot_display_mode;
+     match boot_mode {
+         1 => {
+-            ui::boot::draw_voltage(display.as_draw_target(), app.battery_voltage_cv());
+-            display.flush();
++            screen!(display, |lcd| ui::boot::draw_voltage(lcd, app.battery_voltage_cv()));
+         }
+         2 => {
+-            ui::boot::draw_message(display.as_draw_target(), app.settings());
+-            display.flush();
++            screen!(display, |lcd| ui::boot::draw_message(lcd, app.settings()));
          }
          3 => {
 -            let logo = app.storage_mut().read_boot_logo();
 -            ui::boot::draw_logo(display.as_draw_target(), &logo);
-+            show_boot_logo(display.as_draw_target(), app.storage_mut());
-             display.flush();
+-            display.flush();
++            screen!(display, |lcd| show_boot_logo(lcd, app.storage_mut()));
          }
          _ => {}
-@@ -301,6 +359,65 @@ fn main() -> ! {
+     }
+@@ -301,6 +352,65 @@ fn main() -> ! {
      )
      .ok();
  
@@ -7863,7 +8098,7 @@ index 9d2b0c0..83d0c51 100644
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
      let mut applied_contrast: u8 = u8::MAX;
-@@ -329,6 +446,19 @@ fn main() -> ! {
+@@ -329,6 +439,19 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -7883,7 +8118,7 @@ index 9d2b0c0..83d0c51 100644
          // power sw
          if power.debounced_off(&mut cp.SYST) {
              writeln!(dbg, "power switch off, shutting down").ok();
-@@ -401,6 +531,8 @@ fn main() -> ! {
+@@ -401,6 +524,8 @@ fn main() -> ! {
              }
          } else if app.mode() == app::Mode::Sstv {
              app.handle_sstv_ptt(&mut cp.SYST);
@@ -7892,7 +8127,7 @@ index 9d2b0c0..83d0c51 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -465,9 +597,13 @@ fn main() -> ! {
+@@ -465,9 +590,13 @@ fn main() -> ! {
              }
          }
  
@@ -7910,7 +8145,7 @@ index 9d2b0c0..83d0c51 100644
                  app.poll_squelch(&mut cp.SYST, 3);
                  app.poll_dual_standby(&mut cp.SYST, app.rssi_open());
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
-index cdfa0f7..e9a1165 100644
+index cdfa0f7..bfe4d12 100644
 --- a/src/ui/mod.rs
 +++ b/src/ui/mod.rs
 @@ -6,6 +6,7 @@ mod fm;
@@ -7929,7 +8164,16 @@ index cdfa0f7..e9a1165 100644
  use satellite::draw_satellite;
  use sstv::draw_sstv;
  use scan::draw_scan;
-@@ -62,6 +64,54 @@ impl<const N: usize> core::fmt::Write for TextBuf<N> {
+@@ -31,6 +33,8 @@ use standby::draw_standby;
+ use crate::app;
+ use crate::device::display::Display;
+ use display_interface::WriteOnlyDataCommand;
++#[cfg(banded)]
++use embedded_graphics::{pixelcolor::BinaryColor, prelude::*, primitives::Rectangle};
+ 
+ // TextBuf
+ pub struct TextBuf<const N: usize> {
+@@ -62,6 +66,162 @@ impl<const N: usize> core::fmt::Write for TextBuf<N> {
      }
  }
  
@@ -7973,18 +8217,126 @@ index cdfa0f7..e9a1165 100644
 +    if app.pager_streaming() {
 +        return;
 +    }
++    // the 8 kHz voice + EXPLORE image (`banded`): a band of 8 rows at a time, as every screen
++    #[cfg(banded)]
++    {
++        let explore = app.exploring();
++        display.draw_pages(|page, buf| {
++            let band = &mut Band { buf, y0: 8 * page as i32 };
++            if explore {
++                app::pager::explore_draw(band, app);
++            } else {
++                draw_pager(band, app);
++            }
++        });
++        return;
++    }
++    #[cfg(not(banded))]
 +    if app.exploring() {
 +        app::pager::explore_draw(display.as_draw_target(), app);
-+    } else {
-+        draw_pager(display.as_draw_target(), app);
++        display.flush();
++        return;
 +    }
++    draw_pager(display.as_draw_target(), app);
 +    display.flush();
++}
++
++/// One controller page of the screen (pixel rows y0 .. y0 + 7, bit 0 the top row) as a 128 x 64
++/// draw target: what falls outside it is dropped, a glyph or a box that misses it at once. In
++/// the `banded` image every screen is drawn once for each of the 8 (device::display
++/// draw_pages, `screen!`): EXPLORE keeps its sweep's and Listen for ID's state in the ring, the
++/// shared page buffer's home, and one draw target for all the screens builds the drawing code
++/// (embedded-graphics' text, lines, boxes) once.
++#[cfg(banded)]
++pub struct Band<'a> {
++    pub buf: &'a mut [u8; 128],
++    pub y0: i32,
++}
++
++/// `screen!(display, |lcd| draw(lcd, ...))`: draw a whole screen and send it: in a band at a
++/// time in the `banded` image (`draw` runs 8 times), else into the page buffer, then flush.
++#[macro_export]
++macro_rules! screen {
++    ($display:expr, |$lcd:ident| $body:expr) => {{
++        #[cfg(banded)]
++        $display.draw_pages(|page, buf| {
++            let $lcd = &mut $crate::ui::Band { buf, y0: 8 * page as i32 };
++            $body;
++        });
++        #[cfg(not(banded))]
++        {
++            let $lcd = $display.as_draw_target();
++            $body;
++            $display.flush();
++        }
++    }};
++}
++
++#[cfg(banded)]
++impl Band<'_> {
++    #[inline(always)]
++    fn put(&mut self, x: i32, y: i32, c: BinaryColor) {
++        let dy = y - self.y0;
++        if (0..8).contains(&dy) && (0..128).contains(&x) {
++            let b = &mut self.buf[x as usize];
++            *b = if c.is_on() { *b | 1 << dy } else { *b & !(1 << dy) };
++        }
++    }
++    /// the rows of `area` this band holds, or None
++    fn rows(&self, area: &Rectangle) -> Option<(i32, i32)> {
++        let (a, b) = (area.top_left.y.max(self.y0), (area.top_left.y + area.size.height as i32).min(self.y0 + 8));
++        if a < b && area.size.width > 0 {
++            Some((a, b))
++        } else {
++            None
++        }
++    }
++}
++
++#[cfg(banded)]
++impl OriginDimensions for Band<'_> {
++    fn size(&self) -> Size {
++        Size::new(128, 64)
++    }
++}
++
++#[cfg(banded)]
++impl DrawTarget for Band<'_> {
++    type Color = BinaryColor;
++    type Error = core::convert::Infallible;
++
++    fn draw_iter<I: IntoIterator<Item = Pixel<BinaryColor>>>(&mut self, px: I) -> Result<(), Self::Error> {
++        for Pixel(p, c) in px {
++            self.put(p.x, p.y, c);
++        }
++        Ok(())
++    }
++
++    fn fill_contiguous<I: IntoIterator<Item = BinaryColor>>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error> {
++        let Some((_, b)) = self.rows(area) else { return Ok(()) };
++        let (x0, y0, w) = (area.top_left.x, area.top_left.y, area.size.width as i32);
++        for (k, c) in colors.into_iter().enumerate().take(((b - y0) * w) as usize) {
++            self.put(x0 + k as i32 % w, y0 + k as i32 / w, c);
++        }
++        Ok(())
++    }
++
++    fn fill_solid(&mut self, area: &Rectangle, c: BinaryColor) -> Result<(), Self::Error> {
++        let Some((a, b)) = self.rows(area) else { return Ok(()) };
++        let (x0, x1) = (area.top_left.x.max(0), (area.top_left.x + area.size.width as i32).min(128));
++        let m = ((0xFFu16 << (a - self.y0)) & (0xFFu16 >> (8 - (b - self.y0)))) as u8;
++        for x in x0..x1 {
++            let p = &mut self.buf[x as usize];
++            *p = if c.is_on() { *p | m } else { *p & !m };
++        }
++        Ok(())
++    }
 +}
 +
  pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut app::App) {
      match app.mode() {
          app::Mode::AppMenu => draw_app_menu(display.as_draw_target(), &*app),
-@@ -77,6 +127,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
+@@ -77,6 +237,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
              draw_satellite(display.as_draw_target(), app);
          }
          app::Mode::Sstv => draw_sstv(display.as_draw_target(), app),
