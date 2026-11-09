@@ -2,7 +2,7 @@
 DMR detector draining the GP0 DMA ring in their waits, on the emulated Cortex-M0 against the
 modelled stream (tests/k6_live_emu.py). A repeater's DMR must be found within a step or two and
 mute the speaker, FM voice must open it after the hold, the ring must keep up while the tone
-detector is polled every 2 ms, and the stack (the 4 KB ring on it) must stay in budget.
+detector is polled every 2 ms, and the stack (the 2 KB ring on it) must stay in budget.
 Needs clang, ld.lld and unicorn. SPDX-License-Identifier: MIT"""
 import os
 import re
@@ -94,7 +94,7 @@ def listen(s, run_s=3, cn0=60.0, pre_s=0.0, post_s=0.5, level=-85, tone=0, known
     ib, on, off = stream(s, cn0, pre_s, post_s)
     e = Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=run_s + 1.0)
     e.rssi = lambda: level if on <= e.sample_now() < off else -120
-    # paint 8 KB under the stack: the 4 KB ring and the listener's state are on it
+    # paint 8 KB under the stack: the 2 KB ring and the listener's state are on it
     lo = e.sp0 - 8192
     e.mu.mem_write(lo, b"\xa5" * 8192)
     r = e.run()
@@ -132,7 +132,7 @@ def test_listen_mutes_a_repeaters_dmr():
     _, rate = line(said, "DMR rate")
     ks = int(re.search(r"ks=(\d+)", rate)[1])
     assert abs(ks - fe.FDMA / 1000) < 60, rate
-    assert stack < 6144, stack                        # the 4 KB ring and ~1.1 KB of frames
+    assert stack < 4096, stack
 
 
 def test_listen_opens_for_fm_voice():

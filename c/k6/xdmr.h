@@ -39,10 +39,9 @@
 extern "C" {
 #endif
 
-#define XD_RSZ 4096u          /* the DMA ring on the stack: 760 us at 5.39 MS/s, room for a tone
-                                 detector read (2-4 FD6818 calls) between drains. 2048 (380 us)
-                                 overran at every one of a step's 30 reads on txdog images, whose
-                                 flash code runs ~12% slower (2026-11-09, docs/k6-explore-app.md) */
+#define XD_RSZ 2048u          /* the DMA ring on the stack: 370 us at 5.5 MS/s, room for a tone
+                                 detector read (2-4 FD6818 calls) between drains (4096 made no
+                                 difference on txdog images: 2026-11-09, `DMR diag`) */
 #define XD_FREEZE_DBM (-60)   /* freeze the gain for carriers this loud or weaker */
 #define XD_HOLD_MS 150u       /* the speaker stays shut this long into a listen, so a DMR
                                  carrier's first syncs can keep it shut */
@@ -63,6 +62,10 @@ typedef struct {
   uint32_t last;               /* api->ms() at the last sync of any family (start: none yet) */
   uint32_t hits, steps, lost, busy, win;
   uint32_t stuck;              /* waits that api->ms() ended: the 96 MHz clock didn't move */
+  /* `DMR diag` (2026-11-09: txdog images lose on every wait): resyncs at a wait's entry (the
+     gap since the last wait was over a lap) and at an overrun; the longest gap between two
+     waits (96 MHz cycles); the steps' 96 MHz time, api->ms() time and DMA transfers */
+  uint32_t lent, lovr, gmax, tsum, msum, xsum;
   uint32_t ahb, apb2;
   uint16_t r33, r34, r47, r7e, r13, r51;
   uint16_t tone, tcand;        /* the confirmed CTCSS tone (0.1 Hz), the last reading's */

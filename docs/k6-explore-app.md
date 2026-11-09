@@ -109,13 +109,12 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   (tests/test_k6_xdmr.py). On the radio (image 3a20b61, 2026-11-08 14:00-14:31Z) it read 136.5 Hz
   on 443.525 and 110.9 Hz on 442.025, and muted 440.925's DMR at +250 to +425 ms, so the first
   quarter second of a burst still reached the speaker. From PR #160 on (txdog in every image) it
-  stopped hearing DMR: hal::txdog's MEM_MODE remap turns off the flash prefetch, flash code runs
-  ~12% slower, and the tone detector's read between two ring drains (xl_step_w, every 2 ms) took
-  longer than the 2,048-byte DMA ring's 356 us lap. Every read overran it (`DMR end ... lost=` 30
-  a step, one per read, and no hits, against ~0.4 a step on a no-txdog build, 2026-11-09). The
-  detector itself kept up: running its hot path from SRAM (PR #19, taken out again) halved its
-  `busy` (45 to 25) and left `lost` at exactly 30 a step. The ring is now 4,096 bytes (736 us
-  lap), on xd_step's stack as before.
+  stopped hearing DMR: `DMR end ... lost=` is one resync at every one of a step's 30 waits
+  (60 ms / 2 ms), so the detector's sums never fill, and `ks=5389` is only CPS8_0, the rate
+  never measured (that takes 40 ms without a resync). The same build without txdog loses ~0.4 a
+  step and measures ks=5885 (2026-11-09). Not the cause: the detector's CPU (its hot path in SRAM,
+  PR #19, halved `busy` and left `lost` at 30 a step) or the ring's size (4,096 bytes, PR #20's
+  first try: the same). Still open; the `DMR diag` line says which check fires and why.
 - **DMR by default** (Jeff 2026-11-08: "if we figure out a repeater is dmr we can mute by default
   until listening to it for a longer duration reveals that it's not actually a dmr repeater"): a
   row marked DMR, on the candidate (`EX_F_DMR`) or in the saved entry (`RT_F_DMR`), starts every
@@ -232,6 +231,7 @@ K6 MOD say DMR off 2630
 K6 MOD say CTCSS 1000                 the carrier's tone, 0.1 Hz
 K6 MOD say DMR end n=1 h=41 lost=0 steps=50
 K6 MOD say DMR rate busy=24 ks=5490 ctcss=1000/40
+K6 MOD say DMR diag e=0 o=0 g=74 clk=999 kx=5486   resyncs at a wait's entry / at an overrun, the longest gap between waits (us), the 96 MHz clock against ms (per mille), DMA transfers a ms
 K6 EX heard 440925000 tone=1000 dmr=1 rt=2 saved_tone=1000   the saved entry took the tone
 K6 EX dmr clear 440925000             3 long listens heard no DMR: mark and saved flag cleared (dmr=-1)
 K6 EX autosave 440925000 id=4 slot=3 live=4   a second listen heard DMR: saved with RT_F_AUTO
