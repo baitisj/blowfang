@@ -1,0 +1,19 @@
+{
+ "file": "k6cal-1200-20261104T0148.flac",
+ "what": "the K6's first CAL burst on air (the first on-air test): test packet 0 twice in D/1200 then twice in F/1200, with the byte-swapped words the cal_tx packing had then; D arrives inverted",
+ "when": "2026-11-04 about 01:48 UTC",
+ "image": "not logged",
+ "source": "0.24 s to the end of Jeff's test.flac on hamlet, samples unchanged (blowfang #4)",
+ "checks": [
+  {
+   "decoder": "fsk",
+   "opts": {"phy": "D", "baud": 1200, "payload": "L"},
+   "expect": {"good": 2, "messages": [66]}
+  },
+  {
+   "decoder": "fsk",
+   "opts": {"phy": "F", "baud": 1200, "payload": "L"},
+   "expect": {"good": 2, "messages": [66]}
+  }
+ ]
+}
