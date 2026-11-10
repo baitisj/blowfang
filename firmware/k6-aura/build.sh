@@ -292,6 +292,8 @@ fi
 # own API level; the notes say which tool patches it or which doc covers it. Keep the list
 # one module per line, in alphabetical order, so PRs that add modules don't collide:
 K6_MODULES=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' <<'EOF'
+acarsfsk       # level 2, can the chip's FSK modem read ACARS framing (FM control), docs/k6-acars.md
+acarsfsk_am    # level 2, acarsfsk with the test signal in AM: six front ends
 acrprobe       # level 1, does hal::txdog leave the flash prefetch off
 afsweep
 aiscap         # level 2, records AIS bursts for sim/k6if/ais.py, docs/k6-ais.md

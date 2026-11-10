@@ -87,6 +87,7 @@ jobs:
             --splitting-algorithm least_duration \
             --durations-path tests/durations.json \
             tests/test_k6.py \
+            tests/test_k6_acars.py \
             tests/test_k6_air.py \
             tests/test_k6_air_cases.py \
             tests/test_k6_alarm.py \
