@@ -158,12 +158,12 @@ def test_dfskcap_acars_on_the_model():
     import k6_live_emu as le
     from modem import k6mod
     src = os.path.join(K6, "mod", "dfskcap_acars.c")
-    code, entry = le.build("x", [("FE_S", "5"), ("WAIT_MS", "200u")], src)
+    code, entry = le.build("x", [("FE_S", "5"), ("WAIT_MS", "200u"), ("QN", "2u")], src)
     full, _ = k6mod.build(src)
     plain, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap.c"))
-    assert len(full) < 3000 and len(plain) < 2100, (len(full), len(plain))
+    assert len(full) < 3200 and len(plain) < 2100, (len(full), len(plain))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))      # the 6 m bench build
-    assert len(six) < 3000 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
+    assert len(six) < 3200 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)
@@ -202,6 +202,8 @@ def test_dfskcap_acars_on_the_model():
     ret, stack = r
     assert stack < 700 and e.over == 0, (stack, e.over)
     assert e.said[0] == "dfskcap start hz=131550000 n=4" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    q = [dict(kv.split("=") for kv in ln.split()[1:]) for ln in e.said if ln.startswith("q ")]
+    assert 1 <= len(q) <= 2 and all(x["p"] in ("-117", "-118") and x["f"] in ("-118", "-119") for x in q), q
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     assert [ln.split()[3:] for ln in e.said if ln.startswith("s ")] == [["cfg=00e9", "b=c195", "sy=aaaa", "l=ff20"]] * 4
     assert e.tunes[-4:] == [(131550000, 1), (131550000, 1), (131552500, 0), (131550000, 0)], e.tunes

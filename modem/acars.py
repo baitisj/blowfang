@@ -230,7 +230,7 @@ def plain_report(lines):
                 ln += (f" : runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} 3+:{np.mean(runs >= 3):.0%}"
                        f" odd {odd}; " + (f"block [{text}]" if text is not None else why))
             out.append(ln)
-        elif ln[:1] in ("s", "v", "b") or ln.startswith("dfskcap "):
+        elif ln[:1] in ("s", "v", "b", "q") or ln.startswith("dfskcap "):
             out.append(ln)
     return out
 

@@ -66,7 +66,10 @@
    a rise of BURST_UP half dB over the front end's floor (its lowest, let up one step every
    2 s) is a carrier, said when it ends (not inside a capture) as
      b1 3 t=91230 ms=450 r=-84          front end, burst, ms at its start, its length, its peak
-   and the v line ends with b= (bursts), p= (the highest RSSI) and f= (the floor).
+   and the v line ends with b= (bursts), p= (the highest RSSI) and f= (the floor). Before the
+   first front end a q line every 5 s has the same p= and f= (a steady carrier that comes on
+   in the wait shows as a step there and nowhere else). DFSK_DUMP_ALL says every capture's
+   words, whatever its k.
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
 #define K6_MODULE_OPT z
@@ -94,6 +97,14 @@
 #define BURST_UP 20u     /* half dB over the floor: a carrier */
 #define BURST_SKIP 300u  /* ms after a front end's start with no RSSI taken (the retune) */
 #define BURSTN 30u       /* bursts said per front end */
+#ifndef QN
+#define QN 100u          /* RSSI readings (50 ms each) a q line before the first front end */
+#endif
+#ifdef DFSK_DUMP_ALL
+#define DUMP_K 0u        /* every capture's words (the bench's AM test) */
+#else
+#define DUMP_K 3u        /* only those that go on like a pre-key */
+#endif
 #else
 #define NV 7
 #endif
@@ -262,7 +273,24 @@ int k6_main(const k6_api_t *api) {
   while (api->ms() < WAIT_MS && !key) {
     api->delay_us(50000);
     key = api->level >= 4 ? api->key_poll() : api->key_down();
+#ifdef DFSK_ACARS
+    /* the channel before the first front end, every QN readings: the floor, and a carrier's step */
+    i = api->fd_read(0x67) & 0x1FF;
+    if (i < rmin) rmin = i;
+    if (i > rpk) rpk = i;
+    if (++rup >= QN) {
+      p = kv(ln, "q t=", api->ms());
+      p = kv(p, " p=-", (uint32_t)-KM_RSSI_DBM(rpk));
+      p = kv(p, " f=-", (uint32_t)-KM_RSSI_DBM(rmin));
+      *p = 0;
+      api->say(ln);
+      rmin = 0x1FF, rpk = 0, rup = 0;
+    }
+#endif
   }
+#ifdef DFSK_ACARS
+  rmin = 0x1FF, rpk = 0, rup = 0;
+#endif
   prev = begin(api, cur, af);
   t0 = api->ms(), tlast = api->ticks() & 0xFFFF;
   for (;;) {
@@ -362,7 +390,7 @@ int k6_main(const k6_api_t *api) {
       p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(rssi));
       *p = 0;
       api->say(ln);
-      if (irq >= 3 && ndump < CAPN) {
+      if (irq >= DUMP_K && ndump < CAPN) {
         ndump++;
 #else
       if (ncap <= CAPN) {

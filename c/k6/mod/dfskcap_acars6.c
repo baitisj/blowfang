@@ -2,8 +2,10 @@
    and 50 MHz only, so this is where the plain FSK receiver can be shown a strong AM signal
    (python3 -m modem.acars probe OUT.wav --only R --where 50.650, sent in AM). 60 s after its
    start (its own upload on 440.850 MHz ends, the sender changes band), then the four front
-   ends for 45 s each. Receive only. docs/k6-acars.md. SPDX-License-Identifier: MIT */
+   ends for 45 s each, every capture's words said. Receive only. docs/k6-acars.md.
+   SPDX-License-Identifier: MIT */
 #define DFSK_ACARS
+#define DFSK_DUMP_ALL
 #define PROBE_HZ 50650000u
 #define WAIT_MS 60000u
 #define FE_S 45
