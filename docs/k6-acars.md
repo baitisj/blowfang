@@ -408,3 +408,45 @@ d0 33 00c 000808002001000840001014504020409426000440240900
   data's samples fall on both sides: eight front ends of 22 s, narrow and FM, seven with the
   AFC off (REG_73 bit 4) tuned 300, 200 and 100 Hz low, as tuned, and 100, 200 and 300 Hz
   high, the last as tuned with the AFC on (this run's front end 0 again).
+
+**Sixth run (23:52 to 23:56Z, build f6b3004, 5 percent): 100 Hz off tune it is deaf.**
+
+```
+v0 n=0 w=0 b=0 p=-75 f=-79              AFC off, 300 Hz low
+v1 n=0 w=0 b=0 p=-75 f=-79              AFC off, 200 Hz low
+v2 n=0 w=0 b=0 p=-75 f=-79              AFC off, 100 Hz low
+v3 n=43 w=3002 b=0 p=-75 f=-79          AFC off, as tuned
+v4 n=0 w=0 b=0 p=-75 f=-79              AFC off, 100 Hz high
+v5 n=0 w=0 b=0 p=-75 f=-79              AFC off, 200 Hz high
+v6 n=0 w=0 b=0 p=-75 f=-79              AFC off, 300 Hz high
+v7 n=28 w=4927 b=0 p=-75 f=-79          AFC on, as tuned
+```
+
+- Only as tuned does the receiver start, with the AFC off (43 captures in 22 s) or on (28),
+  and what it gives is the same as before: pre-keys (none of the 43 with more than two words
+  of them with the AFC off, three of the 28 with it on), no data, no block.
+- **100 Hz to either side there is no capture at all.** So the FM the narrow filter makes of
+  the AM signal swings less than 100 Hz about the carrier, and there is no tuning where the
+  data's samples fall on both sides of the slicer: the place where the receiver starts at all
+  is narrower than one step, and in it the data stays on one side.
+
+### What the 6 m tests say
+
+Six runs, the last three with the carrier 40 dB over the K6's floor:
+
+1. **The plain FSK receiver's slicer is fed by the FM discriminator and nothing else.** REG_47's
+   AF source AM changes what the speaker gets, not what the slicer gets (wide filter: nothing
+   either way; narrow filter: the same either way).
+2. Of an AM signal it sees only what a narrow filter turns into FM: under 100 Hz of swing
+   from a fully modulated carrier at 40 dB over the floor. That is enough to start on a block's
+   pre-key and never enough to read a bit of its data.
+3. So **neither of the chip's modems reads ACARS**: the 1200/2400 one never syncs (first bench
+   run), the plain one cannot be given AM audio. On this radio ACARS would have to come
+   through a path that carries AM audio to the MCU, and the only one there is, the GP0 IF
+   tap, needs about -79 dBm (docs/k6-aprs-clock.md); ACARS at the bench site peaks
+   at -103 dBm. The question is closed for the chip as it is.
+
+`dfskcap_acars6` stays as the instrument it became (the `q` lines, every capture's words, the
+narrow front ends with the AFC off); `dfskcap_acars` on 131.550 MHz is unchanged in what it
+does.
+
