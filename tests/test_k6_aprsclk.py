@@ -700,3 +700,43 @@ def test_kinds_wav_a_rehearsal_of_real_packets():
         hms = info[1:7]
         u = int(t0 + end - 0.4) % 86400               # a second or less before the frame's end
         assert abs(int(hms[:2]) * 3600 + int(hms[2:4]) * 60 + int(hms[4:]) - u) <= 1, (c, info, end)
+
+
+@need_clang
+def test_aprsfsk_sweep_goes_round_its_settings():
+    """aprsfsks_440 (FSK_SWEEP): a setting of REG_58 and REG_2B every so many ms, said in an s
+    line, only between packets; the packets still decode (the model's receiver does not mind the
+    setting) and the registers are put back."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    total, BASE = 6.5, 4800
+    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u"), ("FSK_SWEEP", "700u")],
+                           os.path.join(K6, "mod", "aprsfsk.c"))
+    full, _ = k6mod.build(os.path.join(K6, "mod", "aprsfsks_440.c"))
+    assert len(full) < 5800, len(full)
+    air = np.random.default_rng(5).integers(0, 2, int((total + 2) * BASE // 4))
+    for k, (t, mk) in enumerate(packets()):
+        b = aprs.hdlc_bits(mk(UTC0 + t + 40 * 8 / aprs.BAUD)).astype(int)
+        i = int(t * aprs.BAUD)
+        air[i:i + len(b)] = b
+    Chip = modem_chip(le, lambda r58: np.repeat(air, BASE // aprs.BAUD), BASE)
+    Chip.either, Chip.spur = True, True
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
+             scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None and r[0] == 3, (r, e.said[-5:])
+    s = [dict(kv.split("=") for kv in ln.split()[2:]) | {"n": ln.split()[1]} for ln in e.said if ln.startswith("s ")]
+    assert [v["n"] for v in s[:8]] == ["1", "2", "3", "4", "5", "6", "7", "0"], s
+    assert [v["cfg"] for v in s[:8]] == ["33a3", "3323", "3363", "33a9", "33a1", "31a3", "33e3", "33a3"], s
+    assert [v["af"] for v in s[:8]] == ["0100", "0000", "0000", "0000", "0000", "0000", "0000", "0000"], s
+    # on the 700 ms grid, late only by a read under way (the next one is then early); the
+    # longest is 128 words of a stale word that reads as flags, as on 144.390
+    assert len(s) == 9, [v["t"] for v in s]
+    assert all(0 <= int(v["t"]) - 700 * (k + 1) < 2000 for k, v in enumerate(s)), [v["t"] for v in s]
+    assert [int(v["ok"]) for v in s] == sorted(int(v["ok"]) for v in s) and s[-1]["ok"] in ("2", "3"), s
+    assert {0x3323, 0x3363, 0x33A9, 0x33A1, 0x31A3, 0x33E3} <= set(e.writes[0x58])
+    assert {0, 0x0100} <= set(e.writes[0x2B])
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B):
+        assert e.writes[reg][-1] == 0, hex(reg)
+    assert "ok=3 " in e.said[-1], e.said[-3:]

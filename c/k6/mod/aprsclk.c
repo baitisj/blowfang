@@ -884,6 +884,8 @@ int k6_main(const k6_api_t *api) {
                                         (FSK_STREAM: the flags since 20 ms after the search began)
      d 12 000 fefe fe01 ...             its words, 10 a line (APRS_FSK_DUMP 2: every packet; 1:
                                         those without a good frame; 0: none)
+     s 3 t=28924 cfg=3363 af=8000 ok=12       FSK_SWEEP: the setting from here on (its number,
+                                        REG_58, REG_2B) and the good frames so far
      aprs fsk ms=900004 key=0 pre=31 fake=912   before the end line: the module's clock, the key
                                         that ended it, sync words, those of under 6 words
    Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F, 02 and (FSK_AF) 2B, put back as read (the pager arms its
@@ -907,6 +909,23 @@ int k6_main(const k6_api_t *api) {
 
 static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B};
 
+#ifdef FSK_SWEEP
+/* a setting every FSK_SWEEP ms, round and round: REG_58, and bits ORed into REG_2B (<10> the
+   300 Hz high-pass off, <9> the 3 kHz low-pass off, <8> the de-emphasis off: BK4819 notes).
+   What reads a pre-emphasised packet? (the third bench run: 33a3 as found reads none) */
+static const uint16_t FSK_SW[][2] = {
+  {0x33A3, 0},      /* as aprsfsk has it */
+  {0x33A3, 0x0100}, /* de-emphasis off */
+  {0x3323, 0},      /* bits 7:6 = 00 */
+  {0x3363, 0},      /* bits 7:6 = 01 */
+  {0x33A9, 0},      /* the bandwidth for 1200/2400 */
+  {0x33A1, 0},      /* the bandwidth for FSK 1.2K */
+  {0x31A3, 0},      /* less RX gain */
+  {0x33E3, 0},      /* bits 7:6 = 11 */
+};
+#define FSK_NSW (sizeof(FSK_SW) / sizeof(FSK_SW[0]))
+#endif
+
 static void fsk_arm(const k6_api_t *api) {
   api->fd_write(0x59, FSK_CTRL | 0x4000);
   api->fd_write(0x59, FSK_CTRL | 0x1000);
@@ -916,10 +935,10 @@ static void fsk_arm(const k6_api_t *api) {
 /* Listen for the next sync word, from wherever the chip is. Arming alone does not end a packet
    the chip is in (the first bench run: it read on to its 256 bytes, deaf, and said so only with
    its RX-done), so the modem is turned off and on, and armed twice as at the start. */
-static void fsk_seek(const k6_api_t *api) {
+static void fsk_seek(const k6_api_t *api, uint32_t cfg) {
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-  api->fd_write(0x58, FSK_CFG);
+  api->fd_write(0x58, (uint16_t)cfg);
   fsk_arm(api);
   api->delay_us(2000);
   fsk_arm(api);
@@ -958,6 +977,10 @@ static void fsk_said(const k6_api_t *api, st_t *s, uint32_t tsync, uint32_t got,
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now, tkey = 0, tsync = 0, idle = 0, ok0 = 0, st = 0, left = 0, got = 0;
+  uint32_t cfg = FSK_CFG;
+#ifdef FSK_SWEEP
+  uint32_t sw = 0, tsw = 0;
+#endif
 #ifdef FSK_STREAM
   uint32_t acc = 0, tlast, tseek = 0, prev = 0;
 #else
@@ -984,7 +1007,7 @@ int k6_main(const k6_api_t *api) {
   api->fd_write(0x5C, 0x5625);  /* no CRC of the chip's */
   api->fd_write(0x5D, (2 * FSK_WORDS - 1) << 8);
   api->fd_write(0x5E, 0x0204);  /* RX almost full at 4 words */
-  fsk_seek(api);
+  fsk_seek(api, cfg);
   api->fd_write(0x3F, 0x3002);  /* RX done, almost full, sync found: as the probes had it */
 #ifdef FSK_STREAM
   for (i = 0; i < 8; i++) prev = api->fd_read(0x5F);
@@ -1011,6 +1034,21 @@ int k6_main(const k6_api_t *api) {
       if (key || now >= RUN_MS) break;
       if (api->level >= 7 && now - s->flag_ms > 120) api->led(0);
     }
+#ifdef FSK_SWEEP
+    if (!left && now - tsw >= FSK_SWEEP) {
+      tsw += FSK_SWEEP;
+      if (++sw == FSK_NSW) sw = 0;
+      cfg = FSK_SW[sw][0];
+      api->fd_write(0x2B, s->sv[9] | FSK_SW[sw][1]);
+      fsk_seek(api, cfg);
+      p = kv(s->ln, "s ", sw);
+      p = kv(p, " t=", now);
+      p = hex4(put(p, " cfg="), cfg);
+      p = hex4(put(p, " af="), s->sv[9] | FSK_SW[sw][1]);
+      p = kv(p, " ok=", s->ok);
+      say(api, s, p);
+    }
+#endif
 #ifdef FSK_STREAM
     {
       uint32_t f = api->fd_read(0x02) & 0x3002, tk = api->ticks() & 0xFFFF, n, over = 0;
@@ -1054,7 +1092,7 @@ int k6_main(const k6_api_t *api) {
       }
       if (!left && now - tseek >= FSK_AGAIN) over = 1;
       if (over) {
-        fsk_seek(api);
+        fsk_seek(api, cfg);
         for (i = 0; i < 8; i++) prev = api->fd_read(0x5F); /* what is left in the FIFO */
         prev = (prev & 0xFF) << 8 | prev >> 8;
         if (left) {
@@ -1076,7 +1114,7 @@ int k6_main(const k6_api_t *api) {
         if (f & 0x2000) {
           /* the chip has read a whole packet nobody took: its words are gone. Start again */
           s->lost++;
-          fsk_seek(api);
+          fsk_seek(api, cfg);
         } else {
           /* sync found: the first word is in. Almost full as well (this loop was away, saying
              a line or drawing): so are three more */
@@ -1108,7 +1146,7 @@ int k6_main(const k6_api_t *api) {
         got++;
       }
       if (got >= left || idle >= FSK_IDLE) {
-        fsk_seek(api);
+        fsk_seek(api, cfg);
         left = 0;
         if (got < 6 && s->ok == ok0) s->fake++;
         fsk_said(api, s, tsync, got, s->ok - ok0, st);
