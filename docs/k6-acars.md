@@ -241,3 +241,44 @@ end 60 s after its start (the module's own upload on 440.850 MHz ends and the IC
 band and mode), then 45 s each. The signal: `python3 -m modem.acars probe OUT.wav --only R
 --where 50.650` (real blocks only, about two a second, the frequency in their text), sent in
 AM.
+
+The transmission, one key-up of about four minutes on 50.650 MHz in AM (the IC-7100's AM-D,
+audio from USB) at RF power 0.0: 13 s of PSK31 `AG7EW TEST` (an identified carrier for the
+automatic tuner on the 6 m antenna to match on), the CW ident, 215 s of blocks, the CW ident.
+Then the rig goes back to 440.850 MHz FM-D and is read back.
+
+**First run (2026-11-10 17:03 to 17:08Z).** The K6's RSSI read -105 or -106 dBm in every
+front end and the IC-7100's power meter 0 W. The carrier was up for the whole listen (keyed
+28 s after the module's start, the front ends from 60 s), so nothing in the log told a
+steady weak carrier from the floor. The narrow AM front end started 24 times in 45 s, the FM
+one twice, none of them like a pre-key, so no words were said. Hence the `q` lines (the RSSI's
+highest and lowest every 5 s before the first front end) and, in this build, the words of
+every capture (`DFSK_DUMP_ALL`).
+
+**Second run (17:17 to 17:21Z, build 82e5b49).**
+
+```
+q t=25066 p=-118 f=-120
+q t=30079 p=-104 f=-121
+q t=35092 p=-103 f=-105
+v0 n=11 w=3098 b=0 p=-104 f=-106        FM, wide
+v1 n=11 w=3104 b=0 p=-104 f=-106        AF source AM, wide
+v2 n=0 w=0 b=0 p=-104 f=-105            FM, narrow, 2.5 kHz high
+v3 n=26 w=9190 b=0 p=-104 f=-105        AF source AM, narrow
+```
+
+- **The K6 hears the carrier, 15 dB over its floor on 6 m** (-104 against -119 dBm): the step
+  is in the `q` line of 30 s. The rig's meter still reads 0 W at RF power 0.0, and its own
+  S-meter on the channel reads S0.
+- The receiver starts every few seconds (48 captures), and **no capture has anything of a
+  block**: no run of alternating samples longer than 20 (a pre-key is 250), pieces of the sent
+  block match the samples no better than they match random bits (0.64 to 0.70 of 160 samples;
+  random gives 0.65), no SYN SYN.
+- The samples are not fair coin flips either: ones are 30% of them with the AF source FM or
+  AM in the wide filter, 40% in the narrow AM front end, and the transitions come and go with
+  the blocks' half-second beat in the FM front end as much as in the AM one.
+- So at 15 dB over the floor the plain receiver gives noise shaped by the signal in every
+  front end, and the AM setting of REG_47 makes no difference that shows. That fits a slicer
+  fed from the FM discriminator whatever the AF source is (REG_47 chooses what goes to the
+  speaker), but a weak signal with an unknown depth of modulation cannot prove it. A stronger
+  one would: clean blocks in the AM front ends, or a quiet slicer in all four.
