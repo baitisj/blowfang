@@ -60,6 +60,8 @@
 #define FLY_STEP_MS 62          /* a flight step on the screen: a full-field shot (~65 steps) takes
                                    about 4 s (Jeff: slow enough to watch the arc) */
 #define NTRAIL 64               /* trail dots kept while a shot flies */
+#define SND_IDLE 32             /* the speaker PWM's rest: 31 kHz at the same 1/32 duty as the whistle */
+#define SND_BOOM_MS 150         /* a blast's noise (and its pause on the screen) */
 
 #define RF_HZ 440850000u
 #define RF_CLEAR_DBM -90
@@ -137,6 +139,28 @@ static const uint16_t QUIET[] = {
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
 
+/* ---- sound: the speaker PWM (midi.c's path: PA11 = TIM1_CH4, PB2 the amplifier), here a pulse
+   wave at the pitch itself, so it plays on its own while the module waits ---- */
+
+#define RCC_APB2ENR 0x40021018u /* TIM1EN bit 11 */
+#define GPIOA_MODER 0x48000000u
+#define GPIOA_OSPEEDR 0x48000008u
+#define GPIOA_AFRH 0x48000024u
+#define GPIOB_ODR 0x48000414u
+#define GPIOB_BSRR 0x48000418u
+#define GPIOB_BRR 0x48000428u
+#define SPK (1u << 2)
+#define TIM_CR1 0x40012C00u
+#define TIM_EGR 0x40012C14u
+#define TIM_CCMR2 0x40012C1Cu
+#define TIM_CCER 0x40012C20u
+#define TIM_PSC 0x40012C28u
+#define TIM_ARR 0x40012C2Cu
+#define TIM_CCR4 0x40012C40u
+#define TIM_BDTR 0x40012C44u
+#define NSND 6
+
+
 /* Aura's KEY_TABLE (surf.c): phase 0 side keys, then rows PB0, PB4, PB10, PB11, PB9;
    A/B side 1/2, U/D up/down, M menu, X exit, N band, V vm, W a/b */
 static const char KEYS[24] = {0,   'A', 0,   'B', '7', '8', '#', '9', '4', '5', '0', '6',
@@ -157,11 +181,40 @@ static const uint8_t SPRITE[3][6] = {{0x08, 0x1C, 0x08, 0x3E, 0x2A, 0x3E},
                                      {0x22, 0x14, 0x08, 0x3E, 0x22, 0x3E},
                                      {0x00, 0x00, 0x04, 0x18, 0x2C, 0x7E}};
 
+/* each item's name, then its line in the shop (GW_ITEMS' order) */
+static const char GW_TEXT[] =
+    "QRP Shot\0" "5 W, always free\0"
+    "Kilowatt\0" "QRO: big blast\0"
+    "FCC Violator\0" "splatter, short hop\0"
+    "12V Charger\0" "sparks fly\0"
+    "CW Strike\0" "no wind, precise\0"
+    "Beverage\0" "strong, stays low\0"
+    "The Lid\0" "wanders around\0"
+    "Skip Zone\0" "skips off ground\0"
+    "Repeater\0" "kerchunk: splits 3\0"
+    "Yagi Beam\0" "straight, no drop\0"
+    "Coax Spool\0" "piles up dirt\0"
+    "Tropo Duct\0" "half gravity: far\0"
+    "Ground Rod\0" "shield: soaks half\0"
+    "Faraday Cage\0" "shield: bends shots\0";
+
+/* item i's name (info 0) or its line in the shop (1) */
+static const char *item_text(int i, int info) {
+  const char *s = GW_TEXT;
+  for (i = 2 * i + info; i; i--)
+    while (*s++) {
+    }
+  return s;
+}
+
 static const char HELP[] = "HOW TO PLAY\n4 6 side  angle\n2 8 UP DN power\n* #       pick item\n"
                            "MENU 5    fire!\nEXIT x2   quit game";
 
 typedef struct {
   const k6_api_t *api;
+  uint8_t snd;                  /* sound: 0 off, else 1 | the amplifier's bit as it found it (SPK) */
+  uint16_t r47;                 /* and the registers it found: the chip's REG_47, */
+  uint32_t sv[NSND];            /* TIM1's and the pins' */
   gw_t g;
   uint8_t bmp[16 * GW_H];
   uint32_t now, t_key, t_rep, t_flush, t_exit, t_msg, seed, rnd;
@@ -187,6 +240,52 @@ typedef struct {
   uint8_t went;                 /* it has played (or tried to): the title screen quits */
 #endif
 } gc_t;
+
+/* a pulse wave: period per us (the timer counts at 1 MHz), high per >> sh of it */
+__attribute__((noinline)) static void tone(gc_t *c, uint32_t per, int sh) {
+  if (!c->snd) return;
+  wr(TIM_ARR, per);
+  wr(TIM_CCR4, per >> sh);
+}
+
+/* sound on (on = 1), unless TIM1 is in use, or off (0): TIM1, PA11, PB2 and REG_47 put back
+   as it found them (PSC and ARR as the voice prompts' 48 kHz carrier), as midi.c does */
+__attribute__((noinline)) static void sound(gc_t *c, int on) {
+  uint32_t *v = c->sv;
+  if (on) {
+    if (rd(TIM_CR1) & 1) return;
+    c->snd = 1 | (rd(GPIOB_ODR) & SPK);
+    c->r47 = (uint16_t)c->api->fd_read(0x47);
+    c->api->fd_write(0x47, c->r47 & ~0x0F00u);   /* AF 0: the chip's audio muted */
+    v[0] = rd(RCC_APB2ENR), v[1] = rd(GPIOA_MODER), v[2] = rd(GPIOA_AFRH);
+    wr(RCC_APB2ENR, v[0] | (1u << 11));
+    v[3] = rd(TIM_CCMR2), v[4] = rd(TIM_CCER), v[5] = rd(TIM_BDTR);
+    wr(TIM_PSC, 95);                             /* 1 MHz */
+    tone(c, SND_IDLE, 5);
+    wr(TIM_CCMR2, (v[3] & ~0xFF00u) | 0x6800u);  /* PWM mode 1, preload */
+    wr(TIM_CCER, 1u << 12);                      /* CC4E */
+    wr(GPIOA_AFRH, (v[2] & ~(0xFu << 12)) | (2u << 12));   /* PA11 AF2 = TIM1_CH4 */
+    wr(GPIOA_MODER, (v[1] & ~(3u << 22)) | (2u << 22));
+    wr(TIM_CR1, 0x81);                           /* ARPE, CEN */
+    wr(TIM_BDTR, v[5] | (1u << 15));             /* MOE */
+    c->api->delay_us(30000);                     /* the RC filter settles first, as stock */
+    wr(GPIOB_BSRR, SPK);
+  } else if (c->snd) {
+    if (!(c->snd & SPK)) wr(GPIOB_BRR, SPK);
+    c->api->delay_us(20000);                     /* as stock, before the pin lets go */
+    wr(TIM_BDTR, v[5]);
+    wr(TIM_CR1, 0);
+    wr(TIM_PSC, 0);
+    wr(TIM_ARR, 2000);
+    wr(TIM_CCER, v[4]);
+    wr(TIM_CCMR2, v[3]);
+    wr(GPIOA_MODER, v[1]);
+    wr(GPIOA_AFRH, v[2]);
+    wr(RCC_APB2ENR, v[0]);
+    c->api->fd_write(0x47, c->r47);
+    c->snd = 0;
+  }
+}
 
 /* ---- text ---- */
 
@@ -375,7 +474,6 @@ static void draw_field(gc_t *c, int aim) {
 static void hud(gc_t *c) {
   gw_t *g = &c->g;
   gw_pl_t *p = &g->p[g->mover];
-  const gw_item_t *it = &GW_ITEMS[p->wpn];
   char *q = c->ln;
   int j, w = g->wind;
   for (j = 0; j < 2; j++) {
@@ -400,14 +498,14 @@ static void hud(gc_t *c) {
   if ((int32_t)(c->t_msg - c->now) > 0) {
     q = put(c->ln, c->msg);
   } else {
-    q = put(c->ln, it->name);
+    q = put(c->ln, item_text(p->wpn, 0));
     if (p->wpn) {
       q = put(q, " x");
       q = num(q, p->inv[p->wpn], 1);
     }
     if (p->she) {
       q = pad(c, q, 17);
-      *q++ = GW_ITEMS[p->sh].name[0];
+      *q++ = *item_text(p->sh, 0);
       q = num(q, p->she, 3);
     }
   }
@@ -788,15 +886,18 @@ static int aim(gc_t *c) {
   }
 }
 
-/* the shot on the screen: the flight, a frame every other step, each blast as a disc */
+/* the shot on the screen: the flight, a frame each step, each blast as a disc. Sound: a quiet
+   whistle falling in pitch while a shot comes down (with its speed), and for each blast a crackle
+   of dirt that sinks into a rumble. Nothing sounds if TIM1 is already in use. */
 static void fly(gc_t *c, int a, int pw, int w) {
   gw_t *g = &c->g;
   int k, i;
-  uint32_t t0;
+  uint32_t t0, per, n = 1;
   say(c, nsp(nsp(nsp(nsp(put(c->ln, "gw shot"), g->mover + 1u), (uint32_t)a), (uint32_t)pw), (uint32_t)w));
   c->t_msg = 0;
   c->nt = 0;
   c->land_x = 0xFF;
+  sound(c, 1);
   gw_fire(g, a, pw, w);
   t0 = c->api->ms();               /* paced, a frame a step, so the eye can follow the arc */
   for (k = 0;; k++) {
@@ -808,13 +909,25 @@ static void fly(gc_t *c, int a, int pw, int w) {
         c->ty_[c->nt++] = (uint8_t)(s->y >> GW_YS);
       }
     }
+    per = SND_IDLE;
+    if (g->s[0].live && g->s[0].vy > 0) per = 300 + ((uint32_t)g->s[0].vy >> 7);   /* the first shot
+                                                                                  coming down: 3.3 kHz to 1 kHz */
     if (g->nb && c->land_x == 0xFF) c->land_x = g->bx[0];
     led(c, g->nb);
     flush(c, 0);
-    if (g->nb) c->api->delay_us(150000);
+    if (g->nb) {
+      for (i = 0; i < SND_BOOM_MS; i++) {    /* noise: 1-16 kHz falling to 170-210 Hz, louder first */
+        n = n * 1103515245u + 12345u;
+        tone(c, 60 + ((uint32_t)i << 5) + (n >> 22), 2 + (i >> 6));
+        c->api->delay_us(1000);
+      }
+      per = SND_IDLE;
+    }
+    tone(c, per, 5);
     if (!live) break;
     while ((int32_t)(c->api->ms() - t0 - (k + 1) * FLY_STEP_MS) < 0) c->api->delay_us(2000);
   }
+  sound(c, 0);
   led(c, 0);
   c->nt = 0;
   g->nb = 0;
@@ -846,13 +959,13 @@ static void shop(gc_t *c, int j) {
       int n = top + i;
       q = c->ln;
       *q++ = n == c->cur ? '>' : ' ';
-      q = pad(c, put(q, GW_ITEMS[n].name), 14);
+      q = pad(c, put(q, item_text(n, 0)), 14);
       *q++ = '$';
       q = num(q, GW_ITEMS[n].price, 2);
       *q++ = ' ';
       text(c, 1 + i, num(q, n >= GW_NWPN ? p->sh == n : p->inv[n], 1));
     }
-    text(c, 5, put(c->ln, (int32_t)(c->t_msg - c->now) > 0 ? c->msg : GW_ITEMS[c->cur].info));
+    text(c, 5, put(c->ln, (int32_t)(c->t_msg - c->now) > 0 ? c->msg : item_text(c->cur, 1)));
     c->api->lcd_wf(0, 0, 0);
     c->api->lcd_flush();
     do {
