@@ -63,7 +63,7 @@ static unsigned last_group(const pt_profile *pr, unsigned total, unsigned *first
 unsigned pt_n_packets(const pt_profile *pr, unsigned total) {
     unsigned first = 0, m = last_group(pr, total, &first);
     unsigned n = m ? first + m : (total + group_frames(pr) - 1) / group_frames(pr) * pr->depth;
-    return (total > 0xFFFF || n > 0x2000) ? 0 : n;
+    return (total >= 0xFFFF || n > 0x2000) ? 0 : n;    /* 0xFFFF total: an open stream (k6live) */
 }
 
 unsigned pt_air_packets(const pt_profile *pr, unsigned total) {

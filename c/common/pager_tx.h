@@ -47,7 +47,8 @@ void pt_whiten(uint8_t *p, unsigned n);                   /* XOR PN9 (seed 0x1FF
 uint8_t pt_msg_id(const uint8_t *frames, unsigned total);
 
 /* Data packets (seqs) in a message of `total` frames, and packets on air for one pass (data plus
- * parity). 0 when the message doesn't fit the format (over 65535 frames or 8192 packets). */
+ * parity). 0 when the message doesn't fit the format (65535 frames or more: 0xFFFF in the
+ * header marks an open stream; or over 8192 packets). */
 unsigned pt_n_packets(const pt_profile *pr, unsigned total);
 unsigned pt_air_packets(const pt_profile *pr, unsigned total);
 

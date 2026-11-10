@@ -21,8 +21,15 @@ jobs:
       - name: Arm toolchain and QEMU
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm
-      - run: pip install numpy scipy pytest
+          sudo apt-get install -y -qq \
+            gcc-arm-none-eabi \
+            libnewlib-arm-none-eabi \
+            qemu-system-arm
+      - run: |
+          pip install \
+            numpy \
+            scipy \
+            pytest
       - name: host build of the portable transmitter
         run: make -C c/common
       - name: radio image and QEMU build
@@ -30,7 +37,11 @@ jobs:
           make -C radios/uv380
           make -C radios/uv380 qemu
       - name: tests (host and emulated)
-        run: python -m pytest -q tests/test_uv380_pager.py tests/test_uv380_cw.py tests/test_uv380_emu.py
+        run: |
+          python -m pytest -q \
+            tests/test_uv380_pager.py \
+            tests/test_uv380_cw.py \
+            tests/test_uv380_emu.py
       - uses: actions/upload-artifact@v4
         with:
           name: uv380-image

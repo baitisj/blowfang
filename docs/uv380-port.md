@@ -90,8 +90,8 @@ Portable code goes in `c/common/` (MIT, no OS, no malloc, tested on the host). T
 `radios/uv380/`: a small bare-metal board layer (start-up, clocks, GPIO, PWM audio out) with two
 back ends, the radio and QEMU. Apps call only `board.h`, so the same app runs on both.
 
-For the full radio (FM receive, UI, codeplug, power and calibration handling) there are two
-paths. Jeff picks:
+For the full radio (FM receive, UI, codeplug, power and calibration handling) there were two
+paths; **Jeff picked A on 2026-11-10** (`firmware/uv380-openrtx/`):
 
 - **A. OpenRTX as the base, blowfang as a patch on it** (like Aura on the K6): `firmware/uv380-openrtx/`
   with a pinned OpenRTX commit, our patch and a build script; CI builds OpenRTX from its GitHub
@@ -129,7 +129,6 @@ can't run yet; it can come later in CI.
 ## Open questions for Jeff
 
 - The exact model and label (UV380, UV390, Plus, GPS?).
-- Path A (OpenRTX base) or B (own firmware).
 - Are hardware mods OK on the UV-380? (The K6 rule was no mods.) Without them, mic and RF audio
   into the MCU depend on the I2S probe working.
 - Ok to back up the stock firmware and codeplug on hamlet before the first flash?
@@ -146,3 +145,7 @@ can't run yet; it can come later in CI.
   every TX call fails, so no build can transmit).
 - `tests/test_uv380_emu.py`: the QEMU build decodes on the K6 model (3 tests).
 - CI: `.github/workflows/uv380.yml` (Ubuntu toolchain and QEMU, image kept as an artifact).
+- `firmware/uv380-openrtx/`: OpenRTX `20b4088` + `uv380-blowfang.patch`, a PAGER mode (PTT sends
+  the stored sotto 1200 message as K6 FFSK pager packets, then the Morse ident; 430-450 MHz only).
+  CI (`uv380-openrtx.yml`) builds the radio image in OpenRTX's devcontainer and the Linux
+  emulator. Not run on a radio.

@@ -1,0 +1,376 @@
+diff --git a/meson.build b/meson.build
+index fc5581d..a0a5538 100644
+--- a/meson.build
++++ b/meson.build
+@@ -59,6 +59,10 @@ openrtx_src = ['openrtx/src/core/state.c',
+                'openrtx/src/rtx/rtx.cpp',
+                'openrtx/src/rtx/OpMode_FM.cpp',
+                'openrtx/src/rtx/OpMode_M17.cpp',
++               'openrtx/src/rtx/OpMode_Pager.cpp',
++               'openrtx/src/blowfang/pager_tx.c',
++               'openrtx/src/blowfang/ffsk_tx.c',
++               'openrtx/src/blowfang/cw_tx.c',
+                'openrtx/src/protocols/M17/DSP.cpp',
+                'openrtx/src/protocols/M17/Golay.cpp',
+                'openrtx/src/protocols/M17/MetaText.cpp',
+@@ -69,7 +73,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+                'openrtx/src/protocols/M17/FrameDecoder.cpp',
+                'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
+ 
+-openrtx_inc = ['openrtx/include', 'platform']
++openrtx_inc = ['openrtx/include', 'platform', 'openrtx/src/blowfang']
+ 
+ ##
+ ## OpenRTX UI sources
+diff --git a/openrtx/include/rtx/OpMode_Pager.hpp b/openrtx/include/rtx/OpMode_Pager.hpp
+new file mode 100644
+index 0000000..c0f6016
+--- /dev/null
++++ b/openrtx/include/rtx/OpMode_Pager.hpp
+@@ -0,0 +1,46 @@
++/*
++ * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
++ *
++ * SPDX-License-Identifier: GPL-3.0-or-later
++ */
++
++#ifndef OPMODE_PAGER_H
++#define OPMODE_PAGER_H
++
++#include "core/audio_path.h"
++#include "OpMode.hpp"
++
++/**
++ * blowfang voice pager, transmit side: a press of PTT sends the stored sotto
++ * message as K6 voice-pager packets (FFSK 1200/1800 Hz, 1800 baud, XL), the
++ * format the Baofeng UV-K6 running blowfang receives, followed by the station
++ * ident in Morse. One press sends the whole message (about 15 s for 10 s of
++ * speech); pressing PTT again stops it. The radio does not receive in this mode.
++ *
++ * Transmission is refused outside 430-450 MHz.
++ */
++class OpMode_Pager : public OpMode
++{
++public:
++    OpMode_Pager();
++    ~OpMode_Pager();
++    virtual void enable() override;
++    virtual void disable() override;
++    virtual void update(rtxStatus_t *const status, const bool newCfg) override;
++    virtual opmode getID() override
++    {
++        return OPMODE_PAGER;
++    }
++    virtual bool rxSquelchOpen() override
++    {
++        return false;
++    }
++
++private:
++    void send(rtxStatus_t *const status);
++
++    bool   armed;        ///< PTT was released since the last send
++    uint8_t msgId;       ///< msg_id of the next message, new for each send
++};
++
++#endif /* OPMODE_PAGER_H */
+diff --git a/openrtx/include/rtx/rtx.h b/openrtx/include/rtx/rtx.h
+index 393659a..5c31aed 100644
+--- a/openrtx/include/rtx/rtx.h
++++ b/openrtx/include/rtx/rtx.h
+@@ -73,7 +73,8 @@ enum opmode
+     OPMODE_NONE = 0,        /**< No opMode selected */
+     OPMODE_FM   = 1,        /**< Analog FM          */
+     OPMODE_DMR  = 2,        /**< DMR                */
+-    OPMODE_M17  = 3         /**< M17                */
++    OPMODE_M17  = 3,        /**< M17                */
++    OPMODE_PAGER = 4        /**< blowfang: K6 voice-pager packets, FFSK */
+ };
+ 
+ /**
+diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
+new file mode 100644
+index 0000000..f1ad0ac
+--- /dev/null
++++ b/openrtx/src/rtx/OpMode_Pager.cpp
+@@ -0,0 +1,152 @@
++/*
++ * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
++ *
++ * SPDX-License-Identifier: GPL-3.0-or-later
++ */
++
++#include "interfaces/platform.h"
++#include "interfaces/delays.h"
++#include "interfaces/audio.h"
++#include "interfaces/radio.h"
++#include "core/audio_stream.h"
++#include "core/state.h"
++#include "rtx/OpMode_Pager.hpp"
++#include "rtx/rtx.h"
++#include <string.h>
++
++extern "C" {
++#include "pager_tx.h"
++#include "ffsk_tx.h"
++#include "cw_tx.h"
++}
++#include "blowfang_message.h"
++
++static constexpr uint32_t FS        = 48000;    // PWM sample rate into the modulator
++static constexpr uint32_t BAUD      = 1800;
++static constexpr size_t   BLOCK     = 960;      // samples per half buffer, 20 ms
++static constexpr int16_t  LEVEL     = 16000;    // FFSK peak (deviation: set on the bench)
++static constexpr int16_t  CW_LEVEL  = 13107;
++static constexpr freq_t   TX_MIN_HZ = 430000000;
++static constexpr freq_t   TX_MAX_HZ = 450000000;
++static constexpr unsigned SETTLE_MS = 60;       // silence after keying, before the lead-in
++
++#ifndef BLOWFANG_CALLSIGN
++#define BLOWFANG_CALLSIGN "AG7EW"
++#endif
++
++static stream_sample_t txBuf[2 * BLOCK];
++static pt_air  air;
++static ffsk_tx ffsk;
++static cw_tx   cw;
++static char    ident[12];
++
++OpMode_Pager::OpMode_Pager() : armed(false), msgId(0) { }
++
++OpMode_Pager::~OpMode_Pager() { }
++
++void OpMode_Pager::enable()
++{
++    armed = false;      // a PTT held while switching modes doesn't send
++    msgId = pt_msg_id(blowfang_message, BLOWFANG_MESSAGE_FRAMES);
++}
++
++void OpMode_Pager::disable()
++{
++    platform_ledOff(GREEN);
++    platform_ledOff(RED);
++    radio_disableRtx();
++}
++
++void OpMode_Pager::update(rtxStatus_t *const status, const bool newCfg)
++{
++    (void) newCfg;
++
++    bool ptt = platform_getPttStatus();
++    if(ptt == false)
++        armed = true;
++
++    if(ptt && armed && (status->txDisable == 0))
++    {
++        armed = false;
++        if((status->txFrequency >= TX_MIN_HZ) && (status->txFrequency <= TX_MAX_HZ))
++            send(status);
++    }
++
++    status->opStatus = OFF;
++    platform_ledOff(RED);
++    sleepFor(0, 30);
++}
++
++/* Fills one block: FFSK, then the Morse ident, then silence. Returns false
++ * once both are done and the block is all silence. */
++static bool fill(stream_sample_t *buf, size_t n, bool &inCw)
++{
++    size_t got = 0;
++    if(inCw == false)
++    {
++        got = ffsk_render(&ffsk, buf, n);
++        if(got < n)
++            inCw = true;
++    }
++    if(inCw)
++        got += cw_render(&cw, buf + got, n - got);
++    if(got < n)
++        memset(buf + got, 0, (n - got) * sizeof(stream_sample_t));
++    return got > 0;
++}
++
++void OpMode_Pager::send(rtxStatus_t *const status)
++{
++    static const pt_profile prof = PT_PROFILE_XL(PT_MAGIC_1200);
++    pt_message msg = {&prof, blowfang_message, BLOWFANG_MESSAGE_FRAMES, 1, msgId};
++    msgId++;            // a new msg_id for each message sent
++
++    const char *call = state.settings.callsign;
++    if((call[0] == '\0') || (strcmp(call, "N0CALL") == 0))
++        call = BLOWFANG_CALLSIGN;
++    strncpy(ident, call, sizeof(ident) - 1);
++    ident[sizeof(ident) - 1] = '\0';
++
++    pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
++    ffsk_init(&ffsk, &air, FS, BAUD, 0, 0, LEVEL);
++    cw_init(&cw, ident, FS, 20, 800, CW_LEVEL);
++
++    pathId path = audioPath_request(SOURCE_MCU, SINK_RTX, PRIO_TX);
++    if(path < 0)
++        return;
++
++    status->opStatus = TX;
++    platform_ledOn(RED);
++    radio_enableTx();
++    sleepFor(0, SETTLE_MS);
++
++    memset(txBuf, 0, sizeof(txBuf));
++    streamId stream = audioStream_start(path, txBuf, 2 * BLOCK, FS,
++                                        STREAM_OUTPUT | BUF_CIRC_DOUBLE);
++    if(stream >= 0)
++    {
++        bool inCw     = false;
++        bool released = false;
++        stream_sample_t *idle = outputStream_getIdleBuffer(stream);
++        while(audioPath_getStatus(path) == PATH_OPEN)
++        {
++            // One press sends the whole message; a second press stops it.
++            bool ptt = platform_getPttStatus();
++            if(ptt == false)
++                released = true;
++            else if(released)
++                break;
++
++            bool more = fill(idle, BLOCK, inCw);
++            outputStream_sync(stream, true);
++            idle = outputStream_getIdleBuffer(stream);
++            if(more == false)
++                break;
++        }
++        audioStream_stop(stream);
++    }
++
++    radio_disableRtx();
++    audioPath_release(path);
++    platform_ledOff(RED);
++}
+diff --git a/openrtx/src/rtx/rtx.cpp b/openrtx/src/rtx/rtx.cpp
+index 5470432..1db08a8 100644
+--- a/openrtx/src/rtx/rtx.cpp
++++ b/openrtx/src/rtx/rtx.cpp
+@@ -10,6 +10,7 @@
+ #include "rtx/rtx.h"
+ #include "rtx/OpMode_FM.hpp"
+ #include "rtx/OpMode_M17.hpp"
++#include "rtx/OpMode_Pager.hpp"
+ 
+ static pthread_mutex_t   *cfgMutex;     // Mutex for incoming config messages
+ static const rtxStatus_t *newCnf;       // Pointer for incoming config messages
+@@ -22,6 +23,7 @@ static OpMode     noMode;               // Empty opMode handler for opmode::NONE
+ static OpMode_FM  fmMode;               // FM mode handler
+ #ifdef CONFIG_M17
+ static OpMode_M17 m17Mode;              // M17 mode handler
++static OpMode_Pager pagerMode;          // blowfang voice pager (transmit)
+ #endif
+ 
+ 
+@@ -144,6 +146,7 @@ void rtx_task()
+                 case OPMODE_FM:   currMode = &fmMode;  break;
+                 #ifdef CONFIG_M17
+                 case OPMODE_M17:  currMode = &m17Mode; break;
++                case OPMODE_PAGER: currMode = &pagerMode; break;
+                 #endif
+                 default:   currMode = &noMode;
+             }
+diff --git a/openrtx/src/ui/default/ui.c b/openrtx/src/ui/default/ui.c
+index 679be11..53877e6 100644
+--- a/openrtx/src/ui/default/ui.c
++++ b/openrtx/src/ui/default/ui.c
+@@ -997,6 +997,8 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
+             if(state.channel.mode == OPMODE_FM)
+                 state.channel.mode = OPMODE_M17;
+             else if(state.channel.mode == OPMODE_M17)
++                state.channel.mode = OPMODE_PAGER;
++            else if(state.channel.mode == OPMODE_PAGER)
+                 state.channel.mode = OPMODE_FM;
+             else //catch any invalid states so they don't get locked out
+             #endif
+diff --git a/openrtx/src/ui/default/ui_main.c b/openrtx/src/ui/default/ui_main.c
+index eed473a..cf5d4ad 100644
+--- a/openrtx/src/ui/default/ui_main.c
++++ b/openrtx/src/ui/default/ui_main.c
+@@ -126,6 +126,12 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
+                     color_white, "DMR TG%s", "");
+             break;
+ 
++        case OPMODE_PAGER:
++            // blowfang: PTT sends the stored sotto message to a K6
++            gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
++                    color_white, "K6 PAGER (PTT)");
++            break;
++
+         #ifdef CONFIG_M17
+         case OPMODE_M17:
+         {
+diff --git a/openrtx/src/ui/default/ui_menu.c b/openrtx/src/ui/default/ui_menu.c
+index d71444c..5877479 100644
+--- a/openrtx/src/ui/default/ui_menu.c
++++ b/openrtx/src/ui/default/ui_menu.c
+@@ -1292,6 +1292,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+             gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "          M17");
+             break;
+ #endif
++        case OPMODE_PAGER:
++            gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "        PAGER");
++            break;
+     }
+ 
+     gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
+diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
+index 64b77a9..d0cb245 100644
+--- a/platform/drivers/baseband/radio_UV3x0.cpp
++++ b/platform/drivers/baseband/radio_UV3x0.cpp
+@@ -95,6 +95,7 @@ void radio_setOpmode(const enum opmode mode)
+     switch(mode)
+     {
+         case OPMODE_FM:
++        case OPMODE_PAGER:                          // blowfang pager: the FM voice path
+             at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
+             C6000.fmMode();                         // HR_C6000 in FM mode
+             C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
+@@ -207,6 +208,16 @@ void radio_enableTx()
+             C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
+             break;
+ 
++        case OPMODE_PAGER:
++        {
++            // blowfang pager: MCU audio into the line in, with the voice
++            // path's pre-emphasis (the K6 receiver de-emphasises)
++            FmConfig cfg = (config->bandwidth == BW_12_5) ? FmConfig::BW_12p5kHz
++                                                          : FmConfig::BW_25kHz;
++            C6000.startAnalogTx(TxAudioSource::LINE_IN, cfg | FmConfig::PREEMPH_EN);
++        }
++            break;
++
+         default:
+             break;
+     }
+@@ -286,7 +297,7 @@ void radio_updateConfiguration()
+     freq_t  *txCalPoints = calData.vhfCal.txFreq;
+     uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
+     uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
+-    uint8_t *qRangeCal   = (config->opMode == OPMODE_FM)
++    uint8_t *qRangeCal   = ((config->opMode == OPMODE_FM) || (config->opMode == OPMODE_PAGER))
+                          ? calData.vhfCal.analogSendQrange
+                          : calData.vhfCal.sendQrange;
+ 
+@@ -296,7 +307,7 @@ void radio_updateConfiguration()
+         txCalPoints = calData.uhfCal.txFreq;
+         loPwrCal    = calData.uhfCal.txLowPower;
+         hiPwrCal    = calData.uhfCal.txHighPower;
+-        qRangeCal   = (config->opMode == OPMODE_FM)
++        qRangeCal   = ((config->opMode == OPMODE_FM) || (config->opMode == OPMODE_PAGER))
+                     ? calData.uhfCal.analogSendQrange
+                     : calData.uhfCal.sendQrange;
+     }
+@@ -313,7 +324,7 @@ void radio_updateConfiguration()
+     C6000.setModAmplitude(0, Q);
+ 
+     // Set bandwidth, only for analog FM mode
+-    if(config->opMode == OPMODE_FM)
++    if((config->opMode == OPMODE_FM) || (config->opMode == OPMODE_PAGER))
+     {
+         switch(config->bandwidth)
+         {
