@@ -48,6 +48,9 @@ Flash:
 - EXPLORE's serial dump and trace lines: about 1 KB.
 - core::fmt out of the image (crate::out in the Aura patch, docs/k6-compilers.md): done
   2026-11-10, 3.2 KB.
+- embedded-graphics' styled lines and boxes (the thick-line and Bresenham code, the styled
+  rectangle and its stroke outline): every box and the one line are DrawTarget::fill_solid calls
+  now, the same pixels. Done 2026-11-10, 1.7 KB.
 - the compiler thread's savings: Arm Toolchain for Embedded with -Oz (blowfang #24, 2-2.7 KB),
   an address-only panic report (about 3 KB), a compact memcpy (about 1.5 KB).
 
