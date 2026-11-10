@@ -9,6 +9,7 @@ every packet, set the clock within a second of the truth with no counts lost, ke
 and stay inside the arena and the stack. Needs a C compiler; the module test also clang, ld.lld
 and unicorn. SPDX-License-Identifier: MIT"""
 import ctypes
+import gzip
 import os
 import shutil
 import subprocess
@@ -416,6 +417,10 @@ def modem_chip(le, pick, BASE=4800):
         long5d = False      # REG_5D<7:5> as three more bits of the length (a BK4819's; dfskcap asks)
         early_done = False  # the RX-done flag with a packet's first word, the packet going on
                             # (the plain FSK receiver on the bench, 2026-11-10 12:00Z)
+        ring = False        # an empty FIFO read gives the word of eight reads before (the bench,
+                            # 2026-11-10 12:20Z), not the last one
+        rate = 1.0          # the chip's bit clock against REG_72's (the plain receiver's follows the
+                            # audio: 0.92 on 2200 Hz)
         sync = done = full = False
         last, empty, over = 0, 0, 0
         r = {0x58: 0, 0x59: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x5E: 4, 0x72: 0}
@@ -423,7 +428,7 @@ def modem_chip(le, pick, BASE=4800):
 
         def advance(self):
             """the air's bits up to now"""
-            now = self.cyc / 96e6 * BASE
+            now = self.cyc / 96e6 * BASE * self.rate
             if not self.r[0x59] & 0x1000 or self.r[0x72] < 0x3000 or not self.r[0x58] & 1:
                 self.pos = now
             while self.pos < now:
@@ -482,6 +487,11 @@ def modem_chip(le, pick, BASE=4800):
                         self.last = (v & 0xFF) << 8 | v >> 8
                     else:
                         self.empty += 1
+                        if self.ring and self.buf is not None and self.taken >= 8:
+                            v = 0
+                            for b in self.buf[at - 128:at - 112]:
+                                v = v << 1 | b
+                            self.last = (v & 0xFF) << 8 | v >> 8
                     ret = self.last
                 elif r0 == 0x0C:
                     ret = 1 if flags else 0
@@ -589,7 +599,8 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
 @pytest.mark.parametrize("long5d", [False, True])
 def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
     """dfskcap on the emulated M0 against modem_chip. At 4800 baud the model hears Bell 202 as
-    the chip gave it in probe 2 (2200 Hz as alternating bits, 1200 Hz as 0011); at 6000 baud as
+    the chip gave it on the bench (aprs.dfsk_like: 2200 Hz as alternating bits, 3.67 a bit,
+    1200 Hz as 0011); at 6000 baud as
     a true 1-bit sampler of the audio would, with random bits between the packets. Every
     capture's words are the bits the model took, none lost and none read twice, with REG_5D's
     length as it is known (256 bytes) and as the probe hopes (2048), and whether the model's
@@ -610,9 +621,9 @@ def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
     while t + 1.0 < total:
         fr = aprs.frame(f"AG7EW-{k % 8 + 1}", "APRS", f">dfskcap {k}")
         line = aprs.hdlc_bits([fr], pre_flags=40).astype(int)
-        x = np.concatenate([[1, 1, 1, 1] if b == 0 else [1, 0, 1, 0] for b in line])
+        x = aprs.dfsk_like(line, k)
         i = int(t * BASE)
-        like[i:i + 5 * len(x)] = np.repeat(np.cumsum(x) & 1, 5)
+        like[i:i + 5 * len(x)] = np.repeat(x, 5)
         a = aprs.afsk(line, BASE)
         true[i:i + len(a)] = a > 0
         t, k = t + len(a) / BASE + 0.3, k + 1
@@ -667,14 +678,156 @@ def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)                      # put back as read
     assert 0x0100 in e.writes[0x2B] and 0x0206 in e.writes[0x5E]
-    # the report: the frames again, at 4800 baud by the transition pairs, at 6000 by correlators
+    # the report: at 4800 baud the frames again, where the chip started in the opening (the
+    # sync word of 16 alternating bits)
     rep = aprs.dfsklog_report(["K6 MOD say " + ln for ln in e.said])
     got = [ln for ln in rep if ln[0] == "c"]
     assert len(got) == len(c), rep
     if long5d:
         assert all((": 25" if ln[1] == "1" else ": 204") in ln for ln in got), got
-        assert all("pairs: 0" not in ln and "[AG7EW-" in ln for ln in got if ln[1] in "0236"), got
-        assert any(" corr: 0" not in ln and "[AG7EW-" in ln for ln in got if ln[1] in "45"), got
+        assert all("frames 0" not in ln and "[AG7EW-" in ln for ln in got if ln[1] in "036"), got
+        assert all("frames" not in ln for ln in got if ln[1] in "45"), got
+
+
+# ---- the bench's captures of the plain FSK receiver, and the receiver built on them ----
+DFSK_LOG = os.path.join(ROOT, "tests", "data", "k6", "dfskcap-20261110.log.gz")
+DFSK_FIRST = {0: 5, 1: 2, 3: 5, 6: 3}       # the kind (station number) of each setting's first capture
+CLEAN = (1, 2, 3, 4, 7)                     # flat, pre-emphasised, de-emphasised, low, a short opening
+
+
+def dfsk_bench():
+    """dfskcap's lines of the bench run of 2026-11-10 12:20Z (K6 on 440.850 MHz, the IC-7100
+    sending modem.aprs wav --kinds): 44 captures, put together again from the run's dumps (the s
+    lines without their times, four c lines with t= and w= only)"""
+    with gzip.open(DFSK_LOG, "rt") as f:
+        return f.read().splitlines()
+
+
+def test_dfsklog_reads_the_bench_captures():
+    """What the chip's plain FSK receiver gave on the bench, read by modem.aprs (dfsk_destale,
+    dfsk_line): every clean packet's frame passes its FCS, the pre-emphasised ones too, which
+    the chip's 1200/2400 Hz receiver never read; no packet with noise does. With REG_5D = ff00
+    (setting 1) the chip's packet ends at 256 bytes, inside the frame, and only the packet with
+    the short opening fits. Sync word 6666 (setting 2) starts inside a frame."""
+    rep = aprs.dfsklog_report(dfsk_bench())
+    c = [ln for ln in rep if ln[0] == "c" and ln[1].isdigit()]
+    assert len(c) == 44 and sum(ln.startswith("s ") for ln in rep) == 5, rep[:3]
+    read = {}
+    for ln in c:
+        st, n = int(ln[1]), int(ln.split()[1])
+        assert " at 4800 baud" in ln and "empty reads " in ln, ln
+        empty = int(ln.split("empty reads ")[1].split(";")[0])
+        words = int(ln.split(" w=")[1].split()[0])
+        assert 7 <= 11 * empty <= 2 * words, ln              # about every eleventh read, from the 30th on
+        if st == 2:
+            assert "frames 0" in ln, ln
+            continue
+        kind = (DFSK_FIRST[st] + n - 2) % 8 + 1
+        want = kind in CLEAN and (st != 1 or kind == 7)
+        if want:
+            assert f"frames 1 [AG7EW-{kind}>APRS:/1220" in ln or f"frames 1 [AG7EW-{kind}>APRS:/122" in ln, ln
+            assert ln.endswith(f"W>K6 {aprs.KINDS[kind][0]}]"), ln
+            read[kind] = read.get(kind, 0) + 1
+        else:
+            assert "frames 0" in ln, ln
+    assert read == {1: 3, 2: 3, 3: 4, 4: 4, 7: 6}, read
+
+
+def test_dfsk_line_reads_the_model_of_the_chips_bits():
+    """dfsk_like (the tests' model of the chip's bits) and dfsk_line agree, either tone as the
+    flags' long one, and a closing flag before silence is not held back"""
+    fr = aprs.frame("AG7EW-1", "APRS", ">hello there 12345 " + "\x00" * 6 + "~~~~")
+    for seed in range(12):
+        line = aprs.hdlc_bits([fr], pre_flags=10).astype(int)
+        for inv in (0, 1):
+            x = np.concatenate([aprs.dfsk_like(line ^ inv, seed), np.zeros(40, int)])
+            got = [f for _, _, ok, f in aprs.hdlc_spans(aprs.dfsk_line(x)) if ok]
+            assert got == [bytes(fr)], (seed, inv)
+
+
+@need_clang
+@pytest.mark.parametrize("mode", [0, 1, 2])
+def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(mode):
+    """aprsdfsk (aprsclk's HDLC, parser and vote behind the chip's plain FSK receiver, FSK_PLAIN)
+    on the emulated M0. The model's air is the bench's own captures, a packet after another with
+    silence between: 16 alternating bits (the sync word the chip started on) and the words the
+    chip gave, at a bit clock 8% slow as the chip's is on 2200 Hz, the FIFO a ring of eight
+    whose empty read gives the word of eight reads before. The module must read every clean
+    packet (flat, pre-emphasised, de-emphasised, low, short opening), none of the noisy, set
+    the clock from the stations' stamps and put the registers back. Mode 0 takes the FIFO four
+    words at the almost-full flag and never reads it empty; mode 1 reads by time, as dfskcap
+    did, and drops the empty reads; mode 2 is the bench's build, one then the other."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    src = os.path.join(K6, "mod", "aprsdfsk.c")
+    _, _, caps = aprs.dfsklog_caps(dfsk_bench())
+    keys = [(0, 5), (0, 6), (0, 9), (0, 7), (0, 8), (0, 11), (3, 6), (0, 10), (6, 7), (6, 9)]
+    BASE, rate, t, air, sent = 4800, 0.92, 0.6, [], []
+    for key in keys:
+        good, _, fr = aprs.dfsk_read(caps[key])
+        kind = (DFSK_FIRST[key[0]] + key[1] - 2) % 8 + 1
+        assert (len(fr) == 1) == (kind in CLEAN), key
+        bits = [int(b) for w in [0xAAAA] + good for b in f"{w:016b}"]
+        sent.append((t, kind, fr))
+        air.append((int(t * BASE * rate), bits))
+        t += len(bits) / (BASE * rate) + 0.3
+    total = t + 0.5
+    stream = np.zeros(int((total + 2) * BASE * rate), np.int8)
+    for i, bits in air:
+        stream[i:i + len(bits)] = bits
+    defs = [("RUN_MS", f"{int(total * 1000)}u"), ("DF_MODE", str(mode)), ("DF_SWAP", f"{int(total * 500)}u")]
+    code, entry = le.build("x", defs, src)
+    full, _ = k6mod.build(src)
+    bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
+    assert len(full) < 5900 and len(bench) < 6100, (len(full), len(bench))
+    Chip = modem_chip(le, lambda r58: stream, BASE)
+    Chip.either, Chip.long5d, Chip.early_done, Chip.ring, Chip.rate = True, True, True, True, rate
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
+             scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    clean = [k for _, k, _ in sent if k in CLEAN]
+    assert e.said[0] == "aprs start hz=144390000 fsk=233 sync=240 plain", e.said[:2]
+    assert stack < 700 and e.over == 0, (stack, e.over)
+    f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
+    y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert len(y) == len(keys) and all(110 < int(v["w"]) < 200 for v in y), y
+    # every clean packet in its turn, and no other
+    assert f == [f"AG7EW-{k}" for k in clean], (f, y)
+    assert [int(v["ok"]) for v in y] == [int(k in CLEAN) for _, k, _ in sent], y
+    if mode == 0:
+        # four words at the flag: the FIFO is never read empty inside a packet (e counts the
+        # words that happen to be the one eight before: a few in the flags), and the flag
+        # never fails to come
+        assert all(v["m"] == "0" and int(v["e"]) <= 6 for v in y), y
+        assert " late=0" in e.said[-2], e.said[-2]
+    elif mode == 1:
+        # by time: about every twelfth read finds the FIFO empty
+        assert all(v["m"] == "1" and 5 <= int(v["e"]) <= 24 for v in y), y
+    else:
+        s = [ln for ln in e.said if ln.startswith("s ")]
+        assert s and s[0].startswith("s 1 t=") and s[0].endswith(" ok=4"), s
+        assert {v["m"] for v in y} == {"0", "1"}, y
+        # the log's report (python3 -m modem.aprs plainlog): packets and frames for each way
+        rep = aprs.plainlog_report(["K6 MOD say " + ln for ln in e.said])
+        m = [ln for ln in rep if ln.startswith("m=")]
+        assert len(m) == 2 and m[0].startswith("m=0: 5 packets, 4 with a frame, e="), rep
+        assert m[0].endswith("; AG7EW-1 1, AG7EW-2 1, AG7EW-3 1, AG7EW-4 1"), m
+        assert m[1].startswith("m=1: 5 packets, 4 with a frame, e=") and "AG7EW-7 1" in m[1], m
+        assert rep[0] == e.said[0] and rep[-3] == e.said[-1], rep
+    end = e.said[-1]
+    assert f"ok={len(clean)} " in end and end.endswith(" lost=0") and len(end) <= 60, e.said[-2:]
+    assert ret >= 2 and f" v={ret}" in end, (ret, end)
+    assert e.said[-2].startswith("aprs fsk ms=") and " key=0 " in e.said[-2], e.said[-2]
+    assert e.lcd[0].strip() == "APRS CLOCK 144.390" and e.lcd[3].startswith("heard "), e.lcd
+    assert any(on for _, on in e.led)
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B):
+        assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
+    assert e.writes[0x5A][0] == 0xAAAA and e.writes[0x5D][0] == 0xFFE0 and e.writes[0x72][0] == 0xC195
+    assert e.writes[0x5E][0] == 0x0204 and 0x00E9 in e.writes[0x58] and 0x10F0 in e.writes[0x59]
 
 
 # ---- the same clock behind the chip's own FSK modem (c/k6/mod/aprsfsk.c) ----

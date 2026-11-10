@@ -141,7 +141,14 @@ typedef struct {
 #ifdef APRS_FSK
   uint32_t fake;      /* sync words with under 6 words and no frame */
   uint16_t sv[10];    /* the modem's registers as found */
+#ifdef FSK_PLAIN
+  uint16_t fifo[8];   /* the last eight words taken: what a read of the empty FIFO gives again */
+  int32_t dlast, dn, dtone, ddur, dmd; /* the slicer: the last sample, samples since a transition,
+                                          the run's tone and length, a mark run held back */
+  uint32_t idle;      /* line bits outside a frame */
+#else
   uint16_t cap[128];  /* a packet's words as read, for its d lines */
+#endif
 #endif
 } st_t;
 
@@ -893,6 +900,9 @@ int k6_main(const k6_api_t *api) {
    Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F, 02 and (FSK_AF) 2B, put back as read (the pager arms its
    own receiver again after any module). Returns as the tap build does, less -4, -5 and -7. */
 #define FSK_CFG 0x33A3u  /* REG_58: the 1200/2400 Hz receiver, bits 7:6 = 10 */
+#if defined(FSK_PLAIN) && !defined(FSK_CTRL)
+#define FSK_CTRL 0x00F0u /* REG_59: REG_5A alone, a sync word of two bytes */
+#endif
 #ifndef FSK_CTRL
 #define FSK_CTRL 0x00F8u /* REG_59: REG_5A then REG_5B, four flags (00F0: REG_5A alone, two) */
 #endif
@@ -941,6 +951,7 @@ static void fsk_seek(const k6_api_t *api, uint32_t cfg) {
   fsk_arm(api);
 }
 
+#ifndef FSK_PLAIN
 static char *hex4(char *p, uint32_t v) {
   int i;
   for (i = 12; i >= 0; i -= 4) *p++ = "0123456789abcdef"[(v >> i) & 15];
@@ -1186,4 +1197,270 @@ int k6_main(const k6_api_t *api) {
   if (!s->ok && now < RUN_MS) return -2;
   return s->votes;
 }
+#else /* FSK_PLAIN */
+/* ---- the chip's plain FSK receiver as a sampler of the audio (aprsdfsk.c) ----
+
+   The 1200/2400 Hz receiver above reads Bell 202 only when it is flat and clean: no packet
+   with a sender's pre-emphasis in four bench runs. The plain FSK receiver (REG_58 = 00E9) at
+   4800 baud slices the audio itself, and its bit clock follows the zero crossings (dfskcap's
+   bench captures, 2026-11-10): 2200 Hz comes as alternating bits, a sample a half cycle,
+   1200 Hz as 0011, two samples a half cycle. So the samples between two transitions say the
+   tone, whichever is the louder. df_sample() sums them into runs (units of 1/44 bit: a half
+   cycle of space is 12, of mark 22) and rounds a run to line bits; the half cycle at a change
+   of tone goes to either side, so a mark run is counted together with the space run after it.
+   modem/aprs.py's dfsk_line is the same in Python and reads every clean packet of those
+   captures (flat, pre-emphasised, de-emphasised, weak, eight opening flags) and none of the
+   noisy ones.
+
+   The chip starts on a sync word of 16 alternating bits (AAAA: 2200 Hz for 3.6 ms, in any
+   opening of flags) and then gives up to 2048 bytes (REG_5D = FFE0), 3.4 s. Its RX-done flag
+   means nothing here (it comes with the first word). The FIFO's words are taken
+     DF_MODE 0: four at a time when REG_02 says almost full (REG_5E = 0204); with no such flag
+                for DF_LATE ms four are tried anyway, and a word that is the one eight before
+                (what the empty FIFO gives) ends the try;
+     DF_MODE 1: by time, a word every 16/4800 s as dfskcap did. The chip's clock is up to a
+                tenth slower than that, so about every eleventh read finds the FIFO empty and
+                gets the word of eight reads before: dropped (modem/aprs.py dfsk_destale);
+     DF_MODE 2: one, then the other, DF_SWAP ms each, with an s line (the bench's comparison).
+   A packet is over when the line has been outside a frame for FSK_IDLE bits, when there has
+   been no transition for DF_QUIET samples, or at DF_WORDS words; then the modem is turned off
+   and on. With nothing heard the search is started again every FSK_AGAIN ms, as aprsfskb.
+
+   Lines, besides the tap build's f, clk and m lines:
+     aprs start hz=144390000 fsk=233 sync=240 plain
+     s 1 t=40012 ok=31                  DF_MODE 2: the way of reading from here on, good frames so far
+     y 12 t=123456 w=186 ok=1 e=0 m=0   a packet of 40 words or more, or with a frame: its number,
+                                        ms at its first word, words, good frames, words that
+                                        were the one eight before (DF_MODE 1: dropped), the mode
+     aprs fsk ms=900004 key=0 pre=31 fake=912 late=0
+   Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F and 02, put back as read. Receive only. */
+#define DF_CFG 0x00E9u
+#ifndef DF_MODE
+#define DF_MODE 0
+#endif
+#ifndef DF_SWAP
+#define DF_SWAP 48204u   /* five rounds of the bench's kinds of packet */
+#endif
+#define DF_THR 4u        /* REG_5E: almost full at this many words */
+#define DF_LATE 20u      /* ms without the almost-full flag in a packet (four words are 13 to 15) */
+#define DF_WORDS 1000u   /* the chip's packet is 1024 words */
+#define DF_T 44          /* a line bit, in the slicer's units */
+#define DF_SP 12         /* an interval of one sample: a half cycle of 2200 Hz */
+#define DF_MK 22         /* of two: a half cycle of 1200 Hz */
+#define DF_BIAS 3
+#define DF_IDLE 8        /* samples without a transition: no tone of Bell 202 */
+#define DF_QUIET 64      /* and this many: the packet is over */
+#define DF_SAY 40u       /* words: a shorter packet without a frame is noise, and gets no line */
+
+static void df_bits(const k6_api_t *api, st_t *s, int32_t tone, int32_t n) {
+  while (n-- > 0) {
+    hdlc(api, s, tone == s->mlast);
+    s->mlast = tone;
+    s->idle = s->in ? 0 : s->idle + 1;
+  }
+}
+
+/* a run of one tone ends: a space run goes out, and before it the mark run held back */
+static void df_end(const k6_api_t *api, st_t *s) {
+  int32_t ns, nm;
+  if (s->dtone) {
+    s->dmd = s->ddur;
+    return;
+  }
+  ns = (int32_t)udiv((uint32_t)s->ddur + DF_T / 2, DF_T);
+  if (ns < 1) ns = 1;
+  if (s->dmd >= 0) {
+    nm = (int32_t)udiv((uint32_t)(s->dmd + s->ddur) + DF_BIAS + DF_T / 2, DF_T) - ns;
+    df_bits(api, s, 1, nm < 1 ? 1 : nm);
+    s->dmd = -1;
+  }
+  df_bits(api, s, 0, ns);
+}
+
+/* one bit of the chip's */
+static void df_sample(const k6_api_t *api, st_t *s, int32_t b) {
+  int32_t t, d;
+  if (b == s->dlast) {
+    if (++s->dn == DF_IDLE) { /* silence: what is held goes out, a mark run by itself */
+      df_end(api, s);
+      if (s->dmd >= 0) {
+        d = (int32_t)udiv((uint32_t)s->dmd + DF_BIAS + DF_T / 2, DF_T);
+        df_bits(api, s, 1, d < 1 ? 1 : d);
+        s->dmd = -1;
+      }
+      s->dtone = 1, s->ddur = 0;
+    }
+    return;
+  }
+  if (s->dn < DF_IDLE) {
+    t = s->dn >= 2;
+    d = s->dn == 1 ? DF_SP : s->dn == 2 ? DF_MK : s->dn * (DF_T / 4);
+    if (t == s->dtone) s->ddur += d;
+    else df_end(api, s), s->dtone = t, s->ddur = d;
+  }
+  s->dlast = b, s->dn = 1;
+}
+
+int k6_main(const k6_api_t *api) {
+  st_t *s;
+  uint32_t room, i, now, tkey = 0, tsync = 0, ok0 = 0, got = 0, eq = 0, late = 0, prev = 0;
+  uint32_t tseek = 0, tfull = 0, tlast, rn = 0, since = 0;
+#if DF_MODE == 2
+  uint32_t tsw = 0;
+#endif
+  int32_t acc = 0;
+  int key = 0, left = 0, mode = DF_MODE & 1;
+  char *p;
+  if (api->level < 2) return -3;
+  s = (st_t *)api->scratch(&room);
+  if (room < sizeof(st_t)) return -8;
+  for (i = 0; i < sizeof(st_t) / 4; i++) ((uint32_t *)s)[i] = 0;
+  for (i = 0; i < NSV; i++) s->sv[i] = api->fd_read(FSK_SAVED[i]);
+  api->tune(APRS_HZ, 1);
+  api->fd_write(0x3F, 0);
+  api->fd_write(0x59, 0);
+  api->fd_write(0x58, 0);
+  api->fd_write(0x5A, 0xAAAA);
+  api->fd_write(0x5B, 0xAAAA);
+  api->fd_write(0x72, 0xC195);  /* 4800 baud x 10.32444 */
+  api->fd_write(0x5C, 0x5625);  /* no CRC of the chip's */
+  api->fd_write(0x5D, 0xFFE0);  /* 2048 bytes */
+  api->fd_write(0x5E, 0x0200 | DF_THR);
+  fsk_seek(api, DF_CFG);
+  for (i = 0; i < 8; i++) prev = api->fd_read(0x5F);
+  prev = (prev & 0xFF) << 8 | prev >> 8;
+  tlast = api->ticks() & 0xFFFF;
+  s->rlo = 0x1FF;
+  p = put(s->ln, "aprs start hz=");
+  p = dec(p, APRS_HZ, 1);
+  p = kv(p, " fsk=", DF_CFG);
+  p = kv(p, " sync=", FSK_CTRL);
+  p = put(p, " plain");
+  say(api, s, p);
+  for (;;) {
+    uint32_t f, tk, n = 0, over = 0, tried = 0;
+    now = api->ms();
+    if (now - tkey >= 50) {
+      uint16_t r = api->fd_read(0x67) & 0x1FF;
+      tkey = now;
+      if (r < s->rlo) s->rlo = r;
+      if (r > s->rhi) s->rhi = r;
+      key = api->level >= 4 ? api->key_poll() : api->key_down();
+      if (key || now >= RUN_MS) break;
+      if (api->level >= 7 && now - s->flag_ms > 120) api->led(0);
+    }
+#if DF_MODE == 2
+    if (!left && now - tsw >= DF_SWAP) {
+      tsw += DF_SWAP, mode ^= 1;
+      p = kv(s->ln, "s ", (uint32_t)mode);
+      p = kv(p, " t=", now);
+      p = kv(p, " ok=", s->ok);
+      say(api, s, p);
+    }
+#endif
+    f = api->fd_read(0x02) & 0x3002;
+    if (f) api->fd_write(0x02, 0);
+    tk = api->ticks() & 0xFFFF;
+    if (!left) n = 1; /* a look: the empty FIFO gives the same word again */
+    else if (mode) {
+      acc += (int32_t)(((tk - tlast) & 0xFFFF) * 3); /* a word is 10/3 ms */
+      if (acc >= 100) n = udiv((uint32_t)acc, 100), acc -= (int32_t)(100 * n);
+      if (n > 8) n = 8; /* the FIFO's size */
+    } else if (f & 0x1000) n = DF_THR, tfull = now;
+    else if (now - tfull >= DF_LATE) n = DF_THR, tfull = now, tried = 1, late++;
+    tlast = tk;
+    while (n && !over) {
+      /* its low byte was on the air first (the pager's swap), each byte's top bit first */
+      uint32_t w = api->fd_read(0x5F), v = (w & 0xFF) << 8 | w >> 8;
+      n--;
+      if (!left) {
+        if (v == prev) break;
+        /* the first word of a packet of the chip's. The timed reads stay three words behind */
+        left = 1, got = 0, eq = 0, rn = 0, since = 6, tsync = tfull = now, ok0 = s->ok;
+        acc = -300;
+        s->in = 0, s->sr = 0, s->idle = 0;
+        s->dlast = 0, s->dn = DF_IDLE, s->dtone = 1, s->ddur = 0, s->dmd = -1;
+      } else if (rn >= 8 && v == s->fifo[rn & 7]) {
+        eq++;
+        if (tried) { /* no flag and nothing new: the chip has stopped, or will say when it has more */
+          if (n == DF_THR - 1) over = 1;
+          break;
+        }
+        if (mode && (!since || since >= 6)) { /* the empty FIFO (a real word may match too, but
+                                                 the empty reads come ten apart, or in a row) */
+          since = 0;
+          break;
+        }
+      }
+      since++;
+      s->fifo[rn++ & 7] = (uint16_t)v;
+      prev = v, got++;
+      s->now_ms = now;
+      for (i = 16; i--;) df_sample(api, s, (int32_t)((v >> i) & 1));
+      over = s->idle >= FSK_IDLE || s->dn >= DF_QUIET || got >= DF_WORDS;
+    }
+    if (!left && now - tseek >= FSK_AGAIN) over = 1;
+    if (left && over) {
+      if (got < DF_SAY && s->ok == ok0) s->fake++;
+      else {
+        /* a line costs tens of ms of listening: none for a sync word found in noise */
+        p = kv(s->ln, "y ", ++s->pre);
+        p = kv(p, " t=", tsync);
+        p = kv(p, " w=", got);
+        p = kv(p, " ok=", s->ok - ok0);
+        p = kv(p, " e=", eq);
+        p = kv(p, " m=", (uint32_t)mode);
+        say(api, s, p);
+      }
+      left = 0;
+    }
+    if (!left && now - s->scr_ms >= 1000) {
+      /* the minute's line and the screen (20-40 ms), only between packets; the FIFO holds 27 ms,
+         so the search is started again after them */
+      over = 1;
+      s->now_ms = s->scr_ms = now;
+      if (now - s->min_ms >= 60000) {
+        s->min_ms = now;
+        p = kv(s->ln, "m ", udiv(now, 60000));
+        p = put(p, " rssi=-");
+        p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rlo), 1);
+        p = put(p, " pk=-");
+        p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rhi), 1);
+        p = kv(p, " pre=", s->pre);
+        p = kv(p, " ok=", s->ok);
+        say(api, s, p);
+        s->rlo = 0x1FF, s->rhi = 0;
+      }
+      if (api->level >= 6) screen(api, s);
+    }
+    if (over) {
+      /* after a line or the screen: what the chip took meanwhile has overrun its FIFO */
+      fsk_seek(api, DF_CFG);
+      for (i = 0; i < 8; i++) prev = api->fd_read(0x5F); /* what is left in the FIFO */
+      prev = (prev & 0xFF) << 8 | prev >> 8;
+      tlast = api->ticks() & 0xFFFF, tseek = api->ms();
+    }
+    api->delay_us(left ? 1000 : 2000);
+  }
+  s->now_ms = now;
+  for (i = 0; i < NSV; i++) api->fd_write(FSK_SAVED[i], s->sv[i]);
+  api->fd_write(0x02, 0);
+  p = kv(s->ln, "aprs fsk ms=", now);
+  p = kv(p, " key=", (uint32_t)key);
+  p = kv(p, " pre=", s->pre);
+  p = kv(p, " fake=", s->fake);
+  p = kv(p, " late=", late);
+  say(api, s, p);
+  p = put(s->ln, "aprs end ok=");
+  p = dec(p, s->ok, 1);
+  p = kv(p, " bad=", s->bad);
+  p = kv(p, " ts=", s->nts);
+  p = kv(p, " v=", (uint32_t)s->votes);
+  if (s->votes >= 2) p = hms(put(p, " utc="), utc(s, now), 1);
+  p = kv(p, " lost=", s->lost);
+  say(api, s, p);
+  if (!s->ok && now < RUN_MS) return -2;
+  return s->votes;
+}
+#endif /* FSK_PLAIN */
 #endif
