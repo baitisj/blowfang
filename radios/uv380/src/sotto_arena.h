@@ -7,8 +7,9 @@
  * and the main stack. Only one encoder or decoder is alive at a time on a half-duplex radio. When
  * every block has been freed both regions start again from empty.
  *
- * The 8 kHz sotto 1200 encoder (37.5 KB) and decoder (1.2 KB) fit the CCM alone; the 16 kHz
- * encoder (55.6 KB) when the rest of the CCM leaves room; otherwise its later blocks go to SRAM.
+ * The 8 kHz sotto 1200 encoder (24.4 KB) and decoder (1.2 KB) fit the CCM alone, and so does
+ * the 16 kHz encoder (55.6 KB) when the rest of the CCM leaves room; otherwise its later blocks
+ * go to SRAM.
  *
  * SPDX-License-Identifier: MIT */
 #ifndef UV380_SOTTO_ARENA_H
