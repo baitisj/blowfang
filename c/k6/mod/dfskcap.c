@@ -51,13 +51,29 @@
    Only the first CAPN captures of a setting are said. Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E,
    72, 2B, 3F and 02, put back as read. Receive only. Returns the captures, or -3 (old image),
    -8 (scratch). Any key ends it.
+
+   DFSK_ACARS (dfskcap_acars.c): the same recorder on a real ACARS channel, 131.550 MHz, receive
+   only (docs/k6-acars.md). A block opens with 53 ms of 2400 Hz, which at 4800 baud is the sync
+   word AAAA, and a bit is two samples. Four front ends, FE_S seconds each, all 4800 baud and
+   512 bytes a packet (REG_5D = ff20; a long block is 500):
+      0  FM, wide, as tuned               does the receiver hear an AM signal at all?
+      1  REG_47's AF source = AM (7), wide    does it follow the AF source?
+      2  FM, narrow, tuned 2.5 kHz high   an AM signal with a sideband cut is partly FM
+      3  AF source AM, narrow
+   Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
+   k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
+   with k of 3 or 4 their d lines.
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 
 #ifndef PROBE_HZ
+#ifdef DFSK_ACARS
+#define PROBE_HZ 131550000u
+#else
 #define PROBE_HZ 440850000u
+#endif
 #endif
 #ifndef SLOT_SCALE
 #define SLOT_SCALE 1000u /* ms a unit of a setting's time (the emulated test shortens it) */
@@ -66,7 +82,14 @@
 #define WAIT_MS 32000u   /* before the first setting: the module starts about 29 s before its own
                             upload's audio ends, and that is no Bell 202 */
 #endif
+#ifdef DFSK_ACARS
+#define NV 4
+#ifndef FE_S
+#define FE_S 75
+#endif
+#else
 #define NV 7
+#endif
 #define CAPW 1056u       /* words kept of a capture: 2048 bytes, the stale reads, and a few */
 #define CAPN 12u         /* captures said per setting */
 #define LAG 3u           /* words the timed reads stay behind the chip (its FIFO holds 8) */
@@ -84,8 +107,21 @@ typedef struct {
   uint16_t cfg, baud, sync, len, af;
   uint16_t wticks3; /* three word times in 100 us ticks: 100 at 4800 baud, 80 at 6000 */
   uint16_t secs;
+#ifdef DFSK_ACARS
+  int8_t off, wide, src; /* tuning offset in 100 Hz, the wide filter, REG_47's AF source (0: as found) */
+#endif
 } var_t;
 
+#ifdef DFSK_ACARS
+static const var_t V[NV] = {
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 1, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 1, 7},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 25, 0, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 0, 7},
+};
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47};
+#define SAVED_47 10
+#else
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFFE0, 0, 100, 45},
     {0x00E9, 0xC195, 0xAAAA, 0xFF00, 0, 100, 8},
@@ -97,6 +133,7 @@ static const var_t V[NV] = {
 };
 
 static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F};
+#endif
 #define SAVED_2B 8
 
 typedef struct {
@@ -153,7 +190,7 @@ static uint32_t seek(const k6_api_t *api, const var_t *v, uint32_t af) {
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-  api->fd_write(0x2B, af | v->af);
+  api->fd_write(0x2B, (uint16_t)af | v->af);
   api->fd_write(0x5A, v->sync);
   api->fd_write(0x5B, v->sync);
   api->fd_write(0x58, v->cfg);
@@ -172,6 +209,13 @@ static uint32_t seek(const k6_api_t *api, const var_t *v, uint32_t af) {
 static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
   const var_t *v = &V[cur];
   char ln[64], *p = ln;
+#ifdef DFSK_ACARS
+  api->fd_write(0x3F, 0);
+  api->fd_write(0x59, 0);
+  api->fd_write(0x58, 0);
+  api->tune((uint32_t)((int32_t)PROBE_HZ + 100 * v->off), v->wide);
+  api->fd_write(0x47, (uint16_t)(v->src ? ((af >> 16) & 0xF0FF) | (uint32_t)v->src << 8 : af >> 16));
+#endif
   *p++ = 's', *p++ = ' ', p = dec(p, (uint32_t)cur);
   p = kv(p, " t=", api->ms());
   p = kx(p, " cfg=", v->cfg);
@@ -187,6 +231,9 @@ int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now = 0, tkey = 0, t0, tcap = 0, dn = 0, prev, total = 0, af;
   uint32_t got = 0, dl = 0, same = 0, irq = 0, nfull = 0, ncap = 0, nw = 0, rssi = 0, tlast;
+#ifdef DFSK_ACARS
+  uint32_t ndump = 0;
+#endif
   int32_t acc = 0;
   uint16_t saved[sizeof(SAVED)];
   int cur = 0, in = 0, key = 0;
@@ -197,6 +244,9 @@ int k6_main(const k6_api_t *api) {
   if (room < sizeof(st_t)) return -8;
   for (i = 0; i < sizeof(SAVED); i++) saved[i] = api->fd_read(SAVED[i]);
   af = saved[SAVED_2B];
+#ifdef DFSK_ACARS
+  af |= (uint32_t)saved[SAVED_47] << 16; /* begin() wants REG_47 as found too */
+#endif
   api->tune(PROBE_HZ, 1);
   p = kv(ln, "dfskcap start hz=", PROBE_HZ);
   p = kv(p, " n=", NV);
@@ -224,6 +274,9 @@ int k6_main(const k6_api_t *api) {
       *p = 0;
       api->say(ln);
       total += ncap, ncap = nw = 0;
+#ifdef DFSK_ACARS
+      ndump = 0;
+#endif
       if (++cur == NV) break;
       v = &V[cur];
       prev = begin(api, cur, af);
@@ -264,6 +317,19 @@ int k6_main(const k6_api_t *api) {
     if (in && now - tcap >= CAP_MS) over = 1;
     if (in && over) {
       ncap++, nw += got;
+#ifdef DFSK_ACARS
+      /* a pre-key goes on after the sync word: AAAA or 5555 in the first words */
+      for (i = 0, irq = 0; i < 4 && i < got; i++) irq += s->cap[i] == 0xAAAAu || s->cap[i] == 0x5555u;
+      p = ln, *p++ = 'c', p = dec(p, (uint32_t)cur), *p++ = ' ', p = dec(p, ncap);
+      p = kv(p, " t=", tcap);
+      p = kv(p, " w=", got);
+      p = kv(p, " k=", irq);
+      p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(rssi));
+      *p = 0;
+      api->say(ln);
+      if (irq >= 3 && ndump < CAPN) {
+        ndump++;
+#else
       if (ncap <= CAPN) {
         p = ln, *p++ = 'c', p = dec(p, (uint32_t)cur), *p++ = ' ', p = dec(p, ncap);
         p = kv(p, " t=", tcap);
@@ -275,6 +341,7 @@ int k6_main(const k6_api_t *api) {
         p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(rssi));
         *p = 0;
         api->say(ln);
+#endif
         for (i = 0; i < got; i++) {
           uint32_t col = i - 12 * udiv(i, 12);
           if (!col) {

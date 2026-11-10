@@ -323,6 +323,7 @@ cwlisten       # level 2
 cwlisten_lo    # level 2, cwlisten with a 400-1300 Hz bank
 cwprobe        # level 2
 dfskcap        # level 2, records the chip's plain FSK receiver on Bell 202 audio (docs/k6-aprs-clock.md)
+dfskcap_acars  # level 2, dfskcap on 131.550 MHz, four front ends: does the plain FSK receiver hear ACARS (receive only, docs/k6-acars.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md
