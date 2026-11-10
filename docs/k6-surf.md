@@ -73,18 +73,25 @@ nearly even (2.5 to 4.5 kHz); at +-5 MHz from 1 kHz to about 1 MHz. A bin wider 
 20 kHz apart across its range (halfway to each neighbour) and keeps the loudest and where it was:
 a jump goes to that frequency's channel, not the bin's centre.
 
-**Airband (AM).** BAND's sixth stop is 118-137 MHz in AM: REG_47 AF 7, the AFC off (REG_73
-bit 4) and AM's AGC set-up (REG_14 0, REG_49 (50 << 7) | 32), as Aura's and egzumer's
-`RADIO_SetModulation` do (docs/k6-afsweep.md). Every other band puts back the FM values the module
-found at its start, and so does EXIT. Receive only: the module has no transmit calls at all, and
-airband is outside Aura's TX band lock anyway. Airband sits below the K6's 136-174 MHz front-end
-filter, so expect it deafer than 2m (the ACARS listen on 2026-11-09 heard nothing in a quiet hour).
+**Airband (AM).** BAND's sixth stop is 118-137 MHz in AM: REG_47 AF 7 and the AFC off (REG_73
+bit 4), as Aura's `apply_modulation` does. Aura's AM AGC values (REG_14 0, REG_49 (50 << 7) | 32)
+are left out: with them the RSSI never rose on the IC-7100's AM carrier (docs/k6-if-modem.md,
+2026-11-06), and surf's bars and squelch are all RSSI. Every other band puts back the REG_73 the
+module found at its start, and so does EXIT. Receive only: the module has no transmit calls at
+all, and airband is outside Aura's TX band lock anyway. Airband sits below the K6's 136-174 MHz
+front-end filter, so expect it deafer than 2m (the ACARS listen on 2026-11-09 heard nothing in a
+quiet hour). On a 6.25 or 8.33 kHz raster line 1 shows five decimals (`118.00833`).
 
 **Fixed gain.** REG_7E bit 15 fixes the gain at the AGC table entry its bits 14:12 name (3: REG_13),
 so the module writes REG_13 (LNA short, LNA, mixer and PGA fields) and sets 7E to fixed index 3.
 The dB values are egzumer's per-field table (LNA short 0, LNA -24..0, mixer -8..0, PGA -33..0), not
 measured on the K6. RSSI moves with the gain, so each change measures the settled floor again and
 sweeps afresh. 8 puts back REG_13 and REG_7E as the module found them.
+
+**Keys during a long sweep.** A whole sweep at the wide spans (the one before the audio opens, the
+5 s refresh) and the floor's 8 settled reads hold the loop for up to about 0.5 s. Every read now
+looks at the keypad too, and a key read the same twice in a row is kept for the loop, so a press
+in that time isn't lost (before, a 250 ms press there could vanish).
 
 ## How it works
 

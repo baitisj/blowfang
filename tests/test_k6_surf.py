@@ -225,8 +225,8 @@ def test_bargraph_peaks_side_keys_and_audio():
     assert said[0] == "surf 70cm 440.600 25k" and said[-1].startswith("end sw=") and ret > 0
     # SIDE1 twice: the -70 at 440.850 and then the -95 at 441.200; SIDE2 back to 440.850
     assert sels(said) == ["441.2000", "440.8500"]
-    # the audio path, the demodulator's set-up and the gain written only to be put back
-    assert {r for r, _ in writes} == {0x47, 0x13, 0x14, 0x49, 0x73, 0x7E} and regs[0x47] == 0x6040
+    # the audio path, the AFC and the gain written only to be put back
+    assert {r for r, _ in writes} == {0x47, 0x13, 0x73, 0x7E} and regs[0x47] == 0x6040
     assert all(regs[r] == v for r, v in AURA.items())
     spk = lcd["st"]["spk"]
     assert spk[0] == (0, 0) and spk[-1][1] == 0                          # speaker amp off again
@@ -384,10 +384,11 @@ def test_airband_listens_in_am_and_other_bands_in_fm():
     air = at(fr, 2_500_000)
     assert air["text"][0] == "SURF AIR 25k" and air["text"][1].startswith("127.5000 ")
     assert at(fr, 4_000_000)["text"][1] == "127.5000 -80dBm RX"
-    # AM's set-up (AF 7, AFC off, AM's AGC) on the way in, FM's (Aura's values) on the way out
+    # AM (AF 7, AFC off) on the way in, FM (Aura's REG_73) on the way out; Aura's AM AGC left
+    # out (REG_14 / 49: the RSSI never rose with it on 2026-11-06)
     assert 0x6740 in writes_of(writes, 0x47)
-    assert 0x10 in writes_of(writes, 0x73) and 0 in writes_of(writes, 0x14)
-    assert (50 << 7) | 32 in writes_of(writes, 0x49)
+    assert 0x10 in writes_of(writes, 0x73)
+    assert not {0x14, 0x49} & {r for r, _ in writes}
     two = at(fr, 6_500_000)
     assert two["text"][0] == "SURF 2m 10k" and two["text"][1].startswith("146.0000 ")
     assert regs[0x73] == 0 and regs[0x14] == 0x0019 and regs[0x49] == 0x2A38
@@ -407,6 +408,10 @@ def test_step_key_cycles_the_steps_and_a_band_resets_it():
     assert at(fr, 4_000_000)["text"][0] == "SURF 70cm 5k"      # 100k, then round to 5k
     assert at(fr, 5_300_000)["text"][0] == "SURF 70cm 6.25k"
     assert sels(said) == ["440.6500", "440.6550"]               # one 50 kHz step, one of 5 kHz
+    keys = taps("####", 1_000_000, gap=400_000) + taps("UM", 3_000_000) + [(4_000_000, 4_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys)
+    assert sels(said) == ["440.60625"]                          # 6.25 kHz: five decimals
+    assert at(lcd["frames"], 3_700_000)["text"][1].startswith("440.60625 ")
     gm = at(fr, 7_000_000)
     assert gm["text"][0] == "SURF GMRS 12.5k"
 

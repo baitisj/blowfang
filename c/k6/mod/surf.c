@@ -70,8 +70,8 @@
 
    Lines (K6 MOD say ...): "surf 70cm 440.850 25k", "sel 441.2000 -71 -127" (MENU, or the
    bench build's jumps: the bar, its settled dBm, the settled floor), "end sw=N".
-   Writes REG_47 and GPIOB bit 2 (speaker), REG_14, REG_49 and REG_73 bit 4 (AM's set-up on
-   airband), REG_13 and REG_7E (fixed gain) and the keypad rows' GPIOB BSRR/BRR bits, all put back.
+   Writes REG_47 and GPIOB bit 2 (speaker), REG_73 bit 4 (the AFC, off on airband), REG_13 and
+   REG_7E (fixed gain) and the keypad rows' GPIOB BSRR/BRR bits, all put back.
    Reads the SPI flash (level 5's fl_read), never writes it. No TX. The bitmap (480 B), the state
    (~750 B) and a move's copy of the old scale (~320 B) live on the stack, about 1.6 KB of the
    3 KB a module has at its call; the store holds only the code.
@@ -124,7 +124,6 @@
 #define AF_FM 0x6140u
 #define AF_AM 0x6740u           /* REG_47 AF 7 (Aura and egzumer's AM set-up, docs/k6-afsweep.md) */
 #define AF_MUTE 0x6040u
-#define AM_49 ((50u << 7) | 32u)
 
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
@@ -210,13 +209,14 @@ typedef struct {
   int next, pend, sj, sweeps;
   int sfl, sel_dbm;
   uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, key, raw, full, refine, stale;
-  uint8_t st, gx;               /* the channel step (STEPS index); fixed gain GAINS[gx - 1], 0 auto */
+  uint8_t st, gx;
+  uint8_t qk, k1;               /* a key caught during a long sweep or measure (kp_peek), the last peek */               /* the channel step (STEPS index); fixed gain GAINS[gx - 1], 0 auto */
   uint32_t home;                /* where a side key's search began: back there if it finds none */
   uint16_t af;                  /* REG_47 with the audio open: FM or AM */
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
-  uint32_t r47, odr, r13, r14, r49, r73, r7e;
+  uint32_t r47, odr, r13, r73, r7e;
   uint8_t lvl[NB];              /* bars: quick reads, dBm + 174, 0 unknown */
   char ln[40];
   char msg[22];                 /* line 5 for MSG_MS after a key: "no peak", "gain -12 dB" */
@@ -261,7 +261,10 @@ static char *sint(char *p, int v) {
   return fix(p, (uint32_t)v, 0);
 }
 
-static char *mhz(char *p, uint32_t hz, int dec) { return fix(p, udiv(hz, dec == 4 ? 100 : 1000), dec); }
+static char *mhz(char *p, uint32_t hz, int dec) { return fix(p, udiv(hz, dec == 5 ? 10 : dec == 4 ? 100 : 1000), dec); }
+
+/* the listening frequency's decimals: 4, or 5 off the 100 Hz raster (6.25 and 8.33 kHz steps) */
+static int cdec(sf_t *s) { return s->cen - 100 * udiv(s->cen, 100) ? 5 : 4; }
 
 /* a step in kHz: "6.25k", "12.5k", "25k" */
 static char *stepn(char *p, uint32_t step) {
@@ -297,11 +300,15 @@ static void hush(sf_t *s, int on) {
   wr(GPIOB + (on ? BRR : BSRR), SPK);
 }
 
-/* the level at hz in dBm, us after its tune (the wide filter) */
+static void kp_peek(sf_t *s);
+
+/* the level at hz in dBm, us after its tune (the wide filter); a look at the keys too, so a
+   press during a whole sweep (up to ~0.5 s at the wide spans) isn't lost */
 static int read_hz(sf_t *s, uint32_t hz, uint32_t us) {
   hush(s, 1);
   s->api->tune(hz, WIDE);
   s->api->delay_us(us);
+  kp_peek(s);
   return dbm(s);
 }
 
@@ -315,15 +322,15 @@ static void audio(sf_t *s, int on) {
   wr(GPIOB + (on ? BSRR : BRR), SPK);
 }
 
-/* the band's demodulator: AM (airband) with the AFC off and AM's AGC set-up, else FM as Aura
-   had it (egzumer's and Aura's RADIO_SetModulation agree, docs/k6-afsweep.md) */
+/* the band's demodulator: AM (airband, REG_47 AF 7) with the AFC off, as Aura's
+   apply_modulation; else FM with REG_73 as Aura had it. Aura's AM AGC (REG_14 0, REG_49
+   (50 << 7) | 32) is left out: with it the RSSI never rose on the IC-7100's AM carrier
+   (docs/k6-if-modem.md, 2026-11-06), and the bars and the squelch are all RSSI */
 static void demod(sf_t *s) {
   int am = s->bd->am;
   const k6_api_t *api = s->api;
   s->af = (uint16_t)(am ? AF_AM : AF_FM);
   api->fd_write(0x73, (uint16_t)((s->r73 & ~0x10u) | (am ? 0x10u : 0)));
-  api->fd_write(0x14, (uint16_t)(am ? 0 : s->r14));
-  api->fd_write(0x49, (uint16_t)(am ? AM_49 : s->r49));
   if (s->audio && !s->hush) api->fd_write(0x47, s->af);
 }
 
@@ -369,6 +376,21 @@ static int kp_scan(sf_t *s) {
   }
   wr(GPIOB + BSRR, ROWS_B);
   return k;
+}
+
+/* between reads: a new key read the same twice in a row is kept for the main loop (once), and a
+   release read twice lets the same key count again */
+static void kp_peek(sf_t *s) {
+  int k = kp_scan(s);
+  if (k == s->k1) {
+    if (!k) {
+      s->key = 0;
+    } else if (k != s->key && !s->qk) {
+      s->qk = s->key = (uint8_t)k;
+      s->t_rep = s->now + 400;
+    }
+  }
+  s->k1 = (uint8_t)k;
 }
 
 /* a key event: the key once it reads the same twice 10 ms apart; UP and DOWN repeat */
@@ -516,7 +538,7 @@ static int is_peak(sf_t *s, int i) {
 /* "sel <bar MHz> <its settled dBm> <the settled floor>" */
 static void say_sel(sf_t *s) {
   char *p = put(s->ln, "sel ");
-  p = mhz(p, s->cen, 4);
+  p = mhz(p, s->cen, cdec(s));
   *p++ = ' ';
   p = sint(p, s->sel_dbm);
   *p++ = ' ';
@@ -884,7 +906,7 @@ static void draw(sf_t *s) {
   else if (s->hold) p = put(p, " HLD");
   *p = 0;
   api->lcd_text(0, s->ln);
-  p = mhz(s->ln, s->cen, 4);
+  p = mhz(s->ln, s->cen, cdec(s));
   *p++ = ' ';
   p = sint(p, s->sel_dbm);
   p = put(p, "dBm");
@@ -925,8 +947,6 @@ int k6_main(const k6_api_t *api) {
   s->bmp = bmp;
   s->r47 = api->fd_read(0x47);
   s->r13 = api->fd_read(0x13);
-  s->r14 = api->fd_read(0x14);
-  s->r49 = api->fd_read(0x49);
   s->r73 = api->fd_read(0x73);
   s->r7e = api->fd_read(0x7E);
   s->odr = rd(GPIOB + ODR) & SPK;
@@ -955,6 +975,7 @@ int k6_main(const k6_api_t *api) {
   for (;;) {
     s->now = api->ms();
     k = kp_event(s);
+    if (s->qk) k = s->qk, s->qk = 0;   /* (one caught during a sweep comes first) */
 #ifdef SURF_AUTO_S
     if (!k && !s->pend && !s->check && s->now - s->t_auto >= SURF_AUTO_MS) {
       k = 'A';
@@ -973,8 +994,6 @@ int k6_main(const k6_api_t *api) {
   /* put back the audio path, the demodulator and the gain; wait (up to 3 s) for the keys' release */
   api->fd_write(0x47, (uint16_t)s->r47);
   api->fd_write(0x13, (uint16_t)s->r13);
-  api->fd_write(0x14, (uint16_t)s->r14);
-  api->fd_write(0x49, (uint16_t)s->r49);
   api->fd_write(0x73, (uint16_t)s->r73);
   api->fd_write(0x7E, (uint16_t)s->r7e);
   wr(GPIOB + (s->odr ? BSRR : BRR), SPK);
