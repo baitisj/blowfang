@@ -448,9 +448,37 @@ end.)
   (`0101` x18, four flags fewer). `aprsfskc_440` is the stream build doing that on purpose.
 - The stream build's screen and minute line run (`m 1 rssi=-131 pk=-21 pre=15 ok=9`).
 
-Next: `aprsfsks_440` goes round eight settings of the modem against the same signal (REG_58's
-bits 7:6 at 00, 01 and 11, the two other bandwidths, less RX gain, the de-emphasis off), a
-setting a round, to find one that reads the pre-emphasised kind.
+**Fourth bench run (2026-11-10 10:46 to 11:08Z, K6 image 6f30645, the K6 silent).** The same
+signal, to find a setting of the modem that reads the pre-emphasised kind.
+
+`aprsfskd_440` (the stream build, REG_2B + 0100, seven rounds): flat 7, pre 0, de 7, low 3,
+n12 0, n6 0, short 6, pre n9 0. As without it: REG_2B's de-emphasis bit changes nothing here.
+
+`aprsfsks_440` as it was at 4181e2f: eight settings, one a round of the eight kinds, sixteen
+rounds (the first lap's settings 0 to 2 fell before the signal). Decoded, of the rounds each
+setting heard:
+
+| Setting | REG_58 | REG_2B | flat | pre | de | low | n12 | n6 | short | pre n9 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 33A3 | 8000 | 2 | 0 | 2 | 2 | 0 | 0 | 2 | 0 |
+| 1 | 33A3 | 8100 (de-emphasis off) | 2 | 0 | 2 | 2 | 0 | 0 | 2 | 0 |
+| 2 | 3323 (bits 7:6 = 00) | 8000 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
+| 3 | 3363 (bits 7:6 = 01) | 8000 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 4 | 33A9 (the 1200/2400 bandwidth) | 8000 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 5 | 33A1 (the FSK 1.2K bandwidth) | 8000 | 2 | 0 | 2 | 2 | 0 | 0 | 2 | 0 |
+| 6 | 31A3 (less RX gain) | 8000 | 2 | 0 | 2 | 2 | 0 | 0 | 2 | 0 |
+| 7 | 33E3 (bits 7:6 = 11) | 8000 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
+
+- **No setting reads a pre-emphasised or a noisy packet.**
+- Bits 7:6 lean the slicer between the tones: at 00 and 11 only the kind with the mark 5 dB
+  over the space reads; at 10 the level kind reads too; at 01 nothing. With 3323 and 33E3 a
+  pre-emphasised packet does give its sync word and the frame's first byte (`0101 0101 012b`),
+  then wrong bits (`46d9 d904` for `536c eca9`).
+- The bandwidth bits at 000 and the RX gain make no difference; the bandwidth for 1200/2400
+  (33A9) reads nothing.
+
+`aprsfsks_440` now goes round all sixteen values of REG_58's bits 7:4 (bits 5:4 sit next to
+the two that lean the slicer).
 
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every
