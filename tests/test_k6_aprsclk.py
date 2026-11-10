@@ -407,10 +407,12 @@ def modem_chip(le, pick, BASE=4800):
     to either register takes hold at the next bit, also in a packet), the sync word in any bit
     position (2 or 4 bytes by REG_59<3>) and its interrupt 16 bits later, 16 bits a FIFO word up
     to REG_5D's length, the first byte on the air in the word's low byte, an empty FIFO read as
-    its last word again"""
+    its last word again. REG_0B<7> or <6> after a sync word, by which way up it was. With spur,
+    arming raises the sync flag by itself, with neither bit (aprsfsk's second bench run)"""
     class Chip(le.Emu):
         pos, reg, buf, taken, pkt = 0.0, 0, None, 0, False
         either = False      # the sync word upside down too (what probe 4's captures suggest)
+        spur, pol = False, 0
         sync = done = full = False
         last, empty, over = 0, 0, 0
         r = {0x58: 0, 0x59: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x72: 0}
@@ -432,6 +434,7 @@ def modem_chip(le, pick, BASE=4800):
                     got = self.reg if self.r[0x59] & 8 else self.reg & 0xFFFF
                     if got == want or (self.either and got == want ^ (0xFFFFFFFF if self.r[0x59] & 8 else 0xFFFF)):
                         self.pkt, self.buf, self.taken = True, [], 0
+                        self.pol = 0xA0 if got == want else 0x60
                     continue
                 self.buf.append(bit)
                 self.sync |= len(self.buf) == 16        # probe 2: the first word is in by then
@@ -452,6 +455,12 @@ def modem_chip(le, pick, BASE=4800):
                 if r0 == 0x59 and r1 & 0x1000:          # armed: the search starts
                     self.reg, self.pkt, self.buf = 0, False, None
                     self.sync = self.done = self.full = self.end = False
+                    self.sync, self.pol = self.spur, 0
+            if name == "fd_read" and r0 == 0x0B:
+                self.advance()
+                self.tick(self.fd_us * 96)
+                uc.reg_write(A.UC_ARM_REG_R0, 0xCA02 | self.pol)
+                return
             if name == "fd_read" and r0 in (0x0C, 0x02, 0x5F):
                 self.advance()
                 flags = (2 if self.sync else 0) | (0x1000 if self.full else 0) | (0x2000 if getattr(self, "end", False) else 0)
@@ -569,24 +578,26 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
 
 # ---- the same clock behind the chip's own FSK modem (c/k6/mod/aprsfsk.c) ----
 @need_clang
-@pytest.mark.parametrize("ctrl", [0xF8, 0xF0])
-def test_aprsfsk_on_a_model_of_the_chips_modem(ctrl):
+@pytest.mark.parametrize("name,spur", [("aprsfsk", False), ("aprsfsk", True), ("aprsfskb", True)])
+def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
     """aprsfsk (aprsclk's HDLC, parser and vote behind the FD6818's packet modem) on the emulated
     M0 against modem_chip: the three stations' line bits as the 1200/2400 Hz receiver slices
     them with REG_58 = 33a3 (probe 4), the second with its tones swapped, random bits between
-    them (with two bytes of sync word they start a packet now and then by chance). It must take
-    every packet, set the clock, give up a packet's read where the line goes idle and turn the
-    modem off and on for the next, keep its timed reads in step with the FIFO and put the
-    modem's registers back. aprsfsk's sync word is four flags, aprsfskb's two."""
+    them. It must take every packet, set the clock, give up a packet's read where the line goes
+    idle and turn the modem off and on for the next, and put the modem's registers back.
+    With spur the model raises the sync flag by itself at every arming, as the chip did on the
+    bench (the second run): aprsfsk then reads three stale words every round and takes the
+    packets inside such reads, as it did on the air. aprsfskb reads the FIFO all the time and
+    starts on the first word that is not the last one again."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
-    name = "aprsfsk.c" if ctrl == 0xF8 else "aprsfskb.c"
-    src = os.path.join(K6, "mod", name)
+    stream, ctrl = name == "aprsfskb", 0xF8
+    src = os.path.join(K6, "mod", name + ".c")
     total, BASE = 6.5, 4800
-    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u"), ("APRS_FSK_DUMP", "2")], src)
+    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u"), ("APRS_FSK_DUMP", "2"), ("FSK_AGAIN", "700u")], src)
     full, _ = k6mod.build(src)
-    assert len(full) < 5600, len(full)              # the tap build is 7.6 KB
+    assert len(full) < 5800, len(full)              # the tap build is 7.6 KB
     rng = np.random.default_rng(5)
     air = rng.integers(0, 2, int((total + 2) * BASE // 4))
     for k, (t, mk) in enumerate(packets()):
@@ -595,17 +606,17 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(ctrl):
         air[i:i + len(b)] = b ^ (k == 1)
     air = np.repeat(air, BASE // aprs.BAUD)
     Chip = modem_chip(le, lambda r58: air, BASE)
-    Chip.either = True
+    Chip.either, Chip.spur = True, spur
     e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
              scratch=11776 - 24 - len(full))
     r = e.run()
     assert r is not None, e.said[-5:]
     ret, stack = r
     assert ret == 3 and stack < 700, (ret, stack, e.said)
-    assert e.empty == 0 and e.over == 0, (e.empty, e.over)
+    assert e.over == 0 and (spur or e.empty == 0), (e.empty, e.over)
     assert e.said[0] == f"aprs start hz=144390000 fsk=13219 sync={ctrl}", e.said[:2]
     end = e.said[-1]
-    assert "ok=3 " in end and "ts=3 v=3" in end and " lost=0 " in end, e.said
+    assert "ok=3 " in end and "ts=3 v=3" in end and end.endswith(" lost=0") and len(end) <= 60, e.said
     hh, mm, ss = end.split("utc=")[1].split()[0].split(":")
     assert abs(int(hh) * 3600 + int(mm) * 60 + float(ss) - (UTC0 + total) % DAY) < 0.6, end
     f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
@@ -615,11 +626,22 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(ctrl):
     good = [v for v in y if v["ok"] == "1"]
     assert len(good) == 3 and all(20 < int(v["w"]) < 80 for v in good), y
     assert all(int(v["w"]) < 128 for v in y), y
+    fsk = dict(kv.split("=") for kv in e.said[-2].split()[2:])
+    assert e.said[-2].startswith("aprs fsk ms=") and fsk["key"] == "0" and len(e.said[-2]) <= 60, e.said[-2]
+    if stream:
+        # nothing but the three packets: no read of stale words, the search started again
+        # only while nothing came
+        assert len(y) == 3 and fsk["pre"] == "3" and fsk["fake"] == "0", (y, fsk)
+    elif spur:
+        assert len(y) > 40 and int(fsk["fake"]) > 40 and all(v["w"] == "3" for v in y if v["ok"] == "0"), fsk
+    else:
+        assert int(fsk["pre"]) == len(y) == 3 and fsk["fake"] == "0", (y, fsk)
     # its d lines hold the words as read: the first good packet's open with flags (01: this
     # station's long tone is the space)
     n = next(ln.split()[1] for ln in e.said if ln.startswith("y ") and " ok=1" in ln)
     d = [w for ln in e.said if ln.startswith(f"d {n} ") for w in ln.split()[3:]]
-    assert len(d) == int(good[0]["w"]) and d[0] in ("0101", "0202", "0404", "0808", "1010", "2020", "4040", "8080"), d[:4]
+    flag = ("0101", "0202", "0404", "0808", "1010", "2020", "4040", "8080")
+    assert len(d) == int(good[0]["w"]) and (d[0] in flag or spur and not stream and d[3] in flag), d[:4]
     # the log's report (python3 -m modem.aprs fsklog): each packet's frame again from its words,
     # and a frame with one tone bit wrong named as such
     rep = aprs.fsklog_report(["K6 MOD say " + ln for ln in e.said])
@@ -639,13 +661,20 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(ctrl):
     assert len(e.clock_sets) == 2, e.clock_sets
     for ms, utc, date, w, ok in e.clock_sets:
         assert abs(utc - round(((UTC0 + ms / 1000) % DAY) * 1000)) <= w and w < 9000, (ms, utc, w)
-    assert e.lcd[0].strip() == "APRS CLOCK 144.390" and e.lcd[1].startswith("UTC 17:52:0"), e.lcd
-    assert e.lcd[3].startswith("heard ") and e.lcd[3].endswith(" ok 3 ts 3"), e.lcd
+    if stream or not spur:
+        assert e.lcd[0].strip() == "APRS CLOCK 144.390" and e.lcd[1].startswith("UTC 17:52:0"), e.lcd
+        assert e.lcd[3].startswith("heard ") and e.lcd[3].endswith(" ok 3 ts 3"), e.lcd
+    else:
+        # as on the bench: a read of stale words is always under way, so the screen and the
+        # minute's line never get their turn (what aprsfskb is for)
+        assert not e.lcd, e.lcd
     assert any(on for _, on in e.led)
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
-    # the modem off and on for each packet, armed twice each time
+    # the modem off and on for each packet, armed twice each time (aprsfskb: and every 2 s
+    # with nothing heard)
     w58 = e.writes[0x58]
-    assert w58.count(0x33A3) == len(y) + 1 and w58.count(0) >= len(y) + 2, w58
+    again = w58.count(0x33A3) - len(y) - 1
+    assert (1 <= again <= 3 if stream else again == 0) and w58.count(0) >= len(y) + 2, (again, len(y), w58)
     assert e.writes[0x5A][0] == 0xFEFE and e.writes[0x5B][0] == 0xFEFE and e.writes[0x5D][0] == 0xFF00
-    assert e.writes[0x59].count(0x1000 | ctrl) == 2 * (len(y) + 1) and 0x3002 in e.writes[0x3F], e.writes[0x59][:8]
+    assert e.writes[0x59].count(0x1000 | ctrl) == 2 * w58.count(0x33A3) and 0x3002 in e.writes[0x3F], e.writes[0x59][:8]

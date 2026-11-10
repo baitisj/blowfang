@@ -309,7 +309,7 @@ aprsclk        # level 2 (screen at 6, LED at 7), docs/k6-aprs-clock.md
 aprsclk_440    # level 2, aprsclk on 440.850 for the on-air loopback
 aprsfsk        # level 2 (screen at 6, LED at 7), aprsclk behind the chip's own FSK modem (REG_58 33a3), 144.390
 aprsfsk_440    # level 2, aprsfsk on 440.850 for the on-air loopback, every packet's words said
-aprsfskb       # level 2, aprsfsk with a sync word of two flags instead of four
+aprsfskb       # level 2, aprsfsk reading the modem's FIFO all the time (FSK_STREAM)
 aprsfskb_440   # level 2, aprsfskb on 440.850
 bandreg        # level 2, patched by tools/k6_hf.py
 clkget         # level 8, says the radio's clock (docs/k6-aprs-clock.md)
