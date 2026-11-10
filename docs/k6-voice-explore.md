@@ -10,7 +10,18 @@ pages and banded drawing, below). Until it fits, it's a size report only:
 `out/size-aura-voice-explore.txt` says how much flash and RAM are still to find, and no `.bin`
 is written; its last lines are the three pages.
 
-## Where it stood (2026-11-09, local clang 18 build; CI's is about 1.1 KB smaller)
+## Where it stands
+
+CI (ATfE 22, -Oz), 2026-11-10, with the pages and banded drawing, on main with blowfang #20,
+#21 and #24:
+
+- Flash 128,568 of 122,880 B: 5,688 B over. The compiler thread's #31 (address-only panic
+  report, compact memory routines) saves 5,940 B on this image, which leaves about 250 B.
+- Static RAM 16,264 of 20,440 B: 4,176 B left for the stack. A voice playback needs 4,588 B
+  today; with FX_SYNTH_STATE (blowfang #32, synth's frame 1,192 B smaller) about 3,400 B. Listen
+  for ID's deepest chain (xd_step in its page) is about 3.5 KB.
+
+## Where it started (2026-11-09, local clang 18 build; CI's is about 1.1 KB smaller)
 
 - Flash 143,420 of 122,880 B: about 20.5 KB over (with FX_MP_ROWGEN, blowfang #21, and the SPI
   module library, #22).
@@ -45,7 +56,7 @@ is a page in the SPI module library (c/k6/k6_lib.h, header flags KM_F_LIB and KM
 | page   | slot | code  | functions                      | stack (direct calls) |
 |--------|------|-------|--------------------------------|----------------------|
 | sweep  | 10   | 5,864 | xs_* (12)                      | 328 B, xs_step       |
-| listen | 11   | 5,904 | xl_*, xd_* (14)                | 2,400 B, xd_step     |
+| listen | 11   | 6,172 | xl_*, xd_* (14)                | 2,400 B, xd_step     |
 | table  | 9    | 3,108 | rt_* (8)                       | 472 B, rt_cw_apply   |
 
 How it works (c/k6/kp.h):
@@ -110,5 +121,5 @@ the banding costs 0.76 KB of flash in all.
 Of the 12.0 KB, 1.9 KB is xdmr's SRAM copy of its hot path (`.data`, blowfang #19), which the
 explorer's #20 takes out of every image anyway: on top of #20 the pages save about 10.1 KB.
 
-With FX_MP_ROWGEN (-8.3 KB) that is about 131.6 KB locally, about 130.5 KB on CI: about 7.6 KB
-over, against about 7 KB the compiler thread expects to save.
+With FX_MP_ROWGEN (-8.3 KB) that is about 131.6 KB locally. On main with the explorer's #20 and
+the ATfE compiler (#24), it is 130,048 B locally and 128,568 B on CI (above).
