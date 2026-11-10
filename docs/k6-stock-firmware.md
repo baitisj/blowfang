@@ -46,8 +46,8 @@ baseline less 6, so the caps sit on the rows 6x10's did and the layouts don't mo
 embedded-graphics' text renderer and the 720-byte FONT_6X10 out of those images. EXPLORE's
 32-column 4x6 rows keep FONT_4X6 (288 B in MCU flash), drawn by the same code; moving it to
 the SPI flash would mean writing it there. At power-on the image checks the 5x7 font's CRC-32
-(760 bytes at 0x04BFC0, `07acb73c` on the bench radio) and says `K6 FONT 5x7 crc=...` on the
-serial cable; on any other value the 21-column lines fall back to the 4x6 glyphs in the same
+(760 bytes at 0x04BFC0, `07acb73c` on the bench radio) and, when VOICE MSG first starts, says
+`K6 FONT 5x7 crc=... ok=1` on the serial cable; on any other value the 21-column lines fall back to the 4x6 glyphs in the same
 cells, so a radio without the font still shows readable text. In the `banded` image a line
 reads its glyphs only in the bands it reaches.
 

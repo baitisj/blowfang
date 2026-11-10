@@ -206,7 +206,7 @@ with the panic handler. A HardFault-style note could keep the address of the pan
 (pc/lr at 0x20005FF0) rather than its file and line.
 
 **Done (Jeff, 2026-11-09): the panic report and the memory routines.** The lean formatter
-was left out.
+was left out then, and done on 2026-11-10 (below).
 
 - The panic handler prints `K6 PANIC at a b c d build=...`: the first four Thumb return
   addresses in the 256 bytes above the stack pointer. `llvm-addr2line -fipe out/NAME.elf a b
@@ -225,3 +225,35 @@ Against main at the time:
 | vlri | −4,004 B |
 | EXPLORE | −6,096 B |
 | voice + EXPLORE target | −5,940 B |
+
+## The lean formatter (2026-11-10)
+
+The pager images no longer link `core::fmt`. The Aura patch's `src/out.rs` reads the same
+format strings at run time: `rl!("K6 CB r={} crc={:08x}", r, crc)` in place of
+`report_line(format_args!(...))`, and `out!(b, ...)` in place of `write!(b, ...).ok()`. The values go
+in as a plain array, two words each, and a line is one call plus its text, with no piece table.
+`fmt` (about 850 bytes, the number printing inlined) reads `{}`, hex and octal with a width, `0`
+and `#`, `{:N}`, `{:>N}`, `{:<N}` and `{:+}`, and gives the same text `format!` gives for each of
+them: a host test compared 431 cases. Each macro also expands a `format_args!` that never runs, so rustc still
+checks every string against its values. A named argument inside the string (`{crc:08x}`) is the
+one form it doesn't read: pass it after the string.
+
+main's debug lines (`dln!`) are compiled out of release builds, because DebugUart sends nothing
+there anyway. Full Aura's screens, built but never run in the pager images, keep `core::fmt`.
+
+Measured with ATfE 22.1.0, local build.sh, on the same base (blowfang 481d976) before and
+after. Every pager image drops core::fmt entirely.
+
+| image | before | after | saved |
+|---|---|---|---|
+| aura-voice-explore | 112,988 | 109,836 | 3,152 |
+| aura-explore | 103,800 | 100,968 | 2,832 |
+| aura-pager-only | 86,968 | 83,812 | 3,156 |
+| aura-pager-lr | 87,864 | 84,708 | 3,156 |
+| aura-pager-vlr | 91,348 | 88,192 | 3,156 |
+| aura-pager-vlrh | 109,800 | 106,640 | 3,160 |
+| aura-pager-vlri | 95,772 | 92,696 | 3,076 |
+| aura-pager-vlr-rom | 95,156 | 92,080 | 3,076 |
+| aura-pager-cbi | 100,492 | 97,416 | 3,076 |
+| aura-pager-only-table | 99,608 | 96,528 | 3,080 |
+| aura-pager-lr-table | 100,468 | 97,388 | 3,080 |
