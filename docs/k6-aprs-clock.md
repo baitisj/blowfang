@@ -294,18 +294,26 @@ vote, clock and screen, with the IF tap's front end (DMA, mixer, CORDIC, correla
 filter) left out and the chip's packet modem in its place. 5.1 KB against the tap build's 7.6 KB,
 336 B of stack on the emulator.
 
-- Set-up: REG_58 = 33A3, REG_72 = 1200 baud, sync word FEFE (REG_59 = 00F0, two bytes), REG_5D
-  = FF00 (256 bytes, 1.7 s, the chip's longest packet), no CRC of the chip's, armed twice.
-- At the sync interrupt (16 bits after the sync word, the first FIFO word already in) it reads a
+- Set-up: REG_58 = 33A3, REG_72 = 1200 baud, sync word FEFE FEFE (REG_59 = 00F8, four flags),
+  REG_5D = FF00 (256 bytes, 1.7 s, the chip's longest packet), no CRC of the chip's, the modem
+  turned off and on and armed twice.
+- At the sync flag in REG_02, polled every 2 ms (16 bits after the sync word, the first FIFO word already in), it reads a
   word every 13.3 ms by its own clock, one word behind the chip. Each of the word's 16 tone bits
   goes through NRZI into `hdlc()` with its own time (ms at the interrupt + 5/6 ms a bit), so a
   frame's first bit is timed as in the tap build.
 - A packet's read ends when the line has been outside a frame for 40 bits (after the closing
-  flags the next abort), or after the 128 words. Then it arms the chip for the next sync word.
+  flags the next abort), or after the 128 words. Then the modem is turned off and on (REG_59 and
+  REG_58 to 0, REG_58 back, armed twice) for the next sync word: arming alone does not end a
+  packet the chip is in.
+- An RX-done flag with no packet being read means the chip read a whole packet nobody took: the
+  search starts again and the end line's `lost=` counts it.
 - The minute's line and the screen are done only between packets.
 - Lines besides the tap build's: `y n t= w= ok= st=` for each packet (its number, ms at the
-  sync, words read, good frames in it, REG_0B) and `d n 000 fefe ...` its words, ten a line
-  (every packet in the 440 builds, only those without a good frame on 144.390).
+  sync, words read, good frames in it, REG_02's flags and REG_0B in hex) and `d n 000 fefe ...`
+  its words, ten a line (every packet in the 440 builds; on 144.390 only those of six words or
+  more without a good frame, and no line at all for a few words of noise).
+  `python3 -m modem.aprs fsklog LOG` reads them back: flags, good frames, and bad ones a single
+  bit away.
 
 Variants:
 
@@ -314,17 +322,47 @@ Variants:
   (`python3 -m modem.aprs wav OUT.wav --now --repeat N --swap`: `--swap` sends every second
   round with the tones swapped, so the flags' long tone is the mark in one and the space in
   the next).
-- `aprsfskb`, `aprsfskb_440`: listen with REG_58 = 33E3 (the setting probe 4 saw start on flags)
-  and write 33A3 at each sync interrupt, in case 33A3 does not start by itself.
+- `aprsfskb`, `aprsfskb_440`: the same with a sync word of two flags (REG_59 = 00F0), which
+  starts on a shorter opening and on noise several times a second.
 
-Open until the bench has said: whether 33A3 starts on flags by itself, whether one sync word
-takes both tone senses, and how far down real signals on 144.390 decode. A sender that keys up
-with zeros (alternating tones) and only one flag gives this receiver nothing to start on.
+A sender that keys up with zeros (alternating tones) and fewer than four flags gives this
+receiver nothing to start on.
+
+**First bench run (2026-11-10 08:56 to 09:30Z, a3d8d1c, K6 image 35e982f).** That build had a
+two-flag sync word, re-armed with REG_59 alone and waited for REG_0C's "interrupt pending".
+IC-7100 at about -20 dBm on 440.850, 42 timestamped packets a run, every second round with its
+tones swapped; then 15 minutes on 144.390.
+
+| Run | Result |
+| --- | --- |
+| 440.850, three runs | 6 of 126 packets decoded, the clock set each time (v=2) |
+| 440.850, the 33E3-then-33A3 variant | 0 of 42 |
+| 144.390, 15 min | 0 frames from 259 starts; the channel's floor -108 dBm, packets' peaks -93 to -97 dBm |
+
+What the captures showed:
+
+- **33A3 starts on flags by itself, and in both tone senses.** The packets it took at their
+  start read 19 words of FEFE (or 0101, the other sense) and then the frame, and all of those
+  passed their CRC (REG_0B's low byte A2 for one sense, 62 for the other: bits 7 and 6 are the
+  sync's polarity). So the slicer and the sync word are right.
+- **Arming does not end a packet the chip is in.** After the module gave up a read early and
+  re-armed, the chip went on to its 256 bytes (1.707 s), deaf to the next packets, and the
+  module's next "sync" came with the chip's RX-done: exactly 1.707 s after the flags of a packet
+  it never saw start. It then read a FIFO the chip had finished with: eight stale words, then
+  the first of them again and again (`fefe` x27, or `bf93` x120).
+- **A two-flag sync word starts on a packet's two or three closing flags** (then reads silence),
+  and **on noise**: the receiver's bits in noise are mostly ones, close enough to FE FE several
+  times a second.
+- Silence on a carrier reads as zeros.
+
+The fix (3f093fa) is the list above: the modem off and on for each search, the flags polled
+directly, RX-done handled, four flags of sync word. Its bench run is next.
 
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every
-packet decoded, the clock set within its bound, the reads in step with the FIFO, the registers
-put back.
+packet decoded, the clock set within its bound, the reads in step with the FIFO, the modem off
+and on for each packet, the registers put back. The model ends a packet when it is armed, which
+the real chip does not: the first bench run's fault could not show there.
 
 ## Size: which images
 
