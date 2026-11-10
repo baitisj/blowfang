@@ -35,9 +35,16 @@ git -C "$WORK" checkout -q "$OPENRTX_REV"
 git -C "$WORK" apply "$HERE/uv380-blowfang.patch"
 
 mkdir -p "$WORK/openrtx/src/blowfang"
-for f in pager_tx.c pager_tx.h ffsk_tx.c ffsk_tx.h cw_tx.c cw_tx.h; do
+while read -r f; do
   cp "$ROOT/c/common/$f" "$WORK/openrtx/src/blowfang/"
-done
+done <<EOF
+pager_tx.c
+pager_tx.h
+ffsk_tx.c
+ffsk_tx.h
+cw_tx.c
+cw_tx.h
+EOF
 cp "$HERE/blowfang_message.h" "$WORK/openrtx/src/blowfang/"
 
 cd "$WORK"

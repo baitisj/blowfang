@@ -88,12 +88,35 @@ index 393659a..5c31aed 100644
  };
  
  /**
+diff --git a/openrtx/src/core/state.c b/openrtx/src/core/state.c
+index 4e8e063..f65f493 100644
+--- a/openrtx/src/core/state.c
++++ b/openrtx/src/core/state.c
+@@ -45,6 +45,18 @@ void state_init()
+         state.channel = cps_getDefaultChannel();
+     }
+ 
++#ifdef PLATFORM_LINUX
++    /*
++     * blowfang test hook: BLOWFANG_PAGER set starts the emulator in PAGER
++     * mode on 440.850 MHz (tests/test_uv380_openrtx_emu.py).
++     */
++    if (getenv("BLOWFANG_PAGER") != NULL) {
++        state.channel.mode         = OPMODE_PAGER;
++        state.channel.rx_frequency = 440850000;
++        state.channel.tx_frequency = 440850000;
++    }
++#endif
++
+ /*
+      * Initialise remaining fields
+      */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..f1ad0ac
+index 0000000..033758f
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,178 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -109,6 +132,10 @@ index 0000000..f1ad0ac
 +#include "rtx/OpMode_Pager.hpp"
 +#include "rtx/rtx.h"
 +#include <string.h>
++#ifdef PLATFORM_LINUX
++#include <stdio.h>
++#include <stdlib.h>
++#endif
 +
 +extern "C" {
 +#include "pager_tx.h"
@@ -207,6 +234,27 @@ index 0000000..f1ad0ac
 +    ffsk_init(&ffsk, &air, FS, BAUD, 0, 0, LEVEL);
 +    cw_init(&cw, ident, FS, 20, 800, CW_LEVEL);
 +
++#ifdef PLATFORM_LINUX
++    // Emulator: no modulator to drive, so the samples go to a file
++    // (BLOWFANG_PAGER_OUT, default /tmp/blowfang_pager.raw: signed 16-bit,
++    // 48 kHz) for tests/test_uv380_openrtx_emu.py to decode.
++    const char *out = getenv("BLOWFANG_PAGER_OUT");
++    if(out == NULL)
++        out = "/tmp/blowfang_pager.raw";
++    FILE *f = fopen(out, "wb");
++    if(f == NULL)
++        return;
++    status->opStatus = TX;
++    radio_enableTx();
++    bool inCw = false;
++    while(fill(txBuf, BLOCK, inCw))
++        fwrite(txBuf, sizeof(stream_sample_t), BLOCK, f);
++    fclose(f);
++    radio_disableRtx();
++    printf("blowfang: pager message sent to %s\n", out);
++    fflush(stdout);
++#else
++
 +    pathId path = audioPath_request(SOURCE_MCU, SINK_RTX, PRIO_TX);
 +    if(path < 0)
 +        return;
@@ -245,6 +293,7 @@ index 0000000..f1ad0ac
 +    radio_disableRtx();
 +    audioPath_release(path);
 +    platform_ledOff(RED);
++#endif
 +}
 diff --git a/openrtx/src/rtx/rtx.cpp b/openrtx/src/rtx/rtx.cpp
 index 5470432..1db08a8 100644

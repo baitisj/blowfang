@@ -22,7 +22,18 @@ a second press stops it. It transmits only between 430 and 450 MHz and does not 
 - `blowfang_message.h`: the message, 10 s of the Epistle of James (LibriVox, public domain) in
   sotto 1200. `make_message.py` makes it from any `sotto_enc -1200` output.
 - CI: `.github/workflows/uv380-openrtx.yml` builds the radio in OpenRTX's devcontainer image
-  and the Linux emulator, and keeps the image as an artifact.
+  and the Linux emulator, and keeps the image as an artifact. Then
+  `tests/test_uv380_openrtx_emu.py` runs PAGER mode in the emulator and decodes it on the K6
+  model.
+
+**The emulator test.** On Linux, `OpMode_Pager` writes its samples (48 kHz, signed 16-bit) to
+the file `BLOWFANG_PAGER_OUT` instead of the modulator, and `BLOWFANG_PAGER` set makes the
+emulator start in PAGER mode on 440.850 MHz (a hook in `state.c`). The test presses PTT
+through the emulator's shell, then decodes the file with `modem.fsk` (the K6 receiver's bench
+model): every packet, the whole message, then the Morse ident. Everything else is the code the
+radio runs: OpenRTX's state, threads, UI and rtx layers, and the same packet and FFSK code.
+Locally: `sh firmware/uv380-openrtx/build.sh linux`, then
+`python -m pytest tests/test_uv380_openrtx_emu.py`.
 
 Not yet run on a radio. Before the first on-air test: the deviation (`LEVEL` in
 `OpMode_Pager.cpp`) needs setting on the bench against the IC-7100, and the stock firmware,
