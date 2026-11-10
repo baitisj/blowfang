@@ -373,6 +373,17 @@ def test_a_stale_serial_owner_file_means_free(work):
     assert b.serial_release("font", wait=1) is True
 
 
+def test_a_starting_reader_waits_out_an_owner_probe(work):
+    """serial_owner() takes the lock for a moment to see whether a reader holds it; a reader
+    starting in that moment must wait for it, not refuse (it did: a CI race in the test below)"""
+    p = b.path("serial_lock")
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    probe = open(p, "a")
+    fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    threading.Timer(0.1, lambda: (fcntl.flock(probe, fcntl.LOCK_UN), probe.close())).start()
+    assert b.serial_hold("dcs", [sys.executable, "-c", "pass"], poll=0.05) == 0
+
+
 def test_an_old_release_request_does_not_stop_a_new_reader(work):
     b._put_json("serial_release", {"by": "old", "at": 0})
     out = []

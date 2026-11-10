@@ -173,6 +173,14 @@ int host_read_file(const char *path, uint8_t *buf, unsigned max) {
     return -1;
 }
 
+int host_read_at(const char *path, uint8_t *buf, unsigned off, unsigned n) {
+    (void)path;
+    (void)buf;
+    (void)off;
+    (void)n;
+    return -1;
+}
+
 void host_log(const char *s) {
     (void)s;
 }

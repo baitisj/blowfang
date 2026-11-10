@@ -48,6 +48,7 @@ void audio_stop(void);
 
 /* QEMU only (semihosting); the radio build returns -1. */
 int host_read_file(const char *path, uint8_t *buf, unsigned max);
+int host_read_at(const char *path, uint8_t *buf, unsigned off, unsigned n);   /* bytes read, -1 if no file */
 void host_log(const char *s);
 void host_exit(int code);
 
