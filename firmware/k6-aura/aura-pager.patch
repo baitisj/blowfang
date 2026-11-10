@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..6c94624
+index 0000000..0b4a26e
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4453 @@
+@@ -0,0 +1,4454 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -2231,6 +2231,7 @@ index 0000000..6c94624
 +        ));
 +        #[cfg(not(feature = "lean"))]
 +        crate::hal::txdog::report(|a| report_line(a));
++        crate::ui::glyph::report(|a| report_line(a));
 +        #[cfg(feature = "spilib")]
 +        lib_list();
 +        app.pager.store_frames =
@@ -6973,10 +6974,17 @@ index d3e7fc9..04f1b5f 100644
              _ => send_error(dbg, frame.addr, frame::ERR_BAD_LEN),
          }
 diff --git a/src/device/display.rs b/src/device/display.rs
-index 6fd14b9..f8410d7 100644
+index 6fd14b9..8428580 100644
 --- a/src/device/display.rs
 +++ b/src/device/display.rs
-@@ -5,7 +5,8 @@ use display_interface::{DataFormat, WriteOnlyDataCommand};
+@@ -1,11 +1,14 @@
+ use crate::board;
+ use crate::drivers::display_spec;
+-use display_interface::{DataFormat, WriteOnlyDataCommand};
++use display_interface::WriteOnlyDataCommand;
++#[cfg(not(banded))]
++use display_interface::DataFormat;
+ 
  /// LCD electronic-volume register values for contrast levels 0-4.
  pub const CONTRAST_VOLUMES: [u8; 5] = [37, 41, 45, 48, 51];
  
@@ -6986,7 +6994,7 @@ index 6fd14b9..f8410d7 100644
      DI,
      display_spec::Sc5260Spec,
      st7565::modes::GraphicsMode<'a, 128, 8>,
-@@ -13,16 +14,60 @@ type Lcd<'a, DI> = st7565::ST7565<
+@@ -13,16 +16,60 @@ type Lcd<'a, DI> = st7565::ST7565<
      64,
      8,
  >;
@@ -7048,7 +7056,7 @@ index 6fd14b9..f8410d7 100644
      pub fn flush(&mut self) {
          if let Some(ref mut lcd) = self.lcd {
              lcd.flush().ok();
-@@ -32,6 +77,7 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
+@@ -32,6 +79,7 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
      /// Apply a contrast level (0-4). The st7565 crate keeps its command
      /// interface private, so we detach the SPI interface, push the two
      /// command bytes raw, and attach it back.
@@ -7056,7 +7064,7 @@ index 6fd14b9..f8410d7 100644
      pub fn set_contrast(&mut self, level: u8) {
          let lcd = self.lcd.take().unwrap();
          let (detached, mut interface) = lcd.release_display_interface();
-@@ -45,9 +91,74 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
+@@ -45,9 +93,74 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
      }
  
      /// Give the UI layer a `&mut` reference to the raw ST7565 for drawing.
@@ -8101,7 +8109,7 @@ index 131f932..99ae011 100644
  
  /// Pull one byte received on USART1 since the last call, if any.
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..5041595 100644
+index 9d2b0c0..00d3880 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -14,7 +14,7 @@ mod ui;
@@ -8214,9 +8222,9 @@ index 9d2b0c0..5041595 100644
  
      let flash_spi = spi::SpiBus::new(spi1, spi::ClockMode::Mode3, 4);
      let mut storage = Storage::new(norflash::NorFlash::new(flash_spi, gpioa));
-+    // text is drawn from the stock 5x7 font in the SPI flash (ui::glyph): is it there?
-+    let font_crc = ui::glyph::set_flash(&mut storage.norflash, true);
-+    writeln!(dbg, "K6 FONT 5x7 crc={font_crc:08x}").ok();
++    // text is drawn from the stock 5x7 font in the SPI flash (ui::glyph): is it there? (VOICE
++    // MSG's first entry says, K6 FONT)
++    ui::glyph::set_flash(&mut storage.norflash, true);
  
      // First-boot format gate
      if !storage.is_first_boot_done() {
@@ -8665,10 +8673,10 @@ index 8dd4ad1..6fd7a54 100644
  }
 diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
 new file mode 100644
-index 0000000..2d6f5ef
+index 0000000..0aa7f1b
 --- /dev/null
 +++ b/src/ui/glyph.rs
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,144 @@
 +//! Text without embedded-graphics' text code or its 6x10 font (Jeff 2026-11-10: "switching over
 +//! to the stock fonts -- save some space!"). The SC5260 has no character ROM, so Baofeng's own
 +//! firmware kept its fonts in the K6's SPI flash, and Aura's first-boot format leaves them there
@@ -8681,8 +8689,9 @@ index 0000000..2d6f5ef
 +//! - The 32-column lines keep embedded-graphics' FONT_4X6 bitmap (288 bytes; the stock firmware
 +//!   has no 4x6), drawn here too.
 +//!
-+//! At power-on main checks the 5x7 font's CRC (`K6 FONT`); a radio whose SPI flash lacks it
-+//! draws the 21-column lines in 4x6, in the same cells.
++//! At power-on main checks the 5x7 font's CRC, and VOICE MSG's first entry reports it on the
++//! serial cable (`K6 FONT 5x7 crc=07acb73c ok=1`); a radio whose SPI flash lacks the font draws
++//! the 21-column lines in 4x6, in the same cells.
 +//! We use the font where Baofeng's firmware left it, and copy none of Baofeng's code.
 +
 +use crate::drivers::norflash::NorFlash;
@@ -8698,14 +8707,15 @@ index 0000000..2d6f5ef
 +const F5X7_CRC: u32 = 0x07AC_B73C;
 +
 +static mut NOR: *mut NorFlash<'static> = core::ptr::null_mut();
-+static mut STOCK: bool = false;
++/// the CRC set_flash found: the 21-column lines use the stock font only if it is F5X7_CRC
++static mut CRC: u32 = 0;
 +
 +/// Read the glyphs through `n` (main's Storage at boot, then the App's). With `check`, test the
-+/// 5x7 font's CRC first and return it; the 21-column lines use the font only if it matched.
-+pub fn set_flash(n: &mut NorFlash<'static>, check: bool) -> u32 {
++/// 5x7 font's CRC first; the 21-column lines use the font only if it matched.
++pub fn set_flash(n: &mut NorFlash<'static>, check: bool) {
 +    unsafe { NOR = n as *mut _ };
 +    if !check {
-+        return 0;
++        return;
 +    }
 +    let mut crc = !0u32;
 +    let mut b = [0u8; 40];
@@ -8718,15 +8728,23 @@ index 0000000..2d6f5ef
 +            }
 +        }
 +    }
-+    let crc = !crc;
-+    unsafe { STOCK = crc == F5X7_CRC };
-+    crc
++    unsafe { CRC = !crc };
++}
++
++fn stock() -> bool {
++    unsafe { CRC == F5X7_CRC }
++}
++
++/// The serial line for VOICE MSG's first entry (main's own boot lines never reach the cable)
++pub fn report(mut line: impl FnMut(core::fmt::Arguments)) {
++    let crc = unsafe { CRC };
++    line(format_args!("K6 FONT 5x7 crc={:08x} ok={}", crc, stock() as u8));
 +}
 +
 +/// A glyph's columns (bit 0 the top row) and its cell's width: 6 for the 5x7, 4 for the 4x6
 +fn glyph(c: u8, small: bool, cols: &mut [u8; 5]) -> i32 {
 +    let i = if (0x20..0x7F).contains(&c) { c - 0x20 } else { b'?' - 0x20 };
-+    if !small && unsafe { STOCK } {
++    if !small && stock() {
 +        unsafe { (*NOR).read_bytes(F5X7 + 8 * i as u32, cols) };
 +        return 6;
 +    }
