@@ -62,7 +62,11 @@
       3  AF source AM, narrow
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
    k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
-   with k of 3 or 4 their d lines.
+   with k of 3 or 4 their d lines. And is there a signal at all? The RSSI is read every 50 ms:
+   a rise of BURST_UP half dB over the front end's floor (its lowest, let up one step every
+   2 s) is a carrier, said when it ends (not inside a capture) as
+     b1 3 t=91230 ms=450 r=-84          front end, burst, ms at its start, its length, its peak
+   and the v line ends with b= (bursts), p= (the highest RSSI) and f= (the floor).
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
 #define K6_MODULE_OPT z
@@ -85,8 +89,11 @@
 #ifdef DFSK_ACARS
 #define NV 4
 #ifndef FE_S
-#define FE_S 75
+#define FE_S 150
 #endif
+#define BURST_UP 20u     /* half dB over the floor: a carrier */
+#define BURST_SKIP 300u  /* ms after a front end's start with no RSSI taken (the retune) */
+#define BURSTN 30u       /* bursts said per front end */
 #else
 #define NV 7
 #endif
@@ -232,7 +239,7 @@ int k6_main(const k6_api_t *api) {
   uint32_t room, i, now = 0, tkey = 0, t0, tcap = 0, dn = 0, prev, total = 0, af;
   uint32_t got = 0, dl = 0, same = 0, irq = 0, nfull = 0, ncap = 0, nw = 0, rssi = 0, tlast;
 #ifdef DFSK_ACARS
-  uint32_t ndump = 0;
+  uint32_t ndump = 0, rmin = 0x1FF, rup = 0, rpk = 0, bon = 0, bt = 0, bms = 0, bpk = 0, nb = 0;
 #endif
   int32_t acc = 0;
   uint16_t saved[sizeof(SAVED)];
@@ -266,17 +273,45 @@ int k6_main(const k6_api_t *api) {
       tkey = now;
       key = api->level >= 4 ? api->key_poll() : api->key_down();
       if (key) break;
+#ifdef DFSK_ACARS
+      if (now - t0 >= BURST_SKIP) {
+        uint32_t r = api->fd_read(0x67) & 0x1FF;
+        if (r < rmin) rmin = r, rup = 0;
+        else if (++rup >= 40) rup = 0, rmin++;
+        if (r > rpk) rpk = r;
+        if (bon < 2 && r >= rmin + BURST_UP) {
+          if (!bon) bon = 1, bt = now, bpk = 0;
+          if (r > bpk) bpk = r;
+        } else if (bon == 1) {
+          bon = 2, bms = now - bt;
+        }
+      }
+      if (bon == 2 && !in) {
+        bon = 0;
+        if (++nb <= BURSTN) {
+          p = ln, *p++ = 'b', p = dec(p, (uint32_t)cur), *p++ = ' ', p = dec(p, nb);
+          p = kv(p, " t=", bt);
+          p = kv(p, " ms=", bms);
+          p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(bpk));
+          *p = 0;
+          api->say(ln);
+        }
+      }
+#endif
     }
     if (!in && now - t0 >= v->secs * SLOT_SCALE) {
       p = ln, *p++ = 'v', p = dec(p, (uint32_t)cur);
       p = kv(p, " n=", ncap);
       p = kv(p, " w=", nw);
+#ifdef DFSK_ACARS
+      p = kv(p, " b=", nb + (bon != 0));
+      p = kv(p, " p=-", (uint32_t)-KM_RSSI_DBM(rpk));
+      p = kv(p, " f=-", (uint32_t)-KM_RSSI_DBM(rmin));
+      ndump = 0, rmin = 0x1FF, rup = 0, rpk = 0, bon = 0, nb = 0;
+#endif
       *p = 0;
       api->say(ln);
       total += ncap, ncap = nw = 0;
-#ifdef DFSK_ACARS
-      ndump = 0;
-#endif
       if (++cur == NV) break;
       v = &V[cur];
       prev = begin(api, cur, af);

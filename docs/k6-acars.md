@@ -130,8 +130,8 @@ like there? `dfskcap_acars` is `dfskcap` on 131.550 MHz for that (below).
 
 ### `dfskcap_acars`: the listen on 131.550 MHz
 
-`c/k6/mod/dfskcap_acars.c` (`dfskcap.c` with `DFSK_ACARS`, 2.3 KB), receive only: 32 s after
-its start, four front ends of 75 s each, all REG_58 = 00E9 at 4800 baud with the sync word
+`c/k6/mod/dfskcap_acars.c` (`dfskcap.c` with `DFSK_ACARS`, 2.9 KB), receive only: 32 s after
+its start, four front ends of 150 s each (75 s in the first run), all REG_58 = 00E9 at 4800 baud with the sync word
 AAAA and 512 bytes a packet (REG_5D = ff20; a long block is 500 bytes):
 
 | | Front end | Asks |
@@ -158,4 +158,39 @@ What the log can say:
 
 The emulated test (`test_dfskcap_acars_on_the_model`) hears the blocks only with the AF source
 set to AM and noise with chance sync words otherwise: `c` lines everywhere, words and blocks
-in front ends 1 and 3 only, the registers put back.
+in front ends 1 and 3 only, a `b` line for every block's carrier in all four, the registers
+put back.
+
+#### First listen (2026-11-10 15:34 to 15:39Z): no traffic to judge by
+
+The K6 on 131.550 MHz for 5.5 minutes at hamlet, the IC-7100 silent (it sent the module on
+440.850 MHz and its idents, nothing on airband):
+
+```
+s 0 t=32022 cfg=00e9 b=c195 sy=aaaa l=ff20
+v0 n=0 w=0
+s 1 t=107027 cfg=00e9 b=c195 sy=aaaa l=ff20
+c1 1 t=156961 w=276 k=0 r=-113
+v1 n=1 w=276
+s 2 t=182032 cfg=00e9 b=c195 sy=aaaa l=ff20
+c2 1 t=207660 w=273 k=0 r=-116
+v2 n=1 w=273
+s 3 t=257037 cfg=00e9 b=c195 sy=aaaa l=ff20
+v3 n=0 w=0
+```
+
+- Two captures in 300 s, both at the floor (-113 and -116 dBm) and with no pre-key after the
+  sync word: noise. REG_5D = ff20 gives packets of about 512 bytes (273 and 276 words with the
+  stale reads), so the length bits work as reckoned.
+- Noise starts the receiver about once in 150 s. A real listen loses next to nothing to it.
+- **Nothing to judge the question by**: the log does not say whether a block was on the air in
+  those minutes. A capture's RSSI is taken only when the receiver starts, so an AM carrier the
+  receiver slept through left no mark.
+
+So the module now reads the RSSI every 50 ms as well. A rise of 10 dB over the front end's
+floor (its lowest reading, let up half a dB every 2 s) is a carrier, said when it ends:
+`b1 3 t=91230 ms=450 r=-84` (front end, burst, ms at its start, its length, its peak), and
+the `v` line ends with `b=` (bursts), `p=` (the highest RSSI) and `f=` (the floor). With that
+a listen answers either way: bursts and no capture at their times in a front end mean the
+receiver does not start on AM there; no bursts mean no traffic reached the K6's antenna. Four
+front ends of 150 s make it 10.5 minutes.

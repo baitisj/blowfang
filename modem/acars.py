@@ -203,7 +203,7 @@ def plain_read(words):
 
 
 def plain_report(lines):
-    """dfskcap_acars' say lines (as in the serial log) -> its s and v lines, and a line a
+    """dfskcap_acars' say lines (as in the serial log) -> its s, v and b lines, and a line a
     capture: the c line, and for one with words (those that went on like a pre-key) the share
     of runs of one, two and more samples and the block read from them"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
@@ -226,7 +226,7 @@ def plain_report(lines):
                 ln += (f" : runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} 3+:{np.mean(runs >= 3):.0%}"
                        f" odd {odd}; " + (f"block [{text}]" if text is not None else why))
             out.append(ln)
-        elif ln[:1] in ("s", "v") or ln.startswith("dfskcap "):
+        elif ln[:1] in ("s", "v", "b") or ln.startswith("dfskcap "):
             out.append(ln)
     return out
 

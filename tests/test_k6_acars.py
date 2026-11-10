@@ -151,7 +151,8 @@ def test_dfskcap_acars_on_the_model():
     MHz. In this model the receiver hears the blocks only while REG_47's AF source is AM (7),
     as two samples a bit, and noise otherwise, with a sync word by chance now and then. Every
     capture gets a c line; only those that go on like a pre-key get their words, and the report
-    reads the blocks from them. The registers are put back."""
+    reads the blocks from them. The RSSI rises with every block whatever the front end: each
+    is a b line, and the v lines count them. The registers are put back."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
@@ -159,12 +160,13 @@ def test_dfskcap_acars_on_the_model():
     code, entry = le.build("x", [("FE_S", "5"), ("WAIT_MS", "200u")], src)
     full, _ = k6mod.build(src)
     plain, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap.c"))
-    assert len(full) < 2500 and len(plain) < 2100, (len(full), len(plain))
+    assert len(full) < 3000 and len(plain) < 2100, (len(full), len(plain))
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)
     noise = rng.integers(0, 2, n)
     air = noise.copy()
+    on = np.zeros(n, bool)
     for i in range(BASE // 2, n - BASE, 3 * BASE // 2):           # a sync word in the noise every 1.5 s
         noise[i:i + 16] = [1, 0] * 8
     t, k = 0.4, 0
@@ -172,6 +174,7 @@ def test_dfskcap_acars_on_the_model():
         x = acars.plain_samples(acars.unit_tones("R", f"AG7EW TEST 131.550 R{k:03d} RECEIVE ONLY"))
         i = int(t * BASE)
         air[i:i + len(x)] = x
+        on[i:i + len(x)] = True
         t, k = t + len(x) / BASE + 0.9, k + 1
     hold = {}
     Chip = modem_chip(le, lambda r58: air if hold["e"].r[0x47] >> 8 & 15 == 7 else noise, BASE)
@@ -179,6 +182,9 @@ def test_dfskcap_acars_on_the_model():
     class Tuned(Chip):
         long5d, early_done = True, True
         r = {**Chip.r, 0x47: 0}
+
+        def rssi(self):
+            return -84 if on[int(self.cyc / 96e6 * BASE) % n] else -117 - int(self.cyc // 9600) % 3
 
         def on_stub(self, uc, addr, size, user):
             if self.names[(addr - self.stubs) // 16] == "tune":
@@ -201,6 +207,17 @@ def test_dfskcap_acars_on_the_model():
     d = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "d" and ln[1].isdigit()}
     v = {int(ln[1]): dict(kv.split("=") for kv in ln.split()[1:]) for ln in e.said if ln[0] == "v"}
     assert sorted(v) == [0, 1, 2, 3] and ret == len(c) == sum(int(x["n"]) for x in v.values()), v
+    b = [(int(ln[1]), dict(kv.split("=") for kv in ln.split()[2:])) for ln in e.said if ln[0] == "b"]
+    edges = np.flatnonzero(np.diff(on.astype(int)) == 1) / BASE * 1000
+    starts = [int(ln.split()[2][2:]) for ln in e.said if ln.startswith("s ")]
+    for st in range(4):       # every block's carrier, in every front end
+        mine = [x for k, x in b if k == st]
+        assert v[st]["p"] == "-84" and v[st]["f"] in ("-119", "-118"), v[st]
+        assert len(mine) >= 2 and int(v[st]["b"]) - len(mine) in (0, 1), (st, mine, v[st])
+        for x in mine:
+            near = edges[np.argmin(abs(edges - int(x["t"])))]
+            assert x["r"] == "-84" and abs(near - int(x["t"])) <= 400, (x, near)   # a dump's lines hold the polls up
+        assert len(mine) >= sum((edges > starts[st] + 300) & (edges < starts[st] + 3500)), (st, mine, edges)
     for st in range(4):
         mine = {k: x for k, x in c.items() if k[0] == st}
         assert len(mine) >= 2, (st, c)
@@ -213,6 +230,7 @@ def test_dfskcap_acars_on_the_model():
     got = [ln for ln in rep if "block [" in ln]
     assert len(got) == len(d) >= 6 and all("AG7EW TEST 131.550 R0" in ln and ln.endswith(" RECEIVE ONLY]") for ln in got), rep
     assert sum(ln[0] == "c" for ln in rep) == len(c) and rep[0] == e.said[0] and rep[-1] == e.said[-1]
+    assert sum(ln[0] == "b" for ln in rep) == len(b)
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
         assert e.writes[reg][-1] == 0, hex(reg)                  # put back as read (the emulator reads 0)
     assert 0x0700 in e.writes[0x47] and e.writes[0x5D][0] == 0xFF20

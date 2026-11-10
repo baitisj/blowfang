@@ -790,7 +790,23 @@ slicer read 17 of the 36. Two faults, both the slicer's:
   dropped word reads them; `aprsdfsk` does not read that way), three have other faults.
 
 `dfsk_line` and `df_sample()` have both (the module 6,302 bytes, 220 more), and the emulated
-module reads the same 28 of the 36 as the Python. Not yet on the bench.
+module reads the same 28 of the 36 as the Python.
+
+#### Third bench run (2026-11-10 15:28 to 15:33Z): 137 of 140 clean packets
+
+The same rehearsal as at 14:34Z (`--only 1,2,3,4,5,7,9,10 --repeat 20`, the IC-7100 on
+440.850 MHz at about -21 dBm, the K6 receive only), build 120f193:
+
+| | flat | pre | de | low | short | inv | pre inv | n12 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 14:34Z (2fa169c), frames of 20 | 19 | 12 | 19 | 20 | 20 | 20 | 10 | 1 |
+| 15:28Z (120f193), frames of 20 | 20 | 19 | 18 | 20 | 20 | 20 | 20 | 4 |
+
+- **Pre-emphasised packets read 39 of 40** (22 before), either way round: the two faults were
+  the whole of it.
+- Clean packets 137 of 140 (120), and 4 of the 20 with noise 12 dB under (1). The module's own
+  count: `aprs end ok=141 bad=24 ts=141 lost=0`, the FIFO never run over.
+- The two de-emphasised packets not read are within what a run varies by (19 and 18 of 20).
 
 The emulated test (`test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0`) plays the
 bench's own captures to the module behind twelve flags and before 0.1 s of noise, the model's
