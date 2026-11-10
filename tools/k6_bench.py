@@ -285,9 +285,16 @@ def serial_hold(who, cmd, poll=SERIAL_POLL_S, term_s=5.0):
     p = path("serial_lock")
     os.makedirs(os.path.dirname(p), exist_ok=True)
     lk = open(p, "a")
-    try:
-        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
+    for tries in range(20):                     # serial_owner() probes by taking the lock for a moment
+        try:
+            fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except BlockingIOError:
+            if _json("serial_owner") or tries == 19:
+                tries = -1
+                break
+            time.sleep(0.025)
+    if tries < 0:
         o = serial_owner() or {}
         lk.close()
         raise SystemExit(f"serial-hold: {o.get('who', '?')} reads the port (pid {o.get('pid', '?')}); "
