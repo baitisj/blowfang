@@ -421,6 +421,7 @@ def modem_chip(le, pick, BASE=4800):
                             # 2026-11-10 12:20Z), not the last one
         rate = 1.0          # the chip's bit clock against REG_72's (the plain receiver's follows the
                             # audio: 0.92 on 2200 Hz)
+        times = None        # or the second each bit of the air is taken at (follow_times)
         sync = done = full = False
         last, empty, over = 0, 0, 0
         r = {0x58: 0, 0x59: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x5E: 4, 0x72: 0}
@@ -428,13 +429,14 @@ def modem_chip(le, pick, BASE=4800):
 
         def advance(self):
             """the air's bits up to now"""
-            now = self.cyc / 96e6 * BASE * self.rate
+            T = self.times
+            now = self.cyc / 96e6 * BASE * self.rate if T is None else float(np.searchsorted(T, self.cyc / 96e6))
             if not self.r[0x59] & 0x1000 or self.r[0x72] < 0x3000 or not self.r[0x58] & 1:
                 self.pos = now
             while self.pos < now:
                 view = pick(self.r[0x58])
                 bit = int(view[int(self.pos) % len(view)])
-                self.pos += BASE // round(self.r[0x72] / 10.32444)
+                self.pos += BASE // round(self.r[0x72] / 10.32444) if T is None else 1
                 if self.done:
                     continue
                 if not self.pkt:
@@ -503,6 +505,22 @@ def modem_chip(le, pick, BASE=4800):
             super().on_stub(uc, addr, size, user)
 
     return Chip
+
+
+def follow_times(stream, slow=1.0):
+    """when the plain FSK receiver takes each bit of a stream of its own samples: its clock
+    follows the audio's zero crossings, so a sample alone between two transitions (a half cycle
+    of 2200 Hz) took 1/4400 s, any other 1/4800 s, and a change of tone 0.285/4800 s more
+    (fitted to the empty reads of the bench's captures, 2026-11-10: 0.996 of the tones' own
+    half cycles by the MCU's clock); slow: the chip's clock against the MCU's"""
+    b = np.asarray(stream, np.int8)
+    d = np.diff(b) != 0
+    single = np.concatenate([[False], d[:-1] & d[1:], [False]])
+    ends = np.concatenate([d, [False]])                       # a run's last sample
+    change = np.zeros(len(b), bool)
+    last = single[ends]                                       # each run: is it of one sample
+    change[np.flatnonzero(ends)[1:]] = last[1:] != last[:-1]
+    return np.cumsum((np.where(single, 4800 / 4400, 1.0) + 0.285 * change) * slow / 4800)
 
 
 @need_clang
@@ -745,88 +763,107 @@ def test_dfsk_line_reads_the_model_of_the_chips_bits():
             assert got == [bytes(fr)], (seed, inv)
 
 
+BENCH_A = """aprs start hz=440850000 fsk=233 sync=240 plain
+y 7 t=46997 w=98 ok=0 e=1 m=0
+s 1 t=48211 ok=0
+f AG7EW-1 n=52 h=0 ts=13:18:04h
+y 8 t=48218 w=136 ok=1 e=9 m=1
+f AG7EW-2 n=51 h=0 ts=13:18:05h
+y 9 t=49300 w=173 ok=1 e=17 m=1
+y 12 t=52978 w=174 ok=0 e=17 m=1
+aprs fsk ms=240020 key=0 pre=149 fake=242 late=2414
+aprs end ok=37 bad=79 ts=37 v=5 utc=13:21:16.614 lost=0"""
+
+
+def test_plainlog_reads_both_builds_lines():
+    """python3 -m modem.aprs plainlog: the first build's log (a few lines of the bench run of
+    2026-11-10 13:17Z, the FIFO read by its flag, m=0, and by time, m=1) and this build's (by
+    sync word)"""
+    rep = aprs.plainlog_report(["1794316871.175\tK6 MOD say " + ln for ln in BENCH_A.split("\n")])
+    assert rep[0].startswith("aprs start") and rep[1] == "s 1 t=48211 ok=0", rep
+    assert rep[-2:] == ["m=0: 1 packets, 0 with a frame, e=1; ",
+                        "m=1: 3 packets, 2 with a frame, e=43; AG7EW-1 1, AG7EW-2 1"], rep
+    new = ["aprs start hz=144390000 fsk=233 sync=240 plain", "f AG7EW-9 n=51 h=0 ts=13:18:05h",
+           "y 1 t=5 w=173 ok=1 e=3 d=1 s=1 k=1366", "y 2 t=9 w=170 ok=0 e=0 d=0 s=0 k=1360"]
+    assert aprs.plainlog_report(new)[1:] == ["sync 3333: 1 packets, 1 with a frame, e=3 d=1; AG7EW-9 1",
+                                             "sync AAAA: 1 packets, 0 with a frame, e=0 d=0; "]
+
+
 @need_clang
-@pytest.mark.parametrize("mode", [0, 1, 2])
-def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(mode):
+@pytest.mark.parametrize("slow", [0.98, 1.0, 1.02])
+def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     """aprsdfsk (aprsclk's HDLC, parser and vote behind the chip's plain FSK receiver, FSK_PLAIN)
     on the emulated M0. The model's air is the bench's own captures, a packet after another with
-    silence between: 16 alternating bits (the sync word the chip started on) and the words the
-    chip gave, at a bit clock 8% slow as the chip's is on 2200 Hz, the FIFO a ring of eight
-    whose empty read gives the word of eight reads before. The module must read every clean
-    packet (flat, pre-emphasised, de-emphasised, low, short opening), none of the noisy, set
-    the clock from the stations' stamps and put the registers back. Mode 0 takes the FIFO four
-    words at the almost-full flag and never reads it empty; mode 1 reads by time, as dfskcap
-    did, and drops the empty reads; mode 2 is the bench's build, one then the other."""
+    silence between: twelve flags as the chip gives them (the sync word AAAA is in each), and
+    the words the chip gave, each bit taken when the chip's clock, following the audio, would
+    (follow_times; the chip's clock 2% fast, right and 2% slow against the MCU's), the FIFO a
+    ring of eight whose empty read gives the word of eight reads before. Two more packets have
+    the tones swapped (a model of the chip's bits: the bench has not sent one yet), so their
+    flags hold the other sync word, 3333. The module must read every clean packet (flat,
+    pre-emphasised, de-emphasised, low, short opening, swapped), none of the noisy, never let
+    the FIFO run over, learn the clock, set its own from the stations' stamps and put the
+    registers back."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
     src = os.path.join(K6, "mod", "aprsdfsk.c")
     _, _, caps = aprs.dfsklog_caps(dfsk_bench())
     keys = [(0, 5), (0, 6), (0, 9), (0, 7), (0, 8), (0, 11), (3, 6), (0, 10), (6, 7), (6, 9)]
-    BASE, rate, t, air, sent = 4800, 0.92, 0.6, [], []
-    for key in keys:
-        good, _, fr = aprs.dfsk_read(caps[key])
-        kind = (DFSK_FIRST[key[0]] + key[1] - 2) % 8 + 1
-        assert (len(fr) == 1) == (kind in CLEAN), key
-        bits = [int(b) for w in [0xAAAA] + good for b in f"{w:016b}"]
-        sent.append((t, kind, fr))
-        air.append((int(t * BASE * rate), bits))
-        t += len(bits) / (BASE * rate) + 0.3
-    total = t + 0.5
-    stream = np.zeros(int((total + 2) * BASE * rate), np.int8)
-    for i, bits in air:
-        stream[i:i + len(bits)] = bits
-    defs = [("RUN_MS", f"{int(total * 1000)}u"), ("DF_MODE", str(mode)), ("DF_SWAP", f"{int(total * 500)}u")]
-    code, entry = le.build("x", defs, src)
+    flags = list(aprs.dfsk_like(aprs.hdlc_bits([], pre_flags=12, tail_flags=0)))
+    stream, sent, rng = [0] * 2880, [], np.random.default_rng(5)
+    for j, key in enumerate(keys + [9, 10]):
+        if key in (9, 10):
+            kind, info = key, "/" + aprs.ts_hms(44556 + j) + "4857.00N/12229.00W>K6 " + aprs.KINDS[key][0]
+            fr = [aprs.frame(f"AG7EW-{key}", "APRS", info)]
+            bits = list(aprs.dfsk_like(aprs.hdlc_bits(fr, pre_flags=40) ^ 1, seed=key))
+        else:
+            good, _, fr = aprs.dfsk_read(caps[key])
+            kind = (DFSK_FIRST[key[0]] + key[1] - 2) % 8 + 1
+            assert (len(fr) == 1) == (kind in CLEAN), key
+            bits = flags + [int(b) for w in [0xAAAA] + good for b in f"{w:016b}"]
+        sent.append((kind, fr))
+        stream += bits + list(rng.integers(0, 2, 480)) + [0] * (1200 + 61 * j)   # the receiver's noise, 0.1 s
+    stream = np.array(stream + [0] * 14400, np.int8)
+    times = follow_times(stream, slow)
+    total = float(times[-12000])
+    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], src)
     full, _ = k6mod.build(src)
     bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
-    assert len(full) < 5900 and len(bench) < 6100, (len(full), len(bench))
-    Chip = modem_chip(le, lambda r58: stream, BASE)
-    Chip.either, Chip.long5d, Chip.early_done, Chip.ring, Chip.rate = True, True, True, True, rate
+    assert len(full) < 6100 and len(bench) < 6100, (len(full), len(bench))
+    Chip = modem_chip(le, lambda r58: stream, 4800)
+    Chip.long5d, Chip.early_done, Chip.ring, Chip.times = True, True, True, times
     e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
              scratch=11776 - 24 - len(full))
     r = e.run()
     assert r is not None, e.said[-5:]
     ret, stack = r
-    clean = [k for _, k, _ in sent if k in CLEAN]
+    clean = [k for k, _ in sent if k in CLEAN + aprs.KINDS_SWAP]
     assert e.said[0] == "aprs start hz=144390000 fsk=233 sync=240 plain", e.said[:2]
     assert stack < 700 and e.over == 0, (stack, e.over)
     f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
     y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
-    assert len(y) == len(keys) and all(110 < int(v["w"]) < 200 for v in y), y
-    # every clean packet in its turn, and no other
+    assert len(y) == len(sent) and all(140 < int(v["w"]) < 240 for v in y), y
+    # every clean packet in its turn, and no other; the swapped ones by the other sync word
     assert f == [f"AG7EW-{k}" for k in clean], (f, y)
-    assert [int(v["ok"]) for v in y] == [int(k in CLEAN) for _, k, _ in sent], y
-    if mode == 0:
-        # four words at the flag: the FIFO is never read empty inside a packet (e counts the
-        # words that happen to be the one eight before: a few in the flags), and the flag
-        # never fails to come
-        assert all(v["m"] == "0" and int(v["e"]) <= 6 for v in y), y
-        assert " late=0" in e.said[-2], e.said[-2]
-    elif mode == 1:
-        # by time: about every twelfth read finds the FIFO empty
-        assert all(v["m"] == "1" and 5 <= int(v["e"]) <= 24 for v in y), y
-    else:
-        s = [ln for ln in e.said if ln.startswith("s ")]
-        assert s and s[0].startswith("s 1 t=") and s[0].endswith(" ok=4"), s
-        assert {v["m"] for v in y} == {"0", "1"}, y
-        # the log's report (python3 -m modem.aprs plainlog): packets and frames for each way
-        rep = aprs.plainlog_report(["K6 MOD say " + ln for ln in e.said])
-        m = [ln for ln in rep if ln.startswith("m=")]
-        assert len(m) == 2 and m[0].startswith("m=0: 5 packets, 4 with a frame, e="), rep
-        assert m[0].endswith("; AG7EW-1 1, AG7EW-2 1, AG7EW-3 1, AG7EW-4 1"), m
-        assert m[1].startswith("m=1: 5 packets, 4 with a frame, e=") and "AG7EW-7 1" in m[1], m
-        assert rep[0] == e.said[0] and rep[-3] == e.said[-1], rep
+    assert [int(v["ok"]) for v in y] == [int(k in clean) for k, _ in sent], y
+    assert [v["s"] for v in y] == ["0"] * len(keys) + ["1", "1"], y
+    # a read of the empty FIFO is rare once the clock is learnt (the first build: one in twelve)
+    assert all(int(v["d"]) <= 4 for v in y) and sum(int(v["d"]) for v in y[4:]) <= 6, y
+    assert all(abs(int(v["k"]) * slow / 1352 - 1) < 0.03 for v in y[4:]), y
+    rep = aprs.plainlog_report(["K6 MOD say " + ln for ln in e.said])
+    assert rep[-2].startswith("sync 3333: 2 packets, 2 with a frame, e=") and rep[-2].endswith("; AG7EW-10 1, AG7EW-9 1"), rep
+    assert rep[-1].startswith("sync AAAA: 10 packets, 8 with a frame, e="), rep
     end = e.said[-1]
     assert f"ok={len(clean)} " in end and end.endswith(" lost=0") and len(end) <= 60, e.said[-2:]
     assert ret >= 2 and f" v={ret}" in end, (ret, end)
     assert e.said[-2].startswith("aprs fsk ms=") and " key=0 " in e.said[-2], e.said[-2]
+    assert e.said[-2].endswith(" inv=2"), e.said[-2]
     assert e.lcd[0].strip() == "APRS CLOCK 144.390" and e.lcd[3].startswith("heard "), e.lcd
     assert any(on for _, on in e.led)
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B):
         assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
-    assert e.writes[0x5A][0] == 0xAAAA and e.writes[0x5D][0] == 0xFFE0 and e.writes[0x72][0] == 0xC195
+    assert {0xAAAA, 0x3333} <= set(e.writes[0x5A]) and e.writes[0x5D][0] == 0xFFE0 and e.writes[0x72][0] == 0xC195
     assert e.writes[0x5E][0] == 0x0204 and 0x00E9 in e.writes[0x58] and 0x10F0 in e.writes[0x59]
 
 
@@ -965,6 +1002,15 @@ def test_kinds_wav_a_rehearsal_of_real_packets():
         hms = info[1:7]
         u = int(t0 + end - 0.4) % 86400               # a second or less before the frame's end
         assert abs(int(hms[:2]) * 3600 + int(hms[2:4]) * 60 + int(hms[4:]) - u) <= 1, (c, info, end)
+    # --only 2,9,10: kinds 9 and 10 have the tones swapped (the opening flags' long tone the
+    # mark), in no round unless asked for
+    x, sent = aprs.kinds_wav(t0, kinds=[2, 9, 10])
+    assert [c for c, _, _ in sent] == ["AG7EW-2", "AG7EW-9", "AG7EW-10"]
+    got = [aprs.describe(f) for _, f in aprs.decode_any(0.5 * x, aprs.FS)]
+    assert [g.split(">")[0] for g in got] == ["AG7EW-2", "AG7EW-9", "AG7EW-10"], got
+    seg = lambda c: x[int(([e for k, _, e in sent if k == c][0] - 0.55) * aprs.FS):][:int(0.1 * aprs.FS)]
+    cross = lambda v: np.count_nonzero(np.diff(np.sign(v)))   # zero crossings in 0.1 s of the flags
+    assert cross(seg("AG7EW-2")) > 380 and cross(seg("AG7EW-9")) < 300, (cross(seg("AG7EW-2")), cross(seg("AG7EW-9")))
 
 
 @need_clang
