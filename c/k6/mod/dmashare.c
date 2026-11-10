@@ -31,7 +31,12 @@
    RCC AHBENR DMAEN, APB2ENR TIM17EN and TIM1EN, TIM17, TIM1 (no output) and DMA channels 1 and
    5, all put back. Returns n5 at priority 3 (first pass) << 16 | n5 with channel 1 off, or -7
    (TIM17 or channel 1 in use), -9 (TIM1 or channel 5 in use: something plays), -8 (scratch
-   under 2,312 bytes). Level 2 (scratch). SPDX-License-Identifier: MIT */
+   under 2,312 bytes). Level 2 (scratch).
+
+   Run 1 (2026-11-10 00:41 UTC, EXPLORE 0bd4fef, docs/k6-fd6818-audio.md): channel 5 got 1999
+   of 2000 samples, gap 126 us, with channel 1 off, at 3 and at 0; flash code +0.8%, FD6818
+   reads +0.07%, RAM code +6.2% (one cycle in 16). The capture DMA doesn't starve playback.
+   SPDX-License-Identifier: MIT */
 #ifndef K6_MODULE_LEVEL
 #define K6_MODULE_LEVEL 2
 #endif
