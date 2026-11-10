@@ -111,6 +111,12 @@ all: every screen is drawn once for each controller page of 8 rows into 128 byte
 skipped at once. One draw target for every screen builds embedded-graphics' text and boxes once:
 the banding costs 0.76 KB of flash in all.
 
+Since 2026-11-10 the display driver runs in raw mode in this image too (device::display): the
+st7565 crate's graphics mode, with its 1,120-byte page buffer placed in the ring at boot and
+zeroed there, is gone, and the boot clears the screen with one blank draw_pages. That saved
+384 B of flash. Full Aura's screens, built but never run here, draw on a target that keeps
+nothing (NoScreen).
+
 ## Measured (2026-11-09, local clang 18, without FX_MP_ROWGEN)
 
 | | flash | static RAM |

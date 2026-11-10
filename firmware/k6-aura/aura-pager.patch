@@ -6973,10 +6973,90 @@ index d3e7fc9..04f1b5f 100644
              _ => send_error(dbg, frame.addr, frame::ERR_BAD_LEN),
          }
 diff --git a/src/device/display.rs b/src/device/display.rs
-index 6fd14b9..9725741 100644
+index 6fd14b9..f8410d7 100644
 --- a/src/device/display.rs
 +++ b/src/device/display.rs
-@@ -45,9 +45,60 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
+@@ -5,7 +5,8 @@ use display_interface::{DataFormat, WriteOnlyDataCommand};
+ /// LCD electronic-volume register values for contrast levels 0-4.
+ pub const CONTRAST_VOLUMES: [u8; 5] = [37, 41, 45, 48, 51];
+ 
+-type Lcd<'a, DI> = st7565::ST7565<
++#[cfg(not(banded))]
++pub type Lcd<'a, DI> = st7565::ST7565<
+     DI,
+     display_spec::Sc5260Spec,
+     st7565::modes::GraphicsMode<'a, 128, 8>,
+@@ -13,16 +14,60 @@ type Lcd<'a, DI> = st7565::ST7565<
+     64,
+     8,
+ >;
++/// The `banded` image keeps no copy of the screen at all: the driver in raw mode, and every
++/// screen sent a page (128 bytes of stack) at a time as it is drawn (draw_pages)
++#[cfg(banded)]
++pub type Lcd<'a, DI> = st7565::ST7565<DI, display_spec::Sc5260Spec, st7565::modes::RawMode, 128, 64, 8>;
+ 
+ pub struct Display<'a, DI: WriteOnlyDataCommand> {
+     lcd: Option<Lcd<'a, DI>>,
++    #[cfg(banded)]
++    _a: core::marker::PhantomData<&'a ()>,
++}
++
++/// What the full-Aura screens (built but never run in the `banded` image: main's full-Aura loop
++/// after the pager-only one) draw on there: nothing
++#[cfg(banded)]
++pub struct NoScreen;
++#[cfg(banded)]
++static mut NO_SCREEN: NoScreen = NoScreen;
++#[cfg(banded)]
++impl embedded_graphics::geometry::OriginDimensions for NoScreen {
++    fn size(&self) -> embedded_graphics::geometry::Size {
++        embedded_graphics::geometry::Size::new(128, 64)
++    }
++}
++#[cfg(banded)]
++impl embedded_graphics::draw_target::DrawTarget for NoScreen {
++    type Color = embedded_graphics::pixelcolor::BinaryColor;
++    type Error = core::convert::Infallible;
++    fn draw_iter<I>(&mut self, _: I) -> Result<(), Self::Error> {
++        Ok(())
++    }
+ }
+ 
+ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
+     pub fn new(lcd: Lcd<'a, DI>) -> Self {
+-        Self { lcd: Some(lcd) }
++        Self {
++            lcd: Some(lcd),
++            #[cfg(banded)]
++            _a: core::marker::PhantomData,
++        }
+     }
+ 
++    #[cfg(banded)]
++    pub fn flush(&mut self) {}
++
++    /// Full Aura's contrast setting, built but never run in the `banded` image
++    #[cfg(banded)]
++    pub fn set_contrast(&mut self, _level: u8) {}
++
++    #[cfg(banded)]
++    pub fn as_draw_target(&mut self) -> &mut NoScreen {
++        unsafe { &mut *core::ptr::addr_of_mut!(NO_SCREEN) }
++    }
++
++    #[cfg(not(banded))]
+     pub fn flush(&mut self) {
+         if let Some(ref mut lcd) = self.lcd {
+             lcd.flush().ok();
+@@ -32,6 +77,7 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
+     /// Apply a contrast level (0-4). The st7565 crate keeps its command
+     /// interface private, so we detach the SPI interface, push the two
+     /// command bytes raw, and attach it back.
++    #[cfg(not(banded))]
+     pub fn set_contrast(&mut self, level: u8) {
+         let lcd = self.lcd.take().unwrap();
+         let (detached, mut interface) = lcd.release_display_interface();
+@@ -45,9 +91,74 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
      }
  
      /// Give the UI layer a `&mut` reference to the raw ST7565 for drawing.
@@ -6990,7 +7070,7 @@ index 6fd14b9..9725741 100644
 +    /// rebuilt around it, so the buffer it held before (which a playback may have written over
 +    /// since) is never read again. Every caller draws a whole screen and then flushes it, all
 +    /// of it: the controller gets the 1 KB, about 1.5 ms of SPI.
-+    #[cfg(shared_lcd)]
++    #[cfg(all(shared_lcd, not(banded)))]
 +    pub fn as_draw_target(&mut self) -> &mut Lcd<'a, DI> {
 +        let (old, interface) = self.lcd.take().unwrap().release_display_interface();
 +        drop(old);
@@ -7003,7 +7083,21 @@ index 6fd14b9..9725741 100644
 +    /// time: `draw` fills each page's bytes, cleared first, and each goes out as soon as it is
 +    /// drawn. For a RAM module's screen, while the module has the shared block (the ring, the
 +    /// page buffer's home, included) to itself.
-+    #[cfg(all(shared_lcd, not(feature = "lean")))]
++    #[cfg(banded)]
++    pub fn draw_pages(&mut self, mut draw: impl FnMut(u8, &mut [u8; 128])) {
++        let lcd = self.lcd.as_mut().unwrap();
++        let col = <display_spec::Sc5260Spec as st7565::DisplaySpecs<128, 64, 8>>::COLUMN_OFFSET;
++        let mut buf = [0u8; 128];
++        for page in 0..8u8 {
++            buf.iter_mut().for_each(|b| *b = 0);
++            draw(page, &mut buf);
++            lcd.set_page(page).ok();
++            lcd.set_column(col).ok();
++            lcd.write_pixel_data(&buf).ok();
++        }
++    }
++
++    #[cfg(all(shared_lcd, not(feature = "lean"), not(banded)))]
 +    pub fn draw_pages(&mut self, mut draw: impl FnMut(u8, &mut [u8; 128])) {
 +        let (detached, mut interface) = self.lcd.take().unwrap().release_display_interface();
 +        let col = <display_spec::Sc5260Spec as st7565::DisplaySpecs<128, 64, 8>>::COLUMN_OFFSET;
@@ -7024,7 +7118,7 @@ index 6fd14b9..9725741 100644
 +/// SPI codebooks: in the PWM ring (hal::arena), which nothing uses while the screen is drawn
 +/// (no redraw while a message plays or streams), instead of main's stack frame for good. Zeroed
 +/// here, before a reference to it exists; the driver marks it all dirty when it takes it.
-+#[cfg(shared_lcd)]
++#[cfg(all(shared_lcd, not(banded)))]
 +pub fn shared_page_buffer() -> &'static mut st7565::GraphicsPageBuffer<128, 8> {
 +    type Buf = st7565::GraphicsPageBuffer<128, 8>;
 +    const _: () = assert!(core::mem::size_of::<Buf>() <= crate::hal::arena::RING_BYTES);
@@ -8007,7 +8101,7 @@ index 131f932..99ae011 100644
  
  /// Pull one byte received on USART1 since the last call, if any.
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..9b48242 100644
+index 9d2b0c0..5041595 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -14,7 +14,7 @@ mod ui;
@@ -8082,7 +8176,7 @@ index 9d2b0c0..9b48242 100644
      unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
      // Enabled this early (rather than just before the main loop, as before)
      // so UART RX -- hence CPS handshake detection -- already works during
-@@ -98,9 +145,16 @@ fn main() -> ! {
+@@ -98,17 +145,32 @@ fn main() -> ! {
          .unwrap_or_else(|_| unreachable!());
      let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
  
@@ -8092,23 +8186,31 @@ index 9d2b0c0..9b48242 100644
      let mut page_buffer: st7565::GraphicsPageBuffer<128, 8> = st7565::GraphicsPageBuffer::new();
 +    #[cfg(not(shared_lcd))]
 +    let page_buffer = &mut page_buffer;
-+    #[cfg(shared_lcd)]
++    #[cfg(all(shared_lcd, not(banded)))]
 +    let page_buffer = device::display::shared_page_buffer();
++    #[cfg(not(banded))]
      let mut lcd = st7565::ST7565::new(interface, display_spec::Sc5260Spec)
 -        .into_graphics_mode(&mut page_buffer);
 +        .into_graphics_mode(page_buffer);
++    // the `banded` image: no page buffer anywhere, the driver in raw mode (device::display)
++    #[cfg(banded)]
++    let mut lcd = st7565::ST7565::new(interface, display_spec::Sc5260Spec).into_raw_mode();
  
      {
          let mut syst_delay = SystDelay(&mut cp.SYST);
-@@ -109,6 +163,7 @@ fn main() -> ! {
+         lcd.reset(&mut rst_pin, &mut syst_delay).ok();
+     }
++    #[cfg(not(banded))]
      lcd.flush().ok();
      lcd.set_display_on(true).ok();
      let mut display = Display::new(lcd);
++    #[cfg(banded)]
++    display.draw_pages(|_, _| ()); // a blank screen
 +    ui::hook_mod_screen(&mut display); // module API level 6: a module's own screen
      writeln!(dbg, "lcd init done").ok();
  
      // rfic
-@@ -120,21 +175,21 @@ fn main() -> ! {
+@@ -120,21 +182,21 @@ fn main() -> ! {
  
      let flash_spi = spi::SpiBus::new(spi1, spi::ClockMode::Mode3, 4);
      let mut storage = Storage::new(norflash::NorFlash::new(flash_spi, gpioa));
@@ -8136,7 +8238,7 @@ index 9d2b0c0..9b48242 100644
              }
              delay::ms(&mut cp.SYST, 10);
          }
-@@ -149,12 +204,17 @@ fn main() -> ! {
+@@ -149,12 +211,17 @@ fn main() -> ! {
      }
  
      let cal_buf = storage.read_calibration();
@@ -8154,7 +8256,7 @@ index 9d2b0c0..9b48242 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -220,8 +280,7 @@ fn main() -> ! {
+@@ -220,8 +287,7 @@ fn main() -> ! {
  
      if radio.ptt_asserted() || keypad.any_pressed(&mut cp.SYST) {
          writeln!(dbg, "PTT/key held at boot, waiting for release").ok();
@@ -8164,7 +8266,7 @@ index 9d2b0c0..9b48242 100644
          let mut released_ticks = 0u32;
          while released_ticks < 50 {
              delay::ms(&mut cp.SYST, 10);
-@@ -234,7 +293,11 @@ fn main() -> ! {
+@@ -234,7 +300,11 @@ fn main() -> ! {
      }
  
      // app class
@@ -8177,7 +8279,7 @@ index 9d2b0c0..9b48242 100644
          radio,
          chip_id,
          keypad,
-@@ -253,43 +316,46 @@ fn main() -> ! {
+@@ -253,43 +323,46 @@ fn main() -> ! {
          &mut cp.SYST,
      );
  
@@ -8256,7 +8358,7 @@ index 9d2b0c0..9b48242 100644
      }
  
      app.radio_mut().enter_rx(&mut cp.SYST);
-@@ -301,6 +367,67 @@ fn main() -> ! {
+@@ -301,6 +374,67 @@ fn main() -> ! {
      )
      .ok();
  
@@ -8324,7 +8426,7 @@ index 9d2b0c0..9b48242 100644
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
      let mut applied_contrast: u8 = u8::MAX;
-@@ -309,6 +436,8 @@ fn main() -> ! {
+@@ -309,6 +443,8 @@ fn main() -> ! {
  
      loop {
          let due = scheduler.tick();
@@ -8333,7 +8435,7 @@ index 9d2b0c0..9b48242 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,6 +458,19 @@ fn main() -> ! {
+@@ -329,6 +465,19 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -8353,7 +8455,7 @@ index 9d2b0c0..9b48242 100644
          // power sw
          if power.debounced_off(&mut cp.SYST) {
              writeln!(dbg, "power switch off, shutting down").ok();
-@@ -401,6 +543,8 @@ fn main() -> ! {
+@@ -401,6 +550,8 @@ fn main() -> ! {
              }
          } else if app.mode() == app::Mode::Sstv {
              app.handle_sstv_ptt(&mut cp.SYST);
@@ -8362,7 +8464,7 @@ index 9d2b0c0..9b48242 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -465,9 +609,13 @@ fn main() -> ! {
+@@ -465,9 +616,13 @@ fn main() -> ! {
              }
          }
  
