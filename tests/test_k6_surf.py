@@ -28,16 +28,25 @@ SPANS = [40, 100, 200, 400, 1000, 2000]     # x 2.5 kHz: +-100 kHz .. +-5 MHz
 SEVENTY = (430_000_000, 450_000_000)
 
 
+LK = {40: (82, 60201), 100: (344, 11442), 200: (520, 6458), 400: (688, 4196), 1000: (906, 2620),
+      2000: (1070, 1925)}         # surf.c's LK, LG: the curve's ratio (Q12) and 256 a, per span
+
+
 def lens(span=400):
-    """each bin's offset from the middle (x 2.5 kHz), as surf.c's lens() works it out"""
-    u, n = span - C, C - KI
-    return list(range(KI + 1)) + [KI + j + u * j * (j + 1) // (n * (n + 1)) for j in range(1, n + 1)]
+    """each bin's offset from the middle (x 500 Hz), as surf.c's lens() works it out: a geometric
+    curve, each step at least one unit"""
+    k, g0 = LK[span]
+    g, off = g0, [0]
+    for _ in range(C):
+        g += (g * k) >> 12
+        off.append(max(off[-1] + 1, (g - g0 + 128) >> 8))
+    return off
 
 
 def scale(cen, span=400, band=SEVENTY):
     """the 63 bins' frequencies around cen, 0 outside the band"""
     off = lens(span)
-    hz = [cen + (1 if i > C else -1) * 2500 * off[abs(i - C)] for i in range(NV)]
+    hz = [cen + (1 if i > C else -1) * 500 * off[abs(i - C)] for i in range(NV)]
     return [f if band[0] <= f <= band[1] else 0 for f in hz]
 
 
@@ -62,11 +71,12 @@ class Bumpy(Receiver):
 
     def __init__(self, signals, bumps):
         super().__init__(signals)
-        self.bumps, self.now, self.wide = bumps, 0, 1
+        self.bumps, self.now, self.wide, self.tunes = bumps, 0, 1, []
 
     def tune(self, hz, wide, us):
         super().tune(hz, wide, us)
         self.wide = wide
+        self.tunes.append((us, hz))
 
     def rssi(self, us):
         """the narrow filter passes +-6 kHz (the wide one +-12) and settles in ~20 ms (12)"""
@@ -108,6 +118,7 @@ def go(signals, keys, rx_hz=440_600_000, level=7, regs=None, src=SRC, bumps=(), 
     ret, said, regs, writes = run(r, code=(code, entry), tune=m.tune, level=level, lcd=lcd, keypad=keys,
                                   spare=ARENA - 24 - len(code), count=3_000_000_000, rx_hz=rx_hz,
                                   flash={"mem": mem})
+    lcd["tunes"] = m.tunes
     return ret, said, regs, writes, lcd
 
 
@@ -166,11 +177,14 @@ def test_lens_scale_steps_grow_outward_and_end_on_the_span():
     for span in SPANS:
         off = lens(span)
         steps = [b - a for a, b in zip(off, off[1:])]
-        assert off[KI] == 8 and steps[:KI] == [1] * KI          # +-20 kHz in 2.5 kHz bins
-        assert off[C] == span                                    # the last bin on the span
+        assert abs(off[KI] * 500 - 20_000) <= 500                # the lens's edge on +-20 kHz
+        assert off[C] * 500 == span * 2500                       # the last bin on the span
+        assert all(st > 0 for st in steps)
+        # log all the way (Jeff 2026-11-10): each step about a fixed ratio over the last, also
+        # through the lens's edge (it was 2.5 kHz flat inside, then a jump)
         assert all(b >= a - 1 for a, b in zip(steps, steps[1:]))    # growing (whole units)
-        assert steps[-1] >= steps[KI] and all(st > 0 for st in steps)
-    assert lens(400)[C] * 2500 == 1_000_000 and lens(2000)[KI + 1] - lens(2000)[KI] > 1
+        assert steps[0] < steps[KI] <= 1.5 * steps[KI - 1] + 1     # no jump at the lens's edge
+    assert lens(400)[C] * 500 == 1_000_000 and lens(400)[1] * 500 == 1500
 
 
 @need_clang
@@ -190,11 +204,13 @@ def test_bench_build_surfs_by_itself_and_wraps():
     assert f is not None and len(f["heights"]) == NV
     last = lcd["frames"][-1]
     same = sum(height(f, i) == height(last, i) for i in range(NV))
-    assert same >= NV - 4, same                             # (the blinking bar, a last sweep)
-    # it ends hunting up to the band's top: the bins past 450 MHz say '-' and draw nothing
+    assert same >= NV - 4, same                             # (a last sweep)
+    # it ends near a band edge (the top while hunting, or the bottom after the wrap): the bins past
+    # it say '-' and draw nothing, the rest draw
     cen = float(next(ln for ln in said if ln.startswith("bar ")).split()[1]) * 1e6
-    out = [i for i, h in enumerate(scale(round(cen))) if not h]
-    assert out and all(f["heights"][i] == 0 for i in out) and all(f["heights"][i] >= 1 for i in range(C + 1))
+    sc = scale(round(cen))
+    out = [i for i, h in enumerate(sc) if not h]
+    assert out and all(f["heights"][i] == 0 for i in out) and all(f["heights"][i] >= 1 for i, h in enumerate(sc) if h)
 
 
 @need_clang
@@ -227,15 +243,15 @@ def test_bargraph_peaks_side_keys_and_audio():
     on = at(fr, 3_700_000)
     assert on["text"][1] == "440.8500 -70dBm RX" and caret(on) == C
     assert on["text"][5] == labels(400)
-    # the lens: the carrier fills the middle bins, 2.5 kHz apart, within the narrow filter
-    # (+-6 kHz), and no further
-    assert all(height(on, i) >= 18 for i in (C - 2, C - 1, C + 1, C + 2))
-    assert all(height(on, i) <= 2 for i in range(C - KI, C + KI + 1) if abs(i - C) >= 3)
+    # the lens: the carrier fills the middle bins within the wide filter (+-12 kHz), and no
+    # further (the narrow one, until Jeff saw its flat top on 2026-11-10: +-6)
+    off = lens(400)
+    assert all(height(on, i) >= 18 for i in range(NV) if off[abs(i - C)] * 500 <= 11_000)
+    assert all(height(on, i) <= 2 for i in range(C - KI, C + KI + 1) if off[abs(i - C)] * 500 >= 13_000)
     assert at(fr, 5_100_000)["text"][1] == "441.2000 -95dBm RX"
-    # the listening bar blinks: its column flips between frames
+    # the listening bar is drawn like the others, steady (it blinked until Jeff, 2026-11-10)
     a, b = on, fr[fr.index(on) + 1]
-    ha, hb = height(a, C), height(b, C)
-    assert max(ha, hb) >= 20 and min(ha, hb) <= 4
+    assert height(a, C) >= 20 and abs(height(a, C) - height(b, C)) <= 2
 
 
 @need_clang
@@ -312,15 +328,13 @@ def test_axis_ticks_show_the_frequency_intervals():
                 dist, j = min(d)
                 lens_ = lens(span)
                 a = abs(j - C)
-                step = 2500 * (lens_[a + 1] - lens_[a] if a < C else lens_[C] - lens_[C - 1])
+                step = 500 * (lens_[a + 1] - lens_[a] if a < C else lens_[C] - lens_[C - 1])
                 if 2 * dist <= step:
                     xs.add(2 * j + (e > 0))
         return xs
 
     one = at(fr, 1_500_000)                                   # +-1 MHz
     assert ticks(one) == want(440_600_000, 400) and ticks(one, True) == want(440_600_000, 400, True)
-    # 2.5 kHz bins in the lens: its 5 kHz ticks every 4 pixels, then closer and closer
-    assert {67, 71, 75, 79, 58, 54, 50, 46} <= ticks(one)
     assert {46, 79} <= ticks(one, True)                      # +-20 kHz, the lens's edges, are major
     assert all(lit(one, AX, x) for x in range(126))          # the axis line under every bin
     assert one["text"][5] == labels(400)
@@ -384,6 +398,22 @@ def test_squelch_opens_on_a_signal_and_closes_after_the_hang():
     assert [v for _, v in spk] == [0, 4, 0]
     assert 2_000_000 < spk[1][0] < 2_150_000                 # a check every 16 bins (~70 ms here)
     assert 4_500_000 <= spk[2][0] < 4_700_000                 # 1.5 s after it dropped
+
+
+@need_clang
+def test_speaker_is_off_whenever_the_receiver_retunes():
+    # Jeff 2026-11-10: a buzz from the speaker when it scanned with the audio open. Parked on a
+    # long signal, the refresh sweeps (every 5 s), a side-key seek, and monitor with UP must not
+    # tune with the amp on.
+    sig = [(440_600_000, -90, 1_000_000, FOREVER), (440_850_000, -80, 0, FOREVER)]
+    keys = taps("A", 9_000_000) + taps("*", 11_000_000) + taps("U", 12_000_000) + [(14_000_000, 14_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    spk, tunes = lcd["st"]["spk"], lcd["tunes"]
+    on = [(a, b) for (a, va), (b, _) in zip(spk, spk[1:] + [(lcd["st"]["us"], 0)]) if va]
+    assert len(on) >= 3                                      # opened, a refresh broke it, the jump
+    assert not [t for t, hz in tunes if any(a <= t < b for a, b in on)]
+    gaps = [b2 - b1 for (_, b1), (b2, _) in zip(on, on[1:]) if b2 - b1 < 1_000_000]
+    assert gaps and max(gaps) < 600_000                      # a refresh mutes it for one sweep only
 
 
 @need_clang
