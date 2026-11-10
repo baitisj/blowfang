@@ -418,6 +418,40 @@ stamped with the UTC at its first bit.
 
 The float decoder (`modem.aprs decode`) takes all of them but most of n6.
 
+**Third bench run (2026-11-10 10:27 to 10:35Z, K6 image 6f30645, the K6 silent).** The rehearsal
+signal, seven rounds, on 440.850 MHz at -21 dBm. Decoded packets of 7:
+
+| Build | flat | pre | de | low | n12 | n6 | short | pre n9 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `aprsfsk_440` (as in the second run) | 7 | **0** | 7 | 7 | 0 | 0 | 6 | 0 |
+| `aprsfskb_440`, first version (4e20c67) | 7 | **0** | 7 | 1 | 0 | 0 | 7 | 0 |
+| `aprsfskb_440` (5602977) | 7 | **0** | 6 | 1 | 0 | 0 | 6 | 0 |
+
+(The last run's signal began 46 s into the module and its last 3 s fell after the module's
+end.)
+
+- **The modem reads no pre-emphasised packet.** With the space tone 5 dB over the mark there is
+  either no capture at all or ten words that are no flags (`0040 4919 0000 8190 1c1c ...`). Flat
+  and de-emphasised packets (the mark level with the space, or 5 dB over it) read every time.
+  REG_2B reads C000 on this K6 and the pager clears bit 14, so by the BK4819 notes the
+  receiver's own de-emphasis is on (bit 8 = 0). Senders on 144.390 pre-emphasise (the bench's
+  recording of 2026-11-08 decoded only after de-emphasis), so this alone explains the two
+  listens with no frame.
+- **Noise 12 dB under the packet is too much for it**: the flags come with their one-bit tone
+  missing or slipped (`0800 0808 0800 0808 0008 0801`), as in the captures from 144.390. The
+  float decoder reads these packets 7 of 7.
+- **One turning off and on does not end a packet the chip is in either.** The stream build did
+  it once after each packet; the next packet (low, 0.6 s after de) then arrived with all of its
+  40 flags at an odd bit position (`0040 4040 ...`: no sync word was taken from it) and was cut
+  short by RX-done 1.707 s after de's sync word: the chip had stayed in de's packet. `aprsfsk`,
+  which starts its search again every 59 ms, read the same packet behind a fresh sync word
+  (`0101` x18, four flags fewer). `aprsfskc_440` is the stream build doing that on purpose.
+- The stream build's screen and minute line run (`m 1 rssi=-131 pk=-21 pre=15 ok=9`).
+
+Next: `aprsfsks_440` goes round eight settings of the modem against the same signal (REG_58's
+bits 7:6 at 00, 01 and 11, the two other bandwidths, less RX gain, the de-emphasis off), a
+setting a round, to find one that reads the pre-emphasised kind.
+
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every
 packet decoded, the clock set within its bound, the modem off and on for each packet, the
