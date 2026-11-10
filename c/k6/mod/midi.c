@@ -11,12 +11,16 @@
    an update every 3 periods, the module writing CCR4 on each update event; PB2 is the speaker
    amplifier. REG_47 (the FD6818's AF output) is muted while it plays.
 
+   It plays the songs round and round until a key is held (Jeff, 2026-11-10: "just keep looping
+   until stopped"); a table with the once flag plays them once and returns.
+
    Keys: a press skips to the next song, a hold of a second stops. Between songs the screen
    (level 6) shows the title; it never draws while a song plays, since a flush holds the CPU for
    20-40 ms. The green LED (level 7) blinks on each note.
 
    The song table (all little-endian, read a byte at a time):
-     0  "K6MIDI" 1 0   magic, format 1, reserved
+     0  "K6MIDI" 1     magic, format 1
+     7  u8 flags       bit 0: play the songs once and return (else loop until a key is held)
      8  u16 bytes      the whole table
      10 u8 songs, u8 volume (a voice at full velocity swings volume / 8192 x 32767 PWM counts)
      12 u16 offset     of each song, from the table's start
@@ -31,7 +35,7 @@
 
    say lines: "midi songs=N bytes=B vol=V", "midi play I/N <title>" for each song, then
    "midi done songs=N notes=K late=L".
-   Returns the songs played to the end, -2 (a held key stopped it), -3 (scratch too small),
+   Returns the songs played to the end (a held key is the usual way out), -3 (scratch too small),
    -4 (TIM1 already running: something else is playing), -5 (no song table).
    SPDX-License-Identifier: MIT */
 #ifndef K6_MODULE_LEVEL
@@ -419,7 +423,7 @@ static void screen(run_t *r, const char *title, uint32_t i, uint32_t n) {
 int k6_main(const k6_api_t *api) {
   const uint8_t *t = midi_table;
   char line[64], title[22], *p;
-  uint32_t apb2, moder, ospeed, afrh, ccmr2, ccer, bdtr, spk, i, j, n, bytes, sbytes, played = 0;
+  uint32_t apb2, moder, ospeed, afrh, ccmr2, ccer, bdtr, spk, i, j, n, bytes, sbytes, once, played = 0;
   int16_t *wt;
   uint16_t r47;
   int ret, how = 0;
@@ -432,7 +436,7 @@ int k6_main(const k6_api_t *api) {
     api->say("midi: no song table");
     return -5;
   }
-  n = t[10], bytes = rd16(t + 8);
+  n = t[10], bytes = rd16(t + 8), once = t[7] & 1;
   wt = (int16_t *)api->scratch(&sbytes);
   if (sbytes < 512) {
     api->say("midi: scratch too small");
@@ -488,7 +492,7 @@ int k6_main(const k6_api_t *api) {
   for (i = 0; i < 480; i++) out(MID);   /* 30 ms, as stock: the RC filter settles first */
   wr(GPIOB_BSRR, SPK);
 
-  for (i = 0; i < n && how != 2; i++) {
+  for (i = 0; how != 2;) {          /* round and round, until a held key (or once) */
     const uint8_t *s = t + rd16(t + 12 + 2 * i);
     const uint8_t *q = s + 2;
     for (j = 0; j < 21 && q[j]; j++) title[j] = (char)q[j];
@@ -510,8 +514,12 @@ int k6_main(const k6_api_t *api) {
       r.key = 0;
       if (quiet(&r, GAP_BLKS) == 2) how = 2;
     }
+    if (++i == n) {
+      if (once) break;
+      i = 0;
+    }
   }
-  ret = how == 2 ? -2 : (int)played;
+  ret = (int)played;
 
   out(MID);
   if (!spk) wr(GPIOB_BRR, SPK);

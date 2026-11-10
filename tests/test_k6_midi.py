@@ -75,13 +75,13 @@ def played(log):
     return np.array(log["ccr4"][a:b - 1], np.int64)
 
 
-def songs_table(*texts, **kw):
+def songs_table(*texts, once=True, **kw):
     out = []
     for t in texts:
         s = k6_midi.parse_text(t)
         unit, notes = k6_midi.arrange(s, **kw)
         out.append((s.title, unit, notes))
-    return k6_midi.table(out)
+    return k6_midi.table(out, once=once)
 
 
 @pytest.fixture(scope="module")
@@ -191,7 +191,7 @@ def test_default_nokia_tune_matches_the_model(built):
     vol, songs = k6_midi.read_table(k6_midi.default_table())
     assert songs[0][0] == "Nokia Tune (Tarrega)"
     s = k6_midi.load(os.path.join(k6_midi.SONG_DIR, "nokia_tune.txt"))
-    blob = k6_midi.table([(s.title, *k6_midi.arrange(s))])
+    blob = k6_midi.table([(s.title, *k6_midi.arrange(s))], once=True)
     ret, said, writes, log = emulate(with_songs(built, blob), level=4)
     assert ret == 1 and said[-1].endswith("late=0")
     assert np.array_equal(played(log), k6_midi.render_table(blob))
@@ -207,7 +207,7 @@ def test_a_press_skips_and_a_hold_stops(built):
     assert said[2] == "midi play 2/2 Test tune"
     # a hold stops it at once, and everything goes back
     ret, said, writes, log = emulate(with_songs(built, blob), keys=((600_000, 2_000_000),))
-    assert ret == -2 and said[-1].startswith("midi done songs=0 ") and len(said) == 3
+    assert ret == 0 and said[-1].startswith("midi done songs=0 ") and len(said) == 3
     assert writes[-1] == (0x47, 0x6140) and log["tim"][0x00] == 0
     assert [on for on, _ in log["spk"]] == [True, False] and log["gpioa"] == AT_START["gpioa"]
     # level 2 (no key_poll): key_down every 8 ms works the same
@@ -222,3 +222,19 @@ def test_refusals(built):
     assert ret == -4 and not writes and not log["ccr4"] and not log["spk"]
     ret, said, writes, log = emulate(code, spare=500)
     assert ret == -3 and not writes
+
+
+@need_clang
+def test_loops_until_a_key_is_held(built):
+    # no once flag (CI's default table): the test tune again and again, the same samples each time
+    blob = songs_table(TEST_TXT, once=False)
+    one = k6_midi.render_table(blob)
+    hold_at = 30_000 + 2.5 * len(one) * 62.5        # a few passes in (the screen and say lines add time)
+    ret, said, writes, log = emulate(with_songs(built, blob), keys=((hold_at, hold_at + 1_500_000),))
+    assert ret >= 2 and said[1:-1] == ["midi play 1/1 Test tune"] * (ret + 1), said
+    assert said[-1].startswith(f"midi done songs={ret} ")
+    x = played(log)
+    assert len(x) > 2 * len(one) and np.array_equal(x[:len(one)], one)
+    assert np.array_equal(x[len(one):2 * len(one)], one)
+    assert writes[-1] == (0x47, 0x6140) and log["tim"][0x00] == 0 and log["gpioa"] == AT_START["gpioa"]
+    assert k6_midi.read_table(k6_midi.default_table())[1] and k6_midi.default_table()[7] == 0
