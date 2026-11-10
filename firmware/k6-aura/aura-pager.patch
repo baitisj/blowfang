@@ -31,7 +31,7 @@ index 785c441..8ee3035 100644
 +# with txdog: no lines straight to USART1 (the boot-loop hunt: does their time at boot matter?)
 +txdog-quiet = ["txdog"]
 +# the SPI module library (c/k6/k6_lib.h): install a module image in an SPI slot, run it on
-+# control action 11. Every image but the lean ones and hiss (no flash left there)
++# control action 11, and side key 1 reruns the last module. Every image but the lean ones
 +spilib = []
 +
  [profile.release]
@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..bafdbc2
+index 0000000..e14d534
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4429 @@
+@@ -0,0 +1,4477 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -505,6 +505,7 @@ index 0000000..bafdbc2
 +        pub fn km_packet(payload: *const u8, len: i32, arena: *mut u8, bytes: u32) -> i32;
 +        pub fn km_run(arena: *mut u8, api: *const K6Api) -> i32;
 +        pub fn km_reset();
++        pub fn km_again(a: *const u8, cap: u32) -> i32;
 +        pub fn km_status() -> *const KmStatus;
 +        #[cfg(feature = "spilib")]
 +        pub fn kl_install(img: *const u8, fl: *const KlFlash) -> i32;
@@ -3182,6 +3183,9 @@ index 0000000..bafdbc2
 +            }
 +        }
 +    }
++    if AGAIN && unsafe { KEPT && ffi::sp_check(buf.as_ptr(), len as i32) != 0 } {
++        clear_store(app); // a message wins over the kept module
++    }
 +    let r = unsafe { ffi::sp_packet(buf.as_ptr(), len as i32) };
 +    app.pager.last_result = r as i8;
 +    app.pager.last_magic = unsafe { *ffi::sp_last_packet() };
@@ -3262,9 +3266,12 @@ index 0000000..bafdbc2
 +            arq().wait = 0;
 +        }
 +    }
-+    if r == KM_READY || r <= -3 {
++    if r <= -3 || (r == KM_READY && !AGAIN) {
 +        clear_store(app); // the transfer is over, run or refused
 +    } else {
++        // the image stays in the block for side key 1, the store empty, until a message
++        // wants it
++        unsafe { KEPT |= r == KM_READY };
 +        refresh_status(app); // the store is empty while the chunks arrive
 +    }
 +}
@@ -3311,6 +3318,10 @@ index 0000000..bafdbc2
 +    mod_screen_clear();
 +    let ret = unsafe { ffi::km_run(arena::base(), &MOD_API) };
 +    unsafe { mod_tx_off() }; // a module that left the transmitter on
++    // a key held to stop the module: let it go first (up to 3 s), so its release isn't a press
++    // here (side key 1 would run the module again; * would clear)
++    let t1 = uptime::now();
++    while unsafe { mod_key_poll() } != 0 && uptime::now().wrapping_sub(t1) < 30_000 {}
 +    rx_led(false); // or the LED lit
 +    mod_screen_clear(); // its waterfall rows were in its own memory
 +    let ms = unsafe { mod_ms() };
@@ -3333,6 +3344,21 @@ index 0000000..bafdbc2
 +    app.sync_watching_to_master(syst);
 +    arm(app, syst);
 +}
++
++/// Side key 1 runs the last module again (Jeff, 2026-11-10), in the images with the SPI
++/// library: lib_run's slot AGAIN_SLOT
++const AGAIN: bool = cfg!(feature = "spilib");
++#[cfg(feature = "spilib")]
++const AGAIN_SLOT: u8 = 254;
++/// lib_run's r while a message plays: refused, nothing read
++#[cfg(feature = "spilib")]
++const LIB_PLAYING: i32 = -9;
++/// 1 while the last module (run, or sent to the library) is still in the shared block, the
++/// store empty meanwhile
++static mut KEPT: bool = false;
++/// the library slot that ran last (255: none)
++#[cfg(feature = "spilib")]
++static mut LAST_SLOT: u8 = 255;
 +
 +// ---- the SPI module library (c/k6/k6_lib.h; Jeff approved it, 2026-11-08) ----
 +//
@@ -3415,25 +3441,41 @@ index 0000000..bafdbc2
 +}
 +
 +/// Control action lib: run slot n (or 255: list the slots). Not while a message plays: the
-+/// slot is read into the shared block, over the store, as a module sent over the air
++/// slot is read into the shared block, over the store, as a module sent over the air.
++/// AGAIN_SLOT (side key 1): the last module again, the image still in the block if it checks
++/// (km_again: its header and tag, so a module that wrote over its own code, or anything that
++/// used the block since, is refused), else the slot that ran last
 +#[cfg(feature = "spilib")]
 +#[inline(never)]
-+fn lib_run(app: &mut App, syst: &mut SYST, n: u8) {
++fn lib_run(app: &mut App, syst: &mut SYST, mut n: u8) {
 +    if n == 255 {
 +        lib_list();
 +        return;
 +    }
-+    if app.pager.play_pending || stream_on() {
-+        report_line(format_args!("K6 LIB run slot={} refused: a message plays", n));
-+        return;
++    let mut r = LIB_PLAYING;
++    if !app.pager.play_pending && !stream_on() {
++        r = 0;
++        if n == AGAIN_SLOT {
++            if unsafe { KEPT } {
++                r = unsafe { ffi::km_again(arena::base(), arena::ARENA_BYTES as u32) };
++            }
++            if r <= 0 {
++                n = unsafe { LAST_SLOT }; // 255: none, kl_load refuses it
++            }
++        }
++        if r <= 0 {
++            unsafe { ffi::km_reset() };
++            r = unsafe { ffi::kl_load(n as i32, &LIB_FL, arena::base(), arena::ARENA_BYTES as u32) };
++            unsafe { LAST_SLOT = n };
++        }
 +    }
-+    unsafe { ffi::km_reset() };
-+    let r = unsafe { ffi::kl_load(n as i32, &LIB_FL, arena::base(), arena::ARENA_BYTES as u32) };
 +    report_line(format_args!("K6 LIB run slot={} r={}", n, r));
 +    if r > 0 {
 +        run_module(app, syst);
++        unsafe { KEPT = true };
++    } else if r != LIB_PLAYING {
++        clear_store(app); // the slot was read over it
 +    }
-+    clear_store(app); // the slot was read over it
 +}
 +
 +// ---- the coded 4FSK receiver (PHY G) ----
@@ -3465,6 +3507,9 @@ index 0000000..bafdbc2
 +    if stream_on() || app.pager.play_pending {
 +        report_line(format_args!("K6 IFP refused: playing"));
 +        return;
++    }
++    if AGAIN && unsafe { KEPT } {
++        clear_store(app); // the session's packets need the store
 +    }
 +    let gpio = app.radio.fd6818.reg_read(syst, MOD_GPIO);
 +    let t0 = uptime::now();
@@ -3637,6 +3682,8 @@ index 0000000..bafdbc2
 +            rearm = true;
 +        }
 +        KeyId::Asterisk => clear_store(app),
++        #[cfg(feature = "spilib")]
++        KeyId::Side1 => lib_run(app, syst, AGAIN_SLOT),
 +        _ => {}
 +    }
 +    if rearm {
@@ -3663,6 +3710,7 @@ index 0000000..bafdbc2
 +
 +/// Drop the stored message (key *, control action clear).
 +fn clear_store(app: &mut App) {
++    unsafe { KEPT = false };
 +    let p = &mut app.pager;
 +    p.store_frames = unsafe { ffi::sp_init(arena::base(), STORE_BYTES as u32) } as u16;
 +    p.played_id = -1;

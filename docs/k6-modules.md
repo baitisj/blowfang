@@ -15,8 +15,32 @@ modules".
    image into packets with magic `0xAB`, and makes transmit audio like any other packet.
 3. The K6 (`c/k6/k6_mod.c`) puts the chunks straight into the firmware's shared RAM block
    (below), in any order, repeats ignored. Once all are in, it checks the header, the tag and
-   the serial, then calls the entry function with a table of services. The message store is
-   set up again afterwards, so any message held before the module is gone.
+   the serial, then calls the entry function with a table of services. Any message held
+   before the module is gone. In the images with the SPI library the module's image stays in
+   the block afterwards, so side key 1 can run it again (below), until a message needs the
+   store.
+
+**Run it again: side key 1** (Jeff asked for it, 2026-11-10: "instead of just dropping the last
+program in the RAM arena, the module should be able to be re-run by pressing a key"). In VOICE
+MSG, side key 1 (SK1) runs the last module again without a resend. The press counts when the key
+is let go, and after a module returns the core waits (up to 3 s) for any key held to stop it to
+be let go, so that release isn't a press (side key 1 would start the module again, `*` would
+clear). Serial: `K6 LIB run slot=254 r=CODE_LEN`, then the usual `K6 MOD run` / `K6 MOD ret`
+lines. Before it runs, `km_again` (c/k6/k6_mod.c) checks the image's SipHash tag under the
+radio's key again (the tag covers the header too), so a module that wrote over its own code, or
+anything else that used the block since (EXPLORE, an IF session, or audio or the screen buffer
+in the PWM ring under a module longer than the 4 KB store), is refused and doesn't run. A module
+has no statics, so each run starts clean: its state lives on the stack and in its scratch,
+which the core hands out fresh every run. When the copy in the block is gone, a module that
+last ran from an SPI library slot loads from that slot again (`K6 LIB run slot=N r=...`);
+`slot=255 r=-6` means there is nothing to run again. The kept image goes when the store is
+wanted: the first good voice packet, a coded 4FSK session, key `*`, control action clear,
+EXPLORE, or a new module upload. The store stays empty meanwhile, as it is while a module
+arrives. A rerun carries no upload reply or telemetry, and skips the serial check (the image
+passed it when it came in). Refused while a message plays (`r=-9`, also for control action
+lib). In the images with the SPI library only (`spilib`: pager-only, lr, vlr, vlrh, explore,
+voice-explore); the lean images clear the store after a module as before. Cost: about
+230 B of flash (local clang 18 build), 2 B of RAM.
 
 **How much room.** Images built from 2026-11-08 on keep the message store (4 KB), the PWM audio
 ring and the voice decoder's working memory side by side in one block (`hal::arena` in the Aura
@@ -235,7 +259,7 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
 - **Run:** `python -m modem.k6 ctl OUT.wav --action lib --slot N` (control action 11, the slot
   in byte 4) reads the slot into the shared block, checks the header and the tag again and runs
   it through the same path as an upload (`K6 LIB run slot=N r=CODE_LEN`, then the usual
-  `K6 MOD run` / `K6 MOD ret` lines). Refused while a message plays; the stored message is
+  `K6 MOD run` / `K6 MOD ret` lines). Refused while a message plays (`r=-9`); the stored message is
   dropped, as by an upload. `--slot 255` only prints the slots, as the boot does:
   `K6 LIB slot=N r=0 code= serial= level=` for each used one, then `K6 LIB used=N`.
 - **Rules:** the only SPI writes are an install's, inside 0x110000-0x13FFFF, page and sector
@@ -245,10 +269,10 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
 - **Serials:** a run from a slot skips the serial check (the slot was checked when it went in;
   the serial guards the air), and never lowers the loader's last serial, so loading an old slot
   doesn't let an old recording replay.
-- **Images:** the `spilib` feature: pager-only, lr, vlr and explore. Not the lean images (cbi,
-  -table: they never take modules that need it) nor vlrh (hiss: about 1.3 KB of code and lines
-  against its 328 B of free flash). On those an install image checks but never runs (`K6 MOD
-  ret=-100`), and nothing is written.
+- **Images:** the `spilib` feature: pager-only, lr, vlr, vlrh (since 2026-11-10: #31 left it
+  5.9 KB free) and explore. Not the lean images (cbi, -table: they never take modules that need
+  it). On those an install image checks but never runs (`K6 MOD ret=-100`), and nothing is
+  written.
 - **Tests:** `tests/test_k6_lib.py` runs the library and the loader on this machine against an
   emulated NOR flash (`c/k6/kl_host`), checking every write against the rules above.
 
