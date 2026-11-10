@@ -7,42 +7,46 @@
    fixed length.
 
    Probe 1 (2026-11-10 06:15Z): plain AX.25 packets: not one interrupt. Probe 2 (06:57Z,
-   cf6caff): after a preamble and sync word of its own kind the FFSK receiver (REG_58 = 3fe3,
-   1200 baud) follows Bell 202 bit for bit, but as out[i] = sent[i] AND sent[i+1] (1 = the
-   1200 Hz tone): every run of 1200 Hz a bit short, a lone bit of it gone, so no frame passes
-   its CRC. This is probe 3, for what gives that bit back and what starts the receiver on a
-   plain APRS packet. Its test signal (python3 -m modem.aprs fskprobe OUT.wav) is a round of
-   units: P0 to P3 (the pager's preamble and sync at 1200 baud, a word naming the unit, then
-   Bell 202 AX.25 a quarter of a bit later each), C (the same with the APRS at the chip's own
-   1200/1800 Hz, which must decode), F24 (preamble and sync at 2400 baud), A+ and A- (a plain
-   APRS packet after 40 flags, the flags' long tone 1200 or 2200 Hz).
+   cf6caff): after a preamble and sync word of its own kind the FFSK 1200/1800 receiver (REG_58
+   = 3fe3, 1200 baud) follows Bell 202 bit for bit, but as out[i] = sent[i] AND sent[i+1] (1 =
+   the 1200 Hz tone): every run of 1200 Hz a bit short, a lone bit of it gone, so no frame
+   passes its CRC. Probe 3 (07:34Z, 53268de): that loss is the same wherever the bit clock sits
+   and whatever the bandwidth, gain and de-emphasis bits; REG_72 written at the sync interrupt
+   takes hold, but more samples a bit in that receiver show no more; the receiver does start on
+   a plain packet when the sync word is its flags as read (3F3F); and REG_58 written to 33e3 at
+   the sync (the 1200/2400 Hz receiver) reads flags and runs whole, but drops bits where the
+   tones alternate. This is probe 4, round that receiver. Its test signal (python3 -m
+   modem.aprs fskprobe OUT.wav) is a round of units: P0 and P2 (the pager's preamble and sync
+   at 1200 baud, a word naming the unit, then Bell 202 AX.25, P2 half a bit later), C (the same
+   with the APRS at the chip's own 1200/1800 Hz), A+ and A- (a plain APRS packet after 40
+   flags, the flags' long tone 1200 or 2200 Hz).
 
-   The variants, SLOT_MS each from the first sync heard, once round (any key ends it):
-      0  3fe3 1200 baud, the pager's sync 076B 3E36, 128 bytes: probe 2's, against P0 to P3
-      1  the same, and REG_72 to 2400 baud at the sync interrupt: two samples a bit
-      2  to 3600 baud
-      3  to 4800 baud
-      4  3fe1 (the setting that takes 2400 baud), to 2400 baud at the sync
-      5  3fe1 at 2400 baud from the start (unit F24)
-      6  sync 3F3F 3F3F: what probe 2 read of a run of flags whose long tone is 1200 Hz
-      7  sync 3F3F, two bytes (REG_59 = 00f0)
-      8  sync 0000, two bytes: flags whose long tone is 2200 Hz read as all zeros
-      9  as 7, and to 2400 baud at the sync
-     10  3fe1  \
-     11  3fe7   } REG_58's RX bandwidth bits 3:1 (3fe3 has 1) and RX gain bits 9:8 at 1200 baud
-     12  3ce3  /
-     13  3fe3 with REG_2B + 0100 (the RX de-emphasis off)
-     14  3fe3 with REG_2B + 0700 (and the 3 kHz low-pass and 300 Hz high-pass)
-     15  3fe3, and REG_58 to 33e3 at the sync (the 1200/2400 Hz receiver, which never syncs)
-     16  to 33e9
-     17  to 3fe9 (its bandwidth alone)
+   The variants, SLOT_MS each from the first sync heard, once round (any key ends it). All
+   but the last six sync as the pager does (3fe3, 1200 baud, 076B 3E36) and write REG_58, and
+   REG_72 where it says 2400, at the sync interrupt:
+      0  33e3                        probe 3's
+      1  33e3, 2400 baud             1200/2400 Hz at 2400 baud is this receiver's own use:
+      2  33e9, 2400 baud             two samples of each APRS bit (33e9: its own bandwidth)
+      3  33e1, 2400 baud
+      4 to 9    33e1 33e5 33e7 33eb 33ed 33ef     RX bandwidth bits 3:1
+     10 to 11   30e3 31e3                         RX gain bits 9:8
+     12 to 13   3303 33a3                         bits 7:4
+     14 to 15   33e3 with REG_2B + 0100, + 0200   the AF de-emphasis, the 3 kHz low-pass, off
+     16 to 20   23e3 27e3 2be3 2fe3 37e3          RX modes 0, 1, 2, 3, 5 (4 and 7 are known)
+     21  33e3 from the start, sync FEFE FEFE      does the 1200/2400 receiver start on a plain
+     22  33e3, sync FEFE, two bytes               packet's flags by itself? (the chip also takes
+     23  33e3, sync 0101, two bytes               a sync word upside down: A- for FEFE)
+     24  33e9 at 2400 baud, sync FFFC FFFC        the same at two samples a bit
+     25  33e9 at 2400 baud, sync FFFC, two bytes
+     26  33e3 at 2400 baud, sync FFFC, two bytes
    A packet's words are read by time, two word times behind the chip, and said as it ends (the
    telemetry is full after the first few lines: read the serial log):
-     fskaprs start hz=440850000 slot=12000
-     c00 1 t=12345 dn=853 w=64 i=3002   variant, its capture, ms at the sync interrupt, ms from
-                                        there to RX-done (0: none came), words, interrupts seen
+     fskaprs start hz=440850000 slot=8500
+     c00 1 t=12345 dn=853 w=64 i=3002 p=1   variant, its capture, ms at the sync interrupt, ms
+                                        from there to RX-done (0: none came), words, interrupts
+                                        seen, samples a line bit
      d00 1 000 1001 fefe ...            the words as read, 10 a line: the unit's name, the line
-     v00 3fe3 w=384 sy=6 ok=1 bad=0 fl=75 r=-19   at the slot's end: words, syncs, frames with a
+     v00 33e3 w=384 sy=6 ok=1 bad=0 fl=75 r=-19   at the slot's end: words, syncs, frames with a
                                         good CRC and a bad one, HDLC flags, the strongest RSSI
      fskaprs end ok=3
    Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 2B, 3F and 02 (the FSK modem, its interrupts, the
@@ -58,12 +62,12 @@
 #define PROBE_HZ 440850000u
 #endif
 #ifndef SLOT_MS
-#define SLOT_MS 12000u
+#define SLOT_MS 8500u
 #endif
 #ifndef WAIT_MS
 #define WAIT_MS 40000u      /* for the first sync: the sender starts after the upload's reply */
 #endif
-#define NV 18
+#define NV 27
 #define MAXF 332            /* AX.25 frame bytes, with the FCS */
 #define MINF 17             /* two addresses, control, PID, FCS */
 #define CAPW 128            /* words in the longest packet (REG_5D's 256 bytes) */
@@ -77,8 +81,6 @@
 #define CTRL_EN 0x1000u
 #define B1200 0x3065u       /* REG_72 = baud x 10.32444 */
 #define B2400 0x60CAu
-#define B3600 0x9130u
-#define B4800 0xC195u
 
 typedef struct {
   uint16_t cfg, baud, s01, s23;
@@ -90,25 +92,36 @@ typedef struct {
   uint8_t words;  /* the packet (REG_5D = its bytes - 1) */
 } var_t;
 
+#define PG 0x076B, 0x3E36   /* the pager's sync word */
+#define SY(cfg2, baud2, wdiv, words) {0x3FE3, B1200, PG, 0, cfg2, baud2, wdiv, 0xF8, words}
 static const var_t V[NV] = {
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0, 0, 0, 400, 0xF8, 64},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0, 0, B2400, 200, 0xF8, 128},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0, 0, B3600, 133, 0xF8, 128},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0, 0, B4800, 100, 0xF8, 128},
-    {0x3FE1, B1200, 0x076B, 0x3E36, 0, 0, B2400, 200, 0xF8, 128},
-    {0x3FE1, B2400, 0x076B, 0x3E36, 0, 0, 0, 200, 0xF8, 128},
-    {0x3FE3, B1200, 0x3F3F, 0x3F3F, 0, 0, 0, 400, 0xF8, 64},
-    {0x3FE3, B1200, 0x3F3F, 0x3F3F, 0, 0, 0, 400, 0xF0, 64},
-    {0x3FE3, B1200, 0x0000, 0x0000, 0, 0, 0, 400, 0xF0, 64},
-    {0x3FE3, B1200, 0x3F3F, 0x3F3F, 0, 0, B2400, 200, 0xF0, 128},
-    {0x3FE1, B1200, 0x076B, 0x3E36, 0, 0, 0, 400, 0xF8, 64},
-    {0x3FE7, B1200, 0x076B, 0x3E36, 0, 0, 0, 400, 0xF8, 64},
-    {0x3CE3, B1200, 0x076B, 0x3E36, 0, 0, 0, 400, 0xF8, 64},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0x0100, 0, 0, 400, 0xF8, 64},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0x0700, 0, 0, 400, 0xF8, 64},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0, 0x33E3, 0, 400, 0xF8, 64},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0, 0x33E9, 0, 400, 0xF8, 64},
-    {0x3FE3, B1200, 0x076B, 0x3E36, 0, 0x3FE9, 0, 400, 0xF8, 64},
+    SY(0x33E3, 0, 400, 64),
+    SY(0x33E3, B2400, 200, 128),
+    SY(0x33E9, B2400, 200, 128),
+    SY(0x33E1, B2400, 200, 128),
+    SY(0x33E1, 0, 400, 64),
+    SY(0x33E5, 0, 400, 64),
+    SY(0x33E7, 0, 400, 64),
+    SY(0x33EB, 0, 400, 64),
+    SY(0x33ED, 0, 400, 64),
+    SY(0x33EF, 0, 400, 64),
+    SY(0x30E3, 0, 400, 64),
+    SY(0x31E3, 0, 400, 64),
+    SY(0x3303, 0, 400, 64),
+    SY(0x33A3, 0, 400, 64),
+    {0x3FE3, B1200, PG, 0x0100, 0x33E3, 0, 400, 0xF8, 64},
+    {0x3FE3, B1200, PG, 0x0200, 0x33E3, 0, 400, 0xF8, 64},
+    SY(0x23E3, 0, 400, 64),
+    SY(0x27E3, 0, 400, 64),
+    SY(0x2BE3, 0, 400, 64),
+    SY(0x2FE3, 0, 400, 64),
+    SY(0x37E3, 0, 400, 64),
+    {0x33E3, B1200, 0xFEFE, 0xFEFE, 0, 0, 0, 400, 0xF8, 64},
+    {0x33E3, B1200, 0xFEFE, 0xFEFE, 0, 0, 0, 400, 0xF0, 64},
+    {0x33E3, B1200, 0x0101, 0x0101, 0, 0, 0, 400, 0xF0, 64},
+    {0x33E9, B2400, 0xFFFC, 0xFFFC, 0, 0, 0, 200, 0xF8, 128},
+    {0x33E9, B2400, 0xFFFC, 0xFFFC, 0, 0, 0, 200, 0xF0, 128},
+    {0x33E3, B2400, 0xFFFC, 0xFFFC, 0, 0, 0, 200, 0xF0, 128},
 };
 
 static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F};
@@ -242,7 +255,7 @@ static char *tag(char *p, char c, int n) {
 }
 
 static void say_variant(const k6_api_t *api, st_t *s, int n) {
-  char ln[64], *p = hex4(tag(ln, 'v', n), V[n].cfg);
+  char ln[64], *p = hex4(tag(ln, 'v', n), V[n].cfg2 ? V[n].cfg2 : V[n].cfg);
   p = kv(p, " w=", s->w);
   p = kv(p, " sy=", s->sy);
   p = kv(p, " ok=", s->ok);
@@ -309,7 +322,7 @@ int k6_main(const k6_api_t *api) {
       uint32_t due = udiv(((api->ticks() - tw) & 0xFFFF) * 3, v->wdiv);
       due = due > LAG ? due - LAG : 0;
       if (due > (uint32_t)left) due = (uint32_t)left;
-      while ((uint32_t)got < due) word(api, s, got, !v->baud2), got++;
+      while ((uint32_t)got < due) word(api, s, got, v->wdiv == 400), got++;
       if (got >= left && !tend) tend = now;
       /* read out: the chip's RX-done is LAG words old by now, or isn't coming */
       if (tend && (dn || now - tend > 300)) {
@@ -322,6 +335,7 @@ int k6_main(const k6_api_t *api) {
           p = kv(p, " dn=", dn);
           p = kv(p, " w=", (uint32_t)got);
           p = hex4(put(p, " i="), s->irq);
+          p = kv(p, " p=", udiv(400, v->wdiv));
           *p = 0;
           api->say(ln);
           for (i = 0; i < (uint32_t)got; i++) {

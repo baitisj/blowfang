@@ -145,9 +145,9 @@ def fskprobe_line(invert=False, seconds=0.95, call="AG7EW", pre_flags=8):
         k += 1
 
 
-# The probe's units (c/k6/mod/fskaprs.c, probe 3), in the order sent. P0 to P3, C and F24 open
-# with a preamble and sync word of the chip's own kind (FFSK 1200/1800 Hz, 1 = 1200 Hz) and a
-# word naming the unit: its code here, then its place in the run (mod 256). Then:
+# The probe's units (c/k6/mod/fskaprs.c). P0 to P3, C and F24 open with a preamble and sync word
+# of the chip's own kind (FFSK 1200/1800 Hz, 1 = 1200 Hz) and a word naming the unit: its code
+# here, then its place in the run (mod 256). Then:
 #   P0..P3  Bell 202 AX.25, 0 to 3 quarters of a bit late on the preamble's bit clock
 #   C       the same line bits at 1200/1800 Hz: the chip's own tones, so these frames must decode
 #   F24     preamble, sync and name at 2400 baud, then Bell 202 at 1200
@@ -161,6 +161,14 @@ FSKPROBE_UNITS = (
     ("F24", 0xAF),
     ("A+", None),
     ("A-", None),
+)
+# the units sent, round and round (probe 4: probe 3 found the quarter bits and F24 tell nothing)
+FSKPROBE_ROUND = (
+    "P0",
+    "P2",
+    "C",
+    "A+",
+    "A-",
 )
 FSKPROBE_SYNC = bytes([0x07, 0x6B, 0x3E, 0x36])     # the pager's
 FSKPROBE_APRS_S = 0.87                              # of APRS after the name: the module's 128 bytes
@@ -199,7 +207,7 @@ def fskprobe_audio(seconds, fs=FS, gap=0.3):
     out, sent, pos = [np.zeros(int(0.2 * fs))], [], 0.2
     k = 0
     while pos < seconds:
-        name = FSKPROBE_UNITS[k % len(FSKPROBE_UNITS)][0]
+        name = FSKPROBE_ROUND[k % len(FSKPROBE_ROUND)]
         x = fskprobe_unit(name, k, fs)
         out += [x, np.zeros(int(gap * fs))]
         sent.append((name, pos, k))
@@ -209,10 +217,6 @@ def fskprobe_audio(seconds, fs=FS, gap=0.3):
 
 
 # ---- the probe's report: what the chip made of each unit (the module's c and d lines) ----
-# variant -> samples a line bit once the sync is in (c/k6/mod/fskaprs.c's table)
-FSKPROBE_PER = {1: 2, 2: 3, 3: 4, 4: 2, 5: 2, 9: 2}
-
-
 def hdlc_frames(tones):
     """line bits (tones, one a bit) -> the frames with a good FCS"""
     out, sr, inf, buf, n, last = [], 0, False, 0, 0, int(tones[0]) if len(tones) else 0
@@ -265,11 +269,29 @@ def fskprobe_fit(cap, line, per=1, lo=None, hi=None):
     return (best[0] + 1) / 2, best[1], best[2]
 
 
+def fskprobe_local(cap, line, per=1, at=0, win=48, reach=4):
+    """cap against the line with no rule at all, but let slip: windows of `win` bits, each at its
+    own best place within `reach` bits of where the last one sat (the first: of `at`).
+    -> (agreement 0..1 over the windows, how many times the place moved)"""
+    ref = np.repeat(np.asarray(line, np.int8), per)
+    good = total = moves = 0
+    for a in range(0, len(cap) - win * per + 1, win * per):
+        c, best = cap[a:a + win * per], (-1, 0)
+        for d in sorted(range(-reach * per, reach * per + 1), key=abs):
+            r = ref[max(a + at + d, 0):a + at + d + len(c)]
+            if a + at + d >= 0 and len(r) == len(c):
+                best = max(best, (int((r == c).sum()), d), key=lambda g: g[0])
+        if best[0] < 0:
+            break
+        good, total, moves, at = good + best[0], total + len(c), moves + (best[1] != 0 and a > 0), at + best[1]
+    return (good / total if total else 0.0), moves
+
+
 def fskprobe_report(lines):
     """the module's say lines (as in the serial log) -> the report's lines: for each packet the
-    chip took, the unit it was, how short (in bits) each run of the mark tone came out, how much
-    of the packet that rule explains, and the frames with a good FCS: as read, and with the runs
-    put back (the best sample of each bit)"""
+    chip took, the unit it was; the best fit of 'every mark run e bits short' and how much of the
+    packet that rule explains; how much agrees with the line sent when the place may slip, and
+    how often it slipped; and the frames with a good FCS (the best sample of each bit)"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("fskaprs start")] or [0]):]
     caps, head, out = {}, {}, []
@@ -284,26 +306,23 @@ def fskprobe_report(lines):
                 "A+": fskprobe_line(True, FSKPROBE_APRS_S, pre_flags=40),
                 "A-": fskprobe_line(False, FSKPROBE_APRS_S, pre_flags=40)}
     for (n, k), words in sorted(caps.items()):
-        per = FSKPROBE_PER.get(n, 1)
+        h = head.get((n, k), {})
+        per = int(h.get("p", 1))
         bits = np.array([int(b) for w in words for b in f"{w:016b}"], np.int8)
         # the unit's name: the word the chip had in before its sync interrupt (probe 2: that
-        # comes 16 bits after the sync word), so before the module changed REG_72
-        name, unit = int("".join(map(str, bits[:16])), 2), None
-        if not 6 <= n <= 9 and name >> 8 in names:
-            unit, body = names[name >> 8], bits[16:]
-            late = int(unit[1]) * per // 4 + 1 if unit[0] == "P" else 0
-            wide = (None, None) if per > 1 and n != 5 else (-late - 2 * per, 2 * per)
-            agree, e, at = fskprobe_fit(body, lines_of["P"], per, *wide)
-            where = f"{unit}#{name & 0xFF}"
+        # comes 16 bits after the sync word), so before the module wrote REG_58 or REG_72
+        name = int("".join(map(str, bits[:16])), 2)
+        if name >> 8 in names:
+            unit, body, where = "P", bits[16:], f"{names[name >> 8]}#{name & 0xFF}"
+            agree, e, at = fskprobe_fit(body, lines_of[unit], per, -4 * per, 4 * per)
         else:                                        # a sync on flags: which unit, and where in it
             fits = {u: fskprobe_fit(bits, ln, per) for u, ln in lines_of.items()}
             unit = max(fits, key=lambda u: fits[u][0])
             (agree, e, at), body, where = fits[unit], bits, f"{unit}@{fits[unit][2] // per}"
-        raw = max(len(hdlc_frames(body[o::per])) for o in range(per))
-        ok = max(len(hdlc_frames(_shorten(body, -e)[o::per])) for o in range(per))
-        dn = int(head.get((n, k), {}).get("dn", 0))
-        out.append(f"v{n:02d} #{k} {where:8s} {per} a bit{f', {16000 * (len(words) - 1) / dn:.0f} baud' if dn else ''}: "
-                   f"marks {e / per:+.2f} bit short, fits {100 * agree:.1f}%, frames {raw} as read, {ok} put back")
+        loose, moves = fskprobe_local(body, lines_of[unit], per, at)
+        ok = max(len(hdlc_frames(body[o::per])) for o in range(per))
+        out.append(f"v{n:02d} #{k} {where:8s} {per} a bit: marks {e / per:+.2f} bit short fits {100 * agree:.1f}%, "
+                   f"loose {100 * loose:.1f}% {moves} slips, frames {ok}")
     return out + [ln for ln in said if ln[:1] == "v" or ln.startswith("fskaprs")]
 
 
@@ -388,8 +407,8 @@ def main(argv=None):
     q = sub.add_parser("fskprobe", help="the test signal for c/k6/mod/fskaprs.c: units of the chip's own "
                                         "preamble and sync word, then AX.25, and plain APRS packets")
     q.add_argument("out")
-    q.add_argument("--seconds", type=float, default=245.0,
-                   help="the module waits for the first unit, then listens for 18 slots of 12 s")
+    q.add_argument("--seconds", type=float, default=262.0,
+                   help="the module waits for the first unit, then listens for 27 slots of 8.5 s")
     q = sub.add_parser("fskreport", help="what the chip made of each fskprobe unit, from the K6's serial log "
                                          "(the module's c and d lines)")
     q.add_argument("log")
@@ -405,7 +424,7 @@ def main(argv=None):
         x, sent = fskprobe_audio(a.seconds)
         sf.write(a.out, 0.5 * x, FS)
         print(f"{len(x) / FS:.2f} s, {len(sent)} units")
-        for name, pos, _ in sent[:len(FSKPROBE_UNITS) + 1]:
+        for name, pos, _ in sent[:len(FSKPROBE_ROUND) + 1]:
             print(f"{name} +{pos:.3f} s")
         return 0
     if a.cmd == "wav" and a.now:

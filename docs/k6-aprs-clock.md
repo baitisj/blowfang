@@ -215,40 +215,57 @@ What it settled:
   57% of the time. (On the host model a true sampler would need 4800 a second and about 30 dB.)
 - **A new sync word alone doesn't take hold** when REG_58 and REG_72 stay the same (variant 5).
 
-**Probe 3: what gives the bit back, and what starts the receiver.** `c/k6/mod/fskaprs.c` (2.5
-KB) now tries 18 settings, 12 s each from the first sync it hears, once round. The test signal
-(`python3 -m modem.aprs fskprobe probe.wav`, 245 s) is a round of eight units, 10.8 s:
+**Probe 3 (07:34-07:40Z, 53268de): what gives the bit back, and what starts the receiver.**
+18 settings, 12 s each, against a round of units: P0 to P3 (the pager's preamble and sync at 1200
+baud, a word naming the unit, then Bell 202 AX.25 0 to 3 quarters of a bit late), C (the same
+line at the chip's own 1200/1800 Hz, a control that must decode), F24 (preamble and sync at 2400
+baud), A+ and A- (a plain APRS packet after 40 flags, the flags' long tone the mark or the
+space). 107 packets captured, 25 control frames decoded:
 
-| Unit | Opens with | Then |
+| | Setting | Result |
 | --- | --- | --- |
-| P0, P1, P2, P3 | the pager's preamble and sync at 1200 baud, and a word naming the unit (A0 to A3, then its place in the run) | Bell 202 AX.25, 0 to 3 quarters of a bit late on the preamble's clock |
-| C | the same (AC) | the same line bits at 1200/1800 Hz, the chip's own tones: these frames must decode |
-| F24 | the same at 2400 baud (AF) | Bell 202 at 1200 baud |
-| A+, A- | nothing: a plain APRS packet, 40 flags | the flags' long tone is the mark (A+) or the space (A-) |
+| 0 | 3FE3, 1200 baud, sync 076B 3E36 | P0, P1, P2, P3 all one bit short, the rule fits 100%: the loss is not where the bit clock sits (the chip follows the data's own transitions). C: 3 frames |
+| 1, 2, 3 | REG_72 to 2400, 3600, 4800 at the sync interrupt | the write takes hold (256 bytes come in half, a third, a quarter of the time), but the 1200/1800 receiver at those rates is no sampler: marks come out two bits and more short, even C fails |
+| 4, 5 | 3FE1, to 2400 at the sync; 3FE1 at 2400 throughout | C decodes at two samples a bit (99.4%); Bell 202 doesn't (70%) |
+| 6, 7 | sync 3F3F 3F3F; 3F3F in two bytes (REG_59 = 00F0) | **the receiver starts on plain packets**: 10 syncs each, on A+ and on every stretch of flags whose long tone is the mark. The data after it is the one-bit-short kind |
+| 8 | sync 0000, two bytes | 12 syncs: on A-, and on anything else |
+| 9 | as 7, to 2400 at the sync | syncs; data as 1 |
+| 10 | 3FE1 | two bits short, worse |
+| 11, 12 | 3FE7, 3CE3 | as 0 |
+| 13 | REG_2B + 0100 (de-emphasis off) | as 0 |
+| 14 | REG_2B + 0700 | two bits short, worse: REG_2B's filters are in the modem's path |
+| 15 | REG_58 to 33E3 at the sync (the 1200/2400 Hz receiver) | **no bit lost on runs**: flags of both senses and long runs read as sent. But where the tones alternate every bit it drops the mark and its place slips, so 80 to 84% right and no frame |
+| 16, 17 | to 33E9, to 3FE9 | all zeros after the write: the 2.4K bandwidth is deaf at 1200 baud |
+
+The RX-done interrupt came for none of the packets read on the pager's sync within 300 ms of
+their last word (probe 2's `i=3002` was the packet before's, late).
+
+**Probe 4: round the 1200/2400 receiver.** `c/k6/mod/fskaprs.c` (2.6 KB) now tries 27
+settings, 8.5 s each from the first sync it hears. The round is P0, P2, C, A+, A- (6.8 s;
+`python3 -m modem.aprs fskprobe probe.wav`, 262 s).
 
 | | Setting | Asks |
 | --- | --- | --- |
-| 0 | 3FE3, 1200 baud, sync 076B 3E36, 128 bytes | probe 2 again, against P0 to P3: is the lost bit a matter of where the chip's bit clock sits? |
-| 1, 2, 3 | the same, REG_72 to 2400, 3600, 4800 baud at the sync interrupt, 256 bytes | does a change of baud take hold inside a packet, and do 2, 3 or 4 samples a bit show the lone marks? |
-| 4 | 3FE1, to 2400 at the sync | the same with the one setting that receives at 2400 |
-| 5 | 3FE1 at 2400 baud throughout | unit F24 |
-| 6 | 3FE3, sync 3F3F 3F3F | does the receiver start on a plain packet's flags (A+)? |
-| 7 | sync 3F3F, two bytes (REG_59 = 00F0) | the same on two flags |
-| 8 | sync 0000, two bytes | A-, and how often a quiet channel sets it off |
-| 9 | as 7, to 2400 at the sync | a start on flags and two samples a bit: the receiver, if both work |
-| 10, 11, 12 | 3FE1, 3FE7, 3CE3 | REG_58's RX bandwidth and gain bits |
-| 13, 14 | 3FE3 with REG_2B + 0100, + 0700 | the AF de-emphasis and filters off |
-| 15, 16, 17 | 3FE3, REG_58 to 33E3, 33E9, 3FE9 at the sync | the 1200/2400 Hz receiver (closer to Bell 202's tones, but it never syncs by itself) and its bandwidth, switched in after the sync |
+| 0 | REG_58 to 33E3 at the pager's sync | probe 3's 15 again |
+| 1, 2, 3 | to 33E3, 33E9, 33E1 and REG_72 to 2400 baud | 1200/2400 Hz at 2400 baud is that receiver's own use, and samples each APRS bit twice |
+| 4 to 9 | to 33E1, 33E5, 33E7, 33EB, 33ED, 33EF | its RX bandwidth bits |
+| 10, 11 | to 30E3, 31E3 | RX gain bits |
+| 12, 13 | to 3303, 33A3 | bits 7:4 |
+| 14, 15 | to 33E3 with REG_2B + 0100, + 0200 | de-emphasis off (more 2200 Hz), the 3 kHz low-pass off |
+| 16 to 20 | to 23E3, 27E3, 2BE3, 2FE3, 37E3 | RX modes 0, 1, 2, 3, 5 |
+| 21, 22, 23 | 33E3 from the start, sync FEFE FEFE, FEFE, 0101 | does that receiver start on a plain packet's flags by itself? |
+| 24, 25, 26 | 33E9 and 33E3 at 2400 baud, sync FFFC FFFC, FFFC | the same at two samples a bit |
 
 To make a new sync word take hold the module turns REG_58 off and on around it and arms twice.
 It reads a packet's words by time, two word times behind the chip, and says them as the packet
 ends: a `c` line (variant, capture, ms at the sync interrupt, ms from there to RX-done, words,
-interrupt flags) and `d` lines (the words, ten a line), then a `v` line at each slot's end.
-The telemetry is full after the first few lines, so the run is read from the serial log:
-`python3 -m modem.aprs fskreport serial.log` names each capture's unit and fits "every mark run
-e samples short" to it, with the frames that pass their CRC as read and with the runs put back.
-The emulated test (`test_fskaprs_probe_3_on_a_model_of_the_chips_modem`) runs the module against
-a model of packet mode with probe 2's rule in it, and the report on the module's lines.
+interrupt flags, samples a bit) and `d` lines (the words, ten a line), then a `v` line at each
+slot's end. The telemetry is full after the first few lines, so the run is read from the
+serial log: `python3 -m modem.aprs fskreport serial.log` names each capture's unit, fits
+"every mark run e bits short" to it, says how much agrees with the line when the place may
+slip, and counts the frames that pass their CRC. The emulated test
+(`test_fskaprs_probe_4_on_a_model_of_the_chips_modem`) runs the module against a model of
+packet mode, and the report on the module's lines.
 
 ## Size: which images
 
