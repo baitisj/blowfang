@@ -25,6 +25,9 @@
    listen; each step reads REG_68 (bit 15 clear: a tone word, tenths of Hz = raw * 100000 /
    206489). Two reads in a row within 0.9 Hz of one standard tone make it the carrier's tone
    (xd_tone), as Aura's SCAN QT decides. This part runs even when the DMR side can't.
+   DCS (2026-11-10): each step reads REG_69 first; bit 15 clear is a DCS word (69[11:0] << 12 |
+   6A[11:0]), matched to the 104 standard codes in any of its 23 turns by its Golay check, the
+   normal reading before the inverted one. Two alike in a row make the code.
 
    Writes REG_51, REG_33 bit 8, REG_34[3:0] (GP0 code 13), REG_47, REG_7E and REG_13, the MCU's TIM17 and
    DMA channel 1 (as dmrdet), all put back by xd_stop. No division but ds_udiv, no writable
@@ -73,7 +76,7 @@ typedef struct {
 #endif
   uint32_t ahb, apb2;
   uint16_t r33, r34, r47, r7e, r13, r51;
-  uint16_t tone, tcand;        /* the confirmed CTCSS tone (0.1 Hz), the last reading's */
+  uint16_t tone, tcand;        /* the confirmed CTCSS tone (0.1 Hz) or DCS code, the last reading's */
   uint16_t treads;             /* steps with a tone reading */
   int16_t adj, lvl;            /* dB the frozen gain adds to RSSI reads; the level at the start */
   uint8_t ok;                  /* 1 running; 0 off (PB1 not an input, REG_33 refused) */
@@ -95,7 +98,10 @@ int xd_stop(xd_t *s);
 uint32_t xd_flags(const xd_t *s);   /* XD_NOW | XD_EVER */
 int xd_adj(const xd_t *s);          /* dB to take off RSSI reads while it runs */
 uint32_t xd_rate8(const xd_t *s);   /* the DMA's measured rate, for the next listen's start */
-uint32_t xd_tone(const xd_t *s);    /* the carrier's CTCSS tone in 0.1 Hz, 0 = none yet */
+uint32_t xd_tone(const xd_t *s);    /* the carrier's CTCSS tone in 0.1 Hz, or a DCS code (9 bits,
+                                       the octal digits) | 0x8000 (RT_TONE_DCS) | XD_DCS_INV if
+                                       it was sent inverted; 0 = none yet */
+#define XD_DCS_INV 0x4000u
 uint32_t xd_state_bytes(void);
 
 #ifdef __cplusplus

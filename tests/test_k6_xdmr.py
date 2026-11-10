@@ -68,7 +68,7 @@ def stream(s, cn0, pre_s, post_s, seed=1):
 
 
 def listen(s, run_s=3, cn0=60.0, pre_s=0.0, post_s=0.5, level=-85, tone=0, known=False, built=None,
-           scratch=4096):
+           scratch=4096, dcs=None):
     """-> (DMR transmissions, say lines (ms, text), REG_47 writes (ms, value), stack bytes)"""
     import k6_live_emu as le
 
@@ -76,11 +76,19 @@ def listen(s, run_s=3, cn0=60.0, pre_s=0.0, post_s=0.5, level=-85, tone=0, known
         def on_stub(self, uc, addr, size, _):
             name, r0 = self.names[(addr - self.stubs) // 16], uc.reg_read(self.A.UC_ARM_REG_R0)
             # REG_47 reads as monitor_on left it (RX audio on the speaker)
-            if name == "fd_read" and r0 in (0x47, 0x68):
+            if name == "fd_read" and r0 in (0x47, 0x68, 0x69, 0x6A):
                 self.tick(20 * 96)
-                # REG_68: the sub-audio scan's CTCSS word for `tone` (0.1 Hz) while the carrier is up
-                v = AF_FM if r0 == 0x47 else \
-                    tone * 206489 // 100000 + 1 if tone and on <= self.sample_now() < off else 0x8000
+                up = on <= self.sample_now() < off
+                # REG_68: the sub-audio scan's CTCSS word for `tone` (0.1 Hz) while the carrier is up;
+                # REG_69/6A: the DCS word `dcs` (23 bits), 69 bit 15 set when there is none
+                if r0 == 0x47:
+                    v = AF_FM
+                elif r0 == 0x68:
+                    v = tone * 206489 // 100000 + 1 if tone and up else 0x8000
+                elif r0 == 0x69:
+                    v = dcs >> 12 & 0xFFF if dcs is not None and up else 0x8000
+                else:
+                    v = dcs & 0xFFF if dcs is not None and up else 0
                 uc.reg_write(self.A.UC_ARM_REG_R0, v)
                 return
             if name == "fd_write" and r0 == 0x47:
@@ -270,3 +278,51 @@ def test_fdtick_module_clears_tickint_first():
     assert r is not None and r[0] == 0, e.said
     assert e.said[0] == "fdt tickint was=1" and len(e.said) == 9, e.said
     assert int.from_bytes(e.mu.mem_read(0xE000E010, 4), "little") == 0x00010004, e.said
+
+
+def dcs_word(code, inv=False, turn=0):
+    """DCS's 23-bit Golay word for `code` (the octal digits as 9 bits), inverted, turned"""
+    d = 0x800 | code
+    r = d << 11
+    for b in range(22, 10, -1):
+        if r >> b & 1:
+            r ^= 0xC75 << (b - 11)
+    w = (d | r << 12) ^ (0x7FFFFF if inv else 0)
+    return (w >> turn | w << (23 - turn)) & 0x7FFFFF
+
+
+def test_dcs_word_matches_the_standard_table():
+    """the Golay word of DCS 023 as radios send it, so the test's words are right"""
+    assert dcs_word(0o23) == 0x763813
+
+
+@pytest.mark.parametrize("code,inv,turn,said", [
+    (0o23, False, 0, "DCS 023"),
+    (0o754, False, 7, "DCS 754"),
+    (0o23, True, 15, "DCS 047"),                   # 023 inverted is 047: the normal reading first
+])
+def test_listen_reads_a_dcs_code(code, inv, turn, said):
+    """c/k6/xdmr.c xd_ctcss: a DCS word in REG_69/6A, any turn, two alike in a row -> the code"""
+    pytest.importorskip("unicorn")
+    a = dmr.speech("female_libri198_14s__original", 2.0)
+    n, lines, _, _ = listen(dmr.fm_voice(a), run_s=2, dcs=dcs_word(code, inv, turn))
+    txt = "\n".join(t for _, t in lines)
+    assert line(lines, said)[1] is not None, txt
+    assert line(lines, "CTCSS ")[1] is None, txt
+
+
+@pytest.mark.parametrize("r69,r6a,said", [
+    (0x0FB1, 0x0C09, "DCS 023"),
+    (0x0F9E, 0x0C41, "DCS 754"),
+    (0x0827, 0x01FB, "DCS 047"),                   # 023 sent TX-reversed
+])
+def test_listen_reads_dcs_from_the_k6s_own_registers(r69, r6a, said):
+    """REG_69/6A as Jeff's K6 read them on air (2026-11-10 06:45Z, ctcssprobe on 43a548d, the
+    IC-7100 sending DTCS 023 N, 754 N and 023 TX-reversed; 127 of 127 polls were turns of the
+    sent word): the same words through xd_ctcss give the code"""
+    pytest.importorskip("unicorn")
+    a = dmr.speech("female_libri198_14s__original", 2.0)
+    w = ((r69 & 0xFFF) << 12 | (r6a & 0xFFF)) & 0x7FFFFF
+    n, lines, _, _ = listen(dmr.fm_voice(a), run_s=2, dcs=w)
+    txt = "\n".join(t for _, t in lines)
+    assert line(lines, said)[1] is not None, txt
