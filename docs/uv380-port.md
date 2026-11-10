@@ -79,7 +79,7 @@ the UV-380 needs the RF mod or another route.
 | sotto codec (fixed point, `sotto/c/fixed`) | as is; encode now fits too. The "Run sotto 1200 16k codec on UV-380" thread owns it; 8 kHz first, 16 kHz behind the same API |
 | Pager packets (`modem/pager.py`, K6 receiver) | ported: `c/common/pager_tx.c` builds the same packets and burst byte for byte |
 | FFSK modem (profile F, 1200/1800 Hz, 1800 baud) | ported as `c/common/ffsk_tx.c` (TX). RX waits on an RF -> MCU path |
-| Module loader (`c/k6/k6_mod.c`, SipHash-signed PIC modules) | ports cleanly (Cortex-M4 is a superset of M0); a UV-380 API table instead of the FD6818 calls |
+| Module loader (`c/k6/k6_mod.c`, SipHash-signed PIC modules) | ported: `c/common/mod_core.c` (same image, tag, key and replay rule, magic `U3M`), `radios/uv380/src/uv_api.h` (the UV-380 table), `modem/uv380mod.py` (M4F build and signing); see "RAM modules" |
 | EXPLORE, band surf, DMR detect | AT1846S RSSI sweeps instead of FD6818 registers; a DMR decoder can use the HR_C6000 directly |
 | CW ID, PSK31 ident | CW ID ported (`c/common/cw_tx.c`, after every burst); PSK31 for carriers still to do |
 | Aura (Rust) | does not carry over |
@@ -132,6 +132,36 @@ can't run yet; it can come later in CI.
 - Are hardware mods OK on the UV-380? (The K6 rule was no mods.) Without them, mic and RF audio
   into the MCU depend on the I2S probe working.
 - Ok to back up the stock firmware and codeplug on hamlet before the first flash?
+
+## RAM modules
+
+The K6's signed RAM modules (`docs/k6-modules.md`) run on the UV-380 too, with the K6's packet
+layer left out for now (the UV-380 has no receive path to the MCU without a hardware mod; a
+module comes in as a file under QEMU, later over USB or the air).
+
+- `c/common/mod_core.[ch]`: the image check and run, ported from `c/k6/k6_mod.c`: same header,
+  SipHash-2-4 tag, replay serial and key placeholder (so `python -m modem.k6 keyimage` keys a
+  UV-380 image as it keys a K6 one, and the same key file works:
+  `make -C radios/uv380 MOD_KEY_FILE=~/.config/sotto/k6-mod.key`). The header's first three
+  bytes name the radio's table, `K6M` or `U3M`, and they sit under the tag: a K6 module never
+  runs on the UV-380 and the other way round, even under one key. Flags must be 0 (no SPI
+  library yet).
+- `radios/uv380/src/uv_api.[ch]`: the table, level 1: `say`, `ms`, `delay_us`, `led`, `ptt`,
+  `scratch`, `audio_start`/`audio_write`/`audio_stop` (the MCU -> RF PWM path; nothing in the
+  table keys the radio). Modules land in a 16 KB SRAM arena (CCM can't run code) and run on the
+  8 KB main stack. Unlike the K6's M0, a module may divide and use single-precision float.
+- `modem/uv380mod.py`: builds a module with clang for `thumbv7em-none-eabihf -fropi`, refuses
+  it unless it links byte-identical at two addresses, signs it:
+  `python -m modem.uv380mod radios/uv380/mod/hello.c hello.u3m --key-file ~/.config/sotto/k6-mod.key`.
+- `radios/uv380/mod/hello.c` (about 1.1 KB): say lines, the K6 hello's sum of squares, a hardware
+  divide, a float sum, a scratch check, 100 ms of 1200 Hz from a float oscillator through the
+  audio calls; returns 0x55.
+- `tests/test_uv380_mod.py` (10 tests, QEMU netduinoplus2, throwaway key): hello runs and its
+  tone comes back; wrong key, a changed byte, the K6 magic, API level 2, the library flag,
+  serial 0 and a short image are refused; an unkeyed image refuses everything; a module with a
+  writable static doesn't build.
+- Not yet: the OpenRTX-based image (`firmware/uv380-openrtx`) doesn't carry the loader;
+  `mod_core.c` is plain C99 with no OS calls, so it drops in there as a task.
 
 ## Status (2026-11-10)
 
