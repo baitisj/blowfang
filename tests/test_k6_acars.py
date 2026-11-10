@@ -164,6 +164,7 @@ def test_dfskcap_acars_on_the_model():
     assert len(full) < 3200 and len(plain) < 2100, (len(full), len(plain))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))      # the 6 m bench build
     assert len(six) < 3200 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
+    assert len(six) > len(full)                                            # its six front ends
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)
@@ -239,3 +240,59 @@ def test_dfskcap_acars_on_the_model():
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
         assert e.writes[reg][-1] == 0, hex(reg)                  # put back as read (the emulator reads 0)
     assert 0x0700 in e.writes[0x47] and e.writes[0x5D][0] == 0xFF20
+
+
+def test_dfskcap_acars6_narrow_front_ends_on_the_model():
+    """the 6 m bench build's six front ends (DFSK_NARROW): all in the narrow filter, FM as tuned,
+    the AF source AM, then FM tuned 0.5, 1.0 high, 1.0 low and 1.5 kHz high. Noise only here:
+    every capture gets its c line and (DFSK_DUMP_ALL) its words up to the limit; REG_47 is AM in
+    front end 1 alone and put back."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    defs = [("DFSK_ACARS", "1"), ("DFSK_NARROW", "1"), ("DFSK_DUMP_ALL", "1"), ("PROBE_HZ", "50650000u"),
+            ("FE_S", "2"), ("WAIT_MS", "200u"), ("QN", "2u")]
+    code, entry = le.build("x", defs, os.path.join(K6, "mod", "dfskcap.c"))
+    six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))
+    total, BASE = 12.5, 4800
+    rng = np.random.default_rng(5)
+    noise = rng.integers(0, 2, int(total * BASE))
+    for i in range(BASE // 2, len(noise) - BASE, BASE):           # a sync word in the noise every second
+        noise[i:i + 16] = [1, 0] * 8
+    Chip = modem_chip(le, lambda r58: noise, BASE)
+
+    class Tuned(Chip):
+        long5d, early_done = True, True
+        r = {**Chip.r, 0x47: 0}
+
+        def on_stub(self, uc, addr, size, user):
+            if self.names[(addr - self.stubs) // 16] == "tune":
+                self.tunes.append((uc.reg_read(self.A.UC_ARM_REG_R0), uc.reg_read(self.A.UC_ARM_REG_R1)))
+            super().on_stub(uc, addr, size, user)
+
+    Tuned.tunes = []
+    e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
+              scratch=11776 - 24 - len(six))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert stack < 700 and e.over == 0, (stack, e.over)
+    assert e.said[0] == "dfskcap start hz=50650000 n=6" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert [ln.split()[1] for ln in e.said if ln.startswith("s ")] == list("012345")
+    assert e.tunes[-6:] == [
+        (50650000, 0),
+        (50650000, 0),
+        (50650500, 0),
+        (50651000, 0),
+        (50649000, 0),
+        (50651500, 0),
+    ], e.tunes
+    am = [w >> 8 & 15 for w in e.writes[0x47]]
+    assert am.count(7) == 1 and e.writes[0x47][-1] == 0, e.writes[0x47]
+    c = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "c"}
+    d = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "d" and ln[1].isdigit()}
+    v = {int(ln[1]): dict(kv.split("=") for kv in ln.split()[1:]) for ln in e.said if ln[0] == "v"}
+    assert sorted(v) == [0, 1, 2, 3, 4, 5] and ret == len(c) == sum(int(x["n"]) for x in v.values()) >= 6, v
+    assert d == c, (sorted(c - d), sorted(d - c))                 # every capture's words
+

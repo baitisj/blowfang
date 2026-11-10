@@ -322,3 +322,59 @@ v3 n=0 w=0 b=0 p=-121 f=-128
 - A control that came free: with the channel empty, the four front ends took **no capture in
   180 s**. The 48 captures of the second run were the signal's doing, not the receiver
   starting on noise.
+
+**Fourth run (20:59 to 21:03Z, same build, RF power 5 percent): the pre-keys, and nothing of the data.**
+
+The owner allowed one run at 5 percent. The opening was 30 s of PSK31 ident; the SWR read 1
+at all 112 readings and the key-up ran whole (226 s, blocks on the air from 68 s after the
+module's start).
+
+```
+q t=30079 p=-120 f=-123
+q t=35092 p=-78 f=-121
+q t=40105 p=-78 f=-80
+v0 n=0 w=0 b=0 p=-76 f=-80              FM, wide
+v1 n=0 w=0 b=0 p=-76 f=-80              AF source AM, wide
+v2 n=0 w=0 b=0 p=-76 f=-79              FM, narrow, 2.5 kHz high
+c3 1 t=195409 w=239 k=0 r=-79
+c3 22 t=216460 w=262 k=4 r=-79
+c3 29 t=223619 w=266 k=3 r=-78
+v3 n=44 w=10462 b=0 p=-76 f=-80         AF source AM, narrow
+```
+
+- The carrier is again 40 dB over the floor (-78 dBm), at a quarter of the third run's power
+  and with the tuner quiet.
+- **With a strong AM signal three front ends take no capture at all.** FM in the wide filter
+  hears nothing of an AM signal, as it should. The AF source AM in the wide filter hears
+  nothing either: REG_47 alone does not put AM audio before the FSK slicer. Tuned 2.5 kHz to
+  one side the slicer is quiet too (the carrier then sits 2.5 kHz off the discriminator's
+  centre, far over to one level).
+- **The narrow filter with the AF source AM takes a capture a second** (44 in 45 s: 512 bytes
+  are a block, the gap and the next block's pre-key, so every second block starts one). Its
+  words, said for the first twelve:
+
+  ```
+  d3 2 000 291552a9454a5155550aaaaaaaaa5555554a955400041100
+  d3 2 00c 0804a0102000214081020040080000002000000002000040
+  ```
+
+  - the **pre-key** is there, about 250 samples of 2400 Hz as alternating samples with a slip
+    every 20 to 40;
+  - then for the length of the block's data (about 1000 samples) one sample in ten is a 1,
+    and the ones follow nothing of the sent block (no feature of it, the audio's sign, the
+    2400 Hz bits or the 1200 Hz ones, correlates over 0.2 at any offset);
+  - then zeros for the quarter second between blocks, and the next pre-key.
+- So the slicer follows a steady 2400 Hz tone and loses the data, where the tone changes
+  every bit or two. Two readings fit, and the run cannot tell them apart, because the narrow
+  filter and the AF source were changed together:
+  1. the AF source does reach the slicer in the narrow setting, through something slow (a
+     level that settles on a steady tone); or
+  2. the slicer is fed by the FM discriminator whatever REG_47 says, and the narrow filter,
+     not quite even about the carrier, turns a little of the AM into FM: enough for a steady
+     tone, too little for the data.
+- The next build (`DFSK_NARROW`, six front ends of 30 s, all narrow) asks that: FM as tuned
+  (the filter alone), the AF source AM again, then FM tuned 0.5, 1.0 and 1.5 kHz high and
+  1.0 kHz low. Off to one side the filter passes the carrier and one sideband better than the
+  other, which is partly FM; if reading 2 holds, one of those may give the data too. The
+  build also says the words of every capture that goes on like a pre-key, past the first
+  twelve.

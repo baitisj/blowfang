@@ -60,6 +60,16 @@
       1  REG_47's AF source = AM (7), wide    does it follow the AF source?
       2  FM, narrow, tuned 2.5 kHz high   an AM signal with a sideband cut is partly FM
       3  AF source AM, narrow
+   DFSK_NARROW (the 6 m bench build after its fourth run, where only front end 3 saw the
+   blocks' pre-keys): is that the narrow filter or the AF source, and does tuning to one side
+   (the carrier and one sideband: partly FM) give the discriminator the data too? Six front
+   ends, all narrow:
+      0  FM, as tuned                     the narrow filter alone
+      1  AF source AM, as tuned           the one that saw the pre-keys
+      2  FM, 0.5 kHz high
+      3  FM, 1.0 kHz high
+      4  FM, 1.0 kHz low
+      5  FM, 1.5 kHz high
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
    k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
    with k of 3 or 4 their d lines. And is there a signal at all? The RSSI is read every 50 ms:
@@ -90,7 +100,11 @@
                             upload's audio ends, and that is no Bell 202 */
 #endif
 #ifdef DFSK_ACARS
+#ifdef DFSK_NARROW
+#define NV 6
+#else
 #define NV 4
+#endif
 #ifndef FE_S
 #define FE_S 150
 #endif
@@ -130,7 +144,18 @@ typedef struct {
 #endif
 } var_t;
 
-#ifdef DFSK_ACARS
+#ifdef DFSK_NARROW
+static const var_t V[NV] = {
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 0, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 0, 7},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 5, 0, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 10, 0, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -10, 0, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 15, 0, 0},
+};
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47};
+#define SAVED_47 10
+#elif defined(DFSK_ACARS)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 1, 0},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 1, 7},
@@ -390,7 +415,7 @@ int k6_main(const k6_api_t *api) {
       p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(rssi));
       *p = 0;
       api->say(ln);
-      if (irq >= DUMP_K && ndump < CAPN) {
+      if (irq >= DUMP_K && ndump < (irq >= 3 ? 3 * CAPN : CAPN)) { /* a pre-key's: three times as many */
         ndump++;
 #else
       if (ncap <= CAPN) {
