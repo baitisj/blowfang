@@ -569,19 +569,19 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
 
 # ---- the same clock behind the chip's own FSK modem (c/k6/mod/aprsfsk.c) ----
 @need_clang
-@pytest.mark.parametrize("seek", [0x33A3, 0x33E3])
-def test_aprsfsk_on_a_model_of_the_chips_modem(seek):
+@pytest.mark.parametrize("ctrl", [0xF8, 0xF0])
+def test_aprsfsk_on_a_model_of_the_chips_modem(ctrl):
     """aprsfsk (aprsclk's HDLC, parser and vote behind the FD6818's packet modem) on the emulated
     M0 against modem_chip: the three stations' line bits as the 1200/2400 Hz receiver slices
     them with REG_58 = 33a3 (probe 4), the second with its tones swapped, random bits between
-    them (they start a packet now and then by chance: two bytes of sync word). It must take
-    every packet, set the clock, give up a packet's read where the line goes idle, keep its
-    timed reads in step with the FIFO and put the modem's registers back. aprsfskb listens in
-    33e3 and writes 33a3 at each sync."""
+    them (with two bytes of sync word they start a packet now and then by chance). It must take
+    every packet, set the clock, give up a packet's read where the line goes idle and turn the
+    modem off and on for the next, keep its timed reads in step with the FIFO and put the
+    modem's registers back. aprsfsk's sync word is four flags, aprsfskb's two."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
-    name = "aprsfsk.c" if seek == 0x33A3 else "aprsfskb.c"
+    name = "aprsfsk.c" if ctrl == 0xF8 else "aprsfskb.c"
     src = os.path.join(K6, "mod", name)
     total, BASE = 6.5, 4800
     code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u"), ("APRS_FSK_DUMP", "2")], src)
@@ -603,9 +603,9 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(seek):
     ret, stack = r
     assert ret == 3 and stack < 700, (ret, stack, e.said)
     assert e.empty == 0 and e.over == 0, (e.empty, e.over)
-    assert e.said[0] == f"aprs start hz=144390000 fsk={seek} sync=65278", e.said[:2]
+    assert e.said[0] == f"aprs start hz=144390000 fsk=13219 sync={ctrl}", e.said[:2]
     end = e.said[-1]
-    assert "ok=3 " in end and "ts=3 v=3" in end, e.said
+    assert "ok=3 " in end and "ts=3 v=3" in end and " lost=0 " in end, e.said
     hh, mm, ss = end.split("utc=")[1].split()[0].split(":")
     assert abs(int(hh) * 3600 + int(mm) * 60 + float(ss) - (UTC0 + total) % DAY) < 0.6, end
     f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
@@ -644,8 +644,8 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(seek):
     assert any(on for _, on in e.led)
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
-    assert 0x33A3 in e.writes[0x58] and (seek in e.writes[0x58])
-    assert e.writes[0x5A][0] == 0xFEFE and 0x10F0 in e.writes[0x59] and e.writes[0x5D][0] == 0xFF00
-    if seek != 0x33A3:
-        w58 = [w for w in e.writes[0x58] if w]
-        assert w58[0] == seek and w58.count(0x33A3) == len(y), w58
+    # the modem off and on for each packet, armed twice each time
+    w58 = e.writes[0x58]
+    assert w58.count(0x33A3) == len(y) + 1 and w58.count(0) >= len(y) + 2, w58
+    assert e.writes[0x5A][0] == 0xFEFE and e.writes[0x5B][0] == 0xFEFE and e.writes[0x5D][0] == 0xFF00
+    assert e.writes[0x59].count(0x1000 | ctrl) == 2 * (len(y) + 1) and 0x3002 in e.writes[0x3F], e.writes[0x59][:8]
