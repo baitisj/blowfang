@@ -60,29 +60,27 @@ enum {
    of blast damage they take (%), gr how hard they push. qty: how many a purchase gives (0 for
    QRP Shot: always in stock). */
 typedef struct {
-  char name[13];
   uint8_t price, qty, r, dmg, cap, gr, fl;
-  char info[20];
-} gw_item_t;
+} gw_item_t;                    /* (names and shop lines: gw.c's GW_TEXT, in the same order) */
 
 #define GW_SPARK_R 2
 #define GW_SPARK_DMG 20
 
 static const gw_item_t GW_ITEMS[GW_NI] = {
-    {"QRP Shot", 0, 0, 3, 35, 100, 4, 0, "5 W, always free"},
-    {"Kilowatt", 60, 1, 8, 80, 100, 4, 0, "QRO: big blast"},
-    {"FCC Violator", 35, 2, 11, 40, 55, 4, 0, "splatter, short hop"},
-    {"12V Charger", 45, 2, 3, 30, 100, 4, GF_SPARK, "sparks fly"},
-    {"CW Strike", 30, 3, 2, 100, 100, 4, GF_NOWIND, "no wind, precise"},
-    {"Beverage", 40, 2, 6, 65, 100, 4, GF_CEIL, "strong, stays low"},
-    {"The Lid", 15, 3, 4, 45, 100, 4, GF_WANDER, "wanders around"},
-    {"Skip Zone", 30, 3, 4, 45, 100, 4, GF_BOUNCE, "skips off ground"},
-    {"Repeater", 55, 1, 4, 40, 100, 4, GF_SPLIT, "kerchunk: splits 3"},
-    {"Yagi Beam", 35, 2, 3, 55, 100, 0, GF_BEAM | GF_NOWIND, "straight, no drop"},
-    {"Coax Spool", 20, 2, 6, 0, 100, 4, GF_DIRT, "piles up dirt"},
-    {"Tropo Duct", 25, 3, 4, 45, 100, 2, 0, "half gravity: far"},
-    {"Ground Rod", 30, 1, 9, 60, 50, 1, 0, "shield: soaks half"},
-    {"Faraday Cage", 70, 1, 12, 100, 100, 3, 0, "shield: bends shots"},
+    {0, 0, 3, 35, 100, 4, 0},                     /* QRP Shot */
+    {60, 1, 8, 80, 100, 4, 0},                    /* Kilowatt */
+    {35, 2, 11, 40, 55, 4, 0},                    /* FCC Violator */
+    {45, 2, 3, 30, 100, 4, GF_SPARK},             /* 12V Charger */
+    {30, 3, 2, 100, 100, 4, GF_NOWIND},           /* CW Strike */
+    {40, 2, 6, 65, 100, 4, GF_CEIL},              /* Beverage */
+    {15, 3, 4, 45, 100, 4, GF_WANDER},            /* The Lid */
+    {30, 3, 4, 45, 100, 4, GF_BOUNCE},            /* Skip Zone */
+    {55, 1, 4, 40, 100, 4, GF_SPLIT},             /* Repeater */
+    {35, 2, 3, 55, 100, 0, GF_BEAM | GF_NOWIND},  /* Yagi Beam */
+    {20, 2, 6, 0, 100, 4, GF_DIRT},               /* Coax Spool */
+    {25, 3, 4, 45, 100, 2, 0},                    /* Tropo Duct */
+    {30, 1, 9, 60, 50, 1, 0},                     /* Ground Rod */
+    {70, 1, 12, 100, 100, 3, 0},                  /* Faraday Cage */
 };
 
 /* sin of 0, 6, .. 96 degrees, Q12 (gw_sin interpolates between them) */
