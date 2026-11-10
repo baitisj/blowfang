@@ -5,12 +5,14 @@ the orange side keys jumping from peak to peak, UP/DOWN stepping along the frequ
 listening frequency drawn as a blinking bar with a caret above it.
 
 **The lens scale (Jeff, 2026-11-09).** The listening frequency now always sits in the middle of
-the screen and the scale moves with it. The scale is a lens: within +-20 kHz of the middle each
-bin is 2.5 kHz wide (16 bins, a quarter of the screen), and further out each bin's step grows by
-the same amount, so the last bin each side lands on the span (+-100 kHz to +-5 MHz, keys 1 and 3).
+the screen and the scale moves with it. The scale is logarithmic out from the middle (Jeff,
+2026-11-10: "the log scale to stretch out smoothly in and out of that area"): each bin's step is
+a fixed ratio larger than the one inside it, the 8th bin each side always lands on +-20 kHz (the
+lens, 16 bins, a quarter of the screen) and the last on the span (+-100 kHz to +-5 MHz, keys 1
+and 3). Until then the lens was 2.5 kHz bins, flat, with the growth starting at its edge.
 Each wide bin is the loudest of quick reads 20 kHz apart across its range, so a carrier between
-two bin centres still shows. Every bin reads with the wide filter, so a carrier fills about 9 of
-the lens's bins (+-12 kHz) as a rounded hump. The narrow filter (2026-11-09) gave the lens a flat
+two bin centres still shows. Every bin reads with the wide filter, so a strong carrier fills the
+bins within about +-12 kHz of it. The narrow filter (2026-11-09) gave the lens a flat
 top and a floor lower than the outer bins (one early read through the narrower filter against
 the loudest of several), and Jeff, seeing it on the radio on 2026-11-10, chose the wide one.
 An axis under the bars has ticks as on log paper (every 5 kHz to 20 kHz, 10 kHz to 100 kHz,
@@ -58,10 +60,12 @@ top row over each repeater the explorer saved, the axis and its ticks under the 
 past the band's edge); line 5 the axis's labels (`-1M   -20k +20k   +1M`), or with the bar on a
 saved repeater its call, offset and TX tone (`N0CALL +5.0 103.5`), or "no peak" for 1.5 s.
 
-**The lens.** Bin C+-k sits `off[k]` x 2.5 kHz from the middle: `off[k] = k` for k up to 8, then
-`off[8+j] = 8 + j + (span - 31) * j(j+1) / (23 * 24)` for j = 1..23, so each step past the lens
-is one more share than the last and bin 31 lands on the span. At +-1 MHz the steps grow from
-2.5 kHz to about 75 kHz; at +-5 MHz to about 410 kHz. A bin wider than 20 kHz takes quick reads
+**The scale.** Bin C+-k sits `off[k]` x 500 Hz from the middle, `off[k] = a (r^k - 1)` worked in
+fixed point (`g += g * k >> 12` from `g = 256 a`), each step at least one unit. The ratio and `a`
+for each span (`LK`, `LG` in surf.c) were found offline so that bin 31 lands exactly on the span
+and bin 8 on 20 kHz (20.5 kHz at +-5 MHz). At +-1 MHz the steps grow from 1.5 kHz in the middle
+by about 17 % a bin to 145 kHz at the edge (4 kHz at the lens's edge); at +-100 kHz the scale is
+nearly even (2.5 to 4.5 kHz); at +-5 MHz from 1 kHz to about 1 MHz. A bin wider than 20 kHz takes quick reads
 20 kHz apart across its range (halfway to each neighbour) and keeps the loudest and where it was:
 a jump goes to that frequency's channel, not the bin's centre.
 

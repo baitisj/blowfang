@@ -28,16 +28,25 @@ SPANS = [40, 100, 200, 400, 1000, 2000]     # x 2.5 kHz: +-100 kHz .. +-5 MHz
 SEVENTY = (430_000_000, 450_000_000)
 
 
+LK = {40: (82, 60201), 100: (344, 11442), 200: (520, 6458), 400: (688, 4196), 1000: (906, 2620),
+      2000: (1070, 1925)}         # surf.c's LK, LG: the curve's ratio (Q12) and 256 a, per span
+
+
 def lens(span=400):
-    """each bin's offset from the middle (x 2.5 kHz), as surf.c's lens() works it out"""
-    u, n = span - C, C - KI
-    return list(range(KI + 1)) + [KI + j + u * j * (j + 1) // (n * (n + 1)) for j in range(1, n + 1)]
+    """each bin's offset from the middle (x 500 Hz), as surf.c's lens() works it out: a geometric
+    curve, each step at least one unit"""
+    k, g0 = LK[span]
+    g, off = g0, [0]
+    for _ in range(C):
+        g += (g * k) >> 12
+        off.append(max(off[-1] + 1, (g - g0 + 128) >> 8))
+    return off
 
 
 def scale(cen, span=400, band=SEVENTY):
     """the 63 bins' frequencies around cen, 0 outside the band"""
     off = lens(span)
-    hz = [cen + (1 if i > C else -1) * 2500 * off[abs(i - C)] for i in range(NV)]
+    hz = [cen + (1 if i > C else -1) * 500 * off[abs(i - C)] for i in range(NV)]
     return [f if band[0] <= f <= band[1] else 0 for f in hz]
 
 
@@ -168,11 +177,14 @@ def test_lens_scale_steps_grow_outward_and_end_on_the_span():
     for span in SPANS:
         off = lens(span)
         steps = [b - a for a, b in zip(off, off[1:])]
-        assert off[KI] == 8 and steps[:KI] == [1] * KI          # +-20 kHz in 2.5 kHz bins
-        assert off[C] == span                                    # the last bin on the span
+        assert abs(off[KI] * 500 - 20_000) <= 500                # the lens's edge on +-20 kHz
+        assert off[C] * 500 == span * 2500                       # the last bin on the span
+        assert all(st > 0 for st in steps)
+        # log all the way (Jeff 2026-11-10): each step about a fixed ratio over the last, also
+        # through the lens's edge (it was 2.5 kHz flat inside, then a jump)
         assert all(b >= a - 1 for a, b in zip(steps, steps[1:]))    # growing (whole units)
-        assert steps[-1] >= steps[KI] and all(st > 0 for st in steps)
-    assert lens(400)[C] * 2500 == 1_000_000 and lens(2000)[KI + 1] - lens(2000)[KI] > 1
+        assert steps[0] < steps[KI] <= 1.5 * steps[KI - 1] + 1     # no jump at the lens's edge
+    assert lens(400)[C] * 500 == 1_000_000 and lens(400)[1] * 500 == 1500
 
 
 @need_clang
@@ -231,10 +243,11 @@ def test_bargraph_peaks_side_keys_and_audio():
     on = at(fr, 3_700_000)
     assert on["text"][1] == "440.8500 -70dBm RX" and caret(on) == C
     assert on["text"][5] == labels(400)
-    # the lens: the carrier fills the middle bins, 2.5 kHz apart, within the wide filter
-    # (+-12 kHz), and no further (the narrow one, until Jeff saw its flat top on 2026-11-10: +-6)
-    assert all(height(on, i) >= 18 for i in range(C - 4, C + 5))
-    assert all(height(on, i) <= 2 for i in range(C - KI, C + KI + 1) if abs(i - C) >= 5)
+    # the lens: the carrier fills the middle bins within the wide filter (+-12 kHz), and no
+    # further (the narrow one, until Jeff saw its flat top on 2026-11-10: +-6)
+    off = lens(400)
+    assert all(height(on, i) >= 18 for i in range(NV) if off[abs(i - C)] * 500 <= 11_000)
+    assert all(height(on, i) <= 2 for i in range(C - KI, C + KI + 1) if off[abs(i - C)] * 500 >= 13_000)
     assert at(fr, 5_100_000)["text"][1] == "441.2000 -95dBm RX"
     # the listening bar is drawn like the others, steady (it blinked until Jeff, 2026-11-10)
     a, b = on, fr[fr.index(on) + 1]
@@ -315,15 +328,13 @@ def test_axis_ticks_show_the_frequency_intervals():
                 dist, j = min(d)
                 lens_ = lens(span)
                 a = abs(j - C)
-                step = 2500 * (lens_[a + 1] - lens_[a] if a < C else lens_[C] - lens_[C - 1])
+                step = 500 * (lens_[a + 1] - lens_[a] if a < C else lens_[C] - lens_[C - 1])
                 if 2 * dist <= step:
                     xs.add(2 * j + (e > 0))
         return xs
 
     one = at(fr, 1_500_000)                                   # +-1 MHz
     assert ticks(one) == want(440_600_000, 400) and ticks(one, True) == want(440_600_000, 400, True)
-    # 2.5 kHz bins in the lens: its 5 kHz ticks every 4 pixels, then closer and closer
-    assert {67, 71, 75, 79, 58, 54, 50, 46} <= ticks(one)
     assert {46, 79} <= ticks(one, True)                      # +-20 kHz, the lens's edges, are major
     assert all(lit(one, AX, x) for x in range(126))          # the axis line under every bin
     assert one["text"][5] == labels(400)

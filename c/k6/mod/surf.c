@@ -3,12 +3,13 @@
    The screen is a bargraph of signal strength (Y) across frequency (X): 63 bins, 2 pixels each,
    drawn as the level-6 waterfall bitmap (30 rows of 128 pixels, y = 21-50). The listening
    frequency is always the middle bin (x = 62-63), its bar drawn like the others with a caret
-   above it (it blinked until 2026-11-10; Jeff: no purpose), and the scale moves with it. The scale is a lens (Jeff,
-   2026-11-09): the 8 bins each side of the middle are 2.5 kHz apart (+-20 kHz, a quarter of the
-   screen), and further out each bin's step grows by the same amount, so the last of the 31 each
-   side reaches the span (1 / 3: +-100 kHz to +-5 MHz). Every bin reads with the wide filter (the
-   narrow one, 2026-11-09, gave the lens a flat top and a lower floor than the rest; Jeff
-   2026-11-10: wide again). Under the bars an axis line has
+   above it (it blinked until 2026-11-10; Jeff: no purpose), and the scale moves with it. The
+   scale is logarithmic out from the middle (Jeff, 2026-11-09 and -10): each bin's step is a
+   fixed ratio larger than the one inside it, the 8th bin each side always lands on +-20 kHz
+   (the "lens", a quarter of the screen), and the 31st on the span (1 / 3: +-100 kHz to
+   +-5 MHz); at +-1 MHz the steps run from 1.5 kHz in the middle to 145 kHz at the edge. Every
+   bin reads with the wide filter (the narrow one, 2026-11-09, gave the lens a flat top and a
+   lower floor than the rest; Jeff 2026-11-10: wide again). Under the bars an axis line has
    ticks as on log paper, every 5 kHz to 20 kHz, every 10 kHz to 100 kHz, every 100 kHz to 1 MHz
    and every 1 MHz, taller at 20 kHz, 100 kHz and 1 MHz (Jeff: "axis tic marks to help understand
    the frequency intervals"); line 5 labels it "-1M   -20k +20k   +1M" (the span at each end, the
@@ -76,8 +77,9 @@
 #define NB 64                   /* bins in the arrays */
 #define NV 63                   /* bins on screen: the middle one and 31 each side */
 #define C 31                    /* the middle bin, the listening frequency (x = 62-63) */
-#define KI 8                    /* the lens: 8 bins each side of the middle 2.5 kHz apart */
-#define U_HZ 2500u              /* the lens's step, and the unit of every bin's offset */
+#define KI 8                    /* the lens's edge: bin C+-8 is +-20 kHz from the middle */
+#define U_HZ 2500u              /* the unit of channel steps and spans */
+#define L_HZ 500u               /* the unit of every bin's offset (the inner steps are finer) */
 #define ROWS 30                 /* bitmap rows (KM_WF_ROWS) */
 #define BAR0 6                  /* first bar row: caret rows 1-3, peak ticks row 4 */
 #define AX 27                   /* the axis: its line, then ticks in rows 28 (all) and 29 (major) */
@@ -130,6 +132,12 @@ static const band_t BANDS[] = {
 /* the span: the last bin's offset from the middle, x 2.5 kHz (100 kHz to 5 MHz) */
 static const uint16_t SPANS[] = {40, 100, 200, 400, 1000, 2000};
 #define NSPANS 6
+/* the scale's curve for each span (Jeff 2026-11-10: log all the way, +-20 kHz kept in place):
+   off(j) = a (r^j - 1) in L_HZ units, each step r times the last, worked in fixed point as
+   g += g * k >> 12 from g = 256 a; k and 256 a found offline so that bin C lands exactly on
+   the span and bin KI on 20 kHz (20.5 at +-5 MHz) (tests/test_k6_surf.py lens() is the same) */
+static const uint16_t LK[] = {82, 344, 520, 688, 906, 1070};
+static const uint16_t LG[] = {60201, 11442, 6458, 4196, 2620, 1925};
 /* the axis's ticks, kHz from the middle, as on log paper; 20 (the lens's edge), 100 and 1000 major */
 static const uint16_t TICKS[] = {5,   10,  15,  20,  30,  40,  50,  60,  70,   80,   90,   100,  200,
                                  300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000};
@@ -149,7 +157,7 @@ typedef struct {
   int next, pend, sj, sweeps;
   int sfl, sel_dbm;
   uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, key, raw, full, refine, stale;
-  uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x 2.5 kHz */
+  uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
   uint32_t r47, odr;
@@ -294,12 +302,16 @@ static int kp_event(sf_t *s) {
 
 /* ---- the scale ---- */
 
-/* the lens's offsets for the span: 0..KI one step each, then step 1 + c*j for the j-th bin past
-   the lens, c such that bin C lands on the span: off = KI + j + (span - C) * j(j+1) / (n(n+1)) */
+/* the offsets for the span: a smooth geometric curve out from the middle (LK, LG), each step at
+   least one unit */
 static void lens(sf_t *s) {
-  uint32_t u = SPANS[s->si] - C, n = C - KI, j;
-  for (j = 0; j <= KI; j++) s->off[j] = (uint16_t)j;
-  for (j = 1; j <= n; j++) s->off[KI + j] = (uint16_t)(KI + j + udiv(u * j * (j + 1), n * (n + 1)));
+  uint32_t g0 = LG[s->si], g = g0, k = LK[s->si], j, v;
+  s->off[0] = 0;
+  for (j = 1; j <= C; j++) {
+    g += (g * k) >> 12;
+    v = (g - g0 + 128) >> 8;
+    s->off[j] = (uint16_t)(v > s->off[j - 1] ? v : s->off[j - 1] + 1u);
+  }
 }
 
 /* bin i's distance from the middle, in bins */
@@ -308,13 +320,13 @@ static int dist(int i) { return i < C ? C - i : i - C; }
 /* the step around bin i (Hz) */
 static uint32_t sp(sf_t *s, int i) {
   int a = dist(i);
-  return U_HZ * (a < C ? s->off[a + 1] - s->off[a] : s->off[C] - s->off[C - 1]);
+  return L_HZ * (a < C ? s->off[a + 1] - s->off[a] : s->off[C] - s->off[C - 1]);
 }
 
 /* the frequencies bin i stands for: halfway to its neighbours */
 static void cov(sf_t *s, int i, uint32_t *lo, uint32_t *hi) {
   int a = dist(i);
-  uint32_t in = a ? U_HZ * (s->off[a] - s->off[a - 1]) / 2 : U_HZ / 2, out = sp(s, i) / 2;
+  uint32_t out = sp(s, i) / 2, in = a ? L_HZ * (s->off[a] - s->off[a - 1]) / 2 : out;
   *lo = s->hz[i] - (i < C ? out : in);
   *hi = s->hz[i] + (i < C ? in : out);
 }
@@ -369,7 +381,7 @@ static void recentre(sf_t *s, uint32_t hz) {
   s->cen = b->lo + udiv(hz - b->lo + s->ch / 2, s->ch) * s->ch;
   if (s->cen > b->hi) s->cen -= s->ch;
   for (i = 0; i < NV; i++) {
-    uint32_t o = U_HZ * s->off[dist(i)], f = i < C ? s->cen - o : s->cen + o;
+    uint32_t o = L_HZ * s->off[dist(i)], f = i < C ? s->cen - o : s->cen + o;
     old[i] = s->pk[i];
     lv[i] = s->lvl[i];
     s->hz[i] = s->pk[i] = f >= b->lo && f <= b->hi ? f : 0;
@@ -825,7 +837,8 @@ int k6_main(const k6_api_t *api) {
   }
 #ifdef SURF_AUTO_S
   /* the last bargraph, for the bench: "bar <middle MHz> <span> lens", then the bins, 32 a line,
-     a letter a bin: its height a (1 px) to x (24 px), '-' outside the band */
+     a letter a bin: its height a (1 px) to x (24 px), '-' outside the band; the screen shows it too */
+  draw(s);
   p = put(s->ln, "bar ");
   p = mhz(p, s->cen, 4);
   *p++ = ' ';
