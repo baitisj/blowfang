@@ -194,3 +194,41 @@ the `v` line ends with `b=` (bursts), `p=` (the highest RSSI) and `f=` (the floo
 a listen answers either way: bursts and no capture at their times in a front end mean the
 receiver does not start on AM there; no bursts mean no traffic reached the K6's antenna. Four
 front ends of 150 s make it 10.5 minutes.
+
+#### Second listen (2026-11-10 15:52 to 16:03Z): weak carriers, and no start on any
+
+Build ffe2e09, 632 s on 131.550 MHz, the IC-7100 silent after the upload:
+
+```
+s 0 t=32022 cfg=00e9 b=c195 sy=aaaa l=ff20
+b0 1 t=64226 ms=150 r=-103
+v0 n=0 w=0 b=1 p=-103 f=-113
+s 1 t=182027 cfg=00e9 b=c195 sy=aaaa l=ff20
+c1 1 t=237412 w=278 k=0 r=-114
+b1 1 t=289380 ms=100 r=-104
+b1 2 t=289580 ms=50 r=-104
+v1 n=1 w=278 b=2 p=-104 f=-114
+s 2 t=332033 cfg=00e9 b=c195 sy=aaaa l=ff20
+c2 1 t=404281 w=277 k=0 r=-114
+b2 1 t=423230 ms=150 r=-105
+v2 n=1 w=277 b=1 p=-105 f=-116
+s 3 t=482038 cfg=00e9 b=c195 sy=aaaa l=ff20
+b3 1 t=516230 ms=50 r=-106
+b3 2 t=629880 ms=350 r=-104
+v3 n=0 w=0 b=2 p=-104 f=-116
+```
+
+- **Six carriers in ten minutes, all weak**: -103 to -106 dBm at their peaks, 9 to 12 dB over
+  a floor of -113 to -116 dBm, 50 to 350 ms over the threshold (the length of a short block,
+  or the top of a fading longer one). Whether they are ACARS blocks the log cannot say; on
+  this channel little else is likely.
+- **The plain receiver started on none of them**, with the AF source FM (b0, b2) or AM (b1,
+  b3): the two captures are noise, at the floor and minutes from any carrier.
+- At 10 dB over the floor that proves little: a sync word wants 16 clean samples of the
+  pre-key, and the 1200/2400 Hz bench runs lost their starts at such levels too.
+
+So hamlet's antenna hears ACARS traffic only faintly, and the question (does the plain
+receiver read an AM signal's audio with the AF source set to AM?) wants a strong AM signal.
+The IC-7100 has AM on HF and 50 MHz only, and the K6 receives from 18 MHz up: a bench test
+of the same blocks in AM on 6 m would answer it. That is outside the bench's rule (transmit
+on 440.850 MHz only) and is the owner's call.
