@@ -559,8 +559,8 @@ def dfsk_frames(tones, spb):
 
 def dfsklog_report(lines):
     """dfskcap's say lines (as in the serial log) -> one line a capture: its c line, the bytes
-    the chip's packet held and at what rate (from dn), the share of runs of 1, 2 and more
-    samples, and the frames each decoder reads in it"""
+    the chip's packet held and how long that is, the share of runs of 1, 2 and more samples,
+    and the frames each decoder reads in it"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
     sets, caps, out = {}, {}, []
@@ -585,18 +585,11 @@ def dfsklog_report(lines):
             out.append(ln + " : no words")
             continue
         baud = int(round(int(sets[key[0]]["b"], 16) / 10.32444))
-        for _ in range(8):                                            # the empty FIFO's last word again
-            if len(words) > 1 and words[-1] == words[-2]:
-                words.pop()
-        dn, note = int(kv.get("dn", 0)), []
-        if dn:
-            byt = dn * baud / 8000 + 2                                # the first word was in by then
-            note.append(f"RX-done after {dn} ms = {byt:.0f} bytes at {baud} baud")
+        note = [f"{2 * len(words)} bytes, {len(words) * 16000 / baud:.0f} ms at {baud} baud"]
         b = np.array([int(c) for w in words for c in f"{w:016b}"], np.int8)
         edges = np.flatnonzero(np.diff(b)) + 1
         runs = np.diff(np.concatenate([[0], edges, [len(b)]]))
-        note.append(f"{len(words)} words, runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} "
-                    f"3+:{np.mean(runs >= 3):.0%}")
+        note.append(f"runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} 3+:{np.mean(runs >= 3):.0%}")
         for how in ("corr", "pairs"):
             if how == "pairs" and baud != 4800:
                 continue

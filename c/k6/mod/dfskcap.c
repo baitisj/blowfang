@@ -13,8 +13,8 @@
    This module records, for the host to read (python3 -m modem.aprs dfsklog LOG): words of that
    receiver on the bench's rehearsal of real packets (python3 -m modem.aprs wav OUT.wav --now
    --kinds --repeat N). It asks:
-     - does REG_5D take a length over 256 bytes (its bits 7:5, as on a BK4819)? dn= says: 427 ms
-       for 256 bytes at 4800 baud, 3413 ms for 2048.
+     - does REG_5D take a length over 256 bytes (its bits 7:5, as on a BK4819)? w= says: 128
+       words for 256 bytes (427 ms at 4800 baud), 1024 for 2048 (3413 ms).
      - which sync word starts it on a plain packet: AAAA (16 samples of 2200 Hz, in an opening of
        flags whose long tone is the space) or 6666 (of 1200 Hz)?
      - what do the words look like for a pre-emphasised, a weak and a noisy packet?
@@ -32,14 +32,18 @@
    The FIFO is read by time, a word every 16 bits of the setting's baud, three words behind the
    chip (REG_5E: almost full at 6, and then a word more is read). A word unlike the one before
    starts a capture (turning the modem on raises the sync flag by itself, and an empty FIFO
-   gives its last word again); it ends 8 words after RX-done, at CAPW words or after 5 s. Then
-   the modem is turned off and on for the next. Lines:
+   gives its last word again); it ends when STALE reads in a row gave the same word (the FIFO
+   is empty: the chip's packet is over), at CAPW words or after 5 s. Then the modem is turned
+   off and on for the next. RX-done in REG_02 is noted and not believed: the first bench run
+   (2026-11-10 12:00Z) had it 1 ms after every capture's first word, whatever REG_5D said,
+   with the chip's words going on. Lines:
      dfskcap start hz=440850000 n=7
      s 0 t=1234 cfg=00e9 b=c195 sy=aaaa l=ffe0      a setting begins
-     c0 3 t=12345 dn=3413 w=1032 wd=1024 i=3002 f=2 r=-21
+     c0 3 t=12345 dn=1 dl=3413 w=1024 i=3002 f=2 r=-21
                                         setting, capture, ms at its first word, ms from there
-                                        to RX-done (0: none), words read, words read at RX-done,
-                                        REG_02's flags seen, extra reads for almost-full, RSSI
+                                        to the first RX-done flag and to the last (0: none),
+                                        words (without the stale ones at the end), REG_02's
+                                        flags seen, extra reads for almost-full, RSSI
      d0 3 000 aaaaaaaa5555...           its words, 12 a line, as on the air (first bit first);
                                         the offset counts words, in hex
      v0 n=9 w=9288                      at the setting's end: captures, words
@@ -63,10 +67,11 @@
                             upload's audio ends, and that is no Bell 202 */
 #endif
 #define NV 7
-#define CAPW 1040u       /* words kept of a capture: 2048 bytes and the 8 after RX-done, and a few */
+#define CAPW 1056u       /* words kept of a capture: 2048 bytes, the stale reads, and a few */
 #define CAPN 12u         /* captures said per setting */
 #define LAG 3u           /* words the timed reads stay behind the chip (its FIFO holds 8) */
-#define TAIL 8u          /* words read after RX-done: what the FIFO still held */
+#define STALE 24u        /* reads of the same word in a row: the FIFO is empty (80 ms at 4800 baud;
+                            no packet holds a tone that long) */
 #define CAP_MS 5000u     /* a capture's longest */
 
 #define IRQ_DONE 0x2000u
@@ -181,7 +186,7 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now = 0, tkey = 0, t0, tcap = 0, dn = 0, prev, total = 0, af;
-  uint32_t got = 0, wd = 0, tail = 0, irq = 0, nfull = 0, ncap = 0, nw = 0, rssi = 0, tlast;
+  uint32_t got = 0, dl = 0, same = 0, irq = 0, nfull = 0, ncap = 0, nw = 0, rssi = 0, tlast;
   int32_t acc = 0;
   uint16_t saved[sizeof(SAVED)];
   int cur = 0, in = 0, key = 0;
@@ -233,7 +238,10 @@ int k6_main(const k6_api_t *api) {
     if (in) {
       irq |= f;
       if ((f & IRQ_FULL) && n < 8) n++, nfull++;
-      if ((f & IRQ_DONE) && !dn) dn = now - tcap + !(now - tcap), wd = got;
+      if (f & IRQ_DONE) {
+        dl = now - tcap + !(now - tcap);
+        if (!dn) dn = dl;
+      }
     }
     while (n && !over) {
       uint32_t w = api->fd_read(0x5F), x = (w & 0xFF) << 8 | w >> 8;
@@ -241,14 +249,17 @@ int k6_main(const k6_api_t *api) {
       if (!in) {
         if (x == prev) continue;
         /* the first word of a packet: from here the reads stay LAG words behind the chip */
-        in = 1, got = 0, dn = 0, wd = 0, tail = 0, irq = f, nfull = 0, tcap = now;
+        in = 1, got = 0, dn = 0, dl = 0, same = 0, irq = f, nfull = 0, tcap = now;
         rssi = api->fd_read(0x67) & 0x1FF;
         acc = -(int32_t)(LAG * v->wticks3), n = 0;
+      } else {
+        same = x == prev ? same + 1 : 0;
       }
+      prev = x;
       if (got < CAPW) s->cap[got] = (uint16_t)x;
       got++;
-      if (dn && ++tail >= TAIL) over = 1;
-      if (got >= CAPW) over = 1;
+      if (same >= STALE) got -= STALE, over = 1;
+      else if (got >= CAPW) over = 1;
     }
     if (in && now - tcap >= CAP_MS) over = 1;
     if (in && over) {
@@ -257,8 +268,8 @@ int k6_main(const k6_api_t *api) {
         p = ln, *p++ = 'c', p = dec(p, (uint32_t)cur), *p++ = ' ', p = dec(p, ncap);
         p = kv(p, " t=", tcap);
         p = kv(p, " dn=", dn);
+        p = kv(p, " dl=", dl);
         p = kv(p, " w=", got);
-        p = kv(p, " wd=", wd);
         p = kx(p, " i=", irq);
         p = kv(p, " f=", nfull);
         p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(rssi));

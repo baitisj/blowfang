@@ -414,6 +414,8 @@ def modem_chip(le, pick, BASE=4800):
         either = False      # the sync word upside down too (what probe 4's captures suggest)
         spur, pol = False, 0
         long5d = False      # REG_5D<7:5> as three more bits of the length (a BK4819's; dfskcap asks)
+        early_done = False  # the RX-done flag with a packet's first word, the packet going on
+                            # (the plain FSK receiver on the bench, 2026-11-10 12:00Z)
         sync = done = full = False
         last, empty, over = 0, 0, 0
         r = {0x58: 0, 0x59: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x5E: 4, 0x72: 0}
@@ -440,12 +442,14 @@ def modem_chip(le, pick, BASE=4800):
                     continue
                 self.buf.append(bit)
                 self.sync |= len(self.buf) == 16        # probe 2: the first word is in by then
+                if self.early_done and len(self.buf) == 40:
+                    self.end = True
                 n = len(self.buf) // 16 - self.taken
                 self.full |= n == (self.r[0x5E] & 7 or 4) and len(self.buf) % 16 == 0
                 self.over += n > 8
                 if len(self.buf) == 8 * ((self.r[0x5D] >> 8) + ((self.r[0x5D] & 0xE0) << 3 if self.long5d else 0) + 1):
                     self.done = True
-                    self.end = True
+                    self.end = not self.early_done
 
         def on_stub(self, uc, addr, size, user):
             A = self.A
@@ -586,9 +590,11 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
 def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
     """dfskcap on the emulated M0 against modem_chip. At 4800 baud the model hears Bell 202 as
     the chip gave it in probe 2 (2200 Hz as alternating bits, 1200 Hz as 0011); at 6000 baud as
-    a true 1-bit sampler of the audio would. Every capture's words are the bits the model took,
-    none lost and none read twice, with REG_5D's length as it is known (256 bytes) and as the
-    probe hopes (2048); the report reads the frames back out of them."""
+    a true 1-bit sampler of the audio would, with random bits between the packets. Every
+    capture's words are the bits the model took, none lost and none read twice, with REG_5D's
+    length as it is known (256 bytes) and as the probe hopes (2048), and whether the model's
+    RX-done flag comes at the packet's end or (as the chip's did on the bench) with its first
+    word; the report reads the frames back out of them."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
@@ -599,7 +605,8 @@ def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
     assert len(full) < 2400, len(full)
     BASE, total = 24000, 138 * scale / 1000 + 6
     n = int(total * BASE)
-    like, true, t, k = np.zeros(n, int), np.zeros(n, int), 0.3, 0
+    rng = np.random.default_rng(7)
+    like, true, t, k = np.repeat(rng.integers(0, 2, n // 5 + 1), 5)[:n], rng.integers(0, 2, n), 0.3, 0
     while t + 1.0 < total:
         fr = aprs.frame(f"AG7EW-{k % 8 + 1}", "APRS", f">dfskcap {k}")
         line = aprs.hdlc_bits([fr], pre_flags=40).astype(int)
@@ -610,7 +617,7 @@ def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
         true[i:i + len(a)] = a > 0
         t, k = t + len(a) / BASE + 0.3, k + 1
     Chip = modem_chip(le, lambda r58: true if Chip.r[0x72] > 0xE000 else like, BASE)
-    Chip.either, Chip.long5d, Chip.hist = True, long5d, []
+    Chip.either, Chip.long5d, Chip.hist, Chip.early_done = True, long5d, [], long5d
     e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
              scratch=11776 - 24 - len(full))
     r = e.run()
@@ -647,13 +654,16 @@ def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
         kv = c[key]
         byt = 256 if (not long5d or key[0] == 1) else 2048
         baud = 6000 if key[0] in (4, 5) else 4800
-        # RX-done is seen with the last few words still in the FIFO; eight more reads empty it
-        assert int(kv["w"]) == len(words) == int(kv["wd"]) + 8 and int(kv["i"], 16) & 0x2000, (key, kv)
-        assert byt // 2 - 7 <= int(kv["wd"]) <= byt // 2, (key, kv)
-        assert abs(int(kv["dn"]) - (byt * 8 - 16) * 1000 / baud) < 25, (key, kv, byt)
+        # the capture ends where the FIFO is empty, wherever RX-done was flagged (a packet whose
+        # last words are the same word loses those: they look like the empty FIFO's)
+        assert int(kv["w"]) == len(words) and byt // 2 - 2 <= len(words) <= byt // 2, (key, kv)
+        assert int(kv["i"], 16) & 0x2000, (key, kv)
+        if long5d:
+            assert int(kv["dn"]) <= 12 and int(kv["dl"]) <= 12, (key, kv)
+        else:
+            assert abs(int(kv["dl"]) - (byt * 8 - 16) * 1000 / baud) < 25, (key, kv, byt)
         bits = "".join(f"{w:016b}" for w in words)
-        assert any(bits[:byt * 8] == b for b in took), (key, kv)
-        assert all(w == words[byt // 2 - 1] for w in words[byt // 2:]), (key, words[-10:])
+        assert any(b.startswith(bits) and len(b) == byt * 8 for b in took), (key, kv)
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)                      # put back as read
     assert 0x0100 in e.writes[0x2B] and 0x0206 in e.writes[0x5E]
@@ -662,8 +672,7 @@ def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
     got = [ln for ln in rep if ln[0] == "c"]
     assert len(got) == len(c), rep
     if long5d:
-        byt = {ln.split()[0] + " " + ln.split()[1]: int(ln.split(" ms = ")[1].split()[0]) for ln in got}
-        assert all(abs(n - (256 if k[1] == "1" else 2048)) < 8 for k, n in byt.items()), byt
+        assert all((": 25" if ln[1] == "1" else ": 204") in ln for ln in got), got
         assert all("pairs: 0" not in ln and "[AG7EW-" in ln for ln in got if ln[1] in "0236"), got
         assert any(" corr: 0" not in ln and "[AG7EW-" in ln for ln in got if ln[1] in "45"), got
 

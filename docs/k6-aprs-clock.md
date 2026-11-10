@@ -563,20 +563,39 @@ against the rehearsal signal:
 | 6 | 00E9 | 4800 | AAAA | FFE0, REG_2B + 0100 | 15 s | de-emphasis off |
 
 It waits 32 s (its own upload's audio is still on the air), then reads the FIFO by time, three
-words behind the chip, from the first word unlike the one before to eight words after RX-done,
-and says each capture: a `c` line (setting, capture, ms at its first word, `dn=` ms from there
-to RX-done, words, words read at RX-done, REG_02's flags, extra reads for the almost-full flag,
-RSSI) and `d` lines (the words, twelve a line, as on the air). `dn=` answers the length: 427 ms
-for 256 bytes at 4800 baud, 3,413 for 2,048. `python3 -m modem.aprs dfsklog LOG` reads the log
-back: each capture's bytes and rate, its share of runs of one, two and more samples, and the
-frames two decoders read in it (the correlators of a true sampler; the pairs of missing
-transitions, at 4800). The emulated test (`test_dfskcap_records_the_plain_fsk_receivers_words`)
-runs it against the model with both lengths: every capture is the model's packet bit for bit.
+words behind the chip, from the first word unlike the one before until 24 reads in a row gave
+the same word (the FIFO is empty: the chip's packet is over), and says each capture: a `c` line
+(setting, capture, ms at its first word, `dn=` and `dl=` ms from there to the first and the
+last RX-done flag, words, REG_02's flags, extra reads for the almost-full flag, RSSI) and `d`
+lines (the words, twelve a line, as on the air). `w=` answers the length: 128 words for 256
+bytes, 1,024 for 2,048. `python3 -m modem.aprs dfsklog LOG` reads the log back: each capture's
+bytes and time, its share of runs of one, two and more samples, and the frames two decoders
+read in it (the correlators of a true sampler; the pairs of missing transitions, at 4800). The
+emulated test (`test_dfskcap_records_the_plain_fsk_receivers_words`) runs it against the model
+with both lengths, and with RX-done at the packet's end or with its first word: every capture
+is the model's packet bit for bit.
 
 If the length stays at 256 bytes there is no whole APRS packet in one of the chip's, and
 turning the modem off and on between two loses a dozen line bits: then this way is closed.
 If it is 2,048, the captures say whether a decoder for the chip's kind of sampling is worth
-writing. Not run yet.
+writing.
+
+**First run (2026-11-10 11:59 to 12:04Z, 5078b80, K6 image 6f30645, the K6 silent; a try at
+11:52Z was void, the K6 in EXPLORE and deaf to the upload).** That build ended a capture eight
+words after RX-done, and **REG_02's RX-done came 1 ms after every capture's first word**
+(`dn=1 w=9 i=2000`, all 63 captures said, REG_5D FFE0 or FF00 alike), so each capture is nine
+words and the length is not answered. What the nine words do show:
+
+- **RX-done there is no packet's end.** The nine words of a capture are nine words of the
+  rehearsal's flags, a mark bit every 32 samples right through them
+  (`5559 5555 5535 5555 54d5 5555 52aa aaaa caaa`): the chip went on receiving.
+- **The receiver starts on plain packets.** Sync AAAA: 330 captures in 45 s, in flags (93 to
+  96% of the runs one sample long) and inside frames; 6666: 44 in 15 s, all inside frames. The
+  RX gain bits (03E9) and the de-emphasis bit change nothing that shows.
+- **6000 baud hardly starts**: E739 three times in 20 s, D2DA never. The chip's bits there
+  are not a true sampler's either.
+
+The module now ends a capture at the empty FIFO and only notes RX-done (above).
 
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every
