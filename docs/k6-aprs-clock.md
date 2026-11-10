@@ -213,6 +213,8 @@ What it settled:
 - **Direct FSK is not a 1-bit sampler.** It syncs at 2400 and 4800 baud, but its bit clock
   follows the tone's zero crossings, and the words agree with the sent audio's sign only 55 to
   57% of the time. (On the host model a true sampler would need 4800 a second and about 30 dB.)
+  Read again after the fourth bench run ("The plain FSK receiver as a sampler of the audio",
+  below): at 4800 baud the tones are there, in the words' transitions.
 - **A new sync word alone doesn't take hold** when REG_58 and REG_72 stay the same (variant 5).
 
 **Probe 3 (07:34-07:40Z, 53268de): what gives the bit back, and what starts the receiver.**
@@ -515,11 +517,66 @@ REG_2B's de-emphasis bit. Senders on 144.390 pre-emphasise and arrive weak, so *
 the chip's modem cannot be the APRS receiver on the air**; it is one for flat packets (the
 bench's, or a K6's own). Not tried, for whoever takes it up:
 
-- REG_58's RX mode 0 (plain FSK) as a one-bit sampler of the audio at about 4,400 baud
-  (REG_72 near B170), sync word AAAA, the Bell 202 demodulator done in C on the sign bits. It
-  needs packets longer than 256 bytes (REG_5D's bits 7:5 on a BK4819) or a re-arm with no gap,
-  and a bit clock that holds still on audio that is no data.
+- REG_58's RX mode 0 (plain FSK) as a sampler of the audio, the Bell 202 demodulator done in C
+  on its bits: the next section.
 - The registers of the audio path before the modem that this module does not touch.
+
+### The plain FSK receiver as a sampler of the audio (`dfskcap`, a probe)
+
+Probe 2 wrote the plain FSK receiver (REG_58 = 00E9) off as "not a 1-bit sampler": its words
+agreed with the sign of the audio sent only 55 to 57% of the time. Read again (2026-11-10,
+after the fourth bench run), its one capture at 4800 baud, 128 words of a Bell 202 packet at
+-19 dBm, does carry the tones, in its transitions:
+
+- **2200 Hz reads as alternating bits** (a transition every sample: the chip's clock rounds
+  2200 Hz up to its own 2400), **1200 Hz as 0011** (a transition every second sample). In the
+  first flags the alternation still slips every dozen samples; after about five flags it holds
+  for a flag's whole seven bits.
+- The time base is the baud's: 2,048 samples hold 507 line bits of the packet sent (512 at
+  4800 a second).
+- Runs of two and more mark bits read clean (the closing flags, whose long tone is the mark:
+  `0101` seven times and `1111`, flag after flag). **A lone mark bit comes as two missing
+  transitions or as one**, and one missing transition is also what a slip of the chip's clock
+  looks like. A decoder that takes pairs of missing transitions as a 1200 Hz cycle gets 83 to
+  87% of the line bits (66 to 90 wrong of 507), and no frame.
+- The 2400 baud capture is of no use: its runs are of one, two and three samples in no order
+  that follows the tones.
+
+What a true 1-bit sampler of the audio would be worth, on the host (the rehearsal's kinds, the
+audio's sign taken 4800 or 6000 times a second, correlators and a clock): at 4800 the flat,
+pre-emphasised, low and short kinds decode; at 6000 the de-emphasised kind too; **none of the
+noisy kinds at either**. So at its best this way reads a sender's pre-emphasis, which the
+1200/2400 receiver cannot, and needs audio with little noise: stations a receiver hears in
+full quieting, not the weak ones.
+
+What is not known, and `c/k6/mod/dfskcap.c` (2.0 KB, receive only) asks on the bench channel
+against the rehearsal signal:
+
+| | REG_58 | Baud | Sync (two bytes) | REG_5D | For | Asks |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | 00E9 | 4800 | AAAA | FFE0 | 45 s | does the length take REG_5D's bits 7:5 (2,048 bytes, 3.4 s: a whole packet) as a BK4819's does? Does 2200 Hz in a plain packet's flags start it? What do pre-emphasised, weak and noisy packets read as? |
+| 1 | 00E9 | 4800 | AAAA | FF00 | 8 s | probe 2's length, 256 bytes in 0.43 s |
+| 2 | 00E9 | 4800 | 6666 | FFE0 | 15 s | a start on 1200 Hz |
+| 3 | 03E9 | 4800 | AAAA | FFE0 | 15 s | the RX gain bits |
+| 4 | 00E9 | 6000 | E739 | FFE0 | 20 s | five samples a bit: 1200 Hz as a true sampler reads it |
+| 5 | 00E9 | 6000 | D2DA | FFE0 | 20 s | the same for 2200 Hz |
+| 6 | 00E9 | 4800 | AAAA | FFE0, REG_2B + 0100 | 15 s | de-emphasis off |
+
+It waits 32 s (its own upload's audio is still on the air), then reads the FIFO by time, three
+words behind the chip, from the first word unlike the one before to eight words after RX-done,
+and says each capture: a `c` line (setting, capture, ms at its first word, `dn=` ms from there
+to RX-done, words, words read at RX-done, REG_02's flags, extra reads for the almost-full flag,
+RSSI) and `d` lines (the words, twelve a line, as on the air). `dn=` answers the length: 427 ms
+for 256 bytes at 4800 baud, 3,413 for 2,048. `python3 -m modem.aprs dfsklog LOG` reads the log
+back: each capture's bytes and rate, its share of runs of one, two and more samples, and the
+frames two decoders read in it (the correlators of a true sampler; the pairs of missing
+transitions, at 4800). The emulated test (`test_dfskcap_records_the_plain_fsk_receivers_words`)
+runs it against the model with both lengths: every capture is the model's packet bit for bit.
+
+If the length stays at 256 bytes there is no whole APRS packet in one of the chip's, and
+turning the modem off and on between two loses a dozen line bits: then this way is closed.
+If it is 2,048, the captures say whether a decoder for the chip's kind of sampling is worth
+writing. Not run yet.
 
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every

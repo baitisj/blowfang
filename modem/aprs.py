@@ -511,6 +511,101 @@ def demod(audio, fs):
     return frames
 
 
+# ---- the FD6818's plain FSK receiver as a sampler of the audio (c/k6/mod/dfskcap.c) ----
+def dfsk_tones(samples, fs, how="corr"):
+    """the chip's plain FSK bits (fs a second) -> a tone for each sample (1 = 1200 Hz).
+    "corr": the two tones' correlators over a bit, as for a true 1-bit sampler of the audio.
+    "pairs": for 4800 baud as the chip gives it (probe 2): 2200 Hz reads as alternating bits and
+    1200 Hz as 0011, so two missing transitions two samples apart are a 1200 Hz cycle and a lone
+    one is the chip's clock slipping"""
+    b = np.asarray(samples, int)
+    if how == "corr":
+        x, n, t = 2.0 * b - 1, int(round(fs / BAUD)), np.arange(len(b))
+        m = np.abs(np.convolve(x * np.exp(-2j * np.pi * MARK * t / fs), np.ones(n), "same"))
+        sp = np.abs(np.convolve(x * np.exp(-2j * np.pi * SPACE * t / fs), np.ones(n), "same"))
+        return (m > sp).astype(np.int8)
+    z = np.concatenate([[0], b[1:] == b[:-1]]).astype(int)        # 1: no transition before this sample
+    near = np.zeros(len(z), int)
+    near[2:] |= z[:-2]
+    near[:-2] |= z[2:]
+    pair = z & near
+    return (pair | np.append(pair[1:], 0)).astype(np.int8)
+
+
+def dfsk_frames(tones, spb):
+    """a tone a sample, spb samples a line bit -> the frames with a good FCS, sliced at every
+    half sample of fixed phase and by a clock that follows the tone changes"""
+    got = {}
+
+    def take(line):
+        for _, _, good, f in hdlc_spans(line):
+            if good:
+                got.setdefault(bytes(f), None)
+
+    for ph in np.arange(0, spb, 0.5):
+        take([int(tones[int(k)]) for k in np.arange(ph, len(tones) - 1, spb)])
+    for gain in (0.1, 0.2, 0.4):
+        pos, line = spb / 2, []
+        while pos < len(tones) - 1:
+            line.append(int(tones[int(pos)]))
+            for j in range(int(pos) + 1, min(len(tones) - 1, int(pos + spb)) + 1):
+                if tones[j] != tones[j - 1]:
+                    pos += gain * ((j - pos) - spb / 2)
+                    break
+            pos += spb
+        take(line)
+    return list(got)
+
+
+def dfsklog_report(lines):
+    """dfskcap's say lines (as in the serial log) -> one line a capture: its c line, the bytes
+    the chip's packet held and at what rate (from dn), the share of runs of 1, 2 and more
+    samples, and the frames each decoder reads in it"""
+    said = [ln.split("say ", 1)[-1].strip() for ln in lines]
+    said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
+    sets, caps, out = {}, {}, []
+    for ln in said:
+        f = ln.split()
+        if ln.startswith("s ") and len(f) > 3 and f[1].isdigit():
+            sets[int(f[1])] = dict(kv.split("=") for kv in f[2:])
+        elif ln[:1] == "d" and len(f) == 4 and f[0][1:].isdigit() and f[1].isdigit():
+            w = caps.setdefault((int(f[0][1:]), int(f[1])), [])
+            if int(f[2], 16) == len(w):
+                w.extend(int(f[3][i:i + 4], 16) for i in range(0, len(f[3]) - 3, 4))
+    for ln in said:
+        f = ln.split()
+        if not (ln[:1] == "c" and len(f) > 3 and f[0][1:].isdigit() and f[1].isdigit()):
+            if ln[:1] in ("s", "v") or ln.startswith("dfskcap "):
+                out.append(ln)
+            continue
+        key = (int(f[0][1:]), int(f[1]))
+        kv = dict(x.split("=") for x in f[2:])
+        words = list(caps.get(key, []))
+        if key[0] not in sets or not words:
+            out.append(ln + " : no words")
+            continue
+        baud = int(round(int(sets[key[0]]["b"], 16) / 10.32444))
+        for _ in range(8):                                            # the empty FIFO's last word again
+            if len(words) > 1 and words[-1] == words[-2]:
+                words.pop()
+        dn, note = int(kv.get("dn", 0)), []
+        if dn:
+            byt = dn * baud / 8000 + 2                                # the first word was in by then
+            note.append(f"RX-done after {dn} ms = {byt:.0f} bytes at {baud} baud")
+        b = np.array([int(c) for w in words for c in f"{w:016b}"], np.int8)
+        edges = np.flatnonzero(np.diff(b)) + 1
+        runs = np.diff(np.concatenate([[0], edges, [len(b)]]))
+        note.append(f"{len(words)} words, runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} "
+                    f"3+:{np.mean(runs >= 3):.0%}")
+        for how in ("corr", "pairs"):
+            if how == "pairs" and baud != 4800:
+                continue
+            fr = dfsk_frames(dfsk_tones(b, baud, how), baud / BAUD)
+            note.append(f"{how}: {len(fr)}" + "".join(" [" + describe(x) + "]" for x in fr))
+        out.append(ln + " : " + "; ".join(note))
+    return out
+
+
 def describe(f):
     """'SRC>DST,PATH:info' for a frame (with FCS)"""
     calls, i = [], 0
@@ -556,12 +651,19 @@ def main(argv=None):
     q = sub.add_parser("fskreport", help="what the chip made of each fskprobe unit, from the K6's serial log "
                                          "(the module's c and d lines)")
     q.add_argument("log")
+    q = sub.add_parser("dfsklog", help="what c/k6/mod/dfskcap.c's captures of the chip's plain FSK receiver "
+                                       "held, from the K6's serial log (its s, c and d lines)")
+    q.add_argument("log")
     q = sub.add_parser("fsklog", help="what c/k6/mod/aprsfsk.c's packets held, from the K6's serial log (its y "
                                       "and d lines): flags, good frames, and bad ones a single bit away")
     q.add_argument("log")
     d = sub.add_parser("decode")
     d.add_argument("wav")
     a = ap.parse_args(argv)
+    if a.cmd == "dfsklog":
+        with open(a.log, errors="replace") as f:
+            print("\n".join(dfsklog_report(f.read().splitlines())))
+        return 0
     if a.cmd == "fsklog":
         with open(a.log, errors="replace") as f:
             print("\n".join(fsklog_report(f.read().splitlines())))
