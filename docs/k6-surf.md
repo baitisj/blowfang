@@ -135,6 +135,19 @@ and a move's copy of the old scale are on the stack (`-fstack-usage`: about 2.1 
 (surfauto 5.1 KB) before the axis and the narrow lens, 5.3 KB (5.5 KB) after: it needs the voice
 images' 11,776 B module arena (EXPLORE's is 5,376 B).
 
+## Bench build of the 2026-11-10 keys (surfkeys)
+
+`mod-surfkeys.bin` presses its own keys, one every 3 s: 9, then 7 seven times (0 dB down to
+-45 dB), 8 (AGC), BAND three times (airband, AM), #, 5, then BAND three times (back to 70 cm).
+Before each press it says what the last one left, so with an identified carrier from the
+IC-7100 on the start frequency the first nine lines measure the fixed-gain steps on the radio:
+
+```
+k9 440.8500 -70 -137 g1 70cm 25k     key, middle, settled dBm, settled floor, gain (0 auto), band, step
+```
+
+It leaves after the last line (about 54 s). Receive only, like surf.
+
 ## Bench build (surfauto)
 
 `mod-surfauto.bin` is the same module for unattended runs: SIDE1 presses itself every 4 s. Each

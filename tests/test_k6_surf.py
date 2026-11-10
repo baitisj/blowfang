@@ -20,6 +20,7 @@ import k6_screen  # noqa: E402
 
 SRC = os.path.join(ROOT, "c", "k6", "mod", "surf.c")
 AUTO = os.path.join(ROOT, "c", "k6", "mod", "surfauto.c")
+KEYS = os.path.join(ROOT, "c", "k6", "mod", "surfkeys.c")
 FOREVER = 10**12
 ARENA = 11776                   # the voice images' module arena: header + code + tag (EXPLORE's
                                 # 5,376 B is too small since the axis and the narrow lens)
@@ -168,7 +169,7 @@ def at(frames, us):
 
 
 @need_clang
-@pytest.mark.parametrize("src", [SRC, AUTO])
+@pytest.mark.parametrize("src", [SRC, AUTO, KEYS])
 def test_builds_level_6_and_fits_the_store(src):
     from modem import k6mod
     code, entry = k6mod.build(src)
@@ -536,3 +537,18 @@ if __name__ == "__main__":
                   sys.argv[1] if len(sys.argv) > 1 else "surf.png",
                   captions=["440.600 in the middle, +-1 MHz", "SIDE1: 440.850 moves to the middle",
                             "SIDE1: next peak, a known repeater", "3: zoomed out to +-2.5 MHz"])
+
+
+@need_clang
+def test_bench_build_presses_the_new_keys_and_says_each_result():
+    # surfkeys.c: 9, 7 x 7, 8, BAND x 3 (airband), #, 5, BAND x 3, one every 3 s, then it ends
+    ret, said, regs, writes, lcd = go([(440_850_000, -70, 0, FOREVER)], [], rx_hz=440_850_000, src=KEYS)
+    ks = [ln.split() for ln in said if ln.startswith("k")]
+    assert [k[0] for k in ks] == ["k" + c for c in "97777777" "8" "NNN" "#5" "NNN"]
+    assert [int(k[4][1:]) for k in ks[:9]] == [1, 2, 3, 4, 5, 6, 7, 8, 0]
+    assert ks[0][1] == "440.8500" and int(ks[0][2]) > -75       # parked on the carrier
+    assert ks[10][5:] == ["MAR/WX", "25k"] and ks[11][5:] == ["AIR", "25k"]
+    assert ks[12][5:] == ["AIR", "50k"] and ks[13][1] == "127.5000"
+    assert ks[-1][5:] == ["70cm", "25k"]
+    assert said[-1].startswith("end sw=")
+    assert all(regs[r] == v for r, v in AURA.items()) and regs[0x47] == 0x6040

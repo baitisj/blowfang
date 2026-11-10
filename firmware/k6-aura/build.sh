@@ -370,6 +370,7 @@ spksweep
 stockfont      # level 6, reads the stock fonts from SPI flash itself (READ only), docs/k6-stock-firmware.md
 surf           # level 6, docs/k6-surf.md
 surfauto       # level 6, docs/k6-surf.md
+surfkeys       # level 6, docs/k6-surf.md: Jeff's keys of 2026-11-10 pressed by a script
 vecprobe       # level 1, can Aura catch its own HardFaults (docs/k6-modules.md)
 vectab         # level 1, is 0x08000000's vector table the live one (hal::txdog)
 wsprbcn

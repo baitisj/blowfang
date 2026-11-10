@@ -210,7 +210,8 @@ typedef struct {
   int sfl, sel_dbm;
   uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, key, raw, full, refine, stale;
   uint8_t st, gx;
-  uint8_t qk, k1;               /* a key caught during a long sweep or measure (kp_peek), the last peek */               /* the channel step (STEPS index); fixed gain GAINS[gx - 1], 0 auto */
+  uint8_t qk, k1;
+  uint8_t sc;                   /* surfkeys: the script's next key */               /* a key caught during a long sweep or measure (kp_peek), the last peek */               /* the channel step (STEPS index); fixed gain GAINS[gx - 1], 0 auto */
   uint32_t home;                /* where a side key's search began: back there if it finds none */
   uint16_t af;                  /* REG_47 with the audio open: FM or AM */
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
@@ -982,6 +983,30 @@ int k6_main(const k6_api_t *api) {
       s->t_auto = s->now;
     }
     if (s->now >= SURF_AUTO_S * 1000u) break;
+#endif
+#ifdef SURF_SCRIPT
+    if (!k && s->now - s->t_auto >= SURF_SCRIPT_MS) {
+      static const char SC[] = SURF_SCRIPT;
+      s->t_auto = s->now;
+      if (s->sc) {                    /* what the last key left */
+        p = put(s->ln, "k");
+        *p++ = SC[s->sc - 1];
+        *p++ = ' ';
+        p = mhz(p, s->cen, cdec(s));
+        *p++ = ' ';
+        p = sint(p, s->sel_dbm);
+        *p++ = ' ';
+        p = sint(p, s->sfl);
+        p = put(p, " g");
+        p = sint(p, s->gx);
+        *p++ = ' ';
+        p = put(p, s->bd->name);
+        *p++ = ' ';
+        say_end(s, stepn(p, s->ch));
+      }
+      if (!SC[s->sc]) break;
+      k = SC[s->sc++];
+    }
 #endif
     if (k == 'X') break;
     if (k) on_key(s, k);
