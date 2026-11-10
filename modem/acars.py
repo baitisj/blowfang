@@ -10,11 +10,17 @@ the low bit first.
 
   python3 -m modem.acars probe OUT.wav [--seconds 200]   the probe's test signal (send it in FM
                                                          for the control, in AM for the test)
+      [--only R] [--where 50.650]                        real blocks only; the frequency their
+                                                         text names
   python3 -m modem.acars report LOG                      what the chip made of it (the module's
                                                          c and d lines in the K6's serial log)
+  python3 -m modem.acars plain LOG                       dfskcap_acars' log: the plain FSK receiver
+                                                         (4800 baud, two samples a bit) on a real
+                                                         channel, receive only
 
 The test blocks carry AG7EW as their address and "AG7EW TEST" in their text. They are for
-440.850 MHz only: nothing is ever sent on airband. SPDX-License-Identifier: MIT
+440.850 MHz (FM) and, with the owner's word, 6 m (AM): nothing is ever sent on airband.
+SPDX-License-Identifier: MIT
 """
 import argparse
 
@@ -88,12 +94,13 @@ def audio(tone_bits, fs=FS):
     return np.sin(2 * np.pi * np.cumsum(f) / fs)
 
 
-def probe_audio(seconds, fs=FS, gap=0.25):
-    """-> (audio, [(kind, start s, text)]): K and R units in turn, a gap between them"""
+def probe_audio(seconds, fs=FS, gap=0.25, kinds="KR", where="440.850"):
+    """-> (audio, [(kind, start s, text)]): K and R units in turn (or kinds), a gap between
+    them, the frequency they are sent on in their text"""
     out, sent, pos, k = [np.zeros(int(0.2 * fs))], [], 0.2, 0
     while pos < seconds:
-        kind = "KR"[k % 2]
-        text = f"AG7EW TEST 440.850 {kind}{k:03d} THE K6 READS ACARS"
+        kind = kinds[k % len(kinds)]
+        text = f"AG7EW TEST {where} {kind}{k:03d} THE K6 READS ACARS"
         x = audio(unit_tones(kind, text), fs)
         out += [x, np.zeros(int(gap * fs))]
         sent.append((kind, pos, text))
@@ -148,21 +155,107 @@ def report(lines):
     return out + [ln for ln in said if ln[:1] == "v" or ln.startswith("acarsfsk")]
 
 
+def plain_samples(tone_bits, level=0):
+    """tone bits -> the plain FSK receiver's bits at 4800 baud as an ideal slicer of the audio's
+    sign would give them: the sign turns over at every half cycle, so a bit of 2400 Hz is two
+    unlike samples and one of 1200 Hz two like ones"""
+    out = []
+    for t in np.asarray(tone_bits, int):
+        level ^= 1
+        out.append(level)
+        if not t:
+            level ^= 1
+        out.append(level)
+    return np.array(out, np.int8)
+
+
+def plain_tones(samples):
+    """the plain FSK receiver's bits at 4800 baud -> (tone bits, odd runs): a run of one sample
+    is half a bit of 2400 Hz, a run of two a bit of 1200 Hz. A lone single (no partner) or a run
+    of three and more is counted odd and read as best it can be"""
+    b = np.asarray(samples, int)
+    if not len(b):
+        return np.zeros(0, np.int8), 0
+    edges = np.flatnonzero(np.diff(b)) + 1
+    runs = np.diff(np.concatenate([[0], edges, [len(b)]]))
+    out, odd, i = [], 0, 0
+    while i < len(runs):
+        r = int(runs[i])
+        if r == 1 and i + 1 < len(runs) and runs[i + 1] == 1:
+            out.append(0)
+            i += 2
+            continue
+        if r != 2:
+            odd += 1
+        out += [1] * max(r // 2, 0)
+        i += 1
+    return np.array(out, np.int8), odd
+
+
+def plain_read(words):
+    """a capture's words -> (the block's text or None, why, odd runs): SYN SYN looked for in
+    the tone bits, the block read after it"""
+    t, odd = plain_tones([int(c) for w in words for c in f"{w:016b}"])
+    s, want = "".join(map(str, t)), f"{SYNC2:016b}"
+    pos, why = s.find(want), "no SYN SYN"
+    while pos >= 0:
+        text, why = read_block(t[pos + 16:])
+        if text is not None:
+            return text, "ok", odd
+        pos = s.find(want, pos + 1)
+    return None, why, odd
+
+
+def plain_report(lines):
+    """dfskcap_acars' say lines (as in the serial log) -> its s, v and b lines, and a line a
+    capture: the c line, and for one with words (those that went on like a pre-key) the share
+    of runs of one, two and more samples and the block read from them"""
+    said = [ln.split("say ", 1)[-1].strip() for ln in lines]
+    said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
+    caps, out = {}, []
+    for ln in said:
+        f = ln.split()
+        if ln[:1] == "d" and len(f) == 4 and f[0][1:].isdigit() and f[1].isdigit():
+            w = caps.setdefault((int(f[0][1:]), int(f[1])), [])
+            if int(f[2], 16) == len(w):
+                w.extend(int(f[3][i:i + 4], 16) for i in range(0, len(f[3]) - 3, 4))
+    for ln in said:
+        f = ln.split()
+        if ln[:1] == "c" and len(f) > 3 and f[0][1:].isdigit() and f[1].isdigit():
+            words = caps.get((int(f[0][1:]), int(f[1])))
+            if words:
+                b = np.array([int(c) for w in words for c in f"{w:016b}"], np.int8)
+                runs = np.diff(np.concatenate([[0], np.flatnonzero(np.diff(b)) + 1, [len(b)]]))
+                text, why, odd = plain_read(words)
+                ln += (f" : runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} 3+:{np.mean(runs >= 3):.0%}"
+                       f" odd {odd}; " + (f"block [{text}]" if text is not None else why))
+            out.append(ln)
+        elif ln[:1] in ("s", "v", "b") or ln.startswith("dfskcap "):
+            out.append(ln)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     q = sub.add_parser("probe")
     q.add_argument("out")
     q.add_argument("--seconds", type=float, default=200.0)
+    q.add_argument("--only", default="KR", help="the kinds of unit in turn (K, R; default both)")
+    q.add_argument("--where", default="440.850", help="the frequency named in the text")
     q = sub.add_parser("report")
     q.add_argument("log")
+    q = sub.add_parser("plain")
+    q.add_argument("log")
     a = ap.parse_args(argv)
-    if a.cmd == "report":
+    if a.cmd in ("report", "plain"):
         with open(a.log, errors="replace") as f:
-            print("\n".join(report(f.read().splitlines())))
+            print("\n".join((report if a.cmd == "report" else plain_report)(f.read().splitlines())))
         return 0
     import soundfile as sf
-    x, sent = probe_audio(a.seconds)
+    if not a.only or set(a.only) - set("KR"):
+        ap.error("--only takes K and R")
+    x, sent = probe_audio(a.seconds, kinds=a.only, where=a.where)
     sf.write(a.out, 0.5 * x, FS)
     print(f"{len(x) / FS:.2f} s, {len(sent)} units, sync words {SYNC2:04x} {SYNC4:08x}")
     return 0

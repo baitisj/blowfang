@@ -308,8 +308,7 @@ alarm          # level 8 (screen at 6, LED at 7), the BLOWFANG alarm clock: midi
 aprsclk        # level 2 (screen at 6, LED at 7), docs/k6-aprs-clock.md
 aprsclk_440    # level 2, aprsclk on 440.850 for the on-air loopback
 aprsdfsk       # level 2 (screen at 6, LED at 7), aprsclk behind the chip's plain FSK receiver as a sampler (REG_58 00e9), 144.390
-aprsdfsk_440   # level 2, aprsdfsk on 440.850, the FIFO read by its flag and by time in turns
-aprsdfskt      # level 2, aprsdfsk reading the FIFO by time
+aprsdfsk_440   # level 2, aprsdfsk on 440.850 for 240 s (the bench)
 aprsfsk        # level 2 (screen at 6, LED at 7), aprsclk behind the chip's own FSK modem (REG_58 33a3), 144.390
 aprsfsk_440    # level 2, aprsfsk on 440.850 for the on-air loopback, every packet's words said
 aprsfskb       # level 2, aprsfsk reading the modem's FIFO all the time (FSK_STREAM)
@@ -324,6 +323,8 @@ cwlisten       # level 2
 cwlisten_lo    # level 2, cwlisten with a 400-1300 Hz bank
 cwprobe        # level 2
 dfskcap        # level 2, records the chip's plain FSK receiver on Bell 202 audio (docs/k6-aprs-clock.md)
+dfskcap_acars  # level 2, dfskcap on 131.550 MHz, four front ends: does the plain FSK receiver hear ACARS (receive only, docs/k6-acars.md)
+dfskcap_acars6 # level 2, dfskcap_acars on 50.650 MHz for the bench's AM test (receive only, docs/k6-acars.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md

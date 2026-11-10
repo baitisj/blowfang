@@ -101,3 +101,143 @@ What that says:
 So the third case of the list above, with a caveat: ACARS on the chip's modem looks closed
 unless a 1200 baud control shows the probe itself was at fault. The IF tap (`aiscap_acars`)
 stays the way to ACARS.
+
+## The plain FSK receiver on ACARS (bench, 2026-11-10 14:39 to 14:43Z)
+
+The APRS work found a second receiver in the chip: REG_58 = 00E9 at 4800 baud samples the
+audio's sign, its clock following the zero crossings (`dfskcap`, docs/k6-aprs-clock.md). For
+ACARS the numbers fall right: a half cycle of 2400 Hz is one sample, of 1200 Hz two, so a bit
+is two samples (`10` or `01` unchanged, `11` or `00` changed), the pre-key is the sync word
+AAAA, and the clock has nothing to follow that it does not already run at. `dfskcap` ran
+unchanged on 440.850 MHz while the IC-7100 sent the probe's signal (`python3 -m modem.acars
+probe`) in FM; K6 receive only.
+
+- **The chip starts on every ACARS unit**: 12 captures in about 6 s in each 4800 baud setting
+  (the units come 0.5 s apart), runs of one sample 80%, of two 20%, none longer. The
+  1200/2400 Hz receiver never started on one.
+- **No block reads from those samples.** Laid against the block's own tones, runs of 1200 Hz
+  half cycles come one short (13 pairs sent, 12 read) and a lone one between 2400 Hz cycles is
+  mostly gone, read as single samples: the zero crossings sit up to half a sample from where
+  the bits change. The same audio through an ideal comparator and a clock that follows the
+  crossings gives the block's pattern exactly (the tones change at zero crossings), with a
+  flat channel and with any plain de-emphasis or low pass put in front. So it is the path
+  between the IC-7100's modulator and the chip's slicer that moves them, and a decoder fitted
+  to this FM bench signal would say little about ACARS off the air, which is AM.
+
+What is left to ask can only be asked of a real signal, receive only: does the plain receiver
+hear an AM signal at all (it sits behind the FM demodulator), and what do its samples look
+like there? `dfskcap_acars` is `dfskcap` on 131.550 MHz for that (below).
+
+### `dfskcap_acars`: the listen on 131.550 MHz
+
+`c/k6/mod/dfskcap_acars.c` (`dfskcap.c` with `DFSK_ACARS`, 2.9 KB), receive only: 32 s after
+its start, four front ends of 150 s each (75 s in the first run), all REG_58 = 00E9 at 4800 baud with the sync word
+AAAA and 512 bytes a packet (REG_5D = ff20; a long block is 500 bytes):
+
+| | Front end | Asks |
+| --- | --- | --- |
+| 0 | FM, wide, as tuned | does the receiver hear an AM signal at all? |
+| 1 | REG_47's AF source = AM, wide | does it follow the AF source? |
+| 2 | FM, narrow, tuned 2.5 kHz high | an AM signal with a sideband cut is partly FM |
+| 3 | AF source AM, narrow | |
+
+Noise gives the sync word by chance, so every capture gets a `c` line (`c1 3 t=91234 w=256
+k=4 r=-87`: front end, capture, ms, words, how many of the first four words are AAAA or 5555,
+RSSI) and only those with `k` of 3 or 4, where the pre-key goes on, their words (12 a front
+end at most). `python3 -m modem.acars plain LOG` reads them: the runs' shares, and a block if
+SYN SYN and a good check are in them (a run of one sample half a bit of 2400 Hz, of two a bit
+of 1200 Hz).
+
+What the log can say:
+
+- No capture with a strong RSSI in any front end, though the K6 hears carriers there: the
+  plain receiver does not start on an AM signal. ACARS stays on the IF tap.
+- Captures with `k` 3 or 4 in a front end: the receiver hears it. Then the words say whether
+  a bit is two clean samples (a block reads) or the crossings sit elsewhere, as in FM on the
+  bench, and what a slicer for them needs.
+
+The emulated test (`test_dfskcap_acars_on_the_model`) hears the blocks only with the AF source
+set to AM and noise with chance sync words otherwise: `c` lines everywhere, words and blocks
+in front ends 1 and 3 only, a `b` line for every block's carrier in all four, the registers
+put back.
+
+#### First listen (2026-11-10 15:34 to 15:39Z): no traffic to judge by
+
+The K6 on 131.550 MHz for 5.5 minutes at hamlet, the IC-7100 silent (it sent the module on
+440.850 MHz and its idents, nothing on airband):
+
+```
+s 0 t=32022 cfg=00e9 b=c195 sy=aaaa l=ff20
+v0 n=0 w=0
+s 1 t=107027 cfg=00e9 b=c195 sy=aaaa l=ff20
+c1 1 t=156961 w=276 k=0 r=-113
+v1 n=1 w=276
+s 2 t=182032 cfg=00e9 b=c195 sy=aaaa l=ff20
+c2 1 t=207660 w=273 k=0 r=-116
+v2 n=1 w=273
+s 3 t=257037 cfg=00e9 b=c195 sy=aaaa l=ff20
+v3 n=0 w=0
+```
+
+- Two captures in 300 s, both at the floor (-113 and -116 dBm) and with no pre-key after the
+  sync word: noise. REG_5D = ff20 gives packets of about 512 bytes (273 and 276 words with the
+  stale reads), so the length bits work as reckoned.
+- Noise starts the receiver about once in 150 s. A real listen loses next to nothing to it.
+- **Nothing to judge the question by**: the log does not say whether a block was on the air in
+  those minutes. A capture's RSSI is taken only when the receiver starts, so an AM carrier the
+  receiver slept through left no mark.
+
+So the module now reads the RSSI every 50 ms as well. A rise of 10 dB over the front end's
+floor (its lowest reading, let up half a dB every 2 s) is a carrier, said when it ends:
+`b1 3 t=91230 ms=450 r=-84` (front end, burst, ms at its start, its length, its peak), and
+the `v` line ends with `b=` (bursts), `p=` (the highest RSSI) and `f=` (the floor). With that
+a listen answers either way: bursts and no capture at their times in a front end mean the
+receiver does not start on AM there; no bursts mean no traffic reached the K6's antenna. Four
+front ends of 150 s make it 10.5 minutes.
+
+#### Second listen (2026-11-10 15:52 to 16:03Z): weak carriers, and no start on any
+
+Build ffe2e09, 632 s on 131.550 MHz, the IC-7100 silent after the upload:
+
+```
+s 0 t=32022 cfg=00e9 b=c195 sy=aaaa l=ff20
+b0 1 t=64226 ms=150 r=-103
+v0 n=0 w=0 b=1 p=-103 f=-113
+s 1 t=182027 cfg=00e9 b=c195 sy=aaaa l=ff20
+c1 1 t=237412 w=278 k=0 r=-114
+b1 1 t=289380 ms=100 r=-104
+b1 2 t=289580 ms=50 r=-104
+v1 n=1 w=278 b=2 p=-104 f=-114
+s 2 t=332033 cfg=00e9 b=c195 sy=aaaa l=ff20
+c2 1 t=404281 w=277 k=0 r=-114
+b2 1 t=423230 ms=150 r=-105
+v2 n=1 w=277 b=1 p=-105 f=-116
+s 3 t=482038 cfg=00e9 b=c195 sy=aaaa l=ff20
+b3 1 t=516230 ms=50 r=-106
+b3 2 t=629880 ms=350 r=-104
+v3 n=0 w=0 b=2 p=-104 f=-116
+```
+
+- **Six carriers in ten minutes, all weak**: -103 to -106 dBm at their peaks, 9 to 12 dB over
+  a floor of -113 to -116 dBm, 50 to 350 ms over the threshold (the length of a short block,
+  or the top of a fading longer one). Whether they are ACARS blocks the log cannot say; on
+  this channel little else is likely.
+- **The plain receiver started on none of them**, with the AF source FM (b0, b2) or AM (b1,
+  b3): the two captures are noise, at the floor and minutes from any carrier.
+- At 10 dB over the floor that proves little: a sync word wants 16 clean samples of the
+  pre-key, and the 1200/2400 Hz bench runs lost their starts at such levels too.
+
+So hamlet's antenna hears ACARS traffic only faintly, and the question (does the plain
+receiver read an AM signal's audio with the AF source set to AM?) wants a strong AM signal.
+The IC-7100 has AM on HF and 50 MHz only, and the K6 receives from 18 MHz up: a bench test
+of the same blocks in AM on 6 m would answer it. That is outside the bench's rule (transmit
+on 440.850 MHz only) and is the owner's call.
+
+#### The AM test on 6 m (`dfskcap_acars6`)
+
+The owner allowed it (2026-11-10 16:49Z): minimum power, ident in every block and in CW, the
+K6 receive only. `c/k6/mod/dfskcap_acars6.c` is `dfskcap_acars` on 50.650 MHz, the first front
+end 60 s after its start (the module's own upload on 440.850 MHz ends and the IC-7100 changes
+band and mode), then 45 s each. The signal: `python3 -m modem.acars probe OUT.wav --only R
+--where 50.650` (real blocks only, about two a second, the frequency in their text), sent in
+AM.

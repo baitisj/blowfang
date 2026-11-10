@@ -145,7 +145,11 @@ KINDS = {
     6: ("n6", 0, 0.6, 6.0, 40),
     7: ("short", 0, 1.0, None, 8),         # eight opening flags
     8: ("pre n9", 1, 0.6, 9.0, 40),        # pre-emphasis and noise
+    9: ("inv", 0, 1.0, None, 40),          # the tones swapped: the opening flags' long tone the mark
+    10: ("pre inv", 1, 1.0, None, 40),
 }
+KINDS_USUAL = tuple(range(1, 9))           # a round of --kinds (9.641 s), as the bench runs had it
+KINDS_SWAP = (9, 10)
 EMPH = 0.95                                # the 1-pole filter's pole at 48 kHz (decode_any's)
 
 
@@ -167,12 +171,12 @@ def kinds_wav(t_utc, call="AG7EW", gap=0.6, fs=FS, rounds=1, kinds=None):
     from scipy.signal import lfilter
     pos, out, sent = 0.0, [], []
     for r in range(rounds):
-        for k in sorted(kinds or KINDS):
+        for k in sorted(kinds or KINDS_USUAL):
             name, emph, level, snr, pre = KINDS[k]
             u = t_utc + pos + pre * 8 / BAUD
             info = "/" + ts_hms(u) + "4857.00N/12229.00W>K6 " + name
             c = f"{call}-{k}"
-            x, _ = packet_audio([frame(c, "APRS", info)], fs=fs, pre_flags=pre)
+            x, _ = packet_audio([frame(c, "APRS", info)], fs=fs, pre_flags=pre, invert=k in KINDS_SWAP)
             if emph > 0:
                 x = lfilter([1, -EMPH], [1 - EMPH], x)
             elif emph < 0:
@@ -519,10 +523,27 @@ def demod(audio, fs):
 # one sample is a half cycle of space, two (or three) one of mark. The half cycle at a change of
 # tone goes to either side, which makes a run of n mark bits 2n - 1, 2n or 2n + 1 mark half
 # cycles; counted together with the space run after it the sum comes out.
+#
+# Two things a second set of captures showed (2026-11-10 14:46Z, 36 pre-emphasised packets whose
+# text is known, so every wrong line bit could be found):
+#   - inside a mark tone one half cycle now and then comes as a single sample (2 1 2 2 2 for a
+#     mark run). Taken as a space run it is a space bit that was never sent. A space run is 3.67
+#     samples a bit, so one sample alone between two mark intervals is a half cycle of mark.
+#   - a mark run and the space run after it together come out shorter than they were sent, by 4
+#     units (de-emphasised) to 9 (pre-emphasised) whatever their length: the half cycles at the
+#     changes of tone are cut. A fixed 3 is too little for a pre-emphasised packet (a mark run of
+#     two bits as two intervals and five samples of space is 104 units of 132). The opening flags
+#     say what a packet loses: a flag is one run of seven bits and one of one bit, 352 units, and
+#     no run of the data is seven bits long. A flag by itself loses -4, 6 or 18 (the samples are
+#     whole), in a pattern three or six flags long (three flags are 44 cycles of 2200 Hz). The
+#     packet's bias is the mean over its flags so far, rounded down, from the sixth flag on:
+#     about 3 for a de-emphasised packet, 6 for a flat one, 7 or 8 for a pre-emphasised one.
 DFSK_T = 44          # a line bit in the slicer's units (18.94 us)
 DFSK_SP = 12         # a half cycle of 2200 Hz: an interval of one sample
 DFSK_MK = 22         # a half cycle of 1200 Hz: an interval of two samples
-DFSK_BIAS = 3        # added to a mark run and its space run before the sum is rounded
+DFSK_BIAS = 3        # added to a mark run and its space run before the sum is rounded, until
+DFSK_FLAGS = 6       # this many flags have said: their mean so far, 0 to DFSK_BIAS_MAX
+DFSK_BIAS_MAX = 9
 DFSK_IDLE = 8        # samples without a transition: no tone of Bell 202 (the runs are flushed)
 
 
@@ -545,21 +566,29 @@ def dfsk_destale(words, depth=8, apart=6):
     return good, dropped
 
 
-def dfsk_line(samples, bias=DFSK_BIAS):
+def dfsk_line(samples, bias=DFSK_BIAS, learn=True, glitch=True):
     """the plain FSK receiver's bits at 4800 baud -> line bits (1 = 1200 Hz), as
     c/k6/mod/aprsclk.c's FSK_PLAIN slices them: intervals between transitions (one sample: a
     half cycle of space; more: of mark) summed into runs of one tone, a space run rounded to
-    bits by itself, a mark run as the rounded sum of both less the space run's bits"""
-    out, last, c, tone, dur, md = [], 0, DFSK_IDLE, 1, 0, -1
+    bits by itself, a mark run as the rounded sum of both less the space run's bits. One sample
+    alone inside a mark run is the mark's (glitch), and the bias is learnt from the flags
+    (learn); both off: the first bench build's slicer"""
+    out, last, c, tone, dur, md, hold, acc, nf = [], 0, DFSK_IDLE, 1, 0, -1, 0, 0, 0
 
     def end_run():
-        nonlocal md
+        nonlocal md, bias, acc, nf
         if tone:
             md = dur
             return
         ns = max(1, (dur + DFSK_T // 2) // DFSK_T)
         if md >= 0:
-            out.extend([1] * max(1, (md + dur + bias + DFSK_T // 2) // DFSK_T - ns))
+            nm = max(1, (md + dur + bias + DFSK_T // 2) // DFSK_T - ns)
+            if learn and nm + ns == 8 and (ns == 7 or ns == 1):      # a flag
+                acc += 8 * DFSK_T - md - dur
+                nf += 1
+                if nf >= DFSK_FLAGS:
+                    bias = min(DFSK_BIAS_MAX, max(0, acc) // nf)
+            out.extend([1] * nm)
             md = -1
         out.extend([0] * ns)
 
@@ -568,6 +597,9 @@ def dfsk_line(samples, bias=DFSK_BIAS):
         if b == last:
             c += 1
             if c == DFSK_IDLE:               # silence: what is held goes out, a pending mark run alone
+                if hold:
+                    end_run()
+                    tone, dur, hold = 0, DFSK_SP, 0
                 end_run()
                 if md >= 0:
                     out.extend([1] * max(1, (md + bias + DFSK_T // 2) // DFSK_T))
@@ -576,8 +608,17 @@ def dfsk_line(samples, bias=DFSK_BIAS):
             continue
         if c < DFSK_IDLE:
             t, d = int(c >= 2), DFSK_SP if c == 1 else DFSK_MK if c == 2 else c * DFSK_T // 4
+            if hold:                         # the sample held: a mark's if the mark goes on
+                hold = 0
+                if t:
+                    dur += DFSK_MK
+                else:
+                    end_run()
+                    tone, dur = 0, DFSK_SP
             if t == tone:
                 dur += d
+            elif glitch and not t and dur:
+                hold = 1
             else:
                 end_run()
                 tone, dur = t, d
@@ -671,8 +712,11 @@ def dfsklog_report(lines):
 
 def plainlog_report(lines):
     """aprsdfsk's say lines (as in the serial log) -> its start, s and end lines, and for each
-    way of reading the FIFO (the y lines' m=): the packets, those with a good frame, and the
-    frames by station (the f lines before a y line are that packet's)"""
+    sync word the chip started on (the y lines' s=: 0 AAAA, the flags' long tone the space, 1
+    3333, the mark; the first build's logs: for each way of reading the FIFO, m=): the packets,
+    those with a good frame, the words that were the one eight before and the reads of the
+    empty FIFO among them, and the frames by station (the f lines before a y line are that
+    packet's)"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("aprs start")] or [0]):]
     out, modes, calls = [], {}, []
@@ -682,10 +726,12 @@ def plainlog_report(lines):
             calls.append(f[1])
         elif ln.startswith("y ") and len(f) > 2:
             kv = dict(x.split("=") for x in f[2:] if "=" in x)
-            m = modes.setdefault(kv.get("m", "?"), {"n": 0, "ok": 0, "e": 0, "by": {}})
+            key = "m=" + kv["m"] if "m" in kv else "sync " + ("3333" if kv.get("s") == "1" else "AAAA")
+            m = modes.setdefault(key, {"n": 0, "ok": 0, "e": 0, "d": 0, "by": {}})
             m["n"] += 1
             m["ok"] += int(kv.get("ok", "0")) > 0
             m["e"] += int(kv.get("e", "0"))
+            m["d"] += int(kv.get("d", "0"))
             for c in calls:
                 m["by"][c] = m["by"].get(c, 0) + 1
             calls = []
@@ -693,7 +739,8 @@ def plainlog_report(lines):
             out.append(ln)
     for k in sorted(modes):
         m = modes[k]
-        out.append(f"m={k}: {m['n']} packets, {m['ok']} with a frame, e={m['e']}; "
+        out.append(f"{k}: {m['n']} packets, {m['ok']} with a frame, e={m['e']}"
+                   + ("" if k.startswith("m=") else f" d={m['d']}") + "; "
                    + ", ".join(f"{c} {n}" for c, n in sorted(m["by"].items())))
     return out
 
@@ -732,6 +779,9 @@ def main(argv=None):
                    help="with --now: packets as they come off the air, a kind after another (KINDS: "
                         "pre-emphasis, de-emphasis, low deviation, noise, a short opening), --repeat rounds; "
                         "a packet's kind is its station's number")
+    w.add_argument("--only", default="",
+                   help="with --kinds: these kinds only, their numbers with commas (9 and 10 have the "
+                        "tones swapped and are in no round unless named here)")
     w.add_argument("--swap", action="store_true",
                    help="with --now: every second round with the tones swapped (the flags' long tone "
                         "the mark), for c/k6/mod/aprsfsk.c's sync word")
@@ -784,7 +834,8 @@ def main(argv=None):
         t0 = time.time() + a.delay
         parts, sent, pos = [], [], 0.0
         for k in range(1 if a.kinds else max(1, a.repeat)):
-            x1, s1 = (kinds_wav(t0, a.call, rounds=max(1, a.repeat)) if a.kinds else
+            only = [int(v) for v in a.only.split(",") if v]
+            x1, s1 = (kinds_wav(t0, a.call, rounds=max(1, a.repeat), kinds=only) if a.kinds else
                       bench_wav(t0 + pos, a.call, invert=a.swap and k % 2 == 1))
             parts.append(x1)
             sent += [(c, info, pos + end) for c, info, end in s1]

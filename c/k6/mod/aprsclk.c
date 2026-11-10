@@ -145,6 +145,11 @@ typedef struct {
   uint16_t fifo[8];   /* the last eight words taken: what a read of the empty FIFO gives again */
   int32_t dlast, dn, dtone, ddur, dmd; /* the slicer: the last sample, samples since a transition,
                                           the run's tone and length, a mark run held back */
+  int32_t dhold, dbias, dacc, dnf;     /* one sample after a mark run, not yet either tone's; what
+                                          a mark run and its space run lose, as the packet's
+                                          flags say: the sum over dnf of them */
+  int32_t dct;        /* the tone of the last interval, for dclk */
+  int32_t dclk;       /* how long the chip took over the packet's words so far, in the slicer's units */
   uint32_t idle;      /* line bits outside a frame */
 #else
   uint16_t cap[128];  /* a packet's words as read, for its d lines */
@@ -1209,45 +1214,76 @@ int k6_main(const k6_api_t *api) {
    cycle of space is 12, of mark 22) and rounds a run to line bits; the half cycle at a change
    of tone goes to either side, so a mark run is counted together with the space run after it.
    modem/aprs.py's dfsk_line is the same in Python and reads every clean packet of those
-   captures (flat, pre-emphasised, de-emphasised, weak, eight opening flags) and none of the
-   noisy ones.
+   captures (flat, pre-emphasised, de-emphasised, weak, eight opening flags) and hardly a
+   noisy one.
 
-   The chip starts on a sync word of 16 alternating bits (AAAA: 2200 Hz for 3.6 ms, in any
-   opening of flags) and then gives up to 2048 bytes (REG_5D = FFE0), 3.4 s. Its RX-done flag
-   means nothing here (it comes with the first word). The FIFO's words are taken
-     DF_MODE 0: four at a time when REG_02 says almost full (REG_5E = 0204); with no such flag
-                for DF_LATE ms four are tried anyway, and a word that is the one eight before
-                (what the empty FIFO gives) ends the try;
-     DF_MODE 1: by time, a word every 16/4800 s as dfskcap did. The chip's clock is up to a
-                tenth slower than that, so about every eleventh read finds the FIFO empty and
-                gets the word of eight reads before: dropped (modem/aprs.py dfsk_destale);
-     DF_MODE 2: one, then the other, DF_SWAP ms each, with an s line (the bench's comparison).
+   The second bench run read only half the pre-emphasised packets (22 of 40), and 36 captures of
+   such packets, their text known, showed why (2026-11-10 14:46Z). Inside a mark tone a half
+   cycle now and then comes as one sample: as a space run that is a space bit never sent, so
+   one sample alone between two mark intervals is held and counted with the mark. And a mark
+   run with its space run comes out shorter than it was sent, by 4 units (de-emphasised) to 9
+   (pre-emphasised) whatever its length, where 3 were added: the opening flags (a run of seven
+   bits and a run of one, 352 units; the data has no run of seven) say what this packet loses.
+   One flag loses -4, 6 or 18 in a pattern three or six flags long (three flags are 44 cycles
+   of 2200 Hz), so the packet's bias is the mean over its flags so far, rounded down, from the
+   sixth on: about 3 de-emphasised, 6 flat, 7 or 8 pre-emphasised. Those captures: 28 of 36
+   read, 17 before (five of the other eight are dfskcap's own misread FIFO).
+
+   The chip starts on a sync word of 16 bits and then gives up to 2048 bytes (REG_5D = FFE0),
+   3.4 s. An opening of flags is seven bits of one tone and one of the other, and which is the
+   long one is the sender's NRZI state: AAAA (2200 Hz for 3.6 ms) is in the flags whose long
+   tone is the space, 3333 (1200 Hz for 3.3 ms) in the others. The chip takes one sync word, so
+   the search is started again every DF_AGAIN ms with the other one.
+
+   Its RX-done flag means nothing here (it comes with the first word), and its almost-full flag
+   never comes (bench, 2026-11-10 13:17Z: no frame in 68 packets read by it). So the FIFO is
+   read by time. A read of the empty FIFO gives the word of eight reads before and takes
+   nothing, and that word may be a real one too (in the flags one in ten is), so the reads
+   must not run at the chip's heels, where every read is a race (the same bench run, the reads
+   a word every 16/4800 s and 12 to 17 of 175 empty: 37 of 51 clean packets read). The chip's
+   clock follows the audio, so the words tell how long the chip took over them: 12 units a
+   sample alone between two transitions, 11 any other, 3 a change of tone, 44 a line bit
+   (fitted to the captures' empty reads: within 1% of the tones' own half cycles). The reads
+   stay DF_LAG words behind that clock. A word that is the one eight before is read again: the
+   same once more is the empty FIFO, nothing was taken, and the reads fall behind again;
+   anything else is the next word. At a read of the empty FIFO the chip has made just the
+   words taken, so there the MCU's clock is set against the chip's (kq, units a tick): at
+   every such read 64 words or more into a packet and inside a frame, if the frame turns out
+   good (noise has no such clock), and the FIFO is read empty on purpose 96 words into a
+   packet until four packets have set it, then in every eighth.
+
    A packet is over when the line has been outside a frame for FSK_IDLE bits, when there has
    been no transition for DF_QUIET samples, or at DF_WORDS words; then the modem is turned off
-   and on. With nothing heard the search is started again every FSK_AGAIN ms, as aprsfskb.
+   and on.
 
    Lines, besides the tap build's f, clk and m lines:
      aprs start hz=144390000 fsk=233 sync=240 plain
-     s 1 t=40012 ok=31                  DF_MODE 2: the way of reading from here on, good frames so far
-     y 12 t=123456 w=186 ok=1 e=0 m=0   a packet of 40 words or more, or with a frame: its number,
-                                        ms at its first word, words, good frames, words that
-                                        were the one eight before (DF_MODE 1: dropped), the mode
-     aprs fsk ms=900004 key=0 pre=31 fake=912 late=0
+     y 12 t=123456 w=186 ok=1 e=3 d=1 s=0 k=1352
+                                        a packet of 40 words or more, or with a frame: its
+                                        number, ms at its first word, words kept, good frames,
+                                        words that were the one eight before, the times that
+                                        was the empty FIFO, the sync word (0 AAAA, 1 3333), kq
+     aprs fsk ms=900004 key=0 pre=31 fake=912 inv=7
    Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F and 02, put back as read. Receive only. */
 #define DF_CFG 0x00E9u
-#ifndef DF_MODE
-#define DF_MODE 0
+#define DF_SYNC_SP 0xAAAAu /* 2200 Hz: flags whose long tone is the space */
+#define DF_SYNC_MK 0x3333u /* 1200 Hz: the others */
+#ifndef DF_AGAIN
+#define DF_AGAIN 29u     /* ms a sync word's turn: both get a look at an opening of eight flags */
 #endif
-#ifndef DF_SWAP
-#define DF_SWAP 48204u   /* five rounds of the bench's kinds of packet */
-#endif
-#define DF_THR 4u        /* REG_5E: almost full at this many words */
-#define DF_LATE 20u      /* ms without the almost-full flag in a packet (four words are 13 to 15) */
+#define DF_LAG 3         /* words the reads stay behind the chip (its FIFO holds 8) */
+#define DF_WORD 190      /* a word in the slicer's units, about (176 to 204) */
+#define DF_KQ 1352       /* units a 100 us tick, x 256 (44 units are 1/1200 s) */
+#define DF_KQD 68        /* and what is learnt kept within 5% */
+#define DF_CALW 96u      /* words into a packet: the FIFO is read empty to learn the clock */
 #define DF_WORDS 1000u   /* the chip's packet is 1024 words */
 #define DF_T 44          /* a line bit, in the slicer's units */
 #define DF_SP 12         /* an interval of one sample: a half cycle of 2200 Hz */
 #define DF_MK 22         /* of two: a half cycle of 1200 Hz */
-#define DF_BIAS 3
+#define DF_BIAS 3        /* added to a mark run and its space run, until the flags have said */
+#define DF_FLAGS 6       /* flags before their mean is the bias */
+#define DF_BIAS_MAX 9
+#define DF_TURN 3        /* dclk: a change of tone */
 #define DF_IDLE 8        /* samples without a transition: no tone of Bell 202 */
 #define DF_QUIET 64      /* and this many: the packet is over */
 #define DF_SAY 40u       /* words: a shorter packet without a frame is noise, and gets no line */
@@ -1270,8 +1306,17 @@ static void df_end(const k6_api_t *api, st_t *s) {
   ns = (int32_t)udiv((uint32_t)s->ddur + DF_T / 2, DF_T);
   if (ns < 1) ns = 1;
   if (s->dmd >= 0) {
-    nm = (int32_t)udiv((uint32_t)(s->dmd + s->ddur) + DF_BIAS + DF_T / 2, DF_T) - ns;
-    df_bits(api, s, 1, nm < 1 ? 1 : nm);
+    int32_t tot = s->dmd + s->ddur;
+    nm = (int32_t)udiv((uint32_t)(tot + s->dbias) + DF_T / 2, DF_T) - ns;
+    if (nm < 1) nm = 1;
+    if (nm + ns == 8 && (ns == 7 || ns == 1)) { /* a flag */
+      s->dacc += 8 * DF_T - tot;
+      if (++s->dnf >= DF_FLAGS) {
+        tot = s->dacc > 0 ? (int32_t)udiv((uint32_t)s->dacc, (uint32_t)s->dnf) : 0;
+        s->dbias = tot > DF_BIAS_MAX ? DF_BIAS_MAX : tot;
+      }
+    }
+    df_bits(api, s, 1, nm);
     s->dmd = -1;
   }
   df_bits(api, s, 0, ns);
@@ -1281,35 +1326,60 @@ static void df_end(const k6_api_t *api, st_t *s) {
 static void df_sample(const k6_api_t *api, st_t *s, int32_t b) {
   int32_t t, d;
   if (b == s->dlast) {
-    if (++s->dn == DF_IDLE) { /* silence: what is held goes out, a mark run by itself */
+    if (++s->dn > DF_IDLE) s->dclk += DF_T / 4;
+    if (s->dn == DF_IDLE) { /* silence: what is held goes out, a mark run by itself */
+      s->dclk += DF_IDLE * (DF_T / 4);
+      if (s->dhold) df_end(api, s), s->dtone = 0, s->ddur = DF_SP, s->dhold = 0;
       df_end(api, s);
       if (s->dmd >= 0) {
-        d = (int32_t)udiv((uint32_t)s->dmd + DF_BIAS + DF_T / 2, DF_T);
+        d = (int32_t)udiv((uint32_t)(s->dmd + s->dbias) + DF_T / 2, DF_T);
         df_bits(api, s, 1, d < 1 ? 1 : d);
         s->dmd = -1;
       }
-      s->dtone = 1, s->ddur = 0;
+      s->dtone = 1, s->ddur = 0, s->dct = 1;
     }
     return;
   }
   if (s->dn < DF_IDLE) {
     t = s->dn >= 2;
     d = s->dn == 1 ? DF_SP : s->dn == 2 ? DF_MK : s->dn * (DF_T / 4);
+    s->dclk += d;
+    if (t != s->dct) s->dct = t, s->dclk += DF_TURN;
+    if (s->dhold) { /* the sample held: the mark's if the mark goes on, else the space run's first */
+      s->dhold = 0;
+      if (t) s->ddur += DF_MK;
+      else df_end(api, s), s->dtone = 0, s->ddur = DF_SP;
+    }
     if (t == s->dtone) s->ddur += d;
+    else if (!t && s->ddur) s->dhold = 1;
     else df_end(api, s), s->dtone = t, s->ddur = d;
   }
   s->dlast = b, s->dn = 1;
 }
 
+/* the search for a sync word started again, with the other one; what the FIFO gives when empty */
+static uint32_t df_seek(const k6_api_t *api, uint32_t *sy) {
+  uint32_t i, w = 0;
+  *sy ^= 1;
+  api->fd_write(0x5A, *sy ? DF_SYNC_MK : DF_SYNC_SP);
+  fsk_seek(api, DF_CFG);
+  for (i = 0; i < 8; i++) w = api->fd_read(0x5F);
+  return (w & 0xFF) << 8 | w >> 8;
+}
+
+/* a word of the chip's, the rn-th of its packet, through the slicer */
+static void df_word(const k6_api_t *api, st_t *s, uint32_t v, uint32_t rn) {
+  uint32_t i;
+  s->fifo[rn & 7] = (uint16_t)v;
+  for (i = 16; i--;) df_sample(api, s, (int32_t)((v >> i) & 1));
+}
+
 int k6_main(const k6_api_t *api) {
   st_t *s;
-  uint32_t room, i, now, tkey = 0, tsync = 0, ok0 = 0, got = 0, eq = 0, late = 0, prev = 0;
-  uint32_t tseek = 0, tfull = 0, tlast, rn = 0, since = 0;
-#if DF_MODE == 2
-  uint32_t tsw = 0;
-#endif
-  int32_t acc = 0;
-  int key = 0, left = 0, mode = DF_MODE & 1;
+  uint32_t room, i, now, tkey = 0, tsync = 0, ok0 = 0, got = 0, eq = 0, drop = 0, prev, inv = 0;
+  uint32_t tseek = 0, tk0 = 0, rn = 0, sy = 1, kq = DF_KQ, ncal = 0, kq0 = DF_KQ, ncal0 = 0;
+  int32_t off = 0;
+  int key = 0, left = 0, cald = 0;
   char *p;
   if (api->level < 2) return -3;
   s = (st_t *)api->scratch(&room);
@@ -1320,16 +1390,12 @@ int k6_main(const k6_api_t *api) {
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-  api->fd_write(0x5A, 0xAAAA);
-  api->fd_write(0x5B, 0xAAAA);
+  api->fd_write(0x5B, 0xAAAA);  /* no part of a sync word of two bytes */
   api->fd_write(0x72, 0xC195);  /* 4800 baud x 10.32444 */
   api->fd_write(0x5C, 0x5625);  /* no CRC of the chip's */
   api->fd_write(0x5D, 0xFFE0);  /* 2048 bytes */
-  api->fd_write(0x5E, 0x0200 | DF_THR);
-  fsk_seek(api, DF_CFG);
-  for (i = 0; i < 8; i++) prev = api->fd_read(0x5F);
-  prev = (prev & 0xFF) << 8 | prev >> 8;
-  tlast = api->ticks() & 0xFFFF;
+  api->fd_write(0x5E, 0x0204);
+  prev = df_seek(api, &sy);
   s->rlo = 0x1FF;
   p = put(s->ln, "aprs start hz=");
   p = dec(p, APRS_HZ, 1);
@@ -1338,7 +1404,7 @@ int k6_main(const k6_api_t *api) {
   p = put(p, " plain");
   say(api, s, p);
   for (;;) {
-    uint32_t f, tk, n = 0, over = 0, tried = 0;
+    uint32_t n, over = 0;
     now = api->ms();
     if (now - tkey >= 50) {
       uint16_t r = api->fd_read(0x67) & 0x1FF;
@@ -1349,67 +1415,78 @@ int k6_main(const k6_api_t *api) {
       if (key || now >= RUN_MS) break;
       if (api->level >= 7 && now - s->flag_ms > 120) api->led(0);
     }
-#if DF_MODE == 2
-    if (!left && now - tsw >= DF_SWAP) {
-      tsw += DF_SWAP, mode ^= 1;
-      p = kv(s->ln, "s ", (uint32_t)mode);
-      p = kv(p, " t=", now);
-      p = kv(p, " ok=", s->ok);
-      say(api, s, p);
-    }
-#endif
-    f = api->fd_read(0x02) & 0x3002;
-    if (f) api->fd_write(0x02, 0);
-    tk = api->ticks() & 0xFFFF;
-    if (!left) n = 1; /* a look: the empty FIFO gives the same word again */
-    else if (mode) {
-      acc += (int32_t)(((tk - tlast) & 0xFFFF) * 3); /* a word is 10/3 ms */
-      if (acc >= 100) n = udiv((uint32_t)acc, 100), acc -= (int32_t)(100 * n);
-      if (n > 8) n = 8; /* the FIFO's size */
-    } else if (f & 0x1000) n = DF_THR, tfull = now;
-    else if (now - tfull >= DF_LATE) n = DF_THR, tfull = now, tried = 1, late++;
-    tlast = tk;
-    while (n && !over) {
+    if (api->fd_read(0x02) & 0x3002) api->fd_write(0x02, 0);
+    n = 8; /* the FIFO's size */
+    while (n-- && !over) {
       /* its low byte was on the air first (the pager's swap), each byte's top bit first */
-      uint32_t w = api->fd_read(0x5F), v = (w & 0xFF) << 8 | w >> 8;
-      n--;
+      uint32_t w, v;
+      /* the chip's clock since the packet's first word, in the slicer's units, against what
+         the words taken so far took it: the next one has been in the FIFO for DF_LAG - 1.
+         Once in a packet (in every eighth when the clock is known) the FIFO is read empty at
+         DF_CALW words to learn the clock */
+      uint32_t tk = (api->ticks() - tk0) & 0xFFFF;
+      int32_t el = (int32_t)((tk * kq) >> 8);
+      if (left && el - s->dclk < off && (cald || got < DF_CALW)) break;
+      w = api->fd_read(0x5F), v = (w & 0xFF) << 8 | w >> 8;
       if (!left) {
-        if (v == prev) break;
-        /* the first word of a packet of the chip's. The timed reads stay three words behind */
-        left = 1, got = 0, eq = 0, rn = 0, since = 6, tsync = tfull = now, ok0 = s->ok;
-        acc = -300;
+        if (v == prev) break; /* a look: the empty FIFO gives the same word again */
+        /* the first word of a packet of the chip's */
+        left = 1, got = 0, eq = 0, drop = 0, rn = 0, tsync = now, ok0 = s->ok;
+        tk0 = api->ticks(), off = (DF_LAG - 1) * DF_WORD;
+        cald = ncal >= 4 && (s->pre & 7), kq0 = kq, ncal0 = ncal;
         s->in = 0, s->sr = 0, s->idle = 0;
-        s->dlast = 0, s->dn = DF_IDLE, s->dtone = 1, s->ddur = 0, s->dmd = -1;
-      } else if (rn >= 8 && v == s->fifo[rn & 7]) {
-        eq++;
-        if (tried) { /* no flag and nothing new: the chip has stopped, or will say when it has more */
-          if (n == DF_THR - 1) over = 1;
-          break;
+        s->dlast = 0, s->dn = DF_IDLE, s->dtone = 1, s->ddur = 0, s->dmd = -1, s->dclk = 0;
+        s->dhold = 0, s->dbias = DF_BIAS, s->dacc = 0, s->dnf = 0, s->dct = 1;
+      } else {
+        /* a word that is the one eight before: the empty FIFO's, or a real one like it (one in
+           ten is in the flags). Read again: the same is the empty FIFO, nothing was taken;
+           anything else is the next word, looked at the same way. (A word that comes between
+           the two reads of the empty FIFO is taken for that next word: the reads are 20 us
+           apart and such a read a packet or fewer) */
+        uint32_t w2 = ~w;
+        while (rn >= 8 && v == s->fifo[rn & 7]) {
+          w2 = api->fd_read(0x5F);
+          eq++;
+          if (w2 == w) break;
+          df_word(api, s, v, rn++);
+          got++;
+          w = w2, v = (w & 0xFF) << 8 | w >> 8, w2 = ~w;
         }
-        if (mode && (!since || since >= 6)) { /* the empty FIFO (a real word may match too, but
-                                                 the empty reads come ten apart, or in a row) */
-          since = 0;
+        if (w2 == w) {
+          /* the chip has made the words taken and is in the next (the first one before tk0,
+             the reads a ms apart): the MCU's clock against the chip's. Behind the chip again */
+          drop++, cald = 1;
+          if (got >= DF_CALW - 32 && s->in) {
+            uint32_t m = udiv((uint32_t)(s->dclk - DF_WORD / 2) << 8, tk + 10);
+            if (m < DF_KQ - DF_KQD) m = DF_KQ - DF_KQD;
+            if (m > DF_KQ + DF_KQD) m = DF_KQ + DF_KQD;
+            kq = ncal++ ? (kq + m) >> 1 : m;
+            el = (int32_t)((tk * kq) >> 8);
+          }
+          off = el - s->dclk + DF_LAG * DF_WORD;
           break;
         }
       }
-      since++;
-      s->fifo[rn++ & 7] = (uint16_t)v;
+      df_word(api, s, v, rn++);
       prev = v, got++;
       s->now_ms = now;
-      for (i = 16; i--;) df_sample(api, s, (int32_t)((v >> i) & 1));
       over = s->idle >= FSK_IDLE || s->dn >= DF_QUIET || got >= DF_WORDS;
     }
-    if (!left && now - tseek >= FSK_AGAIN) over = 1;
+    if (!left && now - tseek >= DF_AGAIN) over = 1;
     if (left && over) {
+      if (s->ok == ok0) kq = kq0, ncal = ncal0; /* no frame: nothing learnt from what it was */
       if (got < DF_SAY && s->ok == ok0) s->fake++;
       else {
         /* a line costs tens of ms of listening: none for a sync word found in noise */
+        if (sy) inv += s->ok - ok0;
         p = kv(s->ln, "y ", ++s->pre);
         p = kv(p, " t=", tsync);
         p = kv(p, " w=", got);
         p = kv(p, " ok=", s->ok - ok0);
         p = kv(p, " e=", eq);
-        p = kv(p, " m=", (uint32_t)mode);
+        p = kv(p, " d=", drop);
+        p = kv(p, " s=", sy);
+        p = kv(p, " k=", kq);
         say(api, s, p);
       }
       left = 0;
@@ -1434,11 +1511,9 @@ int k6_main(const k6_api_t *api) {
       if (api->level >= 6) screen(api, s);
     }
     if (over) {
-      /* after a line or the screen: what the chip took meanwhile has overrun its FIFO */
-      fsk_seek(api, DF_CFG);
-      for (i = 0; i < 8; i++) prev = api->fd_read(0x5F); /* what is left in the FIFO */
-      prev = (prev & 0xFF) << 8 | prev >> 8;
-      tlast = api->ticks() & 0xFFFF, tseek = api->ms();
+      /* also after a line or the screen: what the chip took meanwhile has overrun its FIFO */
+      prev = df_seek(api, &sy);
+      tseek = api->ms();
     }
     api->delay_us(left ? 1000 : 2000);
   }
@@ -1449,7 +1524,7 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " key=", (uint32_t)key);
   p = kv(p, " pre=", s->pre);
   p = kv(p, " fake=", s->fake);
-  p = kv(p, " late=", late);
+  p = kv(p, " inv=", inv);
   say(api, s, p);
   p = put(s->ln, "aprs end ok=");
   p = dec(p, s->ok, 1);
