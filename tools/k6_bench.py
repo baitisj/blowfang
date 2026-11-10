@@ -265,7 +265,12 @@ def serial_owner():
         try:
             fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            return _json("serial_owner") or {"who": "?", "pid": 0, "cmd": "?", "since": 0}
+            for _ in range(20):                 # a new holder writes its file just after the lock
+                o = _json("serial_owner")
+                if o:
+                    return o
+                time.sleep(0.05)
+            return {"who": "?", "pid": 0, "cmd": "?", "since": 0}
         fcntl.flock(lk, fcntl.LOCK_UN)
     return None
 
@@ -288,8 +293,15 @@ def serial_hold(who, cmd, poll=SERIAL_POLL_S, term_s=5.0):
         raise SystemExit(f"serial-hold: {o.get('who', '?')} reads the port (pid {o.get('pid', '?')}); "
                          f"ask with: k6_bench.py serial-release {who}")
     _unlink("serial_release")                   # a request made before we started is not for us
-    child = subprocess.Popen(cmd)
     now = time.time()
+    _put_json("serial_owner", {"who": who, "pid": os.getpid(), "cmd": " ".join(cmd), "since": round(now, 3)})
+    try:
+        child = subprocess.Popen(cmd)
+    except OSError:
+        _unlink("serial_owner")
+        fcntl.flock(lk, fcntl.LOCK_UN)
+        lk.close()
+        raise
     _put_json("serial_owner", {"who": who, "pid": child.pid, "cmd": " ".join(cmd), "since": round(now, 3)})
     _append("txlog", f"{now:.3f} {now:.3f} serial reader started by {who}: {' '.join(cmd)}")
     rc, why = None, "ended"
