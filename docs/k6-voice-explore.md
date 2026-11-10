@@ -46,6 +46,8 @@ Flash:
 - the decoder's 2 KB `fx_cs512` table: tried, rejected (FX_OA_UNPACKED costs 5 MHz of the M0's
   mean decode and 87.8 of 96 MHz at worst).
 - EXPLORE's serial dump and trace lines: about 1 KB.
+- core::fmt out of the image (crate::out in the Aura patch, docs/k6-compilers.md): done
+  2026-11-10, 3.2 KB.
 - the compiler thread's savings: Arm Toolchain for Embedded with -Oz (blowfang #24, 2-2.7 KB),
   an address-only panic report (about 3 KB), a compact memcpy (about 1.5 KB).
 

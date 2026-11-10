@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..0b4a26e
+index 0000000..c3fcf0a
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4454 @@
+@@ -0,0 +1,4433 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -968,7 +968,7 @@ index 0000000..0b4a26e
 +        n += 1;
 +    }
 +    let t = core::str::from_utf8(unsafe { core::slice::from_raw_parts(s, n) }).unwrap_or("(not text)");
-+    report_line(format_args!("K6 MOD say {}", t));
++    rl!("K6 MOD say {}", t);
 +    tlm_add(t.as_bytes());
 +}
 +
@@ -998,7 +998,7 @@ index 0000000..0b4a26e
 +        (c.tx, !c.app.is_null(), c.tx_until)
 +    };
 +    if tx && live && mod_tick().wrapping_sub(until) < 0x8000_0000 {
-+        report_line(format_args!("K6 MOD tx timeout"));
++        rl!("K6 MOD tx timeout");
 +        tlm_add(b"(tx timeout)");
 +        unsafe { mod_tx_off() };
 +    }
@@ -1041,7 +1041,7 @@ index 0000000..0b4a26e
 +    let ok = app.radio.enter_tx(syst);
 +    app.radio.set_tx_allowed(BandLock::from_u8(app.settings.band_lock).tx_ranges());
 +    if !ok {
-+        report_line(format_args!("K6 MOD tx refused hz={}", hz));
++        rl!("K6 MOD tx refused hz={}", hz);
 +        tlm_add(b"(tx refused)");
 +        app.radio.enter_rx(syst);
 +        return -1;
@@ -1054,7 +1054,7 @@ index 0000000..0b4a26e
 +        c.tx = true;
 +        c.tx_until = until;
 +    }
-+    report_line(format_args!("K6 MOD tx on hz={} max={} ms", hz, ms));
++    rl!("K6 MOD tx on hz={} max={} ms", hz, ms);
 +    0
 +}
 +
@@ -1070,7 +1070,7 @@ index 0000000..0b4a26e
 +    app.radio.enter_rx(syst); // not end_tx: no roger tone
 +    let power = app.sides[app.master].cfg.power;
 +    app.radio.set_power(power);
-+    report_line(format_args!("K6 MOD tx off"));
++    rl!("K6 MOD tx off");
 +}
 +
 +/// The PA on (1) or off (0) while keyed: CW keying with the PLL locked. -1 if not keyed.
@@ -1158,7 +1158,7 @@ index 0000000..0b4a26e
 +    app.storage
 +        .norflash
 +        .write_bytes(CAL_ADDR, unsafe { core::slice::from_raw_parts(buf, n as usize) });
-+    report_line(format_args!("K6 MOD cal write n={} at {:#x}", n, CAL_ADDR));
++    rl!("K6 MOD cal write n={} at {:#x}", n, CAL_ADDR);
 +    0
 +}
 +
@@ -1229,14 +1229,14 @@ index 0000000..0b4a26e
 +    mod_tx_guard();
 +    let c = unsafe { &mut *addr_of_mut!(MOD_CTX) };
 +    if c.app.is_null() || c.tx || addr < FL_LO || addr >= FL_HI || addr % FL_SECTOR != 0 || c.fl_erases >= FL_ERASES {
-+        report_line(format_args!("K6 FL erase {:#x} refused (n={})", addr, c.fl_erases));
++        rl!("K6 FL erase {:#x} refused (n={})", addr, c.fl_erases);
 +        return -1;
 +    }
 +    c.fl_erases += 1;
 +    let n = c.fl_erases;
 +    let (app, _) = unsafe { mod_ctx() };
 +    app.storage.norflash.erase_sector(addr);
-+    report_line(format_args!("K6 FL erase {:#x} n={}", addr, n));
++    rl!("K6 FL erase {:#x} n={}", addr, n);
 +    0
 +}
 +
@@ -2093,7 +2093,7 @@ index 0000000..0b4a26e
 +    if sfree >= RAM_MIN_FREE {
 +        return;
 +    }
-+    report_line(format_args!("K6 RAM stack ran out (free={} B): rebooting, no report, no key-up", sfree));
++    rl!("K6 RAM stack ran out (free={} B): rebooting, no report, no key-up", sfree);
 +    crate::hal::uart::flush();
 +    for _ in 0..200_000 {
 +        cortex_m::asm::nop();
@@ -2173,13 +2173,13 @@ index 0000000..0b4a26e
 +    };
 +    app.pager.cb = r as i8;
 +    let crc = unsafe { ffi::sp_cb_expected() };
-+    report_line(format_args!("K6 CB r={} mode={} crc={:08x} ms={}.{}", r, mode, crc, dt / 10, dt % 10));
++    rl!("K6 CB r={} mode={} crc={:08x} ms={}.{}", r, mode, crc, dt / 10, dt % 10);
 +    if mode != 0 && r > 0 {
 +        const N: u32 = 1000;
 +        let t0 = uptime::now();
 +        let sum = unsafe { ffi::sp_cb_bench(N) };
 +        let t = uptime::now().wrapping_sub(t0) as u32;
-+        report_line(format_args!(
++        rl!(
 +            "K6 CB bench n={} ms={}.{} us_per_read={} sum={:08x} reads={}",
 +            N,
 +            t / 10,
@@ -2187,7 +2187,7 @@ index 0000000..0b4a26e
 +            t * 100 / N,
 +            sum,
 +            unsafe { ffi::sp_cb_reads() }
-+        ));
++        );
 +    }
 +    // sotto 600 / 400's codebooks (c/k6/sp_vlr.h, SPI flash 0x108000): checked, or written once
 +    // by the install image, in the images that play them. 0 = this image doesn't: no line.
@@ -2196,7 +2196,7 @@ index 0000000..0b4a26e
 +    if v != 0 {
 +        let t = uptime::now().wrapping_sub(t0) as u32;
 +        let crc = unsafe { ffi::sp_vlr_expected() };
-+        report_line(format_args!("K6 VLR r={} crc={:08x} ms={}.{}", v, crc, t / 10, t % 10));
++        rl!("K6 VLR r={} crc={:08x} ms={}.{}", v, crc, t / 10, t % 10);
 +    }
 +}
 +
@@ -2219,7 +2219,7 @@ index 0000000..0b4a26e
 +        #[cfg(not(feature = "lean"))]
 +        let need = unsafe { ffi::sp_dec_need() };
 +        #[cfg(not(feature = "lean"))]
-+        report_line(format_args!(
++        rl!(
 +            "K6 ARENA bytes={} at {:#010x} store={} ring={} dec={} need={}{}",
 +            arena::ARENA_BYTES,
 +            arena::base() as usize,
@@ -2228,10 +2228,10 @@ index 0000000..0b4a26e
 +            arena::DEC_BYTES,
 +            need,
 +            if need as usize > arena::DEC_BYTES { " SHORT" } else { "" }
-+        ));
++        );
 +        #[cfg(not(feature = "lean"))]
-+        crate::hal::txdog::report(|a| report_line(a));
-+        crate::ui::glyph::report(|a| report_line(a));
++        crate::hal::txdog::report();
++        crate::ui::glyph::report();
 +        #[cfg(feature = "spilib")]
 +        lib_list();
 +        app.pager.store_frames =
@@ -2652,7 +2652,7 @@ index 0000000..0b4a26e
 +fn report_srst(app: &App, why: char) {
 +    let p = &app.pager;
 +    let h = &p.st_head;
-+    report_line(format_args!(
++    rl!(
 +        "K6 SRST why={} ms={} bytes={} full={} syncirq={} mind={} pre={} collect={} head={:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x} n={}",
 +        why,
 +        uptime::now().wrapping_sub(p.st_t_arm) / 10,
@@ -2664,7 +2664,7 @@ index 0000000..0b4a26e
 +        if p.st_collect { p.st_got as i16 } else { -1 },
 +        h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7],
 +        p.st_restarts
-+    ));
++    );
 +}
 +
 +/// A whole payload from the stream.
@@ -2814,7 +2814,7 @@ index 0000000..0b4a26e
 +            (p.xl, p.baud_2400, p.f2400_var, p.idle_keep) = prev;
 +            p.poke_n = p.poke_prev; // the writes confirmed with those settings stay
 +            settings_changed(app, syst);
-+            report_line(format_args!("K6 CTL revert: no good packet in 60 s"));
++            rl!("K6 CTL revert: no good packet in 60 s");
 +            report_cfg(app, "revert");
 +        }
 +    }
@@ -3115,7 +3115,7 @@ index 0000000..0b4a26e
 +        // a good voice packet partway through a module: messages win, the module is dropped
 +        if unsafe { (*ffi::km_status()).active } != 0 && unsafe { ffi::sp_check(buf.as_ptr(), len as i32) } != 0 {
 +            unsafe { ffi::km_reset() };
-+            report_line(format_args!("K6 MOD dropped: a voice packet came first"));
++            rl!("K6 MOD dropped: a voice packet came first");
 +            arq().owe = 0;
 +            clear_store(app);
 +        }
@@ -3216,10 +3216,10 @@ index 0000000..0b4a26e
 +#[inline(never)] // its locals only while it runs, not in main's frame for good
 +fn module_packet(app: &mut App, syst: &mut SYST, r: i32) {
 +    let st = unsafe { &*ffi::km_status() };
-+    report_line(format_args!(
++    rl!(
 +        "K6 MOD r={} xfer={} chunk={} have={}/{}",
 +        r, st.xfer, st.chunk, st.have, st.count
-+    ));
++    );
 +    if r != -1 {
 +        // its CRC checked: the link works in these settings
 +        app.pager.idle_ticks = 0;
@@ -3271,14 +3271,14 @@ index 0000000..0b4a26e
 +    // 8-byte tag after the code, then word aligned
 +    let scratch = (at + st.code_len as usize + 8 + 3) & !3;
 +    let room = cortex_m::register::msp::read() as usize - ((addr_of!(__sheap) as usize + 3) & !3);
-+    report_line(format_args!(
++    rl!(
 +        "K6 MOD run serial={} code={} B at {:#010x} stack={} B scratch={} B",
 +        st.serial,
 +        st.code_len,
 +        at,
 +        room,
 +        scratch_end().saturating_sub(scratch)
-+    ));
++    );
 +    let gpio = app.radio.fd6818.reg_read(syst, MOD_GPIO);
 +    let t0 = uptime::now();
 +    unsafe {
@@ -3318,7 +3318,7 @@ index 0000000..0b4a26e
 +    }
 +    // free_ram: the stack never reached since VOICE MSG was entered (painted then)
 +    let sfree = free_ram();
-+    report_line(format_args!("K6 MOD ret={} ({:#x}) in {} ms stack_free={} B", ret, ret, ms, sfree));
++    rl!("K6 MOD ret={} ({:#x}) in {} ms stack_free={} B", ret, ret, ms, sfree);
 +    ram_check(sfree);
 +    #[cfg(not(feature = "lean"))]
 +    if st.reply != 0 {
@@ -3403,7 +3403,7 @@ index 0000000..0b4a26e
 +    unsafe { LIB_WRITE = !app.is_transmitting() };
 +    let r = unsafe { ffi::kl_install(arena::base(), &LIB_FL) };
 +    unsafe { LIB_WRITE = false };
-+    report_line(format_args!("K6 LIB put slot={} r={}", slot, r));
++    rl!("K6 LIB put slot={} r={}", slot, r);
 +    r
 +}
 +
@@ -3417,13 +3417,13 @@ index 0000000..0b4a26e
 +        let r = unsafe { ffi::kl_info(n, &LIB_FL, &mut i) };
 +        if r != -1 {
 +            used += 1;
-+            report_line(format_args!(
++            rl!(
 +                "K6 LIB slot={} r={} code={} serial={} level={}",
 +                n, r, i.code_len, i.serial, i.level
-+            ));
++            );
 +        }
 +    }
-+    report_line(format_args!("K6 LIB used={}", used));
++    rl!("K6 LIB used={}", used);
 +}
 +
 +/// Control action lib: run slot n (or 255: list the slots). Not while a message plays: the
@@ -3455,7 +3455,7 @@ index 0000000..0b4a26e
 +            unsafe { LAST_SLOT = n };
 +        }
 +    }
-+    report_line(format_args!("K6 LIB run slot={} r={}", n, r));
++    rl!("K6 LIB run slot={} r={}", n, r);
 +    if r > 0 {
 +        run_module(app, syst);
 +        unsafe { KEPT = true };
@@ -3491,7 +3491,7 @@ index 0000000..0b4a26e
 +fn if_session(app: &mut App, syst: &mut SYST) {
 +    let max_ms = core::mem::take(&mut app.pager.ifrx_ms);
 +    if stream_on() || app.pager.play_pending {
-+        report_line(format_args!("K6 IFP refused: playing"));
++        rl!("K6 IFP refused: playing");
 +        return;
 +    }
 +    if AGAIN && unsafe { KEPT } {
@@ -3534,11 +3534,11 @@ index 0000000..0b4a26e
 +    };
 +    unsafe { (*addr_of_mut!(MOD_CTX)).app = core::ptr::null_mut() };
 +    let sfree = free_ram();
-+    report_line(format_args!(
++    rl!(
 +        "K6 IFP ret={} fl={} ms={} syncs={} syms={} lost={} q={} rej={} afc={} idle={} ks={} ram={} gap={}@{} lag={} ld={} stack_free={}",
 +        r, app.pager.ifrx_flags, res.ms, res.syncs, res.syms, res.lost, res.acq_q, res.acq_rej, res.afc_hz, res.idle_pct, res.ks,
 +        res.ram, res.gap_us, res.gap_i, res.lag, res.lead_ser, sfree
-+    ));
++    );
 +    let n = (res.nres.max(0) as usize).min(64);
 +    let ns = (res.syncs as usize).min(64);
 +    let mut codes = [0u8; 64];
@@ -3550,12 +3550,12 @@ index 0000000..0b4a26e
 +    for i in 0..ns {
 +        miss[i] = ifp_code(res.miss[i]);
 +    }
-+    report_line(format_args!(
++    rl!(
 +        "K6 IFP pkts={} r={} miss={}",
 +        res.nres,
 +        core::str::from_utf8(&codes[..n]).unwrap_or("?"),
 +        core::str::from_utf8(&miss[..ns]).unwrap_or("?")
-+    ));
++    );
 +    // back to the pager's set-up, GP0 as it was
 +    app.radio.fd6818.reg_write(syst, MOD_GPIO, gpio);
 +    app.sync_watching_to_master(syst);
@@ -3638,7 +3638,7 @@ index 0000000..0b4a26e
 +        KeyId::Digit6 => {
 +            let on = unsafe { ffi::sp_hiss() } == 0;
 +            unsafe { ffi::sp_hiss_on(on as i32) };
-+            report_line(format_args!("K6 HISS band={}", on as u8));
++            rl!("K6 HISS band={}", on as u8);
 +        }
 +        #[cfg(not(feature = "hiss"))]
 +        KeyId::Digit6 => p.raw_view = !p.raw_view,
@@ -3715,7 +3715,7 @@ index 0000000..0b4a26e
 +fn apply_control(app: &mut App, syst: &mut SYST, rec: [u8; 6]) {
 +    let (seq, mask, val, vv, action) = (rec[1], rec[2], rec[3], rec[4], rec[5]);
 +    if app.pager.ctl_seq == seq as i16 {
-+        report_line(format_args!("K6 CTL seq={} repeat", seq));
++        rl!("K6 CTL seq={} repeat", seq);
 +        return;
 +    }
 +    app.pager.ctl_seq = seq as i16;
@@ -3724,7 +3724,7 @@ index 0000000..0b4a26e
 +        return;
 +    }
 +    if action == CTL_ACT_RESET {
-+        report_line(format_args!("K6 RESET seq={}", seq));
++        rl!("K6 RESET seq={}", seq);
 +        crate::hal::uart::flush();
 +        delay::ms(syst, 30);
 +        crate::hal::txdog::reset();
@@ -3736,13 +3736,13 @@ index 0000000..0b4a26e
 +        {
 +            app.pager.ifrx_flags = val & 7;
 +        }
-+        report_line(format_args!("K6 CTL seq={} ifrx ms={}", seq, app.pager.ifrx_ms));
++        rl!("K6 CTL seq={} ifrx ms={}", seq, app.pager.ifrx_ms);
 +        app.pager.idle_ticks = 0;
 +        return;
 +    }
 +    #[cfg(feature = "spilib")]
 +    if action == CTL_ACT_LIB {
-+        report_line(format_args!("K6 CTL seq={} lib slot={}", seq, vv));
++        rl!("K6 CTL seq={} lib slot={}", seq, vv);
 +        lib_run(app, syst, vv);
 +        return;
 +    }
@@ -3795,10 +3795,10 @@ index 0000000..0b4a26e
 +        }
 +        _ => {}
 +    }
-+    report_line(format_args!(
++    rl!(
 +        "K6 CTL seq={} mask={:02x} val={:02x} var_vol={:02x} action={} changed={}",
 +        seq, mask, val, vv, action, changed as u8
-+    ));
++    );
 +    if changed {
 +        settings_changed(app, syst);
 +    }
@@ -3830,33 +3830,31 @@ index 0000000..0b4a26e
 +/// `K6 REGS seq=N 43=.. 44=.. 73=.. 7e=.. 96=.. 9b=.. 5e=.. 2b=.. 58=.. 59=.. 5c=.. 5d=.. 72=.. poke=N`: the FSK registers as read.
 +#[inline(never)]
 +fn report_regs(app: &mut App, syst: &mut SYST, seq: u8) {
-+    use core::fmt::Write as _;
 +    let mut s = Serial;
-+    write!(s, "K6 REGS seq={}", seq).ok();
++    out!(s, "K6 REGS seq={}", seq);
 +    for a in [REG_RX_BW, REG_DEMOD_GAIN, REG_AFC, REG_DC_FILT, REG_DISC_GAIN, REG_AF_BYPASS, REG_FIFO_THR, REG_AF_FILT, REG_FSK_CFG, REG_FSK_CTRL, REG_FSK_5C, REG_FSK_LEN, REG_BAUD] {
 +        let v = app.radio.fd6818.reg_read(syst, a);
-+        write!(s, " {:02x}={:04x}", a, v).ok();
++        out!(s, " {:02x}={:04x}", a, v);
 +    }
-+    report_line(format_args!(" poke={}", app.pager.poke_n));
++    rl!(" poke={}", app.pager.poke_n);
 +}
 +
 +/// Action 6: `K6 BOOT off=XXXX` + 32 bytes in hex per line, 256 lines (~20 KB, ~2 s at 115200),
 +/// then `K6 BOOT end seq=N`
 +#[inline(never)]
 +fn report_boot(seq: u8) {
-+    use core::fmt::Write as _;
 +    let mut s = Serial;
 +    let mut off = 0;
 +    while off < BOOT_LEN {
-+        write!(s, "K6 BOOT off={:04x} ", off).ok();
++        out!(s, "K6 BOOT off={:04x} ", off);
 +        for i in 0..32 {
 +            let b = unsafe { core::ptr::read_volatile((BOOT_BASE + off + i) as *const u8) };
-+            write!(s, "{:02x}", b).ok();
++            out!(s, "{:02x}", b);
 +        }
-+        s.write_str("\r\n").ok();
++        out!(s, "\r\n");
 +        off += 32;
 +    }
-+    report_line(format_args!("K6 BOOT end seq={}", seq));
++    rl!("K6 BOOT end seq={}", seq);
 +}
 +
 +// ---- frequency entry (#) ----
@@ -4095,10 +4093,10 @@ index 0000000..0b4a26e
 +    refresh_status(app);
 +    app.pager.played_id = app.pager.status.msg_id as i16;
 +    let ring = unsafe { ffi::sp_stream_info(core::ptr::null_mut()) };
-+    report_line(format_args!(
++    rl!(
 +        "K6 STEP stream id={:02x} total={} got={} ring={}",
 +        app.pager.status.msg_id, app.pager.status.total, app.pager.status.frames_got, ring
-+    ));
++    );
 +    {
 +        let s = unsafe { &mut *addr_of_mut!(STREAM) };
 +        s.auto = unsafe { ffi::sp_auto_gain_q8() };
@@ -4114,7 +4112,7 @@ index 0000000..0b4a26e
 +        // the library's frame must be the ring's segment (8 or 16 kHz): else nothing plays
 +        let fs = unsafe { ffi::sp_frame_samples() } as usize;
 +        if fs != pwm_audio::SEG {
-+            report_line(format_args!("K6 PWM frame {} != segment {}", fs, pwm_audio::SEG));
++            rl!("K6 PWM frame {} != segment {}", fs, pwm_audio::SEG);
 +            s.done = true;
 +        }
 +    }
@@ -4204,7 +4202,7 @@ index 0000000..0b4a26e
 +    // a DMA that doesn't move (PWM path not running) would hold playback for good
 +    if uptime::now().wrapping_sub(s.last_fill) > STALL_TICKS {
 +        s.aborted = true;
-+        report_line(format_args!("K6 PWM stalled cndtr={}", s.audio.probe().0));
++        rl!("K6 PWM stalled cndtr={}", s.audio.probe().0);
 +    }
 +    if s.tail >= pwm_audio::NSEG || s.aborted {
 +        stream_finish(app, syst);
@@ -4278,7 +4276,7 @@ index 0000000..0b4a26e
 +    crate::hal::txdog::limit(20_000); // 300 ms lead-in and four 64-byte packets
 +    if !ok {
 +        app.pager.cal_result = b'X';
-+        report_line(format_args!("K6 CAL refused tx={}", tx_hz));
++        rl!("K6 CAL refused tx={}", tx_hz);
 +        app.sync_watching_to_master(syst);
 +        arm(app, syst);
 +        return;
@@ -4298,7 +4296,7 @@ index 0000000..0b4a26e
 +    app.radio.enter_rx(syst); // not end_tx: no roger tone after the test
 +    app.sync_watching_to_master(syst);
 +    app.pager.cal_result = b'K';
-+    report_line(format_args!("K6 CAL sent tx={}", tx_hz));
++    rl!("K6 CAL sent tx={}", tx_hz);
 +    arm(app, syst);
 +}
 +
@@ -4392,7 +4390,7 @@ index 0000000..0b4a26e
 +        p.busy = p.busy.saturating_add(dt);
 +        if p.busy >= ARQ_GIVE_UP_TICKS {
 +            p.owe = 0;
-+            report_line(format_args!("K6 ARQ gave up: the channel stayed busy ({} dBm)", rssi));
++            rl!("K6 ARQ gave up: the channel stayed busy ({} dBm)", rssi);
 +        }
 +        return;
 +    }
@@ -4410,19 +4408,19 @@ index 0000000..0b4a26e
 +    arq().owe = 0;
 +    arq().busy = 0;
 +    if arq().sent >= ARQ_MAX {
-+        report_line(format_args!("K6 ARQ no report: {} sent for this transfer already", ARQ_MAX));
++        rl!("K6 ARQ no report: {} sent for this transfer already", ARQ_MAX);
 +        return;
 +    }
 +    let hz = app.master_freq_hz();
 +    if hz != ARQ_HZ {
-+        report_line(format_args!("K6 ARQ no report: on {} Hz; reports go on 440.850 MHz only", hz));
++        rl!("K6 ARQ no report: on {} Hz; reports go on 440.850 MHz only", hz);
 +        return;
 +    }
 +    // never key up on RAM a stack overrun may have trashed, nor on a status that can't be true
 +    ram_check(free_ram());
 +    let st = unsafe { &*ffi::km_status() };
 +    if st.have > st.count {
-+        report_line(format_args!("K6 ARQ no report: status corrupt (have={}/{})", st.have, st.count));
++        rl!("K6 ARQ no report: status corrupt (have={}/{})", st.have, st.count);
 +        return;
 +    }
 +    arq().sent += 1;
@@ -4434,10 +4432,10 @@ index 0000000..0b4a26e
 +    let seq = arq().seq;
 +    arq().seq = seq.wrapping_add(1);
 +    let (ret, ms, sfree) = (arq().ret, arq().ms, arq().sfree);
-+    report_line(format_args!(
++    rl!(
 +        "K6 ARQ tx seq={} state={} xfer={} have={}/{} r={} parts={}",
 +        seq, state, st.xfer, st.have, st.count, st.last, parts
-+    ));
++    );
 +
 +    disarm(app, syst);
 +    app.radio.set_frequency(hz);
@@ -4451,7 +4449,7 @@ index 0000000..0b4a26e
 +    let ok = app.radio.enter_tx(syst);
 +    app.radio.set_tx_allowed(BandLock::from_u8(app.settings.band_lock).tx_ranges());
 +    if !ok {
-+        report_line(format_args!("K6 ARQ tx refused hz={}", hz));
++        rl!("K6 ARQ tx refused hz={}", hz);
 +        app.radio.enter_rx(syst);
 +        app.sync_watching_to_master(syst);
 +        arm(app, syst);
@@ -4485,7 +4483,7 @@ index 0000000..0b4a26e
 +    let power = app.sides[app.master].cfg.power;
 +    app.radio.set_power(power);
 +    let on = uptime::now().wrapping_sub(t0) / 10;
-+    report_line(format_args!("K6 ARQ sent seq={} ms={}", seq, on));
++    rl!("K6 ARQ sent seq={} ms={}", seq, on);
 +    arq().wait = 0;
 +    app.sync_watching_to_master(syst);
 +    arm(app, syst);
@@ -4535,25 +4533,9 @@ index 0000000..0b4a26e
 +// 64-byte packet's line is about 230 characters, 20 ms, sent after RX is
 +// re-armed and well inside the next packet's 107 ms preamble.
 +
-+struct Serial;
-+
-+impl core::fmt::Write for Serial {
-+    // queued, sent by the USART interrupt (hal::uart): a report line no longer holds the
-+    // caller for its 87 us a character
-+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-+        for &b in s.as_bytes() {
-+            crate::hal::uart::send_byte(b);
-+        }
-+        Ok(())
-+    }
-+}
-+
-+fn report_line(args: core::fmt::Arguments) {
-+    use core::fmt::Write as _;
-+    let mut s = Serial;
-+    s.write_fmt(args).ok();
-+    s.write_str("\r\n").ok();
-+}
++// (crate::out, no core::fmt: queued, sent by the USART interrupt, hal::uart, so a report line
++// doesn't hold the caller for its 87 us a character)
++use crate::out::Uart as Serial;
 +
 +fn key_name(k: KeyId) -> &'static str {
 +    match k {
@@ -4584,7 +4566,7 @@ index 0000000..0b4a26e
 +    let p = &app.pager;
 +    let idle_rd = p.idle_rd;
 +    let baud = p.baud();
-+    report_line(format_args!(
++    rl!(
 +        "K6 CFG why={} chip={:04x} freq={} phy=F frames={} baud={} stream={} f2400={} reg58={:04x} reg2b={:04x} inv={} soft={} swap={} emph={} vol={} len5d={:04x} keep={} idlekeep={} idlerd={} timed={} rearm={} auto={} wd={} splay={} draw={} build={}",
 +        why,
 +        app.chip_id,
@@ -4611,7 +4593,7 @@ index 0000000..0b4a26e
 +        p.stream_play as u8,
 +        p.draw_max / 10,
 +        BUILD
-+    ));
++    );
 +    app.pager.idle_rd = 0;
 +}
 +
@@ -4620,53 +4602,51 @@ index 0000000..0b4a26e
 +/// test message. `res` is sp_packet's result, None for a short packet.
 +#[inline(never)] // its locals only while it runs, not in main's frame for good
 +fn report_packet(app: &mut App, read: &[u8], swap: bool, res: Option<i32>) {
-+    use core::fmt::Write as _;
 +    let p = &mut app.pager;
 +    p.reported = p.reported.wrapping_add(1);
 +    let p = &app.pager;
 +    let st = &p.status;
 +    let mut s = Serial;
-+    write!(s, "K6 PKT n={} got={} sync={} ", p.reported, p.raw_len, p.last_sync as char).ok();
++    out!(s, "K6 PKT n={} got={} sync={} ", p.reported, p.raw_len, p.last_sync as char);
 +    match res {
-+        Some(r) => write!(s, "res={} magic={:02x} ", r, p.last_magic).ok(),
-+        None => write!(s, "res=short ").ok(),
++        Some(r) => out!(s, "res={} magic={:02x} ", r, p.last_magic),
++        None => out!(s, "res=short "),
 +    };
-+    write!(s, "rswap={} soft={} swap={} ", swap as u8, p.soft_inv as u8, p.swap as u8).ok();
++    out!(s, "rswap={} soft={} swap={} ", swap as u8, p.soft_inv as u8, p.swap as u8);
 +    if res.is_some() && p.ber.errors >= 0 {
 +        let e = &p.ber;
-+        write!(s, "be={} bseq={} bswap={} binv={} blk=", e.errors, e.seq, e.swap, e.invert).ok();
++        out!(s, "be={} bseq={} bswap={} binv={} blk=", e.errors, e.seq, e.swap, e.invert);
 +        for (i, n) in e.block.iter().enumerate() {
-+            write!(s, "{}{}", if i > 0 { "," } else { "" }, n).ok();
++            out!(s, "{}{}", if i > 0 { "," } else { "" }, n);
 +        }
-+        write!(s, " ").ok();
++        out!(s, " ");
 +    }
-+    write!(s, "ev=").ok();
++    out!(s, "ev=");
 +    for (i, &(f, t, n)) in p.ev[..p.ev_n as usize].iter().enumerate() {
 +        // interrupt flags in hex : ms since the packet's first interrupt : words read
-+        write!(s, "{}{:x}:{}:{}", if i > 0 { "," } else { "" }, f, t / 10, n).ok();
++        out!(s, "{}{:x}:{}:{}", if i > 0 { "," } else { "" }, f, t / 10, n);
 +    }
-+    write!(s, " gap={} stray={} rearm={}", p.gap_ms, p.stray_ms, p.rearm_before).ok();
++    out!(s, " gap={} stray={} rearm={}", p.gap_ms, p.stray_ms, p.rearm_before);
 +    if p.stream() {
-+        write!(s, " restarts={}", p.st_restarts).ok();
++        out!(s, " restarts={}", p.st_restarts);
 +    }
-+    write!(s, " good={} bad={} to={} spur={}", st.good_packets, st.bad_packets, p.timeouts, unsafe { Y_SPUR }).ok();
++    out!(s, " good={} bad={} to={} spur={}", st.good_packets, st.bad_packets, p.timeouts, unsafe { Y_SPUR });
 +    // the bytes only for a packet that failed (about 130 characters, 11 ms at 115200): this line
 +    // goes out between back-to-back packets, and at 2400 baud that quiet stretch is ~45 ms. At
 +    // 2400 baud only the first 64 bytes (an XL packet's 256 hex digits alone take 22 ms)
 +    if !matches!(res, Some(r) if r >= 0) {
-+        s.write_str(" raw=").ok();
++        out!(s, " raw=");
 +        let n = if p.baud() > 1200 { read.len().min(64) } else { read.len() };
 +        for b in &read[..n] {
-+            write!(s, "{:02x}", b).ok();
++            out!(s, "{:02x}", b);
 +        }
 +    }
-+    s.write_str("\r\n").ok();
++    out!(s, "\r\n");
 +}
 +
 +/// After a playback: how much arrived and how long the decoder took.
 +#[inline(never)] // its locals only while it runs, not in main's frame for good
 +fn report_play(app: &App) {
-+    use core::fmt::Write as _;
 +    let p = &app.pager;
 +    let st = &p.status;
 +    let mut missing = [0u16; 8];
@@ -4676,7 +4656,7 @@ index 0000000..0b4a26e
 +    let mut samples = 0u32;
 +    let pcm = unsafe { ffi::sp_pcm_hash(&mut samples) };
 +    let mut s = Serial;
-+    write!(
++    out!(
 +        s,
 +        "K6 PLAY id={:02x} total={} stored={} got={} packets={}/{} played={} dec_mean_us={} dec_max_us={} ram_free={} aborted={} stream={} waits={} late={} under={} overruns={} yields={} pcm={:08x} samples={} rebuilt={} missing={}",
 +        st.msg_id,
@@ -4700,13 +4680,12 @@ index 0000000..0b4a26e
 +        samples,
 +        unsafe { ffi::sp_rebuilt() },
 +        n_missing
-+    )
-+    .ok();
++    );
 +    // the seqs not received (the first 8), e.g. missing=2:3,17
 +    for (i, q) in missing.iter().take(n_missing.clamp(0, 8) as usize).enumerate() {
-+        write!(s, "{}{}", if i == 0 { ':' } else { ',' }, q).ok();
++        out!(s, "{}{}", if i == 0 { ':' } else { ',' }, q);
 +    }
-+    s.write_str("\r\n").ok();
++    out!(s, "\r\n");
 +}
 +
 +/// A CPU fault (a bad address, say): note the pc and lr and reboot at once, which turns the
@@ -4743,10 +4722,10 @@ index 0000000..0b4a26e
 +        }
 +        a += 4;
 +    }
-+    report_line(format_args!(
++    rl!(
 +        "K6 PANIC at {:08x} {:08x} {:08x} {:08x} build={}",
 +        at[0], at[1], at[2], at[3], BUILD
-+    ));
++    );
 +    crate::hal::uart::flush();
 +    for _ in 0..2_000_000 {
 +        cortex_m::asm::nop();
@@ -4769,10 +4748,10 @@ index 0000000..0b4a26e
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..9c9d3ae
+index 0000000..22a049e
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2133 @@
+@@ -0,0 +1,2130 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -4801,7 +4780,7 @@ index 0000000..9c9d3ae
 +//! and Listen for ID's state), the way a RAM module or the 4FSK session does; leaving clears
 +//! the store for messages again.
 +
-+use super::{arm, clear_store, disarm, ffi as pffi, mod_tick, report_line, stream_on, MOD_API, MOD_CTX};
++use super::{arm, clear_store, disarm, ffi as pffi, mod_tick, stream_on, MOD_API, MOD_CTX};
 +use super::{FL_ERASES, STORE_BYTES};
 +use crate::hal::arena;
 +use crate::app::App;
@@ -4810,7 +4789,6 @@ index 0000000..9c9d3ae
 +use crate::device::radio::Modulation;
 +use crate::hal::{pwm_audio, uptime};
 +use crate::ui::TextBuf;
-+use core::fmt::Write as _;
 +use core::ptr::{addr_of, addr_of_mut, null_mut};
 +use cortex_m::peripheral::SYST;
 +use embedded_graphics::pixelcolor::BinaryColor;
@@ -4944,7 +4922,7 @@ index 0000000..9c9d3ae
 +        if unsafe { *addr_of!(NOW) } != p || unsafe { *t } != magic(p) {
 +            let r = load(p);
 +            if r != 0 {
-+                super::super::report_line(format_args!("K6 EX page {} load r={}: restart", p, r));
++                rl!("K6 EX page {} load r={}: restart", p, r);
 +                cortex_m::peripheral::SCB::sys_reset();
 +            }
 +        }
@@ -5192,9 +5170,11 @@ index 0000000..9c9d3ae
 +static mut TRACE_N: u32 = 0;
 +const TRACE_ALL: u32 = 100;
 +
-+fn trace(args: core::fmt::Arguments) {
-+    report_line(args);
-+    crate::hal::uart::flush();
++macro_rules! trace {
++    ($($a:tt)*) => {{
++        rl!($($a)*);
++        crate::hal::uart::flush();
++    }};
 +}
 +
 +fn trace_on() -> bool {
@@ -5414,7 +5394,7 @@ index 0000000..9c9d3ae
 +/// The image has booted into VOICE MSG
 +pub fn boot() {
 +    voice_wait(VOICE_IDLE_MS);
-+    say(format_args!("K6 EX in {} s with no packets or keys", VOICE_IDLE_MS / 1000));
++    rl!("K6 EX in {} s with no packets or keys", VOICE_IDLE_MS / 1000);
 +}
 +
 +/// A key press in VOICE MSG: the wait starts again
@@ -5426,7 +5406,7 @@ index 0000000..9c9d3ae
 +pub fn voice_poll(app: &mut App, syst: &mut SYST) {
 +    let (since, wait) = unsafe { *addr_of!(VOICE) };
 +    if now_ms().wrapping_sub(since) >= wait && app.pager.idle_ticks >= wait * 10 {
-+        say(format_args!("K6 EX quiet {} s: EXPLORE", wait / 1000));
++        rl!("K6 EX quiet {} s: EXPLORE", wait / 1000);
 +        enter(app, syst);
 +    }
 +}
@@ -5455,10 +5435,6 @@ index 0000000..9c9d3ae
 +}
 +fn ctx_off() {
 +    unsafe { (*addr_of_mut!(MOD_CTX)).app = null_mut() };
-+}
-+
-+fn say(args: core::fmt::Arguments) {
-+    report_line(args);
 +}
 +
 +fn note(s: &str) {
@@ -5540,7 +5516,7 @@ index 0000000..9c9d3ae
 +        let need = (ffi::xs_mem_bytes(t.xs) + 3) & !3;
 +        t.xl = t.ring.add(need as usize);
 +        let r = ffi::xs_init(t.xs, &MOD_API, &mut t.ex, t.ring, need);
-+        say(format_args!("K6 EX band {} bins={} r={}", BANDS[t.band as usize].0, need, r));
++        rl!("K6 EX band {} bins={} r={}", BANDS[t.band as usize].0, need, r);
 +    }
 +}
 +
@@ -5556,10 +5532,10 @@ index 0000000..9c9d3ae
 +        page::forget();
 +        let (w, l, r) = (page::check(page::SWEEP), page::check(page::LISTEN), page::check(page::TABLE));
 +        if w != 0 || l != 0 || r != 0 {
-+            say(format_args!(
++            rl!(
 +                "K6 EX pages missing: sweep r={} listen r={} table r={}; install this image's out/page-*.bin (k6 mod PAGE --page --install 10 / 11 / 9)",
 +                w, l, r
-+            ));
++            );
 +            voice_wait(VOICE_IDLE_MS);
 +            return;
 +        }
@@ -5628,10 +5604,10 @@ index 0000000..9c9d3ae
 +    }
 +    start_band(t.band);
 +    ctx_off();
-+    say(format_args!(
++    rl!(
 +        "K6 EX enter cap={} rt={} live={} repairs={} xl={} xd={}",
 +        cap, t.rt_res, t.rt.live, t.rt.repairs, xl_bytes, if t.xd.is_null() { 0 } else { xd_bytes }
-+    ));
++    );
 +    if t.rt_res < 0 {
 +        note(if t.rt_res == -5 { "TABLE AREA NOT BLANK" } else { "TABLE READ FAILED" });
 +    }
@@ -5656,7 +5632,7 @@ index 0000000..9c9d3ae
 +    arm(app, syst);
 +    t.beacon_n = 0;
 +    voice_wait(VOICE_IDLE_MS);
-+    say(format_args!("K6 EX leave"));
++    rl!("K6 EX leave");
 +}
 +
 +fn monitor_on(app: &mut App, syst: &mut SYST, hz: u32) {
@@ -5702,7 +5678,7 @@ index 0000000..9c9d3ae
 +            }
 +            ctx_off();
 +            if beacon != 0 {
-+                say(format_args!("K6 EX beacon {} dBm: VOICE MSG for {} s", beacon, BEACON_HOLD_MS / 1000));
++                rl!("K6 EX beacon {} dBm: VOICE MSG for {} s", beacon, BEACON_HOLD_MS / 1000);
 +                leave(app, syst);
 +                voice_wait(BEACON_HOLD_MS);
 +                return true;
@@ -5730,13 +5706,13 @@ index 0000000..9c9d3ae
 +            let n = unsafe { TRACE_N };
 +            let tr = trace_on();
 +            if tr {
-+                trace(format_args!("K6 EX t {} a {}", n, now_ms()));
++                trace!("K6 EX t {} a {}", n, now_ms());
 +            }
 +            ctx_on(app, syst);
 +            let r = if t.xd.is_null() { unsafe { ffi::xl_step(t.xl) } } else { unsafe { ffi::xd_step(t.xd, t.xl) } };
 +            ctx_off();
 +            if tr {
-+                trace(format_args!("K6 EX t {} b r={}", n, r));
++                trace!("K6 EX t {} b r={}", n, r);
 +            }
 +            dmr_seen();
 +            if r == XL_OK || r == XL_TIME {
@@ -5747,7 +5723,7 @@ index 0000000..9c9d3ae
 +                t.dirty = true;
 +            }
 +            if tr {
-+                trace(format_args!("K6 EX t {} c", n));
++                trace!("K6 EX t {} c", n);
 +            }
 +            unsafe { TRACE_N = n.wrapping_add(1) };
 +        }
@@ -5909,7 +5885,7 @@ index 0000000..9c9d3ae
 +    t.off = c.off_hz;
 +    pause_sweep(app, syst);
 +    monitor_on(app, syst, t.hz);
-+    say(format_args!("K6 EX try {} off={}", t.hz, t.off));
++    rl!("K6 EX try {} off={}", t.hz, t.off);
 +    t.view = View::Try;
 +}
 +
@@ -5983,7 +5959,7 @@ index 0000000..9c9d3ae
 +    unsafe { ffi::xl_start(t.xl, &MOD_API, t.hz, t.auto_max_s) };
 +    side_start(t.auto_spk);
 +    ctx_off();
-+    say(format_args!("K6 EX auto {} listens={} heard={} max={}", t.hz, c.listens, c.heard_s, t.auto_max_s));
++    rl!("K6 EX auto {} listens={} heard={} max={}", t.hz, c.listens, c.heard_s, t.auto_max_s);
 +    t.view = View::Listen;
 +    t.dirty = true;
 +}
@@ -6017,7 +5993,7 @@ index 0000000..9c9d3ae
 +            0
 +        }
 +    };
-+    say(format_args!("K6 EX tone {} watch gap={} s", hz, watch_gap(misses) / 1000));
++    rl!("K6 EX tone {} watch gap={} s", hz, watch_gap(misses) / 1000);
 +    auto_listen(app, syst, c, AUTO_MAX_S);
 +    t.mid = true;
 +}
@@ -6043,7 +6019,7 @@ index 0000000..9c9d3ae
 +        }
 +        t.watch[i].1 = now;
 +        t.watch[i].2 = misses.saturating_add(1);
-+        say(format_args!("K6 EX watch {} gap={} s", hz, watch_gap(misses.saturating_add(1)) / 1000));
++        rl!("K6 EX watch {} gap={} s", hz, watch_gap(misses.saturating_add(1)) / 1000);
 +        auto_listen(app, syst, unsafe { &mut *p }, AUTO_MAX_S);
 +        return true;
 +    }
@@ -6067,7 +6043,7 @@ index 0000000..9c9d3ae
 +        unsafe { ffi::xl_info(t.xl, &mut info) };
 +        if t.mid && info.msgs == 1 {
 +            // begun mid-ID: this is its tail (WA7DMR heard from the A would be "A7DMR")
-+            say(format_args!("K6 EX tail {} {}", t.hz, cstr(&info.text)));
++            rl!("K6 EX tail {} {}", t.hz, cstr(&info.text));
 +        } else if info.call[0] != 0 {
 +            let same = t.once.iter().any(|(hz, call)| *hz == t.hz && cstr(call) == cstr(&info.call));
 +            if same {
@@ -6115,7 +6091,7 @@ index 0000000..9c9d3ae
 +    if known {
 +        unsafe { ffi::xd_known(t.xd) };
 +    }
-+    trace(format_args!("K6 EX t started adj={} known={}", unsafe { DMR_ADJ }, known as u8));
++    trace!("K6 EX t started adj={} known={}", unsafe { DMR_ADJ }, known as u8);
 +}
 +
 +/// After a listen step: DMR heard marks the row (once), and the header follows DMR on and off
@@ -6133,7 +6109,7 @@ index 0000000..9c9d3ae
 +        let p = unsafe { ffi::ex_find(&mut t.ex, t.hz) };
 +        if !p.is_null() && unsafe { (*p).flags } & EX_F_DMR == 0 {
 +            unsafe { (*p).flags |= EX_F_DMR };
-+            say(format_args!("K6 EX dmr {}", t.hz));
++            rl!("K6 EX dmr {}", t.hz);
 +            t.dirty = true;
 +        }
 +    }
@@ -6149,13 +6125,13 @@ index 0000000..9c9d3ae
 +        return;
 +    }
 +    let (tone, dmr) = unsafe { (ffi::xd_tone(t.xd) as u16, ffi::xd_flags(t.xd) & XD_EVER != 0) };
-+    trace(format_args!("K6 EX t end tone={} dmr={}", tone, dmr as u8));
++    trace!("K6 EX t end tone={} dmr={}", tone, dmr as u8);
 +    unsafe {
 +        t.cps8 = ffi::xd_rate8(t.xd);
 +        ffi::xd_stop(t.xd);
 +        DMR_ADJ = 0;
 +    }
-+    trace(format_args!("K6 EX t stopped"));
++    trace!("K6 EX t stopped");
 +    if tone != 0 {
 +        unsafe { ffi::ex_tone(&mut t.ex, t.hz, tone) };
 +    }
@@ -6165,7 +6141,7 @@ index 0000000..9c9d3ae
 +    let h = unsafe { ffi::ex_dmr_heard(&mut t.ex, t.hz, dmr as i32, secs) };
 +    let cleared = h == EX_DMR_CLEARED;
 +    if cleared {
-+        say(format_args!("K6 EX dmr clear {}", t.hz));
++        rl!("K6 EX dmr clear {}", t.hz);
 +    }
 +    if h == EX_DMR_SAVE && t.rt_res >= 0 {
 +        auto_save();
@@ -6176,8 +6152,8 @@ index 0000000..9c9d3ae
 +    let d: i32 = if dmr { 1 } else if cleared { -1 } else { 0 };
 +    let mut rec: RtRec = unsafe { core::mem::zeroed() };
 +    let k = unsafe { ffi::rt_heard_apply(&mut t.rt, t.hz, RT_TOL_HZ, tone, d, &mut rec) };
-+    trace(format_args!("K6 EX t applied {}", k));
-+    say(format_args!("K6 EX heard {} tone={} dmr={} rt={} saved_tone={}", t.hz, tone, d, k, rec.rx_tone));
++    trace!("K6 EX t applied {}", k);
++    rl!("K6 EX heard {} tone={} dmr={} rt={} saved_tone={}", t.hz, tone, d, k, rec.rx_tone);
 +    if k == RT_TONE_FILL {
 +        note("TONE SAVED");
 +    } else if k == RT_TONE_DIFFERS {
@@ -6202,7 +6178,7 @@ index 0000000..9c9d3ae
 +    if slot >= 0 {
 +        unsafe { ffi::ex_know(&mut t.ex, t.hz) };
 +    }
-+    say(format_args!("K6 EX autosave {} id={} slot={} live={}", t.hz, r.id, slot, t.rt.live));
++    rl!("K6 EX autosave {} id={} slot={} live={}", t.hz, r.id, slot, t.rt.live);
 +    note(if slot >= 0 { "DMR SAVED (6 6: DEL)" } else { "DMR SAVE FAILED" });
 +}
 +
@@ -6231,13 +6207,13 @@ index 0000000..9c9d3ae
 +    unsafe { ffi::xl_info(t.xl, &mut info) };
 +    side_end();
 +    unsafe { ffi::xl_stop(t.xl, r) };
-+    trace(format_args!("K6 EX t xl stopped"));
++    trace!("K6 EX t xl stopped");
 +    let auto = core::mem::take(&mut t.auto_now);
 +    if auto {
 +        auto_done();
 +    }
 +    monitor_off(app, syst);
-+    trace(format_args!("K6 EX t monitor off"));
++    trace!("K6 EX t monitor off");
 +    t.view = View::List;
 +    if r != XL_OK {
 +        ctx_off();
@@ -6265,7 +6241,7 @@ index 0000000..9c9d3ae
 +        };
 +    }
 +    ctx_off();
-+    say(format_args!("K6 EX cw {} call={} check={} apply={} id={}", t.hz, cstr(&info.call), k, out, rec.id));
++    rl!("K6 EX cw {} call={} check={} apply={} id={}", t.hz, cstr(&info.call), k, out, rec.id);
 +    match k {
 +        1 => note("ID SAME AS SAVED"),
 +        2 => note("CALL SAVED"),
@@ -6308,7 +6284,7 @@ index 0000000..9c9d3ae
 +        )
 +    };
 +    ctx_off();
-+    say(format_args!("K6 EX cw write {} call={} r={} id={}", t.hz, cstr(&t.heard), r, rec.id));
++    rl!("K6 EX cw write {} call={} r={} id={}", t.hz, cstr(&t.heard), r, rec.id);
 +    note(if r == 4 { "CALL UPDATED" } else { "WRITE FAILED" });
 +}
 +
@@ -6365,15 +6341,15 @@ index 0000000..9c9d3ae
 +    }
 +    let erases = unsafe { (*addr_of!(MOD_CTX)).fl_erases };
 +    ctx_off();
-+    say(format_args!(
++    rl!(
 +        "K6 EX save {} id={} slot={} live={} erases={}/{}",
 +        c.hz, r.id, slot, t.rt.live, erases, FL_ERASES
-+    ));
++    );
 +    let mut b: TextBuf<21> = TextBuf::new();
 +    if slot >= 0 {
-+        write!(b, "SAVED #{} ({} in table)", r.id, t.rt.live).ok();
++        out!(b, "SAVED #{} ({} in table)", r.id, t.rt.live);
 +    } else {
-+        write!(b, "SAVE FAILED {}", slot).ok();
++        out!(b, "SAVE FAILED {}", slot);
 +    }
 +    note(b.as_str());
 +}
@@ -6410,12 +6386,12 @@ index 0000000..9c9d3ae
 +        unsafe { ffi::ex_unknow(&mut t.ex, hz) };
 +    }
 +    ctx_off();
-+    say(format_args!("K6 EX delete {} n={} r={} live={}", hz, n, r, t.rt.live));
++    rl!("K6 EX delete {} n={} r={} live={}", hz, n, r, t.rt.live);
 +    let mut b: TextBuf<21> = TextBuf::new();
 +    if r >= 0 {
-+        write!(b, "DELETED ({} in table)", t.rt.live).ok();
++        out!(b, "DELETED ({} in table)", t.rt.live);
 +    } else {
-+        write!(b, "DELETE FAILED {}", r).ok();
++        out!(b, "DELETE FAILED {}", r);
 +    }
 +    note(b.as_str());
 +}
@@ -6468,12 +6444,12 @@ index 0000000..9c9d3ae
 +        }
 +    }
 +    ctx_off();
-+    say(format_args!("K6 EX delauto n={} r={} live={}", n, r, t.rt.live));
++    rl!("K6 EX delauto n={} r={} live={}", n, r, t.rt.live);
 +    let mut b: TextBuf<21> = TextBuf::new();
 +    if r >= 0 {
-+        write!(b, "DELETED {} ({} LEFT)", n, t.rt.live).ok();
++        out!(b, "DELETED {} ({} LEFT)", n, t.rt.live);
 +    } else {
-+        write!(b, "DELETE FAILED {}", r).ok();
++        out!(b, "DELETE FAILED {}", r);
 +    }
 +    note(b.as_str());
 +}
@@ -6484,17 +6460,17 @@ index 0000000..9c9d3ae
 +    let t = st();
 +    let mut info: XsInfo = unsafe { core::mem::zeroed() };
 +    unsafe { ffi::xs_info(t.xs, &mut info) };
-+    say(format_args!(
++    rl!(
 +        "K6 CAND band={} n={} sweeps={} bins={} ms={}",
 +        BANDS[t.band as usize].0,
 +        t.ex.n,
 +        info.sweeps,
 +        info.bins,
 +        info.ms
-+    ));
++    );
 +    let mut i = 0;
 +    while let Some(c) = cand(i) {
-+        say(format_args!(
++        rl!(
 +            "K6 CAND {} {} {} off={} tone={} call={} score={} overs={} on={} hi={} lo={} ids={} skirts={} fl={}",
 +            i,
 +            c.grade as char,
@@ -6510,7 +6486,7 @@ index 0000000..9c9d3ae
 +            c.ids,
 +            c.skirts,
 +            c.flags
-+        ));
++        );
 +        i += 1;
 +    }
 +    if t.rt_res >= 0 {
@@ -6521,7 +6497,7 @@ index 0000000..9c9d3ae
 +            if slot < 0 {
 +                break;
 +            }
-+            say(format_args!(
++            rl!(
 +                "K6 RT {} {} off={} tone={} call={} score={} rssi={} fl={}",
 +                r.id,
 +                r.rx_hz,
@@ -6531,7 +6507,7 @@ index 0000000..9c9d3ae
 +                r.score as char,
 +                r.best_rssi as i32 - 200,
 +                r.flags
-+            ));
++            );
 +        }
 +    }
 +}
@@ -6604,9 +6580,9 @@ index 0000000..9c9d3ae
 +        // a confirmed call: a check mark for the grade (Jeff's pick "B", 2026-11-07 22:54)
 +        let checked = !ign && !bird && c.call[0] != 0;
 +        let g = if ign { 'x' } else if bird || checked { ' ' } else { c.grade as char };
-+        write!(b, "{} ", g).ok();
++        out!(b, "{} ", g);
 +        mhz(&mut b, c.hz);
-+        write!(b, " ").ok();
++        out!(b, " ");
 +        off_text(&mut b, c);
 +        let y = 11 + 6 * k as i32 + shift;
 +        let sel = top + k == t.sel as u32;
@@ -6748,25 +6724,25 @@ index 0000000..9c9d3ae
 +/// MHz with 3 decimals, as 146.940
 +fn mhz<const N: usize>(b: &mut TextBuf<N>, hz: u32) {
 +    let k = hz / 1000;
-+    write!(b, "{}.{:03}", k / 1000, k % 1000).ok();
++    out!(b, "{}.{:03}", k / 1000, k % 1000);
 +}
 +
 +/// A row's tone: CTCSS in 0.1 Hz (`tone 136.5`), or a DCS code | 0x8000 (`DCS 023`; `i` after it
 +/// when it was sent inverted, 0x4000), as xd_tone gives it
-+fn tone_text(b: &mut dyn core::fmt::Write, tone: u16) {
++fn tone_text(b: &mut dyn crate::out::Sink, tone: u16) {
 +    if tone & 0x8000 != 0 {
-+        write!(b, "DCS {:03o}{}", tone & 0x1FF, if tone & 0x4000 != 0 { "i" } else { "" }).ok();
++        out!(b, "DCS {:03o}{}", tone & 0x1FF, if tone & 0x4000 != 0 { "i" } else { "" });
 +    } else {
-+        write!(b, "tone {}.{}", tone / 10, tone % 10).ok();
++        out!(b, "tone {}.{}", tone / 10, tone % 10);
 +    }
 +}
 +
 +fn off_text<const N: usize>(b: &mut TextBuf<N>, c: &Cand) {
 +    if c.flags & EX_F_SIMPLEX != 0 || c.off_hz == 0 {
-+        write!(b, "  S ").ok();
++        out!(b, "  S ");
 +    } else {
 +        let a = c.off_hz.unsigned_abs() / 100_000;
-+        write!(b, "{}{}.{}", if c.off_hz < 0 { '-' } else { '+' }, a / 10, a % 10).ok();
++        out!(b, "{}{}.{}", if c.off_hz < 0 { '-' } else { '+' }, a / 10, a % 10);
 +    }
 +}
 +
@@ -6784,7 +6760,7 @@ index 0000000..9c9d3ae
 +    // the top line: a message for 2.5 s, else the view's own
 +    let msg = t.msg_len != 0;
 +    if msg {
-+        write!(b, "{}", core::str::from_utf8(&t.msg[..t.msg_len as usize]).unwrap_or("")).ok();
++        out!(b, "{}", core::str::from_utf8(&t.msg[..t.msg_len as usize]).unwrap_or(""));
 +    }
 +    match t.view {
 +        View::List => {
@@ -6795,54 +6771,54 @@ index 0000000..9c9d3ae
 +                // sweep time doesn't matter to a person)
 +                fill(lcd, 0, 10, BinaryColor::On);
 +                eyes(lcd, passes() % 2 == 1);
-+                write!(b, "{}  {} found", BANDS[t.band as usize].0, unsafe { ffi::ex_view_n(&t.ex) }).ok();
++                out!(b, "{}  {} found", BANDS[t.band as usize].0, unsafe { ffi::ex_view_n(&t.ex) });
 +                head_text(lcd, 19, b.as_str());
 +            }
 +            list_rows(lcd, t, 0);
 +            let mut b: TextBuf<32> = TextBuf::new();
 +            if let Some(c) = shown(t.sel as u32) {
 +                if c.flags & EX_F_SPUR != 0 {
-+                    write!(b, "{} dBm  birdie, not a station", c.hi).ok();
++                    out!(b, "{} dBm  birdie, not a station", c.hi);
 +                } else {
 +                    if c.tone != 0 {
-+                        write!(b, "{} dBm  score {}  ", c.hi, c.score).ok();
++                        out!(b, "{} dBm  score {}  ", c.hi, c.score);
 +                        tone_text(&mut b, c.tone);
 +                    } else {
-+                        write!(b, "{} dBm  score {}  {} overs", c.hi, c.score, c.overs).ok();
++                        out!(b, "{} dBm  score {}  {} overs", c.hi, c.score, c.overs);
 +                    }
 +                }
 +            } else {
-+                write!(b, "listening...").ok();
++                out!(b, "listening...");
 +            }
 +            line(lcd, FOOT, b.as_str());
 +        }
 +        View::Try => {
 +            if !msg {
-+                write!(b, "TRY ").ok();
++                out!(b, "TRY ");
 +                mhz(&mut b, t.hz);
 +                if t.off != 0 {
 +                    let a = t.off.unsigned_abs() / 100_000;
-+                    write!(b, " {}{}.{}", if t.off < 0 { '-' } else { '+' }, a / 10, a % 10).ok();
++                    out!(b, " {}{}.{}", if t.off < 0 { '-' } else { '+' }, a / 10, a % 10);
 +                }
 +            }
 +            line(lcd, 0, b.as_str());
 +            let mut b: TextBuf<24> = TextBuf::new();
-+            write!(b, "now {} dBm", t.level).ok();
++            out!(b, "now {} dBm", t.level);
 +            line(lcd, 1, b.as_str());
 +            let mut i = 0;
 +            while let Some(c) = cand(i) {
 +                if c.hz == t.hz {
 +                    let mut b: TextBuf<24> = TextBuf::new();
-+                    write!(b, "{} sc{} n{} {}s", c.grade as char, c.score, c.overs, c.on_ms / 1000).ok();
++                    out!(b, "{} sc{} n{} {}s", c.grade as char, c.score, c.overs, c.on_ms / 1000);
 +                    line(lcd, 2, b.as_str());
 +                    let mut b: TextBuf<24> = TextBuf::new();
 +                    if c.call[0] != 0 {
-+                        write!(b, "{}", cstr(&c.call)).ok();
++                        out!(b, "{}", cstr(&c.call));
 +                    } else {
-+                        write!(b, "no call yet").ok();
++                        out!(b, "no call yet");
 +                    }
 +                    if c.flags & EX_F_OFF_HEARD != 0 {
-+                        write!(b, " in heard").ok();
++                        out!(b, " in heard");
 +                    }
 +                    line(lcd, 3, b.as_str());
 +                    if c.tone != 0 {
@@ -6867,7 +6843,7 @@ index 0000000..9c9d3ae
 +                ditdah(lcd, now_ms() / 1000 % 2 == 1);
 +                mhz(&mut b, t.hz);
 +                if t.dmr_now {
-+                    write!(b, " DMR").ok();
++                    out!(b, " DMR");
 +                }
 +                head_text(lcd, 15, b.as_str());
 +                watch(lcd, info.ms, if t.auto_now { t.auto_max_s } else { LISTEN_S } * 1000);
@@ -6879,27 +6855,27 @@ index 0000000..9c9d3ae
 +                return;
 +            }
 +            let mut b: TextBuf<24> = TextBuf::new();
-+            write!(b, "tone {} heard {}", if info.keyed != 0 { "ON " } else { "off" }, info.msgs).ok();
++            out!(b, "tone {} heard {}", if info.keyed != 0 { "ON " } else { "off" }, info.msgs);
 +            line(lcd, 1, b.as_str());
 +            line(lcd, 2, cstr(&info.text));
 +            if info.call[0] != 0 {
 +                let mut b: TextBuf<24> = TextBuf::new();
-+                write!(b, "{} x{}", cstr(&info.call), info.seen).ok();
++                out!(b, "{} x{}", cstr(&info.call), info.seen);
 +                line(lcd, 3, b.as_str());
 +            }
 +            line(lcd, FOOT, "any key stops");
 +        }
 +        View::Ask => {
 +            if !msg {
-+                write!(b, "NEW CALL ").ok();
++                out!(b, "NEW CALL ");
 +                mhz(&mut b, t.hz);
 +            }
 +            line(lcd, 0, b.as_str());
 +            let mut b: TextBuf<24> = TextBuf::new();
-+            write!(b, "heard {}", cstr(&t.heard)).ok();
++            out!(b, "heard {}", cstr(&t.heard));
 +            line(lcd, 1, b.as_str());
 +            let mut b: TextBuf<24> = TextBuf::new();
-+            write!(b, "saved {}", cstr(&t.ask.call)).ok();
++            out!(b, "saved {}", cstr(&t.ask.call));
 +            line(lcd, 2, b.as_str());
 +            line(lcd, 4, "MENU write new call");
 +            line(lcd, FOOT, "EXIT keep saved");
@@ -7584,7 +7560,7 @@ index 0000000..37404d9
 +}
 diff --git a/src/hal/txdog.rs b/src/hal/txdog.rs
 new file mode 100644
-index 0000000..12bdcde
+index 0000000..1bd76b3
 --- /dev/null
 +++ b/src/hal/txdog.rs
 @@ -0,0 +1,385 @@
@@ -7905,13 +7881,13 @@ index 0000000..12bdcde
 +
 +/// The boot report's line, once the serial report works: `K6 TXDOG on|OFF cfgr1=` and the
 +/// last boot's note
-+pub fn report(mut line: impl FnMut(core::fmt::Arguments)) {
++pub fn report() {
 +    let on = if LIVE.load(Ordering::Relaxed) { "on" } else { "OFF" };
-+    line(format_args!("K6 TXDOG {} cfgr1={:08x}", on, BOOT.load(Ordering::Relaxed)));
++    rl!("K6 TXDOG {} cfgr1={:08x}", on, BOOT.load(Ordering::Relaxed));
 +    let (a, b) = (NOTE_A.load(Ordering::Relaxed), NOTE_B.load(Ordering::Relaxed));
 +    match NOTE_K.load(Ordering::Relaxed) {
-+        1 => line(format_args!("K6 FAULT last boot pc={:08x} lr={:08x}", a, b)),
-+        2 => line(format_args!("K6 TXDOG last boot: key-up ran {} ms, limit {} ms: rebooted", a, b)),
++        1 => rl!("K6 FAULT last boot pc={:08x} lr={:08x}", a, b),
++        2 => rl!("K6 TXDOG last boot: key-up ran {} ms, limit {} ms: rebooted", a, b),
 +        _ => {}
 +    }
 +}
@@ -7974,7 +7950,7 @@ index 0000000..12bdcde
 +    cortex_m::peripheral::SCB::sys_reset()
 +}
 diff --git a/src/hal/uart.rs b/src/hal/uart.rs
-index 131f932..99ae011 100644
+index 131f932..f57cbf0 100644
 --- a/src/hal/uart.rs
 +++ b/src/hal/uart.rs
 @@ -53,7 +53,62 @@ impl RxRing {
@@ -8119,11 +8095,43 @@ index 131f932..99ae011 100644
  }
  
  /// Pull one byte received on USART1 since the last call, if any.
+@@ -116,6 +242,18 @@ impl<'a> DebugUart<'a> {
+     }
+ }
+ 
++#[cfg(debug_assertions)]
++impl crate::out::Sink for DebugUart<'_> {
++    fn bytes(&mut self, b: &[u8]) {
++        for &c in b {
++            if c == b'\n' {
++                self.write_byte(b'\r');
++            }
++            self.write_byte(c);
++        }
++    }
++}
++
+ impl core::fmt::Write for DebugUart<'_> {
+     #[cfg(debug_assertions)]
+     fn write_str(&mut self, s: &str) -> core::fmt::Result {
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..00d3880 100644
+index 9d2b0c0..99c1c5f 100644
 --- a/src/main.rs
 +++ b/src/main.rs
-@@ -14,7 +14,7 @@ mod ui;
+@@ -1,6 +1,8 @@
+ #![no_std]
+ #![no_main]
+ 
++#[macro_use]
++mod out;
+ mod app;
+ 
+ mod board;
+@@ -11,10 +13,11 @@ mod flash_map;
+ mod hal;
+ mod ui;
+ 
++#[cfg(not(feature = "pager-only"))]
  use core::fmt::Write as _;
  use cortex_m_rt::entry;
  use kd32f328_pac::Peripherals;
@@ -8132,7 +8140,7 @@ index 9d2b0c0..00d3880 100644
  
  use app::satellite;
  use device::display::{Backlight, Display};
-@@ -30,6 +30,36 @@ use hal_shim::{ClosurePin, SystDelay};
+@@ -30,6 +33,36 @@ use hal_shim::{ClosurePin, SystDelay};
  
  const DEFAULT_FREQ_HZ: u32 = 439_500_000;
  
@@ -8169,19 +8177,21 @@ index 9d2b0c0..00d3880 100644
  #[entry]
  fn main() -> ! {
      let _dp = unsafe { Peripherals::steal() };
-@@ -79,8 +109,25 @@ fn main() -> ! {
+@@ -78,9 +111,26 @@ fn main() -> ! {
+     let mut dbg = uart::DebugUart::new(usart1, clock::SYSCLK_HZ, 115_200);
      uart::install_bootloader_trampoline();
      unsafe { cortex_m::peripheral::NVIC::unmask(kd32f328_pac::Interrupt::USART1) };
-     writeln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ).ok();
-+    writeln!(dbg, "K6 BOOT build={}", app::pager::BUILD).ok();
+-    writeln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ).ok();
++    dln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ);
++    dln!(dbg, "K6 BOOT build={}", app::pager::BUILD);
 +    // what the bootloader left at the bottom of RAM (the live vector table, it seems): the
 +    // initial SP and the 15 system exception vectors, then SysTick and the first IRQs
-+    write!(dbg, "K6 VEC").ok();
++    dln!(dbg, "K6 VEC");
 +    for i in 0..20u32 {
 +        let w = unsafe { core::ptr::read_volatile((0x2000_0000 + 4 * i) as *const u32) };
-+        write!(dbg, " {:08x}", w).ok();
++        dln!(dbg, " {:08x}", w);
 +    }
-+    writeln!(dbg).ok();
++    dln!(dbg, "");
 +    // crash and stuck-key-up backstop: a vector table in SRAM at 0 (hal::txdog); its boot line
 +    // goes on the serial report from VOICE MSG's first entry
 +    #[cfg(not(feature = "lean"))]
@@ -8195,7 +8205,7 @@ index 9d2b0c0..00d3880 100644
      unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
      // Enabled this early (rather than just before the main loop, as before)
      // so UART RX -- hence CPS handshake detection -- already works during
-@@ -98,17 +145,32 @@ fn main() -> ! {
+@@ -98,63 +148,82 @@ fn main() -> ! {
          .unwrap_or_else(|_| unreachable!());
      let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
  
@@ -8223,13 +8233,20 @@ index 9d2b0c0..00d3880 100644
      lcd.flush().ok();
      lcd.set_display_on(true).ok();
      let mut display = Display::new(lcd);
+-    writeln!(dbg, "lcd init done").ok();
 +    #[cfg(banded)]
 +    display.draw_pages(|_, _| ()); // a blank screen
 +    ui::hook_mod_screen(&mut display); // module API level 6: a module's own screen
-     writeln!(dbg, "lcd init done").ok();
++    dln!(dbg, "lcd init done");
  
      // rfic
-@@ -120,21 +182,21 @@ fn main() -> ! {
+     let mut rfic = fd6818::Fd6818::new(gpiob);
+     let chip_id = rfic.chip_id(&mut cp.SYST);
+-    writeln!(dbg, "fd6818 chip id = {chip_id:#06x}").ok();
++    dln!(dbg, "fd6818 chip id = {:#06x}", chip_id);
+     rfic.init(&mut cp.SYST);
+-    writeln!(dbg, "fd6818 init done").ok();
++    dln!(dbg, "fd6818 init done");
  
      let flash_spi = spi::SpiBus::new(spi1, spi::ClockMode::Mode3, 4);
      let mut storage = Storage::new(norflash::NorFlash::new(flash_spi, gpioa));
@@ -8239,9 +8256,10 @@ index 9d2b0c0..00d3880 100644
  
      // First-boot format gate
      if !storage.is_first_boot_done() {
-         writeln!(dbg, "first boot: awaiting MENU press or CPS dump").ok();
+-        writeln!(dbg, "first boot: awaiting MENU press or CPS dump").ok();
 -        ui::boot::draw_format_prompt(display.as_draw_target());
 -        display.flush();
++        dln!(dbg, "first boot: awaiting MENU press or CPS dump");
 +        screen!(display, |lcd| ui::boot::draw_format_prompt(lcd));
  
          let mut cps_handshake = cps::HandshakeDetector::new();
@@ -8257,7 +8275,16 @@ index 9d2b0c0..00d3880 100644
              }
              delay::ms(&mut cp.SYST, 10);
          }
-@@ -149,12 +211,17 @@ fn main() -> ! {
+ 
+-        writeln!(
++        dln!(
+             dbg,
+             "formatting: settings/VFO/contacts/satellites/FM/logo/SSTV"
+-        )
+-        .ok();
++        );
+         storage.first_boot_format();
+         storage.mark_first_boot_done();
      }
  
      let cal_buf = storage.read_calibration();
@@ -8275,17 +8302,55 @@ index 9d2b0c0..00d3880 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -220,8 +287,7 @@ fn main() -> ! {
+@@ -163,11 +232,11 @@ fn main() -> ! {
+         .ok();
+         rfic.set_squelch_cal(sql_cal);
+     } else {
+-        writeln!(dbg, "squelch cal block blank, using placeholder table").ok();
++        dln!(dbg, "squelch cal block blank, using placeholder table");
+     }
+ 
+     rfic.set_xtal_adjust(cal_buf[6]);
+-    writeln!(dbg, "xtal_adjust = {}", cal_buf[6]).ok();
++    dln!(dbg, "xtal_adjust = {}", cal_buf[6]);
+ 
+     rfic.set_audio_calibration(cal_buf[0], cal_buf[1], cal_buf[2], cal_buf[3], cal_buf[4]);
+     rfic.apply_af_calibration(
+@@ -177,18 +246,17 @@ fn main() -> ! {
+         cal_buf[13],
+         cal_buf[14],
+     );
+-    writeln!(
++    dln!(
+         dbg,
+         "audio cal: mic_depth={} cts_depth={} vol_wide={} vol_narrow={} af_rx=({},{}) af_tx=({},{})",
+         cal_buf[0], cal_buf[1], cal_buf[3], cal_buf[4],
+         cal_buf[11], cal_buf[12], cal_buf[13], cal_buf[14]
+-    )
+-    .ok();
++    );
+ 
+     if let Some(target) = storage.read_pa_calibration(DEFAULT_FREQ_HZ, TxPower::Low) {
+         rfic.set_pa_calibration(target);
+     }
+-    writeln!(dbg, "pa calibration loaded").ok();
++    dln!(dbg, "pa calibration loaded");
+ 
+     let ani_raw = storage.read_ani_raw();
+     let ani = AniConfig::from_raw(
+@@ -219,9 +287,8 @@ fn main() -> ! {
+     let fm_radio = FmRadio::new(gpioa);
  
      if radio.ptt_asserted() || keypad.any_pressed(&mut cp.SYST) {
-         writeln!(dbg, "PTT/key held at boot, waiting for release").ok();
+-        writeln!(dbg, "PTT/key held at boot, waiting for release").ok();
 -        ui::boot::draw_release_keys(display.as_draw_target());
 -        display.flush();
++        dln!(dbg, "PTT/key held at boot, waiting for release");
 +        screen!(display, |lcd| ui::boot::draw_release_keys(lcd));
          let mut released_ticks = 0u32;
          while released_ticks < 50 {
              delay::ms(&mut cp.SYST, 10);
-@@ -234,7 +300,11 @@ fn main() -> ! {
+@@ -234,7 +301,11 @@ fn main() -> ! {
      }
  
      // app class
@@ -8298,7 +8363,7 @@ index 9d2b0c0..00d3880 100644
          radio,
          chip_id,
          keypad,
-@@ -253,43 +323,46 @@ fn main() -> ! {
+@@ -253,53 +324,116 @@ fn main() -> ! {
          &mut cp.SYST,
      );
  
@@ -8377,10 +8442,16 @@ index 9d2b0c0..00d3880 100644
      }
  
      app.radio_mut().enter_rx(&mut cp.SYST);
-@@ -301,6 +374,67 @@ fn main() -> ! {
-     )
-     .ok();
  
+-    writeln!(
++    dln!(
+         dbg,
+         "RX ON  @ {} Hz, watching RSSI...",
+         app.master_freq_hz()
+-    )
+-    .ok();
++    );
++
 +    // Pager-only image (feature "pager-only"): VOICE MSG is the whole firmware. Nothing here
 +    // writes flash: no channel-state save at power-off.
 +    #[cfg(feature = "pager-only")]
@@ -8441,10 +8512,9 @@ index 9d2b0c0..00d3880 100644
 +            }
 +        }
 +    }
-+
+ 
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
-     let mut applied_contrast: u8 = u8::MAX;
 @@ -309,6 +443,8 @@ fn main() -> ! {
  
      loop {
@@ -8454,7 +8524,7 @@ index 9d2b0c0..00d3880 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,6 +465,19 @@ fn main() -> ! {
+@@ -329,9 +465,22 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -8473,8 +8543,36 @@ index 9d2b0c0..00d3880 100644
 +
          // power sw
          if power.debounced_off(&mut cp.SYST) {
-             writeln!(dbg, "power switch off, shutting down").ok();
-@@ -401,6 +550,8 @@ fn main() -> ! {
+-            writeln!(dbg, "power switch off, shutting down").ok();
++            dln!(dbg, "power switch off, shutting down");
+             app.radio_mut().rf_off(&mut cp.SYST);
+             app.save_channel_state();
+             power.shutdown(&mut cp.SYST);
+@@ -340,7 +489,7 @@ fn main() -> ! {
+         // battery
+         if due.every_500ms {
+             app.poll_battery();
+-            writeln!(dbg, "batt bars: {}", app.battery_bars()).ok();
++            dln!(dbg, "batt bars: {}", app.battery_bars());
+         }
+ 
+         // Wall clock tick + Doppler update
+@@ -381,7 +530,7 @@ fn main() -> ! {
+                         wide,
+                     ) {
+                         app.set_transmitting_for_tracking();
+-                        writeln!(dbg, "TRACKING TX ON @ {} Hz", tx_freq).ok();
++                        dln!(dbg, "TRACKING TX ON @ {} Hz", tx_freq);
+                     }
+                 } else if !pressed && tracking_tx {
+                     let ui = app.satellite_ui();
+@@ -396,11 +545,13 @@ fn main() -> ! {
+                         wide,
+                     );
+                     app.clear_transmitting_for_tracking();
+-                    writeln!(dbg, "TRACKING RX ON @ {} Hz", rx_freq).ok();
++                    dln!(dbg, "TRACKING RX ON @ {} Hz", rx_freq);
+                 }
              }
          } else if app.mode() == app::Mode::Sstv {
              app.handle_sstv_ptt(&mut cp.SYST);
@@ -8483,6 +8581,18 @@ index 9d2b0c0..00d3880 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
+@@ -409,9 +560,9 @@ fn main() -> ! {
+         } else if let Some(level) = app.radio_mut().poll_ptt() {
+             app.set_ptt(&mut cp.SYST, !level);
+             if app.is_transmitting() {
+-                writeln!(dbg, "TX ON  @ {} Hz (low power)", app.master_freq_hz()).ok();
++                dln!(dbg, "TX ON  @ {} Hz (low power)", app.master_freq_hz());
+             } else {
+-                writeln!(dbg, "RX ON  @ {} Hz", app.watching_freq_hz()).ok();
++                dln!(dbg, "RX ON  @ {} Hz", app.watching_freq_hz());
+             }
+         }
+ 
 @@ -465,9 +616,13 @@ fn main() -> ! {
              }
          }
@@ -8500,6 +8610,327 @@ index 9d2b0c0..00d3880 100644
              if !app.power_save_is_asleep() {
                  app.poll_squelch(&mut cp.SYST, 3);
                  app.poll_dual_standby(&mut cp.SYST, app.rssi_open());
+@@ -484,7 +639,7 @@ fn main() -> ! {
+             if !app.is_transmitting() && !app.power_save_is_asleep() {
+                 let rssi = app.radio_mut().rssi(&mut cp.SYST);
+                 app.set_rssi_raw(rssi as u8);
+-                writeln!(
++                dln!(
+                     dbg,
+                     "RSSI: {} audio_open={} freq={} ch_mode={} ch_num={}",
+                     rssi,
+@@ -492,8 +647,7 @@ fn main() -> ! {
+                     app.watching_freq_hz(),
+                     app.watching_is_channel_mode(),
+                     app.watching_channel_num()
+-                )
+-                .ok();
++                );
+             }
+ 
+             app.poll_blink();
+diff --git a/src/out.rs b/src/out.rs
+new file mode 100644
+index 0000000..b20c204
+--- /dev/null
++++ b/src/out.rs
+@@ -0,0 +1,296 @@
++//! Text output without core::fmt (2026-11-10). The serial report and the pager screens keep
++//! their format strings, but `rl!` and `out!` hand them to `fmt` here, a small interpreter, with
++//! the values as a plain array (two words each), in place of core::fmt's formatter, its integer
++//! Display and hex impls and its digit table (about 3 KB of flash in the voice + EXPLORE image).
++//! A line is one call and its text only, with no piece table.
++//!
++//! The forms it reads, giving the same text core::fmt gives:
++//!
++//! - `{}`: an integer (u8 to u32, usize, i8 to i32), `&str`, `char` or `bool`
++//! - `{:x}` `{:X}` `{:#x}`, with a width and `0`: `{:02x}` `{:08x}` `{:#010x}`; `{:03o}` likewise
++//! - `{:N}` `{:0N}` `{:>N}` `{:<N}` `{:+}` on integers
++//! - `{{` and `}}`
++//!
++//! Named arguments in the string (`{crc:08x}`) are not read: pass them after it. Full Aura's
++//! screens, built but never run in the pager images, keep core::fmt.
++
++/// Where text goes.
++pub trait Sink {
++    fn bytes(&mut self, b: &[u8]);
++}
++
++/// for out!: any sink (a value, a `&mut` one, a `&mut dyn Sink` or a temporary) as
++/// `&mut dyn Sink`
++pub trait AsSink {
++    fn dyn_sink(&mut self) -> &mut dyn Sink;
++}
++
++impl<S: Sink> AsSink for S {
++    #[inline]
++    fn dyn_sink(&mut self) -> &mut dyn Sink {
++        self
++    }
++}
++
++impl AsSink for dyn Sink + '_ {
++    #[inline]
++    fn dyn_sink(&mut self) -> &mut dyn Sink {
++        self
++    }
++}
++
++impl<S: Sink + ?Sized> Sink for &mut S {
++    #[inline]
++    fn bytes(&mut self, b: &[u8]) {
++        (**self).bytes(b)
++    }
++}
++
++/// The serial report: USART1 TX, queued and sent by the interrupt (hal::uart), so a line
++/// doesn't hold the caller for its 87 us a character.
++pub struct Uart;
++
++impl Sink for Uart {
++    fn bytes(&mut self, b: &[u8]) {
++        for &c in b {
++            crate::hal::uart::send_byte(c);
++        }
++    }
++}
++
++/// One value for `fmt`: a `&str` as its address and length, an integer or a char as its value
++/// and INT (with the integer's bits and SIGNED) or CHAR.
++#[derive(Clone, Copy)]
++pub struct Arg(usize, u32);
++
++const INT: u32 = 0x8000_0000;
++const SIGNED: u32 = 0x100;
++const CHAR: u32 = 0x4000_0000;
++
++pub trait A {
++    fn arg(self) -> Arg;
++}
++
++impl A for &str {
++    #[inline]
++    fn arg(self) -> Arg {
++        Arg(self.as_ptr() as usize, self.len() as u32)
++    }
++}
++
++impl A for bool {
++    #[inline]
++    fn arg(self) -> Arg {
++        (if self { "true" } else { "false" }).arg()
++    }
++}
++
++impl A for char {
++    #[inline]
++    fn arg(self) -> Arg {
++        Arg(self as usize, CHAR)
++    }
++}
++
++impl<T: A + Copy> A for &T {
++    #[inline]
++    fn arg(self) -> Arg {
++        (*self).arg()
++    }
++}
++
++macro_rules! ints {
++    ($($t:ty : $k:expr)*) => {$(
++        impl A for $t {
++            #[inline]
++            fn arg(self) -> Arg {
++                Arg(self as i32 as u32 as usize, INT | $k)
++            }
++        }
++    )*};
++}
++
++ints!(u8:8 u16:16 u32:32 usize:32 i8:SIGNED|8 i16:SIGNED|16 i32:SIGNED|32);
++
++const HEX: u8 = 1;
++const UPPER: u8 = 2;
++const ZERO: u8 = 4;
++const LEFT: u8 = 8;
++const PREFIX: u8 = 16;
++const PLUS: u8 = 32;
++const OCT: u8 = 64;
++
++fn pad(o: &mut dyn Sink, c: u8, n: usize) {
++    for _ in 0..n {
++        o.bytes(&[c]);
++    }
++}
++
++/// Prints `f` with its `{}`s filled from `a`, in order.
++#[inline(never)]
++pub fn fmt(o: &mut dyn Sink, f: &str, a: &[Arg]) {
++    let f = f.as_bytes();
++    let mut i = 0;
++    let mut lit = 0;
++    let mut k = 0;
++    while i < f.len() {
++        let c = f[i];
++        if c != b'{' && c != b'}' {
++            i += 1;
++            continue;
++        }
++        o.bytes(&f[lit..i]);
++        i += 1;
++        if f.get(i) == Some(&c) {
++            // `{{` or `}}`: the second one starts the next text
++            lit = i;
++            i += 1;
++            continue;
++        }
++        let (mut fl, mut w) = (0u8, 0usize);
++        if f.get(i) == Some(&b':') {
++            i += 1;
++            while i < f.len() && f[i] != b'}' {
++                match f[i] {
++                    b'#' => fl |= PREFIX,
++                    b'+' => fl |= PLUS,
++                    b'<' => fl |= LEFT,
++                    b'0' if w == 0 => fl |= ZERO,
++                    d @ b'0'..=b'9' => w = w * 10 + (d - b'0') as usize,
++                    b'x' => fl |= HEX,
++                    b'X' => fl |= HEX | UPPER,
++                    b'o' => fl |= OCT,
++                    _ => {}
++                }
++                i += 1;
++            }
++        }
++        i += 1; // the `}`
++        lit = i;
++        let Some(&Arg(v, t)) = a.get(k) else { continue };
++        k += 1;
++        if t & INT != 0 {
++            num(o, v as u32, t, fl, w);
++        } else if t & CHAR != 0 {
++            let mut b = [0u8; 4];
++            let s = char::from_u32(v as u32).unwrap_or('?').encode_utf8(&mut b);
++            o.bytes(s.as_bytes());
++        } else {
++            o.bytes(unsafe { core::slice::from_raw_parts(v as *const u8, t as usize) });
++        }
++    }
++    o.bytes(&f[lit..]);
++}
++
++/// One integer: the sign (or "0x"), then the digits, padded to `w` as core::fmt pads (zeros go
++/// after the sign and the prefix, spaces before them or, for `<`, after the digits). Hex and
++/// octal take the integer's own bits, as core::fmt's do for a negative one.
++fn num(o: &mut dyn Sink, v: u32, t: u32, fl: u8, w: usize) {
++    let bits = t & 0x3F;
++    let neg = t & SIGNED != 0 && (v as i32) < 0 && fl & (HEX | OCT) == 0;
++    let mut v = if fl & (HEX | OCT) != 0 {
++        if bits < 32 { v & ((1 << bits) - 1) } else { v }
++    } else if neg {
++        (v as i32).unsigned_abs()
++    } else {
++        v
++    };
++    let mut d = [0u8; 11];
++    let mut i = d.len();
++    loop {
++        i -= 1;
++        if fl & HEX != 0 {
++            let x = (v & 15) as u8;
++            d[i] = if x < 10 {
++                b'0' + x
++            } else if fl & UPPER != 0 {
++                b'A' - 10 + x
++            } else {
++                b'a' - 10 + x
++            };
++            v >>= 4;
++        } else if fl & OCT != 0 {
++            d[i] = b'0' + (v & 7) as u8;
++            v >>= 3;
++        } else {
++            let q = v / 10;
++            d[i] = b'0' + (v - q * 10) as u8;
++            v = q;
++        }
++        if v == 0 {
++            break;
++        }
++    }
++    let head: &[u8] = if neg {
++        b"-"
++    } else if fl & PLUS != 0 {
++        b"+"
++    } else if fl & PREFIX != 0 {
++        b"0x"
++    } else {
++        b""
++    };
++    let fill = w.saturating_sub(head.len() + d.len() - i);
++    if fl & (ZERO | LEFT) == 0 {
++        pad(o, b' ', fill);
++    }
++    o.bytes(head);
++    if fl & ZERO != 0 {
++        pad(o, b'0', fill);
++    }
++    o.bytes(&d[i..]);
++    if fl & LEFT != 0 {
++        pad(o, b' ', fill);
++    }
++}
++
++/// `out!(sink, "format", values...)`: core::fmt's `write!`, without core::fmt.
++#[macro_export]
++macro_rules! out {
++    ($w:expr, $f:literal $(, $a:expr)* $(,)?) => {{
++        use $crate::out::AsSink as _;
++        // (a match keeps a temporary sink alive to the end)
++        match ($w).dyn_sink() {
++            o => $crate::out::fmt(o, $f, &[$($crate::out::A::arg($a)),*]),
++        }
++        // never run: rustc checks the string against the values as for write!
++        if false {
++            let _ = core::format_args!($f $(, $a)*);
++        }
++    }};
++}
++
++/// `rl!("format", values...)`: one serial report line, then CR LF.
++#[macro_export]
++macro_rules! rl {
++    ($f:literal $(, $a:expr)* $(,)?) => {{
++        $crate::out::line($f, &[$($crate::out::A::arg($a)),*]);
++        // never run: rustc checks the string against the values as for write!
++        if false {
++            let _ = core::format_args!($f $(, $a)*);
++        }
++    }};
++}
++
++#[inline(never)]
++pub fn line(f: &str, a: &[Arg]) {
++    fmt(&mut Uart, f, a);
++    Uart.bytes(b"\r\n");
++}
++
++/// main's debug lines (DebugUart, which sends nothing in a release build): only in a debug build.
++#[macro_export]
++macro_rules! dln {
++    ($w:expr, $f:literal $(, $a:expr)* $(,)?) => {{
++        #[cfg(debug_assertions)]
++        {
++            $crate::out!($w, $f $(, $a)*);
++            $crate::out!($w, "\n");
++        }
++        #[cfg(not(debug_assertions))]
++        {
++            let _ = &$w;
++            $( let _ = &$a; )*
++        }
++    }};
++}
 diff --git a/src/ui/boot.rs b/src/ui/boot.rs
 index 5f5226a..0a949b9 100644
 --- a/src/ui/boot.rs
@@ -8684,7 +9115,7 @@ index 8dd4ad1..6fd7a54 100644
  }
 diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
 new file mode 100644
-index 0000000..0aa7f1b
+index 0000000..5084a3a
 --- /dev/null
 +++ b/src/ui/glyph.rs
 @@ -0,0 +1,144 @@
@@ -8747,9 +9178,9 @@ index 0000000..0aa7f1b
 +}
 +
 +/// The serial line for VOICE MSG's first entry (main's own boot lines never reach the cable)
-+pub fn report(mut line: impl FnMut(core::fmt::Arguments)) {
++pub fn report() {
 +    let crc = unsafe { CRC };
-+    line(format_args!("K6 FONT 5x7 crc={:08x} ok={}", crc, stock() as u8));
++    rl!("K6 FONT 5x7 crc={:08x} ok={}", crc, stock() as u8);
 +}
 +
 +/// A glyph's columns (bit 0 the top row) and its cell's width: 6 for the 5x7, 4 for the 4x6
@@ -8833,7 +9264,7 @@ index 0000000..0aa7f1b
 +    }
 +}
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
-index cdfa0f7..88bd7f8 100644
+index cdfa0f7..831732f 100644
 --- a/src/ui/mod.rs
 +++ b/src/ui/mod.rs
 @@ -3,9 +3,11 @@ mod chanmgr;
@@ -8865,10 +9296,29 @@ index cdfa0f7..88bd7f8 100644
  
  // TextBuf
  pub struct TextBuf<const N: usize> {
-@@ -62,6 +67,164 @@ impl<const N: usize> core::fmt::Write for TextBuf<N> {
+@@ -51,13 +56,176 @@ impl<const N: usize> TextBuf<N> {
      }
  }
  
+-impl<const N: usize> core::fmt::Write for TextBuf<N> {
+-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+-        let bytes = s.as_bytes();
++impl<const N: usize> crate::out::Sink for TextBuf<N> {
++    fn bytes(&mut self, bytes: &[u8]) {
+         let space = N - self.len;
+         let n = bytes.len().min(space);
+         self.buf[self.len..self.len + n].copy_from_slice(&bytes[..n]);
+         self.len += n;
++    }
++}
++
++impl<const N: usize> core::fmt::Write for TextBuf<N> {
++    fn write_str(&mut self, s: &str) -> core::fmt::Result {
++        crate::out::Sink::bytes(self, s.as_bytes());
++        Ok(())
++    }
++}
++
 +/// A RAM module's screen (module API level 6): app::pager's lcd_flush calls the function this
 +/// registers, which draws app::pager::MOD_SCREEN on `display` and flushes it. Modules run inside
 +/// the main loop's calls, never while it draws, so nothing else holds the display then. The
@@ -9023,14 +9473,10 @@ index cdfa0f7..88bd7f8 100644
 +            let p = &mut self.buf[x as usize];
 +            *p = if c.is_on() { *p | m } else { *p & !m };
 +        }
-+        Ok(())
-+    }
-+}
-+
- pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut app::App) {
-     match app.mode() {
-         app::Mode::AppMenu => draw_app_menu(display.as_draw_target(), &*app),
-@@ -77,6 +240,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
+         Ok(())
+     }
+ }
+@@ -77,6 +245,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
              draw_satellite(display.as_draw_target(), app);
          }
          app::Mode::Sstv => draw_sstv(display.as_draw_target(), app),
@@ -9040,10 +9486,10 @@ index cdfa0f7..88bd7f8 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..6e01094
+index 0000000..25f8eed
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,351 @@
+@@ -0,0 +1,346 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -9075,7 +9521,6 @@ index 0000000..6e01094
 +
 +use super::TextBuf;
 +use crate::app;
-+use core::fmt::Write as _;
 +use embedded_graphics::pixelcolor::BinaryColor;
 +use embedded_graphics::prelude::*;
 +use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
@@ -9102,29 +9547,29 @@ index 0000000..6e01094
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    if let Some(d) = app.pager_freq_digits() {
 +        // typing a frequency: 6 digits of kHz, e.g. FREQ 439.5__ MHz
-+        write!(b, "FREQ ").ok();
++        out!(b, "FREQ ");
 +        for i in 0..6 {
 +            if i == 3 {
-+                write!(b, ".").ok();
++                out!(b, ".");
 +            }
 +            match d.get(i) {
-+                Some(&v) => write!(b, "{}", v).ok(),
-+                None => write!(b, "_").ok(),
++                Some(&v) => out!(b, "{}", v),
++                None => out!(b, "_"),
 +            };
 +        }
-+        write!(b, " MHz").ok();
++        out!(b, " MHz");
 +    } else {
 +        let hz = app.master_freq_hz();
 +        #[cfg(feature = "hiss")]
 +        let title = if app::pager::hiss_band_on() { "VOICE MSG" } else { "NO HISS  " };
 +        #[cfg(not(feature = "hiss"))]
 +        let title = "VOICE MSG";
-+        write!(b, "{} {:>4}.{:05}", title, hz / 1_000_000, (hz % 1_000_000) / 10).ok();
++        out!(b, "{} {:>4}.{:05}", title, hz / 1_000_000, (hz % 1_000_000) / 10);
 +    }
 +    line(lcd, 9, b.as_str());
 +
 +    let mut b: TextBuf<24> = TextBuf::new();
-+    write!(
++    out!(
 +        b,
 +        "F {} {} i{}x{}s{} e{} {:+}",
 +        if p.xl { 'X' } else { 'L' },
@@ -9134,8 +9579,7 @@ index 0000000..6e01094
 +        if p.swap { '+' } else { '-' },
 +        if p.emphasis { '+' } else { '-' },
 +        p.vol_db()
-+    )
-+    .ok();
++    );
 +    line(lcd, 19, b.as_str());
 +
 +    if p.raw_view {
@@ -9143,19 +9587,19 @@ index 0000000..6e01094
 +        // before the x inversion), for comparing with the transmitted packet
 +        for (row, y) in [(0usize, 29), (1, 39)] {
 +            let mut b: TextBuf<24> = TextBuf::new();
-+            write!(b, "R{:<2}", row * 8).ok();
++            out!(b, "R{:<2}", row * 8);
 +            for v in &p.raw[row * 8..row * 8 + 8] {
-+                write!(b, "{:02X}", v).ok();
++                out!(b, "{:02X}", v);
 +            }
 +            line(lcd, y, b.as_str());
 +        }
 +        // the sync, magic byte and length, and the mean bit errors per packet against the
 +        // spec's test message since the last link change (calibration packets only)
 +        let mut b: TextBuf<24> = TextBuf::new();
-+        write!(b, "SYNC {} {:02X} {}", p.last_sync as char, p.last_magic, p.raw_len).ok();
++        out!(b, "SYNC {} {:02X} {}", p.last_sync as char, p.last_magic, p.raw_len);
 +        if p.ber_n > 0 {
 +            let m = p.ber_sum * 10 / p.ber_n as u32;
-+            write!(b, " av{}.{}", m / 10, m % 10).ok();
++            out!(b, " av{}.{}", m / 10, m % 10);
 +        }
 +        line(lcd, 49, b.as_str());
 +        // the last packet's bit errors, the s and x of the closest reading, and the errors
@@ -9163,23 +9607,22 @@ index 0000000..6e01094
 +        let mut b: TextBuf<24> = TextBuf::new();
 +        let e = &p.ber;
 +        if e.errors < 0 {
-+            write!(b, "BE -").ok();
++            out!(b, "BE -");
 +        } else {
-+            write!(
++            out!(
 +                b,
 +                "BE{:>4} s{}x{} ",
 +                e.errors,
 +                if e.swap != 0 { '+' } else { '-' },
 +                if e.invert != 0 { '+' } else { '-' }
-+            )
-+            .ok();
++            );
 +            for &n in e.block.iter() {
 +                let c = match n {
 +                    0..=9 => (b'0' + n) as char,
 +                    10..=35 => (b'a' + n - 10) as char,
 +                    _ => '+',
 +                };
-+                write!(b, "{}", c).ok();
++                out!(b, "{}", c);
 +            }
 +        }
 +        line(lcd, 60, b.as_str());
@@ -9188,25 +9631,24 @@ index 0000000..6e01094
 +
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    if st.have != 0 {
-+        write!(
++        out!(
 +            b,
 +            "ID {:02X} {:>4}/{:<4}{:>3}/{}",
 +            st.msg_id, st.frames_got, st.stored, st.packets_got, st.packets_total
-+        )
-+        .ok();
++        );
 +    } else {
-+        write!(b, "no message ({}s max)", p.store_frames / 50).ok();
++        out!(b, "no message ({}s max)", p.store_frames / 50);
 +    }
 +    line(lcd, 29, b.as_str());
 +
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    if !p.chip_ok {
-+        write!(b, "RF chip not FD6818").ok();
++        out!(b, "RF chip not FD6818");
 +    } else if p.cb < 1 {
-+        write!(b, "NO CODEBOOK ({})", p.cb).ok();
++        out!(b, "NO CODEBOOK ({})", p.cb);
 +    } else if p.last_result == i8::MIN {
 +        let how = if p.len_mode >= 2 { "stream" } else { "listening" };
-+        write!(b, "SYNC {} {}", p.last_sync as char, how).ok();
++        out!(b, "SYNC {} {}", p.last_sync as char, how);
 +    } else {
 +        let crc = match p.last_result {
 +            -1 => "BAD",
@@ -9215,14 +9657,14 @@ index 0000000..6e01094
 +        };
 +        // stream mode: RS = the stream's re-arms (restarts) instead of FIFO timeouts
 +        let (to, n) = if p.len_mode >= 2 { ("RS", p.stream_restarts()) } else { ("TO", p.timeouts) };
-+        write!(b, "SYNC {} CRC {} {:02X} {} {}", p.last_sync as char, crc, p.last_magic, to, n).ok();
++        out!(b, "SYNC {} CRC {} {:02X} {} {}", p.last_sync as char, crc, p.last_magic, to, n);
 +    }
 +    line(lcd, 39, b.as_str());
 +
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    if p.dec_max > 0 {
 +        // decoder time per 20 ms frame, ms (100 us ticks); 20 ms = all of the CPU
-+        write!(
++        out!(
 +            b,
 +            "DEC {}.{}/{}.{}ms {}",
 +            p.dec_mean_x10 / 100,
@@ -9230,18 +9672,17 @@ index 0000000..6e01094
 +            p.dec_max / 10,
 +            p.dec_max % 10,
 +            p.ram_free
-+        )
-+        .ok();
++        );
 +    } else {
 +        // and UTC once a module (aisclk, aprsclk) has set the clock, else the image's sotto
 +        // commit, as on the serial report's BOOT/CFG lines
-+        write!(b, "ok {} bad {} ", st.good_packets, st.bad_packets).ok();
++        out!(b, "ok {} bad {} ", st.good_packets, st.bad_packets);
 +        match crate::app::pager::clk_now() {
 +            Some((ms, _, _)) => {
 +                let s = ms / 1000;
-+                write!(b, "{:02}:{:02}:{:02}Z", s / 3600, s / 60 % 60, s % 60).ok()
++                out!(b, "{:02}:{:02}:{:02}Z", s / 3600, s / 60 % 60, s % 60)
 +            }
-+            None => write!(b, "{}", crate::app::pager::build_short()).ok(),
++            None => out!(b, "{}", crate::app::pager::build_short()),
 +        };
 +    }
 +    line(lcd, 49, b.as_str());
