@@ -10,6 +10,8 @@ the low bit first.
 
   python3 -m modem.acars probe OUT.wav [--seconds 200]   the probe's test signal (send it in FM
                                                          for the control, in AM for the test)
+      [--only R] [--where 50.650]                        real blocks only; the frequency their
+                                                         text names
   python3 -m modem.acars report LOG                      what the chip made of it (the module's
                                                          c and d lines in the K6's serial log)
   python3 -m modem.acars plain LOG                       dfskcap_acars' log: the plain FSK receiver
@@ -17,7 +19,8 @@ the low bit first.
                                                          channel, receive only
 
 The test blocks carry AG7EW as their address and "AG7EW TEST" in their text. They are for
-440.850 MHz only: nothing is ever sent on airband. SPDX-License-Identifier: MIT
+440.850 MHz (FM) and, with the owner's word, 6 m (AM): nothing is ever sent on airband.
+SPDX-License-Identifier: MIT
 """
 import argparse
 
@@ -91,12 +94,13 @@ def audio(tone_bits, fs=FS):
     return np.sin(2 * np.pi * np.cumsum(f) / fs)
 
 
-def probe_audio(seconds, fs=FS, gap=0.25):
-    """-> (audio, [(kind, start s, text)]): K and R units in turn, a gap between them"""
+def probe_audio(seconds, fs=FS, gap=0.25, kinds="KR", where="440.850"):
+    """-> (audio, [(kind, start s, text)]): K and R units in turn (or kinds), a gap between
+    them, the frequency they are sent on in their text"""
     out, sent, pos, k = [np.zeros(int(0.2 * fs))], [], 0.2, 0
     while pos < seconds:
-        kind = "KR"[k % 2]
-        text = f"AG7EW TEST 440.850 {kind}{k:03d} THE K6 READS ACARS"
+        kind = kinds[k % len(kinds)]
+        text = f"AG7EW TEST {where} {kind}{k:03d} THE K6 READS ACARS"
         x = audio(unit_tones(kind, text), fs)
         out += [x, np.zeros(int(gap * fs))]
         sent.append((kind, pos, text))
@@ -237,6 +241,8 @@ def main(argv=None):
     q = sub.add_parser("probe")
     q.add_argument("out")
     q.add_argument("--seconds", type=float, default=200.0)
+    q.add_argument("--only", default="KR", help="the kinds of unit in turn (K, R; default both)")
+    q.add_argument("--where", default="440.850", help="the frequency named in the text")
     q = sub.add_parser("report")
     q.add_argument("log")
     q = sub.add_parser("plain")
@@ -247,7 +253,9 @@ def main(argv=None):
             print("\n".join((report if a.cmd == "report" else plain_report)(f.read().splitlines())))
         return 0
     import soundfile as sf
-    x, sent = probe_audio(a.seconds)
+    if not a.only or set(a.only) - set("KR"):
+        ap.error("--only takes K and R")
+    x, sent = probe_audio(a.seconds, kinds=a.only, where=a.where)
     sf.write(a.out, 0.5 * x, FS)
     print(f"{len(x) / FS:.2f} s, {len(sent)} units, sync words {SYNC2:04x} {SYNC4:08x}")
     return 0

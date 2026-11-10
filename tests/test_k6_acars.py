@@ -6,6 +6,7 @@ that is what the probe asks on the air. Here the module's own parts are checked:
 round, the timed reads at 2400 baud, the block reader for either sense of the tones, its lines
 and the report on them, the registers put back. SPDX-License-Identifier: MIT"""
 import os
+import struct
 import sys
 
 import numpy as np
@@ -161,6 +162,8 @@ def test_dfskcap_acars_on_the_model():
     full, _ = k6mod.build(src)
     plain, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap.c"))
     assert len(full) < 3000 and len(plain) < 2100, (len(full), len(plain))
+    six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))      # the 6 m bench build
+    assert len(six) < 3000 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)

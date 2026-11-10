@@ -232,3 +232,12 @@ receiver read an AM signal's audio with the AF source set to AM?) wants a strong
 The IC-7100 has AM on HF and 50 MHz only, and the K6 receives from 18 MHz up: a bench test
 of the same blocks in AM on 6 m would answer it. That is outside the bench's rule (transmit
 on 440.850 MHz only) and is the owner's call.
+
+#### The AM test on 6 m (`dfskcap_acars6`)
+
+The owner allowed it (2026-11-10 16:49Z): minimum power, ident in every block and in CW, the
+K6 receive only. `c/k6/mod/dfskcap_acars6.c` is `dfskcap_acars` on 50.650 MHz, the first front
+end 60 s after its start (the module's own upload on 440.850 MHz ends and the IC-7100 changes
+band and mode), then 45 s each. The signal: `python3 -m modem.acars probe OUT.wav --only R
+--where 50.650` (real blocks only, about two a second, the frequency in their text), sent in
+AM.
