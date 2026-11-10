@@ -1,5 +1,5 @@
 diff --git a/Cargo.toml b/Cargo.toml
-index 785c441..8ee3035 100644
+index 785c441..6c752c0 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
 @@ -21,6 +21,34 @@ st7565 = "0.6"
@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..e14d534
+index 0000000..6c94624
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4477 @@
+@@ -0,0 +1,4453 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -325,10 +325,10 @@ index 0000000..e14d534
 +//! the calibration transmit.
 +//!
 +//! Keys: MENU play (again), EXIT leave (or stop playback), UP/DOWN volume,
-+//! 1 PHY D/F, 2 frames XL/L, 3 RX invert, 4 pre-emphasis, 5 1200/2400 baud
-+//! (profile D), 6 raw packet bytes on the screen (hiss image: the hiss band off and
++//! 2 frames XL/L, 3 RX invert, 4 pre-emphasis, 5 1800/2400 baud, 6 raw packet bytes on the screen (hiss image: the hiss band off and
 +//! on, an A/B on the speaker), * clear the message, PTT transmit the calibration packet
-+//! (twice in profile D, then twice in F).
++//! (twice). PHY F (FFSK) only: the old direct-FSK PHY D and its key 1 are gone, because one stray
++//! press left the radio deaf to the bench's F sends (Jeff, 2026-11-10).
 +//!
 +//! Serial report: every packet, setting change, playback and calibration
 +//! transmit also goes out as one text line on the programming cable (USART1
@@ -1456,8 +1456,6 @@ index 0000000..e14d534
 +const CTRL_TX_EN: u16 = 0x0800;
 +const CTRL_RX_INVERT: u16 = 0x0400;
 +
-+const CFG_D_1200: u16 = 0x00E1; // direct 2-FSK, preamble 0x55
-+const CFG_D_2400: u16 = 0x00E9;
 +const CFG_F_1200: u16 = 0x3FE3; // FFSK 1200/1800
 +/// FFSK 1200/1800 tones at 1800 baud, the F default since 2026-11-05: REG_58 as the UV-K5 MCFW
 +/// messenger writes it (bits 7:6 clear). On air with interrupt reads (5e=0203) and DC
@@ -1517,7 +1515,6 @@ index 0000000..e14d534
 +const BAUD_1200: u16 = 0x3065;
 +const BAUD_1800: u16 = 0x4898;
 +const BAUD_2400: u16 = 0x60CA;
-+const GAIN_D: u16 = 0x00E0;
 +const GAIN_F: u16 = 0x00B4;
 +const CRC_OFF: u16 = 0x5625;
 +const FIFO_THR: u16 = 0x0204; // TX almost empty 64 words, RX almost full 4 words
@@ -1551,7 +1548,7 @@ index 0000000..e14d534
 +/// leave the radio deaf to the sender (Jeff can't press keys all day, 2026-11-04)
 +const CTL_REVERT_TICKS: u32 = 600_000;
 +// control record mask bits (c/k6/sotto_pager.h SP_CTL_*; the value is the same bit of byte 3)
-+const CTL_PHY: u8 = 1;
++// bit 0 was PHY (D/F): F is the only PHY now, so a record's PHY bit is ignored
 +const CTL_FRAMES: u8 = 2;
 +const CTL_BAUD: u8 = 4;
 +const CTL_AUTO: u8 = 8;
@@ -1647,10 +1644,9 @@ index 0000000..e14d534
 +    pub cb: i8,
 +    /// typing a frequency (#), in kHz like Aura's VFO entry; RAM only, never saved
 +    pub freq_entry: bool,
-+    pub phy_ffsk: bool,
 +    /// key 2: profile XL (128-byte packets, 20 frames, the power-on default) or L (64 bytes, 8 frames)
 +    pub xl: bool,
-+    /// key 5: 2400 baud (D: direct FSK; F: FFSK 1200/2400 Hz tones)
++    /// key 5: 2400 baud (FFSK 1200/2400 Hz tones)
 +    pub baud_2400: bool,
 +    /// key 0: which of RX2400_VARIANTS applies at 2400 baud
 +    pub f2400_var: u8,
@@ -1789,9 +1785,9 @@ index 0000000..e14d534
 +    ifrx_flags: u8,
 +    /// seq of the last control record applied, -1 none
 +    ctl_seq: i16,
-+    /// the settings before a control packet's change (phy_ffsk, xl, baud_2400, f2400_var),
++    /// the settings before a control packet's change (xl, baud_2400, f2400_var, idle_keep),
 +    /// until a good packet keeps the change; CTL_REVERT_TICKS without one puts them back
-+    ctl_prev: Option<(bool, bool, bool, u8, bool)>,
++    ctl_prev: Option<(bool, bool, u8, bool)>,
 +    ctl_wait: u32,
 +    pub cal_result: u8, // 0 none, b'K' sent, b'X' TX refused (band lock / not FM)
 +    /// played this message (auto-play only once per message)
@@ -1843,7 +1839,6 @@ index 0000000..e14d534
 +        PagerState {
 +            chip_ok: false,
 +            cb: 0,
-+            phy_ffsk: true, // F: the mode that works over the IC-7100's USB audio
 +            xl: true, // XL from power-on: every sotto 1200/600/400 send uses it (2026-11-09)
 +            baud_2400: false,
 +            f2400_var: 0,
@@ -2003,7 +1998,7 @@ index 0000000..e14d534
 +
 +    /// F at the default rate (1800 baud), not 2400
 +    fn f1800(&self) -> bool {
-+        self.phy_ffsk && !self.baud_2400
++        !self.baud_2400
 +    }
 +
 +    /// The REG_5E value in force: a control-packet write, else 0x0203 at F/1800 (interrupt
@@ -2029,17 +2024,11 @@ index 0000000..e14d534
 +    }
 +
 +    /// The REG_72 bit rate in force: a control-packet write wins over the PHY/baud setting
-+    /// (F 1800, D 1200, either at 2400 with key 5; `--reg 72=3065` gets F/1200 back).
++    /// (1800, or 2400 with key 5; `--reg 72=3065` gets F/1200 back).
 +    /// The rate is REG_72 / 10.3244; 1800 (0x4898) and 2000 (0x50A9) were written on air
 +    /// (2026-11-05: F/1800 12/12, F/2000 10/12, every decoded packet 0 bit errors)
 +    fn reg72(&self) -> u16 {
-+        let mut v = if self.baud_2400 {
-+            BAUD_2400
-+        } else if self.phy_ffsk {
-+            BAUD_1800
-+        } else {
-+            BAUD_1200
-+        };
++        let mut v = if self.baud_2400 { BAUD_2400 } else { BAUD_1800 };
 +        for &(r, x) in &self.poke[..self.poke_n as usize] {
 +            if r == REG_BAUD && x != 0 {
 +                v = x;
@@ -2050,16 +2039,12 @@ index 0000000..e14d534
 +
 +    /// (REG_58, REG_72, TX gain) for the PHY and baud (before control-packet writes)
 +    fn fsk_cfg(&self) -> (u16, u16, u16) {
-+        if self.phy_ffsk && self.baud_2400 {
++        if self.baud_2400 {
 +            (self.rx2400().0, BAUD_2400, GAIN_F)
-+        } else if self.phy_ffsk && self.reg72() == BAUD_1200 {
++        } else if self.reg72() == BAUD_1200 {
 +            (CFG_F_1200, BAUD_1200, GAIN_F) // a 72=3065 write: the old F/1200 recipe
-+        } else if self.phy_ffsk {
-+            (CFG_F_1800, BAUD_1800, GAIN_F)
-+        } else if self.baud_2400 {
-+            (CFG_D_2400, BAUD_2400, GAIN_D)
 +        } else {
-+            (CFG_D_1200, BAUD_1200, GAIN_D)
++            (CFG_F_1800, BAUD_1800, GAIN_F)
 +        }
 +    }
 +
@@ -2825,7 +2810,7 @@ index 0000000..e14d534
 +        if app.pager.ctl_wait >= CTL_REVERT_TICKS {
 +            app.pager.ctl_prev = None;
 +            let p = &mut app.pager;
-+            (p.phy_ffsk, p.xl, p.baud_2400, p.f2400_var, p.idle_keep) = prev;
++            (p.xl, p.baud_2400, p.f2400_var, p.idle_keep) = prev;
 +            p.poke_n = p.poke_prev; // the writes confirmed with those settings stay
 +            settings_changed(app, syst);
 +            report_line(format_args!("K6 CTL revert: no good packet in 60 s"));
@@ -3639,10 +3624,6 @@ index 0000000..e14d534
 +        }
 +        KeyId::Up => p.vol = (p.vol + 1).min(VOL_Q8.len() as u8 - 1),
 +        KeyId::Down => p.vol = p.vol.saturating_sub(1),
-+        KeyId::Digit1 => {
-+            p.phy_ffsk = !p.phy_ffsk;
-+            rearm = true;
-+        }
 +        KeyId::Digit2 => {
 +            p.xl = !p.xl;
 +            rearm = true;
@@ -3772,10 +3753,7 @@ index 0000000..e14d534
 +        return;
 +    }
 +    let p = &mut app.pager;
-+    let before = (p.phy_ffsk, p.xl, p.baud_2400, p.f2400_var, p.idle_keep);
-+    if mask & CTL_PHY != 0 {
-+        p.phy_ffsk = val & CTL_PHY != 0;
-+    }
++    let before = (p.xl, p.baud_2400, p.f2400_var, p.idle_keep);
 +    if mask & CTL_FRAMES != 0 {
 +        p.xl = val & CTL_FRAMES != 0;
 +    }
@@ -3797,7 +3775,7 @@ index 0000000..e14d534
 +    if mask & CTL_IDLE_KEEP != 0 {
 +        p.idle_keep = val & CTL_IDLE_KEEP != 0;
 +    }
-+    let changed = (p.phy_ffsk, p.xl, p.baud_2400, p.f2400_var, p.idle_keep) != before;
++    let changed = (p.xl, p.baud_2400, p.f2400_var, p.idle_keep) != before;
 +    if changed {
 +        // keep the oldest settings that worked if a second change comes before a good packet
 +        if p.ctl_prev.is_none() {
@@ -3835,7 +3813,7 @@ index 0000000..e14d534
 +        p.poke_n = 0;
 +    } else if POKE_OK.contains(&reg) && (p.poke_n as usize) < POKE_MAX {
 +        if p.ctl_prev.is_none() {
-+            p.ctl_prev = Some((p.phy_ffsk, p.xl, p.baud_2400, p.f2400_var, p.idle_keep));
++            p.ctl_prev = Some((p.xl, p.baud_2400, p.f2400_var, p.idle_keep));
 +            p.poke_prev = p.poke_n;
 +        }
 +        // in order, so a later write to the same register wins
@@ -4261,7 +4239,7 @@ index 0000000..e14d534
 +}
 +
 +/// Keys up on the master side's TX frequency and power (FM, no CTCSS) and
-+/// sends test packet 0 of the spec (profile L) twice in profile D, then twice in F, at the
++/// sends test packet 0 of the spec (profile L) twice in F, at the
 +/// baud rate key 5 set (F at 2400: the FFSK 1200/2400 Hz mode, for checking on the IC-7100
 +/// that the chip really sends it at 2400 baud).
 +/// (Not in the `lean` builds: the codebook install image, flashed once, and the sotto 1200
@@ -4306,16 +4284,15 @@ index 0000000..e14d534
 +    }
 +    delay::ms(syst, 300); // carrier lead-in for the IC-7100's AGC
 +    // REG_5D sets the TX length too: 64 bytes, whatever key 2 and key 7 chose
-+    let saved = (app.pager.phy_ffsk, app.pager.xl, app.pager.len_mode);
++    let saved = (app.pager.xl, app.pager.len_mode);
 +    app.pager.xl = false;
 +    app.pager.len_mode = 0;
-+    for &ffsk in [false, false, true, true].iter() {
-+        app.pager.phy_ffsk = ffsk;
++    for _ in 0..2 {
 +        configure(app, syst);
 +        tx_packet(app, syst, &words);
 +        delay::ms(syst, 100);
 +    }
-+    (app.pager.phy_ffsk, app.pager.xl, app.pager.len_mode) = saved;
++    (app.pager.xl, app.pager.len_mode) = saved;
 +    disarm(app, syst);
 +    app.radio.enter_rx(syst); // not end_tx: no roger tone after the test
 +    app.sync_watching_to_master(syst);
@@ -4607,11 +4584,10 @@ index 0000000..e14d534
 +    let idle_rd = p.idle_rd;
 +    let baud = p.baud();
 +    report_line(format_args!(
-+        "K6 CFG why={} chip={:04x} freq={} phy={} frames={} baud={} stream={} f2400={} reg58={:04x} reg2b={:04x} inv={} soft={} swap={} emph={} vol={} len5d={:04x} keep={} idlekeep={} idlerd={} timed={} rearm={} auto={} wd={} splay={} draw={} build={}",
++        "K6 CFG why={} chip={:04x} freq={} phy=F frames={} baud={} stream={} f2400={} reg58={:04x} reg2b={:04x} inv={} soft={} swap={} emph={} vol={} len5d={:04x} keep={} idlekeep={} idlerd={} timed={} rearm={} auto={} wd={} splay={} draw={} build={}",
 +        why,
 +        app.chip_id,
 +        app.master_freq_hz(),
-+        if p.phy_ffsk { 'F' } else { 'D' },
 +        if p.xl { "XL" } else { "L" },
 +        baud,
 +        p.stream() as u8,
@@ -8501,10 +8477,10 @@ index cdfa0f7..bfe4d12 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..ce27d3e
+index 0000000..2cbca3e
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,372 @@
+@@ -0,0 +1,371 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -8589,8 +8565,7 @@ index 0000000..ce27d3e
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    write!(
 +        b,
-+        "{} {} {} i{}x{}s{} e{} {:+}",
-+        if p.phy_ffsk { 'F' } else { 'D' },
++        "F {} {} i{}x{}s{} e{} {:+}",
 +        if p.xl { 'X' } else { 'L' },
 +        p.baud(), // the REG_72 rate in force (F 1800 by default)
 +        if p.invert { '+' } else { '-' },
