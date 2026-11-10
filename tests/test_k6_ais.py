@@ -179,15 +179,17 @@ def clk_scratch():
     return (ARENA - 16 - len(code) - 8 - TLM) & ~3
 
 
-def rx_lib():
+def rx_lib(*defs):
+    """aisrx_host.c built for the host; defs: extra -D flags (e.g. "AR_RESCUE=8")"""
     import ctypes
     import subprocess
     if not shutil.which("cc"):
         pytest.skip("no cc")
     d = tempfile.mkdtemp()
     so = os.path.join(d, "aisrx.so")
-    subprocess.run(["cc", "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-I" + K6,
-                    os.path.join(K6, "aisrx_host.c"), "-o", so], check=True)
+    subprocess.run(["cc", "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-I" + K6]
+                   + ["-D" + x for x in defs]
+                   + [os.path.join(K6, "aisrx_host.c"), "-o", so], check=True)
     return ctypes.CDLL(so)
 
 
@@ -213,16 +215,12 @@ def rx_decode(lib, c, if_hz=None):
     return got
 
 
-def test_m0_receiver_both_channels_run6():
-    """run 6 (2026-11-09 05:44Z, aiscap_dual tuned to 162.009 MHz, receive only): one burst at a
-    time, as the ship list module's 2,960-count ring holds it, the M0 receiver decodes channel A
-    at 17.1 kHz in the counts (mirrored) and channel B at 32.9 kHz. Each capture held the base
-    station's A burst at the trigger and its B burst 53.3 ms later; 30 of the 32 are on its
-    cadence (the host's receiver, trying 5 IFs each: 26 A, 15 B)"""
+def run6_counts(lib):
+    """run 6's captures one burst at a time, as aisships holds them -> captures decoded on A and
+    on B (and every frame must be the base station's)"""
     p = os.path.join(ROOT, "tests", "data", "k6", "air", "dual-20261109T0543Z.log.gz")
     with gzip.open(p, "rt", errors="replace") as fh:
         caps = ais.parse_caps(fh)
-    lib = rx_lib()
 
     def window(c, a):
         w = dict(c, x=np.asarray(c["x"][a:a + 2960]), pre=384)
@@ -238,6 +236,48 @@ def test_m0_receiver_both_channels_run6():
             for m, _ in fr:
                 assert ais.parse(m)["mmsi"] == 3669705
             got[ch] += bool(fr)
+    return got
+
+
+def test_m0_rescue_run6():
+    """AR_RESCUE (a failed frame tried again with up to two of its 8 weakest bits flipped) on run
+    6's real captures: A 11 -> 23 and B 19 -> 24 of 32, every frame still the base station's"""
+    plain, rescue = run6_counts(rx_lib()), run6_counts(rx_lib("AR_RESCUE=8"))
+    print(plain, rescue)
+    assert rescue["A"] >= plain["A"] + 8 and rescue["B"] >= plain["B"] + 3, (plain, rescue)
+
+
+def test_m0_rescue_no_false_frames():
+    """AR_RESCUE on captures with no AIS frame in them (noise, and GMSK of random bits) and on
+    weak frames: no frame that wasn't sent"""
+    lib = rx_lib("AR_RESCUE=8")
+    rng = np.random.default_rng(9)
+    sent = 0
+    for k in range(60):
+        s = np.zeros(int(0.06 * st.FZ), complex)
+        m = None
+        if k % 3:
+            m = ais.msg1(316000000 + k, 3, ais.sotdma(0, 2, 5)) if k % 3 == 2 else None
+            b = ais.gmsk(ais.burst_bits(m) if m else rng.integers(0, 2, 256).tolist(),
+                         pre_s=0.0, post_s=0.0)
+            s[int(0.012 * st.FZ):int(0.012 * st.FZ) + len(b)] += b
+        cs, fg = poll_stream(s, 55.0 if k % 3 else 50.0, seed=500 + k)
+        x = (np.diff(cs[::8]) - 128)[:3600].astype(np.int8)
+        fc = fg / 8
+        pre = int(0.0115 * fc)
+        for g, _ in rx_decode(lib, {"x": x, "pre": pre, "c1": int(round(96e6 * (len(x) - pre) / fc))}):
+            assert m is not None and g == m, (k, ais.parse(g))
+            sent += 1
+    print("weak frames decoded:", sent)
+
+
+def test_m0_receiver_both_channels_run6():
+    """run 6 (2026-11-09 05:44Z, aiscap_dual tuned to 162.009 MHz, receive only): one burst at a
+    time, as the ship list module's 2,960-count ring holds it, the M0 receiver decodes channel A
+    at 17.1 kHz in the counts (mirrored) and channel B at 32.9 kHz. Each capture held the base
+    station's A burst at the trigger and its B burst 53.3 ms later; 30 of the 32 are on its
+    cadence (the host's receiver, trying 5 IFs each: 26 A, 15 B)"""
+    got = run6_counts(rx_lib())
     print(got)
     assert got["A"] >= 11 and got["B"] >= 17, got
 
@@ -444,10 +484,12 @@ def test_ship_module_lists_both_channels():
     cs, fg = np.concatenate([[0], np.cumsum((c + 32) // 2)]), 22.9e6 / 32
     code, entry = build([("RUN_S", "3u"), ("SWITCH_S", "5u"), ("AISCAP_EMU", "1")], SHIPS)
     radio, _ = k6mod.build(SHIPS)
-    scratch = (ARENA - 16 - len(radio) - 8 - TLM) & ~3  # fits with the telemetry text kept
-    # ring (320 + 2576 counts), phases, 3 frames, the table: with 48 B to spare, since CI's and
+    # with AR_RESCUE (~590 B) it fits only without the telemetry text: upload with --telemetry 0
+    # (modem.k6 mod's default, the no-ARQ receive-only send); with the text it returns -8
+    scratch = (ARENA - 16 - len(radio) - 8) & ~3
+    # ring (320 + 2576 counts), phases, 3 frames, the table: with 96 B to spare, since CI's and
     # hamlet's clang build it 32 B bigger than some others (it got -8 that way once)
-    assert scratch - (2896 + 2 * ((2576 + 256) // 3 + 2) + 3 * 48 + 16 * 32 + 80) >= 48, len(radio)
+    assert scratch - (2896 + 2 * ((2576 + 256) // 3 + 2) + 3 * 48 + 16 * 32 + 80) >= 96, len(radio)
     e = le.Emu(code, entry, np.zeros(16, np.uint8), 0, fe.FDMA, 1.5, max_s=3.6, scratch=scratch,
                level=7)
     e.poll, e.poll_fc, e.poll_k = cs, fg, 8

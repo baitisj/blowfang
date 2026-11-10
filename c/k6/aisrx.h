@@ -15,6 +15,13 @@
    order (each byte goes out least significant bit first, so collecting the bits LSB first gives
    them back), then the FCS. pos is the start flag's first bit, in counts from x[0], Q16.
 
+   AR_RESCUE (define it before including; off by default, so aisclk's size is unchanged): while a
+   burst has given no frame, each start point's first frame between two flags whose CRC failed
+   is tried again
+   with the AR_RESCUE weakest bits flipped, each alone and each pair (AR_RESCUE 8: 36 tries, about
+   10 k cycles each). HDLC framing plus CRC-16 keep false frames away; on the model it is worth
+   about 2.5 dB (tests/test_k6_ais.py test_m0_rescue_*).
+
    ph is the caller's work array of AR_NPH(n, pre) halfwords. No statics, no division at run time
    but ar_udiv/ar_muldiv, nothing big on the stack. SPDX-License-Identifier: MIT */
 #ifndef AISRX_H
@@ -111,6 +118,9 @@ static uint32_t ar_pass(const int8_t *x, uint32_t n, uint32_t dph, uint16_t *ph,
 
 typedef struct {
   uint32_t run, in, nb, start;
+#ifdef AR_RESCUE
+  uint32_t fs; /* a failed frame's opening flag (its first bit), when ar_bit returns 2 */
+#endif
   uint8_t b[AR_MAXB];
 } ar_hd_t;
 
@@ -141,7 +151,9 @@ static int ar_keep(const ar_hd_t *h, uint32_t pos, ar_frame_t *f, int nf, int ma
 }
 
 /* one raw bit (1: no change of level) at level index L; a closing flag with a good CRC keeps the
-   frame (its opening flag's first bit at h->start). Returns 1 for a good frame */
+   frame (its opening flag's first bit at h->start). Returns 1 for a good frame (and with
+   AR_RESCUE, 2 for a frame long enough whose CRC or length failed: its opening flag at h->fs, the
+   closing flag's last bit at L) */
 static int ar_bit(ar_hd_t *h, uint32_t bit, uint32_t L) {
   int good = 0;
   if (bit) {
@@ -153,8 +165,12 @@ static int ar_bit(ar_hd_t *h, uint32_t bit, uint32_t L) {
       if (h->in && h->nb >= 6 + 8 * AR_MINB && !((h->nb - 6) & 7) &&
           ar_crc_ok(h->b, (int)((h->nb - 6) >> 3)))
         good = 1;
-      else
+      else {
+#ifdef AR_RESCUE
+        if (h->in && h->nb >= 6 + 8 * AR_MINB) good = 2, h->fs = h->start;
+#endif
         h->in = 1, h->nb = 0, h->start = L - 7;
+      }
       h->run = 0;
       return good;
     }
@@ -184,6 +200,48 @@ static uint16_t ar_at(const uint16_t *ph, uint32_t t) {
 
 static const uint16_t AR_BACKS[4] = {32, 64, 128, 256};
 
+#ifdef AR_RESCUE
+#define AR_SPAN 416 /* levels a frame can take: 8 x AR_MAXB, its stuffing, both flags */
+/* the frame between levels fs and fe (the bit at level index L is centred at t0 + L bl) tried
+   again with the weakest bits flipped. Returns the frames kept */
+static int ar_rescue(const uint16_t *ph, uint32_t t0, uint32_t bl, uint32_t fs, uint32_t fe,
+                     uint32_t s, ar_frame_t *f, int nf, int maxf) {
+  uint8_t lv[(AR_SPAN + 7) / 8];
+  uint16_t wi[AR_RESCUE], wm[AR_RESCUE];
+  uint32_t L, k, a, b, i, lev;
+  ar_hd_t h;
+  if (!fs || fe <= fs + 16 || fe - fs + 1 > AR_SPAN) return nf;
+  for (k = 0; k < AR_RESCUE; k++) wi[k] = 0, wm[k] = 0xFFFF;
+  for (L = fs - 1; L <= fe; L++) { /* the levels, and the weakest bits between the flags */
+    uint32_t t = t0 + L * bl;
+    int32_t d = (int16_t)(uint16_t)(ar_at(ph, t + (bl >> 1)) - ar_at(ph, t - (bl >> 1)));
+    uint32_t m = (uint32_t)(d < 0 ? -d : d), j = L - (fs - 1);
+    if (!(j & 7)) lv[j >> 3] = 0;
+    lv[j >> 3] |= (uint8_t)((d > 0) << (j & 7));
+    if (L < fs + 8 || L + 8 > fe) continue;
+    for (k = 0; k < AR_RESCUE && m >= wm[k]; k++) {
+    }
+    if (k == AR_RESCUE) continue;
+    for (i = AR_RESCUE - 1; i > k; i--) wm[i] = wm[i - 1], wi[i] = wi[i - 1];
+    wm[k] = (uint16_t)(m > 0xFFFE ? 0xFFFE : m), wi[k] = (uint16_t)L;
+  }
+  for (a = 0; a < AR_RESCUE; a++)
+    for (b = a; b < AR_RESCUE; b++) { /* b == a: a alone */
+      if (wm[b] == 0xFFFF) break;
+      h.run = 0, h.in = 0, h.nb = 0, h.start = 0, h.fs = 0;
+      lev = lv[0] & 1;
+      for (L = fs; L <= fe; L++) {
+        uint32_t j = L - (fs - 1), v = (lv[j >> 3] >> (j & 7)) & 1;
+        if (L == wi[a] || (b != a && L == wi[b])) v ^= 1;
+        if (ar_bit(&h, v == lev, L) == 1)
+          return ar_keep(&h, (s << 16) + (t0 + h.start * bl - (bl >> 1)) * AR_DEC, f, nf, maxf);
+        lev = v;
+      }
+    }
+  return nf;
+}
+#endif
+
 /* if_q32: where the burst sits in the counts, 2^32 x Hz / 96 MHz (AR_IF_Q32 when tuned to the
    channel; a station D Hz off the tuned frequency lands at |16927 + D| Hz, folded at the count
    rate, mirrored when below zero, which NRZI doesn't mind: docs/k6-ais.md run 5) */
@@ -193,6 +251,10 @@ static int ar_decode_if(const int8_t *x, uint32_t n, uint32_t pre, uint32_t c1, 
   int32_t sum;
   int nf = 0;
   ar_hd_t h;
+#ifdef AR_RESCUE
+  int got;
+  uint32_t rfs = 0, rfe = 0, rj = 0;
+#endif
   if (n <= pre + 256 || !c1) return 0;
   dph = ar_muldiv(c1, if_q32, n - pre);
   /* samples a bit, Q16: 96 MHz (n - pre) / c1 / 3 / 9600 */
@@ -208,20 +270,37 @@ static int ar_decode_if(const int8_t *x, uint32_t n, uint32_t pre, uint32_t c1, 
     if (sum < 0) mean = 0u - mean;
     corr = 0;
     for (j = 0; j < ns; j++) ph[j] = (uint16_t)(ph[j] - (corr >> 8)), corr += mean;
+#ifdef AR_RESCUE
+    got = 0, rfs = 0;
+#endif
     for (j = 0; j < 8; j++) {
       uint32_t L = 0, lev = 2;
+      int r;
       h.run = 0, h.in = 0, h.nb = 0, h.start = 0;
       for (t = (bl >> 1) + ((bl * j) >> 3); t + (bl >> 1) < ((ns - 1) << 16); t += bl, L++) {
         uint32_t v = (int16_t)(uint16_t)(ar_at(ph, t + (bl >> 1)) - ar_at(ph, t - (bl >> 1))) > 0;
-        if (lev < 2 && ar_bit(&h, v == lev, L)) {
+        if (lev < 2 && (r = ar_bit(&h, v == lev, L)) == 1) {
           /* the opening flag's first bit, in counts from x[0], Q16 */
           uint32_t tb = (bl >> 1) + ((bl * j) >> 3) + h.start * bl - (bl >> 1);
           nf = ar_keep(&h, (s << 16) + tb * AR_DEC, f, nf, maxf);
           h.in = 1, h.nb = 0, h.start = L - 7; /* the closing flag opens the next */
+#ifdef AR_RESCUE
+          got = 1;
+#endif
         }
+#ifdef AR_RESCUE
+        else if (lev < 2 && r == 2 && !rfs)
+          rfs = h.fs, rfe = L, rj = j;
+#endif
         lev = v;
       }
     }
+#ifdef AR_RESCUE
+    /* only while nothing has decoded (a burst that decodes would retry its failed phases at
+       every start point and take ~10x as long, missing the next burst) */
+    if (!got && !nf && rfs)
+      nf = ar_rescue(ph, (bl >> 1) + ((bl * rj) >> 3), bl, rfs, rfe, s, f, nf, maxf);
+#endif
   }
   return nf;
 }

@@ -331,6 +331,31 @@ returned 1: one station. Log `tests/data/k6/air/aisships-20261109T0829Z.log.gz`.
 So the whole chain works on the radio: decode at both places, table, home, NMEA out. What it
 needs now is traffic: a quieter hour or a K6 nearer the water.
 
+## Sensitivity (2026-11-10 study, model and recorded captures only)
+
+Jeff asked how to make AIS (and ACARS) hear further. The findings:
+
+- **The chip's own FSK modem can't take AIS.** Its bit clock is REG_72 = baud x 10.32444 in 16
+  bits (about 6,350 baud at most; the APRS thread saw it sync at 1200-4800), and REG_58's
+  receive bandwidths stop at FFSK 1200/2400. AIS is 9600. The framing would have worked (the
+  NRZI'd training and flag as the sync word, levels from the FIFO). A long shot not yet tried:
+  direct mode 0 with REG_72 = 0xFFFF on the base station.
+- **At frozen gain, polled, the tap is no longer the limit on the model:** with no
+  sigma-delta at all AIS decodes the same (80% at 55 dB-Hz). A 2nd- or 3rd-order CIC in place
+  of the 256-read count gains nothing (the tap's noise is the sampling's, white).
+- **CRC rescue (`AR_RESCUE` in aisrx.h, on in aisships):** while a burst has given no frame,
+  each start point's first frame between two flags whose CRC failed is tried again with each of
+  its 8 weakest bits flipped, alone and in pairs (36 tries). On run 6's real captures the M0
+  receiver decodes channel A in 23 of 32 instead of 11 and B in 24 instead of 19, every frame
+  the base station's; on the model about 2 dB; no false frames on noise or random GMSK
+  (`test_m0_rescue_*`). It costs ~590 B of code, so aisships now fits only without the upload's
+  telemetry text (`--telemetry 0`, the no-ARQ send's default; with it the module returns -8).
+  aisclk (2 B spare) stays without it.
+- **Outside the radio:** tonight's switching noise near 162 MHz cost ~2.5 dB; antenna height or
+  an inline 162 MHz preamp would add more (no change to the K6).
+- **ACARS** (2400 baud MSK, 1200/2400 Hz tones on AM) is the chip modem's mode 4 format; whether
+  the modem takes the AM detector's output is the APRS thread's receive-only probe.
+
 ## One clock from AIS and APRS
 
 The two modules can't share one 11,776 B arena (5.8 KB and aprsclk's), so they run one after the
