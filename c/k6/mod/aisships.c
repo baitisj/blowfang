@@ -28,6 +28,7 @@
 #define K6_MODULE_LEVEL 2
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
+#define AR_RESCUE 8 /* retry a failed frame with its weakest bits flipped (aisrx.h) */
 #include "../aisrx.h"
 
 #ifndef TUNE_HZ
