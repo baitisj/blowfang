@@ -6,20 +6,22 @@ so the target is one image that does both. He picked the 8 kHz voice (v3.7, sott
 
 `firmware/k6-aura/build.sh` builds it as `aura-voice-explore` (Aura feature `voice-explore`:
 EXPLORE with the voice library, the voice images' 11,776-byte shared block, EXPLORE's code
-pages and banded drawing, below). Until it fits, it's a size report only:
-`out/size-aura-voice-explore.txt` says how much flash and RAM are still to find, and no `.bin`
-is written; its last lines are the three pages.
+pages and banded drawing, below), then links its three pages for it: `out/aura-voice-explore.bin`
+and `out/page-sweep.bin`, `page-listen.bin`, `page-table.bin` (the last lines of
+`out/size-aura-voice-explore.txt`). On CI (Arm Toolchain for Embedded) an image that outgrows the
+flash fails the build; a plain clang build is about 1.5 KB bigger and is a size report only.
 
 ## Where it stands
 
-CI (ATfE 22, -Oz), 2026-11-10, with the pages and banded drawing, on main with blowfang #20,
-#21 and #24:
+CI (ATfE 22, -Oz), blowfang main 95f9670 (2026-11-10): it fits.
 
-- Flash 128,568 of 122,880 B: 5,688 B over. The compiler thread's #31 (address-only panic
-  report, compact memory routines) saves 5,940 B on this image, which leaves about 250 B.
-- Static RAM 16,264 of 20,440 B: 4,176 B left for the stack. A voice playback needs 4,588 B
-  today; with FX_SYNTH_STATE (blowfang #32, synth's frame 1,192 B smaller) about 3,400 B. Listen
-  for ID's deepest chain (xd_step in its page) is about 3.5 KB.
+- Flash 122,564 of 122,880 B: 316 B free. The last 6 KB came from the compiler thread's #31
+  (address-only panic report, compact memory routines, -5,940 B here) and FX_SYNTH_STATE (#32).
+- Static RAM 16,268 of 20,440 B: 4,172 B left for the stack. In a local build, the deepest chain of direct calls
+  is 3,304 B (boot: main + place_app, 3,280 B); a playback's synth frame is 1,032 B with
+  FX_SYNTH_STATE (#32). Listen for ID's deepest chain, xd_step in its page through a pointer
+  this count doesn't follow, is about 3.5 KB.
+- Not yet run on a radio.
 
 ## Where it started (2026-11-09, local clang 18 build; CI's is about 1.1 KB smaller)
 
