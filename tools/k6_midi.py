@@ -69,7 +69,8 @@ TOP = 2000                 # PWM period: values 0..TOP, MID silence
 MID = TOP // 2
 LO = 16
 GAP_BLKS = 600             # the module's silence after each song
-MAGIC = b"K6MIDI\x01\x00"
+MAGIC = b"K6MIDI\x01"         # then a flags byte: bit 0 = play once (else loop until a key is held)
+ONCE = 1
 VOLUME = 100
 MODULE_MAX = 11752         # header + code + tag in the SPI voice images' 11,776-byte block
 EXPLORE_MAX = 5376 - 24    # the EXPLORE and lean images' block
@@ -348,8 +349,9 @@ def encode(title, unit, notes):
     return bytes(out)
 
 
-def table(songs, volume=VOLUME):
-    """[(title, unit, notes)] -> the module's song table"""
+def table(songs, volume=VOLUME, once=False):
+    """[(title, unit, notes)] -> the module's song table; once: play them once and return (else the
+    module loops until a key is held)"""
     if not 1 <= len(songs) <= 255:
         raise ValueError("1 to 255 songs")
     bodies = [encode(*s) for s in songs]
@@ -360,13 +362,14 @@ def table(songs, volume=VOLUME):
         off += len(b)
     if off > 0xFFFF:
         raise ValueError("table over 64 KB")
-    head = MAGIC + struct.pack("<HBB", off, len(songs), volume) + b"".join(struct.pack("<H", o) for o in offs)
+    head = MAGIC + bytes([ONCE if once else 0]) + struct.pack("<HBB", off, len(songs), volume)
+    head += b"".join(struct.pack("<H", o) for o in offs)
     return bytes(head) + b"".join(bodies)
 
 
 def read_table(blob):
     """the song table -> (volume, [(title, unit, song bytes)])"""
-    if blob[:8] != MAGIC:
+    if blob[:7] != MAGIC:
         raise ValueError("not a K6 MIDI table")
     total, n, vol = struct.unpack("<HBB", blob[8:12])
     out = []
@@ -512,7 +515,8 @@ def render_song(body, vol, wt=None):
 
 def render_table(blob):
     """everything midi.c writes to CCR4 between the speaker going on and the last MID before it
-    goes off, with no key pressed: each song, then its 600 ms of silence"""
+    goes off, with no key pressed: each song, then its 600 ms of silence. That is the whole run of a
+    table with the once flag; without it the module plays this round and round"""
     vol, songs = read_table(blob)
     wt = wavetable()
     parts = []
@@ -569,6 +573,8 @@ def main(argv=None):
         p.add_argument("--max-s", type=float, help="leave out notes after this many seconds")
         p.add_argument("--drums", action="store_true", help="keep channel 10 (it plays as pitches)")
         p.add_argument("--volume", type=int, default=VOLUME, help=f"1-255 (default {VOLUME})")
+        p.add_argument("--once", action="store_true",
+                       help="play the songs once and return (default: loop until a key is held)")
     p = sub.add_parser("info")
     p.add_argument("songs", nargs="+")
     song_opts(p)
@@ -604,14 +610,14 @@ def main(argv=None):
     if a.cmd == "alarm":
         code = open(a.inp, "rb").read()
         if a.songs:
-            code = patch(code, table(_songs(a), a.volume))
+            code = patch(code, table(_songs(a), a.volume, a.once))
         out = set_alarm(code, a.at)
         open(a.out, "wb").write(out)
         print(f"{a.out}: rings at {a.at // 60:02d}:{a.at % 60:02d} UTC, {len(out)} B code. Send it with"
               " modem.k6 mod --api-level 8 (an image with the core clock, set by aisclk or aprsclk)")
         return 0
     songs = _songs(a)
-    blob = table(songs, a.volume)
+    blob = table(songs, a.volume, a.once)
     if a.cmd == "info":
         for title, unit, notes in songs:
             end = max(x[0] + x[1] for x in notes) * unit / FS if notes else 0
