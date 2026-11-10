@@ -4768,10 +4768,10 @@ index 0000000..6c94624
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..74a7953
+index 0000000..366b3bb
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2120 @@
+@@ -0,0 +1,2126 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5673,6 +5673,12 @@ index 0000000..74a7953
 +/// The main loop's turn: one sweep step, or the listener's, or Try's level. true: redraw now.
 +pub fn poll(app: &mut App, syst: &mut SYST) -> bool {
 +    let t = st();
++    // EXIT twice left in this turn's keys (leave): the store, the sweep's state, is cleared
++    // and a step on it calls through a null API (the 8 kHz voice + EXPLORE image hung there,
++    // 2026-11-10). Redraw: VOICE MSG's screen now
++    if !t.on {
++        return true;
++    }
 +    mod_tick(); // the C side's ms, kept across the gaps
 +    match t.view {
 +        View::List => {
