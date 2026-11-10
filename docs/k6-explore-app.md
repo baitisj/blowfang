@@ -106,7 +106,12 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   x^11+x^10+x^6+x^5+x^4+x^2+1), the normal reading before the inverted one (023 sent inverted
   reads as 047). Two alike in a row make the code, kept as code | `RT_TONE_DCS` and shown as
   `DCS 023`. The words REG_69 shows during a CTCSS tone (4aaa/0aaa) are no code, so then REG_68
-  is read as before. Bench check pending. It goes on the row (the footer shows
+  is read as before. On air (2026-11-10 06:45Z, `mod/ctcssprobe.c` on 43a548d, the IC-7100's
+  DTCS switched by CI-V `16 4B 01` and the code by `1B 02`, since hamlib can't set DCS): 023 N,
+  754 N and 023 TX-reversed read 43/43, 41/41 and 43/43 polls as turns of the sent word, one
+  step every ~353 ms, nothing else; each unkey's turn-off burst reads as one CTCSS 134.4 Hz
+  sample (the DCS bit rate), which the two-alike rule drops. A DCS subtone on the sender breaks
+  1800-baud PHY F uploads, so uploads go without one. It goes on the row (the footer shows
   `tone 100.0`, and it scores as the tone cue) and into the saved entry by the rule for calls: a
   blank tone fills (rx and, if blank, tx), a different saved tone is left as it is and the
   screen says `TONE DIFFERS FROM SAVED` (`rt_heard_apply`). DMR sets the entry's `RT_F_DMR`.

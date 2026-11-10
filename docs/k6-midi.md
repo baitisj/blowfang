@@ -25,7 +25,9 @@ speaker), are in the project folder `k6-midi/` (made with `k6_midi.py wav`).
 
 ## Keys, screen, LED
 
-- A key press skips to the next song; holding a key for a second stops the player.
+- It plays the songs round and round until you hold a key (Jeff, 2026-11-10: "just keep looping
+  until stopped"). A table made with `--once` plays them once and returns.
+- A key press skips to the next song (after the last, the first); holding a key for a second stops the player.
 - With level 4 images it checks `key_poll` every millisecond; on older images `key_down` every
   8 ms (about 60 us, so one late sample in eight blocks).
 - On level 6 images the screen shows the song's title and "song 2 of 6" between songs. It never
@@ -35,7 +37,7 @@ speaker), are in the project folder `k6-midi/` (made with `k6_midi.py wav`).
 Serial lines: `midi songs=6 bytes=1539 vol=100`, `midi play 1/6 Nokia Tune (Tarrega)` for each
 song, `midi done songs=6 notes=405 late=0`. `late` counts samples that missed their update
 event (an interrupt held the CPU over 62 us; the sample before played twice). Returns the songs
-played to the end, -2 (a held key stopped it), -3 (scratch under 512 bytes), -4 (TIM1 already
+played to the end (a held key is the usual way out), -3 (scratch under 512 bytes), -4 (TIM1 already
 running), -5 (no song table).
 
 ## The songs
@@ -68,8 +70,12 @@ block. The SPI voice images (pager-only, lr, vlr, vlrh) take about 8 KB of songs
 python3 tools/k6_midi.py info song.mid                 # notes, length, bytes
 python3 tools/k6_midi.py patch mod-midi.bin my-midi.bin song.mid tools/midi_songs/greensleeves.txt
 python3 tools/k6_midi.py wav preview.wav song.mid      # what the K6 will play
-python3 tools/k6_upload.py my-midi.bin --api-level 2 --telemetry 3 --run-s 120 --key-file ~/.config/sotto/k6-mod.key
+python3 tools/k6_upload.py my-midi.bin --api-level 2 --telemetry 3 --rounds 1 --key-file ~/.config/sotto/k6-mod.key
 ```
+
+The module loops, so the K6 sends its ARQ report only when someone holds a key on the radio: give
+`k6_upload.py` `--rounds 1`, or it resends every chunk after `--run-s` while the K6 is busy
+playing and can't hear them.
 
 `patch` needs no compiler (hamlet has none): the table is the last thing in the module's code,
 so it cuts the code at the table's magic (`K6MIDI`, format 1) and appends the new table. The
@@ -105,7 +111,8 @@ Little-endian, read a byte at a time (the M0 faults on unaligned loads):
 
 | Offset | Field |
 | --- | --- |
-| 0 | `K6MIDI`, format 1, reserved 0 |
+| 0 | `K6MIDI`, format 1 |
+| 7 | u8 flags: bit 0 plays the songs once and returns (`--once`); 0 loops until a key is held |
 | 8 | u16 bytes of the whole table |
 | 10 | u8 songs, u8 volume (a voice at full velocity swings volume / 8192 x 32767 counts) |
 | 12 | u16 offset of each song from the table's start |
@@ -174,3 +181,6 @@ and play it to the K6. Tests: `tests/test_k6_alarm.py` (the countdown screen, ri
 and playing sample for sample as the model, tomorrow's alarm, a key cancelling, the refusals,
 and the tool), on the emulated M0 with a modelled core clock (`run(clock=...)` in
 tests/test_k6_i2s.py).
+
+**Sent to Jeff, 2026-11-10 01:21Z** (keyed vlrh, over the air from the IC-7100, signed): all 34
+chunks in one pass and it played; Jeff: "Amazing. Only problem is that it exited." So it loops now.

@@ -4,6 +4,9 @@
    and the arena's first 64 bytes in hex, then "reply=<0|1> tlm=<n> missing=<n>" and the
    whitened status report (km_report_status, seq 7, call AG7EW, ret -3, ms 1234, stack_free 700)
    and a text part ("hello\n", part 1 of 2, the same seq) in hex. Built with the test key 00 01 .. 0f.
+   argv[2] (optional), a byte offset: after the packets, km_run (unarmed afterwards here), then
+   "again=<km_again> armed=<0|1>"; then the byte at that offset flipped and km_run, and the same
+   line again (a module that wrote over its own image).
    SPDX-License-Identifier: MIT */
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,5 +36,16 @@ int main(int argc, char **argv) {
   km_report_text(p, 7, 1, 2, "hello\n", 6);
   for (i = 0; i < 64; i++) printf("%02x", p[i]);
   printf("\n");
+  if (argc > 2) {
+    unsigned off = (unsigned)atoi(argv[2]);
+    int r;
+    km_run(arena, 0);
+    r = km_again((uint8_t *)arena, bytes);
+    printf("again=%d armed=%d\n", r, km_armed());
+    ((uint8_t *)arena)[off] ^= 0x01;
+    km_run(arena, 0);
+    r = km_again((uint8_t *)arena, bytes);
+    printf("again=%d armed=%d\n", r, km_armed());
+  }
   return 0;
 }

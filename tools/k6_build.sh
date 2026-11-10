@@ -9,7 +9,7 @@
 #
 # Usage: sh tools/k6_build.sh [extra clang options]
 #        K6_CODEC=1200 sh tools/k6_build.sh   the sotto 1200 build (-DSP_LR, plays magic 0xA9
-#            messages, 40 ms per slot; c/fixed/sotto_fx_lr.c at -Os) into c/k6/build-lr
+#            messages, 40 ms per slot; c/fixed/sotto_fx_lr.c at -Oz) into c/k6/build-lr
 #        K6_CODEC=vlr sh tools/k6_build.sh   sotto 1200 plus sotto 600 / 400 (-DSP_LR -DSP_VLR: magic
 #            0xA9, 0xAC, 0xAD; c/fixed/sotto_fx_vlr.c and c/sotto_vlr_tables.c) into c/k6/build-vlr.
 #            With K6_CB=spi both codebooks are read from the SPI flash: v3.7's at 0x100000 and
@@ -38,7 +38,11 @@
 #            0.8 KB more RAM. Off by default for the first bring-up.
 # The library leaves memcpy, memset and the ARM run-time helpers (__aeabi_uidiv, __aeabi_lmul,
 # __aeabi_llsl, ...) undefined: Rust's compiler_builtins provides them for thumbv6m-none-eabi.
-# Needs clang and ld.lld (tested with 18). SPDX-License-Identifier: MIT
+# Needs clang and ld.lld (15 or newer). CI uses the Arm Toolchain for Embedded's clang 22 for every M0
+# compile (docs/k6-compilers.md: about 1 KB smaller and 6% faster than clang 18): put
+# tools/k6_cc/bin first on PATH and set K6_ATFE to ATfE's bin directory. The size files are at
+# -Oz; ifpager.c and xdmr.c stay at -Os, as their emulator timings build them.
+# SPDX-License-Identifier: MIT
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 VLR=
@@ -94,6 +98,12 @@ PKY=
 # hiss image is the one that has none to spare (docs/k6-hiss-port.md); it has never needed the flash
 ROWGEN=-DFX_MP_ROWGEN
 [ -n "$HISS" ] && ROWGEN=
+# synth's 2 KB of arrays in the decoder's state, in the shared block's pool, instead of on the
+# stack (sotto's FX_SYNTH_STATE, the same output): the deepest call in the voice images, so they
+# get that much stack back (docs/k6-voice-explore.md). The SPI images but hiss (its CPU and
+# timing were tuned as they are; the lean images keep the decoder in a static pool)
+SYNTH=
+[ "${K6_CB:-}" = spi ] && [ -z "$HISS" ] && SYNTH=-DFX_SYNTH_STATE
 CC=${K6_CC:-clang}
 AR=${K6_AR:-llvm-ar}
 OBJCOPY=${K6_OBJCOPY:-llvm-objcopy}
@@ -101,7 +111,7 @@ RES=$("$CC" -print-resource-dir)
 CFLAGS="--target=thumbv6m-none-eabi -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -nostdinc
   -isystem $ROOT/c/fixed/cm4/inc -isystem $RES/include -ffunction-sections -fdata-sections -std=c99
   -ffreestanding -fno-builtin-calloc -fno-builtin-free -Wall -Wno-unused-function
-  -DSOTTO_V36 -DSOTTO_PITCH_THIRD -DFX_CS512_CONST $ROWGEN -DFX_YIELD_HOOK $LR -I$ROOT/c -O2 $NOPAR $PKY $*"
+  -DSOTTO_V36 -DSOTTO_PITCH_THIRD -DFX_CS512_CONST $ROWGEN $SYNTH -DFX_YIELD_HOOK $LR -I$ROOT/c -O2 $NOPAR $PKY $*"
 mkdir -p "$OUT"
 if [ -n "${K6_CB:-}" ]; then
   # the codebook image and its CRC, from this tree's fx_tables.c (a host build of c/k6/sp_cb.c)
@@ -130,16 +140,16 @@ if [ -n "${K6_MOD_KEY_FILE:-}" ]; then
 else
   echo "module loader: no K6_MOD_KEY_FILE, so it refuses every module"
 fi
-$CC $CFLAGS -Os ${KM:+-DKM_KEY=$KM} -c "$ROOT/c/k6/k6_mod.c" -o "$OUT/k6_mod.o"
+$CC $CFLAGS -Oz ${KM:+-DKM_KEY=$KM} -c "$ROOT/c/k6/k6_mod.c" -o "$OUT/k6_mod.o"
 # the SPI module library (k6_lib.h): install / load a module image in its SPI slot
-$CC $CFLAGS -Os -c "$ROOT/c/k6/k6_lib.c" -o "$OUT/k6_lib.o"
-# per packet, not per sample (the PWM conversion is 160 samples in 20 ms): -Os, about 2 KB less
-$CC $CFLAGS ${K6_PAGER_OPT:--Os} -c "$ROOT/c/k6/sotto_pager.c" -o "$OUT/sotto_pager.o"
+$CC $CFLAGS -Oz -c "$ROOT/c/k6/k6_lib.c" -o "$OUT/k6_lib.o"
+# per packet, not per sample (the PWM conversion is 160 samples in 20 ms): -Oz, about 2 KB less
+$CC $CFLAGS ${K6_PAGER_OPT:--Oz} -c "$ROOT/c/k6/sotto_pager.c" -o "$OUT/sotto_pager.o"
 $CC $CFLAGS -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_dec.c" -o "$OUT/sotto_fx_dec.o"
 $CC $CFLAGS -c "$ROOT/c/fixed/fx_math.c" -o "$OUT/fx_math.o"
 $CC $CFLAGS -c "$ROOT/c/fixed/fx_tables.c" -o "$OUT/fx_tables.o"
-$CC $CFLAGS -Os -c "$ROOT/c/k6/sp_cb.c" -o "$OUT/sp_cb.o"
-$CC $CFLAGS -Os -c "$ROOT/c/k6/sp_vlr.c" -o "$OUT/sp_vlr.o"
+$CC $CFLAGS -Oz -c "$ROOT/c/k6/sp_cb.c" -o "$OUT/sp_cb.o"
+$CC $CFLAGS -Oz -c "$ROOT/c/k6/sp_vlr.c" -o "$OUT/sp_vlr.o"
 if [ "${K6_RAMFUNC:-0}" = 1 ]; then
   $OBJCOPY --rename-section .text.fx_oa_block=.data.ramfunc.fx_oa_block,alloc,load,contents,code "$OUT/fx_math.o"
 fi
@@ -155,15 +165,21 @@ $CC $CFLAGS -Oz -c "$ROOT/c/k6/rt.c" -o "$OUT/k6_rt.o"
 # Listen for ID's side detectors (DMR syncs on the GP0 IF, the CTCSS read): -Os, the DMR
 # detector runs on every count (as the emulator's timing of it, tests/test_k6_xdmr.py)
 $CC $CFLAGS -Os -c "$ROOT/c/k6/xdmr.c" -o "$OUT/xdmr.o"
+# EXPLORE's code pages' tables (c/k6/kp.h), for the 8 kHz voice + EXPLORE image: not in the
+# library; tools/k6_pages.py links each first in its page: the sweep's with xscan.o, Listen for
+# ID's with xlisten.o and xdmr.o, the repeater table's with k6_rt.o
+$CC $CFLAGS -DKP_PAGE=KP_SWEEP -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_sweep.o"
+$CC $CFLAGS -DKP_PAGE=KP_LISTEN -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_listen.o"
+$CC $CFLAGS -DKP_PAGE=KP_TABLE -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_table.o"
 LIBOBJS="$OUT/sotto_pager.o $OUT/k6_mod.o $OUT/sotto_fx_dec.o $OUT/sp_cb.o $OUT/sp_vlr.o $OUT/fx_math.o $OUT/fx_tables.o $OUT/ifpager.o
   $OUT/xscan.o $OUT/xlisten.o $OUT/xdmr.o $OUT/explore.o $OUT/cwid.o $OUT/k6_rt.o"
 LIBOBJS="$LIBOBJS $OUT/k6_lib.o"
-if [ -n "$LR" ]; then     # not hot (field unpacking and shape sums once per 40 ms): -Os
-  $CC $CFLAGS -Os -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_lr.c" -o "$OUT/sotto_fx_lr.o"
+if [ -n "$LR" ]; then     # not hot (field unpacking and shape sums once per 40 ms): -Oz
+  $CC $CFLAGS -Oz -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_lr.c" -o "$OUT/sotto_fx_lr.o"
   LIBOBJS="$LIBOBJS $OUT/sotto_fx_lr.o"
 fi
-if [ -n "$VLR" ]; then    # once per 20 ms frame, then the v3.7 core's synthesis: -Os too
-  $CC $CFLAGS -Os -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_vlr.c" -o "$OUT/sotto_fx_vlr.o"
+if [ -n "$VLR" ]; then    # once per 20 ms frame, then the v3.7 core's synthesis: -Oz too
+  $CC $CFLAGS -Oz -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_vlr.c" -o "$OUT/sotto_fx_vlr.o"
   # the tables build: with K6_CB=spi the codebooks are left out (VLR_CB_SPI); install and rom link them
   VT=; [ "${K6_CB:-}" = install ] && VT=-UVLR_CB_SPI
   $CC $CFLAGS $VT -c "$ROOT/c/sotto_vlr_tables.c" -o "$OUT/sotto_vlr_tables.o"
@@ -177,11 +193,15 @@ if [ -n "$HISS" ]; then   # the layer at -O2 without loop unrolling: 6.8 KB of f
   UHISS="-u sotto_fx_lr_dec16_bytes -u sotto_fx_vlr_dec16_bytes"
 fi
 if [ "${K6_VOICE:-1}" = 0 ]; then
-  $CC $CFLAGS -Os -c "$ROOT/c/k6/sp_novoice.c" -o "$OUT/sp_novoice.o"
+  $CC $CFLAGS -Oz -c "$ROOT/c/k6/sp_novoice.c" -o "$OUT/sp_novoice.o"
   LIBOBJS=$(echo $LIBOBJS | sed "s# [^ ]*/sotto_fx_dec.o# $OUT/sp_novoice.o#; s# [^ ]*/fx_math.o##")
 fi
+# K6_LIBEXTRA: objects the compiler needs beside the library (gcc's Thumb-1 switch helpers)
+LIBOBJS="$LIBOBJS ${K6_LIBEXTRA:-}"
+# the images' memcpy family (c/k6/k6_mem.c): in the archive only, the bench links shim.c's
+$CC $CFLAGS -Oz -fno-builtin -c "$ROOT/c/k6/k6_mem.c" -o "$OUT/k6_mem.o"
 rm -f "$OUT/libsotto_k6.a"
-$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS
+$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS "$OUT/k6_mem.o"
 echo "built $OUT/libsotto_k6.a"
 # no bench for the EXPLORE image's library: it has no decoder to time
 [ "${K6_VOICE:-1}" = 0 ] && exit 0

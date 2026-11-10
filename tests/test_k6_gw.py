@@ -199,12 +199,40 @@ class Air:
         return TX_ON_US if name == "tx_on" else 0
 
 
-def play(name, air, count=3_000_000_000, keypad=None, rx_hz=RF_HZ, level=7, **defs):
+TIM1, RCC, GPIOA = 0x40012C00, 0x40021000, 0x48000000
+SND_AT_START = {"tim": {0x00: 0x80, 0x1C: 0x0068, 0x20: 0x0001, 0x28: 0, 0x2C: 2000, 0x44: 0},
+                "rcc": {0x18: 0x0000_0201},
+                "gpioa": {0x00: 0x2800_0000, 0x08: 0x0C00_0000, 0x24: 0x0000_0110}}
+
+
+def sound_mmio(snd):
+    """TIM1, RCC and GPIOA as registers, for the sound (midi.c's speaker path). snd gets "tim",
+    "rcc", "gpioa" (theirs as the module leaves them) and "tones": (us, ARR, CCR4) at each CCR4
+    write, which is how the module sets a pitch and a level."""
+    for k, v in SND_AT_START.items():
+        snd[k] = dict(v)
+    snd["tones"] = []
+
+    def r(name):
+        return lambda uc, off, size, st: snd[name].get(off, 0)
+
+    def w(name):
+        def f(uc, off, size, value, st):
+            snd[name][off] = value
+            if name == "tim" and off == 0x40:
+                snd["tones"].append((st["us"], snd["tim"].get(0x2C, 0), value))
+        return f
+    return [(TIM1, 0x400, r("tim"), w("tim")), (RCC, 0x400, r("rcc"), w("rcc")),
+            (GPIOA, 0x400, r("gpioa"), w("gpioa"))]
+
+
+def play(name, air, count=3_000_000_000, keypad=None, rx_hz=RF_HZ, level=7, snd=None, **defs):
     code, entry = build(name, **defs)
     lcd, tx = {}, {}
-    ret, said, regs, writes = run(START, code=(code, entry), level=level, lcd=lcd, keypad=keypad or [],
-                                  spare=BLOCK - len(code), count=count, rx_hz=rx_hz, tx=tx, fsk=air,
-                                  paint=True)
+    mmio = sound_mmio({} if snd is None else snd)
+    ret, said, regs, writes = run({**START, 0x47: 0x6140}, code=(code, entry), level=level, lcd=lcd,
+                                  keypad=keypad or [], spare=BLOCK - len(code), count=count, rx_hz=rx_hz,
+                                  tx=tx, fsk=air, paint=True, mmio=mmio)
     return ret, said, regs, tx, lcd
 
 
@@ -364,8 +392,8 @@ def taps(seq, t0, gap=300_000, hold=120_000):
 
 @need_clang
 def test_hot_seat_keys_shop_aim_fire():
-    keys = taps(["1", 0.5, "M", "X", 0.5, "D", "M", "X", 1.0, "#", "4", "4", "2", "M", 8,
-                 "X", "X"], 1_000_000)
+    keys = taps(["1", 0.5, "M", "X", 0.5, "D", "M", "X", 1.0, "#", "4", "4", "2", "9", "9", "7",
+                 "M", 8, "X", "X"], 1_000_000)          # (9 is power +10, 7 is -10)
     ret, said, regs, tx, lcd = play("gw", None, keypad=keys, count=60_000_000)
     fr = lcd["frames"]
     shop = [f for f in fr if f["text"][0].startswith("SHOP P1")]
@@ -373,8 +401,56 @@ def test_hot_seat_keys_shop_aim_fire():
     assert any("$20" in f["text"][0] for f in shop)              # bought it
     assert any(f["text"][0].startswith("SHOP P2  $45") for f in fr)    # P2's FCC Violator
     aimed = [f for f in fr if f["text"][5].startswith("Kilowatt x1")]
-    assert aimed and aimed[-1]["text"][1].startswith("A047 P061")
-    assert "gw shot 1 47 61 1" in said
+    assert aimed and aimed[-1]["text"][1].startswith("A047 P071")
+    assert "gw shot 1 47 71 1" in said
+    # the flight is paced, a frame a step, so the shot takes about 4 s to watch (Jeff, 2026-11-10)
+    us = [f["us"] for f in fr]
+    run = best = 0
+    for gap in (b - a for a, b in zip(us, us[1:])):
+        run = run + 1 if 55_000 <= gap <= 70_000 else 0
+        best = max(best, run)
+    assert 3.0 <= best * 0.062 <= 5.0, best
+
+
+@need_clang
+def test_hot_seat_sound():
+    """Each shot whistles while it comes down, falling in pitch, and each blast is a burst of noise
+    sinking from a crackle to a rumble (Jeff, 2026-11-10). The speaker's registers, the amplifier
+    and REG_47 are put back after every shot."""
+    snd = {}
+    ret, said, regs, tx, lcd = play("gw_auto", None, count=1_500_000_000, GW_ROUNDS=1, snd=snd)
+    assert ret == 1 and "log" not in tx
+    tones, shots = snd["tones"], sum(ln.startswith("gw shot") for ln in said)
+    whistle = [(us, a) for us, a, ccr in tones if 300 <= a and ccr == a >> 5]
+    boom = [(us, a, ccr) for us, a, ccr in tones if ccr in (a >> 2, a >> 3, a >> 4) and a >= 60 and ccr > 1]
+    assert len(whistle) >= 10 * shots, (len(whistle), shots)
+    # within a fall the pitch goes down: the period grows, step by step
+    runs, cur = [], [whistle[0]]
+    for prev, nxt in zip(whistle, whistle[1:]):
+        if nxt[0] - prev[0] < 100_000:
+            cur.append(nxt)
+        else:
+            runs.append(cur)
+            cur = [nxt]
+    runs.append(cur)
+    falls = [[x for _, x in r] for r in runs if len(r) >= 8]
+    steady = [a for a in falls if a == sorted(a) and a[-1] > a[0] + 100]   # (The Lid and shields
+    assert falls and len(steady) * 2 > len(falls), falls                   # can nudge a fall)
+    # a blast: 150 ms of noise, loud and high first (1-16 kHz), then quieter and low
+    assert len(boom) >= 150 and len(boom) % 150 == 0, len(boom)
+    first = boom[:150]
+    assert all(60 <= a <= 1083 for _, a, _ in first[:2])
+    assert all(a >= 4000 for _, a, _ in first[-10:])
+    assert first[0][2] == first[0][1] >> 2 and first[-1][2] == first[-1][1] >> 4
+    assert 140_000 <= first[-1][0] - first[0][0] <= 170_000
+    # after: TIM1 stopped and set back for the voice prompts, the pins and amplifier as they were
+    tim = snd["tim"]
+    assert tim[0x00] == 0 and tim[0x28] == 0 and tim[0x2C] == 2000 and tim[0x44] == 0
+    assert tim[0x1C] == 0x0068 and tim[0x20] == 0x0001
+    assert snd["gpioa"] == SND_AT_START["gpioa"] and snd["rcc"] == SND_AT_START["rcc"]
+    spk = lcd["st"]["spk"]
+    assert spk[-1][1] == 0 and len(spk) == 1 + 2 * shots, (len(spk), shots)
+    assert regs[0x47] == 0x6140
 
 
 # ---- radio play ----

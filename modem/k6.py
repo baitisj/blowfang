@@ -378,6 +378,10 @@ def main(argv=None):
                    help="keep the module in the K6's SPI module library, slot 0-11 (16 KB each), "
                         "instead of running it; run it later with `ctl --action lib --slot SLOT`. "
                         "Written to SPI once per install, never while the K6 transmits")
+    m.add_argument("--page", action="store_true",
+                   help="with --install: SOURCE is a code page (out/page-*.bin from build.sh, made "
+                        "for one image): kept in the slot, never run; that image loads it itself "
+                        "(docs/k6-voice-explore.md). Install the pages again after each new image")
     rp = sub.add_parser("reports", help="a recording of the K6 (the IC-7100's receive audio) -> the "
                                         "K6's 0xAF reports after an --arq upload")
     rp.add_argument("input")
@@ -539,8 +543,10 @@ def main(argv=None):
         serial = a.serial if a.serial is not None else int(time.time())
         if a.telemetry and not a.arq:
             sys.exit("--telemetry comes back with the reply: add --arq")
+        if a.page and a.install is None:
+            sys.exit("--page goes into a library slot: add --install SLOT")
         img = k6mod.image(code, entry, serial, k6mod.read_key(a.key_file), level, tlm=a.telemetry,
-                          lib=a.install)
+                          lib=a.install, page=a.page)
         pk = k6mod.packets(img, a.xfer if a.xfer is not None else serial & 0xFF,
                            pager.PROFILES[a.payload].payload, arq=a.arq)
         n = len(pk)

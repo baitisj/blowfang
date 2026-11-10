@@ -39,7 +39,7 @@ ELF="$WORK/target/thumbv6m-none-eabi/release/aura"
 # flash: everything loaded (vector table, text, rodata, the .data image); RAM: .data + .bss + .uninit
 fit() {
   "$SIZE" -A "$1" | awk '
-    $1 == ".vector_table" || $1 == ".text" || $1 == ".rodata" || $1 == ".gnu.sgstubs" { flash += $2 }
+    $1 == ".vector_table" || $1 == ".text" || $1 == ".rodata" || $1 == ".gnu.sgstubs" || $1 == ".k6_id" { flash += $2 }
     $1 == ".data" { flash += $2; ram += $2 }
     $1 == ".bss" || $1 == ".uninit" { ram += $2 }
     $1 == ".ram0" { ram0 += $2 }
@@ -208,11 +208,42 @@ if [ "${VLR:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbs
   variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog,spilib
-  # the target (Jeff 2026-11-09): EXPLORE in this 8 kHz voice image, so nobody switches images.
-  # A report until it fits: its line in size-aura-voice-explore.txt is the flash and RAM still
-  # to find (docs/k6-voice-explore.md)
-  variant aura-voice-explore "8 kHz voice + EXPLORE image (target; report only until it fits)" \
-    --features voice-explore,txdog,spilib || echo "(8 kHz voice + EXPLORE doesn't fit yet: report only)"
+  # EXPLORE in this 8 kHz voice image (Jeff 2026-11-09), so nobody switches images
+  # (docs/k6-voice-explore.md). It fits with Arm Toolchain for Embedded (CI, K6_ATFE), where an
+  # image that outgrows the flash fails the build as the others do; a plain clang build is about
+  # 1.5 KB bigger, so there it is a size report only. EXPLORE's sweep, Listen for ID and repeater table code
+  # are code pages in SPI flash (c/k6/kp.h): the image keeps what they call (K6_PAGE_IMPORTS),
+  # then each page is linked for it, out/page-sweep.bin, page-listen.bin, page-table.bin
+  PB="$ROOT/c/k6/build-vlr-cbs"
+  python3 "$ROOT/tools/k6_pages.py" imports \
+    "$PB/kp_sweep.o" \
+    "$PB/xscan.o" \
+    "$PB/kp_listen.o" \
+    "$PB/xlisten.o" \
+    "$PB/xdmr.o" \
+    "$PB/kp_table.o" \
+    "$PB/k6_rt.o" \
+    -o "$OUT/page-imports.x"
+  export K6_PAGE_IMPORTS="$OUT/page-imports.x"
+  if [ -n "${K6_ATFE:-}" ]; then
+    variant aura-voice-explore "8 kHz voice + EXPLORE image" --features voice-explore,txdog,spilib
+  else
+    variant aura-voice-explore "8 kHz voice + EXPLORE image (report only without ATfE)" \
+      --features voice-explore,txdog,spilib || echo "(8 kHz voice + EXPLORE doesn't fit with this compiler: report only)"
+  fi
+  unset K6_PAGE_IMPORTS
+  # a page that outgrows the decoder pool fails the build
+  python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page sweep -o "$OUT/page-sweep.bin" \
+    "$PB/kp_sweep.o" \
+    "$PB/xscan.o" >> "$OUT/size-aura-voice-explore.txt"
+  python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page listen -o "$OUT/page-listen.bin" \
+    "$PB/kp_listen.o" \
+    "$PB/xlisten.o" \
+    "$PB/xdmr.o" >> "$OUT/size-aura-voice-explore.txt"
+  python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page table -o "$OUT/page-table.bin" \
+    "$PB/kp_table.o" \
+    "$PB/k6_rt.o" >> "$OUT/size-aura-voice-explore.txt"
+  tail -3 "$OUT/size-aura-voice-explore.txt"
   K6_CODEC=vlr K6_CB=install sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbi
   # it holds sotto 600 / 400's 21 KB of codebooks: lean, as the other install image
@@ -230,7 +261,7 @@ if [ "${HISS:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi K6_HISS=1 sh "$ROOT/tools/k6_build.sh"
   lib build-vlrh-cbs
   variant aura-pager-vlrh "pager-only image, sotto 1200 + 600 + 400 with the hiss band (16 kHz), codebooks in SPI flash" \
-    --features pager-only,hiss,txdog
+    --features pager-only,hiss,txdog,spilib
 fi
 if [ "${INSTALL:-1}" = 1 ]; then
   K6_CB=install sh "$ROOT/tools/k6_build.sh"
@@ -255,6 +286,8 @@ fi
 [ -f "$OUT/sotto-cb.bin" ] && (cd "$OUT" && sha256sum sotto-cb.bin | tee sotto-cb.bin.sha256)
 [ -f "$OUT/sotto-vlr.bin" ] && (cd "$OUT" && sha256sum sotto-vlr.bin | tee sotto-vlr.bin.sha256)
 
+# MODULES=0 stops here (tools/k6_cc/compare.sh: the images only)
+[ "${MODULES:-1}" = 1 ] || exit 0
 # The RAM modules (docs/k6-modules.md), built from c/k6/mod/<name>.c. Each module sets its
 # own API level; the notes say which tool patches it or which doc covers it. Keep the list
 # one module per line, in alphabetical order, so PRs that add modules don't collide:
@@ -287,11 +320,13 @@ dogtx          # level 3, bench test of the stuck key-up backstop (hal::txdog)
 fdirq          # level 2, fdtime plus interrupt state and the CPU share interrupts take
 fdtime         # level 2, how long the module API's calls take (xdmr's gap between waits)
 fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
+fskaprs        # level 2, the chip's FSK modem on AX.25 packets (docs/k6-aprs-clock.md)
 ft8tx          # level 3
 ft8wf
 ft8wf_inv
 gp0cap
 gp0cap_afc
+dmashare      # level 2, does the IF capture DMA disturb playback (docs/k6-fd6818-audio.md)
 gp0dma
 gp0fm
 gp0raw
@@ -332,6 +367,7 @@ rxmap          # level 2, its parameter block patched by tools/k6_rxmap.py
 scan           # level 2, patched by tools/k6_scan.py
 settle         # level 2
 spksweep
+stockfont      # level 6, reads the stock fonts from SPI flash itself (READ only), docs/k6-stock-firmware.md
 surf           # level 6, docs/k6-surf.md
 surfauto       # level 6, docs/k6-surf.md
 vecprobe       # level 1, can Aura catch its own HardFaults (docs/k6-modules.md)

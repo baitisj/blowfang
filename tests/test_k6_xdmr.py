@@ -309,3 +309,20 @@ def test_listen_reads_a_dcs_code(code, inv, turn, said):
     txt = "\n".join(t for _, t in lines)
     assert line(lines, said)[1] is not None, txt
     assert line(lines, "CTCSS ")[1] is None, txt
+
+
+@pytest.mark.parametrize("r69,r6a,said", [
+    (0x0FB1, 0x0C09, "DCS 023"),
+    (0x0F9E, 0x0C41, "DCS 754"),
+    (0x0827, 0x01FB, "DCS 047"),                   # 023 sent TX-reversed
+])
+def test_listen_reads_dcs_from_the_k6s_own_registers(r69, r6a, said):
+    """REG_69/6A as Jeff's K6 read them on air (2026-11-10 06:45Z, ctcssprobe on 43a548d, the
+    IC-7100 sending DTCS 023 N, 754 N and 023 TX-reversed; 127 of 127 polls were turns of the
+    sent word): the same words through xd_ctcss give the code"""
+    pytest.importorskip("unicorn")
+    a = dmr.speech("female_libri198_14s__original", 2.0)
+    w = ((r69 & 0xFFF) << 12 | (r6a & 0xFFF)) & 0x7FFFFF
+    n, lines, _, _ = listen(dmr.fm_voice(a), run_s=2, dcs=w)
+    txt = "\n".join(t for _, t in lines)
+    assert line(lines, said)[1] is not None, txt

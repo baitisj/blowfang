@@ -95,6 +95,18 @@ void km_arm(const uint8_t *a, int air) {
   ready = 1;
 }
 
+int km_again(const uint8_t *a, unsigned cap) {
+  unsigned code = a[4] | a[5] << 8;
+  int t;
+  /* the tag covers the header, so it checked on arrival; a library image or a code page never
+     runs from here */
+  if (KM_HDR + code + KM_TAG > cap || a[13]) return KM_BAD_HDR;
+  t = km_tag_check(a, code);
+  if (t) return t;
+  km_arm(a, 0);
+  return (int)code;
+}
+
 int km_packet(const uint8_t *payload, int len, void *arena, unsigned arena_bytes) {
   uint8_t d[SP_PAYLOAD_MAX], *a = (uint8_t *)arena;
   const uint8_t *w;

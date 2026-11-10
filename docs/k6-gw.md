@@ -37,6 +37,28 @@ while a shot is above the screen. A blast shows a disc and then a crater, and th
 the crater falls in. A station whose ground goes falls with it and takes damage (2 points per
 pixel past the first).
 
+## Sound
+
+The shots make sound on the speaker (Jeff, 2026-11-10). A shot coming down whistles quietly,
+falling in pitch as it falls faster: about 3.3 kHz at the top of the arc and 1 kHz after about
+2 s of fall. Each blast is 150 ms of noise that starts as a loud crackle of dirt (1-16 kHz) and
+sinks into a quieter rumble (about 200 Hz). The rising half of a flight is silent.
+
+It uses the speaker path that midi.c and spksweep.c found (PA11 = TIM1_CH4 through two RC
+poles into the amplifier, PB2 the amplifier's switch), but not their 16 kHz samples. Instead,
+TIM1 counts at 1 MHz and makes a pulse wave at the pitch itself: ARR is the period in
+microseconds, and CCR4 is the high time (1/32 of the period for the whistle, 1/4 to 1/16 for a
+blast). The timer runs on its own, so the module can keep its usual waits. Between sounds the
+pulse wave sits at 31 kHz with the whistle's 1/32 duty, which is inaudible and keeps the DC
+level steady, so a whistle starts without a click.
+
+`fly()` turns the sound on before each shot and off after it. Turning it on mutes the FD6818's
+AF output (REG_47 AF 0), waits 30 ms for the filter, and then turns the amplifier on. Turning it
+off waits 20 ms. It then puts back TIM1's CCMR2, CCER and BDTR, PA11's mode and alternate
+function, TIM1's clock, the amplifier and REG_47 as it found them. PSC and ARR go back to the
+voice prompts' 48 kHz carrier. If TIM1 is already running, the shot is silent. Nothing is
+played during an over: shots never fly while the radio is keyed.
+
 ## Keys
 
 The module scans the keypad matrix itself, as surf.c does.
@@ -46,7 +68,7 @@ The module scans the keypad matrix itself, as surf.c does.
 | 4 6, or the side keys | Angle (hold to repeat) |
 | 1 3 | Angle, 10 at a time |
 | 2 8, or UP DOWN | Power |
-| 7 9 | Power, 10 at a time |
+| 9 7 | Power, 10 at a time (9 up, 7 down: up on the right) |
 | * # | Previous or next item held |
 | MENU or 5 | Fire |
 | EXIT twice | Leave the game (from the title screen, leave the module) |
@@ -131,15 +153,18 @@ step too. `test_radio_game_against_the_pc` checks the hashes every turn.
 
 ## Memory
 
-| Build | Code (clang 18, -Oz) |
+| Build | Code (CI's ATfE 22.1 clang, -Oz) |
 |---|---|
-| gw | 11,657 B |
-| gw_auto | 11,279 B |
-| gw_call | 11,147 B |
-| gw_answer | 11,211 B |
+| gw | 11,739 B |
+| gw_auto | 11,365 B |
+| gw_call | 11,245 B |
+| gw_answer | 11,301 B |
 
-The block holds 11,752 B of code. The state is about 1.2 KB: the game (392 B), the 480-byte
-bitmap, and three packet buffers. The trail dots share the receive and transmit buffers, since
+The block holds 11,752 B of code, so gw has 13 B to spare: the game is full. The sound took
+about 400 B. To make room, the items' names and shop lines moved into one string (`GW_TEXT`
+in gw.c) instead of fixed-size fields. Ubuntu's clang 18 builds gw about 400 B bigger (12,1xx B),
+so `test_builds_and_fits[gw]` passes only with CI's compiler (docs/k6-compilers.md). The state is about 1.2 KB: the game (392 B), the 480-byte
+bitmap, three packet buffers, and the sound's 32 B of saved registers. The trail dots share the receive and transmit buffers, since
 nothing is sent or received while a shot flies.
 
 The code leaves less scratch than the state needs, so `k6_main` puts the state on the stack.
@@ -165,6 +190,10 @@ are too small.
   of the FD6818's FSK modem. The model covers REG_59 control, the 8-word FIFO and its interrupts,
   the RSSI, and the other radio's overs. The runs are played with one copy lost, and with a
   whole over lost each way, so both sides have to repeat. The hashes stay in step.
+- **Sound**: the bot's hot-seat game against a register model of TIM1, RCC and GPIOA. Each
+  fall whistles with a rising period (falling pitch), and each blast is 150 noise steps from high
+  and loud to low and quiet. After every shot TIM1, the pins, the amplifier and REG_47 are as
+  they were.
 - **The TX rules** (test_k6_txrules.py's, here with the modem model): `tx_on` only on 440.850,
   never on a busy channel, only FSK and tone registers written while keyed, every over ending
   in AG7EW, and a key ending an over with the modem quiet.

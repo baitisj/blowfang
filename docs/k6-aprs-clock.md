@@ -23,7 +23,9 @@ GP0 code 13 on PB1 -> DMA ch1 ring (1 KB, ~5.5 MS/s)                       (gp0r
  -> 2nd-order CIC, decimate by 6 (~14.3 kHz complex)
  -> CORDIC phase (11 steps); the phase step is the FM discriminator (no division)
  -> DC removed; sliding correlators over one bit at 1200 and 2200 Hz; mark > space
- -> DPLL bit clock (nudged towards each transition, firmer inside a frame), NRZI
+    (each tone's deviation, tracked where it wins; the carrier offset from the DC)
+ -> DPLL bit clock on those transitions (nudged towards each, firmer inside a frame)
+ -> each bit: a matched filter on the IF, mark against space (see "The matched filter"), NRZI
  -> HDLC: flags, bit stuffing, CRC-16/X.25 (good residue 0xF0B8)
  -> the APRS information field's timestamp -> one interval per station -> Marzullo's vote
 ```
@@ -55,8 +57,9 @@ second ("(sec)" on the screen); `DDHHMMz` alone gives the minute. The date comes
 agreeing stamp that has one (`$GPRMC` gives day/month/year, `DDHHMMz` the day).
 
 **On the radio.** Level 2 to run (receive, GP0, TIM17, DMA channel 1, all put back as gp0rx.h
-does); at level 6 it draws its screen (UTC, stations voting, frames good/bad/stamped, the
-date) once a second, never while a frame or its flags are coming (a flush takes 20-40 ms and
+does); at level 6 it draws its screen (UTC and the date, stations voting, packets heard (preambles)
+/ decoded / stamped as `heard 9 ok 7 ts 0`,
+and the station heard last, `last AG7EW-7 h0` with its digipeater hops) once a second, never while a frame or its flags are coming (a flush takes 20-40 ms and
 the ring holds 0.2 ms); at level 7 it blinks the green LED on each good frame. Any key ends it,
 else 15 minutes (`RUN_MS`). It tunes 144.390 with the wide filter and leaves the chip's AFC on,
 which pulls a sender's offset in (unlike FT8's narrow tones, AFSK on FM doesn't mind). Lines:
@@ -76,10 +79,118 @@ It returns the votes behind the clock (0: not set), or -2 (a key before any fram
 image), -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (the
 scratch too small).
 
+## The matched filter (2026-11-10)
+
+Jeff's question after the live run of 2026-11-10 (one packet heard in 8 minutes, his car): is the
+decoder just insensitive? It was: deciding each bit on the discriminator falls apart at the FM
+threshold, around 50-52 dB-Hz. The softmodem study (`docs/k6-if-modem.md`) had found a
+noncoherent matched filter on the IF 5-6 dB better than the best discriminator for FFSK on FM, so
+the module now decides each bit that way. The discriminator stays for three jobs it does well
+enough below its threshold, because each averages over many samples: the bit clock (its mark /
+space transitions), the carrier offset (its DC), and each tone's deviation.
+
+- **The template.** A tone f at deviation D puts the phase exp(j beta sin(2 pi f t + theta)) on
+  the carrier, beta = D / f. Each tone keeps a 64-step table of it (int8 cos, sin, its phase
+  rounded to 1/64 turn), indexed by the tone's own phase accumulator, the one the correlators use.
+  The audio phase theta at the bit's start is unknown, so 16 are tried: 8 sets of sums (x gc, y
+  gs, y gc, x gs) give theta from z conj(g) and theta + pi from z g.
+- **Per sample**, the IF sample turned back by the offset goes into both tones' sums (64
+  multiplies). **Per bit**, at the clock's half turn (the discriminator's sliding window puts its
+  transitions half a window late, so that is the bit's end), each tone's metric is its largest
+  |sum| over the 16 phases, the bit is mark > space, and the sums are cleared. A first version
+  that did the whole window once a bit decoded on the host and nothing on the emulated M0: its
+  burst of about 6,000 instructions outran the 0.2 ms DMA ring, which only reports a loss when a
+  poll sees it, so the samples after each burst were silently overwritten.
+- **The deviation tracker.** Senders differ (2-4.5 kHz, pre-emphasis twist of either sign), and
+  a template at the wrong beta loses a lot: J0(beta error), 3.7 dB for the mark tone 1.5 kHz out.
+  Each tone's discriminator level, where that tone wins, sets its beta (a one-pole over 64
+  samples, so it settles inside a preamble); the table is rebuilt when beta moves half a step.
+  With a fixed 3 kHz template, +6 dB twist and 4.5 kHz deviation decoded nothing at all.
+- **The bit clock** pulls a quarter of the way towards each transition inside a frame before;
+  now a sixteenth (`PLL_IN` 4): the transitions are noisier than the decisions below the
+  discriminator's threshold. That alone brought the once-a-bit decision level with deciding every
+  sample.
+
+Packets decoded of 48 (`sim/k6if/aprs_mf.py`'s scene: 24 packets of assorted lengths, two seeds,
+through the K6 receive model; the host build of the module, matched filter / `-DAPRS_DISC`):
+
+| C/N0 (dB-Hz) | 46 | 48 | 50 | 52 |
+| --- | --- | --- | --- | --- |
+| 3 kHz deviation | 2 / 0 | 39 / 0 | 48 / 11 | 48 / 46 |
+| 2 kHz | | 47 / 0 | 48 / 43 | 48 / 48 |
+| 4.5 kHz (the chip's filter clips it) | | 0 / 0 | 14 / 0 | 48 / 3 |
+| space +6 dB (pre-emphasis) | | 32 / 0 | 48 / 19 | 48 / 47 |
+| space -4 dB | | 47 / 0 | 48 / 11 | 48 / 44 |
+| carrier +800 Hz (no AFC in the model) | | 18 / 0 | 48 / 0 | 48 / 24 |
+| carrier -800 Hz | | 42 / 0 | 47 / 0 | 48 / 37 |
+
+The half-way point moves from about 50.5 to 47.5 dB-Hz at 3 kHz, and from about 53.5 to 50.5 at
+4.5 kHz: 3 to 4 dB, about 1.5 times the range. The float study (`python3 -m sim.k6if.aprs_mf`)
+got a little more (45-46 at the half-way point) with a window of n + 1 samples slid every sample,
+which costs too much CPU on the M0. `test_matched_filter_beats_the_discriminator` keeps the gap.
+
+**CPU.** On the emulated M0 it decodes all three test stations with no counts lost up to CPI 2.5
+(the calibrated cost is 1.5), loses a few counts at 3 and still decodes them; the discriminator
+alone went to 5. So the margin went from 2.7x to 1.7x (the emulator errs slow against the radio).
+That is with the module at -Os: at -Oz the Arm Toolchain for Embedded's build (CI's, the one sent
+to the radio) lost counts at 2.5, a margin of about 1.4x, so the module asks for -Os (1 KB more
+code) and the emulator's builds follow the source's choice. The sums are about 16% of the instructions.
+
+## What the model left out: the tap's own noise (2026-11-10)
+
+The first live run of the matched filter (05:34-05:49Z, K6 on the big antenna, image 686e2cf,
+module 8a2057d) ran its 15 minutes with `lost=0`, heard two preambles and decoded one frame
+(Jeff's car), while Jeff's other handheld, indoors on a short antenna, heard much more on
+144.390. The RF path is not the cause: `tune` is Aura's `retune_rx`, which switches the VHF
+front end below 300 MHz, and the module uses none of the chip's tone detectors.
+
+The cause is the one the AIS and DMR modules had already met (docs/k6-ais.md run 1,
+docs/k6-dmr.md "the second run"). The C/N0 figures above are against the noise *in the counts*,
+and the model took that to be the receiver's noise. On the radio it is the 1-bit tap's own:
+flat from 0 to 43 kHz with no carrier, above the receiver's noise even at maximum gain. On the
+frozen-gain RSSI, 48 dB-Hz is a carrier of about -79 dBm, so this receiver needs packets some
+tens of dB stronger than the chip's own FM receiver does. Two things make it worse here, and
+both have fixes the AIS module uses:
+
+- **The AGC.** With the pager's AGC running, a DMR carrier stood +4 to +5 dB over the tap's
+  noise; with the gain frozen at REG_13 = 0x03FF, +10 dB. The module now freezes it (`GAIN13`,
+  REG_7E bit 15 and index 3, both put back at the end; `-DGAIN13=0` leaves the AGC on).
+- **The DMA's rate.** Reading the 6.5 MHz stream at 5.5 MS/s folds its shaped noise into the IF
+  band: 166 Hz rms of FM noise on a carrier against 60 polled at 22.9 MS/s, about 9 dB. A
+  polled APRS receiver has to demodulate between polls (a packet is up to a second, too long to
+  record and decode after as AIS does); not built yet.
+
+Neither closes the gap to the chip's own receiver. That needs the chip's demodulated audio or
+bits in place of the IF.
+
+## Next: the chip's own FSK modem (`fskaprs`, a probe)
+
+Baofeng's own firmware reads nothing from PB1 and gives the MCU no demodulated audio, so the only
+other way to the chip's sensitivity is its FSK modem, which the pager's uploads use at levels the
+tap can't read. It was written off for AX.25 (line 13 above) for its sync word and fixed length.
+`c/k6/mod/fskaprs.c` (1.8 KB, level 2, receive only) tries two ways round that on the bench
+channel, six variants in turn, 8 s each, for 260 s:
+
+- **stream:** REG_5D = 0xFF00. On 2026-11-04 the chip passed everything it demodulated with that
+  length (docs/k6-receiver.md); the pager's later stream mode never received (0/16), so this is
+  open. The module undoes NRZI and the bit stuffing and checks each CRC itself, with REG_58 at
+  0x3FE3 and 0x3F03 (the 1200/1800 receiver) and 0x33E3 and 0x33E9 (the 1200/2400 one): Bell
+  202's 2200 Hz is neither's tone.
+- **packet:** the sync word set to a run of flags as it is on the line (FE FE FE FE, 01 01 01
+  01), then 128 bytes on the pager's timed reads through the same HDLC.
+
+Each variant reports the words read, the interrupt flags seen, HDLC flags, preambles, good and
+bad frames, the strongest RSSI, and 8 FIFO words as read. Bench: upload `mod-fskaprs.bin`, then
+`python3 -m modem.aprs wav aprs.wav --now --repeat 40` (159 s of AG7EW packets) and
+`sh tools/k6_send.sh aprs.wav` on 440.850 while it runs. The emulated test
+(`test_fskaprs_reads_ax25_from_the_fifo`) checks the module's side against a model of the
+stream; whether the chip's demodulator reads Bell 202 only the radio can say.
+
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the
-correlators 256 B, twelve stations 336 B), 288 B of stack. That needs the shared arena of the SPI
+correlators 256 B, twelve stations 336 B), 288 B of stack. With the matched filter (2026-11-10):
+about 7.4 KB of code (-Os) and 2.9 KB of state (two 92-entry templates 368 B, the sums 256 B). That needs the shared arena of the SPI
 images (`aura-pager-only`, `-lr`, `-vlr`, `-vlrh`: 11,776 B since PR #146). It does **not** fit
 the EXPLORE image or the lean images (5,376 B block): the radio needs a voice image, and the
 module can move into the SPI module library unchanged once that exists.
@@ -174,7 +285,8 @@ lost=1`, stack free 2,276 B, the report went out on 440.850 as planned. No frame
 The 589 bad frames are flag-to-flag runs, which noise makes too, so they do not show whether any
 APRS reached the radio: the IF tap had never been tried at 144 MHz, and nobody had checked that
 144.390 is busy at hamlet. The module now prints a line every minute, `m <min> rssi=-<dBm> pre=
-ok= bad=`, where `pre` counts preambles (three flags in a row inside a run), which noise rarely
+ok= bad=` (since 2026-11-10 `m <min> rssi=-<floor> pk=-<peak> pre= ok=`: the least and the most
+of a look at REG_67 each second), where `pre` counts preambles (three flags in a row inside a run), which noise rarely
 makes, so a quiet channel and a deaf demodulator look different.
 
 **Loopback on 70 cm** (`mod-aprsclk_440.bin`, `c/k6/mod/aprsclk_440.c`: the same module on

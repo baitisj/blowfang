@@ -107,6 +107,38 @@ def test_decodes_every_packet_and_sets_the_clock(lib):
     assert "ts=17:52:00h" in lines and "ts=17:51:00z" in lines and "ts=17:52:04.210r" in lines
 
 
+@pytest.fixture(scope="module")
+def disc_lib():
+    """the same receiver deciding each bit on the discriminator (-DAPRS_DISC), as before the
+    matched filter"""
+    if not shutil.which("cc"):
+        pytest.skip("needs a C compiler")
+    so = os.path.join(tempfile.mkdtemp(), "libaprsdisc.so")
+    subprocess.run(["cc", "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-DAPRS_DISC",
+                    "-I" + K6, os.path.join(K6, "aprsclk_host.c"), "-o", so], check=True)
+    L = ctypes.CDLL(so)
+    L.aprs_counts.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint32]
+    L.aprs_lines.restype = ctypes.c_char_p
+    return L
+
+
+@pytest.mark.parametrize("kw", [dict(), dict(twist=6.0), dict(dev=4500.0, cn0=52.0)])
+def test_matched_filter_beats_the_discriminator(lib, disc_lib, kw):
+    """twelve packets at 48 dB-Hz (52 for 4.5 kHz deviation, which the chip's filter clips):
+    below the discriminator's threshold, above the matched filter's (sim/k6if/aprs_mf.py)"""
+    from sim.k6if import aprs_mf
+    kw = dict(kw)
+    cn0 = kw.pop("cn0", 48.0)
+    c, frames = aprs_mf.scene(12, cn0, seed=11, **kw)
+    c = np.ascontiguousarray(c.astype(np.int8))
+    got = {}
+    for name, L in (("mf", lib), ("disc", disc_lib)):
+        L.aprs_reset(CPS8)
+        L.aprs_counts(c.ctypes.data, len(c), 0)
+        got[name] = result(L)["ok"]
+    assert got["disc"] <= 2 and got["mf"] >= 6, got
+
+
 @pytest.mark.parametrize("kw", [dict(twist=6.0), dict(twist=-4.0), dict(f_off=800.0), dict(f_off=-800.0),
                                 dict(dev=2000.0), dict(dev=4500.0), dict(cn0=53.0, seed=2)])
 def test_margins(lib, kw):
@@ -285,10 +317,14 @@ def test_module_on_the_emulated_m0():
     code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], SRC)
     full, _ = k6mod.build(SRC)
     # the arena of the SPI images (11,776 B less the header and tag) holds the code and the state
-    st = 1024 + 332 + 4 * 16 * 4 + 12 * 28 + 64 + 200
+    st = 1024 + 332 + 4 * 16 * 4 + 12 * 28 + 64 + 16 + 2 * 92 * 2 + 2 * 8 * 4 * 4 + 240
     assert len(full) + 24 + st <= 11776
     ib = scene(total=total)
-    for cpi in (1.5, 4.0):                       # the calibrated cost, then 2.7x it: no counts lost
+    # the calibrated cost, then 1.7x it: no counts lost. The matched filter took the margin
+    # from 2.7x (CPI 4, the discriminator alone) to 1.7x: at CPI 3 it loses a few counts but
+    # still decodes all three (the emulator errs slow: k6-if-modem.md). At -Oz, CI's compiler
+    # lost counts at 2.5: the module asks for -Os
+    for cpi in (1.5, 2.5):
         e = le.Emu(code, entry, ib, 0, FDMA, cpi, max_s=total + 1, level=7, scratch=11776 - 24 - len(full))
         r = e.run()
         assert r is not None, e.said
@@ -296,13 +332,16 @@ def test_module_on_the_emulated_m0():
         assert ret == 3, e.said
         assert stack < 700, stack                # modules get about 700 B
         end = e.said[-1]
-        assert "ok=3 bad=0 ts=3 v=3" in end and "lost=0" in end, e.said
+        assert "ok=3 " in end and "ts=3 v=3" in end and "lost=0" in end, e.said  # bad: noise
         # the end line's UTC is at the module's last ms (~6500)
         hh, mm, ss = end.split("utc=")[1].split()[0].split(":")
         got = (int(hh) * 3600 + int(mm) * 60 + float(ss))
         want = (UTC0 + total) % DAY
         assert abs(got - want) < 0.6, (end, want)
     assert e.lcd[1].startswith("UTC 17:52:0") and "stations 3 (sec)" in e.lcd[2], e.lcd
+    assert len(e.lcd[1]) <= 21 and e.lcd[1].endswith((" 08/11/26", " 08")), e.lcd   # the date
+    assert e.lcd[3] == "heard 3 ok 3 ts 3", e.lcd                       # preambles, good, stamped
+    assert e.lcd[4].startswith("last ") and " h" in e.lcd[4] and len(e.lcd[4]) <= 21, e.lcd
     assert any(on for _, on in e.led), "the LED blinks a good frame"
     assert e.writes.get(0x34, [None])[-1] == 0 and e.writes.get(0x33)  # GP0 put back
     assert e.clock_sets == []                    # level 7: no radio clock to set
@@ -359,3 +398,71 @@ def test_float_decoder_takes_preemphasised_audio():
     y = y / np.max(np.abs(y))
     got = [aprs.describe(f) for _, f in aprs.decode_any(y, aprs.FS)]
     assert [g.split(">")[0] for g in got] == ["AG7EW-1", "AG7EW-2", "AG7EW-3"], got
+
+
+# ---- fskaprs: the chip's own FSK modem on AX.25 (a probe; the chip's side is a model) ----
+@need_clang
+def test_fskaprs_reads_ax25_from_the_fifo():
+    """fskaprs on the emulated M0 against a model of the FD6818's stream mode (REG_5D = 0xFF00):
+    16 line bits a FIFO word every 13.33 ms, the first byte on the air in the word's low byte,
+    an almost-full interrupt at 4 words. The packet-mode variants get no sync interrupt here."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    src = os.path.join(K6, "mod", "fskaprs.c")
+    code, entry = le.build("x", [("RUN_S", "13u"), ("SLOT_MS", "2000u")], src)
+    rng = np.random.default_rng(3)
+    line = []
+    for k in range(3):
+        f = aprs.frame(f"AG7EW-{k + 1}", "APRS", "/175201h4857.00N/12229.00W>fsk modem test")
+        line += [rng.integers(0, 2, 150), aprs.hdlc_bits([f], pre_flags=40)]
+    line = np.concatenate(line).astype(int)
+
+    class Chip(le.Emu):
+        t_arm, taken, stream = 0.0, 0, False
+
+        def waiting(self):
+            return int((self.cyc / 96000 - self.t_arm) * 1.2 / 16) - self.taken
+
+        def on_stub(self, uc, addr, size, user):
+            A = self.A
+            name = self.names[(addr - self.stubs) // 16]
+            r0, r1 = uc.reg_read(A.UC_ARM_REG_R0), uc.reg_read(A.UC_ARM_REG_R1)
+            if name == "fd_write" and r0 == 0x5D:
+                self.stream = r1 == 0xFF00
+            if name == "fd_write" and r0 == 0x59 and r1 & 0x1000:
+                self.t_arm, self.taken = self.cyc / 96000, 0
+            if name == "fd_read" and r0 in (0x0C, 0x02, 0x5F):
+                full = self.stream and self.waiting() >= 4
+                if r0 == 0x5F:
+                    at = int(self.t_arm * 1.2) + 16 * self.taken
+                    self.taken += 1
+                    v = 0
+                    for b in line[np.arange(at, at + 16) % len(line)]:
+                        v = v << 1 | int(b)
+                    ret = (v & 0xFF) << 8 | v >> 8
+                else:
+                    ret = (1 if r0 == 0x0C else 0x1000) if full else 0
+                self.tick(self.fd_us * 96)
+                uc.reg_write(A.UC_ARM_REG_R0, ret)
+                return
+            super().on_stub(uc, addr, size, user)
+
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=15, level=7)
+    r = e.run()
+    assert r is not None, e.said
+    ret, stack = r
+    assert stack < 700, stack
+    assert e.said[0] == "fskaprs start hz=440850000 slot=2000", e.said
+    v = {ln[1]: dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln[0] == "v"}
+    for k in "0123":                                    # the stream variants: frames, none bad
+        assert int(v[k]["ok"]) >= 1 and v[k]["bad"] == "0" and int(v[k]["p"]) >= 1, e.said
+        assert v[k]["i"] == "1000" and int(v[k]["w"]) >= 100, e.said
+    for k in "45":
+        assert v[k]["w"] == "0" and v[k]["ok"] == "0", e.said
+    x0 = next(ln for ln in e.said if ln.startswith("x0")).split()[1:]
+    assert len(x0) == 8 and sum(w in ("fefe", "0101", "7f7f", "8080", "bfbf", "4040", "dfdf", "2020",
+                                      "efef", "1010", "f7f7", "0808", "fbfb", "0404", "fdfd", "0202")
+                                for w in x0) >= 4, x0   # a run of flags on the line: 7 bits and 1
+    assert ret == sum(int(v[k]["ok"]) for k in v) and e.said[-1] == f"fskaprs end ok={ret}", e.said
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F):
+        assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)

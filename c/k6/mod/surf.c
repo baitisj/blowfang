@@ -2,12 +2,14 @@
 
    The screen is a bargraph of signal strength (Y) across frequency (X): 63 bins, 2 pixels each,
    drawn as the level-6 waterfall bitmap (30 rows of 128 pixels, y = 21-50). The listening
-   frequency is always the middle bin (x = 62-63), a blinking bar (it flips to inverse about 2.5
-   times a second) with a caret above it, and the scale moves with it. The scale is a lens (Jeff,
-   2026-11-09): the 8 bins each side of the middle are 2.5 kHz apart (+-20 kHz, a quarter of the
-   screen), and further out each bin's step grows by the same amount, so the last of the 31 each
-   side reaches the span (1 / 3: +-100 kHz to +-5 MHz). The lens's bins read with the narrow
-   filter (Jeff: "narrow it a bit"), the rest with the wide one. Under the bars an axis line has
+   frequency is always the middle bin (x = 62-63), its bar drawn like the others with a caret
+   above it (it blinked until 2026-11-10; Jeff: no purpose), and the scale moves with it. The
+   scale is logarithmic out from the middle (Jeff, 2026-11-09 and -10): each bin's step is a
+   fixed ratio larger than the one inside it, the 8th bin each side always lands on +-20 kHz
+   (the "lens", a quarter of the screen), and the 31st on the span (1 / 3: +-100 kHz to
+   +-5 MHz); at +-1 MHz the steps run from 1.5 kHz in the middle to 145 kHz at the edge. Every
+   bin reads with the wide filter (the narrow one, 2026-11-09, gave the lens a flat top and a
+   lower floor than the rest; Jeff 2026-11-10: wide again). Under the bars an axis line has
    ticks as on log paper, every 5 kHz to 20 kHz, every 10 kHz to 100 kHz, every 100 kHz to 1 MHz
    and every 1 MHz, taller at 20 kHz, 100 kHz and 1 MHz (Jeff: "axis tic marks to help understand
    the frequency intervals"); line 5 labels it "-1M   -20k +20k   +1M" (the span at each end, the
@@ -40,7 +42,8 @@
    read; a signal there SQ_DB over the settled floor opens the audio (REG_47 FM, speaker amp on
    PB2, as dmrdet) and parks on it. It closes HANG_MS after the signal drops, and then sweeps
    again. While parked, a refresh sweep every REFRESH_MS (about 0.3 s of muted audio) keeps the
-   bars current, unless hold (0) is on.
+   bars current, unless hold (0) or monitor is on. Any retune with the audio open turns the
+   speaker amp off as well until the bar has settled again (hush): REG_47 muted alone buzzed.
 
    Levels: sweep reads are quick (SETTLE_US after the tune, as Aura's own spectrum: about 59 %
    of the way in dB from the -173 dBm restart, Phase 0), so the bars are relative: the floor is
@@ -74,14 +77,14 @@
 #define NB 64                   /* bins in the arrays */
 #define NV 63                   /* bins on screen: the middle one and 31 each side */
 #define C 31                    /* the middle bin, the listening frequency (x = 62-63) */
-#define KI 8                    /* the lens: 8 bins each side of the middle 2.5 kHz apart */
-#define U_HZ 2500u              /* the lens's step, and the unit of every bin's offset */
+#define KI 8                    /* the lens's edge: bin C+-8 is +-20 kHz from the middle */
+#define U_HZ 2500u              /* the unit of channel steps and spans */
+#define L_HZ 500u               /* the unit of every bin's offset (the inner steps are finer) */
 #define ROWS 30                 /* bitmap rows (KM_WF_ROWS) */
 #define BAR0 6                  /* first bar row: caret rows 1-3, peak ticks row 4 */
 #define AX 27                   /* the axis: its line, then ticks in rows 28 (all) and 29 (major) */
 #define BARH (AX - BAR0)
 #define SETTLE_US 3000          /* a sweep read after its tune (Aura's spectrum, wide) */
-#define SETTLE_N_US 5000        /* the same with the narrow filter (it settles in ~20 ms, not 12) */
 #define CHECK_US 12000          /* a settled read */
 #define CHK_MS 70               /* sweeping: a check of the bar's channel this often */
 #define SUB_HZ 20000u           /* a wide bin: one quick read this far apart across it */
@@ -129,6 +132,12 @@ static const band_t BANDS[] = {
 /* the span: the last bin's offset from the middle, x 2.5 kHz (100 kHz to 5 MHz) */
 static const uint16_t SPANS[] = {40, 100, 200, 400, 1000, 2000};
 #define NSPANS 6
+/* the scale's curve for each span (Jeff 2026-11-10: log all the way, +-20 kHz kept in place):
+   off(j) = a (r^j - 1) in L_HZ units, each step r times the last, worked in fixed point as
+   g += g * k >> 12 from g = 256 a; k and 256 a found offline so that bin C lands exactly on
+   the span and bin KI on 20 kHz (20.5 at +-5 MHz) (tests/test_k6_surf.py lens() is the same) */
+static const uint16_t LK[] = {82, 344, 520, 688, 906, 1070};
+static const uint16_t LG[] = {60201, 11442, 6458, 4196, 2620, 1925};
 /* the axis's ticks, kHz from the middle, as on log paper; 20 (the lens's edge), 100 and 1000 major */
 static const uint16_t TICKS[] = {5,   10,  15,  20,  30,  40,  50,  60,  70,   80,   90,   100,  200,
                                  300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000};
@@ -147,8 +156,8 @@ typedef struct {
   uint32_t t_flush, t_open, t_full, t_sfl, t_msg, t_key, t_rep, t_auto, t_chk;
   int next, pend, sj, sweeps;
   int sfl, sel_dbm;
-  uint8_t si, qfl, parked, tuned, check, mon, hold, audio, blink, key, raw, full, refine, stale;
-  uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x 2.5 kHz */
+  uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, key, raw, full, refine, stale;
+  uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
   uint32_t r47, odr;
@@ -221,20 +230,29 @@ static void say_end(sf_t *s, char *p) {
 
 static int dbm(sf_t *s) { return KM_RSSI_DBM(s->api->fd_read(0x67)); }
 
-/* the level at hz in dBm, us after its tune (wide: the wide filter, else the narrow) */
-static int read_w(sf_t *s, uint32_t hz, uint32_t us, int wide) {
-  s->api->tune(hz, wide);
+/* with the audio open: speaker off (1) while the receiver tunes about, back on (0) once it has
+   settled on the listening frequency again; a retune with the amp on buzzes (Jeff, 2026-11-10) */
+static void hush(sf_t *s, int on) {
+  if (!s->audio || on == s->hush) return;
+  s->hush = (uint8_t)on;
+  s->api->fd_write(0x47, on ? AF_MUTE : AF_FM);
+  wr(GPIOB + (on ? BRR : BSRR), SPK);
+}
+
+/* the level at hz in dBm, us after its tune (the wide filter) */
+static int read_hz(sf_t *s, uint32_t hz, uint32_t us) {
+  hush(s, 1);
+  s->api->tune(hz, WIDE);
   s->api->delay_us(us);
   return dbm(s);
 }
 
-static int read_hz(sf_t *s, uint32_t hz, uint32_t us) { return read_w(s, hz, us, WIDE); }
-
 static int read_at(sf_t *s, int i, uint32_t us) { return read_hz(s, s->hz[i], us); }
 
 static void audio(sf_t *s, int on) {
-  if (on == s->audio) return;
+  if (on == s->audio && !s->hush) return;
   s->audio = (uint8_t)on;
+  s->hush = 0;
   s->api->fd_write(0x47, on ? AF_FM : AF_MUTE);
   wr(GPIOB + (on ? BSRR : BRR), SPK);
 }
@@ -284,12 +302,16 @@ static int kp_event(sf_t *s) {
 
 /* ---- the scale ---- */
 
-/* the lens's offsets for the span: 0..KI one step each, then step 1 + c*j for the j-th bin past
-   the lens, c such that bin C lands on the span: off = KI + j + (span - C) * j(j+1) / (n(n+1)) */
+/* the offsets for the span: a smooth geometric curve out from the middle (LK, LG), each step at
+   least one unit */
 static void lens(sf_t *s) {
-  uint32_t u = SPANS[s->si] - C, n = C - KI, j;
-  for (j = 0; j <= KI; j++) s->off[j] = (uint16_t)j;
-  for (j = 1; j <= n; j++) s->off[KI + j] = (uint16_t)(KI + j + udiv(u * j * (j + 1), n * (n + 1)));
+  uint32_t g0 = LG[s->si], g = g0, k = LK[s->si], j, v;
+  s->off[0] = 0;
+  for (j = 1; j <= C; j++) {
+    g += (g * k) >> 12;
+    v = (g - g0 + 128) >> 8;
+    s->off[j] = (uint16_t)(v > s->off[j - 1] ? v : s->off[j - 1] + 1u);
+  }
 }
 
 /* bin i's distance from the middle, in bins */
@@ -298,13 +320,13 @@ static int dist(int i) { return i < C ? C - i : i - C; }
 /* the step around bin i (Hz) */
 static uint32_t sp(sf_t *s, int i) {
   int a = dist(i);
-  return U_HZ * (a < C ? s->off[a + 1] - s->off[a] : s->off[C] - s->off[C - 1]);
+  return L_HZ * (a < C ? s->off[a + 1] - s->off[a] : s->off[C] - s->off[C - 1]);
 }
 
 /* the frequencies bin i stands for: halfway to its neighbours */
 static void cov(sf_t *s, int i, uint32_t *lo, uint32_t *hi) {
   int a = dist(i);
-  uint32_t in = a ? U_HZ * (s->off[a] - s->off[a - 1]) / 2 : U_HZ / 2, out = sp(s, i) / 2;
+  uint32_t out = sp(s, i) / 2, in = a ? L_HZ * (s->off[a] - s->off[a - 1]) / 2 : out;
   *lo = s->hz[i] - (i < C ? out : in);
   *hi = s->hz[i] + (i < C ? in : out);
 }
@@ -359,7 +381,7 @@ static void recentre(sf_t *s, uint32_t hz) {
   s->cen = b->lo + udiv(hz - b->lo + s->ch / 2, s->ch) * s->ch;
   if (s->cen > b->hi) s->cen -= s->ch;
   for (i = 0; i < NV; i++) {
-    uint32_t o = U_HZ * s->off[dist(i)], f = i < C ? s->cen - o : s->cen + o;
+    uint32_t o = L_HZ * s->off[dist(i)], f = i < C ? s->cen - o : s->cen + o;
     old[i] = s->pk[i];
     lv[i] = s->lvl[i];
     s->hz[i] = s->pk[i] = f >= b->lo && f <= b->hi ? f : 0;
@@ -492,9 +514,8 @@ static void on_key(sf_t *s, int k) {
   case '*':
     s->mon ^= 1;
     s->tuned = 0;
-    s->parked = s->mon;
-    if (s->mon) audio(s, 1);
-    else moved(s);
+    s->parked = s->mon;               /* (monitor: park_step opens the audio once tuned) */
+    if (!s->mon) moved(s);
     break;
   case '0':
     s->hold ^= 1;
@@ -511,9 +532,7 @@ static void sweep_bin(sf_t *s, int i) {
   uint32_t lo, hi, f, at = s->hz[i];
   int r, o = s->lvl[i], v;
   cov(s, i, &lo, &hi);
-  if (dist(i) <= KI) {
-    r = read_w(s, at, SETTLE_N_US, 0);   /* the lens: the narrow filter (Jeff 2026-11-09) */
-  } else if (hi - lo <= SUB_HZ) {
+  if (hi - lo <= SUB_HZ) {                 /* the lens and bins up to 20 kHz wide: one read */
     r = read_at(s, i, SETTLE_US);
   } else {
     for (r = -999, f = lo + SUB_HZ / 2; f < hi; f += SUB_HZ)
@@ -612,6 +631,8 @@ static void park_step(sf_t *s) {
   if (!s->tuned) {
     d = read_at(s, C, CHECK_US);
     s->tuned = 1;
+    if (s->mon) audio(s, 1);
+    hush(s, 0);
   } else {
     s->api->delay_us(PARK_US);
     d = dbm(s);
@@ -623,15 +644,13 @@ static void park_step(sf_t *s) {
     s->parked = 0;
     return;
   }
-  if (!s->hold && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (stale: a zoom) */
+  if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {   /* (stale: a zoom) */
     int i;
-    s->api->fd_write(0x47, AF_MUTE);  /* the speaker amp stays on: no pop */
-    for (i = 0; i < NV; i++)
+    for (i = 0; i < NV; i++)          /* (read_hz hushes the speaker; the next read unhushes it) */
       if (s->hz[i]) sweep_bin(s, i);
     sweep_done(s);
     s->tuned = 0;
     s->t_full = s->api->ms();
-    if (s->audio) s->api->fd_write(0x47, AF_FM);
   }
 }
 
@@ -694,7 +713,6 @@ static void draw(sf_t *s) {
   int i, r, x, k;
   char *p;
   s->t_flush = s->now;
-  s->blink ^= 1;
   for (i = 0; i < 16 * ROWS; i++) b[i] = 0;
   for (i = 0; i < NV; i++) {
     if (!s->hz[i]) continue;
@@ -723,8 +741,6 @@ static void draw(sf_t *s) {
   }
   for (r = 0; r < 3; r++)
     for (i = x - 2 + r; i <= x + 3 - r; i++) px(b, i, r + 1);
-  if (s->blink)
-    for (r = BAR0; r < AX; r++) b[16 * r + (x >> 3)] ^= (uint8_t)(0xC0 >> (x & 7));
 
   p = put(s->ln, "SURF ");
   p = put(p, s->bd->name);
@@ -821,7 +837,8 @@ int k6_main(const k6_api_t *api) {
   }
 #ifdef SURF_AUTO_S
   /* the last bargraph, for the bench: "bar <middle MHz> <span> lens", then the bins, 32 a line,
-     a letter a bin: its height a (1 px) to x (24 px), '-' outside the band */
+     a letter a bin: its height a (1 px) to x (24 px), '-' outside the band; the screen shows it too */
+  draw(s);
   p = put(s->ln, "bar ");
   p = mhz(p, s->cen, 4);
   *p++ = ' ';

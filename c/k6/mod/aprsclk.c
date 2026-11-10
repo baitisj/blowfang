@@ -7,8 +7,15 @@
      counts (2 * ones - 64 per 64 DMA samples, ~87 kHz)
        -> mixed down by the nominal IF (64-entry sine), a 2nd-order CIC decimating by 6 (~14.5 kHz)
        -> phase by CORDIC; the phase step is the FM discriminator (no division)
-       -> DC removed, one-bit sliding correlators at 1200 and 2200 Hz, mark against space
-       -> a DPLL bit clock (Dire Wolf's: nudged towards each transition), NRZI
+       -> DC removed, one-bit sliding correlators at 1200 and 2200 Hz: each tone's deviation
+          (tracked where that tone wins) and the carrier offset (the DC)
+       -> a DPLL bit clock on the discriminator's mark / space (Dire Wolf's: nudged towards each
+          transition)
+       -> each bit decided by a noncoherent matched filter on the IF (sim/k6if/aprs_mf.py: about
+          4 dB more sensitive than deciding on the discriminator): the IF turned back by the
+          offset, summed over the bit against exp(j beta sin(2 pi f t + theta)) for each tone,
+          beta = its tracked deviation / f, theta at 16 audio phases; mark against space on the
+          largest |sum| of each (-DAPRS_DISC builds the old discriminator decision), then NRZI
        -> HDLC (flags, bit stuffing), CRC-16/X.25 (good residue 0xF0B8)
        -> the APRS information field's timestamps:
             '/' '@' positions, ';' objects, '>' status:  DDHHMMz (60 s resolution), HHMMSSh (1 s)
@@ -28,19 +35,21 @@
    about 30 s. A 1 s stamp gives the second; minute stamps alone give the minute.
 
    Lines (serial / telemetry):
-     aprs start hz=144390000 ks=5603 n=12
+     aprs start hz=144390000 ks=5603 n=12 g=1023           (g: REG_13, the gain frozen there)
+     m 3 rssi=-104 pk=-85 pre=1 ok=1                       (a minute: floor, peak, preambles, good)
      f VE7ABC-9 n=58 h=1 ts=175201h                        (a good frame: source, bytes, hops, stamp)
      clk 17:52:04.250 w=1000 v=2 d=08                      (the clock: UTC, interval ms, votes, day)
      aprs end ok=12 bad=3 ts=5 v=2 utc=17:59:59.120 lost=0
    Each clock line with two or more votes also goes to the radio's clock (level 8, clock_set):
    UTC now, the date it has, and a bound of the interval's far end from the estimate.
-   Screen (level 6) once a second when no frame is coming, LED blink a good frame (level 7). A key ends it (else RUN_MS). Writes REG_34[3:0]
-   and REG_33 bit 8 (GP0), the MCU's TIM17, DMA channel 1 and their clock enables, all put back.
+   Screen (level 6) once a second when no frame is coming (UTC and date, votes, packets heard / decoded /
+   stamped, the station heard last), LED blink a good frame (level 7). A key ends it (else RUN_MS). Writes REG_34[3:0]
+   and REG_33 bit 8 (GP0), REG_7E and REG_13 (the gain), the MCU's TIM17, DMA channel 1 and their clock enables, all put back.
    Returns the votes behind the clock (0: none), or -2 (a key before any frame), -3 (old image),
    -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch).
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
-#define K6_MODULE_OPT z
+#define K6_MODULE_OPT s
 #include "../k6_mod.h"
 
 #ifndef APRS_HZ
@@ -49,12 +58,23 @@
 #ifndef RUN_MS
 #define RUN_MS 900000u /* 15 min */
 #endif
+#ifndef GAIN13
+#define GAIN13 0x03FFu /* REG_13 with the AGC frozen (the maximum); 0 leaves the AGC running */
+#endif
 #define DMAX_DIRECT 3000
 #define DMAX_DIGI 8000
 #define NC 12   /* stations kept */
 #define MAXF 332 /* AX.25 frame bytes, with the FCS */
 #define DEC 6   /* counts an audio sample */
 #define NW 16   /* correlator ring (the window is n of it) */
+#define GN (64 + 28) /* a template's phases kept: index + 4 * 7 never wraps */
+#ifndef PLL_IN
+#ifdef APRS_DISC
+#define PLL_IN 2
+#else
+#define PLL_IN 4 /* inside a frame each transition pulls the bit clock 1 / 2^PLL_IN of the way */
+#endif
+#endif
 #define FIF_CHZ 1692708u /* 26 MHz / 1536 in 0.01 Hz */
 #define DAY 86400000
 
@@ -89,6 +109,7 @@ typedef struct {
   int32_t cr[4][NW];           /* the correlators' products: mark cos, mark sin, space cos, space sin */
   cand_t c[NC];
   char ln[64];
+  char last[16];               /* the newest good frame's source and hops, for the screen */
   /* clock and DMA */
   uint32_t t, c17, c14, laps, lastw, produced, consumed, t0, p0, cps8, lost;
   /* mixer and CIC */
@@ -98,11 +119,18 @@ typedef struct {
   int32_t ang, dc, sum[4];
   uint32_t ph1, ph2, st1, st2, pll, stb;
   int32_t n, w, lastv, lastbit;
+  /* the matched filter: each tone's template exp(j beta sin) at 64 phases (cos, sin) */
+  int8_t g[2][GN][2];          /* 64 a turn, the first GN - 64 again after them */
+  int32_t acc[2][8][4];        /* this bit's sums for 8 audio phases (x gc, y gs, y gc, x gs) */
+  int32_t bq[2], btab[2];      /* beta in 1/16 of a template step (64 a turn): tracked (Q6), tabled */
+  uint32_t rot;                /* the offset's phase, 2^16 a turn */
+  int32_t mlast;               /* the last bit's tone */
   /* HDLC */
   uint32_t sr, bb, nbits, flag_ms, run, pre, min_ms;
   int32_t len, in;
   /* results */
   uint32_t ok, bad, nts, seq, now_ms, scr_ms;
+  uint16_t rlo, rhi; /* REG_67 once a second: the minute's least and most */
   int32_t ref, haveref, votes, est, wid, hops;
   uint8_t day, mon, yr, stn;
 } st_t;
@@ -394,6 +422,7 @@ static void frame(const k6_api_t *api, st_t *s) {
       }
     }
   } else kind = 0;
+  *kv(call(s->last, f + 7), " h", (uint32_t)s->hops) = 0;
   p = put(s->ln, "f ");
   p = call(p, f + 7);
   p = kv(p, " n=", (uint32_t)s->len);
@@ -460,10 +489,59 @@ static int32_t mag(int32_t a, int32_t b) {
   return a > b ? a + ((3 * b) >> 3) : b + ((3 * a) >> 3);
 }
 
+/* tone t's template at beta btab[t]: exp(j beta sin(2 pi i / 64)), its phase rounded to 1/64 turn */
+static void gtab(st_t *s, int t) {
+  int i, q;
+  for (i = 0; i < GN; i++) {
+    q = (s->btab[t] * SIN[i & 63] + 1024) >> 11; /* beta sin in 1/64 turn (127 * 16 ~ 2048) */
+    s->g[t][i][0] = SIN[(q + 16) & 63], s->g[t][i][1] = SIN[q & 63];
+  }
+}
+
+/* the deviation tracker: beta from the tone's discriminator level v (mag >> 11) where it won,
+   a one-pole over 64 samples; the template follows when beta has moved half a step */
+static void track(st_t *s, int t, int32_t v) {
+  int32_t b = t ? (v * 45) >> 10 : (v * 41) >> 9; /* level -> beta: mark n / 12.5, space n / 22.8 */
+  if (b < 64) b = 64;
+  if (b > 768) b = 768;
+  s->bq[t] += ((b << 6) - s->bq[t]) >> 6;
+  b = s->bq[t] >> 6;
+  if (b - s->btab[t] >= 8 || s->btab[t] - b >= 8) s->btab[t] = b, gtab(s, t);
+}
+
+#ifndef APRS_DISC
+/* tone t's matched filter, one sample in: the IF sample (x, y) against the template at the
+   tone's phase index i for 8 audio phases (each also stands for theta + pi). Spread over the
+   samples, not once a bit: a burst of the whole window's work outruns the 0.2 ms DMA ring */
+static void mfin(st_t *s, int t, int32_t x, int32_t y, uint32_t i) {
+  const int8_t *g = s->g[t][i];   /* the table runs on past 64 (GN), so no wrap in here */
+  int32_t *q = s->acc[t][0], *e = q + 4 * 8;
+  for (; q < e; q += 4, g += 4 * 2) { /* 8 audio phases, 4 table steps apart */
+    int32_t c = g[0], sn = g[1];
+    q[0] += x * c, q[2] += y * c, q[1] += y * sn, q[3] += x * sn;
+  }
+}
+
+/* the bit's metric for tone t: the largest |sum z conj(g)| over 16 audio phases; sums cleared */
+static int32_t mfout(st_t *s, int t) {
+  int32_t best = 0, m, *q;
+  int p;
+  for (p = 0; p < 8; p++) {
+    q = s->acc[t][p];
+    m = mag(q[0] + q[1], q[2] - q[3]); /* z conj(g): theta */
+    if (m > best) best = m;
+    m = mag(q[0] - q[1], q[2] + q[3]); /* z g: theta + pi */
+    if (m > best) best = m;
+    q[0] = q[1] = q[2] = q[3] = 0;
+  }
+  return best;
+}
+#endif
+
 /* one complex sample at ~14.5 kHz */
 static void audio(const k6_api_t *api, st_t *s, int32_t x, int32_t y) {
-  int32_t ang = 0, d, v, m, sp, t, i;
-  uint32_t prev;
+  int32_t ang = 0, d, v, m, sp, t, i, x0 = x, y0 = y;
+  uint32_t prev, i1 = s->ph1 >> 26, i2 = s->ph2 >> 26;
   /* CORDIC vectoring: the phase in 2^16 a turn */
   if (x < 0) x = -x, y = -y, ang = 32768;
   for (i = 0; i < 11; i++) {
@@ -491,8 +569,24 @@ static void audio(const k6_api_t *api, st_t *s, int32_t x, int32_t y) {
   }
   m = mag(s->sum[0], s->sum[1]) >> 11;
   sp = mag(s->sum[2], s->sum[3]) >> 11;
-  /* mark against space, as they come: a peak tracker on each tone (for a sender's
-     pre-emphasis twist) lost frames at +6 dB and gained nothing elsewhere (host sweep) */
+  /* each tone's deviation, where the discriminator says that tone */
+  if (m > sp) track(s, 0, m);
+  else track(s, 1, sp);
+  {
+#ifndef APRS_DISC
+    /* the IF turned back by the carrier offset (the discriminator's DC), into each tone's sums */
+    uint32_t r = (s->rot += (uint32_t)(s->dc >> 8)) >> 10;
+    int c = SIN[(r + 16) & 63], sn = SIN[r & 63];
+    int32_t xr = (x0 * c + y0 * sn) >> 7, yr = (y0 * c - x0 * sn) >> 7;
+    mfin(s, 0, xr, yr, i1);
+    mfin(s, 1, xr, yr, i2);
+#else
+    (void)x0, (void)y0, (void)i1, (void)i2;
+#endif
+  }
+  /* mark against space on the discriminator, as they come: its transitions keep the bit clock
+     (a peak tracker on each tone, for a sender's pre-emphasis twist, lost frames at +6 dB and
+     gained nothing elsewhere: host sweep) */
   v = m > sp;
 #ifdef APRS_TRACE
   APRS_TRACE(s, d, m, sp);
@@ -500,13 +594,24 @@ static void audio(const k6_api_t *api, st_t *s, int32_t x, int32_t y) {
   /* the bit clock: sample as the phase passes half a turn, pulled towards each transition */
   prev = s->pll;
   s->pll += s->stb;
+#ifdef APRS_DISC
   if ((int32_t)prev >= 0 && (int32_t)s->pll < 0) {
     hdlc(api, s, v == s->lastbit);
     s->lastbit = v;
   }
+#else
+  /* the bit decided by the matched filter over the samples since the last: the
+     discriminator's sliding window puts its transitions (where they pull the clock) half a
+     window late, so the clock's half turn is the bit's end */
+  if ((int32_t)prev >= 0 && (int32_t)s->pll < 0) {
+    int b = mfout(s, 0) > mfout(s, 1);
+    hdlc(api, s, b == s->mlast);
+    s->mlast = b;
+  }
+#endif
   if (v != s->lastv) {
     int32_t p = (int32_t)s->pll;
-    s->pll = (uint32_t)(s->in ? p - (p >> 2) : p >> 1);
+    s->pll = (uint32_t)(s->in ? p - (p >> PLL_IN) : p >> 1);
     s->lastv = v;
   }
 }
@@ -560,21 +665,25 @@ static void screen(const k6_api_t *api, st_t *s) {
   p = put(s->ln, "UTC ");
   if (s->votes >= 2) p = hms(p, utc(s, s->now_ms), 0);
   else p = put(p, "--:--:--");
+  if (s->day) { /* "UTC hh:mm:ss dd/mm/yy": 21 characters, the screen's width */
+    p = dec(put(p, " "), s->day, 2);
+    if (s->mon) p = dec(put(p, "/"), s->mon, 2), p = dec(put(p, "/"), s->yr, 2);
+  }
   *p = 0;
   api->lcd_text(1, s->ln);
   p = kv(s->ln, "stations ", (uint32_t)s->votes);
   if (s->votes >= 2) p = put(p, s->wid < 30000 ? " (sec)" : " (min)");
   *p = 0;
   api->lcd_text(2, s->ln);
-  p = kv(s->ln, "ok ", s->ok);
-  p = kv(p, " bad ", s->bad);
+  /* packets heard starting (preambles), then decoded: noise makes "bad" runs all the time, so
+     the gap between these two is the real misses */
+  p = kv(s->ln, "heard ", s->pre);
+  p = kv(p, " ok ", s->ok);
   p = kv(p, " ts ", s->nts);
   *p = 0;
   api->lcd_text(3, s->ln);
-  if (s->day) {
-    p = dec(put(s->ln, "day "), s->day, 2);
-    if (s->mon) p = dec(put(p, "/"), s->mon, 2), p = dec(put(p, "/"), s->yr, 2);
-    *p = 0;
+  if (s->ok) { /* the station heard last: "last VE7ABC-15 h2" */
+    *put(put(s->ln, "last "), s->last) = 0;
     api->lcd_text(4, s->ln);
   }
   api->lcd_text(5, "any key: done");
@@ -587,7 +696,7 @@ static void screen(const k6_api_t *api, st_t *s) {
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, apb2, ahb, i, tkey = 0;
-  uint16_t r33, r34;
+  uint16_t r33, r34, r7e, r13;
   char *p;
   if (api->level < 2) return -3;
   s = (st_t *)api->scratch(&room);
@@ -608,6 +717,16 @@ int k6_main(const k6_api_t *api) {
     return -5;
   }
   api->fd_write(0x34, (uint16_t)((r34 & 0xFFF0) | 13));
+  /* The gain frozen at its maximum, as the AIS and DMR modules do: the 1-bit tap's own noise
+     lies above the receiver's even there, so wherever the AGC turns the IF down (a strong
+     neighbour, a big antenna's whole band) a weak packet sinks further under it
+     (docs/k6-dmr.md: +10 dB over the tap's noise at 0x03FF against +4 to +5 with the AGC). */
+  r7e = api->fd_read(0x7E), r13 = api->fd_read(0x13);
+  if (GAIN13) {
+    api->fd_write(0x7E, (uint16_t)((r7e & 0x0FFF) | 0x8000 | (3u << 12)));
+    api->fd_write(0x13, GAIN13);
+  }
+  s->rlo = 0x1FF;
   wr(RCC_APB2ENR, apb2 | TIM17EN);
   wr(TIM17 + 0x00, 0);
   wr(TIM17 + 0x28, 0);
@@ -630,6 +749,7 @@ int k6_main(const k6_api_t *api) {
   p = dec(p, APRS_HZ, 1);
   p = kv(p, " ks=", udiv(96000u * 256u, s->cps8));
   p = kv(p, " n=", (uint32_t)s->n);
+  p = kv(p, " g=", GAIN13);
   say(api, s, p);
   resync(s);
   for (;;) {
@@ -655,15 +775,25 @@ int k6_main(const k6_api_t *api) {
           /* a stretch past TIM14's 6.5 s wrap reads wrong: only a rate within 1/16 */
           if (c - s->cps8 + (s->cps8 >> 4) <= (s->cps8 >> 3)) s->cps8 = (3 * s->cps8 + c) >> 2, steps(s);
         }
+        {
+          /* the level, here once a second where a pause costs nothing: the minute's least is
+             the floor, its most a packet's level if one was on the air at a look (a packet
+             being decoded puts the look off, so pk is mostly the ones that didn't decode) */
+          uint16_t r = api->fd_read(0x67) & 0x1FF;
+          if (r < s->rlo) s->rlo = r;
+          if (r > s->rhi) s->rhi = r;
+        }
         if (s->now_ms - s->min_ms >= 60000) { /* once a minute: the channel, for the bench */
           s->min_ms = s->now_ms;
           p = kv(s->ln, "m ", udiv(s->now_ms, 60000));
           p = put(p, " rssi=-");
-          p = dec(p, (uint32_t)-KM_RSSI_DBM(api->fd_read(0x67)), 1);
+          p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rlo), 1);
+          p = put(p, " pk=-");
+          p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rhi), 1);
           p = kv(p, " pre=", s->pre);
           p = kv(p, " ok=", s->ok);
-          p = kv(p, " bad=", s->bad);
           say(api, s, p);
+          s->rlo = 0x1FF, s->rhi = 0;
         }
         if (api->level >= 6) screen(api, s);
         resync(s);
@@ -679,6 +809,7 @@ int k6_main(const k6_api_t *api) {
   wr(DMA_CMAR1, 0);
   wr(RCC_APB2ENR, apb2);
   wr(RCC_AHBENR, ahb);
+  if (GAIN13) api->fd_write(0x13, r13), api->fd_write(0x7E, r7e);
   api->fd_write(0x34, r34);
   api->fd_write(0x33, r33);
   p = put(s->ln, "aprs end ok=");
