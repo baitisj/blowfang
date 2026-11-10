@@ -343,6 +343,28 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   images (codebook install, -table fallbacks) never transmit and leave txdog out for room. Bench
   tests: `dogfault` (a deliberate UDF) and `dogtx` (CW ID, then keyed with the PA off and hung),
   both uploaded without ARQ.
+- **txdog armed only around key-ups (2026-11-09).** On the K6, MEM_MODE 3 turns the flash
+  prefetch off (FLASH_ACR 0x12 -> 0x02) and it won't come back in that mode; in MEM_MODE 2 it
+  does. RAM modules measured it on 0b2a94c vlrh: `fdtime` timed one FD6818 register read at
+  369 us and td_read's pair at 734 us; `pfprobe_m2` (MEM_MODE 2, PRFTBE) got the pair to 195 us
+  and ACR 0x12, back to 0x02 in mode 3; the HSI switch PR #18 tried made no difference
+  (`pfprobe_hsi`, `pfprobe_pf`, `pfprobe`: the K6 stayed up, ACR stayed 0x02). With the table
+  mapped all the time, every txdog image ran flash code slower, and EXPLORE's DMR detector,
+  which drains its DMA ring (356 us a lap) between those reads, never heard DMR. Now the table
+  is mapped ("armed") from each key-up (`keyed*`, a module's `tx_on` included) to `unkeyed`; at
+  rest main flash is at 0 with the prefetch on, TIM14's interrupt is masked (the bootloader has
+  no handler for it) and its wraps are counted by `txdog::poll` in the main loops, in a module's
+  `ms`/`ticks` calls and in every `ticks`. A module that doesn't key runs at rest, with the
+  prefetch (a LISTEN slot module hears DMR). For room the `K6 TXDOG remap` and raw `K6 TXDOG on`
+  boot lines are gone, the report's `limit=` with them, and the over-limit line is
+  `K6 TXDOG over limit`.
+  A fault at rest hangs the radio as before txdog, with the transmitter off (every key-up arms
+  it first): `dogfault` now only reboots the radio when it faults keyed.
+- **SysTick's interrupt off at boot (2026-11-09).** With the prefetch back (ACR 0x32 at rest),
+  `fdtime` still timed td_read's pair at 382 us; `fdirq` timed it at 196 us under PRIMASK, with
+  a counting loop losing only 3% to interrupts, and read SysTick CSR 0x00010006: the bootloader
+  leaves TICKINT on and Aura never cleared it, so every 1 us `delay::us` of the FD6818 bit-bang
+  ended in a SysTick exception through the bootloader's table. main now clears it.
 - **The SPI library** (above) holds only images whose tag checked when they arrived, and checks
   the tag again on every run; a run from a slot doesn't lower the replay serial.
 - **Part 97.** The code goes out in the clear and this format is published; the tag only
