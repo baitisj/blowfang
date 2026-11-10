@@ -9,6 +9,9 @@ one square a pixel, for docs and bench reports.
 
 FONT_6X10 is embedded-graphics 0.8's (MIT/Apache-2.0, from the X11 misc-fixed fonts), dumped
 from the crate Aura links (project file k6-fonts/fonts.txt): 10 rows a glyph, bit 7 leftmost.
+Since 2026-11-10 the radio draws this text in the stock 5x7 font from its SPI flash
+(docs/k6-stock-firmware.md), in the same 6-pixel cells with the caps on the same rows; that font
+isn't in this repository, so these renders stay in FONT_6X10.
 SPDX-License-Identifier: MIT"""
 W, H, WF_TOP = 128, 64, 21
 FONT = {
