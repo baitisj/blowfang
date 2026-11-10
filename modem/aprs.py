@@ -130,6 +130,59 @@ def bench_wav(t_utc, call="AG7EW", gap=0.6, fs=FS):
     return np.concatenate(out), sent
 
 
+# ---- the FD6818 FSK modem probe's test signal (c/k6/mod/fskaprs.c) ----
+def fskprobe_line(invert=False, seconds=0.95, call="AG7EW"):
+    """the APRS part of a probe unit: whole frames with 8 flags around each, at least `seconds` of
+    line bits (1 = mark; invert swaps the tones, which NRZI doesn't mind)"""
+    fr = [frame(f"{call}-1", "APRS", ">K6 fsk probe"),
+          frame(f"{call}-2", "APRS", f">{call} TEST 440.850")]
+    k = 1
+    while True:
+        bits = hdlc_bits([fr[i % 2] for i in range(k)], pre_flags=8, gap_flags=8, tail_flags=8)
+        if len(bits) >= seconds * BAUD:
+            return bits ^ 1 if invert else bits
+        k += 1
+
+
+# (name, baud, preamble byte, sync word, +1/-1, seconds of APRS): a preamble and sync word of
+# the chip's own kind, then Bell 202 on the same bit clock
+FSKPROBE_UNITS = (
+    ("F+", 1200, 0x55, bytes([0x07, 0x6B, 0x3E, 0x36]), 1, 0.95),
+    ("F-", 1200, 0x55, bytes([0x07, 0x6B, 0x3E, 0x36]), -1, 0.95),
+    ("D2400+", 2400, 0x55, bytes([0xCC, 0xCC, 0xAA, 0xCC]), 1, 0.92),
+    ("D2400-", 2400, 0x55, bytes([0xCC, 0xCC, 0xAA, 0xCC]), -1, 0.92),
+    ("D4800+", 4800, 0xCC, bytes([0xCC, 0xCC, 0xF0, 0xCC]), 1, 0.49),
+    ("D4800-", 4800, 0xCC, bytes([0xCC, 0xCC, 0xF0, 0xCC]), -1, 0.49),
+)
+
+
+def fskprobe_unit(name, fs=FS):
+    """one unit's audio, peak 1. F: the pager's FFSK preamble and sync, then APRS (F-: with its
+    tones swapped). D: direct FSK, as the audio's sign (D-: upside down), then APRS."""
+    from . import fsk
+    _, baud, pre, sync, pol, secs = next(u for u in FSKPROBE_UNITS if u[0] == name)
+    n_pre = 24 if name[0] == "F" else int(0.1 * baud / 8)
+    head = fsk.bits_of(bytes([pre]) * n_pre + sync)
+    if name[0] == "F":
+        return np.concatenate([fsk.ffsk(head, baud, fs), afsk(fskprobe_line(pol < 0, secs), fs)])
+    return np.concatenate([pol * fsk.nrz(head, baud, fs), afsk(fskprobe_line(False, secs), fs)])
+
+
+def fskprobe_audio(seconds, fs=FS, gap=0.08):
+    """-> (audio, [(unit, its start in s)]): the units round and round with `gap` of bare carrier
+    between them"""
+    out, sent, pos = [np.zeros(int(0.2 * fs))], [], 0.2
+    k = 0
+    while pos < seconds:
+        name = FSKPROBE_UNITS[k % len(FSKPROBE_UNITS)][0]
+        x = fskprobe_unit(name, fs)
+        out += [x, np.zeros(int(gap * fs))]
+        sent.append((name, pos))
+        pos += len(x) / fs + gap
+        k += 1
+    return np.concatenate(out), sent
+
+
 # ---- a float decoder for recordings (correlators + PLL + HDLC, as the K6 module) ----
 def demod(audio, fs):
     """audio -> list of frames (bytes, with good FCS) and each one's end sample"""
@@ -208,10 +261,21 @@ def main(argv=None):
     w.add_argument("--repeat", type=int, default=1,
                    help="with --now: the three stations this many times over, each stamped for its own "
                         "time (40 is about 170 s: a steady run of packets for a receiver test)")
+    q = sub.add_parser("fskprobe", help="the test signal for c/k6/mod/fskaprs.c: units of the chip's own "
+                                        "preamble and sync word, then AX.25")
+    q.add_argument("out")
+    q.add_argument("--seconds", type=float, default=150.0)
     d = sub.add_parser("decode")
     d.add_argument("wav")
     a = ap.parse_args(argv)
     import soundfile as sf
+    if a.cmd == "fskprobe":
+        x, sent = fskprobe_audio(a.seconds)
+        sf.write(a.out, 0.5 * x, FS)
+        print(f"{len(x) / FS:.2f} s, {len(sent)} units")
+        for name, pos in sent[:len(FSKPROBE_UNITS)]:
+            print(f"{name} +{pos:.3f} s")
+        return 0
     if a.cmd == "wav" and a.now:
         import time
         t0 = time.time() + a.delay
