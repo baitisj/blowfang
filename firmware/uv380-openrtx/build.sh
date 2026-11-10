@@ -11,7 +11,8 @@
 # Steps: a fresh clone of OpenRTX at the commit the patch was written against (into
 # firmware/uv380-openrtx/build/openrtx, which this script owns and deletes), git apply
 # uv380-blowfang.patch, copy blowfang's portable transmitter (c/common: pager_tx, ffsk_tx,
-# cw_tx) and blowfang_message.h into openrtx/src/blowfang, then meson.
+# cw_tx), blowfang_message.h and the fixed-point sotto 1200 decoder (the sotto submodule, with
+# the wrappers in sotto8k/) into openrtx/src/blowfang, then meson.
 #
 # Needs: what OpenRTX's own build needs (openrtx.org, compiling.md). The radio build uses
 # OpenRTX's arm-miosix-eabi toolchain; CI runs it in OpenRTX's published devcontainer image.
@@ -46,6 +47,18 @@ cw_tx.c
 cw_tx.h
 EOF
 cp "$HERE/blowfang_message.h" "$WORK/openrtx/src/blowfang/"
+
+# the fixed-point sotto 1200 decoder (8 kHz) from the sotto submodule, for the speaker preview:
+# sotto/c's headers and c/fixed, and the wrappers that build its sources with the codec flags
+SOTTO="$ROOT/sotto/c"
+if [ ! -f "$SOTTO/fixed/sotto_fx_lr.c" ]; then
+  echo "build.sh: no sotto/c/fixed: git submodule update --init sotto" >&2
+  exit 1
+fi
+mkdir -p "$WORK/openrtx/src/blowfang/sotto/fixed"
+cp "$SOTTO"/*.h "$SOTTO"/*.inc "$WORK/openrtx/src/blowfang/sotto/"
+cp "$SOTTO"/fixed/*.h "$SOTTO"/fixed/*.inc "$SOTTO"/fixed/*.c "$WORK/openrtx/src/blowfang/sotto/fixed/"
+cp "$HERE"/sotto8k/*.c "$WORK/openrtx/src/blowfang/"
 
 cd "$WORK"
 if [ "$TARGET" = linux ]; then

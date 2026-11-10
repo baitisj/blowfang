@@ -3,10 +3,14 @@ OpenRTX (firmware/uv380-openrtx) starts in PAGER mode on 440.850 MHz (BLOWFANG_P
 emulator shell presses PTT, and the samples the mode makes (48 kHz, signed 16-bit, written to
 BLOWFANG_PAGER_OUT on Linux instead of the modulator) must decode with modem.fsk's F receiver
 (the bench model of the K6's chip receiver) back into blowfang_message.h, then end with the
-AG7EW Morse ident. This runs the same OpMode_Pager code the radio image has, through OpenRTX's
-real state, threads, UI and rtx layers; only the audio sink differs.
+AG7EW Morse ident. Then the shell presses #, and the speaker preview (the stored message through
+the fixed-point sotto 1200 decoder, written to BLOWFANG_PREVIEW_OUT on Linux) must equal what
+sotto's own decoder makes of the message, sample for sample. This runs the same OpMode_Pager code
+the radio image has, through OpenRTX's real state, threads, UI and rtx layers; only the audio
+sinks differ.
 
-Needs sh firmware/uv380-openrtx/build.sh linux (out/openrtx_linux).
+Needs sh firmware/uv380-openrtx/build.sh linux (out/openrtx_linux) and a C compiler for the
+reference decoder (sotto submodule).
 SPDX-License-Identifier: MIT"""
 import os
 import re
@@ -27,6 +31,20 @@ pytestmark = pytest.mark.skipif(not os.path.exists(EMU),
                                 reason="needs sh firmware/uv380-openrtx/build.sh linux")
 
 FS = 48000
+SOTTO_C = os.path.join(ROOT, "sotto", "c")
+# the reference: sotto's command-line decoder on the same fixed-point sources and flags as
+# the radio (firmware/uv380-openrtx/sotto8k)
+SOTTO_DEC_SRC = [
+    "sotto_dec.c",
+    "fixed/fx_math.c",
+    "fixed/fx_tables.c",
+    "fixed/sotto_fx_dec.c",
+    "fixed/sotto_fx_lr.c",
+]
+SOTTO_FLAGS = [
+    "-DSOTTO_V36",
+    "-DSOTTO_PITCH_THIRD",
+]
 
 
 def message_frames():
@@ -46,6 +64,7 @@ def run_emulator(d, script):
     env.update({
         "BLOWFANG_PAGER": "1",
         "BLOWFANG_PAGER_OUT": out,
+        "BLOWFANG_PREVIEW_OUT": os.path.join(d, "preview.raw"),
         "XDG_STATE_HOME": d,
         "HOME": d,
         "SDL_AUDIODRIVER": "dummy",
@@ -59,17 +78,21 @@ def run_emulator(d, script):
 @pytest.fixture(scope="module")
 def sent():
     with tempfile.TemporaryDirectory() as d:
-        # PTT down then up again: one press sends the whole message
-        r, out = run_emulator(d, "sleep 3000\nptt\nsleep 500\nptt\nsleep 1000\nquit\n")
+        # PTT down then up again: one press sends the whole message; then # plays it
+        r, out = run_emulator(d, "sleep 3000\nptt\nsleep 500\nptt\nsleep 1000\n"
+                                 "key HASH\nsleep 2000\nquit\n")
         log = r.stdout + r.stderr
         assert "blowfang: pager message sent" in log, log[-3000:]
         with open(out, "rb") as f:
             x = np.frombuffer(f.read(), "<i2").astype(float) / 32768
-        yield x, log
+        pv = None
+        if os.path.exists(os.path.join(d, "preview.raw")):
+            pv = np.fromfile(os.path.join(d, "preview.raw"), "<i2")
+        yield x, log, pv
 
 
 def test_k6_receiver_decodes_openrtx_pager(sent):
-    x, _ = sent
+    x, _, _ = sent
     frames = message_frames()
     n = len(frames) // 6
     prof = pager.profile("XL", "1200")
@@ -81,7 +104,7 @@ def test_k6_receiver_decodes_openrtx_pager(sent):
 
 
 def test_burst_then_ident(sent):
-    x, _ = sent
+    x, _, _ = sent
     frames = message_frames()
     prof = pager.profile("XL", "1200")
     burst = pager.Air(preamble_bytes=16, later_preamble_bytes=12).burst(
@@ -98,6 +121,26 @@ def test_burst_then_ident(sent):
 
 
 def test_rtx_keyed_and_released(sent):
-    _, log = sent
+    _, log, _ = sent
     assert "enableTx() called" in log
     assert log.rfind("disableRtx() called") > log.find("enableTx() called")
+
+
+def test_preview_is_sottos_own_decode(sent):
+    _, log, pv = sent
+    assert "blowfang: preview written" in log and pv is not None, log[-3000:]
+    frames = message_frames()
+    n = len(frames) // 6
+    with tempfile.TemporaryDirectory() as d:
+        exe, bits, ref = (os.path.join(d, f) for f in ("sotto_dec_ref", "msg.bit", "ref.raw"))
+        subprocess.run(["cc", "-O2", *SOTTO_FLAGS, "-I", SOTTO_C, "-o", exe,
+                        *(os.path.join(SOTTO_C, f) for f in SOTTO_DEC_SRC)], check=True)
+        with open(bits, "wb") as f:
+            f.write(frames)
+        subprocess.run([exe, "-1200", bits, ref], check=True, capture_output=True)
+        ref = np.fromfile(ref, "<i2")
+    # the radio plays everything the decoder gives: its 2 superframes of delay (silence),
+    # the message, then the flush; sotto_dec drops the delay
+    assert len(ref) == 320 * n and len(pv) == 320 * (n + 2)
+    assert np.array_equal(pv[640:], ref)
+    assert np.abs(ref).max() > 1000

@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index fc5581d..a0a5538 100644
+index fc5581d..fe59270 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,10 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,14 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -10,10 +10,14 @@ index fc5581d..a0a5538 100644
 +               'openrtx/src/blowfang/pager_tx.c',
 +               'openrtx/src/blowfang/ffsk_tx.c',
 +               'openrtx/src/blowfang/cw_tx.c',
++               'openrtx/src/blowfang/sotto8k_fx_math.c',
++               'openrtx/src/blowfang/sotto8k_fx_tables.c',
++               'openrtx/src/blowfang/sotto8k_fx_dec.c',
++               'openrtx/src/blowfang/sotto8k_fx_lr.c',
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +73,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +77,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -74,6 +78,37 @@ index 0000000..c0f6016
 +};
 +
 +#endif /* OPMODE_PAGER_H */
+diff --git a/openrtx/include/rtx/pager.h b/openrtx/include/rtx/pager.h
+new file mode 100644
+index 0000000..ffd0ad6
+--- /dev/null
++++ b/openrtx/include/rtx/pager.h
+@@ -0,0 +1,25 @@
++/*
++ * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
++ *
++ * SPDX-License-Identifier: GPL-3.0-or-later
++ */
++
++#ifndef PAGER_H
++#define PAGER_H
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/**
++ * blowfang PAGER mode: play the stored sotto message on the speaker (the #
++ * key in PAGER mode). Safe to call from any thread; PAGER mode starts the
++ * playback on its next update, and does nothing in other modes.
++ */
++void pager_requestPreview(void);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* PAGER_H */
 diff --git a/openrtx/include/rtx/rtx.h b/openrtx/include/rtx/rtx.h
 index 393659a..5c31aed 100644
 --- a/openrtx/include/rtx/rtx.h
@@ -113,10 +148,10 @@ index 4e8e063..f65f493 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..033758f
+index 0000000..405f9b6
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,178 @@
+@@ -0,0 +1,313 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -130,7 +165,9 @@ index 0000000..033758f
 +#include "core/audio_stream.h"
 +#include "core/state.h"
 +#include "rtx/OpMode_Pager.hpp"
++#include "rtx/pager.h"
 +#include "rtx/rtx.h"
++#include <pthread.h>
 +#include <string.h>
 +#ifdef PLATFORM_LINUX
 +#include <stdio.h>
@@ -141,6 +178,7 @@ index 0000000..033758f
 +#include "pager_tx.h"
 +#include "ffsk_tx.h"
 +#include "cw_tx.h"
++#include "sotto/sotto.h"
 +}
 +#include "blowfang_message.h"
 +
@@ -157,11 +195,129 @@ index 0000000..033758f
 +#define BLOWFANG_CALLSIGN "AG7EW"
 +#endif
 +
++// Speaker preview: the stored message through the fixed-point sotto 1200
++// decoder (8 kHz) to the speaker, in a thread of its own (the rtx thread's
++// stack is too small for the decoder).
++static constexpr size_t   PV_BLOCK  = SOTTO_LR_SAMPLES_PER_FRAME;  // 40 ms at 8 kHz
++static constexpr size_t   PV_STACK  = 16384;
++
 +static stream_sample_t txBuf[2 * BLOCK];
++static stream_sample_t pvBuf[2 * PV_BLOCK];
++static volatile bool   pvRequest = false;   // set by the UI (# key)
++static volatile bool   pvStop    = false;
++static volatile bool   pvRunning = false;
++static bool            pvJoinable = false;
++static pthread_t       pvThread;
 +static pt_air  air;
 +static ffsk_tx ffsk;
 +static cw_tx   cw;
 +static char    ident[12];
++
++void pager_requestPreview()
++{
++    pvRequest = true;
++}
++
++/* The next 320 samples of the stored message into out, false once the
++ * decoder has given all of it (its last superframes come from the flush). */
++static bool pvNext(struct sotto_lr_dec *dec, unsigned &frame, stream_sample_t *out)
++{
++    if(frame < BLOWFANG_MESSAGE_FRAMES)
++    {
++        sotto_lr_decode(dec, blowfang_message + frame * PT_FRAME_BYTES, 1, out);
++        frame++;
++        return true;
++    }
++    return sotto_lr_dec_flush(dec, out) != 0;
++}
++
++static void *previewFunc(void *arg)
++{
++    (void) arg;
++    struct sotto_lr_dec *dec = sotto_lr_dec_create();
++    unsigned frame = 0;
++    if(dec == NULL)
++    {
++        pvRunning = false;
++        return NULL;
++    }
++
++#ifdef PLATFORM_LINUX
++    // Emulator: the samples go to a file (BLOWFANG_PREVIEW_OUT, default
++    // /tmp/blowfang_preview.raw: signed 16-bit, 8 kHz) for
++    // tests/test_uv380_openrtx_emu.py to check against sotto's own decoder.
++    const char *out = getenv("BLOWFANG_PREVIEW_OUT");
++    if(out == NULL)
++        out = "/tmp/blowfang_preview.raw";
++    FILE *f = fopen(out, "wb");
++    if(f != NULL)
++    {
++        while((pvStop == false) && pvNext(dec, frame, pvBuf))
++            fwrite(pvBuf, sizeof(stream_sample_t), PV_BLOCK, f);
++        fclose(f);
++        printf("blowfang: preview written to %s\n", out);
++        fflush(stdout);
++    }
++#else
++    pathId path = audioPath_request(SOURCE_MCU, SINK_SPK, PRIO_PROMPT);
++    if(path >= 0)
++    {
++        memset(pvBuf, 0, sizeof(pvBuf));
++        streamId stream = audioStream_start(path, pvBuf, 2 * PV_BLOCK, 8000,
++                                            STREAM_OUTPUT | BUF_CIRC_DOUBLE);
++        if(stream >= 0)
++        {
++            // As OpenRTX's codec2 decoder: sync first, so that the decoder
++            // never writes the half the stream is reading.
++            outputStream_sync(stream, false);
++            while((pvStop == false) && (audioPath_getStatus(path) == PATH_OPEN))
++            {
++                stream_sample_t *idle = outputStream_getIdleBuffer(stream);
++                if(idle == NULL)
++                    break;
++                bool more = pvNext(dec, frame, idle);
++                if(more == false)
++                    memset(idle, 0, PV_BLOCK * sizeof(stream_sample_t));
++                outputStream_sync(stream, true);
++                if(more == false)
++                    break;
++            }
++            audioStream_stop(stream);
++        }
++        audioPath_release(path);
++    }
++#endif
++
++    sotto_lr_dec_destroy(dec);
++    pvRunning = false;
++    return NULL;
++}
++
++/* Waits for the preview thread to end, asking it to stop first if stop. */
++static void joinPreview(bool stop)
++{
++    if(pvJoinable == false)
++        return;
++    if(stop)
++        pvStop = true;
++    pthread_join(pvThread, NULL);
++    pvJoinable = false;
++}
++
++static void startPreview()
++{
++    joinPreview(false);         // only a finished one can be left here
++    pvStop    = false;
++    pvRunning = true;
++    pthread_attr_t attr;
++    pthread_attr_init(&attr);
++    pthread_attr_setstacksize(&attr, PV_STACK);
++    if(pthread_create(&pvThread, &attr, previewFunc, NULL) == 0)
++        pvJoinable = true;
++    else
++        pvRunning = false;
++    pthread_attr_destroy(&attr);
++}
 +
 +OpMode_Pager::OpMode_Pager() : armed(false), msgId(0) { }
 +
@@ -170,11 +326,13 @@ index 0000000..033758f
 +void OpMode_Pager::enable()
 +{
 +    armed = false;      // a PTT held while switching modes doesn't send
++    pvRequest = false;
 +    msgId = pt_msg_id(blowfang_message, BLOWFANG_MESSAGE_FRAMES);
 +}
 +
 +void OpMode_Pager::disable()
 +{
++    joinPreview(true);
 +    platform_ledOff(GREEN);
 +    platform_ledOff(RED);
 +    radio_disableRtx();
@@ -188,9 +346,21 @@ index 0000000..033758f
 +    if(ptt == false)
 +        armed = true;
 +
++    // # key: play the stored message on the speaker (again from the start
++    // if it is already playing)
++    if(pvRequest)
++    {
++        pvRequest = false;
++        joinPreview(true);
++        startPreview();
++    }
++    if((pvRunning == false) && pvJoinable)
++        joinPreview(false);
++
 +    if(ptt && armed && (status->txDisable == 0))
 +    {
 +        armed = false;
++        joinPreview(true);      // the speaker preview never runs during TX
 +        if((status->txFrequency >= TX_MIN_HZ) && (status->txFrequency <= TX_MAX_HZ))
 +            send(status);
 +    }
@@ -324,10 +494,18 @@ index 5470432..1db08a8 100644
                  default:   currMode = &noMode;
              }
 diff --git a/openrtx/src/ui/default/ui.c b/openrtx/src/ui/default/ui.c
-index 679be11..53877e6 100644
+index 679be11..f50ee87 100644
 --- a/openrtx/src/ui/default/ui.c
 +++ b/openrtx/src/ui/default/ui.c
-@@ -997,6 +997,8 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
+@@ -53,6 +53,7 @@
+ #include <math.h>
+ #include "ui/ui_default.h"
+ #include "rtx/rtx.h"
++#include "rtx/pager.h"
+ #include "interfaces/platform.h"
+ #include "interfaces/display.h"
+ #include "interfaces/cps_io.h"
+@@ -997,6 +998,8 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
              if(state.channel.mode == OPMODE_FM)
                  state.channel.mode = OPMODE_M17;
              else if(state.channel.mode == OPMODE_M17)
@@ -336,18 +514,32 @@ index 679be11..53877e6 100644
                  state.channel.mode = OPMODE_FM;
              else //catch any invalid states so they don't get locked out
              #endif
+@@ -1575,6 +1578,12 @@ void ui_updateFSM(bool *sync_rtx)
+                         }
+                         else
+                         #endif
++                        if(state.channel.mode == OPMODE_PAGER)
++                        {
++                            // blowfang: play the stored message on the speaker
++                            pager_requestPreview();
++                        }
++                        else
+                         {
+                             if(!state.tone_enabled)
+                             {
 diff --git a/openrtx/src/ui/default/ui_main.c b/openrtx/src/ui/default/ui_main.c
-index eed473a..cf5d4ad 100644
+index eed473a..123fbcc 100644
 --- a/openrtx/src/ui/default/ui_main.c
 +++ b/openrtx/src/ui/default/ui_main.c
-@@ -126,6 +126,12 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
+@@ -126,6 +126,13 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
                      color_white, "DMR TG%s", "");
              break;
  
 +        case OPMODE_PAGER:
-+            // blowfang: PTT sends the stored sotto message to a K6
++            // blowfang: PTT sends the stored sotto message to a K6, # plays
++            // it on the speaker
 +            gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
-+                    color_white, "K6 PAGER (PTT)");
++                    color_white, "K6 PAGER PTT #");
 +            break;
 +
          #ifdef CONFIG_M17

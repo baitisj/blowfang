@@ -1,8 +1,9 @@
 # UV-380 firmware on OpenRTX: OpenRTX (pinned) with blowfang's patch (firmware/uv380-openrtx),
 # built for the radio in OpenRTX's own devcontainer image (its arm-miosix-eabi toolchain and
 # radio_tool) and for OpenRTX's Linux emulator on a plain runner, where
-# tests/test_uv380_openrtx_emu.py runs the PAGER mode and decodes it on the K6 model. The radio
-# image is kept as an artifact, never committed.
+# tests/test_uv380_openrtx_emu.py runs the PAGER mode and decodes it on the K6 model, and checks
+# its speaker preview against sotto's own decoder. Both builds take the sotto 1200 decoder from
+# the sotto submodule. The radio image is kept as an artifact, never committed.
 name: UV-380 OpenRTX firmware
 
 on:
@@ -18,6 +19,8 @@ jobs:
       image: ghcr.io/openrtx/openrtx-devcontainer:latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: build (mduv3x0)
         run: |
           git config --global --add safe.directory '*'
@@ -31,6 +34,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: dependencies (as OpenRTX's own CI)
         run: |
           sudo apt-get update -qq
@@ -58,5 +63,5 @@ jobs:
             scipy \
             soundfile \
             pytest
-      - name: PAGER mode in the emulator decodes on the K6 model
+      - name: PAGER mode in the emulator (K6 model decode, speaker preview)
         run: python -m pytest -v tests/test_uv380_openrtx_emu.py
