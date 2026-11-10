@@ -1,0 +1,40 @@
+# UV-380 (TYT MD-UV380 / MD-UV390 / Retevis RT3S): the portable pager transmitter's host tests,
+# the radio image (kept as an artifact, never committed), and the QEMU build run on an emulated
+# STM32F405, whose FFSK must decode with the K6 receiver model. Ubuntu's own Arm toolchain and
+# QEMU, nothing downloaded.
+name: UV-380 firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  uv380:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Arm toolchain and QEMU
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm
+      - run: pip install numpy scipy pytest
+      - name: host build of the portable transmitter
+        run: make -C c/common
+      - name: radio image and QEMU build
+        run: |
+          make -C radios/uv380
+          make -C radios/uv380 qemu
+      - name: tests (host and emulated)
+        run: python -m pytest -q tests/test_uv380_pager.py tests/test_uv380_emu.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uv380-image
+          path: |
+            radios/uv380/build/uv380.bin
+            radios/uv380/build/uv380.elf
+            radios/uv380/build/uv380.map

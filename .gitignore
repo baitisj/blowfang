@@ -50,3 +50,5 @@ private/
 *.bin
 *.elf
 *.key
+c/common/pager_tx_host
+radios/uv380/build/
