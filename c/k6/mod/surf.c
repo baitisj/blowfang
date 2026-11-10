@@ -15,7 +15,7 @@
    the frequency intervals"); line 5 labels it "-1M   -20k +20k   +1M" (the span at each end, the
    lens's edges under their ticks). A small tick over a bar marks a peak, a dot in the top row a repeater
    the explorer saved (its table, c/k6/rt.h, read once at the start). Bins outside the band stay
-   empty. The title line says the band and its channel step, line 1 the listening frequency and
+   empty. The title line says the band and its channel step (a fixed gain in place of SURF), line 1 the listening frequency and
    its level in dBm (a settled read), line 5 the axis's labels, or with the bar on a saved
    repeater its call, offset and TX tone ("N0CALL +5.0 103.5").
 
@@ -29,8 +29,16 @@
                      raster; after the next sweep the loudest bin of the lens, if it is another
                      channel, moves it once more (an outer bin is coarse). With none left on
                      screen, the scale's edge becomes the middle and it looks again after the
-                     next sweep, on up the band until it finds one or reaches the band's edge
-     BAND or #       next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX
+                     next sweep, on up the band; at the band's edge with none found, line 5 says
+                     "no peak" and the middle goes back where the search began (Jeff, 2026-11-10)
+     BAND            next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX, airband (AM, 118-137
+                     MHz, receive only); each starts at its centre with its default step and span
+     #               next channel step: 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
+                     stays; UP / DOWN then move onto the new raster; BAND resets the step)
+     5               the band's centre
+     7 / 9           fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB (from
+                     auto, 9 starts at the top and 7 at -7); the title shows it ("G-12 70cm 25k")
+     8               the receiver's own AGC again (the title says SURF)
      1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz
      *               monitor: audio open on the bar all the time, no sweeping
      0               hold: no refresh sweeps while a signal plays (default: one every 5 s)
@@ -62,7 +70,8 @@
 
    Lines (K6 MOD say ...): "surf 70cm 440.850 25k", "sel 441.2000 -71 -127" (MENU, or the
    bench build's jumps: the bar, its settled dBm, the settled floor), "end sw=N".
-   Writes REG_47 and GPIOB bit 2 (speaker) and the keypad rows' GPIOB BSRR/BRR bits, all put back.
+   Writes REG_47 and GPIOB bit 2 (speaker), REG_73 bit 4 (the AFC, off on airband), REG_13 and
+   REG_7E (fixed gain) and the keypad rows' GPIOB BSRR/BRR bits, all put back.
    Reads the SPI flash (level 5's fl_read), never writes it. No TX. The bitmap (480 B), the state
    (~750 B) and a move's copy of the old scale (~320 B) live on the stack, about 1.6 KB of the
    3 KB a module has at its call; the store holds only the code.
@@ -113,6 +122,7 @@
 #define SPK (1u << 2)
 #define ROWS_B ((1u << 0) | (1u << 4) | (1u << 9) | (1u << 10) | (1u << 11))
 #define AF_FM 0x6140u
+#define AF_AM 0x6740u           /* REG_47 AF 7 (Aura and egzumer's AM set-up, docs/k6-afsweep.md) */
 #define AF_MUTE 0x6040u
 
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
@@ -120,15 +130,57 @@ static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
 
 typedef struct {
   uint32_t lo, hi;
-  uint8_t ch, si;               /* channel step (x 2.5 kHz), default span (SPANS index) */
-  char name[6];
-} band_t;                       /* 16 */
+  uint8_t st, si, am;           /* default channel step (STEPS index), span (SPANS index), AM */
+  char name[7];
+} band_t;                       /* 20 */
 
+/* the channel steps # goes through (Hz); 8.33 kHz is airband's 25/3 */
+static const uint32_t STEPS[] = {
+    5000u,
+    6250u,
+    8333u,
+    10000u,
+    12500u,
+    20000u,
+    25000u,
+    50000u,
+    100000u};
+#define NSTEPS 9
+#define ST_10K 3
+#define ST_12K5 4
+#define ST_25K 6
+
+/* airband is receive only (the K6 never transmits there) and sits below its 136-174 MHz filter */
 static const band_t BANDS[] = {
-    {144000000u, 148000000u, 4, 2, "2m"},   {222000000u, 225000000u, 4, 2, "1.25m"},
-    {430000000u, 450000000u, 10, 3, "70cm"}, {462550000u, 467725000u, 5, 4, "GMRS"},
-    {156000000u, 162550000u, 10, 3, "MAR/WX"}};
-#define NBANDS 5
+    {144000000u, 148000000u, ST_10K, 2, 0, "2m"},
+    {222000000u, 225000000u, ST_10K, 2, 0, "1.25m"},
+    {430000000u, 450000000u, ST_25K, 3, 0, "70cm"},
+    {462550000u, 467725000u, ST_12K5, 4, 0, "GMRS"},
+    {156000000u, 162550000u, ST_25K, 3, 0, "MAR/WX"},
+    {118000000u, 137000000u, ST_25K, 3, 1, "AIR"}};
+#define NBANDS 6
+/* fixed receiver gains (REG_13: LNA short [9:8], LNA [7:5], mixer [4:3], PGA [2:0]) from the
+   most down, about 0, -7, -12, -17, -22, -27, -33 and -45 dB by egzumer's table of the steps;
+   -7 is Aura's own top AGC entry */
+static const uint16_t GAINS[] = {
+    0x03FFu,
+    0x03BEu,
+    0x037Eu,
+    0x035Eu,
+    0x033Eu,
+    0x031Eu,
+    0x031Cu,
+    0x031Au};
+static const int8_t GAIN_DB[] = {
+    0,
+    -7,
+    -12,
+    -17,
+    -22,
+    -27,
+    -33,
+    -45};
+#define NGAINS 8
 /* the span: the last bin's offset from the middle, x 2.5 kHz (100 kHz to 5 MHz) */
 static const uint16_t SPANS[] = {40, 100, 200, 400, 1000, 2000};
 #define NSPANS 6
@@ -157,12 +209,18 @@ typedef struct {
   int next, pend, sj, sweeps;
   int sfl, sel_dbm;
   uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, key, raw, full, refine, stale;
+  uint8_t st, gx;
+  uint8_t qk, k1;
+  uint8_t sc;                   /* surfkeys: the script's next key */               /* a key caught during a long sweep or measure (kp_peek), the last peek */               /* the channel step (STEPS index); fixed gain GAINS[gx - 1], 0 auto */
+  uint32_t home;                /* where a side key's search began: back there if it finds none */
+  uint16_t af;                  /* REG_47 with the audio open: FM or AM */
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
-  uint32_t r47, odr;
+  uint32_t r47, odr, r13, r73, r7e;
   uint8_t lvl[NB];              /* bars: quick reads, dBm + 174, 0 unknown */
   char ln[40];
+  char msg[22];                 /* line 5 for MSG_MS after a key: "no peak", "gain -12 dB" */
   uint32_t khz[NK];             /* the repeater table's valid entries: rx_hz, and their slots */
   uint16_t kslot[NK];
   int nk;
@@ -204,12 +262,16 @@ static char *sint(char *p, int v) {
   return fix(p, (uint32_t)v, 0);
 }
 
-static char *mhz(char *p, uint32_t hz, int dec) { return fix(p, udiv(hz, dec == 4 ? 100 : 1000), dec); }
+static char *mhz(char *p, uint32_t hz, int dec) { return fix(p, udiv(hz, dec == 5 ? 10 : dec == 4 ? 100 : 1000), dec); }
 
-/* a step in kHz: "12.5k", "25k" */
+/* the listening frequency's decimals: 4, or 5 off the 100 Hz raster (6.25 and 8.33 kHz steps) */
+static int cdec(sf_t *s) { return s->cen - 100 * udiv(s->cen, 100) ? 5 : 4; }
+
+/* a step in kHz: "6.25k", "12.5k", "25k" */
 static char *stepn(char *p, uint32_t step) {
-  p = fix(p, udiv(step, 100), 1);
-  if (p[-1] == '0') p -= 2;
+  p = fix(p, udiv(step, 10), 2);
+  while (p[-1] == '0') p--;
+  if (p[-1] == '.') p--;
   *p++ = 'k';
   return p;
 }
@@ -235,15 +297,19 @@ static int dbm(sf_t *s) { return KM_RSSI_DBM(s->api->fd_read(0x67)); }
 static void hush(sf_t *s, int on) {
   if (!s->audio || on == s->hush) return;
   s->hush = (uint8_t)on;
-  s->api->fd_write(0x47, on ? AF_MUTE : AF_FM);
+  s->api->fd_write(0x47, on ? AF_MUTE : s->af);
   wr(GPIOB + (on ? BRR : BSRR), SPK);
 }
 
-/* the level at hz in dBm, us after its tune (the wide filter) */
+static void kp_peek(sf_t *s);
+
+/* the level at hz in dBm, us after its tune (the wide filter); a look at the keys too, so a
+   press during a whole sweep (up to ~0.5 s at the wide spans) isn't lost */
 static int read_hz(sf_t *s, uint32_t hz, uint32_t us) {
   hush(s, 1);
   s->api->tune(hz, WIDE);
   s->api->delay_us(us);
+  kp_peek(s);
   return dbm(s);
 }
 
@@ -253,8 +319,43 @@ static void audio(sf_t *s, int on) {
   if (on == s->audio && !s->hush) return;
   s->audio = (uint8_t)on;
   s->hush = 0;
-  s->api->fd_write(0x47, on ? AF_FM : AF_MUTE);
+  s->api->fd_write(0x47, on ? s->af : AF_MUTE);
   wr(GPIOB + (on ? BSRR : BRR), SPK);
+}
+
+/* the band's demodulator: AM (airband, REG_47 AF 7) with the AFC off, as Aura's
+   apply_modulation; else FM with REG_73 as Aura had it. Aura's AM AGC (REG_14 0, REG_49
+   (50 << 7) | 32) is left out: with it the RSSI never rose on the IC-7100's AM carrier
+   (docs/k6-if-modem.md, 2026-11-06), and the bars and the squelch are all RSSI */
+static void demod(sf_t *s) {
+  int am = s->bd->am;
+  const k6_api_t *api = s->api;
+  s->af = (uint16_t)(am ? AF_AM : AF_FM);
+  api->fd_write(0x73, (uint16_t)((s->r73 & ~0x10u) | (am ? 0x10u : 0)));
+  if (s->audio && !s->hush) api->fd_write(0x47, s->af);
+}
+
+/* the receiver's gain: Aura's AGC (gx 0), or fixed at GAINS[gx - 1] (REG_7E bit 15, index 3
+   = REG_13); the RSSI moves with it, so the settled floor is measured again */
+static void gain(sf_t *s) {
+  const k6_api_t *api = s->api;
+  char *p = put(s->msg, "gain ");
+  if (s->gx) {
+    api->fd_write(0x13, GAINS[s->gx - 1]);
+    api->fd_write(0x7E, (uint16_t)((s->r7e & 0x0FFFu) | 0xB000u));
+    p = put(sint(p, GAIN_DB[s->gx - 1]), " dB");
+  } else {
+    api->fd_write(0x13, (uint16_t)s->r13);
+    api->fd_write(0x7E, (uint16_t)s->r7e);
+    p = put(p, "auto");
+  }
+  *p = 0;
+  s->t_msg = s->now + MSG_MS;
+}
+
+static void note(sf_t *s, const char *t) {
+  put(s->msg, t)[0] = 0;
+  s->t_msg = s->now + MSG_MS;
 }
 
 /* ---- the keypad ---- */
@@ -276,6 +377,21 @@ static int kp_scan(sf_t *s) {
   }
   wr(GPIOB + BSRR, ROWS_B);
   return k;
+}
+
+/* between reads: a new key read the same twice in a row is kept for the main loop (once), and a
+   release read twice lets the same key count again */
+static void kp_peek(sf_t *s) {
+  int k = kp_scan(s);
+  if (k == s->k1) {
+    if (!k) {
+      s->key = 0;
+    } else if (k != s->key && !s->qk) {
+      s->qk = s->key = (uint8_t)k;
+      s->t_rep = s->now + 400;
+    }
+  }
+  s->k1 = (uint8_t)k;
 }
 
 /* a key event: the key once it reads the same twice 10 ms apart; UP and DOWN repeat */
@@ -396,10 +512,10 @@ static void recentre(sf_t *s, uint32_t hz) {
   }
 }
 
-/* a fresh scale on hz, at the band's channel step and the span SPANS[si] */
+/* a fresh scale on hz at the span SPANS[si] */
 static void window(sf_t *s, uint32_t hz) {
   int i;
-  s->ch = s->bd->ch * U_HZ;
+  s->ch = STEPS[s->st];
   lens(s);
   for (i = 0; i < NB; i++) s->lvl[i] = 0;
   recentre(s, hz);
@@ -423,7 +539,7 @@ static int is_peak(sf_t *s, int i) {
 /* "sel <bar MHz> <its settled dBm> <the settled floor>" */
 static void say_sel(sf_t *s) {
   char *p = put(s->ln, "sel ");
-  p = mhz(p, s->cen, 4);
+  p = mhz(p, s->cen, cdec(s));
   *p++ = ' ';
   p = sint(p, s->sel_dbm);
   *p++ = ' ';
@@ -468,14 +584,21 @@ static void hunt(sf_t *s, int d) {
     s->sj = C + d;
     moved(s);
   } else {
-    s->t_msg = s->now + MSG_MS;  /* line 5 says "no peak" till then */
+    note(s, "no peak");
 #ifdef SURF_AUTO_S
     window(s, s->bd->lo);
+#else
+    /* none to the band's edge: back where the search began (Jeff, 2026-11-10) */
+    if (s->home != s->cen) {
+      recentre(s, s->home);
+      moved(s);
+    }
 #endif
   }
 }
 
 static void jump(sf_t *s, int d) {
+  if (!s->pend) s->home = s->cen;   /* (a press while it hunts keeps the first start) */
   if (!s->full) {               /* the scale not swept yet: look after its first sweep */
     s->pend = d;
     s->sj = C + d;
@@ -484,24 +607,55 @@ static void jump(sf_t *s, int d) {
   }
 }
 
-static void step_bar(sf_t *s, int d) {
-  uint32_t f = d > 0 ? s->cen + s->ch : s->cen - s->ch;
+/* the middle to f (in the band) and listen there; a side key's search stops */
+static void go_to(sf_t *s, uint32_t f) {
   if (f < s->bd->lo || f > s->bd->hi) return;
+  s->pend = 0;
   recentre(s, f);
   moved(s);
 }
 
+/* a new band: its default step and span, AM or FM, the middle on its centre */
+static void band(sf_t *s, const band_t *b) {
+  s->bd = b;
+  s->st = b->st;
+  s->si = b->si;
+  demod(s);
+  window(s, (b->lo + b->hi) >> 1);
+}
+
 static void on_key(sf_t *s, int k) {
   switch (k) {
-  case 'U': step_bar(s, 1); break;
-  case 'D': step_bar(s, -1); break;
+  case 'U': go_to(s, s->cen + s->ch); break;
+  case 'D': go_to(s, s->cen - s->ch); break;
+  case '5':
+    go_to(s, (s->bd->lo + s->bd->hi) >> 1);
+    break;
   case 'A': jump(s, 1); break;
   case 'B': jump(s, -1); break;
-  case 'N':
-  case '#':
-    s->bd = s->bd + 1 == BANDS + NBANDS ? BANDS : s->bd + 1;
-    s->si = s->bd->si;
-    window(s, (s->bd->lo + s->bd->hi) >> 1);
+  case 'N': band(s, s->bd + 1 == BANDS + NBANDS ? BANDS : s->bd + 1); break;
+  case '#':                           /* the next channel step (a new band resets it) */
+    s->st = (uint8_t)(s->st + 1 == NSTEPS ? 0 : s->st + 1);
+    s->ch = STEPS[s->st];             /* (the middle stays; UP / DOWN go onto the new raster) */
+    note(s, "step");
+    stepn(s->msg + 5, s->ch)[0] = 0;
+    s->msg[4] = ' ';
+    break;
+  case '7':                           /* fixed gain down (from auto: 6 dB under the top) */
+  case '9':                           /* fixed gain up (from auto: the top) */
+    if (!s->gx) s->gx = k == '7' ? 2 : 1;
+    else if (k == '7' ? s->gx < NGAINS : s->gx > 1) s->gx = (uint8_t)(s->gx + (k == '7' ? 1 : -1));
+    gain(s);
+    measure_sfl(s);
+    s->stale = 1;
+    moved(s);
+    break;
+  case '8':                           /* the receiver's own AGC again */
+    s->gx = 0;
+    gain(s);
+    measure_sfl(s);
+    s->stale = 1;
+    moved(s);
     break;
   case '1':
   case '3':
@@ -742,15 +896,18 @@ static void draw(sf_t *s) {
   for (r = 0; r < 3; r++)
     for (i = x - 2 + r; i <= x + 3 - r; i++) px(b, i, r + 1);
 
-  p = put(s->ln, "SURF ");
+  /* "SURF 70cm 25k", or the fixed gain in place of SURF: "G-12 70cm 25k" */
+  if (s->gx) p = sint(put(s->ln, "G"), GAIN_DB[s->gx - 1]);
+  else p = put(s->ln, "SURF");
+  *p++ = ' ';
   p = put(p, s->bd->name);
   *p++ = ' ';
   p = stepn(p, s->ch);
   if (s->mon) p = put(p, " MON");
-  else if (s->hold) p = put(p, " HOLD");
+  else if (s->hold) p = put(p, " HLD");
   *p = 0;
   api->lcd_text(0, s->ln);
-  p = mhz(s->ln, s->cen, 4);
+  p = mhz(s->ln, s->cen, cdec(s));
   *p++ = ' ';
   p = sint(p, s->sel_dbm);
   p = put(p, "dBm");
@@ -772,7 +929,7 @@ static void draw(sf_t *s) {
     p = s->ln + 21;
   }
   *p = 0;
-  api->lcd_text(5, (int32_t)(s->t_msg - s->now) > 0 ? "no peak" : s->ln);
+  api->lcd_text(5, (int32_t)(s->t_msg - s->now) > 0 ? s->msg : s->ln);
   api->lcd_wf(b, ROWS, 0);
   api->lcd_flush();
 }
@@ -790,7 +947,11 @@ int k6_main(const k6_api_t *api) {
   s->api = api;
   s->bmp = bmp;
   s->r47 = api->fd_read(0x47);
+  s->r13 = api->fd_read(0x13);
+  s->r73 = api->fd_read(0x73);
+  s->r7e = api->fd_read(0x7E);
   s->odr = rd(GPIOB + ODR) & SPK;
+  s->af = AF_FM;
   s->audio = 1;
   audio(s, 0);
   {
@@ -798,9 +959,11 @@ int k6_main(const k6_api_t *api) {
     s->bd = &BANDS[2];
     for (i = 0; i < NBANDS; i++)
       if (hz >= BANDS[i].lo && hz <= BANDS[i].hi) s->bd = &BANDS[i];
+    s->st = s->bd->st;
     s->si = s->bd->si;
     s->now = api->ms();
     rt_load(s);
+    demod(s);
     window(s, hz);
     p = put(s->ln, "surf ");
     p = put(p, s->bd->name);
@@ -813,12 +976,37 @@ int k6_main(const k6_api_t *api) {
   for (;;) {
     s->now = api->ms();
     k = kp_event(s);
+    if (s->qk) k = s->qk, s->qk = 0;   /* (one caught during a sweep comes first) */
 #ifdef SURF_AUTO_S
     if (!k && !s->pend && !s->check && s->now - s->t_auto >= SURF_AUTO_MS) {
       k = 'A';
       s->t_auto = s->now;
     }
     if (s->now >= SURF_AUTO_S * 1000u) break;
+#endif
+#ifdef SURF_SCRIPT
+    if (!k && s->now - s->t_auto >= SURF_SCRIPT_MS) {
+      static const char SC[] = SURF_SCRIPT;
+      s->t_auto = s->now;
+      if (s->sc) {                    /* what the last key left */
+        p = put(s->ln, "k");
+        *p++ = SC[s->sc - 1];
+        *p++ = ' ';
+        p = mhz(p, s->cen, cdec(s));
+        *p++ = ' ';
+        p = sint(p, s->sel_dbm);
+        *p++ = ' ';
+        p = sint(p, s->sfl);
+        p = put(p, " g");
+        p = sint(p, s->gx);
+        *p++ = ' ';
+        p = put(p, s->bd->name);
+        *p++ = ' ';
+        say_end(s, stepn(p, s->ch));
+      }
+      if (!SC[s->sc]) break;
+      k = SC[s->sc++];
+    }
 #endif
     if (k == 'X') break;
     if (k) on_key(s, k);
@@ -828,8 +1016,11 @@ int k6_main(const k6_api_t *api) {
     s->now = api->ms();
     if (s->now - s->t_flush >= FLUSH_MS) draw(s);
   }
-  /* put back the audio path; wait (up to 3 s) for the keys' release */
+  /* put back the audio path, the demodulator and the gain; wait (up to 3 s) for the keys' release */
   api->fd_write(0x47, (uint16_t)s->r47);
+  api->fd_write(0x13, (uint16_t)s->r13);
+  api->fd_write(0x73, (uint16_t)s->r73);
+  api->fd_write(0x7E, (uint16_t)s->r7e);
   wr(GPIOB + (s->odr ? BSRR : BRR), SPK);
   for (i = 0, n = 0; i < 300 && n < 5; i++) {
     n = kp_scan(s) ? 0 : n + 1;

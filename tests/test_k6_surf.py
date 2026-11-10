@@ -20,12 +20,16 @@ import k6_screen  # noqa: E402
 
 SRC = os.path.join(ROOT, "c", "k6", "mod", "surf.c")
 AUTO = os.path.join(ROOT, "c", "k6", "mod", "surfauto.c")
+KEYS = os.path.join(ROOT, "c", "k6", "mod", "surfkeys.c")
 FOREVER = 10**12
 ARENA = 11776                   # the voice images' module arena: header + code + tag (EXPLORE's
                                 # 5,376 B is too small since the axis and the narrow lens)
 C, KI, NV = 31, 8, 63           # the middle bin, the lens's bins each side, the bins on screen
 SPANS = [40, 100, 200, 400, 1000, 2000]     # x 2.5 kHz: +-100 kHz .. +-5 MHz
 SEVENTY = (430_000_000, 450_000_000)
+# Aura's receive set-up for FM: the AGC table's top entry, REG_14 / REG_49 (AGC), REG_73 (AFC
+# on), REG_7E (AGC, not fixed)
+AURA = {0x13: 0x03BE, 0x14: 0x0019, 0x49: 0x2A38, 0x73: 0x0000, 0x7E: 0x302E}
 
 
 LK = {40: (82, 60201), 100: (344, 11442), 200: (520, 6458), 400: (688, 4196), 1000: (906, 2620),
@@ -114,7 +118,7 @@ def go(signals, keys, rx_hz=440_600_000, level=7, regs=None, src=SRC, bumps=(), 
     mem = bytearray(b"\xff" * 0x110000)
     for slot, rec in table:
         mem[64 * slot:64 * slot + 64] = rec
-    r = {**START, 0x67: m.rssi, 0x47: 0x6040, **(regs or {})}
+    r = {**START, **AURA, 0x67: m.rssi, 0x47: 0x6040, **(regs or {})}
     ret, said, regs, writes = run(r, code=(code, entry), tune=m.tune, level=level, lcd=lcd, keypad=keys,
                                   spare=ARENA - 24 - len(code), count=3_000_000_000, rx_hz=rx_hz,
                                   flash={"mem": mem})
@@ -165,7 +169,7 @@ def at(frames, us):
 
 
 @need_clang
-@pytest.mark.parametrize("src", [SRC, AUTO])
+@pytest.mark.parametrize("src", [SRC, AUTO, KEYS])
 def test_builds_level_6_and_fits_the_store(src):
     from modem import k6mod
     code, entry = k6mod.build(src)
@@ -222,7 +226,9 @@ def test_bargraph_peaks_side_keys_and_audio():
     assert said[0] == "surf 70cm 440.600 25k" and said[-1].startswith("end sw=") and ret > 0
     # SIDE1 twice: the -70 at 440.850 and then the -95 at 441.200; SIDE2 back to 440.850
     assert sels(said) == ["441.2000", "440.8500"]
-    assert {r for r, _ in writes} == {0x47} and regs[0x47] == 0x6040    # REG_47 put back
+    # the audio path, the AFC and the gain written only to be put back
+    assert {r for r, _ in writes} == {0x47, 0x13, 0x73, 0x7E} and regs[0x47] == 0x6040
+    assert all(regs[r] == v for r, v in AURA.items())
     spk = lcd["st"]["spk"]
     assert spk[0] == (0, 0) and spk[-1][1] == 0                          # speaker amp off again
     # opens on the first jump, once the moved scale has been swept
@@ -348,7 +354,7 @@ def test_axis_ticks_show_the_frequency_intervals():
 
 @need_clang
 def test_band_and_zoom_keys():
-    keys = taps("N", 1_000_000) + taps("1", 3_000_000) + taps("3", 5_000_000) + taps("NNNN", 7_000_000) \
+    keys = taps("N", 1_000_000) + taps("1", 3_000_000) + taps("3", 5_000_000) + taps("NNNNN", 7_000_000) \
         + [(9_000_000, 9_300_000, "X")]
     ret, said, regs, writes, lcd = go([], keys)
     fr = lcd["frames"]
@@ -360,9 +366,90 @@ def test_band_and_zoom_keys():
     assert at(fr, 4_000_000)["text"][5] == labels(400)      # 1: +-1 MHz
     assert at(fr, 4_000_000)["text"][1].startswith("465.1375 ")           # the middle stays
     assert at(fr, 6_000_000)["text"][5] == labels(1000)
-    # four more: marine/WX, 2m, 1.25m, 70cm
+    # five more: marine/WX, airband, 2m, 1.25m, 70cm
     assert at(fr, 8_500_000)["text"][0] == "SURF 70cm 25k"
     assert at(fr, 8_500_000)["text"][1].startswith("440.0000 ")
+
+
+def writes_of(writes, reg):
+    return [v for r, v in writes if r == reg]
+
+
+@need_clang
+def test_airband_listens_in_am_and_other_bands_in_fm():
+    # Jeff 2026-11-10: "add air band (AM)". Receive only: no TX call exists at level 6.
+    sig = [(127_500_000, -80, 3_000_000, 5_000_000)]
+    keys = taps("NNN", 1_000_000, gap=400_000) + taps("N", 6_000_000) + [(7_000_000, 7_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    fr = lcd["frames"]
+    air = at(fr, 2_500_000)
+    assert air["text"][0] == "SURF AIR 25k" and air["text"][1].startswith("127.5000 ")
+    assert at(fr, 4_000_000)["text"][1] == "127.5000 -80dBm RX"
+    # AM (AF 7, AFC off) on the way in, FM (Aura's REG_73) on the way out; Aura's AM AGC left
+    # out (REG_14 / 49: the RSSI never rose with it on 2026-11-06)
+    assert 0x6740 in writes_of(writes, 0x47)
+    assert 0x10 in writes_of(writes, 0x73)
+    assert not {0x14, 0x49} & {r for r, _ in writes}
+    two = at(fr, 6_500_000)
+    assert two["text"][0] == "SURF 2m 10k" and two["text"][1].startswith("146.0000 ")
+    assert regs[0x73] == 0 and regs[0x14] == 0x0019 and regs[0x49] == 0x2A38
+    i = max(j for j, (r, v) in enumerate(writes) if v == 0x6740)
+    assert writes_of(writes[i:], 0x73)[0] == 0                   # back to FM after airband
+
+
+@need_clang
+def test_step_key_cycles_the_steps_and_a_band_resets_it():
+    # Jeff 2026-11-10: # goes through the common steps; a band change goes back to its default
+    keys = taps("#", 1_000_000) + taps("UM", 2_000_000) + taps("##", 3_000_000, gap=400_000) + taps("UM", 4_000_000) \
+        + taps("#", 5_000_000) + taps("N", 6_000_000) + [(7_500_000, 7_800_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys)
+    fr = lcd["frames"]
+    assert at(fr, 1_300_000)["text"][0] == "SURF 70cm 50k"
+    assert at(fr, 1_300_000)["text"][5] == "step 50k"
+    assert at(fr, 4_000_000)["text"][0] == "SURF 70cm 5k"      # 100k, then round to 5k
+    assert at(fr, 5_300_000)["text"][0] == "SURF 70cm 6.25k"
+    assert sels(said) == ["440.6500", "440.6550"]               # one 50 kHz step, one of 5 kHz
+    keys = taps("####", 1_000_000, gap=400_000) + taps("UM", 3_000_000) + [(4_000_000, 4_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys)
+    assert sels(said) == ["440.60625"]                          # 6.25 kHz: five decimals
+    assert at(lcd["frames"], 3_700_000)["text"][1].startswith("440.60625 ")
+    gm = at(fr, 7_000_000)
+    assert gm["text"][0] == "SURF GMRS 12.5k"
+
+
+@need_clang
+def test_key_5_goes_to_the_band_centre():
+    keys = taps("5M", 1_000_000) + [(2_000_000, 2_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys, rx_hz=432_100_000)
+    assert sels(said) == ["440.0000"]
+
+
+@need_clang
+def test_gain_keys_fix_the_gain_and_8_gives_back_the_agc():
+    # Jeff 2026-11-10: 7 decrease, 8 auto, 9 increase fixed gain
+    keys = taps("9", 1_000_000) + taps("77", 2_000_000, gap=400_000) + taps("8", 3_000_000) + taps("7", 4_000_000) \
+        + [(5_000_000, 5_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys)
+    fr = lcd["frames"]
+    assert writes_of(writes, 0x13)[:4] == [0x03FF, 0x03BE, 0x037E, 0x03BE]   # top, -7, -12, auto
+    assert writes_of(writes, 0x7E)[:4] == [0xB02E, 0xB02E, 0xB02E, 0x302E]
+    assert at(fr, 1_300_000)["text"][0] == "G0 70cm 25k" and at(fr, 1_300_000)["text"][5] == "gain 0 dB"
+    assert at(fr, 2_600_000)["text"][0] == "G-12 70cm 25k"
+    assert at(fr, 3_300_000)["text"][0] == "SURF 70cm 25k" and at(fr, 3_300_000)["text"][5] == "gain auto"
+    assert at(fr, 4_300_000)["text"][0] == "G-7 70cm 25k"      # 7 from auto: just under the top
+    assert regs[0x13] == 0x03BE and regs[0x7E] == 0x302E        # put back at EXIT
+
+
+@need_clang
+def test_side_key_with_no_peak_goes_back_where_it_began():
+    # Jeff 2026-11-10: no peaks found -> back to the previous frequency
+    keys = taps("A", 2_000_000) + [(12_000_000, 12_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys, rx_hz=448_000_000)
+    fr = lcd["frames"]
+    assert any(f["text"][1].startswith("449.") or f["text"][1].startswith("450.") for f in fr)
+    msg = [f for f in fr if f["text"][5] == "no peak"]
+    assert msg and msg[0]["text"][1].startswith("448.0000 ")
+    assert fr[-1]["text"][1].startswith("448.0000 ")
 
 
 @need_clang
@@ -450,3 +537,18 @@ if __name__ == "__main__":
                   sys.argv[1] if len(sys.argv) > 1 else "surf.png",
                   captions=["440.600 in the middle, +-1 MHz", "SIDE1: 440.850 moves to the middle",
                             "SIDE1: next peak, a known repeater", "3: zoomed out to +-2.5 MHz"])
+
+
+@need_clang
+def test_bench_build_presses_the_new_keys_and_says_each_result():
+    # surfkeys.c: 9, 7 x 7, 8, BAND x 3 (airband), #, 5, BAND x 3, one every 3 s, then it ends
+    ret, said, regs, writes, lcd = go([(440_850_000, -70, 0, FOREVER)], [], rx_hz=440_850_000, src=KEYS)
+    ks = [ln.split() for ln in said if ln.startswith("k")]
+    assert [k[0] for k in ks] == ["k" + c for c in "97777777" "8" "NNN" "#5" "NNN"]
+    assert [int(k[4][1:]) for k in ks[:9]] == [1, 2, 3, 4, 5, 6, 7, 8, 0]
+    assert ks[0][1] == "440.8500" and int(ks[0][2]) > -75       # parked on the carrier
+    assert ks[10][5:] == ["MAR/WX", "25k"] and ks[11][5:] == ["AIR", "25k"]
+    assert ks[12][5:] == ["AIR", "50k"] and ks[13][1] == "127.5000"
+    assert ks[-1][5:] == ["70cm", "25k"]
+    assert said[-1].startswith("end sw=")
+    assert all(regs[r] == v for r, v in AURA.items()) and regs[0x47] == 0x6040
