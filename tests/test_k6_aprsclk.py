@@ -322,7 +322,8 @@ def test_module_on_the_emulated_m0():
     ib = scene(total=total)
     # the calibrated cost, then 1.7x it: no counts lost. The matched filter took the margin
     # from 2.7x (CPI 4, the discriminator alone) to 1.7x: at CPI 3 it loses a few counts but
-    # still decodes all three, at 3.5 nothing (the emulator errs slow: k6-if-modem.md)
+    # still decodes all three (the emulator errs slow: k6-if-modem.md). At -Oz, CI's compiler
+    # lost counts at 2.5: the module asks for -Os
     for cpi in (1.5, 2.5):
         e = le.Emu(code, entry, ib, 0, FDMA, cpi, max_s=total + 1, level=7, scratch=11776 - 24 - len(full))
         r = e.run()

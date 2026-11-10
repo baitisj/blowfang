@@ -49,7 +49,9 @@ def build(mode, defs=(), src=None):
     with tempfile.TemporaryDirectory() as d:
         w = os.path.join(d, "w.c")
         with open(w, "w") as f:
-            f.write("#define K6_MODULE_LEVEL 2\n#define K6_MODULE_OPT z\n")
+            # -Oz unless the source asks for its own (k6mod.source_opt), as its image is built
+            opt = k6mod.source_opt(src) if "K6_MODULE_OPT" in open(src).read() else "z"
+            f.write(f"#define K6_MODULE_LEVEL 2\n#define K6_MODULE_OPT {opt}\n")
             f.writelines(f"#define {k} {v}\n" for k, v in defs)
             f.write(f'#include "{src}"\n')
         return k6mod.build(w)

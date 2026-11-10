@@ -48,7 +48,7 @@
    -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch).
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
-#define K6_MODULE_OPT z
+#define K6_MODULE_OPT s
 #include "../k6_mod.h"
 
 #ifndef APRS_HZ

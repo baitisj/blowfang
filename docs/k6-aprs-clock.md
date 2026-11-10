@@ -130,15 +130,17 @@ got a little more (45-46 at the half-way point) with a window of n + 1 samples s
 which costs too much CPU on the M0. `test_matched_filter_beats_the_discriminator` keeps the gap.
 
 **CPU.** On the emulated M0 it decodes all three test stations with no counts lost up to CPI 2.5
-(the calibrated cost is 1.5), loses a few counts at 3 and still decodes them, and fails at 3.5;
-the discriminator alone went to 5. So the margin went from 2.7x to 1.7x (the emulator errs slow
-against the radio). The sums are about 16% of the instructions.
+(the calibrated cost is 1.5), loses a few counts at 3 and still decodes them; the discriminator
+alone went to 5. So the margin went from 2.7x to 1.7x (the emulator errs slow against the radio).
+That is with the module at -Os: at -Oz the Arm Toolchain for Embedded's build (CI's, the one sent
+to the radio) lost counts at 2.5, a margin of about 1.4x, so the module asks for -Os (1 KB more
+code) and the emulator's builds follow the source's choice. The sums are about 16% of the instructions.
 
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the
 correlators 256 B, twelve stations 336 B), 288 B of stack. With the matched filter (2026-11-10):
-about 6.4 KB of code and 2.9 KB of state (two 92-entry templates 368 B, the sums 256 B). That needs the shared arena of the SPI
+about 7.4 KB of code (-Os) and 2.9 KB of state (two 92-entry templates 368 B, the sums 256 B). That needs the shared arena of the SPI
 images (`aura-pager-only`, `-lr`, `-vlr`, `-vlrh`: 11,776 B since PR #146). It does **not** fit
 the EXPLORE image or the lean images (5,376 B block): the radio needs a voice image, and the
 module can move into the SPI module library unchanged once that exists.
