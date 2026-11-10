@@ -29,6 +29,7 @@ ABI = 1
 LEVEL = 1
 TLM_MAX = 12             # telemetry parts a module may ask for
 LIB_FLAG = 0x01          # header byte 13: keep it in the SPI module library (c/k6/k6_lib.h)
+PAGE_FLAG = 0x02         # with LIB_FLAG: a code page the image loads itself, never run (kl_page)
 LIB_SLOTS = 12           # library slots, slot n at 0x110000 + n * 16 KB
 LIB_SLOT_BYTES = 0x4000
 TLM_PART = 57
@@ -120,11 +121,13 @@ def source_opt(src):
     return m.group(1) if m else "s"
 
 
-def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None):
+def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False):
     """Header + code + SipHash tag (k6_mod.h). tlm: text parts of say lines the K6 sends back
     after the module runs, when the upload asks for a reply (packets(..., arq=True)). lib: a
     slot of the K6's SPI module library (c/k6/k6_lib.h, 0..LIB_SLOTS-1): the K6 keeps the
-    module there (flag LIB_FLAG) instead of running it, and runs it later on control action lib."""
+    module there (flag LIB_FLAG) instead of running it, and runs it later on control action lib.
+    page (with lib): a code page (PAGE_FLAG, tools/k6_pages.py): kept in the slot, never run as a
+    module; the image that it was linked against loads it itself."""
     code = bytes(code)
     if entry >= len(code) or entry & 1 or len(code) > 0xFFFF:
         raise ValueError("bad entry offset or code length")
@@ -134,7 +137,9 @@ def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None):
         raise ValueError(f"library slot 0..{LIB_SLOTS - 1}")
     if lib is not None and 16 + len(code) + 8 > LIB_SLOT_BYTES:
         raise ValueError(f"{16 + len(code) + 8} bytes is more than a library slot ({LIB_SLOT_BYTES})")
-    flags, slot = (0, 0) if lib is None else (LIB_FLAG, lib)
+    if page and lib is None:
+        raise ValueError("a page goes into a library slot")
+    flags, slot = (0, 0) if lib is None else (LIB_FLAG | (PAGE_FLAG if page else 0), lib)
     hdr = b"K6M" + bytes([ABI]) + struct.pack("<HHIBBBB", len(code), entry, serial & 0xFFFFFFFF, level,
                                               flags, tlm, slot)
     body = hdr + code

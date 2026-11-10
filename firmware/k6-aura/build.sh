@@ -39,7 +39,7 @@ ELF="$WORK/target/thumbv6m-none-eabi/release/aura"
 # flash: everything loaded (vector table, text, rodata, the .data image); RAM: .data + .bss + .uninit
 fit() {
   "$SIZE" -A "$1" | awk '
-    $1 == ".vector_table" || $1 == ".text" || $1 == ".rodata" || $1 == ".gnu.sgstubs" { flash += $2 }
+    $1 == ".vector_table" || $1 == ".text" || $1 == ".rodata" || $1 == ".gnu.sgstubs" || $1 == ".k6_id" { flash += $2 }
     $1 == ".data" { flash += $2; ram += $2 }
     $1 == ".bss" || $1 == ".uninit" { ram += $2 }
     $1 == ".ram0" { ram0 += $2 }
@@ -210,9 +210,35 @@ if [ "${VLR:-1}" = 1 ]; then
   variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog,spilib
   # the target (Jeff 2026-11-09): EXPLORE in this 8 kHz voice image, so nobody switches images.
   # A report until it fits: its line in size-aura-voice-explore.txt is the flash and RAM still
-  # to find (docs/k6-voice-explore.md)
+  # to find (docs/k6-voice-explore.md). EXPLORE's sweep, Listen for ID and repeater table code
+  # are code pages in SPI flash (c/k6/kp.h): the image keeps what they call (K6_PAGE_IMPORTS),
+  # then each page is linked for it, out/page-sweep.bin, page-listen.bin, page-table.bin
+  PB="$ROOT/c/k6/build-vlr-cbs"
+  python3 "$ROOT/tools/k6_pages.py" imports \
+    "$PB/kp_sweep.o" \
+    "$PB/xscan.o" \
+    "$PB/kp_listen.o" \
+    "$PB/xlisten.o" \
+    "$PB/xdmr.o" \
+    "$PB/kp_table.o" \
+    "$PB/k6_rt.o" \
+    -o "$OUT/page-imports.x"
+  export K6_PAGE_IMPORTS="$OUT/page-imports.x"
   variant aura-voice-explore "8 kHz voice + EXPLORE image (target; report only until it fits)" \
     --features voice-explore,txdog,spilib || echo "(8 kHz voice + EXPLORE doesn't fit yet: report only)"
+  unset K6_PAGE_IMPORTS
+  # a page that outgrows the decoder pool fails the build
+  python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page sweep -o "$OUT/page-sweep.bin" \
+    "$PB/kp_sweep.o" \
+    "$PB/xscan.o" >> "$OUT/size-aura-voice-explore.txt"
+  python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page listen -o "$OUT/page-listen.bin" \
+    "$PB/kp_listen.o" \
+    "$PB/xlisten.o" \
+    "$PB/xdmr.o" >> "$OUT/size-aura-voice-explore.txt"
+  python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page table -o "$OUT/page-table.bin" \
+    "$PB/kp_table.o" \
+    "$PB/k6_rt.o" >> "$OUT/size-aura-voice-explore.txt"
+  tail -3 "$OUT/size-aura-voice-explore.txt"
   K6_CODEC=vlr K6_CB=install sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbi
   # it holds sotto 600 / 400's 21 KB of codebooks: lean, as the other install image

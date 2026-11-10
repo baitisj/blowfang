@@ -50,16 +50,27 @@ int kl_info(int slot, const kl_flash_t *fl, kl_info_t *out) {
   return 0;
 }
 
-int kl_load(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap) {
+/* read slot n into dst and check its header and tag: the code length, or KL_* */
+static int load(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap, unsigned page) {
   kl_info_t inf;
   unsigned total;
   int r = kl_info(slot, fl, &inf);
   if (r) return r;
+  if (!(inf.flags & KM_F_PAGE) != !page) return KL_BAD_HDR;
   total = KM_HDR + inf.code_len + KM_TAG;
   if (total > cap) return KL_BAD_HDR;
   if (fl->read(KL_SLOT_ADDR(slot), dst, total)) return KL_IO;
-  if (!hdr_len(dst)) return KL_BAD_HDR;   /* changed between the two reads */
+  if (!hdr_len(dst) || dst[13] != inf.flags) return KL_BAD_HDR;   /* changed between the two reads */
   if (km_tag_check(dst, inf.code_len)) return KL_BAD_TAG;
-  km_arm(dst, 0);
   return inf.code_len;
+}
+
+int kl_load(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap) {
+  int r = load(slot, fl, dst, cap, 0);
+  if (r > 0) km_arm(dst, 0);
+  return r;
+}
+
+int kl_page(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap) {
+  return load(slot, fl, dst, cap, 1);
 }
