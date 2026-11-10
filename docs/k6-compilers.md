@@ -204,3 +204,24 @@ Most of that saving can be had inside Rust in a few lines:
 **Recommendation:** don't port. Take the in-Rust savings when flash is needed, starting
 with the panic handler. A HardFault-style note could keep the address of the panic site
 (pc/lr at 0x20005FF0) rather than its file and line.
+
+**Done (Jeff, 2026-11-09): the panic report and the memory routines.** The lean formatter
+was left out.
+
+- The panic handler prints `K6 PANIC at a b c d build=...`: the first four Thumb return
+  addresses in the 256 bytes above the stack pointer. `llvm-addr2line -fipe out/NAME.elf a b
+  c d` turns them into function names.
+- `c/k6/k6_mem.c` replaces compiler_builtins' memcpy family. It's in the library archive
+  only; the bench links shim.c's same memcpy.
+
+Against main at the time:
+
+| Image | Saving |
+|---|---|
+| pager-only | −4,364 B |
+| sotto 1200 | −4,364 B |
+| vlr | −4,368 B |
+| hiss | −4,372 B |
+| vlri | −4,004 B |
+| EXPLORE | −6,096 B |
+| voice + EXPLORE target | −5,940 B |
