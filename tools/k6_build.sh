@@ -98,6 +98,12 @@ PKY=
 # hiss image is the one that has none to spare (docs/k6-hiss-port.md); it has never needed the flash
 ROWGEN=-DFX_MP_ROWGEN
 [ -n "$HISS" ] && ROWGEN=
+# synth's 2 KB of arrays in the decoder's state, in the shared block's pool, instead of on the
+# stack (sotto's FX_SYNTH_STATE, the same output): the deepest call in the voice images, so they
+# get that much stack back (docs/k6-voice-explore.md). The SPI images but hiss (its CPU and
+# timing were tuned as they are; the lean images keep the decoder in a static pool)
+SYNTH=
+[ "${K6_CB:-}" = spi ] && [ -z "$HISS" ] && SYNTH=-DFX_SYNTH_STATE
 CC=${K6_CC:-clang}
 AR=${K6_AR:-llvm-ar}
 OBJCOPY=${K6_OBJCOPY:-llvm-objcopy}
@@ -105,7 +111,7 @@ RES=$("$CC" -print-resource-dir)
 CFLAGS="--target=thumbv6m-none-eabi -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -nostdinc
   -isystem $ROOT/c/fixed/cm4/inc -isystem $RES/include -ffunction-sections -fdata-sections -std=c99
   -ffreestanding -fno-builtin-calloc -fno-builtin-free -Wall -Wno-unused-function
-  -DSOTTO_V36 -DSOTTO_PITCH_THIRD -DFX_CS512_CONST $ROWGEN -DFX_YIELD_HOOK $LR -I$ROOT/c -O2 $NOPAR $PKY $*"
+  -DSOTTO_V36 -DSOTTO_PITCH_THIRD -DFX_CS512_CONST $ROWGEN $SYNTH -DFX_YIELD_HOOK $LR -I$ROOT/c -O2 $NOPAR $PKY $*"
 mkdir -p "$OUT"
 if [ -n "${K6_CB:-}" ]; then
   # the codebook image and its CRC, from this tree's fx_tables.c (a host build of c/k6/sp_cb.c)
@@ -192,8 +198,10 @@ if [ "${K6_VOICE:-1}" = 0 ]; then
 fi
 # K6_LIBEXTRA: objects the compiler needs beside the library (gcc's Thumb-1 switch helpers)
 LIBOBJS="$LIBOBJS ${K6_LIBEXTRA:-}"
+# the images' memcpy family (c/k6/k6_mem.c): in the archive only, the bench links shim.c's
+$CC $CFLAGS -Oz -fno-builtin -c "$ROOT/c/k6/k6_mem.c" -o "$OUT/k6_mem.o"
 rm -f "$OUT/libsotto_k6.a"
-$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS
+$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS "$OUT/k6_mem.o"
 echo "built $OUT/libsotto_k6.a"
 # no bench for the EXPLORE image's library: it has no decoder to time
 [ "${K6_VOICE:-1}" = 0 ] && exit 0

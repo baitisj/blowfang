@@ -26,7 +26,7 @@ The firmware's lines (one per event):
          ... build=72b6e3b-20261104T0555Z
   K6 STEP play id=42 stored=70        (playback progress: decoder reset, first frame, PWM ...)
   K6 FAULT pc=... lr=...               a CPU fault, then a reboot
-  K6 PANIC src/app/pager.rs:812 ...    a Rust panic, then a reboot
+  K6 PANIC at 0800a1c4 ...            a Rust panic (return addresses; llvm-addr2line), then a reboot
   K6 PKT n=12 got=64 sync=N res=-1 magic=a7 rswap=1 soft=0 swap=1 be=3 bseq=0 bswap=1 binv=0
          blk=0,0,0,1,0,0,0,2 ev=2:0:0,1000:27:4,... good=0 bad=12 to=0 raw=58a31d...
          (one line on the wire; ev: each interrupt's flags in hex, ms, FIFO words read)

@@ -364,8 +364,8 @@ def taps(seq, t0, gap=300_000, hold=120_000):
 
 @need_clang
 def test_hot_seat_keys_shop_aim_fire():
-    keys = taps(["1", 0.5, "M", "X", 0.5, "D", "M", "X", 1.0, "#", "4", "4", "2", "M", 8,
-                 "X", "X"], 1_000_000)
+    keys = taps(["1", 0.5, "M", "X", 0.5, "D", "M", "X", 1.0, "#", "4", "4", "2", "9", "9", "7",
+                 "M", 8, "X", "X"], 1_000_000)          # (9 is power +10, 7 is -10)
     ret, said, regs, tx, lcd = play("gw", None, keypad=keys, count=60_000_000)
     fr = lcd["frames"]
     shop = [f for f in fr if f["text"][0].startswith("SHOP P1")]
@@ -373,8 +373,15 @@ def test_hot_seat_keys_shop_aim_fire():
     assert any("$20" in f["text"][0] for f in shop)              # bought it
     assert any(f["text"][0].startswith("SHOP P2  $45") for f in fr)    # P2's FCC Violator
     aimed = [f for f in fr if f["text"][5].startswith("Kilowatt x1")]
-    assert aimed and aimed[-1]["text"][1].startswith("A047 P061")
-    assert "gw shot 1 47 61 1" in said
+    assert aimed and aimed[-1]["text"][1].startswith("A047 P071")
+    assert "gw shot 1 47 71 1" in said
+    # the flight is paced, a frame a step, so the shot takes about 4 s to watch (Jeff, 2026-11-10)
+    us = [f["us"] for f in fr]
+    run = best = 0
+    for gap in (b - a for a, b in zip(us, us[1:])):
+        run = run + 1 if 55_000 <= gap <= 70_000 else 0
+        best = max(best, run)
+    assert 3.0 <= best * 0.062 <= 5.0, best
 
 
 # ---- radio play ----

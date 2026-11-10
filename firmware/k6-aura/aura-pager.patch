@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..84fc66d
+index 0000000..e14d534
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4465 @@
+@@ -0,0 +1,4477 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -4743,21 +4743,33 @@ index 0000000..84fc66d
 +}
 +
 +/// A Rust panic (a slice index out of range, say) used to stop the radio silently in
-+/// panic_halt's loop: say where on the serial report, then reboot.
++/// panic_halt's loop: say where on the serial report, then reboot. The report gives code
++/// addresses, not the file and line: the panic's location records and message formatting cost
++/// about 3 KB of flash (docs/k6-compilers.md). `K6 PANIC at a b c d` lists the first return
++/// addresses on the stack (the panic call chain, innermost first); look them up against the
++/// image's .elf with `llvm-addr2line -fipe out/NAME.elf a b c d`.
 +#[cfg(target_arch = "arm")]
 +#[panic_handler]
-+fn panic(info: &core::panic::PanicInfo) -> ! {
++fn panic(_info: &core::panic::PanicInfo) -> ! {
 +    cortex_m::interrupt::disable();
-+    match info.location() {
-+        Some(l) => report_line(format_args!(
-+            "K6 PANIC {}:{} {} build={}",
-+            l.file(),
-+            l.line(),
-+            info.message(),
-+            BUILD
-+        )),
-+        None => report_line(format_args!("K6 PANIC {} build={}", info.message(), BUILD)),
++    let mut at = [0u32; 4];
++    let mut n = 0;
++    let sp = cortex_m::register::msp::read();
++    let mut a = sp & !3;
++    // Thumb return addresses into the application's flash, in the 256 bytes above the stack
++    // pointer (below hal::txdog's note at the top of SRAM)
++    while n < at.len() && a < sp + 256 && a < 0x2000_5FF0 {
++        let w = unsafe { core::ptr::read_volatile(a as *const u32) };
++        if w & 1 == 1 && (0x0800_2000..0x0802_0000).contains(&w) {
++            at[n] = w & !1;
++            n += 1;
++        }
++        a += 4;
 +    }
++    report_line(format_args!(
++        "K6 PANIC at {:08x} {:08x} {:08x} {:08x} build={}",
++        at[0], at[1], at[2], at[3], BUILD
++    ));
 +    crate::hal::uart::flush();
 +    for _ in 0..2_000_000 {
 +        cortex_m::asm::nop();

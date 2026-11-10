@@ -38,7 +38,11 @@
 #define SP_DEC_HISS 736
 #endif
 #else
+#ifdef FX_SYNTH_STATE
+#define SP_DEC_CORE (864 + 2048)     /* with synth's arrays (FX_SYNTH_STATE): 2,872 on the M0 */
+#else
 #define SP_DEC_CORE 864              /* sotto_fx_dec_bytes(): 836 on the M0 and x86 */
+#endif
 #define SP_DEC_VLR 640               /* struct sotto_vlr_dec (sotto_vlr_dec_bytes(): 580 B on the M0) */
 #define SP_DEC_HISS 0
 #endif
