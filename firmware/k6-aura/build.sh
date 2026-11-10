@@ -305,6 +305,10 @@ aisships       # level 2 (screen at 6, LED at 7), the ships around the K6 from A
 alarm          # level 8 (screen at 6, LED at 7), the BLOWFANG alarm clock: midi at a UTC time, time set by tools/k6_midi.py alarm
 aprsclk        # level 2 (screen at 6, LED at 7), docs/k6-aprs-clock.md
 aprsclk_440    # level 2, aprsclk on 440.850 for the on-air loopback
+aprsfsk        # level 2 (screen at 6, LED at 7), aprsclk behind the chip's own FSK modem (REG_58 33a3), 144.390
+aprsfsk_440    # level 2, aprsfsk on 440.850 for the on-air loopback, every packet's words said
+aprsfskb       # level 2, aprsfsk listening with REG_58 33e3, 33a3 from the sync interrupt
+aprsfskb_440   # level 2, aprsfskb on 440.850
 bandreg        # level 2, patched by tools/k6_hf.py
 clkget         # level 8, says the radio's clock (docs/k6-aprs-clock.md)
 ctcssprobe     # level 2, docs/k6-explore-app.md

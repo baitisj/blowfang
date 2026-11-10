@@ -401,95 +401,236 @@ def test_float_decoder_takes_preemphasised_audio():
 
 
 # ---- fskaprs: the chip's own FSK modem on AX.25 (a probe; the chip's side is a model) ----
-@need_clang
-def test_fskaprs_reads_ax25_after_the_chips_own_sync():
-    """fskaprs on the emulated M0 against a model of the FD6818's packet mode at 1200 baud: the
-    sync word in any bit position, then 16 line bits a FIFO word every 13.33 ms up to REG_5D's
-    length, the first byte on the air in the word's low byte, an almost-full interrupt at 4
-    words. On the air here: the probe's F units (modem.aprs.fskprobe_unit), as a receiver that
-    reads Bell 202's two tones as its own would hear them. The direct-FSK variants get no sync."""
-    pytest.importorskip("unicorn")
-    import k6_live_emu as le
-    from modem import fsk, pager
-    src = os.path.join(K6, "mod", "fskaprs.c")
-    code, entry = le.build("x", [("RUN_S", "19u"), ("SLOT_MS", "3000u")], src)
-    head = fsk.bits_of(bytes([0x55]) * 24 + pager.SYNC)
-    air = np.concatenate([np.concatenate([head, aprs.fskprobe_line(inv, 0.95), np.zeros(96, int)])
-                          for inv in (False, True)]).astype(int)
-
+def modem_chip(le, pick, BASE=4800):
+    """an emulator with a model of the FD6818's packet mode as the probes found it on the air: a
+    bit clock at REG_72's rate over the air's bits pick(REG_58) (BASE samples a second; a write
+    to either register takes hold at the next bit, also in a packet), the sync word in any bit
+    position (2 or 4 bytes by REG_59<3>) and its interrupt 16 bits later, 16 bits a FIFO word up
+    to REG_5D's length, the first byte on the air in the word's low byte, an empty FIFO read as
+    its last word again"""
     class Chip(le.Emu):
-        at, reg, start, taken, sync, done = 0, 0, None, 0, False, False
-        r = {0x58: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x72: 0}
+        pos, reg, buf, taken, pkt = 0.0, 0, None, 0, False
+        either = False      # the sync word upside down too (what probe 4's captures suggest)
+        sync = done = full = False
+        last, empty, over = 0, 0, 0
+        r = {0x58: 0, 0x59: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x72: 0}
 
         def advance(self):
-            """the air's bits up to now through the sync search"""
-            now = int(self.cyc / 96000 * 1.2)
-            want = self.r[0x5A] << 16 | self.r[0x5B]
-            while self.start is None and self.at < now:
-                self.reg = (self.reg << 1 | int(air[self.at % len(air)])) & 0xFFFFFFFF
-                self.at += 1
-                if self.reg == want and self.r[0x72] == 0x3065 and self.r[0x58] & 0x1C00:
-                    self.start, self.taken, self.sync = self.at, 0, True
-            self.at = max(self.at, now) if self.start is None else self.at
-            return now
-
-        def words(self):
-            return (self.r[0x5D] >> 8) // 2 + 1
-
-        def waiting(self):
-            now = self.advance()
-            return 0 if self.start is None else min((now - self.start) // 16, self.words()) - self.taken
+            """the air's bits up to now"""
+            now = self.cyc / 96e6 * BASE
+            if not self.r[0x59] & 0x1000 or self.r[0x72] < 0x3000 or not self.r[0x58] & 1:
+                self.pos = now
+            while self.pos < now:
+                view = pick(self.r[0x58])
+                bit = int(view[int(self.pos) % len(view)])
+                self.pos += BASE // round(self.r[0x72] / 10.32444)
+                if self.done:
+                    continue
+                if not self.pkt:
+                    self.reg = (self.reg << 1 | bit) & 0xFFFFFFFF
+                    want = self.r[0x5A] << 16 | self.r[0x5B] if self.r[0x59] & 8 else self.r[0x5A]
+                    got = self.reg if self.r[0x59] & 8 else self.reg & 0xFFFF
+                    if got == want or (self.either and got == want ^ (0xFFFFFFFF if self.r[0x59] & 8 else 0xFFFF)):
+                        self.pkt, self.buf, self.taken = True, [], 0
+                    continue
+                self.buf.append(bit)
+                self.sync |= len(self.buf) == 16        # probe 2: the first word is in by then
+                n = len(self.buf) // 16 - self.taken
+                self.full |= n == 4 and len(self.buf) % 16 == 0
+                self.over += n > 8
+                if len(self.buf) == 8 * ((self.r[0x5D] >> 8) + 1):
+                    self.done = True
+                    self.end = True
 
         def on_stub(self, uc, addr, size, user):
             A = self.A
             name = self.names[(addr - self.stubs) // 16]
             r0, r1 = uc.reg_read(A.UC_ARM_REG_R0), uc.reg_read(A.UC_ARM_REG_R1)
             if name == "fd_write" and r0 in self.r:
+                self.advance()
                 self.r[r0] = r1
-            if name == "fd_write" and r0 == 0x59 and r1 & 0x1000:     # armed: the search starts
-                self.at, self.reg, self.start = int(self.cyc / 96000 * 1.2), 0, None
-                self.sync = self.done = False
+                if r0 == 0x59 and r1 & 0x1000:          # armed: the search starts
+                    self.reg, self.pkt, self.buf = 0, False, None
+                    self.sync = self.done = self.full = self.end = False
             if name == "fd_read" and r0 in (0x0C, 0x02, 0x5F):
-                n = self.waiting()
-                if self.start is not None and not self.done and self.taken + max(n, 0) >= self.words():
-                    self.done = True
-                    self.end = True
-                flags = (2 if self.sync else 0) | (0x1000 if n >= 4 else 0) | (0x2000 if getattr(self, "end", False) else 0)
+                self.advance()
+                flags = (2 if self.sync else 0) | (0x1000 if self.full else 0) | (0x2000 if getattr(self, "end", False) else 0)
                 if r0 == 0x5F:
-                    at = (self.start or 0) + 16 * self.taken
-                    self.taken += 1
-                    v = 0
-                    for b in air[np.arange(at, at + 16) % len(air)]:
-                        v = v << 1 | int(b)
-                    ret = (v & 0xFF) << 8 | v >> 8
+                    at = 16 * self.taken
+                    if self.buf is not None and len(self.buf) >= at + 16:
+                        self.taken += 1
+                        v = 0
+                        for b in self.buf[at:at + 16]:
+                            v = v << 1 | b
+                        self.last = (v & 0xFF) << 8 | v >> 8
+                    else:
+                        self.empty += 1
+                    ret = self.last
                 elif r0 == 0x0C:
                     ret = 1 if flags else 0
                 else:
-                    ret, self.sync, self.end = flags, False, False
+                    ret, self.sync, self.end, self.full = flags, False, False, False
                 self.tick(self.fd_us * 96)
                 uc.reg_write(A.UC_ARM_REG_R0, ret)
                 return
             super().on_stub(uc, addr, size, user)
 
-    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=22, level=7)
+    return Chip
+
+
+@need_clang
+def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
+    """fskaprs on the emulated M0 against a model of the FD6818's packet mode as the probes found
+    it on the air: a bit clock at REG_72's rate and a receiver by REG_58<12:10> (a write to either
+    takes hold at the next bit, also in a packet), the sync word in any bit position (2 or 4
+    bytes by REG_59<3>) and its interrupt 16 bits later, 16 bits a FIFO word up to REG_5D's
+    length, the first byte on the air in the word's low byte, an empty FIFO read as its last
+    word again. What it hears of the probe's units (modem.aprs.fskprobe_parts): its own tones as
+    sent; Bell 202 as out[i] = sent[i] AND sent[i+1] in the 1200/1800 receiver (probe 2), and
+    here as sent in any other (what probe 4 looks for)."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    src = os.path.join(K6, "mod", "fskaprs.c")
+    code, entry = le.build("x", [("SLOT_MS", "7000u"), ("WAIT_MS", "9000u")], src)
+    BASE = 4800                                         # the model's samples a second
+    names = ("P0", "C", "A+", "A-")
+
+    def heard(name, seq, erode):
+        out = []
+        for bits, baud, f1, f0 in aprs.fskprobe_parts(name, seq):
+            b = np.asarray(bits, int)
+            if erode and f0 == aprs.SPACE:
+                b = b & np.append(b[1:], 0)
+            out.append(np.repeat(b, BASE // baud))
+        return np.concatenate(out + [np.zeros(int(0.3 * BASE), int)])
+
+    air = [np.concatenate([np.zeros(BASE, int)] + [heard(n, k, e) for k, n in enumerate(names)]) for e in (0, 1)]
+    line = aprs.fskprobe_line(True, aprs.FSKPROBE_APRS_S).astype(int)
+    eroded = line & np.append(line[1:], 0)
+
+    Chip = modem_chip(le, lambda r58: air[r58 >> 10 & 7 == 7], BASE)
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=240, level=7)
     r = e.run()
-    assert r is not None, e.said
+    assert r is not None, e.said[-5:]
     ret, stack = r
     assert stack < 700, stack
-    assert e.said[0] == "fskaprs start hz=440850000 slot=3000", e.said
-    v = {ln[1]: dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln[0] == "v"}
-    for k in "015":                                     # read by time after the sync interrupt
-        assert int(v[k]["sy"]) >= 1 and int(v[k]["ok"]) >= 2 and v[k]["bad"] == "0", e.said
-        assert int(v[k]["i"], 16) & 2 and 0 <= 64 * int(v[k]["sy"]) - int(v[k]["w"]) < 64, e.said  # (the run's end)
-    assert int(v["4"]["ok"]) >= 2 and int(v["4"]["i"], 16) & 0x1000 and v["4"]["sy"] == "0", e.said
-    for k in "23":                                      # direct FSK: not in the model
-        assert v[k]["w"] == "0" and v[k]["ok"] == "0", e.said
-    end = e.said.index(f"fskaprs end ok={ret}")
-    assert ret == sum(int(v[k]["ok"]) for k in v) and end == 7, e.said
-    d0 = [w for ln in e.said[end + 1:] if ln.startswith("d0 ") for w in ln.split()[2:]]
-    assert len(d0) == 64 and e.said[end + 1].startswith("d0 000 "), e.said[end + 1:end + 9]
-    line = np.array([int(b) for w in d0 for b in f"{int(w, 16):016b}"])
-    assert any(np.array_equal(line, aprs.fskprobe_line(inv, 0.95)[:1024]) for inv in (False, True))
-    assert sum(ln.startswith("d5 ") for ln in e.said) == 7      # 64 words, 10 a line
+    assert e.empty == 0 and e.over == 0, (e.empty, e.over)       # the timed reads keep in step
+    assert e.said[0] == "fskaprs start hz=440850000 slot=7000", e.said[:3]
+    v = {int(ln[1:3]): dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln[0] == "v"}
+    c = {(int(ln[1:3]), int(ln.split()[1])): dict(kv.split("=") for kv in ln.split()[2:])
+         for ln in e.said if ln[0] == "c"}
+    d = {}
+    for ln in e.said:
+        if ln[0] == "d":
+            f = ln.split()
+            assert int(f[2]) == len(d.setdefault((int(f[0][1:]), int(f[1])), [])), ln
+            d[int(f[0][1:]), int(f[1])] += [int(w, 16) for w in f[3:]]
+    assert sorted(v) == list(range(27)) and sorted(c) == sorted(d), sorted(v)
+    assert e.said[-1] == f"fskaprs end ok={ret}" and ret == sum(int(x["ok"]) for x in v.values()), e.said[-3:]
+
+    def bits(key):
+        return np.array([int(b) for w in d[key] for b in f"{w:016b}"])
+
+    def unit(key):
+        return {0xA0: "P0", 0xAC: "C"}.get(d[key][0] >> 8)
+
+    # the pager's sync, then REG_58 (and REG_72) written at its interrupt: every named unit, and
+    # in this model's other receivers the Bell 202 frames pass their CRC in the module
+    for n in range(21):
+        two = n in (1, 2, 3)
+        ks = [k for k in d if k[0] == n]
+        assert {unit(k) for k in ks} == {"P0", "C"}, (n, v[n])
+        assert all(len(d[k]) == (128 if two else 64) and c[k]["p"] == "12"[two] for k in ks), n
+        assert all(abs(int(c[k]["dn"]) - 840) < 30 and int(c[k]["i"], 16) & 0x2002 == 0x2002 for k in ks), n
+        assert two or int(v[n]["ok"]) >= 2 * len(ks) and v[n]["bad"] == "0", (n, v[n])
+    k = next(k for k in d if k[0] == 0 and unit(k) == "P0")
+    assert np.array_equal(bits(k)[32:], line[16:1008]) and np.array_equal(bits(k)[16:18], eroded[:2])
+    k = next(k for k in d if k[0] == 1 and unit(k) == "P0")
+    assert any(not np.ptp(bits(k)[40 + o:1840 + o].reshape(-1, 2), axis=1).any() for o in (0, 1))   # each bit twice
+    # a sync word of flags as that receiver reads them: FE (01 where the long tone is the space),
+    # FFFC at two samples a bit
+    for n in (21, 22, 23, 24, 25, 26):
+        assert int(v[n]["sy"]) >= 2 and any(k[0] == n for k in d), (n, v[n])
+        assert all(c[k]["p"] == "12"[n > 23] for k in d if k[0] == n)
+    assert int(v[21]["ok"]) >= 2 and int(v[23]["ok"]) >= 2, (v[21], v[23])
+    # the report (python3 -m modem.aprs fskreport) on the module's lines
+    rep = aprs.fskprobe_report(["K6 MOD say " + ln for ln in e.said])
+    got = [ln for ln in rep if ln.startswith("v00 #") and " P0#" in ln]
+    assert got and all("loose 100.0% 0 slips, frames 3" in ln or "loose 99" in ln for ln in got), got
+    got = [ln for ln in rep if ln.startswith("v01 #") and " P0#" in ln]
+    assert got and all("2 a bit" in ln and "frames 3" in ln for ln in got), got
+    assert any(" A-@" in ln and "frames" in ln and "frames 0" not in ln for ln in rep if ln.startswith("v23 #")), rep
+    assert rep[-1] == e.said[-1] and sum(ln.startswith("v") and "w=" in ln for ln in rep) == 27
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F):
+        assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
+    assert {0x0100, 0x0200} <= set(e.writes[0x2B]) and {0x33E3, 0x33E9, 0x23E3, 0x37E3} <= set(e.writes[0x58])
+    assert 0x60CA in e.writes[0x72]
+
+
+# ---- the same clock behind the chip's own FSK modem (c/k6/mod/aprsfsk.c) ----
+@need_clang
+@pytest.mark.parametrize("seek", [0x33A3, 0x33E3])
+def test_aprsfsk_on_a_model_of_the_chips_modem(seek):
+    """aprsfsk (aprsclk's HDLC, parser and vote behind the FD6818's packet modem) on the emulated
+    M0 against modem_chip: the three stations' line bits as the 1200/2400 Hz receiver slices
+    them with REG_58 = 33a3 (probe 4), the second with its tones swapped, random bits between
+    them (they start a packet now and then by chance: two bytes of sync word). It must take
+    every packet, set the clock, give up a packet's read where the line goes idle, keep its
+    timed reads in step with the FIFO and put the modem's registers back. aprsfskb listens in
+    33e3 and writes 33a3 at each sync."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    name = "aprsfsk.c" if seek == 0x33A3 else "aprsfskb.c"
+    src = os.path.join(K6, "mod", name)
+    total, BASE = 6.5, 4800
+    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u"), ("APRS_FSK_DUMP", "2")], src)
+    full, _ = k6mod.build(src)
+    assert len(full) < 5600, len(full)              # the tap build is 7.6 KB
+    rng = np.random.default_rng(5)
+    air = rng.integers(0, 2, int((total + 2) * BASE // 4))
+    for k, (t, mk) in enumerate(packets()):
+        b = aprs.hdlc_bits(mk(UTC0 + t + 40 * 8 / aprs.BAUD)).astype(int)
+        i = int(t * aprs.BAUD)
+        air[i:i + len(b)] = b ^ (k == 1)
+    air = np.repeat(air, BASE // aprs.BAUD)
+    Chip = modem_chip(le, lambda r58: air, BASE)
+    Chip.either = True
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
+             scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert ret == 3 and stack < 700, (ret, stack, e.said)
+    assert e.empty == 0 and e.over == 0, (e.empty, e.over)
+    assert e.said[0] == f"aprs start hz=144390000 fsk={seek} sync=65278", e.said[:2]
+    end = e.said[-1]
+    assert "ok=3 " in end and "ts=3 v=3" in end, e.said
+    hh, mm, ss = end.split("utc=")[1].split()[0].split(":")
+    assert abs(int(hh) * 3600 + int(mm) * 60 + float(ss) - (UTC0 + total) % DAY) < 0.6, end
+    f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
+    assert f == ["VE7ABC-9", "VE7WX", "N0CALL-7"], e.said
+    # each packet's y line: read to a little past its closing flags, never the chip's whole 128 words
+    y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
+    good = [v for v in y if v["ok"] == "1"]
+    assert len(good) == 3 and all(20 < int(v["w"]) < 80 for v in good), y
+    assert all(int(v["w"]) < 128 for v in y), y
+    # its d lines hold the words as read: the first good packet's open with flags (01: this
+    # station's long tone is the space)
+    n = next(ln.split()[1] for ln in e.said if ln.startswith("y ") and " ok=1" in ln)
+    d = [w for ln in e.said if ln.startswith(f"d {n} ") for w in ln.split()[3:]]
+    assert len(d) == int(good[0]["w"]) and d[0] in ("0101", "0202", "0404", "0808", "1010", "2020", "4040", "8080"), d[:4]
+    # the radio's clock set from it (level 8), within its bound
+    assert len(e.clock_sets) == 2, e.clock_sets
+    for ms, utc, date, w, ok in e.clock_sets:
+        assert abs(utc - round(((UTC0 + ms / 1000) % DAY) * 1000)) <= w and w < 9000, (ms, utc, w)
+    assert e.lcd[0].strip() == "APRS CLOCK 144.390" and e.lcd[1].startswith("UTC 17:52:0"), e.lcd
+    assert e.lcd[3].startswith("heard ") and e.lcd[3].endswith(" ok 3 ts 3"), e.lcd
+    assert any(on for _, on in e.led)
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
+    assert 0x33A3 in e.writes[0x58] and (seek in e.writes[0x58])
+    assert e.writes[0x5A][0] == 0xFEFE and 0x10F0 in e.writes[0x59] and e.writes[0x5D][0] == 0xFF00
+    if seek != 0x33A3:
+        w58 = [w for w in e.writes[0x58] if w]
+        assert w58[0] == seek and w58.count(0x33A3) == len(y), w58
