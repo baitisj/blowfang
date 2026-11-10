@@ -1,0 +1,49 @@
+# UV-380 firmware on OpenRTX: OpenRTX (pinned) with blowfang's patch (firmware/uv380-openrtx),
+# built for the radio in OpenRTX's own devcontainer image (its arm-miosix-eabi toolchain and
+# radio_tool) and for OpenRTX's Linux emulator on a plain runner. The radio image is kept as an
+# artifact, never committed.
+name: UV-380 OpenRTX firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  radio:
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/openrtx/openrtx-devcontainer:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build (mduv3x0)
+        run: |
+          git config --global --add safe.directory '*'
+          sh firmware/uv380-openrtx/build.sh mduv3x0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uv380-openrtx-image
+          path: firmware/uv380-openrtx/out/
+
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: dependencies (as OpenRTX's own CI)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            git \
+            pkg-config \
+            build-essential \
+            meson \
+            libsdl2-dev \
+            libreadline-dev \
+            cmake \
+            libusb-1.0-0 \
+            libusb-1.0-0-dev \
+            libcodec2-dev \
+            codec2
+      - name: build (linux emulator)
+        run: sh firmware/uv380-openrtx/build.sh linux
