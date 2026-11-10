@@ -328,6 +328,81 @@ def fskprobe_report(lines):
     return out + [ln for ln in said if ln[:1] == "v" or ln.startswith("fskaprs")]
 
 
+# ---- the receiver on the chip's modem (c/k6/mod/aprsfsk.c): its packets from the serial log ----
+def hdlc_spans(tones):
+    """line bits -> [(first index, index after the closing flag, good FCS, bytes)] for every run
+    between two flags that is a whole number of bytes, 17 or more"""
+    out, sr, inf, buf, n, at, last = [], 0, False, 0, 0, 0, int(tones[0]) if len(tones) else 0
+    for i, x in enumerate(tones):
+        bit = int(x == last)
+        last = x
+        sr = ((sr << 1) | bit) & 0xFF
+        if sr == 0x7E:
+            if inf and n >= 7 + 8 * 17 and (n - 7) % 8 == 0:
+                f = (buf & ((1 << (n - 7)) - 1)).to_bytes((n - 7) // 8, "little")
+                out.append((at, i + 1, crc16(f[:-2]) == f[-2] | f[-1] << 8, f))
+            inf, buf, n, at = True, 0, 0, i + 1
+        elif sr & 0x7F == 0x7F:
+            inf = False
+        elif inf and sr & 0x3F != 0x3E:
+            buf |= bit << n
+            n += 1
+    return out
+
+
+def fsklog_report(lines):
+    """aprsfsk's say lines (as in the serial log) -> one line a packet the chip took: its y
+    line, the flags in its words, each good frame, and for a run between flags with a bad FCS
+    whether one wrong tone bit explains it (then the frame it would have been)"""
+    said = [ln.split("say ", 1)[-1].strip() for ln in lines]
+    said = said[max([i for i, ln in enumerate(said) if ln.startswith("aprs start")] or [0]):]
+    caps, out = {}, []
+    for ln in said:
+        f = ln.split()
+        if ln.startswith("d ") and len(f) > 3 and f[1].isdigit():
+            caps.setdefault(int(f[1]), []).extend(int(w, 16) for w in f[3:])
+    for ln in said:
+        f = ln.split()
+        if not (ln.startswith("y ") and len(f) > 2 and f[1].isdigit()):
+            if ln[:2] in ("f ", "m ") or ln.startswith(("clk ", "aprs ")):
+                out.append(ln)
+            continue
+        words = caps.get(int(f[1]))
+        if words is None:
+            out.append(ln)
+            continue
+        bits = np.array([int(b) for w in words for b in f"{w:016b}"], np.int8)
+        nrzi = "".join(str(int(a == b)) for a, b in zip(bits[1:], bits[:-1]))
+        ends = [i + 2 for i in range(7, len(nrzi)) if nrzi[i - 7:i + 1] == "01111110"]   # index after each flag
+        notes, done = [], 0
+        for k, p in enumerate(ends):
+            for q in ends[k + 1:k + 3]:               # to the next flag, or one past it (a flag made by an error)
+                if q - p < 8 * 18 or p < done:
+                    continue
+                lo = max(p - 9, 0)
+                good = [x for x in hdlc_spans(bits[lo:q]) if x[2]]
+                if good:
+                    notes.append("ok " + describe(good[0][3]))
+                    done = q
+                    break
+                for e in range(lo, q):
+                    t = bits[lo:q].copy()
+                    t[e - lo] ^= 1
+                    good = [x for x in hdlc_spans(t) if x[2]]
+                    if good:
+                        notes.append(f"bad, bit {e} wrong: {describe(good[0][3])}")
+                        done = q
+                        break
+                else:
+                    if q == ends[k + 1]:
+                        notes.append(f"bad {(q - p) // 8} B")
+                    continue
+                break
+        flags = len(ends)
+        out.append(f"{ln} flags={flags} " + ("; ".join(notes) if notes else "no frame-sized run between flags"))
+    return out
+
+
 # ---- a float decoder for recordings (correlators + PLL + HDLC, as the K6 module) ----
 def demod(audio, fs):
     """audio -> list of frames (bytes, with good FCS) and each one's end sample"""
@@ -417,9 +492,16 @@ def main(argv=None):
     q = sub.add_parser("fskreport", help="what the chip made of each fskprobe unit, from the K6's serial log "
                                          "(the module's c and d lines)")
     q.add_argument("log")
+    q = sub.add_parser("fsklog", help="what c/k6/mod/aprsfsk.c's packets held, from the K6's serial log (its y "
+                                      "and d lines): flags, good frames, and bad ones a single bit away")
+    q.add_argument("log")
     d = sub.add_parser("decode")
     d.add_argument("wav")
     a = ap.parse_args(argv)
+    if a.cmd == "fsklog":
+        with open(a.log, errors="replace") as f:
+            print("\n".join(fsklog_report(f.read().splitlines())))
+        return 0
     if a.cmd == "fskreport":
         with open(a.log, errors="replace") as f:
             print("\n".join(fskprobe_report(f.read().splitlines())))

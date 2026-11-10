@@ -620,6 +620,21 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(seek):
     n = next(ln.split()[1] for ln in e.said if ln.startswith("y ") and " ok=1" in ln)
     d = [w for ln in e.said if ln.startswith(f"d {n} ") for w in ln.split()[3:]]
     assert len(d) == int(good[0]["w"]) and d[0] in ("0101", "0202", "0404", "0808", "1010", "2020", "4040", "8080"), d[:4]
+    # the log's report (python3 -m modem.aprs fsklog): each packet's frame again from its words,
+    # and a frame with one tone bit wrong named as such
+    rep = aprs.fsklog_report(["K6 MOD say " + ln for ln in e.said])
+    got = [ln for ln in rep if ln.startswith("y ") and " ok=1 " in ln]
+    assert len(got) == 3 and "ok VE7ABC-9>APRS:/" in got[0] and "ok N0CALL-7>GPS:$GPRMC" in got[2], rep
+    assert all(int(ln.split("flags=")[1].split()[0]) >= 20 for ln in got), got
+    hurt = []
+    for ln in e.said:
+        if ln.startswith(f"d {n} 030 "):
+            f = ln.split()
+            f[5] = f"{int(f[5], 16) ^ 0x0100:04x}"
+            ln = " ".join(f)
+        hurt.append(ln)
+    bad = next(ln for ln in aprs.fsklog_report(hurt) if ln.startswith(f"y {n} "))
+    assert "bad, bit " in bad and "wrong: VE7ABC-9>APRS:/" in bad, bad
     # the radio's clock set from it (level 8), within its bound
     assert len(e.clock_sets) == 2, e.clock_sets
     for ms, utc, date, w, ok in e.clock_sets:
