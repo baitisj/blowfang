@@ -179,3 +179,9 @@ module comes in as a file under QEMU, later over USB or the air).
   the stored sotto 1200 message as K6 FFSK pager packets, then the Morse ident; 430-450 MHz only).
   CI (`uv380-openrtx.yml`) builds the radio image in OpenRTX's devcontainer and the Linux
   emulator. Not run on a radio.
+- `tests/test_uv380_openrtx_emu.py`: PAGER mode run in OpenRTX's own Linux emulator (PTT
+  pressed through its shell); the samples decode on the K6 receiver model into the stored
+  message, then the Morse ident.
+- PAGER mode's **#** key plays the stored message on the UV-380's speaker through the
+  fixed-point sotto 1200 decoder (sotto submodule, 8 kHz, no mod needed); in the emulator the
+  output equals sotto's own decoder sample for sample.
