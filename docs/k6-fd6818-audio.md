@@ -314,3 +314,45 @@ For the FFSK pager this means: a tone above 3.2 kHz never leaves the IC-7100, an
 Hz and 2.3 kHz the higher FFSK tone goes out about 5 dB an octave hotter than the lower one
 unless the sender de-emphasises it. Logs and tables are on hamlet (`~/blowfang-work/logs/gp0raw-*`,
 `gp0dma*-*`, `gp0sweep-20261106T0809*`).
+
+## Does the capture DMA disturb the pager? (`dmashare`, blowfang PR #28)
+
+Every GP0 receiver (gp0dma, iflive, ifpager, xdmr, aprsclk) reads GPIOB IDR with DMA channel
+1 at priority 3 (very high), and on this chip that channel is requested all the time, so it
+runs flat out. The pager's playback is DMA channel 5 (TIM1_UP, priority 2): one sample into
+CCR4 each 125 us. Today the two never overlap: `if_session` refuses while anything plays, and
+the modules run only while nothing plays. A receiver that listened in the background would
+overlap them, so `c/k6/mod/dmashare.c` measures both effects:
+
+- It runs channel 5 exactly as `pwm_audio::start` does, but with the output stage off: no
+  CC4E, no MOE, PA11 left an input, so nothing reaches the speaker.
+- For each of channel 1 off, at priority 3 and at priority 0, twice over, it counts channel
+  5's transfers over 250 ms (2000 expected) and their longest gap.
+- It also times flash code (20,000 `api->ticks` calls), 100 FD6818 reads and a loop in RAM.
+
+The RAM module was approved by Jeff (TIM1 + DMA channel 5, 2026-11-10 00:38 UTC) and sent
+over the air on 440.850. The run on hamlet was at 00:41 UTC, on EXPLORE image 0bd4fef, with
+CI module 4c4b9fb (1,627 B, 3,724 B scratch). The K6 never keyed. The two passes agreed:
+
+| Channel 1 | ch 5 transfers / 250 ms | longest gap | ch 1 rate | flash code | FD6818 reads | RAM loop |
+| --- | --- | --- | --- | --- | --- | --- |
+| off | 1999 | 126 us | - | 39,180 us | 9,845 us | 12,500 us |
+| priority 3 | 1999 | 126-127 us | 5.83 MT/s | +0.8% | +0.07% | +6.2% |
+| priority 0 | 1999 | 126-127 us | 5.83 MT/s | +0.8% | +0.08% | +6.2% |
+
+- **Playback is not starved.** Channel 5 got every sample at its usual 125 us spacing, even
+  with channel 1 above it. So the "always requested" channel 1 still gives way: the DMA
+  arbitrates again after every transfer, and channel 5's rare requests get through.
+  The priority doesn't matter, so the receivers can keep priority 3.
+- **The CPU barely notices.** Flash code is 0.8% slower and the bit-banged FD6818 reads
+  aren't slowed at all. The pager's decoder runs from flash, so it would lose about 1%.
+  Code in RAM (the modules) is 6.2% slower: exactly one cycle in 16, the share of the SRAM
+  port that the DMA's byte writes take.
+- One oddity, with channel 1 off: the very first window (pass 1) counted 1967 transfers with
+  a single 4,096 us gap, right after TIM1 and channel 5 started. Pass 2's channel-off window
+  was clean, so this is the start-up of the module's own timers, not channel 1.
+
+Not measured: a real decode and playback running beside the capture (this used the pager's
+DMA set-up, not its decoder), and the FSK chip's packet reception while channel 1 runs (only
+its register reads, which are unaffected). Neither looks at risk from these numbers. The log is
+on hamlet (`~/blowfang-work/runs/20261110T0040Z-dmashare/`).

@@ -320,6 +320,7 @@ ft8wf
 ft8wf_inv
 gp0cap
 gp0cap_afc
+dmashare      # level 2, does the IF capture DMA disturb playback (docs/k6-fd6818-audio.md)
 gp0dma
 gp0fm
 gp0raw
