@@ -884,8 +884,8 @@ int k6_main(const k6_api_t *api) {
                                         (FSK_STREAM: the flags since 20 ms after the search began)
      d 12 000 fefe fe01 ...             its words, 10 a line (APRS_FSK_DUMP 2: every packet; 1:
                                         those without a good frame; 0: none)
-     s 3 t=28924 cfg=3363 af=8000 ok=12       FSK_SWEEP: the setting from here on (its number,
-                                        REG_58, REG_2B) and the good frames so far
+     s 3 t=28924 cfg=3333 ok=12               FSK_SWEEP: the setting from here on (its number,
+                                        REG_58) and the good frames so far
      aprs fsk ms=900004 key=0 pre=31 fake=912   before the end line: the module's clock, the key
                                         that ended it, sync words, those of under 6 words
    Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F, 02 and (FSK_AF) 2B, put back as read (the pager arms its
@@ -910,20 +910,15 @@ int k6_main(const k6_api_t *api) {
 static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B};
 
 #ifdef FSK_SWEEP
-/* a setting every FSK_SWEEP ms, round and round: REG_58, and bits ORed into REG_2B (<10> the
-   300 Hz high-pass off, <9> the 3 kHz low-pass off, <8> the de-emphasis off: BK4819 notes).
-   What reads a pre-emphasised packet? (the third bench run: 33a3 as found reads none) */
-static const uint16_t FSK_SW[][2] = {
-  {0x33A3, 0},      /* as aprsfsk has it */
-  {0x33A3, 0x0100}, /* de-emphasis off */
-  {0x3323, 0},      /* bits 7:6 = 00 */
-  {0x3363, 0},      /* bits 7:6 = 01 */
-  {0x33A9, 0},      /* the bandwidth for 1200/2400 */
-  {0x33A1, 0},      /* the bandwidth for FSK 1.2K */
-  {0x31A3, 0},      /* less RX gain */
-  {0x33E3, 0},      /* bits 7:6 = 11 */
-};
-#define FSK_NSW (sizeof(FSK_SW) / sizeof(FSK_SW[0]))
+/* a setting every FSK_SWEEP ms, round and round: which REG_58 reads a pre-emphasised packet?
+   The fourth bench run went round bits 7:6, the bandwidths, the RX gain and REG_2B's
+   de-emphasis: 33a3, 33a1 and 31a3 read the flat and the de-emphasised kinds, 3323 and 33e3
+   only the de-emphasised, 3363 and 33a9 nothing, REG_2B + 0100 changed nothing, and none read
+   the pre-emphasised. Bits 7:6 lean the slicer, so here all sixteen of bits 7:4. */
+#ifndef FSK_SW_CFG
+#define FSK_SW_CFG(n) (0x3303u | (n) << 4)
+#define FSK_NSW 16u
+#endif
 #endif
 
 static void fsk_arm(const k6_api_t *api) {
@@ -977,9 +972,10 @@ static void fsk_said(const k6_api_t *api, st_t *s, uint32_t tsync, uint32_t got,
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now, tkey = 0, tsync = 0, idle = 0, ok0 = 0, st = 0, left = 0, got = 0;
-  uint32_t cfg = FSK_CFG;
 #ifdef FSK_SWEEP
-  uint32_t sw = 0, tsw = 0;
+  uint32_t cfg = FSK_SW_CFG(0), sw = 0, tsw = 0;
+#else
+  uint32_t cfg = FSK_CFG;
 #endif
 #ifdef FSK_STREAM
   uint32_t acc = 0, tlast, tseek = 0, prev = 0;
@@ -1038,13 +1034,11 @@ int k6_main(const k6_api_t *api) {
     if (!left && now - tsw >= FSK_SWEEP) {
       tsw += FSK_SWEEP;
       if (++sw == FSK_NSW) sw = 0;
-      cfg = FSK_SW[sw][0];
-      api->fd_write(0x2B, s->sv[9] | FSK_SW[sw][1]);
+      cfg = FSK_SW_CFG(sw);
       fsk_seek(api, cfg);
       p = kv(s->ln, "s ", sw);
       p = kv(p, " t=", now);
       p = hex4(put(p, " cfg="), cfg);
-      p = hex4(put(p, " af="), s->sv[9] | FSK_SW[sw][1]);
       p = kv(p, " ok=", s->ok);
       say(api, s, p);
     }

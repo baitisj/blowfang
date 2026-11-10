@@ -313,7 +313,7 @@ aprsfskb       # level 2, aprsfsk reading the modem's FIFO all the time (FSK_STR
 aprsfskb_440   # level 2, aprsfskb on 440.850
 aprsfskc_440   # level 2, aprsfskb_440 starting its search again every 59 ms
 aprsfskd_440   # level 2, aprsfskb_440 with the receiver's de-emphasis off
-aprsfsks_440   # level 2, aprsfsk_440 going round eight modem settings
+aprsfsks_440   # level 2, aprsfsk_440 going round sixteen modem settings
 bandreg        # level 2, patched by tools/k6_hf.py
 clkget         # level 8, says the radio's clock (docs/k6-aprs-clock.md)
 ctcssprobe     # level 2, docs/k6-explore-app.md

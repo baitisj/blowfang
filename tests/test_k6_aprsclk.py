@@ -704,8 +704,8 @@ def test_kinds_wav_a_rehearsal_of_real_packets():
 
 @need_clang
 def test_aprsfsk_sweep_goes_round_its_settings():
-    """aprsfsks_440 (FSK_SWEEP): a setting of REG_58 and REG_2B every so many ms, said in an s
-    line, only between packets; the packets still decode (the model's receiver does not mind the
+    """aprsfsks_440 (FSK_SWEEP): a setting of REG_58 (its bits 7:4) every so many ms, said in an
+    s line, only between packets; the packets still decode (the model's receiver does not mind the
     setting) and the registers are put back."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
@@ -727,16 +727,13 @@ def test_aprsfsk_sweep_goes_round_its_settings():
     r = e.run()
     assert r is not None and r[0] == 3, (r, e.said[-5:])
     s = [dict(kv.split("=") for kv in ln.split()[2:]) | {"n": ln.split()[1]} for ln in e.said if ln.startswith("s ")]
-    assert [v["n"] for v in s[:8]] == ["1", "2", "3", "4", "5", "6", "7", "0"], s
-    assert [v["cfg"] for v in s[:8]] == ["33a3", "3323", "3363", "33a9", "33a1", "31a3", "33e3", "33a3"], s
-    assert [v["af"] for v in s[:8]] == ["0100", "0000", "0000", "0000", "0000", "0000", "0000", "0000"], s
+    assert [v["n"] for v in s] == [str(k) for k in range(1, 10)], s
+    assert [v["cfg"] for v in s] == [f"33{k:x}3" for k in range(1, 10)], s
     # on the 700 ms grid, late only by a read under way (the next one is then early); the
     # longest is 128 words of a stale word that reads as flags, as on 144.390
-    assert len(s) == 9, [v["t"] for v in s]
     assert all(0 <= int(v["t"]) - 700 * (k + 1) < 2000 for k, v in enumerate(s)), [v["t"] for v in s]
     assert [int(v["ok"]) for v in s] == sorted(int(v["ok"]) for v in s) and s[-1]["ok"] in ("2", "3"), s
-    assert {0x3323, 0x3363, 0x33A9, 0x33A1, 0x31A3, 0x33E3} <= set(e.writes[0x58])
-    assert {0, 0x0100} <= set(e.writes[0x2B])
+    assert e.writes[0x58][2] == 0x3303 and {0x3303 | k << 4 for k in range(10)} <= set(e.writes[0x58])
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B):
         assert e.writes[reg][-1] == 0, hex(reg)
     assert "ok=3 " in e.said[-1], e.said[-3:]
