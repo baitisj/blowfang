@@ -34,8 +34,8 @@
      aprs end ok=12 bad=3 ts=5 v=2 utc=17:59:59.120 lost=0
    Each clock line with two or more votes also goes to the radio's clock (level 8, clock_set):
    UTC now, the date it has, and a bound of the interval's far end from the estimate.
-   Screen (level 6) once a second when no frame is coming (UTC and date, votes, frame counts, the
-   station heard last), LED blink a good frame (level 7). A key ends it (else RUN_MS). Writes REG_34[3:0]
+   Screen (level 6) once a second when no frame is coming (UTC and date, votes, packets heard / decoded /
+   stamped, the station heard last), LED blink a good frame (level 7). A key ends it (else RUN_MS). Writes REG_34[3:0]
    and REG_33 bit 8 (GP0), the MCU's TIM17, DMA channel 1 and their clock enables, all put back.
    Returns the votes behind the clock (0: none), or -2 (a key before any frame), -3 (old image),
    -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch).
@@ -573,8 +573,10 @@ static void screen(const k6_api_t *api, st_t *s) {
   if (s->votes >= 2) p = put(p, s->wid < 30000 ? " (sec)" : " (min)");
   *p = 0;
   api->lcd_text(2, s->ln);
-  p = kv(s->ln, "ok ", s->ok);
-  p = kv(p, " bad ", s->bad);
+  /* packets heard starting (preambles), then decoded: noise makes "bad" runs all the time, so
+     the gap between these two is the real misses */
+  p = kv(s->ln, "heard ", s->pre);
+  p = kv(p, " ok ", s->ok);
   p = kv(p, " ts ", s->nts);
   *p = 0;
   api->lcd_text(3, s->ln);
