@@ -208,9 +208,10 @@ if [ "${VLR:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbs
   variant aura-pager-vlr "pager-only image, sotto 1200 + 600 + 400, codebooks in SPI flash" --features pager-only,txdog,spilib
-  # the target (Jeff 2026-11-09): EXPLORE in this 8 kHz voice image, so nobody switches images.
-  # A report until it fits: its line in size-aura-voice-explore.txt is the flash and RAM still
-  # to find (docs/k6-voice-explore.md). EXPLORE's sweep, Listen for ID and repeater table code
+  # EXPLORE in this 8 kHz voice image (Jeff 2026-11-09), so nobody switches images
+  # (docs/k6-voice-explore.md). It fits with Arm Toolchain for Embedded (CI, K6_ATFE), where an
+  # image that outgrows the flash fails the build as the others do; a plain clang build is about
+  # 1.5 KB bigger, so there it is a size report only. EXPLORE's sweep, Listen for ID and repeater table code
   # are code pages in SPI flash (c/k6/kp.h): the image keeps what they call (K6_PAGE_IMPORTS),
   # then each page is linked for it, out/page-sweep.bin, page-listen.bin, page-table.bin
   PB="$ROOT/c/k6/build-vlr-cbs"
@@ -224,8 +225,12 @@ if [ "${VLR:-1}" = 1 ]; then
     "$PB/k6_rt.o" \
     -o "$OUT/page-imports.x"
   export K6_PAGE_IMPORTS="$OUT/page-imports.x"
-  variant aura-voice-explore "8 kHz voice + EXPLORE image (target; report only until it fits)" \
-    --features voice-explore,txdog,spilib || echo "(8 kHz voice + EXPLORE doesn't fit yet: report only)"
+  if [ -n "${K6_ATFE:-}" ]; then
+    variant aura-voice-explore "8 kHz voice + EXPLORE image" --features voice-explore,txdog,spilib
+  else
+    variant aura-voice-explore "8 kHz voice + EXPLORE image (report only without ATfE)" \
+      --features voice-explore,txdog,spilib || echo "(8 kHz voice + EXPLORE doesn't fit with this compiler: report only)"
+  fi
   unset K6_PAGE_IMPORTS
   # a page that outgrows the decoder pool fails the build
   python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page sweep -o "$OUT/page-sweep.bin" \
