@@ -310,7 +310,7 @@ filter) left out and the chip's packet modem in its place. 5.1 KB against the ta
 Variants:
 
 - `aprsfsk`: 144.390 MHz for 15 minutes.
-- `aprsfsk_440`: 440.850 MHz for 5 minutes, for the bench signal
+- `aprsfsk_440`: 440.850 MHz for 110 s, for the bench signal
   (`python3 -m modem.aprs wav OUT.wav --now --repeat N --swap`: `--swap` sends every second
   round with the tones swapped, so the flags' long tone is the mark in one and the space in
   the next).
