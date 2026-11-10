@@ -58,7 +58,7 @@ fi
 mkdir -p "$WORK/openrtx/src/blowfang/sotto/fixed"
 cp "$SOTTO"/*.h "$SOTTO"/*.inc "$WORK/openrtx/src/blowfang/sotto/"
 cp "$SOTTO"/fixed/*.h "$SOTTO"/fixed/*.inc "$SOTTO"/fixed/*.c "$WORK/openrtx/src/blowfang/sotto/fixed/"
-cp "$HERE"/sotto8k/*.c "$WORK/openrtx/src/blowfang/"
+cp "$HERE"/sotto8k/*.c "$HERE"/sotto8k/*.h "$WORK/openrtx/src/blowfang/"
 
 cd "$WORK"
 if [ "$TARGET" = linux ]; then
