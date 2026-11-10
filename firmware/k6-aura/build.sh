@@ -256,7 +256,7 @@ if [ "${HISS:-1}" = 1 ]; then
   K6_CODEC=vlr K6_CB=spi K6_HISS=1 sh "$ROOT/tools/k6_build.sh"
   lib build-vlrh-cbs
   variant aura-pager-vlrh "pager-only image, sotto 1200 + 600 + 400 with the hiss band (16 kHz), codebooks in SPI flash" \
-    --features pager-only,hiss,txdog
+    --features pager-only,hiss,txdog,spilib
 fi
 if [ "${INSTALL:-1}" = 1 ]; then
   K6_CB=install sh "$ROOT/tools/k6_build.sh"

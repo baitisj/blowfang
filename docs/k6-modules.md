@@ -38,8 +38,8 @@ wanted: the first good voice packet, a coded 4FSK session, key `*`, control acti
 EXPLORE, or a new module upload. The store stays empty meanwhile, as it is while a module
 arrives. A rerun carries no upload reply or telemetry, and skips the serial check (the image
 passed it when it came in). Refused while a message plays (`r=-9`, also for control action
-lib). In the images with the SPI library only (`spilib`: pager-only, lr, vlr, explore,
-voice-explore); the lean and hiss images clear the store after a module as before. Cost: about
+lib). In the images with the SPI library only (`spilib`: pager-only, lr, vlr, vlrh, explore,
+voice-explore); the lean images clear the store after a module as before. Cost: about
 230 B of flash (local clang 18 build), 2 B of RAM.
 
 **How much room.** Images built from 2026-11-08 on keep the message store (4 KB), the PWM audio
@@ -269,10 +269,10 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
 - **Serials:** a run from a slot skips the serial check (the slot was checked when it went in;
   the serial guards the air), and never lowers the loader's last serial, so loading an old slot
   doesn't let an old recording replay.
-- **Images:** the `spilib` feature: pager-only, lr, vlr and explore. Not the lean images (cbi,
-  -table: they never take modules that need it) nor vlrh (hiss: about 1.3 KB of code and lines
-  against its 328 B of free flash). On those an install image checks but never runs (`K6 MOD
-  ret=-100`), and nothing is written.
+- **Images:** the `spilib` feature: pager-only, lr, vlr, vlrh (since 2026-11-10: #31 left it
+  5.9 KB free) and explore. Not the lean images (cbi, -table: they never take modules that need
+  it). On those an install image checks but never runs (`K6 MOD ret=-100`), and nothing is
+  written.
 - **Tests:** `tests/test_k6_lib.py` runs the library and the loader on this machine against an
   emulated NOR flash (`c/k6/kl_host`), checking every write against the rules above.
 

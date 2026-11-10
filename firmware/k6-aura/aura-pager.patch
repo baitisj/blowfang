@@ -31,7 +31,7 @@ index 785c441..8ee3035 100644
 +# with txdog: no lines straight to USART1 (the boot-loop hunt: does their time at boot matter?)
 +txdog-quiet = ["txdog"]
 +# the SPI module library (c/k6/k6_lib.h): install a module image in an SPI slot, run it on
-+# control action 11. Every image but the lean ones and hiss (no flash left there)
++# control action 11, and side key 1 reruns the last module. Every image but the lean ones
 +spilib = []
 +
  [profile.release]
