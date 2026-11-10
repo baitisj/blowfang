@@ -29,6 +29,7 @@ jobs:
           pip install \
             numpy \
             scipy \
+            soundfile \
             pytest
       - name: host build of the portable transmitter
         run: make -C c/common
