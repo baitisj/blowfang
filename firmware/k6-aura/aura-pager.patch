@@ -4769,10 +4769,10 @@ index 0000000..0b4a26e
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..54942f4
+index 0000000..9c9d3ae
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2122 @@
+@@ -0,0 +1,2133 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -6751,6 +6751,16 @@ index 0000000..54942f4
 +    write!(b, "{}.{:03}", k / 1000, k % 1000).ok();
 +}
 +
++/// A row's tone: CTCSS in 0.1 Hz (`tone 136.5`), or a DCS code | 0x8000 (`DCS 023`; `i` after it
++/// when it was sent inverted, 0x4000), as xd_tone gives it
++fn tone_text(b: &mut dyn core::fmt::Write, tone: u16) {
++    if tone & 0x8000 != 0 {
++        write!(b, "DCS {:03o}{}", tone & 0x1FF, if tone & 0x4000 != 0 { "i" } else { "" }).ok();
++    } else {
++        write!(b, "tone {}.{}", tone / 10, tone % 10).ok();
++    }
++}
++
 +fn off_text<const N: usize>(b: &mut TextBuf<N>, c: &Cand) {
 +    if c.flags & EX_F_SIMPLEX != 0 || c.off_hz == 0 {
 +        write!(b, "  S ").ok();
@@ -6795,7 +6805,8 @@ index 0000000..54942f4
 +                    write!(b, "{} dBm  birdie, not a station", c.hi).ok();
 +                } else {
 +                    if c.tone != 0 {
-+                        write!(b, "{} dBm  score {}  tone {}.{}", c.hi, c.score, c.tone / 10, c.tone % 10).ok();
++                        write!(b, "{} dBm  score {}  ", c.hi, c.score).ok();
++                        tone_text(&mut b, c.tone);
 +                    } else {
 +                        write!(b, "{} dBm  score {}  {} overs", c.hi, c.score, c.overs).ok();
 +                    }
@@ -6836,7 +6847,7 @@ index 0000000..54942f4
 +                    line(lcd, 3, b.as_str());
 +                    if c.tone != 0 {
 +                        let mut b: TextBuf<24> = TextBuf::new();
-+                        write!(b, "tone {}.{}", c.tone / 10, c.tone % 10).ok();
++                        tone_text(&mut b, c.tone);
 +                        line(lcd, 4, b.as_str());
 +                    }
 +                    break;

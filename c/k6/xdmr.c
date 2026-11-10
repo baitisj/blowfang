@@ -199,22 +199,72 @@ static const uint16_t XD_CTCSS[50] = {
     1773, 1799, 1835, 1862, 1899, 1928, 1966, 1995, 2035, 2065, 2107, 2181, 2257, 2291, 2336,
     2418, 2503, 2541};
 
-/* the sub-audio scan's reading, once a step: a standard tone twice in a row is the tone */
+#ifndef XD_NO_DCS  /* xdmrlisten leaves it out: its 11,776-byte block has no room */
+/* the 104 standard DCS codes (9 bits: the three octal digits), a bit each */
+static const uint8_t XD_DCS[64] = {
+    0x00, 0x00, 0x68, 0x46, 0x88, 0x1a, 0x20, 0x1e, 0x00, 0x70, 0x24, 0x16, 0x28, 0x64, 0x24, 0x14,
+    0x20, 0x04, 0x68, 0x00, 0x78, 0x26, 0x6a, 0x12, 0x40, 0x22, 0x20, 0x06, 0x48, 0x42, 0x30, 0x02,
+    0x00, 0x0e, 0x08, 0x06, 0x60, 0x34, 0x74, 0x00, 0x48, 0x40, 0x48, 0x04, 0x40, 0x00, 0x20, 0x00,
+    0x40, 0x04, 0x90, 0x06, 0x00, 0x10, 0x14, 0x00, 0x08, 0x04, 0x08, 0x16, 0x08, 0x10, 0x00, 0x00};
+
+/* DCS's 23-bit Golay word for 12 data bits (the code, then the 100 marker in bits 11-9):
+   the data, and the remainder of data * x^11 by x^11+x^10+x^6+x^5+x^4+x^2+1 above it */
+static uint32_t xd_golay(uint32_t d) {
+  uint32_t r = d << 11;
+  int b;
+  for (b = 22; b >= 11; b--)
+    if (r >> b & 1u) r ^= 0xC75u << (b - 11);
+  return d | r << 12;
+}
+
+/* A sub-audio scan DCS word -> code | RT_TONE_DCS (| XD_DCS_INV, sent inverted), 0 if it is no
+   standard code in any of its 23 turns. The normal reading is tried first: every inverted code
+   is some normal one (023 inverted is 047). */
+static uint16_t xd_dcs(uint32_t w) {
+  uint32_t inv, i, c;
+  for (inv = 0; inv < 2; inv++, w ^= 0x7FFFFFu)
+    for (i = 0; i < 23; i++) {
+      c = w & 0x1FFu;
+      if ((w >> 9 & 7u) == 4u && (XD_DCS[c >> 3] >> (c & 7u) & 1u) && xd_golay(0x800u | c) == w)
+        return (uint16_t)(0x8000u | inv << 14 | c);
+      w = (w >> 1 | w << 22) & 0x7FFFFFu;
+    }
+  return 0;
+}
+#endif
+
+/* the sub-audio scan's reading, once a step: a standard tone or DCS code twice in a row is the
+   carrier's. REG_69 first (bit 15 clear: a DCS word, 69[11:0] << 12 | 6A[11:0]); during a CTCSS
+   tone it also clears bit 15 with words that are no code, so then REG_68 */
 static void xd_ctcss(xd_t *s) {
   const k6_api_t *api = s->api;
-  uint32_t r = api->fd_read(0x68), tenths, i;
+  uint32_t r = api->fd_read(0x69), tenths, i;
   uint16_t std = 0;
   char line[24], *p;
-  if (r & 0x8000) return;
-  tenths = ds_udiv((r & 0x1FFF) * 100000u, 206489u);
-  for (i = 0; i < 50; i++) {
-    uint32_t d = tenths > XD_CTCSS[i] ? tenths - XD_CTCSS[i] : XD_CTCSS[i] - tenths;
-    if (d < 10) std = XD_CTCSS[i];
+#ifndef XD_NO_DCS
+  if (!(r & 0x8000)) std = xd_dcs(((r & 0xFFFu) << 12 | (api->fd_read(0x6A) & 0xFFFu)) & 0x7FFFFFu);
+#else
+  (void)r;
+#endif
+  if (!std) {
+    r = api->fd_read(0x68);
+    if (r & 0x8000) return;
+    tenths = ds_udiv((r & 0x1FFF) * 100000u, 206489u);
+    for (i = 0; i < 50; i++) {
+      uint32_t d = tenths > XD_CTCSS[i] ? tenths - XD_CTCSS[i] : XD_CTCSS[i] - tenths;
+      if (d < 10) std = XD_CTCSS[i];
+    }
   }
   s->treads++;
   if (std && std == s->tcand && std != s->tone) {
     s->tone = std;
-    p = cw_utoa(xd_put(line, "CTCSS "), std);
+    if (std & 0x8000) {
+      p = xd_put(line, "DCS ");
+      for (i = 9; i;) i -= 3, *p++ = (char)('0' + (std >> i & 7u));
+      if (std & XD_DCS_INV) *p++ = 'i';
+    } else {
+      p = cw_utoa(xd_put(line, "CTCSS "), std);
+    }
     xd_say(s, line, p);
   }
   s->tcand = std;
