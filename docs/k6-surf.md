@@ -70,7 +70,10 @@ the audio muted. Every 16 bins it goes back to the bar for a settled read (12 ms
 tune). A signal there 10 dB over the settled floor opens the audio (REG_47 FM and the speaker
 amplifier on PB2, as `dmrdet`), and the module parks on it. It closes 1.5 s after the signal
 drops and sweeps again. While parked, one refresh sweep every 5 s (about 0.3 s of muted audio)
-keeps the bars current, unless hold is on.
+keeps the bars current, unless hold or monitor is on. Whenever the receiver tunes with the audio
+open (a refresh, a side-key seek, a step in monitor) the speaker amplifier goes off too and comes
+back once the bar's frequency has settled: with only REG_47 muted, the retunes buzzed in the
+speaker (Jeff, on the radio, 2026-11-10).
 
 **Levels.** Sweep reads are quick: 3 ms after the tune, like Aura's own spectrum. That is
 about 59% of the way in dB from the -173 dBm restart (explorer Phase 0), so the bars are

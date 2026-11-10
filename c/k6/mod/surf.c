@@ -40,7 +40,8 @@
    read; a signal there SQ_DB over the settled floor opens the audio (REG_47 FM, speaker amp on
    PB2, as dmrdet) and parks on it. It closes HANG_MS after the signal drops, and then sweeps
    again. While parked, a refresh sweep every REFRESH_MS (about 0.3 s of muted audio) keeps the
-   bars current, unless hold (0) is on.
+   bars current, unless hold (0) or monitor is on. Any retune with the audio open turns the
+   speaker amp off as well until the bar has settled again (hush): REG_47 muted alone buzzed.
 
    Levels: sweep reads are quick (SETTLE_US after the tune, as Aura's own spectrum: about 59 %
    of the way in dB from the -173 dBm restart, Phase 0), so the bars are relative: the floor is
@@ -147,7 +148,7 @@ typedef struct {
   uint32_t t_flush, t_open, t_full, t_sfl, t_msg, t_key, t_rep, t_auto, t_chk;
   int next, pend, sj, sweeps;
   int sfl, sel_dbm;
-  uint8_t si, qfl, parked, tuned, check, mon, hold, audio, blink, key, raw, full, refine, stale;
+  uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, blink, key, raw, full, refine, stale;
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x 2.5 kHz */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
@@ -221,8 +222,18 @@ static void say_end(sf_t *s, char *p) {
 
 static int dbm(sf_t *s) { return KM_RSSI_DBM(s->api->fd_read(0x67)); }
 
+/* with the audio open: speaker off (1) while the receiver tunes about, back on (0) once it has
+   settled on the listening frequency again; a retune with the amp on buzzes (Jeff, 2026-11-10) */
+static void hush(sf_t *s, int on) {
+  if (!s->audio || on == s->hush) return;
+  s->hush = (uint8_t)on;
+  s->api->fd_write(0x47, on ? AF_MUTE : AF_FM);
+  wr(GPIOB + (on ? BRR : BSRR), SPK);
+}
+
 /* the level at hz in dBm, us after its tune (wide: the wide filter, else the narrow) */
 static int read_w(sf_t *s, uint32_t hz, uint32_t us, int wide) {
+  hush(s, 1);
   s->api->tune(hz, wide);
   s->api->delay_us(us);
   return dbm(s);
@@ -233,8 +244,9 @@ static int read_hz(sf_t *s, uint32_t hz, uint32_t us) { return read_w(s, hz, us,
 static int read_at(sf_t *s, int i, uint32_t us) { return read_hz(s, s->hz[i], us); }
 
 static void audio(sf_t *s, int on) {
-  if (on == s->audio) return;
+  if (on == s->audio && !s->hush) return;
   s->audio = (uint8_t)on;
+  s->hush = 0;
   s->api->fd_write(0x47, on ? AF_FM : AF_MUTE);
   wr(GPIOB + (on ? BSRR : BRR), SPK);
 }
@@ -492,9 +504,8 @@ static void on_key(sf_t *s, int k) {
   case '*':
     s->mon ^= 1;
     s->tuned = 0;
-    s->parked = s->mon;
-    if (s->mon) audio(s, 1);
-    else moved(s);
+    s->parked = s->mon;               /* (monitor: park_step opens the audio once tuned) */
+    if (!s->mon) moved(s);
     break;
   case '0':
     s->hold ^= 1;
@@ -612,6 +623,8 @@ static void park_step(sf_t *s) {
   if (!s->tuned) {
     d = read_at(s, C, CHECK_US);
     s->tuned = 1;
+    if (s->mon) audio(s, 1);
+    hush(s, 0);
   } else {
     s->api->delay_us(PARK_US);
     d = dbm(s);
@@ -623,15 +636,13 @@ static void park_step(sf_t *s) {
     s->parked = 0;
     return;
   }
-  if (!s->hold && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (stale: a zoom) */
+  if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {   /* (stale: a zoom) */
     int i;
-    s->api->fd_write(0x47, AF_MUTE);  /* the speaker amp stays on: no pop */
-    for (i = 0; i < NV; i++)
+    for (i = 0; i < NV; i++)          /* (read_w hushes the speaker; the next read unhushes it) */
       if (s->hz[i]) sweep_bin(s, i);
     sweep_done(s);
     s->tuned = 0;
     s->t_full = s->api->ms();
-    if (s->audio) s->api->fd_write(0x47, AF_FM);
   }
 }
 

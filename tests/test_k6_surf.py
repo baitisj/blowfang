@@ -62,11 +62,12 @@ class Bumpy(Receiver):
 
     def __init__(self, signals, bumps):
         super().__init__(signals)
-        self.bumps, self.now, self.wide = bumps, 0, 1
+        self.bumps, self.now, self.wide, self.tunes = bumps, 0, 1, []
 
     def tune(self, hz, wide, us):
         super().tune(hz, wide, us)
         self.wide = wide
+        self.tunes.append((us, hz))
 
     def rssi(self, us):
         """the narrow filter passes +-6 kHz (the wide one +-12) and settles in ~20 ms (12)"""
@@ -108,6 +109,7 @@ def go(signals, keys, rx_hz=440_600_000, level=7, regs=None, src=SRC, bumps=(), 
     ret, said, regs, writes = run(r, code=(code, entry), tune=m.tune, level=level, lcd=lcd, keypad=keys,
                                   spare=ARENA - 24 - len(code), count=3_000_000_000, rx_hz=rx_hz,
                                   flash={"mem": mem})
+    lcd["tunes"] = m.tunes
     return ret, said, regs, writes, lcd
 
 
@@ -384,6 +386,22 @@ def test_squelch_opens_on_a_signal_and_closes_after_the_hang():
     assert [v for _, v in spk] == [0, 4, 0]
     assert 2_000_000 < spk[1][0] < 2_150_000                 # a check every 16 bins (~70 ms here)
     assert 4_500_000 <= spk[2][0] < 4_700_000                 # 1.5 s after it dropped
+
+
+@need_clang
+def test_speaker_is_off_whenever_the_receiver_retunes():
+    # Jeff 2026-11-10: a buzz from the speaker when it scanned with the audio open. Parked on a
+    # long signal, the refresh sweeps (every 5 s), a side-key seek, and monitor with UP must not
+    # tune with the amp on.
+    sig = [(440_600_000, -90, 1_000_000, FOREVER), (440_850_000, -80, 0, FOREVER)]
+    keys = taps("A", 9_000_000) + taps("*", 11_000_000) + taps("U", 12_000_000) + [(14_000_000, 14_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    spk, tunes = lcd["st"]["spk"], lcd["tunes"]
+    on = [(a, b) for (a, va), (b, _) in zip(spk, spk[1:] + [(lcd["st"]["us"], 0)]) if va]
+    assert len(on) >= 3                                      # opened, a refresh broke it, the jump
+    assert not [t for t, hz in tunes if any(a <= t < b for a, b in on)]
+    gaps = [b2 - b1 for (_, b1), (b2, _) in zip(on, on[1:]) if b2 - b1 < 1_000_000]
+    assert gaps and max(gaps) < 600_000                      # a refresh mutes it for one sweep only
 
 
 @need_clang
