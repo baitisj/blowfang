@@ -57,22 +57,15 @@ uint64_t km_siphash(const uint8_t k[16], const uint8_t *m, unsigned n) {
   return v[0] ^ v[1] ^ v[2] ^ v[3];
 }
 
-/* the header's own checks: the image's length (at most cap), or 0 */
-static unsigned hdr(const uint8_t *a, unsigned cap) {
-  unsigned code = a[4] | a[5] << 8, entry = a[6] | a[7] << 8, total = KM_HDR + code + KM_TAG;
-  if (a[0] != 'K' || a[1] != '6' || a[2] != 'M' || a[3] != KM_ABI || a[12] > KM_LEVEL ||
-      total > cap || entry >= code || (entry & 1))
-    return 0;
-  return total;
-}
-
 /* the whole image is in: is it a module of ours? */
 static int check(const uint8_t *a, unsigned have_bytes, unsigned dl) {
-  unsigned total = hdr(a, have_bytes);
+  unsigned code = a[4] | a[5] << 8, entry = a[6] | a[7] << 8, total = KM_HDR + code + KM_TAG;
   uint32_t serial = (uint32_t)a[8] | (uint32_t)a[9] << 8 | (uint32_t)a[10] << 16 | (uint32_t)a[11] << 24;
-  if (!total || total + dl <= have_bytes) return KM_BAD_HDR;
+  if (a[0] != 'K' || a[1] != '6' || a[2] != 'M' || a[3] != KM_ABI || a[12] > KM_LEVEL ||
+      total > have_bytes || total + dl <= have_bytes || entry >= code || (entry & 1))
+    return KM_BAD_HDR;
   {
-    int t = km_tag_check(a, total - KM_HDR - KM_TAG);
+    int t = km_tag_check(a, code);
     if (t) return t;
   }
   if (serial <= K.serial) return KM_OLD;
@@ -103,14 +96,15 @@ void km_arm(const uint8_t *a, int air) {
 }
 
 int km_again(const uint8_t *a, unsigned cap) {
-  unsigned total = hdr(a, cap);
+  unsigned code = a[4] | a[5] << 8;
   int t;
-  /* a library image or a code page never runs from here */
-  if (!total || a[13]) return KM_BAD_HDR;
-  t = km_tag_check(a, total - KM_HDR - KM_TAG);
+  /* the tag covers the header, so it checked on arrival; a library image or a code page never
+     runs from here */
+  if (KM_HDR + code + KM_TAG > cap || a[13]) return KM_BAD_HDR;
+  t = km_tag_check(a, code);
   if (t) return t;
   km_arm(a, 0);
-  return (int)(total - KM_HDR - KM_TAG);
+  return (int)code;
 }
 
 int km_packet(const uint8_t *payload, int len, void *arena, unsigned arena_bytes) {

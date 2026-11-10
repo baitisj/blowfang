@@ -218,9 +218,11 @@ void km_report_text(uint8_t out[64], uint8_t seq, uint8_t part, uint8_t parts, c
 int km_tag_check(const uint8_t *a, unsigned code);
 /* Run the last module again (Jeff, 2026-11-10: a key re-runs it instead of a resend). The image
    that ran is still at a (the core keeps it until the store is wanted again); this checks its
-   header and its SipHash tag again, so a module that wrote over its own code, or anything else
-   that wrote into the block since, is refused, and arms km_run as a library load does (no serial
-   check, no upload reply). The code length, or KM_BAD_HDR / KM_BAD_TAG / KM_NO_KEY. */
+   SipHash tag again (it covers the header, so the header's own checks hold from its arrival),
+   so a module that wrote over its own code, or anything else that wrote into the block since,
+   is refused, and arms km_run as a library load does (no serial check, no upload reply). A
+   library image or a code page (byte 13 set) is refused. The code length, or KM_BAD_HDR (also:
+   longer than cap) / KM_BAD_TAG / KM_NO_KEY. */
 int km_again(const uint8_t *a, unsigned cap);
 void km_arm(const uint8_t *a, int air);
 /* SipHash-2-4 (Aumasson and Bernstein), for the tag and the tests */

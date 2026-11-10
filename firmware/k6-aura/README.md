@@ -130,7 +130,7 @@ MENU again; EXIT leaves the app.)
 | 9 | auto-play on/off (on by default; MENU still plays) |
 | 0 | The next receive variant (`CFG f2400= reg58= reg2b=`), 11 of them, var=0 to 10: (REG_58 at F/2400, bits ORed into REG_2B) = (3fe1, 0), (3fe9, 0), (3fe9, +0100), (3fe9, +0700), (3ce9, 0), (3de9, 0), (3ee9, 0), (73e9, 0), (3fe1, +0100), (3f09, 0), (3f01, 0). REG_58 per the UV-K5 firmware notes: bits 12:10 RX tone mode (7 = 1200/1800, 4 = 1200/2400, 0 = direct), 9:8 RX gain, 3:1 RX bandwidth (0 = FSK 1.2K, 1 = FFSK 1200/1800, 4 = FSK 2.4K and FFSK 1200/2400). REG_2B: +0100 RX de-emphasis off, +0200 the 3 kHz LPF off, +0400 the 300 Hz HPF off. The REG_58 value applies only at F/2400, so the variants with the 2.4K bandwidth (3fe9 etc., deaf at 1200) can be tried by sending `--set baud=2400 var=N` in one control packet: the revert then lands back at 1200. The REG_2B bits apply to D and F at any baud. Until this image variant 0 was 73e9, which never synced, nor did its relatives (7329, 73e3, 7fe9, 70e9, 63e9) or D/2400; 3fe1 syncs at 2400 with 1200/1800 tones but the bit clock slips |
 | * | clear the message |
-| side key 1 | run the last RAM module again, without sending it over the air again ([docs/k6-modules.md](../../docs/k6-modules.md#run-it-again-side-key-1)) |
+| side key 1 | run the last RAM module again, without sending it over the air again (images with the SPI library; [docs/k6-modules.md](../../docs/k6-modules.md#what-happens)) |
 | # | type a frequency (kHz, six digits; MENU sets it early, EXIT deletes) |
 | PTT | calibration transmit: test packet 0, twice in D and then twice in F, at key 5's baud rate, on the VFO's TX frequency and power |
 
