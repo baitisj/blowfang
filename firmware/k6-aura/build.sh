@@ -311,6 +311,7 @@ aprsfsk        # level 2 (screen at 6, LED at 7), aprsclk behind the chip's own 
 aprsfsk_440    # level 2, aprsfsk on 440.850 for the on-air loopback, every packet's words said
 aprsfskb       # level 2, aprsfsk reading the modem's FIFO all the time (FSK_STREAM)
 aprsfskb_440   # level 2, aprsfskb on 440.850
+aprsfskc_440   # level 2, aprsfskb_440 starting its search again every 59 ms
 aprsfskd_440   # level 2, aprsfskb_440 with the receiver's de-emphasis off
 aprsfsks_440   # level 2, aprsfsk_440 going round eight modem settings
 bandreg        # level 2, patched by tools/k6_hf.py
