@@ -81,7 +81,7 @@ the UV-380 needs the RF mod or another route.
 | FFSK modem (profile F, 1200/1800 Hz, 1800 baud) | ported as `c/common/ffsk_tx.c` (TX). RX waits on an RF -> MCU path |
 | Module loader (`c/k6/k6_mod.c`, SipHash-signed PIC modules) | ports cleanly (Cortex-M4 is a superset of M0); a UV-380 API table instead of the FD6818 calls |
 | EXPLORE, band surf, DMR detect | AT1846S RSSI sweeps instead of FD6818 registers; a DMR decoder can use the HR_C6000 directly |
-| CW ID, PSK31 ident | needed for every test TX; port next to the FFSK sender |
+| CW ID, PSK31 ident | CW ID ported (`c/common/cw_tx.c`, after every burst); PSK31 for carriers still to do |
 | Aura (Rust) | does not carry over |
 
 ## Approach
@@ -138,6 +138,8 @@ can't run yet; it can come later in CI.
 
 - `c/common/pager_tx.[ch]`, `c/common/ffsk_tx.[ch]`, host front end `pager_tx_host`;
   `tests/test_uv380_pager.py` (19 tests).
+- `c/common/cw_tx.[ch]`: the AG7EW Morse ident, keyed as `modem.k6.cw`; the sender appends it
+  to every burst. `tests/test_uv380_cw.py`.
 - `radios/uv380/`: start-up, link scripts for the radio (0x0800C000) and QEMU (0x08000000),
   `board_radio.c` (168 MHz clocks, SysTick, TIM3 PWM + TIM7 + DMA1 stream 2 audio out, RF pins
   held off), `board_qemu.c` (semihosting), `main.c` (the FFSK pager sender), `rf.h` (no driver:

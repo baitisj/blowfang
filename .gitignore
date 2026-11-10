@@ -52,3 +52,4 @@ private/
 *.key
 c/common/pager_tx_host
 radios/uv380/build/
+c/common/cw_tx_host

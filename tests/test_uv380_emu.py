@@ -1,7 +1,8 @@
 """The UV-380 firmware on an emulated STM32F405 (QEMU's netduinoplus2): the QEMU build of
 radios/uv380 reads msg.sot from the host, sends it as K6 pager packets in FFSK (XL, 1800 baud,
 48 kHz) through the same board API the radio uses, and the audio it writes must decode with
-modem.fsk's F receiver (the bench model of the K6's chip receiver) back into the message.
+modem.fsk's F receiver (the bench model of the K6's chip receiver) back into the message, and
+end with the AG7EW Morse ident.
 
 Needs make -C radios/uv380 qemu (arm-none-eabi-gcc) and qemu-system-arm.
 SPDX-License-Identifier: MIT"""
@@ -49,4 +50,12 @@ def test_k6_receiver_decodes_uv380(n):
     assert mid == k6.msg_id_for(frames) and got == frames and good.all()
     # the burst is exactly modem.k6's: lead-in, 16 then 12 preamble bytes, tail
     burst = pager.Air(preamble_bytes=16, later_preamble_bytes=12).burst(prof.pack(frames, mid), 1800)
-    assert abs(len(x) - len(burst) * 8 * 48000 / 1800 - 240) <= 2
+    n_ffsk = int(round(len(burst) * 8 * 48000 / 1800)) + 240
+    ident = k6.cw("AG7EW", 48000)
+    assert abs(len(x) - n_ffsk - len(ident)) <= 250
+    # then the Morse ident on the same carrier, keyed as modem.k6.cw
+    tail = np.abs(x[len(x) - len(ident) - 480:])
+    on = np.convolve(tail, np.ones(96) / 96, "same") > 0.1
+    ref = np.convolve(np.abs(ident), np.ones(96) / 96, "same") > 0.1
+    best = max(np.mean(on[k:k + len(ref)] == ref) for k in range(0, 481, 8))
+    assert best > 0.99

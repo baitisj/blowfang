@@ -17,7 +17,8 @@ COMMON = ../../c/common
 SRC = src/startup.c \
       src/main.c \
       $(COMMON)/pager_tx.c \
-      $(COMMON)/ffsk_tx.c
+      $(COMMON)/ffsk_tx.c \
+      $(COMMON)/cw_tx.c
 
 all: build/uv380.bin
 
