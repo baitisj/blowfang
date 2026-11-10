@@ -7554,10 +7554,10 @@ index 0000000..37404d9
 +}
 diff --git a/src/hal/txdog.rs b/src/hal/txdog.rs
 new file mode 100644
-index 0000000..1bd76b3
+index 0000000..88a7412
 --- /dev/null
 +++ b/src/hal/txdog.rs
-@@ -0,0 +1,385 @@
+@@ -0,0 +1,409 @@
 +//! Crash and stuck-transmitter backstop (2026-11-08: a module overran its stack, the report
 +//! key-up after it hung, and the K6 sent a bare carrier on 440.850 for 16 minutes).
 +//!
@@ -7669,6 +7669,31 @@ index 0000000..1bd76b3
 +    unsafe { write_volatile(a as *mut u32, v) }
 +}
 +
++/// Writes SYSCFG CFGR1, the remap. On the K6 a remap with the prefetch on (MEM_MODE 2 to 3) turns
++/// the prefetch off, and an instruction fetched from a new flash line right after it came back
++/// wrong: on 35e982f, where txdog::arm's write was the last instruction of a 16-byte line, every
++/// armed key-up hard-faulted two instructions on (pc 0800e064, 2026-11-10). Images where a few
++/// more instructions of the same line followed the write ran fine. So the write starts a line
++/// and a short wait (about 100 cycles) runs in the same line before anything is fetched past it.
++/// Every CFGR1 write goes through here.
++#[inline(never)]
++fn remap(v: u32) {
++    unsafe {
++        core::arch::asm!(
++            ".balign 16",
++            "str r1, [r0]",
++            "movs r2, #24",
++            "2:",
++            "subs r2, #1",
++            "bne 2b",
++            in("r0") SYSCFG_CFGR1,
++            in("r1") v,
++            out("r2") _,
++            options(nostack),
++        );
++    }
++}
++
 +/// What the boot before this one left: (kind, a, b), kind 1 = fault (pc, lr), 2 = key-up over
 +/// its limit (ms keyed, limit ms), 0 = nothing
 +pub struct Note(pub u32, pub u32, pub u32);
@@ -7701,13 +7726,13 @@ index 0000000..1bd76b3
 +        }
 +        wr(SRAM0 + 4 * V_HARDFAULT, rd(APP_VEC + 4 * V_HARDFAULT));
 +        wr(SRAM0 + 4 * V_TIM14, tim14 as unsafe extern "C" fn() as usize as u32);
-+        wr(SYSCFG_CFGR1, (cfgr1 & !3) | 3); // SRAM at address 0
++        remap((cfgr1 & !3) | 3); // SRAM at address 0
 +    });
 +    let ok = rd(4 * V_HARDFAULT) == rd(SRAM0 + 4 * V_HARDFAULT)
 +        && rd(4 * V_TIM14) == rd(SRAM0 + 4 * V_TIM14)
 +        && rd(4 * V_HARDFAULT) != rd(BOOT_VEC + 4 * V_HARDFAULT);
 +    if !ok {
-+        wr(SYSCFG_CFGR1, cfgr1); // the bootloader's table again: leave everything as it was
++        remap(cfgr1); // the bootloader's table again: leave everything as it was
 +        return (note, cfgr1, false);
 +    }
 +    BOOT_CFGR1.store(cfgr1, Ordering::Relaxed);
@@ -7724,12 +7749,12 @@ index 0000000..1bd76b3
 +fn apply(armed: bool) {
 +    if armed {
 +        count_wrap(); // a wrap seen at rest is counted here, not again by the interrupt
-+        wr(SYSCFG_CFGR1, (BOOT_CFGR1.load(Ordering::Relaxed) & !3) | 3);
++        remap((BOOT_CFGR1.load(Ordering::Relaxed) & !3) | 3);
 +        wr(NVIC_ICPR, 1 << 19);
 +        wr(NVIC_ISER, 1 << 19);
 +    } else {
 +        wr(NVIC_ICER, 1 << 19);
-+        wr(SYSCFG_CFGR1, BOOT_CFGR1.load(Ordering::Relaxed));
++        remap(BOOT_CFGR1.load(Ordering::Relaxed));
 +        wr(FLASH_ACR, rd(FLASH_ACR) | ACR_PRFTBE);
 +    }
 +}
@@ -7938,8 +7963,7 @@ index 0000000..1bd76b3
 +/// from its own table even on a chip that kept MEM_MODE through a system reset
 +pub fn reset() -> ! {
 +    if LIVE.load(Ordering::Relaxed) {
-+        wr(SYSCFG_CFGR1, BOOT_CFGR1.load(Ordering::Relaxed));
-+        cortex_m::asm::dsb();
++        remap(BOOT_CFGR1.load(Ordering::Relaxed));
 +    }
 +    cortex_m::peripheral::SCB::sys_reset()
 +}
