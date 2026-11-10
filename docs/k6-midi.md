@@ -4,6 +4,8 @@
 side module: it never keys the transmitter, so it needs no ident and no band rules. Jeff asked for
 it on 2026-11-09 ("just for fun"), then for the classic Nokia ring tones.
 
+To use it or swap its songs, see the quick manual: [manual/midi-player.md](manual/midi-player.md).
+
 ## What it sounds like
 
 Four voices are mixed at 16 kHz. Each voice reads a 256-sample wavetable (harmonics 1 to 4 at

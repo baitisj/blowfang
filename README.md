@@ -20,6 +20,7 @@ git clone --recurse-submodules https://github.com/baitisj/blowfang
 - `tools/k6_*`: bench tools (`k6_update.py` flashes, `k6_bench.py` owns the PTT lock and CW ID keeper)
 - `tests/`: host and emulated Cortex-M0 tests; `tests/data/k6/air/` holds on-air logs replayed in CI
 - `docs/k6-*.md`: design notes and bench results, one per subsystem
+- `docs/manual/`: quick manuals for using things on the radio (`midi-player.md`: the MIDI player)
 
 ## The sotto codec
 
