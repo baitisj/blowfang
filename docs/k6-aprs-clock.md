@@ -808,6 +808,28 @@ The same rehearsal as at 14:34Z (`--only 1,2,3,4,5,7,9,10 --repeat 20`, the IC-7
   count: `aprs end ok=141 bad=24 ts=141 lost=0`, the FIFO never run over.
 - The two de-emphasised packets not read are within what a run varies by (19 and 18 of 20).
 
+#### Off the air once more (2026-11-10 16:09 to 16:24Z, 144.390 MHz): the site, not the decoder
+
+`aprsdfsk` of that build for its 15 minutes on 144.390 MHz at hamlet, receive only:
+
+```
+m 14 rssi=-102 pk=-94 pre=35 ok=0
+aprs fsk ms=900030 key=0 pre=37 fake=86 inv=0
+aprs end ok=0 bad=19 ts=0 v=0 lost=0
+sync 3333: 21 packets, 0 with a frame, e=35 d=8;
+sync AAAA: 16 packets, 0 with a frame, e=26 d=15;
+```
+
+- 37 packets started the receiver (21 by 3333, 16 by AAAA: real stations do come both ways
+  round), and none gave a frame.
+- The floor reads -102 dBm and the minutes' peaks -94 to -99 dBm: the packets are 3 to 8 dB
+  over the noise, under an FM receiver's threshold. On the bench the same build reads 137 of
+  140 at -21 dBm and 4 of 20 with noise 12 dB under the audio.
+- The same K6 reads a floor of -131 dBm on 440.850 MHz and about -115 dBm on 131.550 MHz. The
+  2 m noise at this site and antenna is what stands between the K6 and a clock from APRS,
+  and no slicer gets it back. Where it comes from (the antenna's surroundings, or the radio
+  itself) is a check for the bench's owner: the RSSI on 144.390 MHz with the antenna off.
+
 The emulated test (`test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0`) plays the
 bench's own captures to the module behind twelve flags and before 0.1 s of noise, the model's
 FIFO a ring whose empty read gives the word of eight reads before, the chip's clock 2% fast,
