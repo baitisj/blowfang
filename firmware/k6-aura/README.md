@@ -38,7 +38,7 @@ and nothing is written to flash per message. The design and the numbers are in
 and the pager needs 66 KB (30 KB of it is the codebook). All of Aura with VOICE MSG comes out 58 KB
 too big. The pager-only image was 102,228 bytes (20 KB free) with 9,144 bytes of static RAM when
 it first ran; with the codebook in SPI flash it is now about 91 KB (30 KB free). It keeps Aura's drivers, its saved settings and VFO, a frequency entry, and the VOICE MSG
-app, and leaves out the rest: the standby screen and menus, scanning, FM broadcast, SSTV, APRS,
+app, and leaves out the rest: Aura's boot screen and boot tune (since 2026-11-10: they start straight in VOICE MSG, and the FORMAT FLASH? and RELEASE ALL KEYS screens use the small 6x10 font), the standby screen and menus, scanning, FM broadcast, SSTV, APRS,
 satellites, the spectrum and CHIRP programming. To use the radio normally, flash stock Aura back
 (same UPDATE-mode steps). Each image switch is one erase of the MCU's flash. The SPI flash, which
 holds the settings, isn't touched by the switch.
