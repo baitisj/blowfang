@@ -46,7 +46,7 @@ The module scans the keypad matrix itself, as surf.c does.
 | 4 6, or the side keys | Angle (hold to repeat) |
 | 1 3 | Angle, 10 at a time |
 | 2 8, or UP DOWN | Power |
-| 7 9 | Power, 10 at a time |
+| 9 7 | Power, 10 at a time (9 up, 7 down: up on the right) |
 | * # | Previous or next item held |
 | MENU or 5 | Fire |
 | EXIT twice | Leave the game (from the title screen, leave the module) |

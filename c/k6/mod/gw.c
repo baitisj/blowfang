@@ -16,7 +16,7 @@
 
    Keys (scanned from the keypad matrix as surf.c does: the API has no key identity):
      4 6, side keys    angle (held: repeats)        2 8, UP DOWN   power
-     1 3               angle 10 at a time           7 9            power 10 at a time
+     1 3               angle 10 at a time           9 7            power 10 at a time
      * #               previous / next item held    MENU or 5      fire
      EXIT              EXIT twice leaves the game (from the title screen: the module)
    In the shop: UP DOWN (2 8) pick, MENU (5) buys, EXIT done.
@@ -57,6 +57,8 @@
 #define GW_ROUNDS 3             /* a game: best of 3 */
 #endif
 #define FLUSH_MS 250            /* the idle screen's refresh (each flush ~20-40 ms) */
+#define FLY_STEP_MS 62          /* a flight step on the screen: a full-field shot (~65 steps) takes
+                                   about 4 s (Jeff: slow enough to watch the arc) */
 #define NTRAIL 64               /* trail dots kept while a shot flies */
 
 #define RF_HZ 440850000u
@@ -143,7 +145,7 @@ static const uint8_t ROWPIN[6] = {0xFF, 0, 4, 10, 11, 9};
 /* the aiming keys and what they do to the angle and the power (the first 8 repeat when held) */
 static const char AIMK[] = "4A6B2U8D1397";
 static const int8_t AIM_DA[12] = {1, 1, -1, -1, 0, 0, 0, 0, 10, -10, 0, 0};
-static const int8_t AIM_DP[12] = {0, 0, 0, 0, 1, 1, -1, -1, 0, 0, -10, 10};
+static const int8_t AIM_DP[12] = {0, 0, 0, 0, 1, 1, -1, -1, 0, 0, 10, -10};  /* 9 up, 7 down */
 
 /* AG7EW in Morse by code (cwkey.c's table): a start bit, then 0 a dot and 1 a dash */
 static const uint8_t ID[5] = {5, 14, 56, 2, 11};
@@ -790,11 +792,13 @@ static int aim(gc_t *c) {
 static void fly(gc_t *c, int a, int pw, int w) {
   gw_t *g = &c->g;
   int k, i;
+  uint32_t t0;
   say(c, nsp(nsp(nsp(nsp(put(c->ln, "gw shot"), g->mover + 1u), (uint32_t)a), (uint32_t)pw), (uint32_t)w));
   c->t_msg = 0;
   c->nt = 0;
   c->land_x = 0xFF;
   gw_fire(g, a, pw, w);
+  t0 = c->api->ms();               /* paced, a frame a step, so the eye can follow the arc */
   for (k = 0;; k++) {
     int live = gw_step(g);
     for (i = 0; i < GW_NS && !(k & 1); i++) {
@@ -805,12 +809,11 @@ static void fly(gc_t *c, int a, int pw, int w) {
       }
     }
     if (g->nb && c->land_x == 0xFF) c->land_x = g->bx[0];
-    if (g->nb || !(k & 1) || !live) {
-      led(c, g->nb);
-      flush(c, 0);
-      if (g->nb) c->api->delay_us(150000);
-    }
+    led(c, g->nb);
+    flush(c, 0);
+    if (g->nb) c->api->delay_us(150000);
     if (!live) break;
+    while ((int32_t)(c->api->ms() - t0 - (k + 1) * FLY_STEP_MS) < 0) c->api->delay_us(2000);
   }
   led(c, 0);
   c->nt = 0;
