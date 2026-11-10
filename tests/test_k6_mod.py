@@ -100,6 +100,33 @@ def test_loader_refuses():
     assert rs == [0]                                 # not a module packet: the pager's
 
 
+def run_host_again(packets, off, arena=4096):
+    """km_again after the module ran, then again with the byte at off flipped: [(r, armed)] * 2"""
+    inp = "".join(p.hex() + "\n" for p in packets)
+    lines = subprocess.run([HOST, str(arena), str(off)], input=inp, check=True, capture_output=True,
+                           text=True).stdout.split("\n")
+    return [tuple(int(kv.split("=")[1]) for kv in ln.split()) for ln in lines if ln.startswith("again=")]
+
+
+@need_host
+@pytest.mark.parametrize("off", [0, 3, 13, 16, 16 + 150, 16 + 299, 16 + 300 + 7])
+def test_again_runs_the_kept_image_and_refuses_a_changed_one(off):
+    # the key that re-runs the last module (Jeff, 2026-11-10): the image still in the block
+    # checks again; one bit flipped anywhere in the header, the code or the tag is refused
+    pk = k6mod.packets(fake_module(300), 1, 128)
+    first, changed = run_host_again(pk, off)
+    assert first == (300, 1)
+    assert changed[1] == 0 and changed[0] in (-3, -4)
+
+
+@need_host
+def test_again_refuses_a_library_image():
+    code = bytes(random.Random(300).randrange(256) for _ in range(300))
+    img = k6mod.image(code, 0, 1000, KEY, lib=0)     # KM_F_LIB: kept in a slot, never run here
+    first, _ = run_host_again(k6mod.packets(img, 1, 128), 0)
+    assert first == (-3, 0)
+
+
 @need_clang
 def test_hello_builds_position_independent():
     code, entry = k6mod.build(HELLO)
