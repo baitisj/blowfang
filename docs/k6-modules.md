@@ -384,6 +384,17 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   `K6 TXDOG over limit`.
   A fault at rest hangs the radio as before txdog, with the transmitter off (every key-up arms
   it first): `dogfault` now only reboots the radio when it faults keyed.
+- **The remap write starts a flash line (2026-11-10).** On 35e982f (blowfang PR #52, the lean
+  formatter) every armed key-up hard-faulted at once: `K6 FAULT pc lr 0800e064 0800e057`, 5 of 5
+  (APRS runs and `hello --arq`). pc was two instructions after txdog::arm's CFGR1 write (MEM_MODE
+  2 to 3), which in that build was the last instruction of a 16-byte flash line; in 764073d and
+  6f30645, where key-ups work, a few more instructions of the same line followed the write. The
+  remap turns the KD32's prefetch off (4-word buffer), and the next instruction fetched from a new
+  line came back wrong. Now `txdog::remap` does every CFGR1 write: the store starts a 16-byte
+  line and a wait of about 100 cycles runs in the same line before anything past it is fetched.
+  On the K6 (10:15-10:19Z): 764073d keyed up clean, and f56c8db keyed up 4 times with `K6 ARQ
+  sent` and no fault. Any code that changes MEM_MODE or the prefetch while running from flash
+  needs the same care.
 - **SysTick's interrupt off at boot (2026-11-09).** With the prefetch back (ACR 0x32 at rest),
   `fdtime` still timed td_read's pair at 382 us; `fdirq` timed it at 196 us under PRIMASK, with
   a counting loop losing only 3% to interrupts, and read SysTick CSR 0x00010006: the bootloader

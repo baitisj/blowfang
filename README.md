@@ -21,6 +21,8 @@ git clone --recurse-submodules https://github.com/baitisj/blowfang
 - `tests/`: host and emulated Cortex-M0 tests; `tests/data/k6/air/` holds on-air logs replayed in CI
 - `docs/k6-*.md`: design notes and bench results, one per subsystem
 - `docs/manual/`: quick manuals for using things on the radio (`midi-player.md`: the MIDI player)
+- `c/common/`: portable C shared by radios (K6 pager packets and FFSK, transmit side)
+- `radios/uv380/`: the TYT MD-UV380 port (STM32F405), built for the radio and for QEMU; `docs/uv380-port.md` is the study and plan
 
 ## The sotto codec
 

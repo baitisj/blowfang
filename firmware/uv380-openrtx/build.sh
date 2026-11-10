@@ -1,0 +1,56 @@
+#!/bin/sh
+# Build OpenRTX for the UV-380 (TYT MD-UV380 / MD-UV390 / Retevis RT3S) with blowfang's patch:
+# a PAGER mode whose PTT sends the stored sotto 1200 message to a K6 (FFSK pager packets, then
+# the Morse ident). Images land in firmware/uv380-openrtx/out/.
+#
+#   sh firmware/uv380-openrtx/build.sh            the radio: out/openrtx_mduv3x0_wrap.bin (for
+#                                                 TYT's updater, radio_tool or dmr.tools), the
+#                                                 bare .bin and the ELF
+#   sh firmware/uv380-openrtx/build.sh linux      OpenRTX's Linux emulator (out/openrtx_linux)
+#
+# Steps: a fresh clone of OpenRTX at the commit the patch was written against (into
+# firmware/uv380-openrtx/build/openrtx, which this script owns and deletes), git apply
+# uv380-blowfang.patch, copy blowfang's portable transmitter (c/common: pager_tx, ffsk_tx,
+# cw_tx) and blowfang_message.h into openrtx/src/blowfang, then meson.
+#
+# Needs: what OpenRTX's own build needs (openrtx.org, compiling.md). The radio build uses
+# OpenRTX's arm-miosix-eabi toolchain; CI runs it in OpenRTX's published devcontainer image.
+# The Linux build needs meson, libsdl2-dev, libcodec2-dev, libreadline-dev, libusb-1.0-0-dev,
+# cmake (meson builds radio_tool from source).
+#
+# The patch is GPL-3.0-or-later, like OpenRTX; the blowfang sources it adds are MIT.
+set -e
+HERE=$(cd "$(dirname "$0")" && pwd)
+ROOT=$(cd "$HERE/../.." && pwd)
+OPENRTX_REPO=${OPENRTX_REPO:-https://github.com/OpenRTX/OpenRTX}
+OPENRTX_REV=20b4088d216b63aa9ae060f87d3b125c4accdfe8     # master, 2026-11-07
+TARGET=${1:-mduv3x0}
+WORK="$HERE/build/openrtx"
+OUT="$HERE/out"
+
+rm -rf "$WORK"
+mkdir -p "$HERE/build" "$OUT"
+git clone -q "$OPENRTX_REPO" "$WORK"
+git -C "$WORK" checkout -q "$OPENRTX_REV"
+git -C "$WORK" apply "$HERE/uv380-blowfang.patch"
+
+mkdir -p "$WORK/openrtx/src/blowfang"
+for f in pager_tx.c pager_tx.h ffsk_tx.c ffsk_tx.h cw_tx.c cw_tx.h; do
+  cp "$ROOT/c/common/$f" "$WORK/openrtx/src/blowfang/"
+done
+cp "$HERE/blowfang_message.h" "$WORK/openrtx/src/blowfang/"
+
+cd "$WORK"
+if [ "$TARGET" = linux ]; then
+  meson setup build_linux
+  meson compile -C build_linux openrtx_linux
+  cp build_linux/openrtx_linux "$OUT/"
+else
+  meson setup --cross-file cross_cm4.txt build_cm4
+  meson compile -C build_cm4 openrtx_mduv3x0_wrap
+  cp build_cm4/openrtx_mduv3x0_wrap "$OUT/openrtx_mduv3x0_wrap.bin"
+  cp build_cm4/openrtx_mduv3x0_bin "$OUT/openrtx_mduv3x0.bin"
+  cp build_cm4/openrtx_mduv3x0 "$OUT/openrtx_mduv3x0.elf"
+  arm-miosix-eabi-size "$OUT/openrtx_mduv3x0.elf" | tee "$OUT/size.txt"
+fi
+echo "built $TARGET in $OUT"

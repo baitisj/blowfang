@@ -45,15 +45,19 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 | key | does |
 |---|---|
 | UP / DOWN | the middle one channel up / down (the band's step); held, it repeats. The scale moves with it, each bin keeping the level of the old one nearest it |
-| SIDE1 / SIDE2 (orange) | next peak above / below that a settled read confirms (10 dB over the settled floor), on the channel raster; it moves to the middle, and the moved scale is swept once before the audio opens. If the loudest bin of the lens is then another channel, it moves there once more (a wide bin far out is coarse). With none left on screen, the scale's edge becomes the middle and it looks again after the sweep, on up the band until it finds one or reaches the band's edge ("no peak") |
-| BAND or # | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather) |
+| SIDE1 / SIDE2 (orange) | next peak above / below that a settled read confirms (10 dB over the settled floor), on the channel raster; it moves to the middle, and the moved scale is swept once before the audio opens. If the loudest bin of the lens is then another channel, it moves there once more (a wide bin far out is coarse). With none left on screen, the scale's edge becomes the middle and it looks again after the sweep, on up the band. At the band's edge with none found, line 5 says "no peak" and the middle goes back where the search began (Jeff, 2026-11-10) |
+| BAND | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather), AIR (118-137, 25 kHz, AM, receive only). Each starts at its centre with its default step and span |
+| # | next channel step: 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (line 5 says "step 50k" for 1.5 s). The middle stays put; UP / DOWN then move onto the new raster. BAND resets the step to the band's default |
+| 5 | the band's centre |
+| 7 / 9 | fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB. From auto, 9 starts at the top (0 dB) and 7 at -7 dB (Aura's own top AGC step). The title shows it in place of SURF (`G-12 70cm 25k`), line 5 says "gain -12 dB" for 1.5 s |
+| 8 | the receiver's own AGC again ("gain auto") |
 | 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz (defaults: 2m and 1.25m 500 kHz, 70cm and MAR/WX 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
 | * | monitor: audio open on the bar all the time, no sweeping (title says MON) |
-| 0 | hold: no refresh sweeps while a signal plays (title says HOLD) |
+| 0 | hold: no refresh sweeps while a signal plays (title says HLD) |
 | MENU | says the bar's frequency and level on the serial port |
 | EXIT | leave; the module waits for the key's release so the pager doesn't see it |
 
-Screen: the title bar says the band and its channel step; line 1 the bar's frequency and its
+Screen: the title bar says SURF (or the fixed gain, `G-12`), the band and its channel step; line 1 the bar's frequency and its
 level (a settled read, dBm) and RX while the audio is open; the bargraph (63 bins x 2 pixels on
 the lens scale, the bar always in the middle under the caret, a tick over each peak, a dot in the
 top row over each repeater the explorer saved, the axis and its ticks under the bars, nothing
@@ -68,6 +72,26 @@ by about 17 % a bin to 145 kHz at the edge (4 kHz at the lens's edge); at +-100 
 nearly even (2.5 to 4.5 kHz); at +-5 MHz from 1 kHz to about 1 MHz. A bin wider than 20 kHz takes quick reads
 20 kHz apart across its range (halfway to each neighbour) and keeps the loudest and where it was:
 a jump goes to that frequency's channel, not the bin's centre.
+
+**Airband (AM).** BAND's sixth stop is 118-137 MHz in AM: REG_47 AF 7 and the AFC off (REG_73
+bit 4), as Aura's `apply_modulation` does. Aura's AM AGC values (REG_14 0, REG_49 (50 << 7) | 32)
+are left out: with them the RSSI never rose on the IC-7100's AM carrier (docs/k6-if-modem.md,
+2026-11-06), and surf's bars and squelch are all RSSI. Every other band puts back the REG_73 the
+module found at its start, and so does EXIT. Receive only: the module has no transmit calls at
+all, and airband is outside Aura's TX band lock anyway. Airband sits below the K6's 136-174 MHz
+front-end filter, so expect it deafer than 2m (the ACARS listen on 2026-11-09 heard nothing in a
+quiet hour). On a 6.25 or 8.33 kHz raster line 1 shows five decimals (`118.00833`).
+
+**Fixed gain.** REG_7E bit 15 fixes the gain at the AGC table entry its bits 14:12 name (3: REG_13),
+so the module writes REG_13 (LNA short, LNA, mixer and PGA fields) and sets 7E to fixed index 3.
+The dB values are egzumer's per-field table (LNA short 0, LNA -24..0, mixer -8..0, PGA -33..0), not
+measured on the K6. RSSI moves with the gain, so each change measures the settled floor again and
+sweeps afresh. 8 puts back REG_13 and REG_7E as the module found them.
+
+**Keys during a long sweep.** A whole sweep at the wide spans (the one before the audio opens, the
+5 s refresh) and the floor's 8 settled reads hold the loop for up to about 0.5 s. Every read now
+looks at the keypad too, and a key read the same twice in a row is kept for the loop, so a press
+in that time isn't lost (before, a 250 ms press there could vanish).
 
 ## How it works
 
@@ -110,6 +134,19 @@ and a move's copy of the old scale are on the stack (`-fstack-usage`: about 2.1 
 3 KB a module has at its call on the voice images and 6.7 KB on EXPLORE). The code is 4.8 KB
 (surfauto 5.1 KB) before the axis and the narrow lens, 5.3 KB (5.5 KB) after: it needs the voice
 images' 11,776 B module arena (EXPLORE's is 5,376 B).
+
+## Bench build of the 2026-11-10 keys (surfkeys)
+
+`mod-surfkeys.bin` presses its own keys, one every 3 s: 9, then 7 seven times (0 dB down to
+-45 dB), 8 (AGC), BAND three times (airband, AM), #, 5, then BAND three times (back to 70 cm).
+Before each press it says what the last one left, so with an identified carrier from the
+IC-7100 on the start frequency the first nine lines measure the fixed-gain steps on the radio:
+
+```
+k9 440.8500 -70 -137 g1 70cm 25k     key, middle, settled dBm, settled floor, gain (0 auto), band, step
+```
+
+It leaves after the last line (about 54 s). Receive only, like surf.
 
 ## Bench build (surfauto)
 

@@ -292,6 +292,8 @@ fi
 # own API level; the notes say which tool patches it or which doc covers it. Keep the list
 # one module per line, in alphabetical order, so PRs that add modules don't collide:
 K6_MODULES=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' <<'EOF'
+acarsfsk       # level 2, can the chip's FSK modem read ACARS framing (FM control), docs/k6-acars.md
+acarsfsk_am    # level 2, acarsfsk with the test signal in AM: six front ends
 acrprobe       # level 1, does hal::txdog leave the flash prefetch off
 afsweep
 aiscap         # level 2, records AIS bursts for sim/k6if/ais.py, docs/k6-ais.md
@@ -305,10 +307,15 @@ aisships       # level 2 (screen at 6, LED at 7), the ships around the K6 from A
 alarm          # level 8 (screen at 6, LED at 7), the BLOWFANG alarm clock: midi at a UTC time, time set by tools/k6_midi.py alarm
 aprsclk        # level 2 (screen at 6, LED at 7), docs/k6-aprs-clock.md
 aprsclk_440    # level 2, aprsclk on 440.850 for the on-air loopback
+aprsdfsk       # level 2 (screen at 6, LED at 7), aprsclk behind the chip's plain FSK receiver as a sampler (REG_58 00e9), 144.390
+aprsdfsk_440   # level 2, aprsdfsk on 440.850, the FIFO read by its flag and by time in turns
+aprsdfskt      # level 2, aprsdfsk reading the FIFO by time
 aprsfsk        # level 2 (screen at 6, LED at 7), aprsclk behind the chip's own FSK modem (REG_58 33a3), 144.390
 aprsfsk_440    # level 2, aprsfsk on 440.850 for the on-air loopback, every packet's words said
-aprsfskb       # level 2, aprsfsk listening with REG_58 33e3, 33a3 from the sync interrupt
+aprsfskb       # level 2, aprsfsk reading the modem's FIFO all the time (FSK_STREAM)
 aprsfskb_440   # level 2, aprsfskb on 440.850
+aprsfskd_440   # level 2, aprsfskb_440 with the receiver's de-emphasis off
+aprsfsks_440   # level 2, aprsfsk_440 going round sixteen modem settings
 bandreg        # level 2, patched by tools/k6_hf.py
 clkget         # level 8, says the radio's clock (docs/k6-aprs-clock.md)
 ctcssprobe     # level 2, docs/k6-explore-app.md
@@ -316,6 +323,7 @@ cwkey          # level 3
 cwlisten       # level 2
 cwlisten_lo    # level 2, cwlisten with a 400-1300 Hz bank
 cwprobe        # level 2
+dfskcap        # level 2, records the chip's plain FSK receiver on Bell 202 audio (docs/k6-aprs-clock.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md
@@ -374,6 +382,7 @@ spksweep
 stockfont      # level 6, reads the stock fonts from SPI flash itself (READ only), docs/k6-stock-firmware.md
 surf           # level 6, docs/k6-surf.md
 surfauto       # level 6, docs/k6-surf.md
+surfkeys       # level 6, docs/k6-surf.md: Jeff's keys of 2026-11-10 pressed by a script
 vecprobe       # level 1, can Aura catch its own HardFaults (docs/k6-modules.md)
 vectab         # level 1, is 0x08000000's vector table the live one (hal::txdog)
 wsprbcn
