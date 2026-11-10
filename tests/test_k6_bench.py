@@ -325,3 +325,60 @@ def test_a_corrupt_owner_file_means_free(work):
     os.makedirs(os.path.dirname(b.path("owner")), exist_ok=True)
     open(b.path("owner"), "w").write("{not json")
     assert b.owner() is None
+
+
+def _hold(who, cmd, out):
+    """serial-hold in a thread, its return code into out"""
+    t = threading.Thread(target=lambda: out.append(b.serial_hold(who, cmd, poll=0.05)))
+    t.start()
+    for _ in range(100):
+        if b.serial_owner():
+            break
+        time.sleep(0.05)
+    return t
+
+
+def test_serial_reader_lets_go_when_asked(work):
+    out = []
+    t = _hold("dcs", [sys.executable, "-c", "import time; time.sleep(60)"], out)
+    o = b.serial_owner()
+    assert o["who"] == "dcs" and o["pid"] > 0
+    assert b.serial_release("font", wait=10) is True
+    t.join(10)
+    assert out == [0] and b.serial_owner() is None
+    assert not os.path.exists(b.path("serial_release"))
+    log = open(b.path("txlog")).read()
+    assert "serial reader started by dcs" in log and "released for font" in log
+
+
+def test_one_serial_reader_at_a_time(work):
+    out = []
+    t = _hold("dcs", [sys.executable, "-c", "import time; time.sleep(60)"], out)
+    with pytest.raises(SystemExit, match="dcs reads the port"):
+        b.serial_hold("aprs", [sys.executable, "-c", "pass"])
+    b.serial_release("aprs", wait=10)
+    t.join(10)
+
+
+def test_serial_reader_that_ends_frees_the_port(work):
+    assert b.serial_hold("dcs", [sys.executable, "-c", "raise SystemExit(3)"], poll=0.05) == 3
+    assert b.serial_owner() is None
+    assert b.serial_release("font", wait=1) is True
+
+
+def test_a_stale_serial_owner_file_means_free(work):
+    b._put_json("serial_owner", {"who": "dead", "pid": 1, "cmd": "x", "since": 0})
+    open(b.path("serial_lock"), "a").close()
+    assert b.serial_owner() is None
+    assert b.serial_release("font", wait=1) is True
+
+
+def test_an_old_release_request_does_not_stop_a_new_reader(work):
+    b._put_json("serial_release", {"by": "old", "at": 0})
+    out = []
+    t = _hold("dcs", [sys.executable, "-c", "import time; time.sleep(60)"], out)
+    time.sleep(0.3)
+    assert b.serial_owner() is not None
+    b.serial_release("font", wait=10)
+    t.join(10)
+    assert out == [0]

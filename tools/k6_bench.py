@@ -17,6 +17,11 @@ they share. Every tool that keys the IC-7100 goes through here (docs/hamlet-perm
   python3 tools/k6_bench.py claim WHO MIN WHAT  hold the bench for MIN minutes (WHO: a short name,
                                                such as the thread's; again by WHO extends it)
   python3 tools/k6_bench.py release WHO        give it back (--force: whoever holds it)
+  python3 tools/k6_bench.py serial-hold WHO -- CMD...   run the one /dev/ttyUSB2 reader (a logger) as
+                                               WHO, until it ends or someone asks for the port
+  python3 tools/k6_bench.py serial-owner       who reads /dev/ttyUSB2 (WHO, pid, command, since)
+  python3 tools/k6_bench.py serial-release WHO   ask the reader to let go and wait until it has
+                                               (--wait S, 30): no kill across sessions needed
 
 What they share, under $BLOWFANG_WORK/state/ (it outlives reboots, unlike a session's /tmp):
   ptt.lock          flock: one keyer at a time, data or CW ID
@@ -27,6 +32,9 @@ What they share, under $BLOWFANG_WORK/state/ (it outlives reboots, unlike a sess
   reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset), XL then L
   stop.wav          one burst of the module stop signal: PSK31 'AG7EW STOP', 1000 Hz, level 0.3
   bench.owner       who holds the bench and until when (JSON: who, what, since, until; epoch s)
+  serial.lock       flock, held by serial-hold for as long as its reader runs
+  serial.owner      that reader (JSON: who, pid, cmd, since); stale once serial.lock is free
+  serial.release    a request to let go of the port (JSON: by, at); serial-hold watches for it
 and $BLOWFANG_WORK/logs/k6-cwid.txt, one line per CW ID (~/k6-cwid.txt links there).
 
 The bench owner: a session that will use the radios for a while claims the bench first. While a
@@ -39,6 +47,12 @@ The keeper (FCC 97.119): a session is active while a data TX ended less than 10 
 active, it IDs when 9 min have passed since the last ID; 2 min after the last data TX it sends a
 final ID unless one came after it (but not for a TX over 30 min old, such as one from before a
 reboot). It only keys on 70 cm or 2 m, never anywhere else.
+
+The K6 cable's one reader: /dev/ttyUSB2 takes one reader (two split the bytes) and k6_update
+needs it free to flash. A thread runs its logger under serial-hold; another thread that needs the
+port (a flash, its own logger) runs serial-release, and the holder's own serial-hold stops its
+child and exits, so no session ever has to kill another session's process (which a session's
+permission check refuses). The holder's log file stays where it is.
 
 Standard library only, so the copy in $BLOWFANG_WORK/bin keeps working whatever commit ~/blowfang has
 checked out. Opens no serial port: PTT goes through rigctld (/dev/ttyUSB0), never /dev/ttyUSB2.
@@ -88,7 +102,9 @@ def path(name):
             "cwid_wav": os.path.join(st, "cwid.wav"), "reset_wav": os.path.join(st, "reset.wav"),
             "keeper": os.path.join(st, "idkeeper.pid"), "owner": os.path.join(st, "bench.owner"),
             "cwid_log": os.path.join(w, "logs", "k6-cwid.txt"), "stop_wav": os.path.join(st, "stop.wav"),
-            "bin": os.path.join(w, "bin")}[name]
+            "bin": os.path.join(w, "bin"), "serial_lock": os.path.join(st, "serial.lock"),
+            "serial_owner": os.path.join(st, "serial.owner"),
+            "serial_release": os.path.join(st, "serial.release")}[name]
 
 
 def repo():
@@ -211,6 +227,113 @@ def release(who, force=False, now=None):
         os.remove(p)
         _append("txlog", f"{now:.3f} {now:.3f} bench released by {who} (held by {o['who']})")
     return True
+
+
+# ---- the K6 cable's one reader (/dev/ttyUSB2) ----
+
+SERIAL_POLL_S = 0.5
+
+
+def _json(name):
+    try:
+        return json.load(open(path(name)))
+    except (OSError, ValueError):
+        return None
+
+
+def _put_json(name, value):
+    p = path(name)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(value, f)
+    os.replace(tmp, p)
+
+
+def _unlink(name):
+    with contextlib.suppress(OSError):
+        os.remove(path(name))
+
+
+def serial_owner():
+    """the running reader as a dict (who, pid, cmd, since), or None (no reader, or a stale file
+    from one that died: serial.lock is free then)"""
+    p = path("serial_lock")
+    if not os.path.exists(p):
+        return None
+    with open(p, "a") as lk:
+        try:
+            fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return _json("serial_owner") or {"who": "?", "pid": 0, "cmd": "?", "since": 0}
+        fcntl.flock(lk, fcntl.LOCK_UN)
+    return None
+
+
+def serial_hold(who, cmd, poll=SERIAL_POLL_S, term_s=5.0):
+    """run `cmd` (the reader) as `who` until it exits or a serial-release request comes; returns
+    its exit code, or 0 when it was asked to let go"""
+    if not who or any(c.isspace() for c in who):
+        raise SystemExit("serial-hold: WHO is one short word, such as the thread's name")
+    if not cmd:
+        raise SystemExit("serial-hold: give the reader's command after --")
+    p = path("serial_lock")
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    lk = open(p, "a")
+    try:
+        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        o = serial_owner() or {}
+        lk.close()
+        raise SystemExit(f"serial-hold: {o.get('who', '?')} reads the port (pid {o.get('pid', '?')}); "
+                         f"ask with: k6_bench.py serial-release {who}")
+    _unlink("serial_release")                   # a request made before we started is not for us
+    child = subprocess.Popen(cmd)
+    now = time.time()
+    _put_json("serial_owner", {"who": who, "pid": child.pid, "cmd": " ".join(cmd), "since": round(now, 3)})
+    _append("txlog", f"{now:.3f} {now:.3f} serial reader started by {who}: {' '.join(cmd)}")
+    rc, why = None, "ended"
+    try:
+        while rc is None:
+            rc = child.poll()
+            if rc is None and os.path.exists(path("serial_release")):
+                r = _json("serial_release") or {}
+                why = f"released for {r.get('by', '?')}"
+                child.terminate()
+                try:
+                    child.wait(term_s)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait()
+                rc = 0
+                break
+            if rc is None:
+                time.sleep(poll)
+    finally:
+        if child.poll() is None:
+            child.terminate()
+            child.wait()
+        _unlink("serial_owner")
+        _unlink("serial_release")
+        now = time.time()
+        _append("txlog", f"{now:.3f} {now:.3f} serial reader of {who} stopped ({why})")
+        fcntl.flock(lk, fcntl.LOCK_UN)
+        lk.close()
+    return rc
+
+
+def serial_release(by, wait=30.0, poll=0.2):
+    """ask the running reader to let go and wait until it has; True when the port is free"""
+    if serial_owner() is None:
+        _unlink("serial_release")
+        return True
+    _put_json("serial_release", {"by": by, "at": round(time.time(), 3)})
+    end = time.time() + wait
+    while time.time() < end:
+        if serial_owner() is None:
+            return True
+        time.sleep(poll)
+    return False
 
 
 # ---- the PTT lock ----
@@ -479,6 +602,8 @@ def cmd_status(a):
     pid = keeper_pid()
     print(f"keeper        {'running, pid ' + pid if pid else 'NOT running'}")
     print(f"PTT lock      {'free' if lock_free() else 'held (someone is keying)'}")
+    so = serial_owner()
+    print(f"serial reader {so['who'] + ' (pid ' + str(so['pid']) + ')' if so else 'none through serial-hold'}")
     o = owner(now)
     print(f"bench owner   {owner_line(o, now) if o else 'nobody (free)'}")
 
@@ -497,6 +622,26 @@ def cmd_claim(a):
 
 def cmd_release(a):
     print("released" if release(a.who, a.force) else "nobody held the bench")
+
+
+def cmd_serial_owner(a):
+    o = serial_owner()
+    print(f"{o['who']} (pid {o['pid']}, since {utc(float(o['since'] or 0))} UTC): {o['cmd']}" if o
+          else "nobody reads /dev/ttyUSB2 through serial-hold")
+
+
+def cmd_serial_hold(a):
+    cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
+    return serial_hold(a.who, cmd)
+
+
+def cmd_serial_release(a):
+    o = serial_owner()
+    if serial_release(a.who, a.wait):
+        print(f"the port is free{' (' + o['who'] + ' let go)' if o else ''}")
+        return 0
+    print(f"{o['who'] if o else '?'} did not let go in {a.wait:g} s", file=sys.stderr)
+    return 1
 
 
 def cmd_send(a):
@@ -680,6 +825,15 @@ def main(argv=None):
     r.add_argument("who")
     r.add_argument("--force", action="store_true", help="end anyone's claim (Jeff, or a dead session's)")
     r.set_defaults(fn=cmd_release)
+    sh = sub.add_parser("serial-hold", help="run the one /dev/ttyUSB2 reader until asked to let go")
+    sh.add_argument("who")
+    sh.add_argument("cmd", nargs=argparse.REMAINDER, help="-- then the reader's command")
+    sh.set_defaults(fn=cmd_serial_hold)
+    sub.add_parser("serial-owner", help="who reads /dev/ttyUSB2").set_defaults(fn=cmd_serial_owner)
+    sr = sub.add_parser("serial-release", help="ask the reader to let go of /dev/ttyUSB2")
+    sr.add_argument("who", help="who asks (logged)")
+    sr.add_argument("--wait", type=float, default=30.0, help="s to wait for it (30)")
+    sr.set_defaults(fn=cmd_serial_release)
     n = sub.add_parser("install")
     n.add_argument("--unit", action="store_true", help="also write ~/.config/systemd/user/k6-idkeeper.service")
     n.set_defaults(fn=cmd_install)
