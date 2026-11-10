@@ -2,12 +2,13 @@
 
    The screen is a bargraph of signal strength (Y) across frequency (X): 63 bins, 2 pixels each,
    drawn as the level-6 waterfall bitmap (30 rows of 128 pixels, y = 21-50). The listening
-   frequency is always the middle bin (x = 62-63), a blinking bar (it flips to inverse about 2.5
-   times a second) with a caret above it, and the scale moves with it. The scale is a lens (Jeff,
+   frequency is always the middle bin (x = 62-63), its bar drawn like the others with a caret
+   above it (it blinked until 2026-11-10; Jeff: no purpose), and the scale moves with it. The scale is a lens (Jeff,
    2026-11-09): the 8 bins each side of the middle are 2.5 kHz apart (+-20 kHz, a quarter of the
    screen), and further out each bin's step grows by the same amount, so the last of the 31 each
-   side reaches the span (1 / 3: +-100 kHz to +-5 MHz). The lens's bins read with the narrow
-   filter (Jeff: "narrow it a bit"), the rest with the wide one. Under the bars an axis line has
+   side reaches the span (1 / 3: +-100 kHz to +-5 MHz). Every bin reads with the wide filter (the
+   narrow one, 2026-11-09, gave the lens a flat top and a lower floor than the rest; Jeff
+   2026-11-10: wide again). Under the bars an axis line has
    ticks as on log paper, every 5 kHz to 20 kHz, every 10 kHz to 100 kHz, every 100 kHz to 1 MHz
    and every 1 MHz, taller at 20 kHz, 100 kHz and 1 MHz (Jeff: "axis tic marks to help understand
    the frequency intervals"); line 5 labels it "-1M   -20k +20k   +1M" (the span at each end, the
@@ -82,7 +83,6 @@
 #define AX 27                   /* the axis: its line, then ticks in rows 28 (all) and 29 (major) */
 #define BARH (AX - BAR0)
 #define SETTLE_US 3000          /* a sweep read after its tune (Aura's spectrum, wide) */
-#define SETTLE_N_US 5000        /* the same with the narrow filter (it settles in ~20 ms, not 12) */
 #define CHECK_US 12000          /* a settled read */
 #define CHK_MS 70               /* sweeping: a check of the bar's channel this often */
 #define SUB_HZ 20000u           /* a wide bin: one quick read this far apart across it */
@@ -148,7 +148,7 @@ typedef struct {
   uint32_t t_flush, t_open, t_full, t_sfl, t_msg, t_key, t_rep, t_auto, t_chk;
   int next, pend, sj, sweeps;
   int sfl, sel_dbm;
-  uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, blink, key, raw, full, refine, stale;
+  uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, key, raw, full, refine, stale;
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x 2.5 kHz */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
@@ -231,15 +231,13 @@ static void hush(sf_t *s, int on) {
   wr(GPIOB + (on ? BRR : BSRR), SPK);
 }
 
-/* the level at hz in dBm, us after its tune (wide: the wide filter, else the narrow) */
-static int read_w(sf_t *s, uint32_t hz, uint32_t us, int wide) {
+/* the level at hz in dBm, us after its tune (the wide filter) */
+static int read_hz(sf_t *s, uint32_t hz, uint32_t us) {
   hush(s, 1);
-  s->api->tune(hz, wide);
+  s->api->tune(hz, WIDE);
   s->api->delay_us(us);
   return dbm(s);
 }
-
-static int read_hz(sf_t *s, uint32_t hz, uint32_t us) { return read_w(s, hz, us, WIDE); }
 
 static int read_at(sf_t *s, int i, uint32_t us) { return read_hz(s, s->hz[i], us); }
 
@@ -522,9 +520,7 @@ static void sweep_bin(sf_t *s, int i) {
   uint32_t lo, hi, f, at = s->hz[i];
   int r, o = s->lvl[i], v;
   cov(s, i, &lo, &hi);
-  if (dist(i) <= KI) {
-    r = read_w(s, at, SETTLE_N_US, 0);   /* the lens: the narrow filter (Jeff 2026-11-09) */
-  } else if (hi - lo <= SUB_HZ) {
+  if (hi - lo <= SUB_HZ) {                 /* the lens and bins up to 20 kHz wide: one read */
     r = read_at(s, i, SETTLE_US);
   } else {
     for (r = -999, f = lo + SUB_HZ / 2; f < hi; f += SUB_HZ)
@@ -638,7 +634,7 @@ static void park_step(sf_t *s) {
   }
   if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {   /* (stale: a zoom) */
     int i;
-    for (i = 0; i < NV; i++)          /* (read_w hushes the speaker; the next read unhushes it) */
+    for (i = 0; i < NV; i++)          /* (read_hz hushes the speaker; the next read unhushes it) */
       if (s->hz[i]) sweep_bin(s, i);
     sweep_done(s);
     s->tuned = 0;
@@ -705,7 +701,6 @@ static void draw(sf_t *s) {
   int i, r, x, k;
   char *p;
   s->t_flush = s->now;
-  s->blink ^= 1;
   for (i = 0; i < 16 * ROWS; i++) b[i] = 0;
   for (i = 0; i < NV; i++) {
     if (!s->hz[i]) continue;
@@ -734,8 +729,6 @@ static void draw(sf_t *s) {
   }
   for (r = 0; r < 3; r++)
     for (i = x - 2 + r; i <= x + 3 - r; i++) px(b, i, r + 1);
-  if (s->blink)
-    for (r = BAR0; r < AX; r++) b[16 * r + (x >> 3)] ^= (uint8_t)(0xC0 >> (x & 7));
 
   p = put(s->ln, "SURF ");
   p = put(p, s->bd->name);

@@ -506,8 +506,8 @@ when a reset is acceptable. If it holds, `memory.x` can grow by 2720 bytes: the 
 ## Band surfing (surf)
 
 `c/k6/mod/surf.c` (2026-11-08, level 6): a bargraph of signal strength, the listening frequency
-a blinking bar with a caret, always in the middle of a lens scale (2026-11-09: 2.5 kHz bins within
-+-20 kHz with the narrow filter, wider ones out to a span of +-100 kHz to +-5 MHz, an axis with
+a bar with a caret (steady since 2026-11-10), always in the middle of a lens scale (2026-11-09:
+2.5 kHz bins within +-20 kHz, all bins on the wide filter since 2026-11-10, wider ones out to a span of +-100 kHz to +-5 MHz, an axis with
 log-paper ticks; it needs a voice image's arena), the side keys jumping from peak to
 peak, UP/DOWN stepping a channel, BAND/zoom/monitor keys. It listens first (sweeps only while the bar's channel is
 quiet) and scans the keypad matrix itself, since the API has no key identity. It marks the

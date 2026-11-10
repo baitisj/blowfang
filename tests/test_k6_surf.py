@@ -192,11 +192,13 @@ def test_bench_build_surfs_by_itself_and_wraps():
     assert f is not None and len(f["heights"]) == NV
     last = lcd["frames"][-1]
     same = sum(height(f, i) == height(last, i) for i in range(NV))
-    assert same >= NV - 4, same                             # (the blinking bar, a last sweep)
-    # it ends hunting up to the band's top: the bins past 450 MHz say '-' and draw nothing
+    assert same >= NV - 4, same                             # (a last sweep)
+    # it ends near a band edge (the top while hunting, or the bottom after the wrap): the bins past
+    # it say '-' and draw nothing, the rest draw
     cen = float(next(ln for ln in said if ln.startswith("bar ")).split()[1]) * 1e6
-    out = [i for i, h in enumerate(scale(round(cen))) if not h]
-    assert out and all(f["heights"][i] == 0 for i in out) and all(f["heights"][i] >= 1 for i in range(C + 1))
+    sc = scale(round(cen))
+    out = [i for i, h in enumerate(sc) if not h]
+    assert out and all(f["heights"][i] == 0 for i in out) and all(f["heights"][i] >= 1 for i, h in enumerate(sc) if h)
 
 
 @need_clang
@@ -229,15 +231,14 @@ def test_bargraph_peaks_side_keys_and_audio():
     on = at(fr, 3_700_000)
     assert on["text"][1] == "440.8500 -70dBm RX" and caret(on) == C
     assert on["text"][5] == labels(400)
-    # the lens: the carrier fills the middle bins, 2.5 kHz apart, within the narrow filter
-    # (+-6 kHz), and no further
-    assert all(height(on, i) >= 18 for i in (C - 2, C - 1, C + 1, C + 2))
-    assert all(height(on, i) <= 2 for i in range(C - KI, C + KI + 1) if abs(i - C) >= 3)
+    # the lens: the carrier fills the middle bins, 2.5 kHz apart, within the wide filter
+    # (+-12 kHz), and no further (the narrow one, until Jeff saw its flat top on 2026-11-10: +-6)
+    assert all(height(on, i) >= 18 for i in range(C - 4, C + 5))
+    assert all(height(on, i) <= 2 for i in range(C - KI, C + KI + 1) if abs(i - C) >= 5)
     assert at(fr, 5_100_000)["text"][1] == "441.2000 -95dBm RX"
-    # the listening bar blinks: its column flips between frames
+    # the listening bar is drawn like the others, steady (it blinked until Jeff, 2026-11-10)
     a, b = on, fr[fr.index(on) + 1]
-    ha, hb = height(a, C), height(b, C)
-    assert max(ha, hb) >= 20 and min(ha, hb) <= 4
+    assert height(a, C) >= 20 and abs(height(a, C) - height(b, C)) <= 2
 
 
 @need_clang

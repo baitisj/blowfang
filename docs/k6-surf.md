@@ -9,8 +9,10 @@ the screen and the scale moves with it. The scale is a lens: within +-20 kHz of 
 bin is 2.5 kHz wide (16 bins, a quarter of the screen), and further out each bin's step grows by
 the same amount, so the last bin each side lands on the span (+-100 kHz to +-5 MHz, keys 1 and 3).
 Each wide bin is the loudest of quick reads 20 kHz apart across its range, so a carrier between
-two bin centres still shows. The lens's bins read with the narrow filter (Jeff: "narrow it a
-bit"; 5 ms after the tune, as it settles more slowly), so a carrier fills about 5 of them, not 8.
+two bin centres still shows. Every bin reads with the wide filter, so a carrier fills about 9 of
+the lens's bins (+-12 kHz) as a rounded hump. The narrow filter (2026-11-09) gave the lens a flat
+top and a floor lower than the outer bins (one early read through the narrower filter against
+the loudest of several), and Jeff, seeing it on the radio on 2026-11-10, chose the wide one.
 An axis under the bars has ticks as on log paper (every 5 kHz to 20 kHz, 10 kHz to 100 kHz,
 100 kHz to 1 MHz, then every 1 MHz; taller at 20 kHz, 100 kHz and 1 MHz), so the squeeze toward
 the ends shows as ticks crowding together, and line 5 labels it: `-1M   -20k +20k   +1M`.
