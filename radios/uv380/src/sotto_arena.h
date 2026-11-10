@@ -8,7 +8,7 @@
  * every block has been freed both regions start again from empty.
  *
  * The 8 kHz sotto 1200 encoder (37.5 KB) and decoder (1.2 KB) fit the CCM alone; the 16 kHz
- * encoder (84 KB) spills its later blocks into SRAM.
+ * encoder (55.6 KB) when the rest of the CCM leaves room; otherwise its later blocks go to SRAM.
  *
  * SPDX-License-Identifier: MIT */
 #ifndef UV380_SOTTO_ARENA_H

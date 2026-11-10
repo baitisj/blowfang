@@ -13,7 +13,7 @@ file `msg.raw` on the host is encoded on the emulated radio and then sent;
 `tests/test_uv380_codec.py` checks that the K6 receiver model gets exactly the bits the x86
 encoder writes. The radio has no microphone path to the MCU yet, so it does not encode live
 speech. Cycle counts come from sotto's Cortex-M4 bench (QEMU is not cycle-accurate): the 8 kHz
-encoder's worst 40 ms call is about 115 MHz of the 168.
+encoder's worst 40 ms call is about 70 MHz of the 168.
 
 ```sh
 sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm
