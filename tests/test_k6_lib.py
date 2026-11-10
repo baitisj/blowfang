@@ -7,6 +7,7 @@ a page; an old slot's serial doesn't open a replay. Needs make -C c/k6 kl_host.
 SPDX-License-Identifier: MIT"""
 import os
 import random
+import struct
 import subprocess
 import sys
 
@@ -148,3 +149,31 @@ def test_tools_ask_for_the_library():
     assert img[13] == k6mod.LIB_FLAG and img[15] == 7
     plain = k6mod.image(code(100), 0, 1, KEY)
     assert plain[13] == 0 and plain[15] == 0
+
+
+def page_image(n=600, serial=3000, slot=10, seed=5):
+    """a code page (tools/k6_pages.py): its first word, then code; entry 0"""
+    body = struct.pack("<I", 0x0C01504B) + code(n - 4, seed)
+    return k6mod.image(body, 0, serial, KEY, lib=slot, page=True)
+
+
+def test_page_installs_and_loads_without_arming():
+    img = page_image()
+    rows, _, rules = run(pkts(img) + ["info 10", "page 10", "load 10"])
+    inst, info, page, load = finals(rows)
+    assert inst == {"r": KM_READY, "armed": 0, "install": len(img)}   # kept, never run
+    assert info["flags"] == k6mod.LIB_FLAG | k6mod.PAGE_FLAG
+    assert page == {"r": 600, "armed": 0, "code": 0x0C01504B}           # never armed
+    assert load["r"] == KL_BAD_HDR and load["armed"] == 0                # never run as a module
+    assert rules == []
+
+
+def test_module_is_not_a_page_and_worn_page_is_refused():
+    mod = lib_image(slot=3)
+    pg = page_image()
+    rows, _, _ = run(pkts(mod) + pkts(pg, 2) + ["page 3", f"flip {BASE + 10 * SLOT + 200:x}", "page 10"])
+    _, _, page3, page10 = finals(rows)
+    assert page3["r"] == KL_BAD_HDR and page3["armed"] == 0
+    assert page10["r"] == KL_BAD_TAG and page10["armed"] == 0
+    with pytest.raises(ValueError):
+        k6mod.image(code(100), 0, 1, KEY, page=True)    # a page goes into a slot
