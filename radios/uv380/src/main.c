@@ -15,6 +15,7 @@
 #include "../../../c/common/pager_tx.h"
 #include "board.h"
 #include "rf.h"
+#include "uv_api.h"
 
 #define FS 48000
 #define BAUD 1800
@@ -27,6 +28,40 @@ static pt_air air;
 static ffsk_tx mod;
 static cw_tx cw;
 
+static char *put_int(char *p, int v) {
+    char d[12];
+    int n = 0;
+    unsigned u = v < 0 ? 0u - (unsigned)v : (unsigned)v;
+    if (v < 0)
+        *p++ = '-';
+    do
+        d[n++] = (char)('0' + u % 10);
+    while (u /= 10);
+    while (n)
+        *p++ = d[--n];
+    return p;
+}
+
+/* QEMU: a signed module in mod.bin on the host runs instead of the pager (tests/test_uv380_mod.py).
+   The radio has no way to take one yet (host_read_file fails there). */
+static void run_host_module(void) {
+    int n = host_read_file("mod.bin", uvm_arena(), UVM_ARENA);
+    if (n <= 0)
+        return;
+    int refused, ret = uvm_load_run((unsigned)n, &refused);
+    char line[48], *p = line;
+    for (const char *s = "uv380: mod r="; *s; s++)
+        *p++ = *s;
+    p = put_int(p, refused ? refused : 3);
+    for (const char *s = " ret="; *s; s++)
+        *p++ = *s;
+    p = put_int(p, ret);
+    *p++ = '\n';
+    *p = 0;
+    host_log(line);
+    host_exit(0);
+}
+
 static unsigned test_pattern(uint8_t *m) {
     for (unsigned i = 0; i < 6 * 100; i++)
         m[i] = (uint8_t)(i * 37u + 11u);
@@ -35,6 +70,7 @@ static unsigned test_pattern(uint8_t *m) {
 
 int main(void) {
     board_init();
+    run_host_module();
     int n = host_read_file("msg.sot", msg, sizeof msg);
     unsigned total = n > 0 ? (unsigned)n / 6 : test_pattern(msg);
     static const pt_profile pr = PT_PROFILE_XL(PT_MAGIC_1200);

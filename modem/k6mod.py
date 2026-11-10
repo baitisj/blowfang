@@ -86,16 +86,19 @@ def read_key(path):
     return k
 
 
-def build(src, cc="clang", ld="ld.lld", objcopy="llvm-objcopy", nm="llvm-nm"):
-    """C source -> (code bytes, entry offset). Refuses code that isn't position-independent."""
+def build(src, cc="clang", ld="ld.lld", objcopy="llvm-objcopy", nm="llvm-nm", cflags=None, link=None,
+          entry_sym=None):
+    """C source -> (code bytes, entry offset). Refuses code that isn't position-independent.
+    cflags, link, entry_sym: another radio's (modem.uv380mod); the K6's by default."""
+    cflags, link, entry_sym = cflags or CFLAGS, link or LINK, entry_sym or ENTRY
     with tempfile.TemporaryDirectory() as d:
         obj = os.path.join(d, "m.o")
-        flags = [("-O" + source_opt(src)) if f == "-Os" else f for f in CFLAGS]
+        flags = [("-O" + source_opt(src)) if f == "-Os" else f for f in cflags]
         subprocess.run([cc, *flags, "-c", src, "-o", obj], check=True)
         bins = []
         for base in (0, 0x1000):
             elf = os.path.join(d, f"m{base}.elf")
-            subprocess.run([ld, "-T", LINK, "--defsym", f"MODULE_BASE={base}", "--gc-sections",
+            subprocess.run([ld, "-T", link, "--defsym", f"MODULE_BASE={base}", "--gc-sections",
                             "--no-undefined", obj, "-o", elf], check=True)
             out = os.path.join(d, f"m{base}.bin")
             subprocess.run([objcopy, "-O", "binary", "--only-section=.text", elf, out], check=True)
@@ -104,7 +107,7 @@ def build(src, cc="clang", ld="ld.lld", objcopy="llvm-objcopy", nm="llvm-nm"):
                 syms = subprocess.run([nm, elf], check=True, capture_output=True, text=True).stdout
         if bins[0] != bins[1]:
             raise ValueError(f"{src}: not position-independent (linked at 0 and 0x1000 the bytes differ)")
-        entry = next(int(ln.split()[0], 16) for ln in syms.splitlines() if ln.split()[-1] == ENTRY)
+        entry = next(int(ln.split()[0], 16) for ln in syms.splitlines() if ln.split()[-1] == entry_sym)
     return bins[0], entry
 
 
@@ -121,13 +124,14 @@ def source_opt(src):
     return m.group(1) if m else "s"
 
 
-def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False):
+def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, magic=b"K6M"):
     """Header + code + SipHash tag (k6_mod.h). tlm: text parts of say lines the K6 sends back
     after the module runs, when the upload asks for a reply (packets(..., arq=True)). lib: a
     slot of the K6's SPI module library (c/k6/k6_lib.h, 0..LIB_SLOTS-1): the K6 keeps the
     module there (flag LIB_FLAG) instead of running it, and runs it later on control action lib.
     page (with lib): a code page (PAGE_FLAG, tools/k6_pages.py): kept in the slot, never run as a
-    module; the image that it was linked against loads it itself."""
+    module; the image that it was linked against loads it itself. magic: the radio whose API
+    table the module is for (b"U3M" the UV-380, modem.uv380mod)."""
     code = bytes(code)
     if entry >= len(code) or entry & 1 or len(code) > 0xFFFF:
         raise ValueError("bad entry offset or code length")
@@ -140,7 +144,9 @@ def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False):
     if page and lib is None:
         raise ValueError("a page goes into a library slot")
     flags, slot = (0, 0) if lib is None else (LIB_FLAG | (PAGE_FLAG if page else 0), lib)
-    hdr = b"K6M" + bytes([ABI]) + struct.pack("<HHIBBBB", len(code), entry, serial & 0xFFFFFFFF, level,
+    if len(magic) != 3:
+        raise ValueError("the magic is three bytes")
+    hdr = bytes(magic) + bytes([ABI]) + struct.pack("<HHIBBBB", len(code), entry, serial & 0xFFFFFFFF, level,
                                               flags, tlm, slot)
     body = hdr + code
     return body + struct.pack("<Q", siphash24(key, body))
