@@ -366,6 +366,7 @@ rxmap          # level 2, its parameter block patched by tools/k6_rxmap.py
 scan           # level 2, patched by tools/k6_scan.py
 settle         # level 2
 spksweep
+stockfont      # level 6, reads the stock fonts from SPI flash itself (READ only), docs/k6-stock-firmware.md
 surf           # level 6, docs/k6-surf.md
 surfauto       # level 6, docs/k6-surf.md
 vecprobe       # level 1, can Aura catch its own HardFaults (docs/k6-modules.md)
