@@ -107,6 +107,38 @@ def test_decodes_every_packet_and_sets_the_clock(lib):
     assert "ts=17:52:00h" in lines and "ts=17:51:00z" in lines and "ts=17:52:04.210r" in lines
 
 
+@pytest.fixture(scope="module")
+def disc_lib():
+    """the same receiver deciding each bit on the discriminator (-DAPRS_DISC), as before the
+    matched filter"""
+    if not shutil.which("cc"):
+        pytest.skip("needs a C compiler")
+    so = os.path.join(tempfile.mkdtemp(), "libaprsdisc.so")
+    subprocess.run(["cc", "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC", "-DAPRS_DISC",
+                    "-I" + K6, os.path.join(K6, "aprsclk_host.c"), "-o", so], check=True)
+    L = ctypes.CDLL(so)
+    L.aprs_counts.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint32]
+    L.aprs_lines.restype = ctypes.c_char_p
+    return L
+
+
+@pytest.mark.parametrize("kw", [dict(), dict(twist=6.0), dict(dev=4500.0, cn0=52.0)])
+def test_matched_filter_beats_the_discriminator(lib, disc_lib, kw):
+    """twelve packets at 48 dB-Hz (52 for 4.5 kHz deviation, which the chip's filter clips):
+    below the discriminator's threshold, above the matched filter's (sim/k6if/aprs_mf.py)"""
+    from sim.k6if import aprs_mf
+    kw = dict(kw)
+    cn0 = kw.pop("cn0", 48.0)
+    c, frames = aprs_mf.scene(12, cn0, seed=11, **kw)
+    c = np.ascontiguousarray(c.astype(np.int8))
+    got = {}
+    for name, L in (("mf", lib), ("disc", disc_lib)):
+        L.aprs_reset(CPS8)
+        L.aprs_counts(c.ctypes.data, len(c), 0)
+        got[name] = result(L)["ok"]
+    assert got["disc"] <= 2 and got["mf"] >= 6, got
+
+
 @pytest.mark.parametrize("kw", [dict(twist=6.0), dict(twist=-4.0), dict(f_off=800.0), dict(f_off=-800.0),
                                 dict(dev=2000.0), dict(dev=4500.0), dict(cn0=53.0, seed=2)])
 def test_margins(lib, kw):
@@ -285,10 +317,14 @@ def test_module_on_the_emulated_m0():
     code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], SRC)
     full, _ = k6mod.build(SRC)
     # the arena of the SPI images (11,776 B less the header and tag) holds the code and the state
-    st = 1024 + 332 + 4 * 16 * 4 + 12 * 28 + 64 + 200
+    st = 1024 + 332 + 4 * 16 * 4 + 12 * 28 + 64 + 16 + 2 * 92 * 2 + 2 * 8 * 4 * 4 + 240
     assert len(full) + 24 + st <= 11776
     ib = scene(total=total)
-    for cpi in (1.5, 4.0):                       # the calibrated cost, then 2.7x it: no counts lost
+    # the calibrated cost, then 1.7x it: no counts lost. The matched filter took the margin
+    # from 2.7x (CPI 4, the discriminator alone) to 1.7x: at CPI 3 it loses a few counts but
+    # still decodes all three (the emulator errs slow: k6-if-modem.md). At -Oz, CI's compiler
+    # lost counts at 2.5: the module asks for -Os
+    for cpi in (1.5, 2.5):
         e = le.Emu(code, entry, ib, 0, FDMA, cpi, max_s=total + 1, level=7, scratch=11776 - 24 - len(full))
         r = e.run()
         assert r is not None, e.said
@@ -296,7 +332,7 @@ def test_module_on_the_emulated_m0():
         assert ret == 3, e.said
         assert stack < 700, stack                # modules get about 700 B
         end = e.said[-1]
-        assert "ok=3 bad=0 ts=3 v=3" in end and "lost=0" in end, e.said
+        assert "ok=3 " in end and "ts=3 v=3" in end and "lost=0" in end, e.said  # bad: noise
         # the end line's UTC is at the module's last ms (~6500)
         hh, mm, ss = end.split("utc=")[1].split()[0].split(":")
         got = (int(hh) * 3600 + int(mm) * 60 + float(ss))

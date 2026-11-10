@@ -7,8 +7,15 @@
      counts (2 * ones - 64 per 64 DMA samples, ~87 kHz)
        -> mixed down by the nominal IF (64-entry sine), a 2nd-order CIC decimating by 6 (~14.5 kHz)
        -> phase by CORDIC; the phase step is the FM discriminator (no division)
-       -> DC removed, one-bit sliding correlators at 1200 and 2200 Hz, mark against space
-       -> a DPLL bit clock (Dire Wolf's: nudged towards each transition), NRZI
+       -> DC removed, one-bit sliding correlators at 1200 and 2200 Hz: each tone's deviation
+          (tracked where that tone wins) and the carrier offset (the DC)
+       -> a DPLL bit clock on the discriminator's mark / space (Dire Wolf's: nudged towards each
+          transition)
+       -> each bit decided by a noncoherent matched filter on the IF (sim/k6if/aprs_mf.py: about
+          4 dB more sensitive than deciding on the discriminator): the IF turned back by the
+          offset, summed over the bit against exp(j beta sin(2 pi f t + theta)) for each tone,
+          beta = its tracked deviation / f, theta at 16 audio phases; mark against space on the
+          largest |sum| of each (-DAPRS_DISC builds the old discriminator decision), then NRZI
        -> HDLC (flags, bit stuffing), CRC-16/X.25 (good residue 0xF0B8)
        -> the APRS information field's timestamps:
             '/' '@' positions, ';' objects, '>' status:  DDHHMMz (60 s resolution), HHMMSSh (1 s)
@@ -41,7 +48,7 @@
    -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch).
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
-#define K6_MODULE_OPT z
+#define K6_MODULE_OPT s
 #include "../k6_mod.h"
 
 #ifndef APRS_HZ
@@ -56,6 +63,14 @@
 #define MAXF 332 /* AX.25 frame bytes, with the FCS */
 #define DEC 6   /* counts an audio sample */
 #define NW 16   /* correlator ring (the window is n of it) */
+#define GN (64 + 28) /* a template's phases kept: index + 4 * 7 never wraps */
+#ifndef PLL_IN
+#ifdef APRS_DISC
+#define PLL_IN 2
+#else
+#define PLL_IN 4 /* inside a frame each transition pulls the bit clock 1 / 2^PLL_IN of the way */
+#endif
+#endif
 #define FIF_CHZ 1692708u /* 26 MHz / 1536 in 0.01 Hz */
 #define DAY 86400000
 
@@ -100,6 +115,12 @@ typedef struct {
   int32_t ang, dc, sum[4];
   uint32_t ph1, ph2, st1, st2, pll, stb;
   int32_t n, w, lastv, lastbit;
+  /* the matched filter: each tone's template exp(j beta sin) at 64 phases (cos, sin) */
+  int8_t g[2][GN][2];          /* 64 a turn, the first GN - 64 again after them */
+  int32_t acc[2][8][4];        /* this bit's sums for 8 audio phases (x gc, y gs, y gc, x gs) */
+  int32_t bq[2], btab[2];      /* beta in 1/16 of a template step (64 a turn): tracked (Q6), tabled */
+  uint32_t rot;                /* the offset's phase, 2^16 a turn */
+  int32_t mlast;               /* the last bit's tone */
   /* HDLC */
   uint32_t sr, bb, nbits, flag_ms, run, pre, min_ms;
   int32_t len, in;
@@ -463,10 +484,59 @@ static int32_t mag(int32_t a, int32_t b) {
   return a > b ? a + ((3 * b) >> 3) : b + ((3 * a) >> 3);
 }
 
+/* tone t's template at beta btab[t]: exp(j beta sin(2 pi i / 64)), its phase rounded to 1/64 turn */
+static void gtab(st_t *s, int t) {
+  int i, q;
+  for (i = 0; i < GN; i++) {
+    q = (s->btab[t] * SIN[i & 63] + 1024) >> 11; /* beta sin in 1/64 turn (127 * 16 ~ 2048) */
+    s->g[t][i][0] = SIN[(q + 16) & 63], s->g[t][i][1] = SIN[q & 63];
+  }
+}
+
+/* the deviation tracker: beta from the tone's discriminator level v (mag >> 11) where it won,
+   a one-pole over 64 samples; the template follows when beta has moved half a step */
+static void track(st_t *s, int t, int32_t v) {
+  int32_t b = t ? (v * 45) >> 10 : (v * 41) >> 9; /* level -> beta: mark n / 12.5, space n / 22.8 */
+  if (b < 64) b = 64;
+  if (b > 768) b = 768;
+  s->bq[t] += ((b << 6) - s->bq[t]) >> 6;
+  b = s->bq[t] >> 6;
+  if (b - s->btab[t] >= 8 || s->btab[t] - b >= 8) s->btab[t] = b, gtab(s, t);
+}
+
+#ifndef APRS_DISC
+/* tone t's matched filter, one sample in: the IF sample (x, y) against the template at the
+   tone's phase index i for 8 audio phases (each also stands for theta + pi). Spread over the
+   samples, not once a bit: a burst of the whole window's work outruns the 0.2 ms DMA ring */
+static void mfin(st_t *s, int t, int32_t x, int32_t y, uint32_t i) {
+  const int8_t *g = s->g[t][i];   /* the table runs on past 64 (GN), so no wrap in here */
+  int32_t *q = s->acc[t][0], *e = q + 4 * 8;
+  for (; q < e; q += 4, g += 4 * 2) { /* 8 audio phases, 4 table steps apart */
+    int32_t c = g[0], sn = g[1];
+    q[0] += x * c, q[2] += y * c, q[1] += y * sn, q[3] += x * sn;
+  }
+}
+
+/* the bit's metric for tone t: the largest |sum z conj(g)| over 16 audio phases; sums cleared */
+static int32_t mfout(st_t *s, int t) {
+  int32_t best = 0, m, *q;
+  int p;
+  for (p = 0; p < 8; p++) {
+    q = s->acc[t][p];
+    m = mag(q[0] + q[1], q[2] - q[3]); /* z conj(g): theta */
+    if (m > best) best = m;
+    m = mag(q[0] - q[1], q[2] + q[3]); /* z g: theta + pi */
+    if (m > best) best = m;
+    q[0] = q[1] = q[2] = q[3] = 0;
+  }
+  return best;
+}
+#endif
+
 /* one complex sample at ~14.5 kHz */
 static void audio(const k6_api_t *api, st_t *s, int32_t x, int32_t y) {
-  int32_t ang = 0, d, v, m, sp, t, i;
-  uint32_t prev;
+  int32_t ang = 0, d, v, m, sp, t, i, x0 = x, y0 = y;
+  uint32_t prev, i1 = s->ph1 >> 26, i2 = s->ph2 >> 26;
   /* CORDIC vectoring: the phase in 2^16 a turn */
   if (x < 0) x = -x, y = -y, ang = 32768;
   for (i = 0; i < 11; i++) {
@@ -494,8 +564,24 @@ static void audio(const k6_api_t *api, st_t *s, int32_t x, int32_t y) {
   }
   m = mag(s->sum[0], s->sum[1]) >> 11;
   sp = mag(s->sum[2], s->sum[3]) >> 11;
-  /* mark against space, as they come: a peak tracker on each tone (for a sender's
-     pre-emphasis twist) lost frames at +6 dB and gained nothing elsewhere (host sweep) */
+  /* each tone's deviation, where the discriminator says that tone */
+  if (m > sp) track(s, 0, m);
+  else track(s, 1, sp);
+  {
+#ifndef APRS_DISC
+    /* the IF turned back by the carrier offset (the discriminator's DC), into each tone's sums */
+    uint32_t r = (s->rot += (uint32_t)(s->dc >> 8)) >> 10;
+    int c = SIN[(r + 16) & 63], sn = SIN[r & 63];
+    int32_t xr = (x0 * c + y0 * sn) >> 7, yr = (y0 * c - x0 * sn) >> 7;
+    mfin(s, 0, xr, yr, i1);
+    mfin(s, 1, xr, yr, i2);
+#else
+    (void)x0, (void)y0, (void)i1, (void)i2;
+#endif
+  }
+  /* mark against space on the discriminator, as they come: its transitions keep the bit clock
+     (a peak tracker on each tone, for a sender's pre-emphasis twist, lost frames at +6 dB and
+     gained nothing elsewhere: host sweep) */
   v = m > sp;
 #ifdef APRS_TRACE
   APRS_TRACE(s, d, m, sp);
@@ -503,13 +589,24 @@ static void audio(const k6_api_t *api, st_t *s, int32_t x, int32_t y) {
   /* the bit clock: sample as the phase passes half a turn, pulled towards each transition */
   prev = s->pll;
   s->pll += s->stb;
+#ifdef APRS_DISC
   if ((int32_t)prev >= 0 && (int32_t)s->pll < 0) {
     hdlc(api, s, v == s->lastbit);
     s->lastbit = v;
   }
+#else
+  /* the bit decided by the matched filter over the samples since the last: the
+     discriminator's sliding window puts its transitions (where they pull the clock) half a
+     window late, so the clock's half turn is the bit's end */
+  if ((int32_t)prev >= 0 && (int32_t)s->pll < 0) {
+    int b = mfout(s, 0) > mfout(s, 1);
+    hdlc(api, s, b == s->mlast);
+    s->mlast = b;
+  }
+#endif
   if (v != s->lastv) {
     int32_t p = (int32_t)s->pll;
-    s->pll = (uint32_t)(s->in ? p - (p >> 2) : p >> 1);
+    s->pll = (uint32_t)(s->in ? p - (p >> PLL_IN) : p >> 1);
     s->lastv = v;
   }
 }
