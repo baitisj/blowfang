@@ -267,6 +267,65 @@ slip, and counts the frames that pass their CRC. The emulated test
 (`test_fskaprs_probe_4_on_a_model_of_the_chips_modem`) runs the module against a model of
 packet mode, and the report on the module's lines.
 
+**Probe 4's results (2026-11-10 08:18 to 08:24Z, module 9e860a1, 120 captures, IC-7100 at about
+-21 dBm).** One setting reads Bell 202:
+
+| | Setting | What the chip gave |
+| --- | --- | --- |
+| 13 | **REG_58 to 33A3 at the sync** (the 1200/2400 Hz receiver, bits 7:6 = 10) | **Bell 202 as sent**: three captures, each no mark run short, 99.4% right with one place lost at the write, **all 9 frames pass their CRC**. (Its own 1200/1800 control does not decode there, as it should not) |
+| 8 | to 33ED | close: 98%, 1 frame |
+| 0, 4 to 7, 9 | to 33E3, 33E1, 33E5, 33E7, 33EB, 33EF | probe 3's: runs whole, alternating tones dropped, no frame |
+| 10, 11, 12 | to 30E3, 31E3, 3303 | no frame |
+| 14, 15 | 33E3 with REG_2B + 0100, + 0200 | no frame |
+| 16 to 19 | to 23E3, 27E3, 2BE3, 2FE3 (RX modes 0 to 3) | no frame |
+| 20 | to 37E3 (RX mode 5) | the 1200/1800 receiver again: every mark run a bit short |
+| 1, 2, 3, 26 | 2400 baud | bad: two samples a bit is no help in this receiver either |
+| 21, 22, 23 | 33E3 from the start, sync FEFE FEFE, FEFE, 0101 | **it starts on a plain packet's flags by itself**: 6, 8 and 8 syncs, 194 to 250 flags read. The same A- packet was caught with FEFE and with 0101, so the chip seems to take its sync word either way up |
+| 24, 25 | 33E9 at 2400 baud, sync FFFC FFFC, FFFC | 0 and 7 syncs, data bad |
+
+So the chip's own modem can be an APRS receiver: listen with the sync word FEFE (two flags as
+that receiver reads them), slice with REG_58 = 33A3 at 1200 baud, and do the NRZI, HDLC and CRC
+on the MCU.
+
+### The receiver on the chip's modem (`aprsfsk`)
+
+`c/k6/mod/aprsfsk.c` is `aprsclk.c` built with `-DAPRS_FSK`: the same HDLC, timestamp parser,
+vote, clock and screen, with the IF tap's front end (DMA, mixer, CORDIC, correlators, matched
+filter) left out and the chip's packet modem in its place. 5.1 KB against the tap build's 7.6 KB,
+336 B of stack on the emulator.
+
+- Set-up: REG_58 = 33A3, REG_72 = 1200 baud, sync word FEFE (REG_59 = 00F0, two bytes), REG_5D
+  = FF00 (256 bytes, 1.7 s, the chip's longest packet), no CRC of the chip's, armed twice.
+- At the sync interrupt (16 bits after the sync word, the first FIFO word already in) it reads a
+  word every 13.3 ms by its own clock, one word behind the chip. Each of the word's 16 tone bits
+  goes through NRZI into `hdlc()` with its own time (ms at the interrupt + 5/6 ms a bit), so a
+  frame's first bit is timed as in the tap build.
+- A packet's read ends when the line has been outside a frame for 40 bits (after the closing
+  flags the next abort), or after the 128 words. Then it arms the chip for the next sync word.
+- The minute's line and the screen are done only between packets.
+- Lines besides the tap build's: `y n t= w= ok= st=` for each packet (its number, ms at the
+  sync, words read, good frames in it, REG_0B) and `d n 000 fefe ...` its words, ten a line
+  (every packet in the 440 builds, only those without a good frame on 144.390).
+
+Variants:
+
+- `aprsfsk`: 144.390 MHz for 15 minutes.
+- `aprsfsk_440`: 440.850 MHz for 5 minutes, for the bench signal
+  (`python3 -m modem.aprs wav OUT.wav --now --repeat N --swap`: `--swap` sends every second
+  round with the tones swapped, so the flags' long tone is the mark in one and the space in
+  the next).
+- `aprsfskb`, `aprsfskb_440`: listen with REG_58 = 33E3 (the setting probe 4 saw start on flags)
+  and write 33A3 at each sync interrupt, in case 33A3 does not start by itself.
+
+Open until the bench has said: whether 33A3 starts on flags by itself, whether one sync word
+takes both tone senses, and how far down real signals on 144.390 decode. A sender that keys up
+with zeros (alternating tones) and only one flag gives this receiver nothing to start on.
+
+The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
+model of packet mode: three stations (one with its tones swapped) between random bits, every
+packet decoded, the clock set within its bound, the reads in step with the FIFO, the registers
+put back.
+
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the

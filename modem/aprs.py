@@ -80,10 +80,12 @@ def afsk(bits, fs=FS, twist_db=0.0, baud=BAUD):
     return a * np.sin(ph)
 
 
-def packet_audio(frames, fs=FS, twist_db=0.0, pre_flags=40, baud=BAUD):
-    """(audio, the first frame's first bit in seconds from the audio's start)"""
+def packet_audio(frames, fs=FS, twist_db=0.0, pre_flags=40, baud=BAUD, invert=False):
+    """(audio, the first frame's first bit in seconds from the audio's start). As built the
+    opening flags' long tone is the space; invert swaps the tones (NRZI doesn't mind; a receiver
+    that syncs on the flags' pattern might)"""
     bits = hdlc_bits(frames, pre_flags)
-    return afsk(bits, fs, twist_db, baud), pre_flags * 8 / baud
+    return afsk(bits ^ 1 if invert else bits, fs, twist_db, baud), pre_flags * 8 / baud
 
 
 def ts_dhm(utc_s):
@@ -103,7 +105,7 @@ def rmc(utc_s, date="081126"):
     return f"$GPRMC,{hh:02d}{mm:02d}{ss:05.2f},A,4857.00,N,12229.00,W,000.0,000.0,{date},,*00"
 
 
-def bench_wav(t_utc, call="AG7EW", gap=0.6, fs=FS):
+def bench_wav(t_utc, call="AG7EW", gap=0.6, fs=FS, invert=False):
     """the on-air loopback (c/k6/mod/aprsclk_440.c): three stations of one call (-1 HHMMSSh, -2
     $GPRMC, -3 DDHHMMz) each stamped with the true UTC at its own first bit if the audio starts at
     t_utc (Unix seconds), truncated, so every stamp is early by the keying delay only.
@@ -123,7 +125,7 @@ def bench_wav(t_utc, call="AG7EW", gap=0.6, fs=FS):
         else:
             info = "@" + ts_dhm(u - month0) + "4857.00N/12229.00W_K6 clock test"
         c = f"{call}-{k + 1}"
-        x, _ = packet_audio([frame(c, "APRS", info)], fs=fs, pre_flags=pre)
+        x, _ = packet_audio([frame(c, "APRS", info)], fs=fs, pre_flags=pre, invert=invert)
         out += [x, np.zeros(int(gap * fs))]
         sent.append((c, info, pos + len(x) / fs))
         pos += (len(x) + int(gap * fs)) / fs
@@ -404,6 +406,9 @@ def main(argv=None):
     w.add_argument("--repeat", type=int, default=1,
                    help="with --now: the three stations this many times over, each stamped for its own "
                         "time (40 is about 170 s: a steady run of packets for a receiver test)")
+    w.add_argument("--swap", action="store_true",
+                   help="with --now: every second round with the tones swapped (the flags' long tone "
+                        "the mark), for c/k6/mod/aprsfsk.c's sync word")
     q = sub.add_parser("fskprobe", help="the test signal for c/k6/mod/fskaprs.c: units of the chip's own "
                                         "preamble and sync word, then AX.25, and plain APRS packets")
     q.add_argument("out")
@@ -431,8 +436,8 @@ def main(argv=None):
         import time
         t0 = time.time() + a.delay
         parts, sent, pos = [], [], 0.0
-        for _ in range(max(1, a.repeat)):
-            x1, s1 = bench_wav(t0 + pos, a.call)
+        for k in range(max(1, a.repeat)):
+            x1, s1 = bench_wav(t0 + pos, a.call, invert=a.swap and k % 2 == 1)
             parts.append(x1)
             sent += [(c, info, pos + end) for c, info, end in s1]
             pos += len(x1) / FS

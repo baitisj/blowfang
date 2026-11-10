@@ -47,9 +47,14 @@
    and REG_33 bit 8 (GP0), REG_7E and REG_13 (the gain), the MCU's TIM17, DMA channel 1 and their clock enables, all put back.
    Returns the votes behind the clock (0: none), or -2 (a key before any frame), -3 (old image),
    -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch).
+
+   -DAPRS_FSK (aprsfsk.c) builds the same HDLC, parser, vote and screen behind the FD6818's own
+   FSK modem instead of the IF tap: see "the chip's own FSK modem as the front end" below.
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
+#ifndef K6_MODULE_OPT
 #define K6_MODULE_OPT s
+#endif
 #include "../k6_mod.h"
 
 #ifndef APRS_HZ
@@ -133,8 +138,13 @@ typedef struct {
   uint16_t rlo, rhi; /* REG_67 once a second: the minute's least and most */
   int32_t ref, haveref, votes, est, wid, hops;
   uint8_t day, mon, yr, stn;
+#ifdef APRS_FSK
+  uint16_t sv[9];     /* the modem's registers as found */
+  uint16_t cap[128];  /* a packet's words as read, for its d lines */
+#endif
 } st_t;
 
+#ifndef APRS_FSK
 static const int8_t SIN[64] = {0,   12,  25,  37,  49,  60,  71,  81,  90,  98,  106, 112, 117,
                                122, 125, 126, 127, 126, 125, 122, 117, 112, 106, 98,  90,  81,
                                71,  60,  49,  37,  25,  12,  0,   -12, -25, -37, -49, -60, -71,
@@ -142,6 +152,7 @@ static const int8_t SIN[64] = {0,   12,  25,  37,  49,  60,  71,  81,  90,  98, 
                                -122, -117, -112, -106, -98, -90, -81, -71, -60, -49, -37, -25, -12};
 /* atan(2^-i) in 2^16 a turn */
 static const uint16_t ATN[11] = {8192, 4836, 2555, 1297, 651, 326, 163, 81, 41, 20, 10};
+#endif
 
 static uint32_t udiv(uint32_t n, uint32_t d) {
   uint32_t q = 0, bit = 1;
@@ -154,6 +165,7 @@ static uint32_t udiv(uint32_t n, uint32_t d) {
 }
 
 /* a * b / c in 64 bits by hand (an M0 module has no run-time library), c < 2^31 */
+#ifndef APRS_FSK
 static uint32_t muldiv(uint32_t a, uint32_t b, uint32_t c) {
   uint32_t al = a & 0xFFFF, ah = a >> 16, bl = b & 0xFFFF, bh = b >> 16;
   uint32_t lo = al * bl, m1 = al * bh, m2 = ah * bl, hi = ah * bh, t, r = 0, q = 0;
@@ -172,6 +184,8 @@ static uint32_t muldiv(uint32_t a, uint32_t b, uint32_t c) {
   }
   return q;
 }
+
+#endif
 
 static char *put(char *p, const char *s) {
   while (*s) *p++ = *s++;
@@ -219,6 +233,7 @@ static void say(const k6_api_t *api, st_t *s, char *p) {
 }
 
 /* ---- the IF front end (gp0rx.h's, without the FT8 mixer) ---- */
+#ifndef APRS_FSK
 #ifndef APRS_HOST
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
@@ -264,6 +279,7 @@ static void steps(st_t *s) {
   s->st2 = muldiv(2200u * c * DEC, 1u << 26, 6000000u);
   s->stb = s->st1;                                             /* 1200 baud */
 }
+#endif /* APRS_FSK */
 
 /* ---- the clock: Marzullo over the stations' intervals ---- */
 static void vote(st_t *s) {
@@ -454,13 +470,15 @@ static void hdlc(const k6_api_t *api, st_t *s, uint32_t bit) {
     /* a preamble: flags back to back (7 bits since the last: its last 0 is this one's first).
        Noise makes a lone flag every second or so, four in a row hardly ever */
     s->run = s->in && s->nbits == 7 ? s->run + 1 : 0;
+#ifndef APRS_FSK
     if (s->run == 3) s->pre++;
+#endif
     if (s->in && s->len >= 18) {
       if (crc_ok(s->fr, s->len)) {
         s->ok++;
         if (api->level >= 7) api->led(1);
         frame(api, s);
-#ifndef APRS_HOST
+#if !defined(APRS_HOST) && !defined(APRS_FSK)
         resync(s); /* the line took the CPU for a while */
 #endif
       } else s->bad++;
@@ -483,6 +501,7 @@ static void hdlc(const k6_api_t *api, st_t *s, uint32_t bit) {
   } else s->bb >>= 1;
 }
 
+#ifndef APRS_FSK
 static int32_t mag(int32_t a, int32_t b) {
   if (a < 0) a = -a;
   if (b < 0) b = -b;
@@ -654,6 +673,10 @@ static void dma_on(uint8_t *ring) {
   wr(DMA_CNDTR1, RSZ);
   wr(DMA_CCR1, (3u << 12) | (1u << 7) | (1u << 5) | 1u);
 }
+#endif /* APRS_HOST */
+#endif /* APRS_FSK */
+
+#ifndef APRS_HOST
 
 static void screen(const k6_api_t *api, st_t *s) {
   char *p;
@@ -692,7 +715,7 @@ static void screen(const k6_api_t *api, st_t *s) {
 
 #endif /* APRS_HOST */
 
-#ifndef APRS_HOST
+#if !defined(APRS_HOST) && !defined(APRS_FSK)
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, apb2, ahb, i, tkey = 0;
@@ -822,6 +845,191 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " pre=", s->pre);
   say(api, s, p);
   if (!s->ok && s->now_ms < RUN_MS) return -2;
+  return s->votes;
+}
+#endif
+
+#if defined(APRS_FSK) && !defined(APRS_HOST)
+/* ---- the chip's own FSK modem as the front end (docs/k6-aprs-clock.md, probes 1 to 4) ----
+
+   The GP0 tap's own noise puts the receiver above some 20 dB short of the chip's. The chip's
+   packet modem sits behind its own FM demodulator, and its 1200/2400 Hz receiver with
+   REG_58<7:6> = 10 (0x33A3) at 1200 baud slices Bell 202 bit for bit (probe 4: 9 frames of 9).
+   An APRS packet opens with flags, which that receiver reads as FE FE FE (01 01 01 with the
+   tones the other way round; the chip takes its sync word either way up), so the sync word is
+   two flags. From its interrupt (16 bits after the word, the first FIFO word in) the words are
+   read by time, a word behind the chip, each bit NRZI-decoded into hdlc() with its own time,
+   until the line has been outside a frame for FSK_IDLE bits or the chip's 256 bytes (1.7 s) are
+   up; then it listens for the next sync word.
+
+   Lines, besides the tap build's f, clk and m lines (pre = sync words heard):
+     aprs start hz=144390000 fsk=13219 sync=65278
+     y 12 t=123456 w=37 ok=1 st=64      a packet: its number, ms at the sync interrupt, words
+                                        read, good frames in it, REG_0B (the sync's polarity)
+     d 12 000 fefe fe01 ...             its words, 10 a line (APRS_FSK_DUMP 2: every packet; 1:
+                                        those without a good frame; 0: none)
+   Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F and 02, put back as read (the pager arms its
+   own receiver again after any module). Returns as the tap build does, less -4, -5 and -7. */
+#ifndef FSK_SEEK
+#define FSK_SEEK 0x33A3u /* REG_58 while it listens for the sync word */
+#endif
+#define FSK_READ 0x33A3u /* REG_58 from the sync interrupt on */
+#ifndef FSK_CTRL
+#define FSK_CTRL 0x00F0u /* REG_59: a 2-byte sync word (00F8: REG_5A then REG_5B, 4 bytes) */
+#endif
+#ifndef APRS_FSK_DUMP
+#define APRS_FSK_DUMP 1
+#endif
+#define FSK_SYNC 0xFEFEu
+#define FSK_WORDS 128    /* REG_5D's most: 256 bytes */
+#define FSK_LAG 1        /* words the timed reads stay behind the chip (its FIFO holds 8) */
+#define FSK_IDLE 40      /* line bits outside a frame: the packet is over */
+#define NSV 9
+
+static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F};
+
+static void fsk_arm(const k6_api_t *api) {
+  if (FSK_SEEK != FSK_READ) api->fd_write(0x58, FSK_SEEK);
+  api->fd_write(0x59, FSK_CTRL | 0x4000);
+  api->fd_write(0x59, FSK_CTRL | 0x1000);
+  api->fd_write(0x02, 0);
+}
+
+static char *hex4(char *p, uint32_t v) {
+  int i;
+  for (i = 12; i >= 0; i -= 4) *p++ = "0123456789abcdef"[(v >> i) & 15];
+  return p;
+}
+
+/* a packet's lines: y, and its words */
+static void fsk_said(const k6_api_t *api, st_t *s, uint32_t tsync, uint32_t got, uint32_t ok,
+                     uint32_t st) {
+  uint32_t i;
+  char *p = kv(s->ln, "y ", s->pre);
+  p = kv(p, " t=", tsync);
+  p = kv(p, " w=", got);
+  p = kv(p, " ok=", ok);
+  p = kv(p, " st=", st);
+  say(api, s, p);
+  if (APRS_FSK_DUMP < 2 && (!APRS_FSK_DUMP || ok || got < 6)) return;
+  for (i = 0; i < got; i++) {
+    uint32_t col = i - 10 * udiv(i, 10);
+    if (!col) p = dec(put(kv(s->ln, "d ", s->pre), " "), i, 3);
+    *p++ = ' ', p = hex4(p, s->cap[i]);
+    if (col == 9 || i + 1 == got) say(api, s, p);
+  }
+}
+
+int k6_main(const k6_api_t *api) {
+  st_t *s;
+  uint32_t room, i, now, tkey = 0, tsync = 0, idle = 0, ok0 = 0, st = 0, left = 0, got = 0;
+  uint16_t tw = 0;
+  int key = 0;
+  char *p;
+  if (api->level < 2) return -3;
+  s = (st_t *)api->scratch(&room);
+  if (room < sizeof(st_t)) return -8;
+  for (i = 0; i < sizeof(st_t) / 4; i++) ((uint32_t *)s)[i] = 0;
+  for (i = 0; i < NSV; i++) s->sv[i] = api->fd_read(FSK_SAVED[i]);
+  api->tune(APRS_HZ, 1);
+  api->fd_write(0x3F, 0);
+  api->fd_write(0x59, 0);
+  api->fd_write(0x58, 0);
+  api->fd_write(0x5A, FSK_SYNC);
+  api->fd_write(0x5B, FSK_SYNC);
+  api->fd_write(0x58, FSK_SEEK);
+  api->fd_write(0x72, 0x3065);  /* 1200 baud x 10.32444 */
+  api->fd_write(0x5C, 0x5625);  /* no CRC of the chip's */
+  api->fd_write(0x5D, (2 * FSK_WORDS - 1) << 8);
+  api->fd_write(0x5E, 0x0204);
+  fsk_arm(api);                 /* twice: a new sync word takes hold at the second (probe 2) */
+  api->delay_us(2000);
+  fsk_arm(api);
+  api->fd_write(0x3F, 0x2002);  /* RX done, sync found */
+  s->rlo = 0x1FF;
+  p = put(s->ln, "aprs start hz=");
+  p = dec(p, APRS_HZ, 1);
+  p = kv(p, " fsk=", FSK_SEEK);
+  p = kv(p, " sync=", FSK_SYNC);
+  say(api, s, p);
+  for (;;) {
+    now = api->ms();
+    if (now - tkey >= 50) {
+      uint16_t r = api->fd_read(0x67) & 0x1FF;
+      tkey = now;
+      if (r < s->rlo) s->rlo = r;
+      if (r > s->rhi) s->rhi = r;
+      key = api->level >= 4 ? api->key_poll() : api->key_down();
+      if (key || now >= RUN_MS) break;
+      if (api->level >= 7 && now - s->flag_ms > 120) api->led(0);
+    }
+    if (api->fd_read(0x0C) & 1) {
+      uint32_t f = api->fd_read(0x02);
+      api->fd_write(0x02, 0);
+      /* an RX-done with no packet being read is the last one's own, late */
+      if ((f & 2) && !left) {
+        tw = (uint16_t)api->ticks(); /* 100 us ticks, a 16-bit count */
+        st = api->fd_read(0x0B);
+        if (FSK_SEEK != FSK_READ) api->fd_write(0x58, FSK_READ);
+        left = FSK_WORDS, got = 0, idle = 0, tsync = now, ok0 = s->ok;
+        s->in = 0, s->sr = 0, s->pre++;
+      }
+    }
+    if (left) {
+      /* a word is 40/3 ms: those the chip has had for FSK_LAG word times */
+      uint32_t due = udiv(((api->ticks() - tw) & 0xFFFF) * 3, 400);
+      due = due > FSK_LAG ? due - FSK_LAG : 0;
+      if (due > left) due = left;
+      while (got < due && idle < FSK_IDLE) {
+        /* its low byte was on the air first (the pager's swap), each byte's top bit first */
+        uint32_t w = api->fd_read(0x5F), v = (w & 0xFF) << 8 | w >> 8;
+        s->cap[got] = (uint16_t)v;
+        for (i = 16; i--;) {
+          int32_t tone = (int32_t)((v >> i) & 1);
+          /* this bit's end: the word's first bit began 16 bits before the sync interrupt */
+          s->now_ms = tsync + udiv((16 * got + 16 - i) * 5, 6) - 13;
+          hdlc(api, s, tone == s->mlast);
+          s->mlast = tone;
+          idle = s->in ? 0 : idle + 1;
+        }
+        got++;
+      }
+      if (got >= left || idle >= FSK_IDLE) {
+        fsk_arm(api);
+        left = 0;
+        fsk_said(api, s, tsync, got, s->ok - ok0, st);
+      }
+    } else if (now - s->scr_ms >= 1000) {
+      /* the minute's line and the screen (20-40 ms), only between packets */
+      s->now_ms = s->scr_ms = now;
+      if (now - s->min_ms >= 60000) {
+        s->min_ms = now;
+        p = kv(s->ln, "m ", udiv(now, 60000));
+        p = put(p, " rssi=-");
+        p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rlo), 1);
+        p = put(p, " pk=-");
+        p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rhi), 1);
+        p = kv(p, " pre=", s->pre);
+        p = kv(p, " ok=", s->ok);
+        say(api, s, p);
+        s->rlo = 0x1FF, s->rhi = 0;
+      }
+      if (api->level >= 6) screen(api, s);
+    }
+    api->delay_us(2000);
+  }
+  s->now_ms = now;
+  for (i = 0; i < NSV; i++) api->fd_write(FSK_SAVED[i], s->sv[i]);
+  api->fd_write(0x02, 0);
+  p = put(s->ln, "aprs end ok=");
+  p = dec(p, s->ok, 1);
+  p = kv(p, " bad=", s->bad);
+  p = kv(p, " ts=", s->nts);
+  p = kv(p, " v=", (uint32_t)s->votes);
+  if (s->votes >= 2) p = hms(put(p, " utc="), utc(s, now), 1);
+  p = kv(p, " pre=", s->pre);
+  say(api, s, p);
+  if (!s->ok && now < RUN_MS) return -2;
   return s->votes;
 }
 #endif

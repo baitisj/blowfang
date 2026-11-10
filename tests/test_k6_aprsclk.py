@@ -401,38 +401,16 @@ def test_float_decoder_takes_preemphasised_audio():
 
 
 # ---- fskaprs: the chip's own FSK modem on AX.25 (a probe; the chip's side is a model) ----
-@need_clang
-def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
-    """fskaprs on the emulated M0 against a model of the FD6818's packet mode as the probes found
-    it on the air: a bit clock at REG_72's rate and a receiver by REG_58<12:10> (a write to either
-    takes hold at the next bit, also in a packet), the sync word in any bit position (2 or 4
-    bytes by REG_59<3>) and its interrupt 16 bits later, 16 bits a FIFO word up to REG_5D's
-    length, the first byte on the air in the word's low byte, an empty FIFO read as its last
-    word again. What it hears of the probe's units (modem.aprs.fskprobe_parts): its own tones as
-    sent; Bell 202 as out[i] = sent[i] AND sent[i+1] in the 1200/1800 receiver (probe 2), and
-    here as sent in any other (what probe 4 looks for)."""
-    pytest.importorskip("unicorn")
-    import k6_live_emu as le
-    src = os.path.join(K6, "mod", "fskaprs.c")
-    code, entry = le.build("x", [("SLOT_MS", "7000u"), ("WAIT_MS", "9000u")], src)
-    BASE = 4800                                         # the model's samples a second
-    names = ("P0", "C", "A+", "A-")
-
-    def heard(name, seq, erode):
-        out = []
-        for bits, baud, f1, f0 in aprs.fskprobe_parts(name, seq):
-            b = np.asarray(bits, int)
-            if erode and f0 == aprs.SPACE:
-                b = b & np.append(b[1:], 0)
-            out.append(np.repeat(b, BASE // baud))
-        return np.concatenate(out + [np.zeros(int(0.3 * BASE), int)])
-
-    air = [np.concatenate([np.zeros(BASE, int)] + [heard(n, k, e) for k, n in enumerate(names)]) for e in (0, 1)]
-    line = aprs.fskprobe_line(True, aprs.FSKPROBE_APRS_S).astype(int)
-    eroded = line & np.append(line[1:], 0)
-
+def modem_chip(le, pick, BASE=4800):
+    """an emulator with a model of the FD6818's packet mode as the probes found it on the air: a
+    bit clock at REG_72's rate over the air's bits pick(REG_58) (BASE samples a second; a write
+    to either register takes hold at the next bit, also in a packet), the sync word in any bit
+    position (2 or 4 bytes by REG_59<3>) and its interrupt 16 bits later, 16 bits a FIFO word up
+    to REG_5D's length, the first byte on the air in the word's low byte, an empty FIFO read as
+    its last word again"""
     class Chip(le.Emu):
         pos, reg, buf, taken, pkt = 0.0, 0, None, 0, False
+        either = False      # the sync word upside down too (what probe 4's captures suggest)
         sync = done = full = False
         last, empty, over = 0, 0, 0
         r = {0x58: 0, 0x59: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x72: 0}
@@ -443,7 +421,7 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
             if not self.r[0x59] & 0x1000 or self.r[0x72] < 0x3000 or not self.r[0x58] & 1:
                 self.pos = now
             while self.pos < now:
-                view = air[self.r[0x58] >> 10 & 7 == 7]
+                view = pick(self.r[0x58])
                 bit = int(view[int(self.pos) % len(view)])
                 self.pos += BASE // round(self.r[0x72] / 10.32444)
                 if self.done:
@@ -452,7 +430,7 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
                     self.reg = (self.reg << 1 | bit) & 0xFFFFFFFF
                     want = self.r[0x5A] << 16 | self.r[0x5B] if self.r[0x59] & 8 else self.r[0x5A]
                     got = self.reg if self.r[0x59] & 8 else self.reg & 0xFFFF
-                    if got == want:
+                    if got == want or (self.either and got == want ^ (0xFFFFFFFF if self.r[0x59] & 8 else 0xFFFF)):
                         self.pkt, self.buf, self.taken = True, [], 0
                     continue
                 self.buf.append(bit)
@@ -497,6 +475,40 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
                 return
             super().on_stub(uc, addr, size, user)
 
+    return Chip
+
+
+@need_clang
+def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
+    """fskaprs on the emulated M0 against a model of the FD6818's packet mode as the probes found
+    it on the air: a bit clock at REG_72's rate and a receiver by REG_58<12:10> (a write to either
+    takes hold at the next bit, also in a packet), the sync word in any bit position (2 or 4
+    bytes by REG_59<3>) and its interrupt 16 bits later, 16 bits a FIFO word up to REG_5D's
+    length, the first byte on the air in the word's low byte, an empty FIFO read as its last
+    word again. What it hears of the probe's units (modem.aprs.fskprobe_parts): its own tones as
+    sent; Bell 202 as out[i] = sent[i] AND sent[i+1] in the 1200/1800 receiver (probe 2), and
+    here as sent in any other (what probe 4 looks for)."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    src = os.path.join(K6, "mod", "fskaprs.c")
+    code, entry = le.build("x", [("SLOT_MS", "7000u"), ("WAIT_MS", "9000u")], src)
+    BASE = 4800                                         # the model's samples a second
+    names = ("P0", "C", "A+", "A-")
+
+    def heard(name, seq, erode):
+        out = []
+        for bits, baud, f1, f0 in aprs.fskprobe_parts(name, seq):
+            b = np.asarray(bits, int)
+            if erode and f0 == aprs.SPACE:
+                b = b & np.append(b[1:], 0)
+            out.append(np.repeat(b, BASE // baud))
+        return np.concatenate(out + [np.zeros(int(0.3 * BASE), int)])
+
+    air = [np.concatenate([np.zeros(BASE, int)] + [heard(n, k, e) for k, n in enumerate(names)]) for e in (0, 1)]
+    line = aprs.fskprobe_line(True, aprs.FSKPROBE_APRS_S).astype(int)
+    eroded = line & np.append(line[1:], 0)
+
+    Chip = modem_chip(le, lambda r58: air[r58 >> 10 & 7 == 7], BASE)
     e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=240, level=7)
     r = e.run()
     assert r is not None, e.said[-5:]
@@ -553,3 +565,72 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
         assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
     assert {0x0100, 0x0200} <= set(e.writes[0x2B]) and {0x33E3, 0x33E9, 0x23E3, 0x37E3} <= set(e.writes[0x58])
     assert 0x60CA in e.writes[0x72]
+
+
+# ---- the same clock behind the chip's own FSK modem (c/k6/mod/aprsfsk.c) ----
+@need_clang
+@pytest.mark.parametrize("seek", [0x33A3, 0x33E3])
+def test_aprsfsk_on_a_model_of_the_chips_modem(seek):
+    """aprsfsk (aprsclk's HDLC, parser and vote behind the FD6818's packet modem) on the emulated
+    M0 against modem_chip: the three stations' line bits as the 1200/2400 Hz receiver slices
+    them with REG_58 = 33a3 (probe 4), the second with its tones swapped, random bits between
+    them (they start a packet now and then by chance: two bytes of sync word). It must take
+    every packet, set the clock, give up a packet's read where the line goes idle, keep its
+    timed reads in step with the FIFO and put the modem's registers back. aprsfskb listens in
+    33e3 and writes 33a3 at each sync."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    name = "aprsfsk.c" if seek == 0x33A3 else "aprsfskb.c"
+    src = os.path.join(K6, "mod", name)
+    total, BASE = 6.5, 4800
+    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u"), ("APRS_FSK_DUMP", "2")], src)
+    full, _ = k6mod.build(src)
+    assert len(full) < 5600, len(full)              # the tap build is 7.6 KB
+    rng = np.random.default_rng(5)
+    air = rng.integers(0, 2, int((total + 2) * BASE // 4))
+    for k, (t, mk) in enumerate(packets()):
+        b = aprs.hdlc_bits(mk(UTC0 + t + 40 * 8 / aprs.BAUD)).astype(int)
+        i = int(t * aprs.BAUD)
+        air[i:i + len(b)] = b ^ (k == 1)
+    air = np.repeat(air, BASE // aprs.BAUD)
+    Chip = modem_chip(le, lambda r58: air, BASE)
+    Chip.either = True
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
+             scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert ret == 3 and stack < 700, (ret, stack, e.said)
+    assert e.empty == 0 and e.over == 0, (e.empty, e.over)
+    assert e.said[0] == f"aprs start hz=144390000 fsk={seek} sync=65278", e.said[:2]
+    end = e.said[-1]
+    assert "ok=3 " in end and "ts=3 v=3" in end, e.said
+    hh, mm, ss = end.split("utc=")[1].split()[0].split(":")
+    assert abs(int(hh) * 3600 + int(mm) * 60 + float(ss) - (UTC0 + total) % DAY) < 0.6, end
+    f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
+    assert f == ["VE7ABC-9", "VE7WX", "N0CALL-7"], e.said
+    # each packet's y line: read to a little past its closing flags, never the chip's whole 128 words
+    y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
+    good = [v for v in y if v["ok"] == "1"]
+    assert len(good) == 3 and all(20 < int(v["w"]) < 80 for v in good), y
+    assert all(int(v["w"]) < 128 for v in y), y
+    # its d lines hold the words as read: the first good packet's open with flags (01: this
+    # station's long tone is the space)
+    n = next(ln.split()[1] for ln in e.said if ln.startswith("y ") and " ok=1" in ln)
+    d = [w for ln in e.said if ln.startswith(f"d {n} ") for w in ln.split()[3:]]
+    assert len(d) == int(good[0]["w"]) and d[0] in ("0101", "0202", "0404", "0808", "1010", "2020", "4040", "8080"), d[:4]
+    # the radio's clock set from it (level 8), within its bound
+    assert len(e.clock_sets) == 2, e.clock_sets
+    for ms, utc, date, w, ok in e.clock_sets:
+        assert abs(utc - round(((UTC0 + ms / 1000) % DAY) * 1000)) <= w and w < 9000, (ms, utc, w)
+    assert e.lcd[0].strip() == "APRS CLOCK 144.390" and e.lcd[1].startswith("UTC 17:52:0"), e.lcd
+    assert e.lcd[3].startswith("heard ") and e.lcd[3].endswith(" ok 3 ts 3"), e.lcd
+    assert any(on for _, on in e.led)
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F):
+        assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
+    assert 0x33A3 in e.writes[0x58] and (seek in e.writes[0x58])
+    assert e.writes[0x5A][0] == 0xFEFE and 0x10F0 in e.writes[0x59] and e.writes[0x5D][0] == 0xFF00
+    if seek != 0x33A3:
+        w58 = [w for w in e.writes[0x58] if w]
+        assert w58[0] == seek and w58.count(0x33A3) == len(y), w58
