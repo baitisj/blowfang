@@ -55,7 +55,8 @@ second ("(sec)" on the screen); `DDHHMMz` alone gives the minute. The date comes
 agreeing stamp that has one (`$GPRMC` gives day/month/year, `DDHHMMz` the day).
 
 **On the radio.** Level 2 to run (receive, GP0, TIM17, DMA channel 1, all put back as gp0rx.h
-does); at level 6 it draws its screen (UTC and the date, stations voting, frames good/bad/stamped,
+does); at level 6 it draws its screen (UTC and the date, stations voting, packets heard (preambles)
+/ decoded / stamped as `heard 9 ok 7 ts 0`,
 and the station heard last, `last AG7EW-7 h0` with its digipeater hops) once a second, never while a frame or its flags are coming (a flush takes 20-40 ms and
 the ring holds 0.2 ms); at level 7 it blinks the green LED on each good frame. Any key ends it,
 else 15 minutes (`RUN_MS`). It tunes 144.390 with the wide filter and leaves the chip's AFC on,

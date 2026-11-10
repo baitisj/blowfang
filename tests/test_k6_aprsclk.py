@@ -304,6 +304,7 @@ def test_module_on_the_emulated_m0():
         assert abs(got - want) < 0.6, (end, want)
     assert e.lcd[1].startswith("UTC 17:52:0") and "stations 3 (sec)" in e.lcd[2], e.lcd
     assert len(e.lcd[1]) <= 21 and e.lcd[1].endswith((" 08/11/26", " 08")), e.lcd   # the date
+    assert e.lcd[3] == "heard 3 ok 3 ts 3", e.lcd                       # preambles, good, stamped
     assert e.lcd[4].startswith("last ") and " h" in e.lcd[4] and len(e.lcd[4]) <= 21, e.lcd
     assert any(on for _, on in e.led), "the LED blinks a good frame"
     assert e.writes.get(0x34, [None])[-1] == 0 and e.writes.get(0x33)  # GP0 put back
