@@ -402,67 +402,94 @@ def test_float_decoder_takes_preemphasised_audio():
 
 # ---- fskaprs: the chip's own FSK modem on AX.25 (a probe; the chip's side is a model) ----
 @need_clang
-def test_fskaprs_reads_ax25_from_the_fifo():
-    """fskaprs on the emulated M0 against a model of the FD6818's stream mode (REG_5D = 0xFF00):
-    16 line bits a FIFO word every 13.33 ms, the first byte on the air in the word's low byte,
-    an almost-full interrupt at 4 words. The packet-mode variants get no sync interrupt here."""
+def test_fskaprs_reads_ax25_after_the_chips_own_sync():
+    """fskaprs on the emulated M0 against a model of the FD6818's packet mode at 1200 baud: the
+    sync word in any bit position, then 16 line bits a FIFO word every 13.33 ms up to REG_5D's
+    length, the first byte on the air in the word's low byte, an almost-full interrupt at 4
+    words. On the air here: the probe's F units (modem.aprs.fskprobe_unit), as a receiver that
+    reads Bell 202's two tones as its own would hear them. The direct-FSK variants get no sync."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
+    from modem import fsk, pager
     src = os.path.join(K6, "mod", "fskaprs.c")
-    code, entry = le.build("x", [("RUN_S", "13u"), ("SLOT_MS", "2000u")], src)
-    rng = np.random.default_rng(3)
-    line = []
-    for k in range(3):
-        f = aprs.frame(f"AG7EW-{k + 1}", "APRS", "/175201h4857.00N/12229.00W>fsk modem test")
-        line += [rng.integers(0, 2, 150), aprs.hdlc_bits([f], pre_flags=40)]
-    line = np.concatenate(line).astype(int)
+    code, entry = le.build("x", [("RUN_S", "19u"), ("SLOT_MS", "3000u")], src)
+    head = fsk.bits_of(bytes([0x55]) * 24 + pager.SYNC)
+    air = np.concatenate([np.concatenate([head, aprs.fskprobe_line(inv, 0.95), np.zeros(96, int)])
+                          for inv in (False, True)]).astype(int)
 
     class Chip(le.Emu):
-        t_arm, taken, stream = 0.0, 0, False
+        at, reg, start, taken, sync, done = 0, 0, None, 0, False, False
+        r = {0x58: 0, 0x5A: 0, 0x5B: 0, 0x5D: 0, 0x72: 0}
+
+        def advance(self):
+            """the air's bits up to now through the sync search"""
+            now = int(self.cyc / 96000 * 1.2)
+            want = self.r[0x5A] << 16 | self.r[0x5B]
+            while self.start is None and self.at < now:
+                self.reg = (self.reg << 1 | int(air[self.at % len(air)])) & 0xFFFFFFFF
+                self.at += 1
+                if self.reg == want and self.r[0x72] == 0x3065 and self.r[0x58] & 0x1C00:
+                    self.start, self.taken, self.sync = self.at, 0, True
+            self.at = max(self.at, now) if self.start is None else self.at
+            return now
+
+        def words(self):
+            return (self.r[0x5D] >> 8) // 2 + 1
 
         def waiting(self):
-            return int((self.cyc / 96000 - self.t_arm) * 1.2 / 16) - self.taken
+            now = self.advance()
+            return 0 if self.start is None else min((now - self.start) // 16, self.words()) - self.taken
 
         def on_stub(self, uc, addr, size, user):
             A = self.A
             name = self.names[(addr - self.stubs) // 16]
             r0, r1 = uc.reg_read(A.UC_ARM_REG_R0), uc.reg_read(A.UC_ARM_REG_R1)
-            if name == "fd_write" and r0 == 0x5D:
-                self.stream = r1 == 0xFF00
-            if name == "fd_write" and r0 == 0x59 and r1 & 0x1000:
-                self.t_arm, self.taken = self.cyc / 96000, 0
+            if name == "fd_write" and r0 in self.r:
+                self.r[r0] = r1
+            if name == "fd_write" and r0 == 0x59 and r1 & 0x1000:     # armed: the search starts
+                self.at, self.reg, self.start = int(self.cyc / 96000 * 1.2), 0, None
+                self.sync = self.done = False
             if name == "fd_read" and r0 in (0x0C, 0x02, 0x5F):
-                full = self.stream and self.waiting() >= 4
+                n = self.waiting()
+                if self.start is not None and not self.done and self.taken + max(n, 0) >= self.words():
+                    self.done = True
+                    self.end = True
+                flags = (2 if self.sync else 0) | (0x1000 if n >= 4 else 0) | (0x2000 if getattr(self, "end", False) else 0)
                 if r0 == 0x5F:
-                    at = int(self.t_arm * 1.2) + 16 * self.taken
+                    at = (self.start or 0) + 16 * self.taken
                     self.taken += 1
                     v = 0
-                    for b in line[np.arange(at, at + 16) % len(line)]:
+                    for b in air[np.arange(at, at + 16) % len(air)]:
                         v = v << 1 | int(b)
                     ret = (v & 0xFF) << 8 | v >> 8
+                elif r0 == 0x0C:
+                    ret = 1 if flags else 0
                 else:
-                    ret = (1 if r0 == 0x0C else 0x1000) if full else 0
+                    ret, self.sync, self.end = flags, False, False
                 self.tick(self.fd_us * 96)
                 uc.reg_write(A.UC_ARM_REG_R0, ret)
                 return
             super().on_stub(uc, addr, size, user)
 
-    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=15, level=7)
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=22, level=7)
     r = e.run()
     assert r is not None, e.said
     ret, stack = r
     assert stack < 700, stack
-    assert e.said[0] == "fskaprs start hz=440850000 slot=2000", e.said
+    assert e.said[0] == "fskaprs start hz=440850000 slot=3000", e.said
     v = {ln[1]: dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln[0] == "v"}
-    for k in "0123":                                    # the stream variants: frames, none bad
-        assert int(v[k]["ok"]) >= 1 and v[k]["bad"] == "0" and int(v[k]["p"]) >= 1, e.said
-        assert v[k]["i"] == "1000" and int(v[k]["w"]) >= 100, e.said
-    for k in "45":
+    for k in "015":                                     # read by time after the sync interrupt
+        assert int(v[k]["sy"]) >= 1 and int(v[k]["ok"]) >= 2 and v[k]["bad"] == "0", e.said
+        assert int(v[k]["i"], 16) & 2 and 0 <= 64 * int(v[k]["sy"]) - int(v[k]["w"]) < 64, e.said  # (the run's end)
+    assert int(v["4"]["ok"]) >= 2 and int(v["4"]["i"], 16) & 0x1000 and v["4"]["sy"] == "0", e.said
+    for k in "23":                                      # direct FSK: not in the model
         assert v[k]["w"] == "0" and v[k]["ok"] == "0", e.said
-    x0 = next(ln for ln in e.said if ln.startswith("x0")).split()[1:]
-    assert len(x0) == 8 and sum(w in ("fefe", "0101", "7f7f", "8080", "bfbf", "4040", "dfdf", "2020",
-                                      "efef", "1010", "f7f7", "0808", "fbfb", "0404", "fdfd", "0202")
-                                for w in x0) >= 4, x0   # a run of flags on the line: 7 bits and 1
-    assert ret == sum(int(v[k]["ok"]) for k in v) and e.said[-1] == f"fskaprs end ok={ret}", e.said
+    end = e.said.index(f"fskaprs end ok={ret}")
+    assert ret == sum(int(v[k]["ok"]) for k in v) and end == 7, e.said
+    d0 = [w for ln in e.said[end + 1:] if ln.startswith("d0 ") for w in ln.split()[2:]]
+    assert len(d0) == 64 and e.said[end + 1].startswith("d0 000 "), e.said[end + 1:end + 9]
+    line = np.array([int(b) for w in d0 for b in f"{int(w, 16):016b}"])
+    assert any(np.array_equal(line, aprs.fskprobe_line(inv, 0.95)[:1024]) for inv in (False, True))
+    assert sum(ln.startswith("d5 ") for ln in e.said) == 7      # 64 words, 10 a line
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
