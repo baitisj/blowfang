@@ -132,6 +132,61 @@ def bench_wav(t_utc, call="AG7EW", gap=0.6, fs=FS, invert=False):
     return np.concatenate(out), sent
 
 
+# what a packet off the air has that the bench signal lacks, one at a time: a station's number
+# (its SSID) -> (name, emphasis: +1 a sender's pre-emphasis, -1 a receiver's de-emphasis of a
+# flat sender, 6 dB an octave, 5 dB between the tones; level; noise: the signal over it in dB;
+# opening flags)
+KINDS = {
+    1: ("flat", 0, 1.0, None, 40),         # the bench signal as it was
+    2: ("pre", 1, 1.0, None, 40),
+    3: ("de", -1, 1.0, None, 40),
+    4: ("low", 0, 0.3, None, 40),          # a third of the deviation
+    5: ("n12", 0, 0.6, 12.0, 40),          # a weak signal's noise (rising with frequency)
+    6: ("n6", 0, 0.6, 6.0, 40),
+    7: ("short", 0, 1.0, None, 8),         # eight opening flags
+    8: ("pre n9", 1, 0.6, 9.0, 40),        # pre-emphasis and noise
+}
+EMPH = 0.95                                # the 1-pole filter's pole at 48 kHz (decode_any's)
+
+
+def fm_noise(n, fs=FS, seed=0):
+    """noise as an FM receiver gives it on a weak signal: its voltage rising with frequency,
+    300 to 3000 Hz, unit power"""
+    rng = np.random.default_rng(seed)
+    X = np.fft.rfft(rng.standard_normal(n))
+    f = np.fft.rfftfreq(n, 1 / fs)
+    X *= np.where((f >= 300) & (f <= 3000), f, 0.0)
+    x = np.fft.irfft(X, n)
+    return x / np.sqrt(np.mean(x ** 2))
+
+
+def kinds_wav(t_utc, call="AG7EW", gap=0.6, fs=FS, rounds=1, kinds=None):
+    """a rehearsal of 144.390 on the bench: packets of the KINDS in turn, each from <call>-<its
+    number> and stamped HHMMSSh with the true UTC at its first bit if the audio starts at t_utc
+    -> (audio, [(call, info, the frame's end in s from the audio's start)])"""
+    from scipy.signal import lfilter
+    pos, out, sent = 0.0, [], []
+    for r in range(rounds):
+        for k in sorted(kinds or KINDS):
+            name, emph, level, snr, pre = KINDS[k]
+            u = t_utc + pos + pre * 8 / BAUD
+            info = "/" + ts_hms(u) + "4857.00N/12229.00W>K6 " + name
+            c = f"{call}-{k}"
+            x, _ = packet_audio([frame(c, "APRS", info)], fs=fs, pre_flags=pre)
+            if emph > 0:
+                x = lfilter([1, -EMPH], [1 - EMPH], x)
+            elif emph < 0:
+                x = lfilter([1 - EMPH], [1, -EMPH], x)
+            x = level * x / np.abs(x).max()
+            if snr is not None:
+                x = x + np.sqrt(np.mean(x ** 2)) * 10 ** (-snr / 20) * fm_noise(len(x), fs, seed=8 * r + k)
+                x = x / max(1.0, np.abs(x).max())
+            out += [x, np.zeros(int(gap * fs))]
+            sent.append((c, info, pos + len(x) / fs))
+            pos += (len(x) + int(gap * fs)) / fs
+    return np.concatenate(out), sent
+
+
 # ---- the FD6818 FSK modem probe's test signal (c/k6/mod/fskaprs.c) ----
 def fskprobe_line(invert=False, seconds=0.95, call="AG7EW", pre_flags=8):
     """the APRS part of a probe unit: whole frames with 8 flags between them, at least `seconds`
@@ -357,6 +412,7 @@ def fsklog_report(lines):
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("aprs start")] or [0]):]
     caps, out = {}, []
+    stream = bool(said) and said[0].startswith("aprs start") and said[0].endswith(" stream")
     for ln in said:
         f = ln.split()
         if ln.startswith("d ") and len(f) > 3 and f[1].isdigit():
@@ -372,6 +428,10 @@ def fsklog_report(lines):
             out.append(ln)
             continue
         bits = np.array([int(b) for w in words for b in f"{w:016b}"], np.int8)
+        if stream:
+            # aprsfskb's words begin at the bit after the sync word's last flag: that flag again
+            # (a 0, a change of tone, follows a flag), so a frame that begins at once is found
+            bits = np.concatenate([[1 - bits[0]], [bits[0]] * 7, [1 - bits[0]], bits]).astype(np.int8)
         nrzi = "".join(str(int(a == b)) for a, b in zip(bits[1:], bits[:-1]))
         ends = [i + 2 for i in range(7, len(nrzi)) if nrzi[i - 7:i + 1] == "01111110"]   # index after each flag
         notes, done = [], 0
@@ -481,6 +541,10 @@ def main(argv=None):
     w.add_argument("--repeat", type=int, default=1,
                    help="with --now: the three stations this many times over, each stamped for its own "
                         "time (40 is about 170 s: a steady run of packets for a receiver test)")
+    w.add_argument("--kinds", action="store_true",
+                   help="with --now: packets as they come off the air, a kind after another (KINDS: "
+                        "pre-emphasis, de-emphasis, low deviation, noise, a short opening), --repeat rounds; "
+                        "a packet's kind is its station's number")
     w.add_argument("--swap", action="store_true",
                    help="with --now: every second round with the tones swapped (the flags' long tone "
                         "the mark), for c/k6/mod/aprsfsk.c's sync word")
@@ -518,8 +582,9 @@ def main(argv=None):
         import time
         t0 = time.time() + a.delay
         parts, sent, pos = [], [], 0.0
-        for k in range(max(1, a.repeat)):
-            x1, s1 = bench_wav(t0 + pos, a.call, invert=a.swap and k % 2 == 1)
+        for k in range(1 if a.kinds else max(1, a.repeat)):
+            x1, s1 = (kinds_wav(t0, a.call, rounds=max(1, a.repeat)) if a.kinds else
+                      bench_wav(t0 + pos, a.call, invert=a.swap and k % 2 == 1))
             parts.append(x1)
             sent += [(c, info, pos + end) for c, info, end in s1]
             pos += len(x1) / FS

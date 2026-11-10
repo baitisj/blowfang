@@ -322,8 +322,8 @@ Variants:
   (`python3 -m modem.aprs wav OUT.wav --now --repeat N --swap`: `--swap` sends every second
   round with the tones swapped, so the flags' long tone is the mark in one and the space in
   the next).
-- `aprsfskb`, `aprsfskb_440`: the same with a sync word of two flags (REG_59 = 00F0), which
-  starts on a shorter opening and on noise several times a second.
+- `aprsfskb`, `aprsfskb_440`: the receiver reading the FIFO all the time (FSK_STREAM, below).
+- `aprsfskd_440`: `aprsfskb_440` with the receiver's de-emphasis off.
 
 A sender that keys up with zeros (alternating tones) and fewer than four flags gives this
 receiver nothing to start on.
@@ -356,13 +356,75 @@ What the captures showed:
 - Silence on a carrier reads as zeros.
 
 The fix (3f093fa) is the list above: the modem off and on for each search, the flags polled
-directly, RX-done handled, four flags of sync word. Its bench run is next.
+directly, RX-done handled, four flags of sync word.
+
+**Second bench run (2026-11-10 09:46 to 10:05Z, 3f093fa, K6 image 35e982f, the K6 silent: uploads
+with no reply asked).**
+
+| Run | Result |
+| --- | --- |
+| 440.850, `aprsfsk_440`, 42 packets, every second round with its tones swapped | **42 of 42 decoded**, the clock set (v=3), `lost=135` |
+| 144.390, `aprsfsk`, 15 min | 0 frames. Four real packets heard (10 captures in four bursts), then a lock-up for the last 53 s |
+
+What the captures showed:
+
+- **Turning the modem on raises REG_02's sync flag by itself**, within a few ms, with REG_0B's low
+  byte 02 (no sync bit). The module took each for a sync word, read three stale words (the empty
+  FIFO gives its last word again: `2862` x3, later `0000` x3), found the line idle and turned the
+  modem off and on again: a round every 59 ms, 1,363 of them in 110 s.
+- **The packets arrived inside those reads**: 40 of the 42 good frames came from a read that began
+  on a flag of the chip's own and ran into the real words (`2862 0101 0101 ...`). So the timed
+  reads need no sync flag: reading the FIFO word by word is enough. REG_0B's sync bits were still
+  set in the first read after a packet (they outlive one turning off and on), so they cannot tell
+  a real sync word from the chip's own flag either.
+- A read was always under way, so **the screen and the minute's line never had their turn**.
+- **On 144.390 the bits of real packets come with errors.** The ten captures of real traffic
+  open with flags that have slipped or lost their short tone (`0808 0008 0808`, `0101 8100 0101
+  0102 0202 0208 0404`: the one-bit tone of each flag missing or a bit late) and go on mostly as
+  zeros. Not one has three clean flag words in a row. On the bench at -20 dBm, flat audio, the
+  same receiver read every bit. What differs on the air: the signal is 75 dB weaker (peaks of
+  -93 to -97 dBm), senders pre-emphasise, and openings vary.
+- **A real packet that began cleanly was thrown away.** Its first FIFO word was `012b`, the end
+  of a flag and a frame's first byte: the chip had taken the opening's last four flags as its
+  sync word, so no flag was left in the FIFO for `hdlc()` to open the frame with, the line
+  looked idle and the read was given up. Worse, `012b` again and again (the empty FIFO) reads as
+  flags, so every later read ran its 128 words: the receiver was deaf from then to the end.
+- The end line had grown past the 60 characters of a say line and lost its `pre=`.
+
+**What came of it (`aprsfskb`, FSK_STREAM).** The FIFO is read all the time, a word every
+13.3 ms; a word that is not the last one again means the chip has found its sync word, and
+`hdlc()` starts as it is after a flag (the bit after a sync word of flags is a 0, a change of
+tone, which gives the tone before it). The modem is turned off and on when the line has been
+idle for 40 bits, at RX-done, and every 2 s with nothing heard. Stale words are never decoded,
+and the screen and the minute's line run whenever no packet is being read. `aprsfsk` itself is
+left as it ran on the bench until `aprsfskb` has had its own run; both say `aprs fsk ms= key=
+pre= fake=` before the end line. `aprsfskd_440` is `aprsfskb_440` with the receiver's
+de-emphasis off (REG_2B + 0100).
+
+**A rehearsal of 144.390 for the bench** (`python3 -m modem.aprs wav OUT.wav --now --kinds
+--repeat 7`): packets of eight kinds in turn, each from the station number of its kind and
+stamped with the UTC at its first bit.
+
+| Station | Kind |
+| --- | --- |
+| -1 | flat: the bench signal as it was |
+| -2 | pre: a sender's pre-emphasis (6 dB an octave, 5 dB between the tones) |
+| -3 | de: a flat sender through a receiver's de-emphasis |
+| -4 | low: a third of the deviation |
+| -5 | n12: noise as an FM receiver gives it on a weak signal, 12 dB under the packet |
+| -6 | n6: the same, 6 dB under |
+| -7 | short: eight opening flags |
+| -8 | pre n9: pre-emphasis and noise 9 dB under |
+
+The float decoder (`modem.aprs decode`) takes all of them but most of n6.
 
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every
-packet decoded, the clock set within its bound, the reads in step with the FIFO, the modem off
-and on for each packet, the registers put back. The model ends a packet when it is armed, which
-the real chip does not: the first bench run's fault could not show there.
+packet decoded, the clock set within its bound, the modem off and on for each packet, the
+registers put back. The model can raise the sync flag at every arming as the chip does: then
+`aprsfsk` goes round its stale reads as on the bench (no screen), and `aprsfskb` takes its
+third packet with an opening of four flags only. The model ends a packet when it is armed,
+which the real chip does not: the first bench run's fault could not show there.
 
 ## Size: which images
 

@@ -139,8 +139,8 @@ typedef struct {
   int32_t ref, haveref, votes, est, wid, hops;
   uint8_t day, mon, yr, stn;
 #ifdef APRS_FSK
-  uint32_t fake;      /* starts that were no packet */
-  uint16_t sv[9];     /* the modem's registers as found */
+  uint32_t fake;      /* sync words with under 6 words and no frame */
+  uint16_t sv[10];    /* the modem's registers as found */
   uint16_t cap[128];  /* a packet's words as read, for its d lines */
 #endif
 } st_t;
@@ -870,22 +870,23 @@ int k6_main(const k6_api_t *api) {
    packet's real words then arrive inside such a read and decode (40 of the 42 came that way).
    So the reads need no sync flag at all. FSK_STREAM (aprsfskb) is that taken at its word: the
    FIFO is read all the time, a word every 40/3 ms, and a word that is not the last one again
-   means the chip is in a packet. Its bits go to hdlc() until the line is idle after a flag (a
-   packet: its y line), or 8 words bring no flag (noise that looked like the sync word), or the
-   chip says RX done; then the modem is turned off and on. With nothing heard the search is
-   started again every FSK_AGAIN ms, whatever state the chip is in.
+   means the chip has found its sync word. hdlc() starts as it is after a flag, because the
+   sync word was four of them and may have been the opening's last four (a real packet on
+   144.390 was lost that way: its first FIFO word was the frame's own start). The bits go to
+   hdlc() until the line has been idle for FSK_IDLE bits or the chip says RX done; then the
+   modem is turned off and on. With nothing heard the search is started again every FSK_AGAIN
+   ms, whatever state the chip is in.
 
-   Lines, besides the tap build's f, clk and m lines (pre = packets: sync words, or with
-   FSK_STREAM openings that brought a flag):
-     aprs start hz=144390000 fsk=13219 sync=248         (REG_58, REG_59)
+   Lines, besides the tap build's f, clk and m lines (pre = sync words heard):
+     aprs start hz=144390000 fsk=13219 sync=248         (REG_58, REG_59; FSK_STREAM: " stream" after)
      y 12 t=123456 w=37 ok=1 st=0002.c9a2   a packet: its number, ms at the sync, words read,
                                         good frames in it, REG_02's flags and REG_0B then
                                         (FSK_STREAM: the flags since 20 ms after the search began)
      d 12 000 fefe fe01 ...             its words, 10 a line (APRS_FSK_DUMP 2: every packet; 1:
                                         those without a good frame; 0: none)
      aprs fsk ms=900004 key=0 pre=31 fake=912   before the end line: the module's clock, the key
-                                        that ended it, packets, starts that were none
-   Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F and 02, put back as read (the pager arms its
+                                        that ended it, sync words, those of under 6 words
+   Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 3F, 02 and (FSK_AF) 2B, put back as read (the pager arms its
    own receiver again after any module). Returns as the tap build does, less -4, -5 and -7. */
 #define FSK_CFG 0x33A3u  /* REG_58: the 1200/2400 Hz receiver, bits 7:6 = 10 */
 #ifndef FSK_CTRL
@@ -902,10 +903,9 @@ int k6_main(const k6_api_t *api) {
 #ifndef FSK_AGAIN
 #define FSK_AGAIN 2000u  /* ms with nothing heard: the search is started again */
 #endif
-#define FSK_NOISE 8      /* words without a flag: not a packet */
-#define NSV 9
+#define NSV 10
 
-static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F};
+static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B};
 
 static void fsk_arm(const k6_api_t *api) {
   api->fd_write(0x59, FSK_CTRL | 0x4000);
@@ -959,7 +959,7 @@ int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now, tkey = 0, tsync = 0, idle = 0, ok0 = 0, st = 0, left = 0, got = 0;
 #ifdef FSK_STREAM
-  uint32_t acc = 0, tlast, tseek = 0, prev = 0, seen = 0;
+  uint32_t acc = 0, tlast, tseek = 0, prev = 0;
 #else
   uint16_t tw = 0;
 #endif
@@ -974,6 +974,10 @@ int k6_main(const k6_api_t *api) {
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
+#ifdef FSK_AF
+  /* REG_2B's filters are in the modem's path (probe 3): 0100 the de-emphasis off */
+  api->fd_write(0x2B, s->sv[9] | FSK_AF);
+#endif
   api->fd_write(0x5A, FSK_SYNC);
   api->fd_write(0x5B, FSK_SYNC);
   api->fd_write(0x72, 0x3065);  /* 1200 baud x 10.32444 */
@@ -992,6 +996,9 @@ int k6_main(const k6_api_t *api) {
   p = dec(p, APRS_HZ, 1);
   p = kv(p, " fsk=", FSK_CFG);
   p = kv(p, " sync=", FSK_CTRL);
+#ifdef FSK_STREAM
+  p = put(p, " stream");
+#endif
   say(api, s, p);
   for (;;) {
     now = api->ms();
@@ -1020,9 +1027,13 @@ int k6_main(const k6_api_t *api) {
         n--;
         if (!left) {
           if (v == prev) continue; /* the empty FIFO: its last word again */
-          left = 1, seen = 0, got = 0, idle = 0, tsync = now, ok0 = s->ok;
+          left = 1, got = 0, idle = 0, tsync = now, ok0 = s->ok;
           st = (st & 0xFFFF0000) | api->fd_read(0x0B);
-          s->in = 0, s->sr = 0;
+          /* the sync word was four flags and this is the bit after them, so a frame may begin
+             right here: hdlc() as it is after a flag. That bit is a 0 (a frame's first, or
+             the next flag's), a change of tone, which gives the tone before it */
+          s->in = 1, s->len = 0, s->bb = 0x80, s->nbits = 0, s->run = 0, s->sr = 0x7E;
+          s->mlast = (int32_t)(~v >> 15 & 1);
         }
         prev = v;
         if (got < FSK_WORDS) s->cap[got] = (uint16_t)v;
@@ -1032,10 +1043,9 @@ int k6_main(const k6_api_t *api) {
           int32_t tone = (int32_t)((v >> i) & 1);
           hdlc(api, s, tone == s->mlast);
           s->mlast = tone;
-          if (s->in) seen = 1, idle = 0;
-          else idle++;
+          idle = s->in ? 0 : idle + 1;
         }
-        over = seen ? idle >= FSK_IDLE || got >= FSK_WORDS : got >= FSK_NOISE;
+        over = idle >= FSK_IDLE || got >= FSK_WORDS;
       }
       if ((f & 0x2000) && now - tseek >= FSK_SETTLE) {
         /* the chip's 256 bytes are up; with no word read, a packet nobody saw */
@@ -1047,10 +1057,11 @@ int k6_main(const k6_api_t *api) {
         fsk_seek(api);
         for (i = 0; i < 8; i++) prev = api->fd_read(0x5F); /* what is left in the FIFO */
         prev = (prev & 0xFF) << 8 | prev >> 8;
-        if (left && seen) {
+        if (left) {
           s->pre++;
+          if (got < 6 && s->ok == ok0) s->fake++;
           fsk_said(api, s, tsync, got < FSK_WORDS ? got : FSK_WORDS, s->ok - ok0, st);
-        } else if (left) s->fake++;
+        }
         left = 0, st = 0, acc = 0, tlast = api->ticks() & 0xFFFF, tseek = api->ms();
       }
     }

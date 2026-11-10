@@ -74,3 +74,30 @@ with a good check, the strongest RSSI.
 
 Tested on the emulator (`tests/test_k6_acars.py`) against the model of packet mode from the
 APRS probes; the model cannot answer the two unknowns, only the bench can.
+
+## Bench run, 2026-11-10 10:05 to 10:12Z
+
+K6 image 35e982f, receive only (uploads with no reply asked). IC-7100 on 440.850 MHz at about
+-21 dBm at the K6.
+
+| Run | Result |
+| --- | --- |
+| `acarsfsk`, the blocks sent in FM, two rounds of the 12 settings | `sy=0` in every one: no sync on a real block's SYN SYN, none on "+*" SYN SYN, and **none on the K units either** (alternating tones and the pager's own sync word, at 2400 bit/s) |
+| `acarsfsk_am`, the blocks sent in AM | void: the K6's RSSI fell to its floor (-127 to -130 dBm) the moment the IC-7100 went to AM. Three chance syncs on noise, no SOH |
+
+What that says:
+
+- **The 1200/2400 Hz receiver did not start on anything at 2400 bit/s**, not even on an opening
+  of its own kind. At 1200 baud the same receiver starts on plain flags (`aprsfsk`). The likely
+  reading: REG_58's "FFSK 1200/2400" is a 1200 baud scheme (a bit is a cycle of 1200 Hz or two
+  of 2400 Hz), and half a cycle of 1200 Hz is not a bit to it. The probe has no unit at
+  1200 baud, so a fault of the probe's own at 2400 (REG_72 = 60CA) is not ruled out: a K unit
+  at 1200 baud in the same run would tell.
+- **The IC-7100 sends no AM on 70 cm.** hamlib lists AM for its transmitter only on HF and
+  50 MHz, and the K6 saw no carrier. So AM cannot be tested on the bench with this radio; the
+  AM front end can only be tried on real ACARS, receive only (131.550 MHz), or with another
+  AM source.
+
+So the third case of the list above, with a caveat: ACARS on the chip's modem looks closed
+unless a 1200 baud control shows the probe itself was at fault. The IF tap (`aiscap_acars`)
+stays the way to ACARS.

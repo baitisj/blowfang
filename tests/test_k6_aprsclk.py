@@ -601,7 +601,9 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
     rng = np.random.default_rng(5)
     air = rng.integers(0, 2, int((total + 2) * BASE // 4))
     for k, (t, mk) in enumerate(packets()):
-        b = aprs.hdlc_bits(mk(UTC0 + t + 40 * 8 / aprs.BAUD)).astype(int)
+        # aprsfskb's third packet opens with four flags only: the sync word, then the frame
+        pre = 4 if stream and k == 2 else 40
+        b = aprs.hdlc_bits(mk(UTC0 + t + pre * 8 / aprs.BAUD), pre_flags=pre).astype(int)
         i = int(t * aprs.BAUD)
         air[i:i + len(b)] = b ^ (k == 1)
     air = np.repeat(air, BASE // aprs.BAUD)
@@ -614,7 +616,7 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
     ret, stack = r
     assert ret == 3 and stack < 700, (ret, stack, e.said)
     assert e.over == 0 and (spur or e.empty == 0), (e.empty, e.over)
-    assert e.said[0] == f"aprs start hz=144390000 fsk=13219 sync={ctrl}", e.said[:2]
+    assert e.said[0] == f"aprs start hz=144390000 fsk=13219 sync={ctrl}" + " stream" * stream, e.said[:2]
     end = e.said[-1]
     assert "ok=3 " in end and "ts=3 v=3" in end and end.endswith(" lost=0") and len(end) <= 60, e.said
     hh, mm, ss = end.split("utc=")[1].split()[0].split(":")
@@ -625,13 +627,14 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
     y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
     good = [v for v in y if v["ok"] == "1"]
     assert len(good) == 3 and all(20 < int(v["w"]) < 80 for v in good), y
+    assert not stream or int(good[2]["w"]) < 55, good    # 73 with its 40 flags
     assert all(int(v["w"]) < 128 for v in y), y
     fsk = dict(kv.split("=") for kv in e.said[-2].split()[2:])
     assert e.said[-2].startswith("aprs fsk ms=") and fsk["key"] == "0" and len(e.said[-2]) <= 60, e.said[-2]
     if stream:
         # nothing but the three packets: no read of stale words, the search started again
         # only while nothing came
-        assert len(y) == 3 and fsk["pre"] == "3" and fsk["fake"] == "0", (y, fsk)
+        assert len(y) == int(fsk["pre"]) and fsk["fake"] == "0", (y, fsk)
     elif spur:
         assert len(y) > 40 and int(fsk["fake"]) > 40 and all(v["w"] == "3" for v in y if v["ok"] == "0"), fsk
     else:
@@ -647,7 +650,7 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
     rep = aprs.fsklog_report(["K6 MOD say " + ln for ln in e.said])
     got = [ln for ln in rep if ln.startswith("y ") and " ok=1 " in ln]
     assert len(got) == 3 and "ok VE7ABC-9>APRS:/" in got[0] and "ok N0CALL-7>GPS:$GPRMC" in got[2], rep
-    assert all(int(ln.split("flags=")[1].split()[0]) >= 20 for ln in got), got
+    assert all(int(ln.split("flags=")[1].split()[0]) >= 20 for ln in got[:2]), got
     hurt = []
     for ln in e.said:
         if ln.startswith(f"d {n} 030 "):
@@ -669,12 +672,31 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
         # minute's line never get their turn (what aprsfskb is for)
         assert not e.lcd, e.lcd
     assert any(on for _, on in e.led)
-    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F):
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B):
         assert e.writes[reg][-1] == 0, hex(reg)         # put back as read (the emulator reads 0)
     # the modem off and on for each packet, armed twice each time (aprsfskb: and every 2 s
     # with nothing heard)
     w58 = e.writes[0x58]
     again = w58.count(0x33A3) - len(y) - 1
-    assert (1 <= again <= 3 if stream else again == 0) and w58.count(0) >= len(y) + 2, (again, len(y), w58)
+    assert (1 <= again <= 6 if stream else again == 0) and w58.count(0) >= len(y) + 2, (again, len(y), w58)
     assert e.writes[0x5A][0] == 0xFEFE and e.writes[0x5B][0] == 0xFEFE and e.writes[0x5D][0] == 0xFF00
     assert e.writes[0x59].count(0x1000 | ctrl) == 2 * w58.count(0x33A3) and 0x3002 in e.writes[0x3F], e.writes[0x59][:8]
+
+
+def test_kinds_wav_a_rehearsal_of_real_packets():
+    """modem.aprs wav --now --kinds: packets as they come off the air (pre-emphasis, a
+    receiver's de-emphasis, low deviation, a weak signal's noise, eight opening flags), a kind
+    a station number. The float decoder takes all but the noisiest, each stamped with the UTC
+    at its first bit."""
+    t0 = 1794305724.9
+    x, sent = aprs.kinds_wav(t0, rounds=2)
+    assert len(sent) == 16 and np.abs(x).max() <= 1.0 and len(x) / aprs.FS < 20
+    assert [c for c, _, _ in sent[:8]] == [f"AG7EW-{k}" for k in range(1, 9)]
+    got = [aprs.describe(f) for _, f in aprs.decode_any(0.5 * x, aprs.FS)]
+    for k in (1, 2, 3, 4, 5, 7):
+        assert sum(f"AG7EW-{k}>" in g for g in got) == 2, (k, got)
+    assert any("K6 pre n9" in g for g in got), got
+    for c, info, end in sent:
+        hms = info[1:7]
+        u = int(t0 + end - 0.4) % 86400               # a second or less before the frame's end
+        assert abs(int(hms[:2]) * 3600 + int(hms[2:4]) * 60 + int(hms[4:]) - u) <= 1, (c, info, end)
