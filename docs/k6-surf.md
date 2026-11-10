@@ -45,15 +45,27 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 | key | does |
 |---|---|
 | UP / DOWN | the middle one channel up / down (the band's step); held, it repeats. The scale moves with it, each bin keeping the level of the old one nearest it |
-| SIDE1 / SIDE2 (orange) | next peak above / below that a settled read confirms (10 dB over the settled floor), on the channel raster; it moves to the middle, and the moved scale is swept once before the audio opens. If the loudest bin of the lens is then another channel, it moves there once more (a wide bin far out is coarse). With none left on screen, the scale's edge becomes the middle and it looks again after the sweep, on up the band until it finds one or reaches the band's edge ("no peak") |
-| BAND or # | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather) |
-| 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz (defaults: 2m and 1.25m 500 kHz, 70cm and MAR/WX 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
+| SIDE1 / SIDE2 (orange) | next peak above / below that a settled read confirms (10 dB over the settled floor), on the channel raster; it moves to the middle, and the moved scale is swept once before the audio opens. If the loudest bin of the lens is then another channel, it moves there once more (a wide bin far out is coarse). With none left on screen, the scale's edge becomes the middle and it looks again after the sweep, on up the band until it finds one. At the band's edge it goes back to where the press started and line 5 says "no peak" |
+| BAND | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather), AIR (118.000-136.975, 25 kHz, AM). Each band starts at its own channel step |
+| # | the next channel step: 5, 6.25, 10, 12.5, 20, 25, 50, 100 kHz, then round again. BAND puts the band's own step back. On a 6.25 kHz raster line 1 shows five decimals |
+| 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz (defaults: 2m and 1.25m 500 kHz, 70cm, MAR/WX and AIR 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
+| 5 | the middle to the band's centre |
+| 7 / 9 | fixed receiver gain one step down / up, G1 to G9 (REG_7E's fixed-gain bit, REG_13 from iflive's steps 0x0018 to 0x03FF). From the AGC the first press starts at G8, the top of Aura's AGC table, so 7 gives G7 and 9 gives G9. The title shows the step (`SURF 70cm 25k G8`); the bars and the settled floor are measured again, since a fixed gain moves the RSSI |
+| 8 | back to the AGC |
 | * | monitor: audio open on the bar all the time, no sweeping (title says MON) |
 | 0 | hold: no refresh sweeps while a signal plays (title says HOLD) |
 | MENU | says the bar's frequency and level on the serial port |
 | EXIT | leave; the module waits for the key's release so the pager doesn't see it |
 
-Screen: the title bar says the band and its channel step; line 1 the bar's frequency and its
+**Air band (AM).** In AIR the audio opens with REG_47 AF 7 (Aura's AM output) and the AFC off
+(REG_73 bit 4), as Aura's `apply_modulation` does for AM. Aura's AM AGC values (REG_14 0, REG_49
+0x1920) are left out: with them the RSSI never rose on the IC-7100's AM carrier in the afsweep run
+(2026-11-06), and surf's bars and squelch are all RSSI. The K6 hears 18-136 MHz below its VHF
+filter (k6-rxmap.md: floor -108 dBm there). Receive only, like the rest of surf. Not yet tried on
+the radio.
+
+Screen: the title bar says the band, its channel step and a fixed gain (it drops `SURF ` when
+that runs past 21 letters); line 1 the bar's frequency and its
 level (a settled read, dBm) and RX while the audio is open; the bargraph (63 bins x 2 pixels on
 the lens scale, the bar always in the middle under the caret, a tick over each peak, a dot in the
 top row over each repeater the explorer saved, the axis and its ticks under the bars, nothing

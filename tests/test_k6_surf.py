@@ -348,7 +348,7 @@ def test_axis_ticks_show_the_frequency_intervals():
 
 @need_clang
 def test_band_and_zoom_keys():
-    keys = taps("N", 1_000_000) + taps("1", 3_000_000) + taps("3", 5_000_000) + taps("NNNN", 7_000_000) \
+    keys = taps("N", 1_000_000) + taps("1", 3_000_000) + taps("3", 5_000_000) + taps("NNNNN", 7_000_000) \
         + [(9_000_000, 9_300_000, "X")]
     ret, said, regs, writes, lcd = go([], keys)
     fr = lcd["frames"]
@@ -360,9 +360,90 @@ def test_band_and_zoom_keys():
     assert at(fr, 4_000_000)["text"][5] == labels(400)      # 1: +-1 MHz
     assert at(fr, 4_000_000)["text"][1].startswith("465.1375 ")           # the middle stays
     assert at(fr, 6_000_000)["text"][5] == labels(1000)
-    # four more: marine/WX, 2m, 1.25m, 70cm
+    # five more: marine/WX, air, 2m, 1.25m, 70cm
     assert at(fr, 8_500_000)["text"][0] == "SURF 70cm 25k"
     assert at(fr, 8_500_000)["text"][1].startswith("440.0000 ")
+
+
+@need_clang
+def test_air_band_opens_the_audio_in_am_and_puts_the_afc_back():
+    # BAND three times from 70cm: GMRS, marine/WX, air; a -80 dBm carrier on 127.500 (mid-band)
+    keys = taps("NNN", 1_000_000) + taps("N", 5_000_000) + [(6_000_000, 6_300_000, "X")]
+    ret, said, regs, writes, lcd = go([(127_500_000, -80, 0, FOREVER)], keys, regs={0x73: 0x0001})
+    fr = lcd["frames"]
+    air = at(fr, 3_500_000)
+    assert air["text"][0] == "SURF AIR 25k" and air["text"][1] == "127.5000 -80dBm RX"
+    w73 = [v for r, v in writes if r == 0x73]
+    assert w73 == [0x0011, 0x0001]                          # AFC off in the air band, back on leaving it
+    assert 0x6740 in [v for r, v in writes if r == 0x47]    # AF 7: AM
+    assert 0x6140 not in [v for r, v in writes if r == 0x47]
+    assert at(fr, 5_800_000)["text"][0] == "SURF 2m 10k"
+    assert regs[0x73] == 0x0001 and regs[0x47] == 0x6040
+    assert not {0x14, 0x49} & {r for r, _ in writes}        # (Aura's AM AGC: the RSSI died with it)
+
+
+@need_clang
+def test_hash_goes_round_the_steps_and_band_resets_it():
+    keys = taps("###", 1_000_000, gap=600_000) + taps("#UM", 3_000_000, gap=600_000) \
+        + taps("N#", 5_000_000, gap=600_000) + [(7_000_000, 7_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys)
+    fr = lcd["frames"]
+    assert at(fr, 1_300_000)["text"][0] == "SURF 70cm 50k"
+    assert at(fr, 1_900_000)["text"][0] == "SURF 70cm 100k"
+    assert at(fr, 2_500_000)["text"][0] == "SURF 70cm 5k"             # round again
+    six = at(fr, 4_000_000)
+    assert six["text"][0] == "SURF 70cm 6.25k" and six["text"][1].startswith("440.60625 ")
+    assert sels(said) == ["440.60625"]
+    assert at(fr, 5_300_000)["text"][0] == "SURF GMRS 12.5k"          # BAND: the band's own step
+    assert at(fr, 6_000_000)["text"][0] == "SURF GMRS 20k"
+
+
+@need_clang
+def test_five_goes_to_the_middle_of_the_band():
+    keys = taps("5M", 1_000_000) + [(2_000_000, 2_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys, rx_hz=448_300_000)
+    assert sels(said) == ["440.0000"]
+
+
+@need_clang
+def test_seven_eight_nine_set_the_gain():
+    start = {0x7E: 0x3500, 0x13: 0x03BE}
+    keys = taps("9", 1_000_000) + taps("77", 2_000_000, gap=400_000) + taps("7" * 10, 3_000_000, gap=400_000) \
+        + taps("8", 7_500_000) + taps("7", 8_500_000) + [(9_500_000, 9_800_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys, regs=start)
+    g = [(r, v) for r, v in writes if r in (0x7E, 0x13)]
+    pairs = list(zip(g[::2], g[1::2]))
+    assert all(a[0] == 0x7E and b[0] == 0x13 for a, b in pairs)
+    got = [(a[1], b[1]) for a, b in pairs]
+    fixed = 0xB500                                          # bit 15 and index 3, the rest kept
+    assert got[0] == (fixed, 0x03FF)                        # 9 from the AGC: G9
+    assert got[1:3] == [(fixed, 0x03BE), (fixed, 0x037E)]   # G8, G7
+    assert got[3:8] == [(fixed, v) for v in (0x033E, 0x031E, 0x021E, 0x011E, 0x001E)]
+    assert got[8:13] == [(fixed, 0x0018)] * 5               # G1 is the bottom
+    assert got[13] == (0x3500, 0x03BE)                      # 8: the AGC as it was
+    assert got[14] == (fixed, 0x037E)                       # 7 from the AGC: G7
+    assert got[15] == (0x3500, 0x03BE) and len(got) == 16   # put back at the end
+    fr = lcd["frames"]
+    assert at(fr, 1_500_000)["text"][0] == "SURF 70cm 25k G9"
+    assert at(fr, 7_200_000)["text"][0] == "SURF 70cm 25k G1"
+    assert at(fr, 8_000_000)["text"][0] == "SURF 70cm 25k"
+    assert regs[0x7E] == 0x3500 and regs[0x13] == 0x03BE
+    # a long title drops "SURF " rather than run off the line
+    keys = taps("NN", 1_000_000, gap=400_000) + taps("####9*", 2_000_000, gap=400_000) + [(5_000_000, 5_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys, regs=start)
+    assert at(lcd["frames"], 4_600_000)["text"][0] == "MAR/WX 6.25k G9 MON"
+
+
+@need_clang
+def test_no_peak_goes_back_where_the_press_started():
+    # nothing on the air: SIDE1 hunts up to 450 MHz, then the middle comes back to 448.000
+    keys = taps("A", 1_500_000) + taps("M", 11_000_000) + [(12_000_000, 12_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys, rx_hz=448_000_000)
+    fr = lcd["frames"]
+    assert max(float(f["text"][1].split()[0]) for f in fr) >= 449.9   # it did hunt to the edge
+    assert any(f["text"][5] == "no peak" for f in fr)
+    assert sels(said) == ["448.0000"]
+    assert at(fr, 10_500_000)["text"][1].startswith("448.0000 ")
 
 
 @need_clang
