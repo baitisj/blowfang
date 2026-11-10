@@ -35,7 +35,8 @@
    about 30 s. A 1 s stamp gives the second; minute stamps alone give the minute.
 
    Lines (serial / telemetry):
-     aprs start hz=144390000 ks=5603 n=12
+     aprs start hz=144390000 ks=5603 n=12 g=1023           (g: REG_13, the gain frozen there)
+     m 3 rssi=-104 pk=-85 pre=1 ok=1                       (a minute: floor, peak, preambles, good)
      f VE7ABC-9 n=58 h=1 ts=175201h                        (a good frame: source, bytes, hops, stamp)
      clk 17:52:04.250 w=1000 v=2 d=08                      (the clock: UTC, interval ms, votes, day)
      aprs end ok=12 bad=3 ts=5 v=2 utc=17:59:59.120 lost=0
@@ -43,7 +44,7 @@
    UTC now, the date it has, and a bound of the interval's far end from the estimate.
    Screen (level 6) once a second when no frame is coming (UTC and date, votes, packets heard / decoded /
    stamped, the station heard last), LED blink a good frame (level 7). A key ends it (else RUN_MS). Writes REG_34[3:0]
-   and REG_33 bit 8 (GP0), the MCU's TIM17, DMA channel 1 and their clock enables, all put back.
+   and REG_33 bit 8 (GP0), REG_7E and REG_13 (the gain), the MCU's TIM17, DMA channel 1 and their clock enables, all put back.
    Returns the votes behind the clock (0: none), or -2 (a key before any frame), -3 (old image),
    -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch).
    SPDX-License-Identifier: MIT */
@@ -56,6 +57,9 @@
 #endif
 #ifndef RUN_MS
 #define RUN_MS 900000u /* 15 min */
+#endif
+#ifndef GAIN13
+#define GAIN13 0x03FFu /* REG_13 with the AGC frozen (the maximum); 0 leaves the AGC running */
 #endif
 #define DMAX_DIRECT 3000
 #define DMAX_DIGI 8000
@@ -126,6 +130,7 @@ typedef struct {
   int32_t len, in;
   /* results */
   uint32_t ok, bad, nts, seq, now_ms, scr_ms;
+  uint16_t rlo, rhi; /* REG_67 once a second: the minute's least and most */
   int32_t ref, haveref, votes, est, wid, hops;
   uint8_t day, mon, yr, stn;
 } st_t;
@@ -691,7 +696,7 @@ static void screen(const k6_api_t *api, st_t *s) {
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, apb2, ahb, i, tkey = 0;
-  uint16_t r33, r34;
+  uint16_t r33, r34, r7e, r13;
   char *p;
   if (api->level < 2) return -3;
   s = (st_t *)api->scratch(&room);
@@ -712,6 +717,16 @@ int k6_main(const k6_api_t *api) {
     return -5;
   }
   api->fd_write(0x34, (uint16_t)((r34 & 0xFFF0) | 13));
+  /* The gain frozen at its maximum, as the AIS and DMR modules do: the 1-bit tap's own noise
+     lies above the receiver's even there, so wherever the AGC turns the IF down (a strong
+     neighbour, a big antenna's whole band) a weak packet sinks further under it
+     (docs/k6-dmr.md: +10 dB over the tap's noise at 0x03FF against +4 to +5 with the AGC). */
+  r7e = api->fd_read(0x7E), r13 = api->fd_read(0x13);
+  if (GAIN13) {
+    api->fd_write(0x7E, (uint16_t)((r7e & 0x0FFF) | 0x8000 | (3u << 12)));
+    api->fd_write(0x13, GAIN13);
+  }
+  s->rlo = 0x1FF;
   wr(RCC_APB2ENR, apb2 | TIM17EN);
   wr(TIM17 + 0x00, 0);
   wr(TIM17 + 0x28, 0);
@@ -734,6 +749,7 @@ int k6_main(const k6_api_t *api) {
   p = dec(p, APRS_HZ, 1);
   p = kv(p, " ks=", udiv(96000u * 256u, s->cps8));
   p = kv(p, " n=", (uint32_t)s->n);
+  p = kv(p, " g=", GAIN13);
   say(api, s, p);
   resync(s);
   for (;;) {
@@ -759,15 +775,25 @@ int k6_main(const k6_api_t *api) {
           /* a stretch past TIM14's 6.5 s wrap reads wrong: only a rate within 1/16 */
           if (c - s->cps8 + (s->cps8 >> 4) <= (s->cps8 >> 3)) s->cps8 = (3 * s->cps8 + c) >> 2, steps(s);
         }
+        {
+          /* the level, here once a second where a pause costs nothing: the minute's least is
+             the floor, its most a packet's level if one was on the air at a look (a packet
+             being decoded puts the look off, so pk is mostly the ones that didn't decode) */
+          uint16_t r = api->fd_read(0x67) & 0x1FF;
+          if (r < s->rlo) s->rlo = r;
+          if (r > s->rhi) s->rhi = r;
+        }
         if (s->now_ms - s->min_ms >= 60000) { /* once a minute: the channel, for the bench */
           s->min_ms = s->now_ms;
           p = kv(s->ln, "m ", udiv(s->now_ms, 60000));
           p = put(p, " rssi=-");
-          p = dec(p, (uint32_t)-KM_RSSI_DBM(api->fd_read(0x67)), 1);
+          p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rlo), 1);
+          p = put(p, " pk=-");
+          p = dec(p, (uint32_t)-KM_RSSI_DBM(s->rhi), 1);
           p = kv(p, " pre=", s->pre);
           p = kv(p, " ok=", s->ok);
-          p = kv(p, " bad=", s->bad);
           say(api, s, p);
+          s->rlo = 0x1FF, s->rhi = 0;
         }
         if (api->level >= 6) screen(api, s);
         resync(s);
@@ -783,6 +809,7 @@ int k6_main(const k6_api_t *api) {
   wr(DMA_CMAR1, 0);
   wr(RCC_APB2ENR, apb2);
   wr(RCC_AHBENR, ahb);
+  if (GAIN13) api->fd_write(0x13, r13), api->fd_write(0x7E, r7e);
   api->fd_write(0x34, r34);
   api->fd_write(0x33, r33);
   p = put(s->ln, "aprs end ok=");

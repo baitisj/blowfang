@@ -136,6 +136,33 @@ That is with the module at -Os: at -Oz the Arm Toolchain for Embedded's build (C
 to the radio) lost counts at 2.5, a margin of about 1.4x, so the module asks for -Os (1 KB more
 code) and the emulator's builds follow the source's choice. The sums are about 16% of the instructions.
 
+## What the model left out: the tap's own noise (2026-11-10)
+
+The first live run of the matched filter (05:34-05:49Z, K6 on the big antenna, image 686e2cf,
+module 8a2057d) ran its 15 minutes with `lost=0`, heard two preambles and decoded one frame
+(Jeff's car), while Jeff's other handheld, indoors on a short antenna, heard much more on
+144.390. The RF path is not the cause: `tune` is Aura's `retune_rx`, which switches the VHF
+front end below 300 MHz, and the module uses none of the chip's tone detectors.
+
+The cause is the one the AIS and DMR modules had already met (docs/k6-ais.md run 1,
+docs/k6-dmr.md "the second run"). The C/N0 figures above are against the noise *in the counts*,
+and the model took that to be the receiver's noise. On the radio it is the 1-bit tap's own:
+flat from 0 to 43 kHz with no carrier, above the receiver's noise even at maximum gain. On the
+frozen-gain RSSI, 48 dB-Hz is a carrier of about -79 dBm, so this receiver needs packets some
+tens of dB stronger than the chip's own FM receiver does. Two things make it worse here, and
+both have fixes the AIS module uses:
+
+- **The AGC.** With the pager's AGC running, a DMR carrier stood +4 to +5 dB over the tap's
+  noise; with the gain frozen at REG_13 = 0x03FF, +10 dB. The module now freezes it (`GAIN13`,
+  REG_7E bit 15 and index 3, both put back at the end; `-DGAIN13=0` leaves the AGC on).
+- **The DMA's rate.** Reading the 6.5 MHz stream at 5.5 MS/s folds its shaped noise into the IF
+  band: 166 Hz rms of FM noise on a carrier against 60 polled at 22.9 MS/s, about 9 dB. A
+  polled APRS receiver has to demodulate between polls (a packet is up to a second, too long to
+  record and decode after as AIS does); not built yet.
+
+Neither closes the gap to the chip's own receiver. That needs the chip's demodulated audio or
+bits in place of the IF.
+
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the
@@ -235,7 +262,8 @@ lost=1`, stack free 2,276 B, the report went out on 440.850 as planned. No frame
 The 589 bad frames are flag-to-flag runs, which noise makes too, so they do not show whether any
 APRS reached the radio: the IF tap had never been tried at 144 MHz, and nobody had checked that
 144.390 is busy at hamlet. The module now prints a line every minute, `m <min> rssi=-<dBm> pre=
-ok= bad=`, where `pre` counts preambles (three flags in a row inside a run), which noise rarely
+ok= bad=` (since 2026-11-10 `m <min> rssi=-<floor> pk=-<peak> pre= ok=`: the least and the most
+of a look at REG_67 each second), where `pre` counts preambles (three flags in a row inside a run), which noise rarely
 makes, so a quiet channel and a deaf demodulator look different.
 
 **Loopback on 70 cm** (`mod-aprsclk_440.bin`, `c/k6/mod/aprsclk_440.c`: the same module on
