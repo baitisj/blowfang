@@ -163,6 +163,29 @@ both have fixes the AIS module uses:
 Neither closes the gap to the chip's own receiver. That needs the chip's demodulated audio or
 bits in place of the IF.
 
+## Next: the chip's own FSK modem (`fskaprs`, a probe)
+
+Baofeng's own firmware reads nothing from PB1 and gives the MCU no demodulated audio, so the only
+other way to the chip's sensitivity is its FSK modem, which the pager's uploads use at levels the
+tap can't read. It was written off for AX.25 (line 13 above) for its sync word and fixed length.
+`c/k6/mod/fskaprs.c` (1.8 KB, level 2, receive only) tries two ways round that on the bench
+channel, six variants in turn, 8 s each, for 260 s:
+
+- **stream:** REG_5D = 0xFF00. On 2026-11-04 the chip passed everything it demodulated with that
+  length (docs/k6-receiver.md); the pager's later stream mode never received (0/16), so this is
+  open. The module undoes NRZI and the bit stuffing and checks each CRC itself, with REG_58 at
+  0x3FE3 and 0x3F03 (the 1200/1800 receiver) and 0x33E3 and 0x33E9 (the 1200/2400 one): Bell
+  202's 2200 Hz is neither's tone.
+- **packet:** the sync word set to a run of flags as it is on the line (FE FE FE FE, 01 01 01
+  01), then 128 bytes on the pager's timed reads through the same HDLC.
+
+Each variant reports the words read, the interrupt flags seen, HDLC flags, preambles, good and
+bad frames, the strongest RSSI, and 8 FIFO words as read. Bench: upload `mod-fskaprs.bin`, then
+`python3 -m modem.aprs wav aprs.wav --now --repeat 40` (159 s of AG7EW packets) and
+`sh tools/k6_send.sh aprs.wav` on 440.850 while it runs. The emulated test
+(`test_fskaprs_reads_ax25_from_the_fifo`) checks the module's side against a model of the
+stream; whether the chip's demodulator reads Bell 202 only the radio can say.
+
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the

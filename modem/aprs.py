@@ -205,6 +205,9 @@ def main(argv=None):
     w.add_argument("--delay", type=float, default=0.0,
                    help="with --now: seconds from now until the audio starts (keying time); the stamps stay "
                         "truncated, so too small only makes them early")
+    w.add_argument("--repeat", type=int, default=1,
+                   help="with --now: the three stations this many times over, each stamped for its own "
+                        "time (40 is about 170 s: a steady run of packets for a receiver test)")
     d = sub.add_parser("decode")
     d.add_argument("wav")
     a = ap.parse_args(argv)
@@ -212,7 +215,13 @@ def main(argv=None):
     if a.cmd == "wav" and a.now:
         import time
         t0 = time.time() + a.delay
-        x, sent = bench_wav(t0, a.call)
+        parts, sent, pos = [], [], 0.0
+        for _ in range(max(1, a.repeat)):
+            x1, s1 = bench_wav(t0 + pos, a.call)
+            parts.append(x1)
+            sent += [(c, info, pos + end) for c, info, end in s1]
+            pos += len(x1) / FS
+        x = np.concatenate(parts)
         sf.write(a.out, 0.5 * x, FS)
         print(f"start {t0:.3f}")
         for c, info, end in sent:
