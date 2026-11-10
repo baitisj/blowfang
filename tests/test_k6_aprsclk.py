@@ -578,8 +578,13 @@ def test_fskaprs_probe_4_on_a_model_of_the_chips_modem():
 
 # ---- the same clock behind the chip's own FSK modem (c/k6/mod/aprsfsk.c) ----
 @need_clang
-@pytest.mark.parametrize("name,spur", [("aprsfsk", False), ("aprsfsk", True), ("aprsfskb", True)])
-def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
+@pytest.mark.parametrize("name,spur,again_ms", [
+    ("aprsfsk", False, 700),
+    ("aprsfsk", True, 700),
+    ("aprsfskb", True, 700),
+    ("aprsfskb", True, 0),
+])
+def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur, again_ms):
     """aprsfsk (aprsclk's HDLC, parser and vote behind the FD6818's packet modem) on the emulated
     M0 against modem_chip: the three stations' line bits as the 1200/2400 Hz receiver slices
     them with REG_58 = 33a3 (probe 4), the second with its tones swapped, random bits between
@@ -588,21 +593,26 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
     With spur the model raises the sync flag by itself at every arming, as the chip did on the
     bench (the second run): aprsfsk then reads three stale words every round and takes the
     packets inside such reads, as it did on the air. aprsfskb reads the FIFO all the time and
-    starts on the first word that is not the last one again."""
+    starts on the first word that is not the last one again. again_ms 0 is aprsfskb as it is built,
+    its search started again every 59 ms: a start that falls in a packet's sync word loses an
+    opening of fewer than about eight flags, so the four-flag opening is tried at 700 ms."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
     stream, ctrl = name == "aprsfskb", 0xF8
     src = os.path.join(K6, "mod", name + ".c")
     total, BASE = 6.5, 4800
-    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u"), ("APRS_FSK_DUMP", "2"), ("FSK_AGAIN", "700u")], src)
+    defs = [("RUN_MS", f"{int(total * 1000)}u"), ("APRS_FSK_DUMP", "2")]
+    if again_ms:
+        defs.append(("FSK_AGAIN", f"{again_ms}u"))
+    code, entry = le.build("x", defs, src)
     full, _ = k6mod.build(src)
     assert len(full) < 5800, len(full)              # the tap build is 7.6 KB
     rng = np.random.default_rng(5)
     air = rng.integers(0, 2, int((total + 2) * BASE // 4))
     for k, (t, mk) in enumerate(packets()):
         # aprsfskb's third packet opens with four flags only: the sync word, then the frame
-        pre = 4 if stream and k == 2 else 40
+        pre = (4 if again_ms else 8) if stream and k == 2 else 40
         b = aprs.hdlc_bits(mk(UTC0 + t + pre * 8 / aprs.BAUD), pre_flags=pre).astype(int)
         i = int(t * aprs.BAUD)
         air[i:i + len(b)] = b ^ (k == 1)
@@ -678,7 +688,8 @@ def test_aprsfsk_on_a_model_of_the_chips_modem(name, spur):
     # with nothing heard)
     w58 = e.writes[0x58]
     again = w58.count(0x33A3) - len(y) - 1
-    assert (1 <= again <= 6 if stream else again == 0) and w58.count(0) >= len(y) + 2, (again, len(y), w58)
+    lim = (1, 6) if again_ms else (40, 90)          # 6.5 s less three packets, a start every 59 ms
+    assert (lim[0] <= again <= lim[1] if stream else again == 0) and w58.count(0) >= len(y) + 2, (again, len(y), w58)
     assert e.writes[0x5A][0] == 0xFEFE and e.writes[0x5B][0] == 0xFEFE and e.writes[0x5D][0] == 0xFF00
     assert e.writes[0x59].count(0x1000 | ctrl) == 2 * w58.count(0x33A3) and 0x3002 in e.writes[0x3F], e.writes[0x59][:8]
 

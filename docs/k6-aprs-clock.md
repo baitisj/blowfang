@@ -323,7 +323,9 @@ Variants:
   round with the tones swapped, so the flags' long tone is the mark in one and the space in
   the next).
 - `aprsfskb`, `aprsfskb_440`: the receiver reading the FIFO all the time (FSK_STREAM, below).
+  The better receiver (the fourth bench run).
 - `aprsfskd_440`: `aprsfskb_440` with the receiver's de-emphasis off.
+- `aprsfsks_440`: `aprsfsk_440` going round sixteen settings of the modem, one every 9.641 s.
 
 A sender that keys up with zeros (alternating tones) and fewer than four flags gives this
 receiver nothing to start on.
@@ -395,7 +397,8 @@ What the captures showed:
 13.3 ms; a word that is not the last one again means the chip has found its sync word, and
 `hdlc()` starts as it is after a flag (the bit after a sync word of flags is a 0, a change of
 tone, which gives the tone before it). The modem is turned off and on when the line has been
-idle for 40 bits, at RX-done, and every 2 s with nothing heard. Stale words are never decoded,
+idle for 40 bits, at RX-done, and every 2 s with nothing heard (every 59 ms since the fourth
+bench run). Stale words are never decoded,
 and the screen and the minute's line run whenever no packet is being read. `aprsfsk` itself is
 left as it ran on the bench until `aprsfskb` has had its own run; both say `aprs fsk ms= key=
 pre= fake=` before the end line. `aprsfskd_440` is `aprsfskb_440` with the receiver's
@@ -445,7 +448,7 @@ end.)
   40 flags at an odd bit position (`0040 4040 ...`: no sync word was taken from it) and was cut
   short by RX-done 1.707 s after de's sync word: the chip had stayed in de's packet. `aprsfsk`,
   which starts its search again every 59 ms, read the same packet behind a fresh sync word
-  (`0101` x18, four flags fewer). `aprsfskc_440` is the stream build doing that on purpose.
+  (`0101` x18, four flags fewer). `aprsfskc_440` was the stream build doing that on purpose.
 - The stream build's screen and minute line run (`m 1 rssi=-131 pk=-21 pre=15 ok=9`).
 
 **Fourth bench run (2026-11-10 10:46 to 11:08Z, K6 image 6f30645, the K6 silent).** The same
@@ -477,8 +480,46 @@ setting heard:
 - The bandwidth bits at 000 and the RX gain make no difference; the bandwidth for 1200/2400
   (33A9) reads nothing.
 
-`aprsfsks_440` now goes round all sixteen values of REG_58's bits 7:4 (bits 5:4 sit next to
-the two that lean the slicer).
+The stream build starting its search again every 59 ms (`aprsfskc_440` at 4181e2f, seven
+rounds): flat 7, pre 0, de 7, low 7, n12 0, n6 0, short 7, pre n9 0, `lost=0`, the minute's
+line there (`m 1 rssi=-132 pk=-21 pre=19 ok=11`). Every packet the modem can slice is read, so
+59 ms is now FSK_STREAM's own FSK_AGAIN and `aprsfskb` is that build (`aprsfskc_440` is gone).
+Its price, seen on the emulator's model: a start of the search that falls in a packet's sync
+word loses an opening of fewer than about eight flags. The bench's eight-flag kind read 7 of 7,
+and a sender's opening is 30 flags or more.
+
+`aprsfsks_440` at 9c90a1c: all sixteen values of REG_58's bits 7:4 (33n3; bits 5:4 sit next to
+the two that lean the slicer), one lap, each setting hearing each kind once. Decoded:
+
+| n (REG_58 = 33n3) | flat | pre | de | low | n12 | n6 | short | pre n9 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0, 1, 2, 3 (bits 7:6 = 00) | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 4, 5, 6, 7 (bits 7:6 = 01) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 8, 9, a, b (bits 7:6 = 10) | 1 | 0 | 1 | 1 | 0 | 0 | 1 | 0 |
+| c, d, e, f (bits 7:6 = 11) | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+
+24 of 128 (flat 4, de 12, low 4, short 4).
+
+- **No value reads a pre-emphasised or a noisy packet.** Bits 5:4 change nothing that shows.
+- With bits 7:6 = 00 and 11 a pre-emphasised packet again gives its sync word and the frame's
+  start, then wrong bits (33E3: `012b 536c ec82` for `012b 536c eca9`).
+- With bits 7:6 = 01 each setting took one long capture (43 to 47 words) of the n12 packet:
+  clean flags (`0101` x13) and a frame of the whole length that only fails its CRC
+  (`012b 536c eca9 56ae d4f4 ...`). It reads nothing else, the flat kind included.
+
+**Where that leaves the chip's modem.** The receiver's logic is done: `aprsfskb` reads every
+packet the modem slices, sets the clock and keeps its screen. But the 1200/2400 slicer reads
+Bell 202 only when the mark is level with the space or over it and the audio is clean. Tried
+and of no use: REG_58's bits 7:4 (all sixteen), its bandwidth bits (000, 001, 100), its RX gain,
+REG_2B's de-emphasis bit. Senders on 144.390 pre-emphasise and arrive weak, so **as it stands
+the chip's modem cannot be the APRS receiver on the air**; it is one for flat packets (the
+bench's, or a K6's own). Not tried, for whoever takes it up:
+
+- REG_58's RX mode 0 (plain FSK) as a one-bit sampler of the audio at about 4,400 baud
+  (REG_72 near B170), sync word AAAA, the Bell 202 demodulator done in C on the sign bits. It
+  needs packets longer than 256 bytes (REG_5D's bits 7:5 on a BK4819) or a re-arm with no gap,
+  and a bit clock that holds still on audio that is no data.
+- The registers of the audio path before the modem that this module does not touch.
 
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every

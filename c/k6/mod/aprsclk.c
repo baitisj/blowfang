@@ -875,7 +875,9 @@ int k6_main(const k6_api_t *api) {
    144.390 was lost that way: its first FIFO word was the frame's own start). The bits go to
    hdlc() until the line has been idle for FSK_IDLE bits or the chip says RX done; then the
    modem is turned off and on. With nothing heard the search is started again every FSK_AGAIN
-   ms, whatever state the chip is in.
+   ms, whatever state the chip is in: one turning off and on does not always end a packet the
+   chip is in, and at 2 s the packet after a packet was lost on the bench (1 of 7); at 59 ms,
+   aprsfsk's own round, none was (the fourth bench run, 2026-11-10).
 
    Lines, besides the tap build's f, clk and m lines (pre = sync words heard):
      aprs start hz=144390000 fsk=13219 sync=248         (REG_58, REG_59; FSK_STREAM: " stream" after)
@@ -903,7 +905,7 @@ int k6_main(const k6_api_t *api) {
 #define FSK_IDLE 40      /* line bits outside a frame: the packet is over */
 #define FSK_SETTLE 100u  /* ms after the modem is turned on: an RX-done in these is its own */
 #ifndef FSK_AGAIN
-#define FSK_AGAIN 2000u  /* ms with nothing heard: the search is started again */
+#define FSK_AGAIN 59u    /* ms with nothing heard: the search is started again */
 #endif
 #define NSV 10
 
