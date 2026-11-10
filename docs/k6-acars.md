@@ -282,3 +282,43 @@ v3 n=26 w=9190 b=0 p=-104 f=-105        AF source AM, narrow
   fed from the FM discriminator whatever the AF source is (REG_47 chooses what goes to the
   speaker), but a weak signal with an unknown depth of modulation cannot prove it. A stronger
   one would: clean blocks in the AM front ends, or a quiet slicer in all four.
+
+**Third run (18:36 to 18:40Z, same build, RF power 20 percent): cut short, 40 dB of carrier.**
+
+The owner allowed one run at 20 percent. The bench script's own stop (SWR over 3.0 at or
+after 13 s of key-up) ended the transmission 20 s in, in the Morse ident and before the first
+block, so this run has no capture of a block either. The rig's meters, every 5 s of the
+key-up:
+
+```
+ +3.0 s  SWR 6     PO 2.1 W
+ +7.8 s  SWR 1     PO 0 W
++12.6 s  SWR 1     PO 2.1 W
++17.4 s  SWR 3.05  PO 0 W       the stop
+```
+
+What the K6 said:
+
+```
+q t=25066 p=-119 f=-122
+q t=30079 p=-77 f=-122
+q t=35092 p=-77 f=-83
+q t=40105 p=-79 f=-81
+q t=45118 p=-78 f=-83
+q t=50131 p=-78 f=-120
+q t=55144 p=-119 f=-122
+v0 n=0 w=0 b=0 p=-119 f=-127
+v1 n=0 w=0 b=0 p=-118 f=-126
+v2 n=0 w=0 b=0 p=-121 f=-128
+v3 n=0 w=0 b=0 p=-121 f=-128
+```
+
+- **At 20 percent the K6 has the carrier 40 dB over its floor** (-78 against -119 dBm), 26 dB
+  more than at RF power 0.0. That is the signal the test needs.
+- The antenna tuner on the rig's 6 m side does nothing at RF power 0.0 and starts to tune at
+  20 percent: SWR 6, then 1, then 3.05 again, the power meter coming and going. 13 s of ident
+  is not enough for it, and one reading taken at a power near nothing should not count. A
+  next run opens with 30 s of ident and stops on two readings in a row.
+- A control that came free: with the channel empty, the four front ends took **no capture in
+  180 s**. The 48 captures of the second run were the signal's doing, not the receiver
+  starting on noise.
