@@ -119,12 +119,12 @@ MENU again; EXIT leaves the app.)
 | MENU | play the message (again) |
 | EXIT | stop playback / leave |
 | UP / DOWN | volume, 3 dB steps on top of the automatic level (-9 to +12 dB) |
-| 1 | PHY: F (FFSK 1200/1800 Hz; 1200/2400 Hz at 2400 baud; the default) or D (direct 2-FSK) |
+| 1 | nothing. It used to switch the PHY between F and D (direct 2-FSK). Images after 2026-11-10 receive and send F only, because one stray press left the radio deaf to every F send from the bench until a power cycle |
 | 2 | frames: L (64-byte packets, 8 frames, the default) or XL (128 bytes, 20 frames; screen `X`). Profile S is gone |
 | 3 | the RF chip's RX invert bit (REG_59<10>), by hand only |
 | 4 | pre-emphasis on/off (undoes the PWM filter's -10 dB at 3 kHz) |
 | 6 | raw view: the last packet's first 16 bytes in hex, its sync and length, and its bit errors against the test message (below) |
-| 5 | 1200 / 2400 baud, D or F (F at 2400: REG_58 0x73E9, FFSK 1200/2400 Hz; untested on air) |
+| 5 | 1800 / 2400 baud (F at 2400: REG_58 0x73E9, FFSK 1200/2400 Hz; untested on air) |
 | 7 | how the packet length goes into REG_5D: bytes - 1 or words - 1. (Images up to 647a60e also had two stream modes, 0xFF00 and 0xFFE0; they never received on air and were compiled out to make room for REG_43 in the control-packet registers.) |
 | 8 | Re-arm delay after each packet: 40, 50, 30, 60, 20, 0, 80 ms after its end, then a per-packet sweep (`CFG rearm=`; -1 = sweep). FIFO reads are always on a timer now |
 | 9 | auto-play on/off (on by default; MENU still plays) |
@@ -132,7 +132,7 @@ MENU again; EXIT leaves the app.)
 | * | clear the message |
 | side key 1 | run the last RAM module again, without sending it over the air again (images with the SPI library; [docs/k6-modules.md](../../docs/k6-modules.md#what-happens)) |
 | # | type a frequency (kHz, six digits; MENU sets it early, EXIT deletes) |
-| PTT | calibration transmit: test packet 0, twice in D and then twice in F, at key 5's baud rate, on the VFO's TX frequency and power |
+| PTT | calibration transmit: test packet 0, twice in F (images up to 2026-11-10 sent it twice in D first), at key 5's baud rate, on the VFO's TX frequency and power |
 
 The screen:
 
@@ -168,11 +168,11 @@ get through even on D/1200, where errors build up later in a packet.
 ```
 python -m modem.k6 ctl ctl.wav --phy F --payload L --set frames=XL   # F/L -> F/XL (older images)
 python -m modem.k6 ctl ok.wav --phy F                             # confirm (no change), XL
-python -m modem.k6 ctl ctl.wav --phy D --also F --set phy=F       # PHY unknown: D, then F
+python -m modem.k6 ctl ctl.wav --phy D --also F --set phy=F       # older images, PHY unknown: D, then F
 python -m modem.k6 ctl play.wav --phy F --action play             # play the stored message
 ```
 
-Settings: `phy=F|D frames=L|XL baud=1200|2400 auto=0|1 emph=0|1 var=N vol=0..7 idlekeep=0|1`; actions
+Settings: `phy=F|D` (images after 2026-11-10 ignore it: F only), `frames=L|XL baud=1200|2400 auto=0|1 emph=0|1 var=N vol=0..7 idlekeep=0|1`; actions
 `play`, `clear`, `report`, `regs`. The K6 prints `K6 CTL seq=… mask=… changed=…` and a CFG line with
 `why=ctl`; a record whose seq it just applied only confirms (`K6 CTL seq=… repeat`).
 
@@ -410,8 +410,8 @@ packets and 2000 got 10 of 12, every decoded packet with 0 bit errors; 2400 slip
 **F runs at 1800 by default (images after 0dad5c6).** F boots with that recipe: REG_58 3f01,
 REG_72 4898, interrupt reads with REG_5E 0203, DC cancellation off. That makes control packets
 and messages 1.5 times faster. `modem.k6` follows it: `--baud` defaults to 1800 for `--phy F` and
-1200 for D. A control packet with `baud=1200` means "the PHY's own rate", so F/1800. Key 1
-(D/1200) or `--reg 72=3065` (F/1200 with the old 3fe3 recipe, for 60 s) gets 1200 back, and key 5
+1200 for D. A control packet with `baud=1200` means "the PHY's own rate", so F/1800. On older images key 1
+(D/1200), and on any image `--reg 72=3065` (F/1200 with the old 3fe3 recipe, for 60 s) gets 1200 back, and key 5
 or `baud=2400` still gives 2400. The revert lands on F/1800.
 
 ## First tests (spec section 8)
