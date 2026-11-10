@@ -4768,10 +4768,10 @@ index 0000000..6c94624
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..366b3bb
+index 0000000..54942f4
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2126 @@
+@@ -0,0 +1,2122 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -4812,11 +4812,10 @@ index 0000000..366b3bb
 +use core::fmt::Write as _;
 +use core::ptr::{addr_of, addr_of_mut, null_mut};
 +use cortex_m::peripheral::SYST;
-+use embedded_graphics::mono_font::{ascii::{FONT_4X6, FONT_6X10}, MonoTextStyle};
 +use embedded_graphics::pixelcolor::BinaryColor;
 +use embedded_graphics::prelude::*;
 +use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
-+use embedded_graphics::text::{Baseline, Text};
++use crate::ui::glyph;
 +
 +/// The sweep's and Listen for ID's C functions: declared as linked in, or (the 8 kHz voice +
 +/// EXPLORE image) called through the table of the code page that holds them, which `page`
@@ -6546,7 +6545,8 @@ index 0000000..366b3bb
 +const FOOT: i32 = 8;
 +
 +/// Jeff's pick (2026-11-07, the font-size sheet's inverted mixed layout): row 0 is a header,
-+/// 6x10 drawn dark on a lit bar (21 characters); rows 1-7 are the list in 4x6 (32 characters);
++/// 6x10 drawn dark on a lit bar (21 characters; the stock 5x7 in its cells since 2026-11-10, ui::glyph);
++/// rows 1-7 are the list in 4x6 (32 characters);
 +/// row FOOT is the footer, the hint or the selected row's detail, also 4x6
 +fn line<D>(lcd: &mut D, r: i32, t: &str)
 +where
@@ -6554,8 +6554,7 @@ index 0000000..366b3bb
 +{
 +    if r == 0 {
 +        fill(lcd, 0, 10, BinaryColor::On);
-+        let st = MonoTextStyle::new(&FONT_6X10, BinaryColor::Off);
-+        Text::with_baseline(t, Point::new(1, 0), st, Baseline::Top).draw(lcd).ok();
++        glyph::text(lcd, 1, 1, t, false, false); // the stock 5x7, caps where 6x10's were
 +        return;
 +    }
 +    row(lcd, if r >= FOOT { 58 } else { 11 + 6 * (r - 1) }, t);
@@ -6574,8 +6573,7 @@ index 0000000..366b3bb
 +where
 +    D: DrawTarget<Color = BinaryColor>,
 +{
-+    let st = MonoTextStyle::new(&FONT_4X6, BinaryColor::On);
-+    Text::with_baseline(t, Point::new(1, y), st, Baseline::Top).draw(lcd).ok();
++    glyph::text(lcd, 1, y, t, true, true);
 +}
 +
 +/// the candidate rows (Jeff 2026-11-07): new ones above a rule, known (saved) ones below it,
@@ -6620,8 +6618,7 @@ index 0000000..366b3bb
 +            fill(lcd, y - up, 6 + up as u32, BinaryColor::On);
 +        }
 +        let ink = if sel { BinaryColor::Off } else { BinaryColor::On };
-+        let st = MonoTextStyle::new(&FONT_4X6, ink);
-+        Text::with_baseline(b.as_str(), Point::new(1, y), st, Baseline::Top).draw(lcd).ok();
++        glyph::text(lcd, 1, y, b.as_str(), true, !sel);
 +        if checked {
 +            const CHECK: [u8; 4] = [0x01, 0x02, 0x14, 0x08];
 +            for (r, &m) in CHECK.iter().enumerate() {
@@ -6671,10 +6668,10 @@ index 0000000..366b3bb
 +                }
 +            }
 +        } else if c.call[0] != 0 {
-+            Text::with_baseline(cstr(&c.call), Point::new(x, y), st, Baseline::Top).draw(lcd).ok();
++            glyph::text(lcd, x, y, cstr(&c.call), true, !sel);
 +        } else if c.flags & EX_F_DMR != 0 {
 +            // DMR heard, no ID yet (Jeff 2026-11-08: detect DMR and mute it)
-+            Text::with_baseline("DMR", Point::new(x, y), st, Baseline::Top).draw(lcd).ok();
++            glyph::text(lcd, x, y, "DMR", true, !sel);
 +        }
 +    }
 +}
@@ -6737,8 +6734,7 @@ index 0000000..366b3bb
 +where
 +    D: DrawTarget<Color = BinaryColor>,
 +{
-+    let st = MonoTextStyle::new(&FONT_6X10, BinaryColor::Off);
-+    Text::with_baseline(t, Point::new(x, 0), st, Baseline::Top).draw(lcd).ok();
++    glyph::text(lcd, x, 1, t, false, false);
 +}
 +
 +fn fill_box<D>(lcd: &mut D, x: i32, y: i32, w: u32, h: u32, c: BinaryColor)
@@ -8011,7 +8007,7 @@ index 131f932..99ae011 100644
  
  /// Pull one byte received on USART1 since the last call, if any.
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..aacdfd5 100644
+index 9d2b0c0..9b48242 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -14,7 +14,7 @@ mod ui;
@@ -8112,7 +8108,14 @@ index 9d2b0c0..aacdfd5 100644
      writeln!(dbg, "lcd init done").ok();
  
      // rfic
-@@ -124,17 +179,14 @@ fn main() -> ! {
+@@ -120,21 +175,21 @@ fn main() -> ! {
+ 
+     let flash_spi = spi::SpiBus::new(spi1, spi::ClockMode::Mode3, 4);
+     let mut storage = Storage::new(norflash::NorFlash::new(flash_spi, gpioa));
++    // text is drawn from the stock 5x7 font in the SPI flash (ui::glyph): is it there?
++    let font_crc = ui::glyph::set_flash(&mut storage.norflash, true);
++    writeln!(dbg, "K6 FONT 5x7 crc={font_crc:08x}").ok();
+ 
      // First-boot format gate
      if !storage.is_first_boot_done() {
          writeln!(dbg, "first boot: awaiting MENU press or CPS dump").ok();
@@ -8133,7 +8136,7 @@ index 9d2b0c0..aacdfd5 100644
              }
              delay::ms(&mut cp.SYST, 10);
          }
-@@ -149,12 +201,17 @@ fn main() -> ! {
+@@ -149,12 +204,17 @@ fn main() -> ! {
      }
  
      let cal_buf = storage.read_calibration();
@@ -8151,7 +8154,7 @@ index 9d2b0c0..aacdfd5 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -220,8 +277,7 @@ fn main() -> ! {
+@@ -220,8 +280,7 @@ fn main() -> ! {
  
      if radio.ptt_asserted() || keypad.any_pressed(&mut cp.SYST) {
          writeln!(dbg, "PTT/key held at boot, waiting for release").ok();
@@ -8161,7 +8164,7 @@ index 9d2b0c0..aacdfd5 100644
          let mut released_ticks = 0u32;
          while released_ticks < 50 {
              delay::ms(&mut cp.SYST, 10);
-@@ -234,7 +290,11 @@ fn main() -> ! {
+@@ -234,7 +293,11 @@ fn main() -> ! {
      }
  
      // app class
@@ -8174,9 +8177,11 @@ index 9d2b0c0..aacdfd5 100644
          radio,
          chip_id,
          keypad,
-@@ -254,42 +314,44 @@ fn main() -> ! {
+@@ -253,43 +316,46 @@ fn main() -> ! {
+         &mut cp.SYST,
      );
  
++    ui::glyph::set_flash(&mut app.storage_mut().norflash, false); // the Storage moved into the App
      app.init_battery_samples();
 -    let boot_mode = app.settings().boot_display_mode;
 -    match boot_mode {
@@ -8251,7 +8256,7 @@ index 9d2b0c0..aacdfd5 100644
      }
  
      app.radio_mut().enter_rx(&mut cp.SYST);
-@@ -301,6 +363,67 @@ fn main() -> ! {
+@@ -301,6 +367,67 @@ fn main() -> ! {
      )
      .ok();
  
@@ -8319,7 +8324,7 @@ index 9d2b0c0..aacdfd5 100644
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
      let mut applied_contrast: u8 = u8::MAX;
-@@ -309,6 +432,8 @@ fn main() -> ! {
+@@ -309,6 +436,8 @@ fn main() -> ! {
  
      loop {
          let due = scheduler.tick();
@@ -8328,7 +8333,7 @@ index 9d2b0c0..aacdfd5 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,6 +454,19 @@ fn main() -> ! {
+@@ -329,6 +458,19 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -8348,7 +8353,7 @@ index 9d2b0c0..aacdfd5 100644
          // power sw
          if power.debounced_off(&mut cp.SYST) {
              writeln!(dbg, "power switch off, shutting down").ok();
-@@ -401,6 +539,8 @@ fn main() -> ! {
+@@ -401,6 +543,8 @@ fn main() -> ! {
              }
          } else if app.mode() == app::Mode::Sstv {
              app.handle_sstv_ptt(&mut cp.SYST);
@@ -8357,7 +8362,7 @@ index 9d2b0c0..aacdfd5 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -465,9 +605,13 @@ fn main() -> ! {
+@@ -465,9 +609,13 @@ fn main() -> ! {
              }
          }
  
@@ -8375,10 +8380,10 @@ index 9d2b0c0..aacdfd5 100644
                  app.poll_squelch(&mut cp.SYST, 3);
                  app.poll_dual_standby(&mut cp.SYST, app.rssi_open());
 diff --git a/src/ui/boot.rs b/src/ui/boot.rs
-index 5f5226a..c833da3 100644
+index 5f5226a..0a949b9 100644
 --- a/src/ui/boot.rs
 +++ b/src/ui/boot.rs
-@@ -1,17 +1,29 @@
+@@ -1,17 +1,33 @@
 +#[cfg(not(feature = "pager-only"))]
  use super::TextBuf;
 +#[cfg(not(feature = "pager-only"))]
@@ -8387,18 +8392,22 @@ index 5f5226a..c833da3 100644
  use core::fmt::Write as _;
  use embedded_graphics::draw_target::DrawTarget;
 -use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
-+use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoFont, MonoTextStyle};
++use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoFont};
++#[cfg(not(feature = "pager-only"))]
++use embedded_graphics::mono_font::MonoTextStyle;
  use embedded_graphics::pixelcolor::BinaryColor;
  use embedded_graphics::prelude::*;
  use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle};
++#[cfg(not(feature = "pager-only"))]
  use embedded_graphics::text::Text;
 +#[cfg(not(feature = "pager-only"))]
  use embedded_graphics::Pixel;
 -use profont::PROFONT_14_POINT;
 +
 +/// The headline font. The pager-only images draw only the FORMAT FLASH? and RELEASE ALL KEYS
-+/// screens (no boot screen, main.rs), in the 6x10 font every screen already links: ProFont 14
-+/// cost them 4,080 bytes of glyphs for those two screens (2026-11-10)
++/// screens (no boot screen, main.rs), in 6x10's cells: ProFont 14 cost them 4,080 bytes of
++/// glyphs for those two screens (2026-11-10). They draw the stock 5x7 font from the SPI flash
++/// there (put, ui::glyph)
 +#[cfg(not(feature = "pager-only"))]
 +const BIG: &MonoFont = &profont::PROFONT_14_POINT;
 +#[cfg(feature = "pager-only")]
@@ -8410,7 +8419,7 @@ index 5f5226a..c833da3 100644
  fn ascii_line(raw: &[u8; 16]) -> &str {
      let end = raw
          .iter()
-@@ -30,6 +42,7 @@ where
+@@ -30,6 +46,7 @@ where
          .ok();
  }
  
@@ -8418,7 +8427,7 @@ index 5f5226a..c833da3 100644
  /// Falls back to a generic greeting when the user hasn't set custom text.
  fn text_lines(settings: &Settings) -> (&str, &str) {
      let l1 = ascii_line(&settings.boot_text_line1);
-@@ -42,6 +55,7 @@ fn text_lines(settings: &Settings) -> (&str, &str) {
+@@ -42,6 +59,7 @@ fn text_lines(settings: &Settings) -> (&str, &str) {
  }
  
  /// Boot display mode 3: stored logo bitmap.
@@ -8426,22 +8435,72 @@ index 5f5226a..c833da3 100644
  pub fn draw_logo<D>(lcd: &mut D, page_buf: &[u8; crate::flash_map::BOOT_LOGO_SIZE])
  where
      D: DrawTarget<Color = BinaryColor>,
-@@ -67,12 +81,12 @@ fn draw_centered_big<D>(lcd: &mut D, text: &str, baseline_y: i32)
+@@ -63,19 +81,26 @@ where
+     }
+ }
+ 
++/// `text` from x with its baseline at y in `font`; the pager-only images use the stock 5x7
++/// font in its place (ui::glyph), with the caps on the same rows as 6x10's
++#[cfg_attr(feature = "pager-only", allow(unused_variables))]
++fn put<D>(lcd: &mut D, font: &MonoFont, x: i32, y: i32, text: &str, c: BinaryColor)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    #[cfg(feature = "pager-only")]
++    super::glyph::text(lcd, x, y - 6, text, false, c.is_on());
++    #[cfg(not(feature = "pager-only"))]
++    Text::new(text, Point::new(x, y), MonoTextStyle::new(font, c)).draw(lcd).ok();
++}
++
+ fn draw_centered_big<D>(lcd: &mut D, text: &str, baseline_y: i32)
  where
      D: DrawTarget<Color = BinaryColor>,
  {
 -    let width = text.chars().count() as i32 * PROFONT_14_POINT.character_size.width as i32;
 +    let width = text.chars().count() as i32 * BIG.character_size.width as i32;
      let x = (128 - width) / 2;
-     Text::new(
-         text,
-         Point::new(x, baseline_y),
+-    Text::new(
+-        text,
+-        Point::new(x, baseline_y),
 -        MonoTextStyle::new(&PROFONT_14_POINT, BinaryColor::On),
-+        MonoTextStyle::new(BIG, BinaryColor::On),
-     )
-     .draw(lcd)
-     .ok();
-@@ -140,6 +154,7 @@ where
+-    )
+-    .draw(lcd)
+-    .ok();
++    put(lcd, BIG, x, baseline_y, text, BinaryColor::On);
+ }
+ 
+ fn draw_centered_small<D>(lcd: &mut D, text: &str, baseline_y: i32)
+@@ -84,13 +109,7 @@ where
+ {
+     let width = text.chars().count() as i32 * FONT_6X10.character_size.width as i32;
+     let x = (128 - width) / 2;
+-    Text::new(
+-        text,
+-        Point::new(x, baseline_y),
+-        MonoTextStyle::new(&FONT_6X10, BinaryColor::On),
+-    )
+-    .draw(lcd)
+-    .ok();
++    put(lcd, &FONT_6X10, x, baseline_y, text, BinaryColor::On);
+ }
+ 
+ fn draw_firmware_banner<D>(lcd: &mut D, text: &str, top: i32)
+@@ -106,13 +125,7 @@ where
+         .into_styled(PrimitiveStyle::with_fill(BinaryColor::On))
+         .draw(lcd)
+         .ok();
+-    Text::new(
+-        text,
+-        Point::new(x + PAD, top + FONT_6X10.baseline as i32),
+-        MonoTextStyle::new(&FONT_6X10, BinaryColor::Off),
+-    )
+-    .draw(lcd)
+-    .ok();
++    put(lcd, &FONT_6X10, x + PAD, top + FONT_6X10.baseline as i32, text, BinaryColor::Off);
+ }
+ 
+ fn draw_footer<D>(lcd: &mut D)
+@@ -140,6 +153,7 @@ where
  }
  
  /// Boot display mode 2: two lines of custom text.
@@ -8449,7 +8508,7 @@ index 5f5226a..c833da3 100644
  pub fn draw_message<D>(lcd: &mut D, settings: &Settings)
  where
      D: DrawTarget<Color = BinaryColor>,
-@@ -171,6 +186,7 @@ where
+@@ -171,6 +185,7 @@ where
  }
  
  /// Boot display mode 1: "VOLTAGE" / actual battery voltage, f4hwn-style.
@@ -8457,11 +8516,200 @@ index 5f5226a..c833da3 100644
  pub fn draw_voltage<D>(lcd: &mut D, voltage_cv: u16)
  where
      D: DrawTarget<Color = BinaryColor>,
+diff --git a/src/ui/cps.rs b/src/ui/cps.rs
+index 8dd4ad1..6fd7a54 100644
+--- a/src/ui/cps.rs
++++ b/src/ui/cps.rs
+@@ -3,10 +3,12 @@
+ //! drawn once on entry and never redrawn).
+ 
+ use embedded_graphics::draw_target::DrawTarget;
++#[cfg(not(feature = "pager-only"))]
+ use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
+ use embedded_graphics::pixelcolor::BinaryColor;
+ use embedded_graphics::prelude::*;
+ use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
++#[cfg(not(feature = "pager-only"))]
+ use embedded_graphics::text::Text;
+ 
+ pub fn draw_programming<D>(target: &mut D)
+@@ -18,11 +20,20 @@ where
+         .draw(target)
+         .ok();
+ 
+-    let style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+-    Text::new("AURA CPS", Point::new(20, 26), style)
+-        .draw(target)
+-        .ok();
+-    Text::new("PROGRAMMING...", Point::new(8, 40), style)
+-        .draw(target)
+-        .ok();
++    // the pager-only images: the stock 5x7 font from the SPI flash (ui::glyph), in 6x10's cells
++    #[cfg(feature = "pager-only")]
++    {
++        super::glyph::text(target, 20, 26 - 6, "AURA CPS", false, true);
++        super::glyph::text(target, 8, 40 - 6, "PROGRAMMING...", false, true);
++    }
++    #[cfg(not(feature = "pager-only"))]
++    {
++        let style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
++        Text::new("AURA CPS", Point::new(20, 26), style)
++            .draw(target)
++            .ok();
++        Text::new("PROGRAMMING...", Point::new(8, 40), style)
++            .draw(target)
++            .ok();
++    }
+ }
+diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
+new file mode 100644
+index 0000000..2d6f5ef
+--- /dev/null
++++ b/src/ui/glyph.rs
+@@ -0,0 +1,134 @@
++//! Text without embedded-graphics' text code or its 6x10 font (Jeff 2026-11-10: "switching over
++//! to the stock fonts -- save some space!"). The SC5260 has no character ROM, so Baofeng's own
++//! firmware kept its fonts in the K6's SPI flash, and Aura's first-boot format leaves them there
++//! (docs/k6-stock-firmware.md; the stockfont module found all of them on the bench radio,
++//! byte for byte).
++//!
++//! - The 21-column lines use the stock 5x7 font, read a glyph at a time: 5 column bytes, bit 0
++//!   the top row, rows 0-6, caps and digits on row 6, no descenders. In a 6-pixel cell, with
++//!   the glyph's top one row below a FONT_6X10 cell's top, the caps land on the rows 6x10's took.
++//! - The 32-column lines keep embedded-graphics' FONT_4X6 bitmap (288 bytes; the stock firmware
++//!   has no 4x6), drawn here too.
++//!
++//! At power-on main checks the 5x7 font's CRC (`K6 FONT`); a radio whose SPI flash lacks it
++//! draws the 21-column lines in 4x6, in the same cells.
++//! We use the font where Baofeng's firmware left it, and copy none of Baofeng's code.
++
++use crate::drivers::norflash::NorFlash;
++use embedded_graphics::image::GetPixel;
++use embedded_graphics::mono_font::ascii::FONT_4X6;
++use embedded_graphics::pixelcolor::BinaryColor;
++use embedded_graphics::prelude::*;
++
++/// The stock 5x7 ASCII font: character c's glyph at F5X7 + 8 * (c - 0x20), 5 bytes used
++const F5X7: u32 = 0x04_BFC0;
++/// zlib's CRC-32 of its 95 glyphs (760 bytes), the same on the bench radio and in its pre-Aura
++/// SPI dump (2026-11-10)
++const F5X7_CRC: u32 = 0x07AC_B73C;
++
++static mut NOR: *mut NorFlash<'static> = core::ptr::null_mut();
++static mut STOCK: bool = false;
++
++/// Read the glyphs through `n` (main's Storage at boot, then the App's). With `check`, test the
++/// 5x7 font's CRC first and return it; the 21-column lines use the font only if it matched.
++pub fn set_flash(n: &mut NorFlash<'static>, check: bool) -> u32 {
++    unsafe { NOR = n as *mut _ };
++    if !check {
++        return 0;
++    }
++    let mut crc = !0u32;
++    let mut b = [0u8; 40];
++    for k in 0..19 {
++        n.read_bytes(F5X7 + 40 * k, &mut b);
++        for &x in &b {
++            crc ^= x as u32;
++            for _ in 0..8 {
++                crc = (crc >> 1) ^ (0xEDB8_8320 & (crc & 1).wrapping_neg());
++            }
++        }
++    }
++    let crc = !crc;
++    unsafe { STOCK = crc == F5X7_CRC };
++    crc
++}
++
++/// A glyph's columns (bit 0 the top row) and its cell's width: 6 for the 5x7, 4 for the 4x6
++fn glyph(c: u8, small: bool, cols: &mut [u8; 5]) -> i32 {
++    let i = if (0x20..0x7F).contains(&c) { c - 0x20 } else { b'?' - 0x20 };
++    if !small && unsafe { STOCK } {
++        unsafe { (*NOR).read_bytes(F5X7 + 8 * i as u32, cols) };
++        return 6;
++    }
++    // FONT_4X6: 16 glyphs a row of its bitmap, each 4 x 6
++    let (gx, gy) = ((i % 16) as i32 * 4, (i / 16) as i32 * 6);
++    for (x, m) in cols.iter_mut().take(4).enumerate() {
++        *m = 0;
++        for y in 0..6 {
++            if FONT_4X6.image.pixel(Point::new(gx + x as i32, gy + y)) == Some(BinaryColor::On) {
++                *m |= 1 << y;
++            }
++        }
++    }
++    cols[4] = 0;
++    if small {
++        4
++    } else {
++        6
++    }
++}
++
++/// `t` from column x, lit (`on`) or dark: the 5x7 with its top at `top` (FONT_6X10's baseline
++/// less 6), or (`small`) the 4x6 with its cell's top at `top`. Only foreground pixels are drawn,
++/// as embedded-graphics' MonoTextStyle without a background. A line outside the draw target's
++/// rows (a band of 8 in the `banded` image, ui::Band) reads no glyphs.
++pub fn text<D>(lcd: &mut D, x: i32, top: i32, t: &str, small: bool, on: bool)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    let bb = lcd.bounding_box();
++    if top + 7 <= bb.top_left.y || top >= bb.top_left.y + bb.size.height as i32 {
++        return;
++    }
++    let ink = if on { BinaryColor::On } else { BinaryColor::Off };
++    let mut x = x;
++    for &c in t.as_bytes() {
++        if x >= 128 {
++            break;
++        }
++        let mut cols = [0u8; 5];
++        let w = glyph(c, small, &mut cols);
++        let x0 = x;
++        let px = cols.into_iter().enumerate().flat_map(move |(i, m)| {
++            (0..7).filter(move |&r| m >> r & 1 != 0).map(move |r| Pixel(Point::new(x0 + i as i32, top + r), ink))
++        });
++        lcd.draw_iter(px).ok();
++        x += w;
++    }
++}
++
++/// The same 21-column line straight into one controller page (pixel rows y0 .. y0 + 7 in
++/// `buf`), for the module screens drawn a page at a time (ui::pager::draw_mod_page)
++pub fn text_page(buf: &mut [u8; 128], y0: i32, x: i32, top: i32, t: &[u8], on: bool) {
++    let s = top - y0;
++    if s <= -7 || s >= 8 {
++        return;
++    }
++    let mut x = x;
++    for &c in t {
++        if x >= 128 {
++            break;
++        }
++        let mut cols = [0u8; 5];
++        let w = glyph(c, false, &mut cols);
++        for (i, &m) in cols.iter().enumerate() {
++            let xi = x + i as i32;
++            if !(0..128).contains(&xi) {
++                continue;
++            }
++            let m = if s >= 0 { (m as u16) << s } else { (m as u16) >> -s } as u8;
++            let p = &mut buf[xi as usize];
++            *p = if on { *p | m } else { *p & !m };
++        }
++        x += w;
++    }
++}
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
-index cdfa0f7..bfe4d12 100644
+index cdfa0f7..88bd7f8 100644
 --- a/src/ui/mod.rs
 +++ b/src/ui/mod.rs
-@@ -6,6 +6,7 @@ mod fm;
+@@ -3,9 +3,11 @@ mod chanmgr;
+ mod contacts;
+ pub mod cps;
+ mod fm;
++pub mod glyph;
  pub mod icons;
  mod launcher;
  mod list;
@@ -8469,7 +8717,7 @@ index cdfa0f7..bfe4d12 100644
  mod scan;
  mod scanqt;
  mod search;
-@@ -19,6 +20,7 @@ use chanmgr::draw_chanmgr;
+@@ -19,6 +21,7 @@ use chanmgr::draw_chanmgr;
  use contacts::draw_contacts;
  use fm::draw_fm;
  use launcher::draw_app_menu;
@@ -8477,7 +8725,7 @@ index cdfa0f7..bfe4d12 100644
  use satellite::draw_satellite;
  use sstv::draw_sstv;
  use scan::draw_scan;
-@@ -31,6 +33,8 @@ use standby::draw_standby;
+@@ -31,6 +34,8 @@ use standby::draw_standby;
  use crate::app;
  use crate::device::display::Display;
  use display_interface::WriteOnlyDataCommand;
@@ -8486,7 +8734,7 @@ index cdfa0f7..bfe4d12 100644
  
  // TextBuf
  pub struct TextBuf<const N: usize> {
-@@ -62,6 +66,162 @@ impl<const N: usize> core::fmt::Write for TextBuf<N> {
+@@ -62,6 +67,164 @@ impl<const N: usize> core::fmt::Write for TextBuf<N> {
      }
  }
  
@@ -8606,10 +8854,12 @@ index cdfa0f7..bfe4d12 100644
 +    }
 +}
 +
++/// Its 8 rows of the 128 x 64 screen: ui::glyph skips the text lines outside them, and reads
++/// no glyphs for those (embedded-graphics' own drawing never asks)
 +#[cfg(banded)]
-+impl OriginDimensions for Band<'_> {
-+    fn size(&self) -> Size {
-+        Size::new(128, 64)
++impl Dimensions for Band<'_> {
++    fn bounding_box(&self) -> Rectangle {
++        Rectangle::new(Point::new(0, self.y0), Size::new(128, 8))
 +    }
 +}
 +
@@ -8649,7 +8899,7 @@ index cdfa0f7..bfe4d12 100644
  pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut app::App) {
      match app.mode() {
          app::Mode::AppMenu => draw_app_menu(display.as_draw_target(), &*app),
-@@ -77,6 +237,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
+@@ -77,6 +240,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
              draw_satellite(display.as_draw_target(), app);
          }
          app::Mode::Sstv => draw_sstv(display.as_draw_target(), app),
@@ -8659,10 +8909,10 @@ index cdfa0f7..bfe4d12 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..2cbca3e
+index 0000000..6e01094
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,371 @@
+@@ -0,0 +1,351 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -8695,18 +8945,16 @@ index 0000000..2cbca3e
 +use super::TextBuf;
 +use crate::app;
 +use core::fmt::Write as _;
-+use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
 +use embedded_graphics::pixelcolor::BinaryColor;
 +use embedded_graphics::prelude::*;
 +use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
-+use embedded_graphics::text::Text;
 +
 +fn line<D>(lcd: &mut D, y: i32, t: &str)
 +where
 +    D: DrawTarget<Color = BinaryColor>,
 +{
-+    let small = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
-+    Text::new(t, Point::new(1, y), small).draw(lcd).ok();
++    // the stock 5x7 font (ui::glyph), caps on the rows FONT_6X10's took at baseline y
++    super::glyph::text(lcd, 1, y - 6, t, false, true);
 +}
 +
 +pub fn draw_pager<D>(lcd: &mut D, app: &app::App)
@@ -8898,8 +9146,6 @@ index 0000000..2cbca3e
 +        .into_styled(PrimitiveStyle::with_fill(BinaryColor::On))
 +        .draw(lcd)
 +        .ok();
-+    let on = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
-+    let off = MonoTextStyle::new(&FONT_6X10, BinaryColor::Off);
 +    let wf = s.wf_rows > 0 && !s.wf.is_null();
 +    for i in 0..MOD_LINES {
 +        if wf && (2..5).contains(&i) {
@@ -8912,7 +9158,7 @@ index 0000000..2cbca3e
 +        }
 +        let y = 9 + 10 * i as i32;
 +        if let Ok(txt) = core::str::from_utf8(&t[..n]) {
-+            Text::new(txt, Point::new(1, y), if i == 0 { off } else { on }).draw(lcd).ok();
++            super::glyph::text(lcd, 1, y - 6, txt, false, i != 0);
 +        }
 +        let (mut num, mut den) = s.bar[i];
 +        let x0 = 1 + 6 * n as i32 + if n > 0 { 3 } else { 0 };
@@ -8961,7 +9207,6 @@ index 0000000..2cbca3e
 +#[cfg(all(not(feature = "lean"), shared_lcd))]
 +pub fn draw_mod_page(buf: &mut [u8; 128], page: u8, s: &app::pager::ModScreen) {
 +    use app::pager::{MOD_COLS, MOD_LINES, WF_TOP};
-+    use embedded_graphics::image::GetPixel;
 +    let y0 = 8 * page as i32;
 +    // rows top .. top + h of columns x .. x + w, lit or dark, clipped to the page
 +    let rect = |buf: &mut [u8; 128], x: i32, top: i32, w: i32, h: i32, on: bool| {
@@ -8977,33 +9222,18 @@ index 0000000..2cbca3e
 +    };
 +    rect(buf, 0, 0, 128, 11, true); // the title bar
 +    let wf = s.wf_rows > 0 && !s.wf.is_null();
-+    let font = &FONT_6X10;
 +    for i in 0..MOD_LINES {
-+        let y = 9 + 10 * i as i32; // baseline: glyph rows y - 7 .. y + 2, a bar's y - 7 .. y
-+        if (wf && (2..5).contains(&i)) || y + 3 <= y0 || y - 7 >= y0 + 8 {
++        let y = 9 + 10 * i as i32; // baseline: glyph rows y - 6 .. y, a bar's y - 7 .. y
++        if (wf && (2..5).contains(&i)) || y + 1 <= y0 || y - 7 >= y0 + 8 {
 +            continue;
 +        }
 +        let on = i != 0;
 +        let t = &s.text[i];
 +        let mut n = 0;
 +        while n < MOD_COLS && t[n] != 0 {
-+            // mod_lcd_text keeps only 0x20-0x7E: the font's glyphs in order, 16 to a row
-+            let g = t[n].wrapping_sub(0x20) as i32;
-+            let (gx, gy) = ((g % 16) * 6, (g / 16) * 10);
-+            for r in 0..10 {
-+                let dy = (y - 7 + r - y0) as u32;
-+                if dy >= 8 {
-+                    continue;
-+                }
-+                for c in 0..6 {
-+                    let x = 1 + 6 * n as i32 + c;
-+                    if x < 128 && font.image.pixel(Point::new(gx + c, gy + r)) == Some(BinaryColor::On) {
-+                        buf[x as usize] = if on { buf[x as usize] | 1 << dy } else { buf[x as usize] & !(1 << dy) };
-+                    }
-+                }
-+            }
-+            n += 1;
++            n += 1; // mod_lcd_text keeps only 0x20-0x7E
 +        }
++        super::glyph::text_page(buf, y0, 1, y - 6, &t[..n], on);
 +        let (mut num, mut den) = s.bar[i];
 +        let x0 = 1 + 6 * n as i32 + if n > 0 { 3 } else { 0 };
 +        if den > 0 && x0 < 118 {

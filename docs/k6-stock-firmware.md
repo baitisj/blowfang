@@ -38,11 +38,29 @@ and they render cleanly. Aura's `first_boot_format` erases only 0x8000, 0x9000, 
 and blowfang writes only from 0x0F0000 up, so the fonts should still be on the radio. The
 `stockfont` module (below) checks that.
 
-What this could give the image: text drawn from the SPI glyphs instead of embedded-graphics
-fonts in the MCU's flash. The 5x7 font in place of FONT_6X10 frees 720 B and gives 8 lines of
-21 characters instead of 6. Large 8x16 text costs no MCU flash at all. FONT_4X6 has no SPI
-equivalent. A radio whose SPI flash lacks the fonts would show nothing, so such an image
-should check a glyph CRC at boot.
+**The pager-only images use the 5x7 font (2026-11-10, Jeff: "switching over to the stock
+fonts").** `ui::glyph` in the Aura patch draws every 21-column line (VOICE MSG, EXPLORE's
+header, module screens, the boot and CPS screens) from the 5x7 glyphs in the SPI flash, one
+glyph read (5 bytes) a character, in 6-pixel cells with the glyph's top at FONT_6X10's
+baseline less 6, so the caps sit on the rows 6x10's did and the layouts don't move. That takes
+embedded-graphics' text renderer and the 720-byte FONT_6X10 out of those images. EXPLORE's
+32-column 4x6 rows keep FONT_4X6 (288 B in MCU flash), drawn by the same code; moving it to
+the SPI flash would mean writing it there. At power-on the image checks the 5x7 font's CRC-32
+(760 bytes at 0x04BFC0, `07acb73c` on the bench radio) and says `K6 FONT 5x7 crc=...` on the
+serial cable; on any other value the 21-column lines fall back to the 4x6 glyphs in the same
+cells, so a radio without the font still shows readable text. In the `banded` image a line
+reads its glyphs only in the bands it reaches.
+
+Metrics (Jeff's dump; the CRCs are the same on the radio), row 0 the cell's top:
+
+| font | CRC-32 | rows used | caps | descenders | advance |
+|---|---|---|---|---|---|
+| 5x7 | 07acb73c | 0-6 (bit 7 never) | 0-6, baseline 6 | none (g j p q y end on row 6) | 6 (no gap in the glyph) |
+| 6x12 | aff16628 | 0-11 | 1-8, baseline 8 (digits and Q to 9) | g p q y to row 10 | 6 (column 5 blank) |
+| 8x16 | 98f0c02b | 0-15 (15 only ; _) | 1-11, baseline 11 | g j p q to 14, y to 13 | 8 (column 7 blank) |
+
+Lined up with FONT_6X10 at baseline y: 5x7 top = y - 6, 6x12 top = y - 8, 8x16 top = y - 11.
+The 5x7's '|' has a gap at row 3.
 
 ## The stock SPI flash map
 
