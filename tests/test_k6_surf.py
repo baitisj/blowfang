@@ -368,10 +368,10 @@ def test_band_and_zoom_keys():
 @need_clang
 def test_air_band_opens_the_audio_in_am_and_puts_the_afc_back():
     # BAND three times from 70cm: GMRS, marine/WX, air; a -80 dBm carrier on 127.500 (mid-band)
-    keys = taps("NNN", 1_000_000) + taps("N", 5_000_000) + [(6_000_000, 6_300_000, "X")]
+    keys = taps("NNN", 1_000_000, gap=600_000) + taps("N", 5_000_000) + [(6_000_000, 6_300_000, "X")]
     ret, said, regs, writes, lcd = go([(127_500_000, -80, 0, FOREVER)], keys, regs={0x73: 0x0001})
     fr = lcd["frames"]
-    air = at(fr, 3_500_000)
+    air = at(fr, 4_200_000)
     assert air["text"][0] == "SURF AIR 25k" and air["text"][1] == "127.5000 -80dBm RX"
     w73 = [v for r, v in writes if r == 0x73]
     assert w73 == [0x0011, 0x0001]                          # AFC off in the air band, back on leaving it
