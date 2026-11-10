@@ -70,7 +70,8 @@ enum { RT_ST_FREE = 0xFF, RT_ST_WRITING = 0xFE, RT_ST_VALID = 0xFC, RT_ST_REPLAC
 #define RT_F_TONE_USER 0x0040    /* the tone was typed */
 #define RT_F_AUTO 0x0080         /* saved by the explorer on its own (DMR heard on EX_DMR_SAVE_N listens),
                                     not by Save; Save makes it the user's. EXPLORE key 6 twice deletes them all */
-#define RT_TONE_DCS 0x8000
+#define RT_TONE_DCS 0x8000       /* | the code's 9 bits (its octal digits) */
+#define RT_TONE_DCS_INV 0x4000   /* with RT_TONE_DCS: heard inverted (xdmr's XD_DCS_INV) */
 
 /* call_flags */
 #define RT_C_PORTABLE 0x01

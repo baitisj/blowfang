@@ -9,6 +9,7 @@
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
 #define XD_RING_EXT 1
+#define XD_NO_DCS 1    /* no room for the DCS read: CTCSS only */
 #ifndef RUN_S
 #define RUN_S 60u
 #endif

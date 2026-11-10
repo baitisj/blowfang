@@ -100,7 +100,13 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   2026-11-08 07:32Z, the IC-7100 sending 100.0, 141.3 and 88.5 Hz in FM-D) every reading came
   within 0.2 Hz (mostly 0.1 Hz low), 2-5 s after key-up, for the whole carrier, and nothing
   without a tone; REG_68's bit 15 flickers now and then mid-tone, which the two-alike rule
-  rides over. It goes on the row (the footer shows
+  rides over. DCS (2026-11-10): REG_69 is read first; with bit 15 clear its word
+  (69[11:0] << 12 | 6A[11:0], 23 bits) is matched, in any of its 23 turns, to the 104 standard
+  codes by its Golay check (the code, the 100 marker, and the remainder by
+  x^11+x^10+x^6+x^5+x^4+x^2+1), the normal reading before the inverted one (023 sent inverted
+  reads as 047). Two alike in a row make the code, kept as code | `RT_TONE_DCS` and shown as
+  `DCS 023`. The words REG_69 shows during a CTCSS tone (4aaa/0aaa) are no code, so then REG_68
+  is read as before. Bench check pending. It goes on the row (the footer shows
   `tone 100.0`, and it scores as the tone cue) and into the saved entry by the rule for calls: a
   blank tone fills (rx and, if blank, tx), a different saved tone is left as it is and the
   screen says `TONE DIFFERS FROM SAVED` (`rt_heard_apply`). DMR sets the entry's `RT_F_DMR`.
@@ -448,10 +454,6 @@ with its level and the gull. The 26 MHz family is left alone: in our bands it on
 
 - The input-hop cue (the strongest cue) (k6-explorer-next.md). The tone is read during listens
   now (above), but not on a carrier the listener never visits.
-- DCS: the sub-audio scan reports DCS words in REG_69/6A too; they're not matched to codes yet.
-  Careful: during a CTCSS tone REG_69 also clears bit 15 with an alternating word (69=4aaa
-  6a=0aaa on 100 Hz, 4555/0555 on 88.5; ctcssprobe, 2026-11-08), so Aura's DCS-first read would
-  never reach the CTCSS word. xdmr reads REG_68 only.
 - Being on frequency before a repeater's 10-minute ID timer is due (remember each one's last ID
   time).
 - The spectrum and waterfall screen. The rows are already computed (the sweep's `row`, the
