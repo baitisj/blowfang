@@ -9,7 +9,7 @@
  * SPDX-License-Identifier: MIT */
 #include "board.h"
 
-enum { SYS_OPEN = 1, SYS_CLOSE = 2, SYS_WRITE0 = 4, SYS_WRITE = 5, SYS_READ = 6, SYS_FLEN = 12,
+enum { SYS_OPEN = 1, SYS_CLOSE = 2, SYS_WRITE0 = 4, SYS_WRITE = 5, SYS_READ = 6, SYS_SEEK = 10, SYS_FLEN = 12,
        SYS_EXIT_EXTENDED = 0x20 };
 
 static int semihost(int op, void *arg) {
@@ -78,6 +78,27 @@ int host_read_file(const char *path, uint8_t *buf, unsigned max) {
     int left = semihost(SYS_READ, r);
     semihost(SYS_CLOSE, l);
     return len - left;
+}
+
+int host_read_at(const char *path, uint8_t *buf, unsigned off, unsigned n) {
+    uint32_t o[3] = {(uint32_t)path, 1 /* "rb" */, slen(path)};
+    int fd = semihost(SYS_OPEN, o);
+    if (fd < 0)
+        return -1;
+    uint32_t l[1] = {(uint32_t)fd};
+    int len = semihost(SYS_FLEN, l);
+    int got = 0;
+    if (len > 0 && off < (unsigned)len) {
+        if ((unsigned)len - off < n)
+            n = (unsigned)len - off;
+        uint32_t s[2] = {(uint32_t)fd, off};
+        if (semihost(SYS_SEEK, s) == 0) {
+            uint32_t r[3] = {(uint32_t)fd, (uint32_t)buf, n};
+            got = (int)n - semihost(SYS_READ, r);
+        }
+    }
+    semihost(SYS_CLOSE, l);
+    return got;
 }
 
 void host_log(const char *s) {

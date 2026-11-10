@@ -27,14 +27,37 @@ SRC = src/startup.c \
       $(COMMON)/mod_core.c \
       $(COMMON)/pager_tx.c \
       $(COMMON)/ffsk_tx.c \
-      $(COMMON)/cw_tx.c
+      $(COMMON)/cw_tx.c \
+      src/sotto_arena.c
+
+# The fixed-point sotto 1200 codec (8 kHz) from the sotto submodule, built -O2 (at -Os its
+# encoder is about 25 % slower; sotto docs/c-port.md, "sotto 1200 at 16 kHz on the Cortex-M4"),
+# with its calloc and free sent to src/sotto_arena.c (CCM first, then SRAM).
+SOTTO = ../../sotto/c
+SOTTO_SRC = $(SOTTO)/fixed/fx_math.c \
+            $(SOTTO)/fixed/fx_tables.c \
+            $(SOTTO)/fixed/sotto_fx_enc.c \
+            $(SOTTO)/fixed/sotto_fx_dec.c \
+            $(SOTTO)/fixed/sotto_fx_lr.c \
+            $(SOTTO)/fixed/sotto_fx_lr_enc.c
+SOTTO_CFLAGS = $(ARCH) -O2 -g -std=c99 -ffunction-sections -fdata-sections -fno-common \
+               -DSOTTO_V36 \
+               -DSOTTO_PITCH_THIRD \
+               -Dcalloc=sotto_arena_calloc \
+               -Dfree=sotto_arena_free \
+               -I$(SOTTO)
+SOTTO_OBJ = $(patsubst $(SOTTO)/fixed/%.c,build/sotto/%.o,$(SOTTO_SRC))
+
+build/sotto/%.o: $(SOTTO)/fixed/%.c $(wildcard $(SOTTO)/*.h $(SOTTO)/fixed/*.h)
+	@mkdir -p build/sotto
+	$(CC) $(SOTTO_CFLAGS) -c $< -o $@
 
 all: build/uv380.bin
 
-build/uv380.elf: $(SRC) src/board_radio.c src/*.h link/*.ld $(COMMON)/*.h
+build/uv380.elf: $(SRC) src/board_radio.c src/*.h link/*.ld $(COMMON)/*.h $(SOTTO_OBJ)
 	@mkdir -p build
 	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-Tlink/radio.ld \
-	    -Wl,-Map=build/uv380.map -o $@ $(SRC) src/board_radio.c
+	    -Wl,-Map=build/uv380.map -o $@ $(SRC) src/board_radio.c $(SOTTO_OBJ)
 	$(SIZE) $@
 
 build/uv380.bin: build/uv380.elf
@@ -42,10 +65,10 @@ build/uv380.bin: build/uv380.elf
 
 qemu: build/uv380-qemu.elf
 
-build/uv380-qemu.elf: $(SRC) src/board_qemu.c src/*.h link/*.ld $(COMMON)/*.h
+build/uv380-qemu.elf: $(SRC) src/board_qemu.c src/*.h link/*.ld $(COMMON)/*.h $(SOTTO_OBJ)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -DBOARD_QEMU $(LDFLAGS) -Wl,-Tlink/qemu.ld -o $@ \
-	    $(SRC) src/board_qemu.c
+	$(CC) $(CFLAGS) -DBOARD_QEMU $(LDFLAGS) -Wl,-Tlink/qemu.ld -Wl,-Map=build/uv380-qemu.map -o $@ \
+	    $(SRC) src/board_qemu.c $(SOTTO_OBJ)
 	$(SIZE) $@
 
 clean:

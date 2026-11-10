@@ -1,7 +1,8 @@
 # UV-380 (TYT MD-UV380 / MD-UV390 / Retevis RT3S): the portable pager transmitter's host tests,
 # the radio image (kept as an artifact, never committed), and the QEMU build run on an emulated
-# STM32F405, whose FFSK must decode with the K6 receiver model. Ubuntu's own Arm toolchain and
-# QEMU, nothing downloaded.
+# STM32F405, whose FFSK must decode with the K6 receiver model, and which encodes speech with the
+# fixed-point sotto 1200 from the sotto submodule (the same bits as the x86 build). Ubuntu's own
+# Arm toolchain and QEMU, nothing downloaded.
 name: UV-380 firmware
 
 on:
@@ -15,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -36,6 +39,8 @@ jobs:
             pytest
       - name: host build of the portable transmitter
         run: make -C c/common
+      - name: x86 build of the fixed-point sotto, to check the radio's encoder against
+        run: make -C sotto/c fixed PYTHON=false
       - name: radio image and QEMU build
         run: |
           make -C radios/uv380
@@ -46,6 +51,7 @@ jobs:
             tests/test_uv380_pager.py \
             tests/test_uv380_cw.py \
             tests/test_uv380_emu.py \
+            tests/test_uv380_codec.py \
             tests/test_uv380_mod.py
       - uses: actions/upload-artifact@v4
         with:
