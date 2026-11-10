@@ -34,7 +34,8 @@
      aprs end ok=12 bad=3 ts=5 v=2 utc=17:59:59.120 lost=0
    Each clock line with two or more votes also goes to the radio's clock (level 8, clock_set):
    UTC now, the date it has, and a bound of the interval's far end from the estimate.
-   Screen (level 6) once a second when no frame is coming, LED blink a good frame (level 7). A key ends it (else RUN_MS). Writes REG_34[3:0]
+   Screen (level 6) once a second when no frame is coming (UTC and date, votes, frame counts, the
+   station heard last), LED blink a good frame (level 7). A key ends it (else RUN_MS). Writes REG_34[3:0]
    and REG_33 bit 8 (GP0), the MCU's TIM17, DMA channel 1 and their clock enables, all put back.
    Returns the votes behind the clock (0: none), or -2 (a key before any frame), -3 (old image),
    -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch).
@@ -89,6 +90,7 @@ typedef struct {
   int32_t cr[4][NW];           /* the correlators' products: mark cos, mark sin, space cos, space sin */
   cand_t c[NC];
   char ln[64];
+  char last[16];               /* the newest good frame's source and hops, for the screen */
   /* clock and DMA */
   uint32_t t, c17, c14, laps, lastw, produced, consumed, t0, p0, cps8, lost;
   /* mixer and CIC */
@@ -394,6 +396,7 @@ static void frame(const k6_api_t *api, st_t *s) {
       }
     }
   } else kind = 0;
+  *kv(call(s->last, f + 7), " h", (uint32_t)s->hops) = 0;
   p = put(s->ln, "f ");
   p = call(p, f + 7);
   p = kv(p, " n=", (uint32_t)s->len);
@@ -560,6 +563,10 @@ static void screen(const k6_api_t *api, st_t *s) {
   p = put(s->ln, "UTC ");
   if (s->votes >= 2) p = hms(p, utc(s, s->now_ms), 0);
   else p = put(p, "--:--:--");
+  if (s->day) { /* "UTC hh:mm:ss dd/mm/yy": 21 characters, the screen's width */
+    p = dec(put(p, " "), s->day, 2);
+    if (s->mon) p = dec(put(p, "/"), s->mon, 2), p = dec(put(p, "/"), s->yr, 2);
+  }
   *p = 0;
   api->lcd_text(1, s->ln);
   p = kv(s->ln, "stations ", (uint32_t)s->votes);
@@ -571,10 +578,8 @@ static void screen(const k6_api_t *api, st_t *s) {
   p = kv(p, " ts ", s->nts);
   *p = 0;
   api->lcd_text(3, s->ln);
-  if (s->day) {
-    p = dec(put(s->ln, "day "), s->day, 2);
-    if (s->mon) p = dec(put(p, "/"), s->mon, 2), p = dec(put(p, "/"), s->yr, 2);
-    *p = 0;
+  if (s->ok) { /* the station heard last: "last VE7ABC-15 h2" */
+    *put(put(s->ln, "last "), s->last) = 0;
     api->lcd_text(4, s->ln);
   }
   api->lcd_text(5, "any key: done");
