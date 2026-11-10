@@ -60,16 +60,13 @@
       1  REG_47's AF source = AM (7), wide    does it follow the AF source?
       2  FM, narrow, tuned 2.5 kHz high   an AM signal with a sideband cut is partly FM
       3  AF source AM, narrow
-   DFSK_NARROW (the 6 m bench build after its fourth run, where only front end 3 saw the
-   blocks' pre-keys): is that the narrow filter or the AF source, and does tuning to one side
-   (the carrier and one sideband: partly FM) give the discriminator the data too? Six front
-   ends, all narrow:
-      0  FM, as tuned                     the narrow filter alone
-      1  AF source AM, as tuned           the one that saw the pre-keys
-      2  FM, 0.5 kHz high
-      3  FM, 1.0 kHz high
-      4  FM, 1.0 kHz low
-      5  FM, 1.5 kHz high
+   DFSK_NARROW (the 6 m bench build, docs/k6-acars.md): in the narrow filter the receiver
+   starts on an AM block's pre-key whatever REG_47's AF source is (the slicer is the FM
+   discriminator's; the filter turns a little of the AM into FM), reads nothing of its data,
+   and is deaf 500 Hz and more off tune. So: eight front ends, all narrow and FM, the first
+   seven with the AFC off (REG_73 bit 4; on, it pulls the carrier to the centre) and tuned
+   300, 200 and 100 Hz low, as tuned, 100, 200 and 300 Hz high; the last as tuned with the AFC
+   on. Is there a place where the data's samples fall on both sides of the slicer?
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
    k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
    with k of 3 or 4 their d lines. And is there a signal at all? The RSSI is read every 50 ms:
@@ -101,7 +98,7 @@
 #endif
 #ifdef DFSK_ACARS
 #ifdef DFSK_NARROW
-#define NV 6
+#define NV 8
 #else
 #define NV 4
 #endif
@@ -140,20 +137,23 @@ typedef struct {
   uint16_t wticks3; /* three word times in 100 us ticks: 100 at 4800 baud, 80 at 6000 */
   uint16_t secs;
 #ifdef DFSK_ACARS
-  int8_t off, wide, src; /* tuning offset in 100 Hz, the wide filter, REG_47's AF source (0: as found) */
+  int8_t off, wide, src; /* tuning offset in 100 Hz; the wide filter (bit 0) and, DFSK_NARROW, the
+                            AFC off (bit 1); REG_47's AF source (0: as found) */
 #endif
 } var_t;
 
 #ifdef DFSK_NARROW
 static const var_t V[NV] = {
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -3, 2, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -2, 2, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -1, 2, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 2, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 1, 2, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 2, 2, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 3, 2, 0},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 0, 0},
-    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 0, 7},
-    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 5, 0, 0},
-    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 10, 0, 0},
-    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -10, 0, 0},
-    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 15, 0, 0},
 };
-static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47};
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73};
 #define SAVED_47 10
 #elif defined(DFSK_ACARS)
 static const var_t V[NV] = {
@@ -256,7 +256,12 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-  api->tune((uint32_t)((int32_t)PROBE_HZ + 100 * v->off), v->wide);
+#ifdef DFSK_NARROW
+  /* REG_73 bit 4: the AFC off (or it pulls the carrier back to the centre in half a minute),
+     or on. It takes hold at the receiver's restart, which the tuning is */
+  api->fd_write(0x73, (uint16_t)((api->fd_read(0x73) & ~0x10u) | (v->wide & 2 ? 0x10u : 0)));
+#endif
+  api->tune((uint32_t)((int32_t)PROBE_HZ + 100 * v->off), v->wide & 1);
   api->fd_write(0x47, (uint16_t)(v->src ? ((af >> 16) & 0xF0FF) | (uint32_t)v->src << 8 : af >> 16));
 #endif
   *p++ = 's', *p++ = ' ', p = dec(p, (uint32_t)cur);

@@ -243,10 +243,10 @@ def test_dfskcap_acars_on_the_model():
 
 
 def test_dfskcap_acars6_narrow_front_ends_on_the_model():
-    """the 6 m bench build's six front ends (DFSK_NARROW): all in the narrow filter, FM as tuned,
-    the AF source AM, then FM tuned 0.5, 1.0 high, 1.0 low and 1.5 kHz high. Noise only here:
-    every capture gets its c line and (DFSK_DUMP_ALL) its words up to the limit; REG_47 is AM in
-    front end 1 alone and put back."""
+    """the 6 m bench build's eight front ends (DFSK_NARROW): all in the narrow filter and FM,
+    seven with the AFC off (REG_73 bit 4) tuned from 300 Hz low to 300 Hz high in steps of 100,
+    the last as tuned with the AFC on. Noise only here: every capture gets its c line and
+    (DFSK_DUMP_ALL) its words up to the limit; REG_47 is left alone and REG_73 put back."""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
@@ -254,7 +254,7 @@ def test_dfskcap_acars6_narrow_front_ends_on_the_model():
             ("FE_S", "2"), ("WAIT_MS", "200u"), ("QN", "2u")]
     code, entry = le.build("x", defs, os.path.join(K6, "mod", "dfskcap.c"))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))
-    total, BASE = 12.5, 4800
+    total, BASE = 16.5, 4800
     rng = np.random.default_rng(5)
     noise = rng.integers(0, 2, int(total * BASE))
     for i in range(BASE // 2, len(noise) - BASE, BASE):           # a sync word in the noise every second
@@ -277,22 +277,24 @@ def test_dfskcap_acars6_narrow_front_ends_on_the_model():
     assert r is not None, e.said[-5:]
     ret, stack = r
     assert stack < 700 and e.over == 0, (stack, e.over)
-    assert e.said[0] == "dfskcap start hz=50650000 n=6" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    assert e.said[0] == "dfskcap start hz=50650000 n=8" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
-    assert [ln.split()[1] for ln in e.said if ln.startswith("s ")] == list("012345")
-    assert e.tunes[-6:] == [
+    assert [ln.split()[1] for ln in e.said if ln.startswith("s ")] == list("01234567")
+    assert e.tunes[-8:] == [
+        (50649700, 0),
+        (50649800, 0),
+        (50649900, 0),
         (50650000, 0),
+        (50650100, 0),
+        (50650200, 0),
+        (50650300, 0),
         (50650000, 0),
-        (50650500, 0),
-        (50651000, 0),
-        (50649000, 0),
-        (50651500, 0),
     ], e.tunes
-    am = [w >> 8 & 15 for w in e.writes[0x47]]
-    assert am.count(7) == 1 and e.writes[0x47][-1] == 0, e.writes[0x47]
+    assert [w >> 8 & 15 for w in e.writes[0x47]].count(7) == 0 and e.writes[0x47][-1] == 0, e.writes[0x47]
+    assert e.writes[0x73] == [0x10] * 7 + [0, 0], e.writes[0x73]  # off seven times, on, as found
     c = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "c"}
     d = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "d" and ln[1].isdigit()}
     v = {int(ln[1]): dict(kv.split("=") for kv in ln.split()[1:]) for ln in e.said if ln[0] == "v"}
-    assert sorted(v) == [0, 1, 2, 3, 4, 5] and ret == len(c) == sum(int(x["n"]) for x in v.values()) >= 6, v
+    assert sorted(v) == [0, 1, 2, 3, 4, 5, 6, 7] and ret == len(c) == sum(int(x["n"]) for x in v.values()) >= 8, v
     assert d == c, (sorted(c - d), sorted(d - c))                 # every capture's words
 

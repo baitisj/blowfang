@@ -372,9 +372,39 @@ v3 n=44 w=10462 b=0 p=-76 f=-80         AF source AM, narrow
   2. the slicer is fed by the FM discriminator whatever REG_47 says, and the narrow filter,
      not quite even about the carrier, turns a little of the AM into FM: enough for a steady
      tone, too little for the data.
-- The next build (`DFSK_NARROW`, six front ends of 30 s, all narrow) asks that: FM as tuned
-  (the filter alone), the AF source AM again, then FM tuned 0.5, 1.0 and 1.5 kHz high and
-  1.0 kHz low. Off to one side the filter passes the carrier and one sideband better than the
-  other, which is partly FM; if reading 2 holds, one of those may give the data too. The
-  build also says the words of every capture that goes on like a pre-key, past the first
-  twelve.
+- The fifth run's build (`DFSK_NARROW`, six front ends of 30 s, all narrow) asked that: FM as
+  tuned (the filter alone), the AF source AM again, then FM tuned 0.5, 1.0 and 1.5 kHz high
+  and 1.0 kHz low. It also says the words of every capture that goes on like a pre-key, past
+  the first twelve.
+
+**Fifth run (23:36 to 23:40Z, build dfe5808, 5 percent): it is the filter, not the AF source.**
+
+```
+q t=30079 p=-124 f=-128
+q t=35092 p=-74 f=-127
+v0 n=40 w=6101 b=0 p=-75 f=-79          FM, as tuned
+v1 n=40 w=6278 b=0 p=-75 f=-79          AF source AM, as tuned
+v2 n=0 w=0 b=0 p=-75 f=-79              FM, 0.5 kHz high
+v3 n=0 w=0 b=0 p=-75 f=-79              FM, 1.0 kHz high
+v4 n=0 w=0 b=0 p=-75 f=-79              FM, 1.0 kHz low
+v5 n=0 w=0 b=0 p=-75 f=-78              FM, 1.5 kHz high
+d0 33 000 5555555555555555555555552aaaaaa2aaa55549152aaa80
+d0 33 00c 000808002001000840001014504020409426000440240900
+```
+
+- **FM and the AF source AM do the same in the narrow filter**: 40 captures each in 30 s, the
+  pre-key as alternating samples (five captures open with three or four words of AAAA or
+  5555), the data as near silence, no block read. So reading 2 holds: **the plain FSK
+  receiver's slicer is the FM discriminator's whatever REG_47 says**, and what it sees of an
+  AM signal is the little FM the narrow filter makes of it. REG_47 only chooses what goes to
+  the speaker.
+- **Half a kilohertz off tune it is deaf**, to either side: the carrier's offset moves the
+  discriminator's level further from the slicer's than the made FM swings. That also explains
+  the data as near silence on tune: the two radios are not on the same frequency to a few
+  tens of hertz, the chip's AFC pulls the carrier towards the centre only slowly, and the
+  made FM of the data (1200 Hz and 2400 Hz in turn) stays on one side of the slicer, where
+  the steady 2400 Hz of the pre-key crosses it.
+- The next build keeps `DFSK_NARROW` and asks for the place, if there is one, where the
+  data's samples fall on both sides: eight front ends of 22 s, narrow and FM, seven with the
+  AFC off (REG_73 bit 4) tuned 300, 200 and 100 Hz low, as tuned, and 100, 200 and 300 Hz
+  high, the last as tuned with the AFC on (this run's front end 0 again).
