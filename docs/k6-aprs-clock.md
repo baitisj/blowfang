@@ -650,6 +650,8 @@ closing flag before silence is not kept back. On the 44 captures:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | frames with a good FCS, settings 0, 3 and 6 | 3 of 3 | 3 of 3 | 4 of 4 | 4 of 4 | 0 of 6 | 0 of 6 | 5 of 5 | 0 of 5 |
 
+(With the slicer as it is since the second set of captures, below: two of the six n12 read.)
+
 - **Every clean packet reads, the pre-emphasised ones too**, which the 1200/2400 receiver
   never did in four runs. Neither the RX gain bits nor the de-emphasis bit change that.
 - **No noisy packet reads.** Noise moves the zero crossings, so a half cycle is counted as the
@@ -660,7 +662,7 @@ closing flag before silence is not kept back. On the 44 captures:
 
 ### `aprsdfsk`: the clock behind the plain FSK receiver
 
-`c/k6/mod/aprsdfsk.c` (6.1 KB, `aprsclk.c` with `APRS_FSK` and `FSK_PLAIN`) is `aprsfskb` with
+`c/k6/mod/aprsdfsk.c` (6.3 KB, `aprsclk.c` with `APRS_FSK` and `FSK_PLAIN`) is `aprsfskb` with
 that receiver in front: REG_58 = 00E9, 4800 baud, a sync word of two bytes, REG_5D = FFE0,
 its bits through `df_sample()` into the same HDLC, parser, vote and screen. A packet of the
 chip's is over when the line has been outside a frame for 40 bits, when there has been no
@@ -729,9 +731,8 @@ long tone is the mark gives the chip no AAAA before its frame, and was lost. Its
 so the search is started again every 29 ms with the other one (an opening of eight flags is
 53 ms). `y` lines say which found the packet (`s=0` AAAA, `s=1` 3333). The rehearsal has two
 kinds with the tones swapped for it, in no round unless named: `python3 -m modem.aprs wav
-OUT.wav --now --kinds --only 1,2,3,4,5,7,9,10` (9 `inv`, 10 `pre inv`). Emulated only so far
-(a model of the chip's bits): the bench has to show that the chip's clock gives 0011 on
-1200 Hz before a sync word as it does after one.
+OUT.wav --now --kinds --only 1,2,3,4,5,7,9,10` (9 `inv`, 10 `pre inv`). The bench has shown
+it since (below): the chip's clock gives 0011 on 1200 Hz before a sync word as after one.
 
 Lines: `y 12 t=123456 w=186 ok=1 e=3 d=1 s=0 k=1352` (words kept, good frames, words that
 were the one eight before, the times that was the empty FIFO, the sync word, `kq`), and at
@@ -742,12 +743,62 @@ first build's log by its way of reading).
 - `aprsdfsk`: 144.390 MHz, 15 minutes.
 - `aprsdfsk_440`: 440.850 MHz, 240 s: the bench's build.
 
+#### Second bench run (2026-11-10 14:34 to 14:39Z): 120 of 140 clean packets
+
+K6 receive only on 440.850 MHz, the IC-7100 sending 20 rounds of eight kinds (`--only
+1,2,3,4,5,7,9,10`), the build of 2fa169c (the FIFO by the chip's clock, both sync words).
+`aprs end ok=121 bad=39 ts=121 v=8 lost=0`, `aprs fsk ms=240015 key=0 pre=162 fake=146 inv=30`.
+
+| | flat | pre | de | low | short | inv | pre inv | n12 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| frames of 20 | 19 | 12 | 19 | 20 | 20 | 20 | 10 | 1 |
+
+- **The plain kinds read 98 of 100** (the first build: 37 of 51 of all clean kinds). The
+  FIFO ran empty 7 times in 120 packets found by AAAA; `kq` stayed between 1348 and 1358.
+- **The second sync word works on the chip**: all 20 packets with the tones swapped were
+  found by 3333, and all 20 flat ones read. (Each of those shows one empty read: the content
+  clock is a little off on flags of 1200 Hz. Harmless.)
+- **Pre-emphasised packets read only 22 of 40**, either way round, with no empty read in the
+  failing ones: not the FIFO, the slicer.
+
+#### What the slicer got wrong on pre-emphasised packets (captures of 14:46Z)
+
+`dfskcap` once more, the IC-7100 sending only the pre-emphasised packet, 164 times, a new
+stamp in each (`--only 2`): 36 captures at 4800 baud and AAAA
+(`tests/data/k6/dfskcap-pre-20261110.log.gz`). The text is known but for the stamp, so each
+capture's line bits were laid against the true ones and every wrong bit found. The first
+slicer read 17 of the 36. Two faults, both the slicer's:
+
+- **A lone sample inside a mark tone.** A mark run of three bits came as intervals of 2, 1, 2,
+  2, 2 samples and not six of 2: one half cycle of 1200 Hz read as a single sample. The slicer
+  took it for a space run and gave a space bit that was never sent (truth `0 111 0`, read
+  `0 1 0 11 0`). A space run is 3.67 samples a bit, so one sample alone between two mark
+  intervals cannot be one: it is held, and counted with the mark (22 units) if the mark goes
+  on. Eight more captures read (25), and two of the old set's packets with noise 12 dB under.
+- **The bias.** A mark run and the space run after it come out shorter than sent: by 4 units
+  in the mean for a de-emphasised packet, 6 for a flat one, 8 for a pre-emphasised one,
+  whatever the runs' lengths (the half cycles at the changes of tone are cut), and 3 were
+  added before rounding. A pre-emphasised mark run of two bits before one of space came as two
+  intervals and five samples, 104 units of 132, three times in the captures, and was read as
+  one bit; a larger fixed bias loses de-emphasised packets (one needs 3 or less). The opening
+  flags say what a packet loses: a flag is a run of seven bits and a run of one, 352 units,
+  and the data has no run of seven. A single flag loses -4, 6 or 18 (samples are whole) in a
+  pattern three or six flags long (three flags are 44 cycles of 2200 Hz), so the packet's bias
+  is the mean over its flags so far, rounded down, from the sixth flag on (0 to 9; 3 until
+  then). Three more captures read (28).
+- The eight left: in five `dfskcap`'s timed reads kept or dropped the wrong word (moving one
+  dropped word reads them; `aprsdfsk` does not read that way), three have other faults.
+
+`dfsk_line` and `df_sample()` have both (the module 6,302 bytes, 220 more), and the emulated
+module reads the same 28 of the 36 as the Python. Not yet on the bench.
+
 The emulated test (`test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0`) plays the
 bench's own captures to the module behind twelve flags and before 0.1 s of noise, the model's
 FIFO a ring whose empty read gives the word of eight reads before, the chip's clock 2% fast,
-right and 2% slow, and two packets with the tones swapped. It reads every clean packet in
-its turn and none of the noisy, never lets the FIFO run over, and sets the clock from the
-stamps.
+right and 2% slow, two packets with the tones swapped, and four of the second set's
+pre-emphasised captures (two with the lone sample, two that need the flags' bias). It reads
+every clean packet in its turn and none of the noisy, never lets the FIFO run over, and sets
+the clock from the stamps.
 
 The emulated test (`test_aprsfsk_on_a_model_of_the_chips_modem`) runs both builds against the
 model of packet mode: three stations (one with its tones swapped) between random bits, every

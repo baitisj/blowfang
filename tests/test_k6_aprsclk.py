@@ -709,6 +709,7 @@ def test_dfskcap_records_the_plain_fsk_receivers_words(long5d):
 
 # ---- the bench's captures of the plain FSK receiver, and the receiver built on them ----
 DFSK_LOG = os.path.join(ROOT, "tests", "data", "k6", "dfskcap-20261110.log.gz")
+DFSK_PRE_LOG = os.path.join(ROOT, "tests", "data", "k6", "dfskcap-pre-20261110.log.gz")
 DFSK_FIRST = {0: 5, 1: 2, 3: 5, 6: 3}       # the kind (station number) of each setting's first capture
 CLEAN = (1, 2, 3, 4, 7)                     # flat, pre-emphasised, de-emphasised, low, a short opening
 
@@ -724,7 +725,8 @@ def dfsk_bench():
 def test_dfsklog_reads_the_bench_captures():
     """What the chip's plain FSK receiver gave on the bench, read by modem.aprs (dfsk_destale,
     dfsk_line): every clean packet's frame passes its FCS, the pre-emphasised ones too, which
-    the chip's 1200/2400 Hz receiver never read; no packet with noise does. With REG_5D = ff00
+    the chip's 1200/2400 Hz receiver never read; of the 17 with noise two do (12 dB, since
+    the slicer keeps a lone sample inside a mark run with the mark). With REG_5D = ff00
     (setting 1) the chip's packet ends at 256 bytes, inside the frame, and only the packet with
     the short opening fits. Sync word 6666 (setting 2) starts inside a frame."""
     rep = aprs.dfsklog_report(dfsk_bench())
@@ -746,9 +748,44 @@ def test_dfsklog_reads_the_bench_captures():
             assert f"frames 1 [AG7EW-{kind}>APRS:/1220" in ln or f"frames 1 [AG7EW-{kind}>APRS:/122" in ln, ln
             assert ln.endswith(f"W>K6 {aprs.KINDS[kind][0]}]"), ln
             read[kind] = read.get(kind, 0) + 1
-        else:
-            assert "frames 0" in ln, ln
-    assert read == {1: 3, 2: 3, 3: 4, 4: 4, 7: 6}, read
+        elif "frames 0" not in ln:
+            assert f"frames 1 [AG7EW-{kind}>APRS:/122" in ln and kind == 5 and st != 1, ln
+            read[kind] = read.get(kind, 0) + 1
+    assert read == {1: 3, 2: 3, 3: 4, 4: 4, 5: 2, 7: 6}, read
+
+
+def dfsk_pre_bench():
+    """dfskcap's lines of the bench run of 2026-11-10 14:46Z: the IC-7100 sent only the
+    pre-emphasised packet (modem.aprs wav --kinds --only 2), a new stamp in each; the captures
+    of settings 0, 3 and 6 (all three 4800 baud and sync AAAA), 12 each"""
+    with gzip.open(DFSK_PRE_LOG, "rt") as f:
+        return f.read().splitlines()
+
+
+def test_dfsk_line_reads_the_pre_emphasised_captures():
+    """36 captures of one pre-emphasised packet, its text known but for the stamp. The first
+    bench build's slicer reads 17. Eight more have a lone sample inside a mark run (taken as a
+    space bit before), three a mark run of two bits that came as two intervals and five samples
+    of space (104 units of 132: the flags' bias). The eight left: in five dfskcap's timed reads
+    lost or kept the wrong word, three have other faults."""
+    _, sets, caps = aprs.dfsklog_caps(dfsk_pre_bench())
+    assert len(caps) == 36 and sorted(sets) == [0, 3, 6], sorted(sets)
+    got = {}
+    for name, kw in (("first", dict(learn=False, glitch=False)), ("glitch", dict(learn=False)), ("now", {})):
+        for key, words in sorted(caps.items()):
+            for apart in (6, 1):
+                good, _ = aprs.dfsk_destale(words, apart=apart)
+                fr = [x[3] for x in aprs.hdlc_spans(aprs.dfsk_line([int(c) for w in good for c in f"{w:016b}"], **kw)) if x[2]]
+                if fr:
+                    assert len(fr) == 1 and aprs.describe(fr[0]).startswith("AG7EW-2>APRS:/144"), (key, fr)
+                    assert aprs.describe(fr[0]).endswith("h4857.00N/12229.00W>K6 pre"), (key, fr)
+                    got.setdefault(name, set()).add(key)
+                    break
+    assert got["first"] < got["glitch"] < got["now"], got
+    assert [len(got[k]) for k in ("first", "glitch", "now")] == [17, 25, 28], got
+    assert got["now"] - got["glitch"] == {(0, 3), (3, 4), (6, 3)}, got
+    rep = aprs.dfsklog_report(dfsk_pre_bench())
+    assert sum("frames 1 [AG7EW-2>APRS:/144" in ln for ln in rep) == 28, rep[:4]
 
 
 def test_dfsk_line_reads_the_model_of_the_chips_bits():
@@ -799,7 +836,9 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     (follow_times; the chip's clock 2% fast, right and 2% slow against the MCU's), the FIFO a
     ring of eight whose empty read gives the word of eight reads before. Two more packets have
     the tones swapped (a model of the chip's bits: the bench has not sent one yet), so their
-    flags hold the other sync word, 3333. The module must read every clean packet (flat,
+    flags hold the other sync word, 3333. Four are of the second set of captures (PRE): two
+    pre-emphasised packets with a lone sample inside a mark run, two with a mark run that the
+    first build's bias rounded a bit short. The module must read every clean packet (flat,
     pre-emphasised, de-emphasised, low, short opening, swapped), none of the noisy, never let
     the FIFO run over, learn the clock, set its own from the stations' stamps and put the
     registers back."""
@@ -808,7 +847,11 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     from modem import k6mod
     src = os.path.join(K6, "mod", "aprsdfsk.c")
     _, _, caps = aprs.dfsklog_caps(dfsk_bench())
-    keys = [(0, 5), (0, 6), (0, 9), (0, 7), (0, 8), (0, 11), (3, 6), (0, 10), (6, 7), (6, 9)]
+    _, _, pre = aprs.dfsklog_caps(dfsk_pre_bench())
+    PRE = 10
+    caps.update({(PRE + st, n): w for (st, n), w in pre.items()})
+    keys = [(0, 5), (0, 6), (0, 9), (0, 7), (0, 8), (0, 11), (3, 6), (0, 10), (6, 7), (6, 9),
+            (PRE, 1), (PRE, 3), (PRE + 3, 4), (PRE, 5)]
     flags = list(aprs.dfsk_like(aprs.hdlc_bits([], pre_flags=12, tail_flags=0)))
     stream, sent, rng = [0] * 2880, [], np.random.default_rng(5)
     for j, key in enumerate(keys + [9, 10]):
@@ -818,7 +861,7 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
             bits = list(aprs.dfsk_like(aprs.hdlc_bits(fr, pre_flags=40) ^ 1, seed=key))
         else:
             good, _, fr = aprs.dfsk_read(caps[key])
-            kind = (DFSK_FIRST[key[0]] + key[1] - 2) % 8 + 1
+            kind = 2 if key[0] >= PRE else (DFSK_FIRST[key[0]] + key[1] - 2) % 8 + 1
             assert (len(fr) == 1) == (kind in CLEAN), key
             bits = flags + [int(b) for w in [0xAAAA] + good for b in f"{w:016b}"]
         sent.append((kind, fr))
@@ -829,7 +872,7 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], src)
     full, _ = k6mod.build(src)
     bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
-    assert len(full) < 6100 and len(bench) < 6100, (len(full), len(bench))
+    assert len(full) < 6400 and len(bench) < 6400, (len(full), len(bench))
     Chip = modem_chip(le, lambda r58: stream, 4800)
     Chip.long5d, Chip.early_done, Chip.ring, Chip.times = True, True, True, times
     e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
@@ -853,7 +896,7 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     assert all(abs(int(v["k"]) * slow / 1352 - 1) < 0.03 for v in y[4:]), y
     rep = aprs.plainlog_report(["K6 MOD say " + ln for ln in e.said])
     assert rep[-2].startswith("sync 3333: 2 packets, 2 with a frame, e=") and rep[-2].endswith("; AG7EW-10 1, AG7EW-9 1"), rep
-    assert rep[-1].startswith("sync AAAA: 10 packets, 8 with a frame, e="), rep
+    assert rep[-1].startswith("sync AAAA: 14 packets, 12 with a frame, e="), rep
     end = e.said[-1]
     assert f"ok={len(clean)} " in end and end.endswith(" lost=0") and len(end) <= 60, e.said[-2:]
     assert ret >= 2 and f" v={ret}" in end, (ret, end)

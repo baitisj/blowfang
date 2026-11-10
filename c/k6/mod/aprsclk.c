@@ -145,6 +145,10 @@ typedef struct {
   uint16_t fifo[8];   /* the last eight words taken: what a read of the empty FIFO gives again */
   int32_t dlast, dn, dtone, ddur, dmd; /* the slicer: the last sample, samples since a transition,
                                           the run's tone and length, a mark run held back */
+  int32_t dhold, dbias, dacc, dnf;     /* one sample after a mark run, not yet either tone's; what
+                                          a mark run and its space run lose, as the packet's
+                                          flags say: the sum over dnf of them */
+  int32_t dct;        /* the tone of the last interval, for dclk */
   int32_t dclk;       /* how long the chip took over the packet's words so far, in the slicer's units */
   uint32_t idle;      /* line bits outside a frame */
 #else
@@ -1210,8 +1214,20 @@ int k6_main(const k6_api_t *api) {
    cycle of space is 12, of mark 22) and rounds a run to line bits; the half cycle at a change
    of tone goes to either side, so a mark run is counted together with the space run after it.
    modem/aprs.py's dfsk_line is the same in Python and reads every clean packet of those
-   captures (flat, pre-emphasised, de-emphasised, weak, eight opening flags) and none of the
-   noisy ones.
+   captures (flat, pre-emphasised, de-emphasised, weak, eight opening flags) and hardly a
+   noisy one.
+
+   The second bench run read only half the pre-emphasised packets (22 of 40), and 36 captures of
+   such packets, their text known, showed why (2026-11-10 14:46Z). Inside a mark tone a half
+   cycle now and then comes as one sample: as a space run that is a space bit never sent, so
+   one sample alone between two mark intervals is held and counted with the mark. And a mark
+   run with its space run comes out shorter than it was sent, by 4 units (de-emphasised) to 9
+   (pre-emphasised) whatever its length, where 3 were added: the opening flags (a run of seven
+   bits and a run of one, 352 units; the data has no run of seven) say what this packet loses.
+   One flag loses -4, 6 or 18 in a pattern three or six flags long (three flags are 44 cycles
+   of 2200 Hz), so the packet's bias is the mean over its flags so far, rounded down, from the
+   sixth on: about 3 de-emphasised, 6 flat, 7 or 8 pre-emphasised. Those captures: 28 of 36
+   read, 17 before (five of the other eight are dfskcap's own misread FIFO).
 
    The chip starts on a sync word of 16 bits and then gives up to 2048 bytes (REG_5D = FFE0),
    3.4 s. An opening of flags is seven bits of one tone and one of the other, and which is the
@@ -1264,7 +1280,10 @@ int k6_main(const k6_api_t *api) {
 #define DF_T 44          /* a line bit, in the slicer's units */
 #define DF_SP 12         /* an interval of one sample: a half cycle of 2200 Hz */
 #define DF_MK 22         /* of two: a half cycle of 1200 Hz */
-#define DF_BIAS 3
+#define DF_BIAS 3        /* added to a mark run and its space run, until the flags have said */
+#define DF_FLAGS 6       /* flags before their mean is the bias */
+#define DF_BIAS_MAX 9
+#define DF_TURN 3        /* dclk: a change of tone */
 #define DF_IDLE 8        /* samples without a transition: no tone of Bell 202 */
 #define DF_QUIET 64      /* and this many: the packet is over */
 #define DF_SAY 40u       /* words: a shorter packet without a frame is noise, and gets no line */
@@ -1287,8 +1306,17 @@ static void df_end(const k6_api_t *api, st_t *s) {
   ns = (int32_t)udiv((uint32_t)s->ddur + DF_T / 2, DF_T);
   if (ns < 1) ns = 1;
   if (s->dmd >= 0) {
-    nm = (int32_t)udiv((uint32_t)(s->dmd + s->ddur) + DF_BIAS + DF_T / 2, DF_T) - ns;
-    df_bits(api, s, 1, nm < 1 ? 1 : nm);
+    int32_t tot = s->dmd + s->ddur;
+    nm = (int32_t)udiv((uint32_t)(tot + s->dbias) + DF_T / 2, DF_T) - ns;
+    if (nm < 1) nm = 1;
+    if (nm + ns == 8 && (ns == 7 || ns == 1)) { /* a flag */
+      s->dacc += 8 * DF_T - tot;
+      if (++s->dnf >= DF_FLAGS) {
+        tot = s->dacc > 0 ? (int32_t)udiv((uint32_t)s->dacc, (uint32_t)s->dnf) : 0;
+        s->dbias = tot > DF_BIAS_MAX ? DF_BIAS_MAX : tot;
+      }
+    }
+    df_bits(api, s, 1, nm);
     s->dmd = -1;
   }
   df_bits(api, s, 0, ns);
@@ -1301,13 +1329,14 @@ static void df_sample(const k6_api_t *api, st_t *s, int32_t b) {
     if (++s->dn > DF_IDLE) s->dclk += DF_T / 4;
     if (s->dn == DF_IDLE) { /* silence: what is held goes out, a mark run by itself */
       s->dclk += DF_IDLE * (DF_T / 4);
+      if (s->dhold) df_end(api, s), s->dtone = 0, s->ddur = DF_SP, s->dhold = 0;
       df_end(api, s);
       if (s->dmd >= 0) {
-        d = (int32_t)udiv((uint32_t)s->dmd + DF_BIAS + DF_T / 2, DF_T);
+        d = (int32_t)udiv((uint32_t)(s->dmd + s->dbias) + DF_T / 2, DF_T);
         df_bits(api, s, 1, d < 1 ? 1 : d);
         s->dmd = -1;
       }
-      s->dtone = 1, s->ddur = 0;
+      s->dtone = 1, s->ddur = 0, s->dct = 1;
     }
     return;
   }
@@ -1315,8 +1344,15 @@ static void df_sample(const k6_api_t *api, st_t *s, int32_t b) {
     t = s->dn >= 2;
     d = s->dn == 1 ? DF_SP : s->dn == 2 ? DF_MK : s->dn * (DF_T / 4);
     s->dclk += d;
+    if (t != s->dct) s->dct = t, s->dclk += DF_TURN;
+    if (s->dhold) { /* the sample held: the mark's if the mark goes on, else the space run's first */
+      s->dhold = 0;
+      if (t) s->ddur += DF_MK;
+      else df_end(api, s), s->dtone = 0, s->ddur = DF_SP;
+    }
     if (t == s->dtone) s->ddur += d;
-    else df_end(api, s), s->dtone = t, s->ddur = d, s->dclk += DF_BIAS;
+    else if (!t && s->ddur) s->dhold = 1;
+    else df_end(api, s), s->dtone = t, s->ddur = d;
   }
   s->dlast = b, s->dn = 1;
 }
@@ -1400,6 +1436,7 @@ int k6_main(const k6_api_t *api) {
         cald = ncal >= 4 && (s->pre & 7), kq0 = kq, ncal0 = ncal;
         s->in = 0, s->sr = 0, s->idle = 0;
         s->dlast = 0, s->dn = DF_IDLE, s->dtone = 1, s->ddur = 0, s->dmd = -1, s->dclk = 0;
+        s->dhold = 0, s->dbias = DF_BIAS, s->dacc = 0, s->dnf = 0, s->dct = 1;
       } else {
         /* a word that is the one eight before: the empty FIFO's, or a real one like it (one in
            ten is in the flags). Read again: the same is the empty FIFO, nothing was taken;
