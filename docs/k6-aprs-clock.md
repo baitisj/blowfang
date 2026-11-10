@@ -23,7 +23,9 @@ GP0 code 13 on PB1 -> DMA ch1 ring (1 KB, ~5.5 MS/s)                       (gp0r
  -> 2nd-order CIC, decimate by 6 (~14.3 kHz complex)
  -> CORDIC phase (11 steps); the phase step is the FM discriminator (no division)
  -> DC removed; sliding correlators over one bit at 1200 and 2200 Hz; mark > space
- -> DPLL bit clock (nudged towards each transition, firmer inside a frame), NRZI
+    (each tone's deviation, tracked where it wins; the carrier offset from the DC)
+ -> DPLL bit clock on those transitions (nudged towards each, firmer inside a frame)
+ -> each bit: a matched filter on the IF, mark against space (see "The matched filter"), NRZI
  -> HDLC: flags, bit stuffing, CRC-16/X.25 (good residue 0xF0B8)
  -> the APRS information field's timestamp -> one interval per station -> Marzullo's vote
 ```
@@ -77,10 +79,66 @@ It returns the votes behind the clock (0: not set), or -2 (a key before any fram
 image), -4 (PB1 not an input), -5 (REG_33 refused), -7 (TIM17 or DMA channel 1 in use), -8 (the
 scratch too small).
 
+## The matched filter (2026-11-10)
+
+Jeff's question after the live run of 2026-11-10 (one packet heard in 8 minutes, his car): is the
+decoder just insensitive? It was: deciding each bit on the discriminator falls apart at the FM
+threshold, around 50-52 dB-Hz. The softmodem study (`docs/k6-if-modem.md`) had found a
+noncoherent matched filter on the IF 5-6 dB better than the best discriminator for FFSK on FM, so
+the module now decides each bit that way. The discriminator stays for three jobs it does well
+enough below its threshold, because each averages over many samples: the bit clock (its mark /
+space transitions), the carrier offset (its DC), and each tone's deviation.
+
+- **The template.** A tone f at deviation D puts the phase exp(j beta sin(2 pi f t + theta)) on
+  the carrier, beta = D / f. Each tone keeps a 64-step table of it (int8 cos, sin, its phase
+  rounded to 1/64 turn), indexed by the tone's own phase accumulator, the one the correlators use.
+  The audio phase theta at the bit's start is unknown, so 16 are tried: 8 sets of sums (x gc, y
+  gs, y gc, x gs) give theta from z conj(g) and theta + pi from z g.
+- **Per sample**, the IF sample turned back by the offset goes into both tones' sums (64
+  multiplies). **Per bit**, at the clock's half turn (the discriminator's sliding window puts its
+  transitions half a window late, so that is the bit's end), each tone's metric is its largest
+  |sum| over the 16 phases, the bit is mark > space, and the sums are cleared. A first version
+  that did the whole window once a bit decoded on the host and nothing on the emulated M0: its
+  burst of about 6,000 instructions outran the 0.2 ms DMA ring, which only reports a loss when a
+  poll sees it, so the samples after each burst were silently overwritten.
+- **The deviation tracker.** Senders differ (2-4.5 kHz, pre-emphasis twist of either sign), and
+  a template at the wrong beta loses a lot: J0(beta error), 3.7 dB for the mark tone 1.5 kHz out.
+  Each tone's discriminator level, where that tone wins, sets its beta (a one-pole over 64
+  samples, so it settles inside a preamble); the table is rebuilt when beta moves half a step.
+  With a fixed 3 kHz template, +6 dB twist and 4.5 kHz deviation decoded nothing at all.
+- **The bit clock** pulls a quarter of the way towards each transition inside a frame before;
+  now a sixteenth (`PLL_IN` 4): the transitions are noisier than the decisions below the
+  discriminator's threshold. That alone brought the once-a-bit decision level with deciding every
+  sample.
+
+Packets decoded of 48 (`sim/k6if/aprs_mf.py`'s scene: 24 packets of assorted lengths, two seeds,
+through the K6 receive model; the host build of the module, matched filter / `-DAPRS_DISC`):
+
+| C/N0 (dB-Hz) | 46 | 48 | 50 | 52 |
+| --- | --- | --- | --- | --- |
+| 3 kHz deviation | 2 / 0 | 39 / 0 | 48 / 11 | 48 / 46 |
+| 2 kHz | | 47 / 0 | 48 / 43 | 48 / 48 |
+| 4.5 kHz (the chip's filter clips it) | | 0 / 0 | 14 / 0 | 48 / 3 |
+| space +6 dB (pre-emphasis) | | 32 / 0 | 48 / 19 | 48 / 47 |
+| space -4 dB | | 47 / 0 | 48 / 11 | 48 / 44 |
+| carrier +800 Hz (no AFC in the model) | | 18 / 0 | 48 / 0 | 48 / 24 |
+| carrier -800 Hz | | 42 / 0 | 47 / 0 | 48 / 37 |
+
+The half-way point moves from about 50.5 to 47.5 dB-Hz at 3 kHz, and from about 53.5 to 50.5 at
+4.5 kHz: 3 to 4 dB, about 1.5 times the range. The float study (`python3 -m sim.k6if.aprs_mf`)
+got a little more (45-46 at the half-way point) with a window of n + 1 samples slid every sample,
+which costs too much CPU on the M0. `test_matched_filter_beats_the_discriminator` keeps the gap.
+
+**CPU.** On the emulated M0 it decodes all three test stations with no counts lost up to CPI 2.5
+(the calibrated cost is 1.5), loses a few counts at 3 and still decodes them, and fails at 3.5;
+the discriminator alone went to 5. So the margin went from 2.7x to 1.7x (the emulator errs slow
+against the radio). The sums are about 16% of the instructions.
+
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the
-correlators 256 B, twelve stations 336 B), 288 B of stack. That needs the shared arena of the SPI
+correlators 256 B, twelve stations 336 B), 288 B of stack. With the matched filter (2026-11-10):
+about 6.4 KB of code and 2.9 KB of state (two 92-entry templates 368 B, the sums 256 B). That needs the shared arena of the SPI
 images (`aura-pager-only`, `-lr`, `-vlr`, `-vlrh`: 11,776 B since PR #146). It does **not** fit
 the EXPLORE image or the lean images (5,376 B block): the radio needs a voice image, and the
 module can move into the SPI module library unchanged once that exists.
