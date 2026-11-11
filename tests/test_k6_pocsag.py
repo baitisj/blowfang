@@ -354,3 +354,45 @@ def test_pocdump_on_the_model():
     assert len(lays) == len(caps), rep
     assert all("wrong 0, dropped 0, added 0" in ln for ln in lays), rep
     assert sum("first batch: right 16" in ln for ln in rep) >= len(caps) - 2, rep
+
+
+def test_same_sampled_reads_back():
+    """SAME through the plain receiver as a sampler, on the host: at 6347 a second any phase and
+    some noise reads; at 4166.7 only a clock on the mark's peaks does"""
+    from modem import same
+    b = same.burst_bits("ZCZC-WXR-RWT-053033+0015-3151800-KSEW/NWS-")
+    for ph in (0.0, 0.3, 0.7):
+        x = same.df_samples(b, phase=ph, rate=6347.6 / same.DF_RATE, noise=0.2, lead=0.01, seed=5)
+        t, n, _ = same.df_best(x, 6347.6)
+        assert t.startswith("ZCZC-WXR-RWT-053033+0015-3151800-KSEW/NWS") and n >= 14, (ph, t, n)
+    t, n, _ = same.df_best(same.df_samples(b, phase=0.5, lead=0.01), same.DF_RATE)
+    assert t.startswith("ZCZC-WXR-RWT-053033+0015-3151800-KSEW/NWS") and n == 16, (t, n)
+
+
+@need_clang
+def test_samedf_on_the_model():
+    """samedf on the model, the chip as a fixed-clock sampler of the bursts' audio sign: its
+    settings at 4166.7 (on the mark's peaks), 4800 and 6347 a second capture the bursts and the
+    host reads their text from the samples"""
+    pytest.importorskip("unicorn")
+    from modem import same
+    scale, wait = 150, 0.2
+    total = wait + 4 * 40 * scale / 1000
+    segs, t, r = [], 0.4, 1
+    while t < total - 1:
+        b = same.burst_bits(f"AG7EW SAME FORMAT TEST {r}")
+        for fs in (same.DF_RATE, 4800.0, 6347.6):
+            x = same.df_samples(b, phase=0.5, rate=fs / same.DF_RATE, seed=r)
+            segs.append((t, fs, x))
+        t, r = t + len(b) / same.BAUD + 1.2, r + 1
+    e, ret = run_plain(os.path.join(K6, "mod", "samedf.c"),
+                       [("SLOT_SCALE", f"{scale}u"), ("WAIT_MS", f"{int(wait * 1000)}u")], segs, total + 5)
+    assert e.said[0] == "samedf start hz=440850000 n=4" and e.said[-1].startswith("samedf end"), e.said[-3:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    rep = same.df_report(["K6 MOD say " + s for s in e.said])
+    caps = [ln for ln in rep if ln.startswith("c")]
+    texts = [ln for ln in rep if ln.startswith("  read")]
+    assert ret == len(caps), (ret, rep)
+    for k in ("0", "1", "2"):
+        got = [tx for c, tx in zip(caps, texts) if f" s={k} " in c and "AG7EW SAME FORMAT TEST" in tx]
+        assert got, (k, rep)

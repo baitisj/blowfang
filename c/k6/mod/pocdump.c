@@ -46,6 +46,9 @@
 #ifndef DUMP_HZ
 #define DUMP_HZ 440850000u
 #endif
+#ifndef DUMP_NAME
+#define DUMP_NAME "pocdump"
+#endif
 #ifndef WAIT_MS
 #define WAIT_MS 32000u
 #endif
@@ -55,10 +58,13 @@
 #ifndef SLOT_SCALE
 #define SLOT_SCALE 1000u
 #endif
-#define NV 6
 #define LAG 5u
+#ifndef DUMPW
 #define DUMPW 150u       /* words kept: a batch and more at 1200 baud, 600 bits as samples */
+#endif
+#ifndef CAPN
 #define CAPN 6u
+#endif
 #define GAP 0xFFFFFFFFu  /* a kept "word" that was the empty FIFO */
 #define CTRL 0x00F0u
 #define CTRL_CLR 0x4000u
@@ -69,6 +75,11 @@ typedef struct {
                                          bits, samples a bit */
 } var_t;
 
+#ifdef DUMP_V
+#define NV DUMP_NV
+static const var_t V[NV] = {DUMP_V};
+#else
+#define NV 6
 static const var_t V[NV] = {
     {0x00E9, 12389, 2133, 0xAAAA, 0x0100, 1},
     {0x00E9, 49557, 533, 0xF0F0, 0x0100, 4},
@@ -77,6 +88,7 @@ static const var_t V[NV] = {
     {0x00E5, 12389, 2133, 0xAAAA, 0x0100, 1},
     {0x00E9, 49557, 533, 0xF0F0, 0, 4},
 };
+#endif
 
 static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F};
 #define NSV sizeof(SAVED)
@@ -202,7 +214,7 @@ int k6_main(const k6_api_t *api) {
   for (i = 0; i < NSV; i++) s->sv[i] = api->fd_read(SAVED[i]);
   s->el = 0, s->tl = (uint16_t)api->ticks();
   api->tune(DUMP_HZ, 1);
-  p = kv(s->ln, "pocdump start hz=", DUMP_HZ);
+  p = kv(s->ln, DUMP_NAME " start hz=", DUMP_HZ);
   p = kv(p, " n=", NV);
   say(api, s, p);
   while (api->ms() < WAIT_MS && !key) {
@@ -238,10 +250,11 @@ int k6_main(const k6_api_t *api) {
         cap = 1, rn = 1, nk = 0, ne = 0, ng = 0, nq = 0, off = 0, data = 0, h1 = h2 = w;
         t0 = clk(api, s) << 4, tcap = now, rpk = 0;
         s->ring[0] = (uint16_t)w;
+        if (!v->m) data = 1, s->keep[nk++] = w; /* no preamble to skip: from the first word */
       }
     }
     while (cap && (int32_t)((clk(api, s) << 4) - t0 - (rn + LAG) * v->wt - off) >= 0) {
-      uint32_t got[5], nw = 1, lim = v->m > 2 ? 5 : 3;
+      uint32_t got[5], nw = 1, lim = v->m == 1 || v->m == 2 ? 3 : 5;
       got[0] = api->fd_read(0x5F);
       if (data && rn >= 8 && swap(got[0]) == s->ring[rn & 7]) {
         do got[nw] = api->fd_read(0x5F);
@@ -270,7 +283,7 @@ int k6_main(const k6_api_t *api) {
       }
       if (nk < DUMPW && rn < 1000u) continue;
       cap = 0;
-      if (ng < 4) {
+      if (v->m && ng < 4) {
         nz++;
       } else if (++ncap <= CAPN) {
         p = kv(s->ln, "c ", total + ncap);
@@ -299,7 +312,7 @@ int k6_main(const k6_api_t *api) {
   for (i = 0; i < NSV; i++) api->fd_write(SAVED[i], s->sv[i]);
   api->fd_write(0x02, 0);
   total += ncap;
-  p = kv(s->ln, "pocdump end n=", total);
+  p = kv(s->ln, DUMP_NAME " end n=", total);
   say(api, s, p);
   return (int)total;
 }

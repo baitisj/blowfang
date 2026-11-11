@@ -169,6 +169,15 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
   Their text is `AG7EW SAME FORMAT TEST <n>`.
 - Bench (2026-11-11 08:31Z): no captures in any of the four settings. The plain receiver at
   REG_72 5377 never finds D5D5 or 2A2A in SAME's tones, so it can't read SAME this way.
+- `samedf` (2.4 KB, pocdump.c with other settings) tries the plain receiver as a sampler of the
+  audio instead, as `aprsdfsk` reads Bell 202: at 4166.7 samples a second (eight a bit; the mark
+  at two a cycle, sync `AAAA`, if the chip's clock locks onto it as it did onto 2200 Hz), at 4800
+  (sync `952A`) and at REG_72's top, 6347 (sync `6666`): words the host's model finds in every
+  preamble at a fixed clock, at any phase. It says each capture's first 256 words, and
+  `python3 -m modem.same df LOG` reads them: the tones told apart over each bit's samples, the
+  bit clock kept on them, the samples a second searched from 0.8 to 1.2 of REG_72's. On the
+  emulator all three rates read the bursts; at 6347 a second the host reads with noise of a
+  third of the tone's amplitude.
 - Live: `samecap_nwr` listens to 162.550 MHz (KHB60 Seattle) for an hour with the datasheet's
   setting. It says only captures that go on like a preamble, because noise gives D5D5 every couple
   of minutes. The weekly test is on Wednesdays around midday Pacific.
