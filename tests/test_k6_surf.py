@@ -661,14 +661,21 @@ def test_band_edge_leaves_the_bins_past_it_empty():
 
 @need_clang
 def test_monitor_opens_the_audio_without_a_signal():
-    keys = taps("*", 1_000_000) + taps("*", 3_000_000) + [(4_000_000, 4_300_000, "X")]
-    ret, said, regs, writes, lcd = go([], keys)
+    keys = taps("*", 1_000_000) + taps("*", 3_000_000) + taps("*", 3_500_000) + [(4_000_000, 4_300_000, "X")]
+    sq = {0x4D: 0xA04A, 0x4E: 0x6C48, 0x4F: 0x2D2B, 0x78: 0x4A48}
+    ret, said, regs, writes, lcd = go([], keys, regs=sq)
+    # Jeff 2026-11-11: MON cut weak signals. The chip's squelch opens all the way (egzumer's
+    # squelch 0) while MON is on, and goes back as Aura had it on leaving MON and at EXIT
+    assert writes_of(writes, 0x78) == [0, 0x4A48, 0, 0x4A48]
+    assert writes_of(writes, 0x4F) == [0x7F7F, 0x2D2B, 0x7F7F, 0x2D2B]
+    assert writes_of(writes, 0x4D)[0] == 0xA0FF and writes_of(writes, 0x4E)[0] == 0x6CFF
+    assert all(regs[r] == v for r, v in sq.items())
     spk = lcd["st"]["spk"]
-    assert [v for _, v in spk] == [0, 4, 0]
+    assert [v for _, v in spk][:3] == [0, 4, 0]
     assert 1_000_000 < spk[1][0] < 1_200_000 and 3_000_000 < spk[2][0] < 3_300_000
     fr = lcd["frames"]
     assert at(fr, 2_000_000)["text"][0] == "SURF 70cm 25k MON"
-    assert at(fr, 3_500_000)["text"][0] == "SURF 70cm 25k"
+    assert at(fr, 3_400_000)["text"][0] == "SURF 70cm 25k"
 
 
 @need_clang

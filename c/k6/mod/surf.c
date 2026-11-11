@@ -55,7 +55,8 @@
                      auto, 9 starts at the top and 7 at -7); the title shows it ("G-12 70cm 25k")
      8               the receiver's own AGC again (the title says SURF)
      1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz
-     *               monitor: audio open on the bar all the time, no sweeping
+     *               monitor: audio open on the bar all the time, no sweeping; the chip's own
+                     squelch open all the way too (put back on leaving MON and at EXIT)
      0               hold: no refresh sweeps while a signal plays (default: one every 5 s)
      MENU            say the bar's frequency and level on the serial port
      EXIT            leave (the module waits for the key's release, so the pager doesn't see it)
@@ -233,6 +234,10 @@ static const char FALL[4][4] = {"15s", "1m", "5m", "20m"};
 #define MD_AM 2
 #define NMD 3
 static const char MD_NAME[NMD][4] = {"FM", "DSB", "AM"};
+/* the chip's squelch: glitch close (REG_4D [7:0]), glitch open (REG_4E [7:0]), noise close/open
+   (REG_4F), RSSI open/close (REG_78); open all the way = egzumer's squelch 0: glitch 255, noise
+   127, RSSI 0 */
+static const uint8_t SQ_REGS[4] = {0x4D, 0x4E, 0x4F, 0x78};
 
 /* a remembered peak: where (the loudest read's frequency), how wide the bin that heard it was
    (a coarse outer bin only says roughly where), its caret's height (0: free) and whether a
@@ -265,6 +270,7 @@ typedef struct {
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
   uint32_t r47, odr, r13, r73, r7e, r3d;
+  uint16_t sq[4];               /* monitor: the chip's squelch (SQ_REGS) as Aura had it */
   uint8_t lvl[NB];              /* bars: quick reads, dBm + 174, 0 unknown */
   uint32_t heard[2];            /* bins whose last read held their bar up (not a bar falling) */
   char ln[40];
@@ -392,6 +398,20 @@ static void demod(sf_t *s) {
   }
   api->fd_write(0x73, (uint16_t)((s->r73 & ~0x10u) | (md != MD_FM ? 0x10u : 0)));
   if (s->audio && !s->hush) api->fd_write(0x47, s->af);
+}
+
+/* monitor: the chip's own squelch open all the way (on), or put back as Aura had it. Jeff heard
+   MON cut weak signals (2026-11-11) though the module never closes the audio there: the chip
+   (or Aura under it) still follows its squelch result, REG_0C bit 1 */
+static void squelch(sf_t *s, int on) {
+  const k6_api_t *api = s->api;
+  int k;
+  if (on)
+    for (k = 0; k < 4; k++) s->sq[k] = api->fd_read(SQ_REGS[k]);
+  api->fd_write(0x4D, on ? (uint16_t)((s->sq[0] & 0xFF00u) | 0xFFu) : s->sq[0]);
+  api->fd_write(0x4E, on ? (uint16_t)((s->sq[1] & 0xFF00u) | 0xFFu) : s->sq[1]);
+  api->fd_write(0x4F, on ? 0x7F7Fu : s->sq[2]);
+  api->fd_write(0x78, on ? 0x0000u : s->sq[3]);
 }
 
 /* the receiver's gain: Aura's AGC (gx 0), or fixed at GAINS[gx - 1] (REG_7E bit 15, index 3
@@ -783,6 +803,7 @@ static void on_key(sf_t *s, int k) {
     break;
   case '*':
     s->mon ^= 1;
+    squelch(s, s->mon);
     s->tuned = 0;
     s->parked = s->mon;               /* (monitor: park_step opens the audio once tuned) */
     if (!s->mon) moved(s);
@@ -1197,6 +1218,7 @@ int k6_main(const k6_api_t *api) {
   api->fd_write(0x73, (uint16_t)s->r73);
   api->fd_write(0x7E, (uint16_t)s->r7e);
   if (s->zif) api->fd_write(0x3D, (uint16_t)s->r3d);
+  if (s->mon) squelch(s, 0);
   wr(GPIOB + (s->odr ? BSRR : BRR), SPK);
   for (i = 0, n = 0; i < 300 && n < 5; i++) {
     n = kp_scan(s) ? 0 : n + 1;

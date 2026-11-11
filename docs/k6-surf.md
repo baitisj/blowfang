@@ -54,7 +54,7 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 | 7 / 9 | fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB. From auto, 9 starts at the top (0 dB) and 7 at -7 dB (Aura's own top AGC step). The title shows it in place of SURF (`G-12 70cm 25k`), line 5 says "gain -12 dB" for 1.5 s |
 | 8 | the receiver's own AGC again ("gain auto") |
 | 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz (defaults: 2m and 1.25m 500 kHz, 70cm and MAR/WX 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
-| * | monitor: audio open on the bar all the time, no sweeping (title says MON) |
+| * | monitor: audio open on the bar all the time, no sweeping (title says MON). The chip's own squelch opens all the way too, egzumer's squelch 0 (REG_78 RSSI 0, REG_4F noise 127, REG_4D/4E glitch 255): Jeff heard MON cut weak signals on 2026-11-11 though the module never closes the audio in MON. Leaving MON and EXIT put the four registers back as Aura had them. Not yet tried on the radio |
 | 0 | hold: no refresh sweeps while a signal plays (title says HLD) |
 | MENU | says the bar's frequency and level on the serial port |
 | EXIT | leave; the module waits for the key's release so the pager doesn't see it |
