@@ -160,6 +160,9 @@
       9..12  33a1 33ab 33ad 33a3 at 4800
       13, 14 33e9 3329 at 4800
       15     33a9 with REG_72 = ffff
+   What the bench said of those (05:37Z, AM on 50.650 MHz): no block and no sync of the chip's
+   own. 33a9 at 4800 baud gives a pulse a half cycle of 1200 Hz and keeps time, but drops
+   the first one after two or more bits of 2400 Hz about half the time. Parked.
    A capture of these ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.

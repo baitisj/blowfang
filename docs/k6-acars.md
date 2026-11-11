@@ -727,10 +727,50 @@ zero IF suits it better (the IC-7100's FM audio is hard on these tones, point 3 
 33A1, 33AB, 33AD, 33A3, 33E9 and 3329, and 33A9 at 6348 baud. The signal there is `--only
 KRT --gap 0.4 --where 50.650 --levels 1,1.8`.
 
+#### The tone receiver in AM at the zero IF (run H, 2026-11-11, build 99ab713)
+
+The ninth run made on 6 m (its folder is `am11`: `am9` and `am10` were staged and not made): `dfskcap_acars6` with `DFSK_TONE 3`, the IC-7100 in AM on 50.650 MHz at
+5%, keyed 05:37:11 to 05:40:57Z, SWR 1 on all 110 readings, the K6 receive only (hamlet
+`~/blowfang-work/runs/acars6-am11-20261111/`); the rig back on 440.850 MHz FM-D at power 0 by
+05:41:05Z. The carrier was -80 to -82 dBm at the K6, 12 to 15 dB over the zero IF's floor
+there (-93 to -97). **No block read in any of the sixteen settings, and the chip's own sync
+(5C5C, 3FFE 5C5C, the pager's word) never came.**
+
+- **The tone receiver does hear an AM signal at the zero IF**, and at 4800 baud 33A9 gives
+  the cleanest picture of the tones of any run: a run of n bits of 2400 Hz is 2n + 1 zeros,
+  and a run of n bits of 1200 Hz is n single ones a sample apart (`1 0 1 0 1`), a pulse a
+  half cycle. The ladder's 192 bits of 1200 Hz come as 192 pulses, its runs of 8 as 8
+  and of 4 as 4, time kept, and its last rung (the tones in turn bit by bit) as 24 pulses
+  three zeros apart: every lone bit there. The level (1 or 1.8) and the de-emphasis make no
+  difference at 4800 baud.
+- **But in a block the first half cycle of 1200 Hz after two or more bits of 2400 Hz is
+  dropped about half the time**, its two samples left in the gap (the time is kept, the bit
+  is not): a lone bit is then gone, a pair is one pulse. Of the runs of 1200 Hz that follow a
+  single bit of 2400 Hz about four in five come whole (234 of 297), of those that follow two
+  or more under half (160 of 345). The ladder's pairs, two bits of 2400 Hz before each, come
+  as one pulse more often than as two. With the runs read by that
+  rule a block's 504 tone bits come with 63 to 90 wrong (33A9, three long captures each with
+  and without de-emphasis), no better than FM's 54 to 90. The other bandwidth bits and bits
+  7:6 = 11 or 00 are worse here (101 to 190 wrong), where in FM 33A1 and 33AB kept time.
+- **At 2400 baud** 33A9 with the AF filters as found gives hardly a 1 at all in AM (3 samples
+  in 100); with de-emphasis and both filters off the ladder is placed with 56 to 64 of 336
+  bits off, as in FM.
+- Between units the zero IF's noise keeps the receiver's words changing, so a capture does
+  not end with its unit as in FM: where the tones are told (33A9 at 4800 and over, 33E9,
+  3329, 33A1) a setting is three or four captures of 3.5 s, several units in each. The
+  report's count of an opening's bits off decimates the samples, which does not suit pulses
+  a sample wide; the numbers above are from the runs.
+
+**So the tone receiver does not read ACARS in FM or in AM.** It was made for a cycle of
+1200 Hz a bit, and MSK at 2400 baud asks it to tell half a cycle: it does that where the half
+cycles come in a steady pattern and loses them where they stand alone, in every setting of
+REG_58, REG_72, REG_59 and REG_2B tried (forty-eight in three runs). With the plain receiver
+closed the same way, **ACARS on the K6's chip is parked** (Jeff, 2026-11-11 05:55Z).
+
 ### What the 6 m tests say
 
-Eight runs on 6 m, the last five with the carrier 40 dB over the K6's floor, and two in FM on
-440.850 MHz:
+Nine runs on 6 m (eight on the plain receiver, the last five of those with the carrier 40 dB
+over the K6's floor, then the tone receiver's) and six in FM on 440.850 MHz:
 
 1. **The plain FSK receiver's slicer is fed by the FM discriminator and nothing else.** REG_47's
    AF source AM changes what the speaker gets, not what the slicer gets.
@@ -744,11 +784,15 @@ Eight runs on 6 m, the last five with the carrier 40 dB over the K6's floor, and
    would give the bytes themselves), REG_58's bandwidth bits, its bits 7:6 and RX mode 1.
    The turns of the two tones are half a sample of 4800 apart, and the chip's clock gives
    that half away each time.
-5. The 1200/2400 Hz modem never synced on ACARS in FM (first bench run). What it makes of a
-   block when it is not asked for a sync word, and at the zero IF, is `dfskcap_acarsd`'s
-   question (above), not yet run.
+5. The 1200/2400 Hz tone receiver never syncs on ACARS, in FM or in AM at the zero IF. Given
+   the pre-key as its sync word it hands over its tone bits, and they are the block's but for
+   the lone half cycles of 1200 Hz, which it drops: one tone bit in six to nine wrong at the
+   best settings, in FM and in AM alike (runs E, G and H above).
+6. Parked, 2026-11-11. What would open it again: a chip or a mode with a receiver clock over
+   6348 baud that the host can hold, or a way for the MCU to read the audio itself (REG_47's
+   "FSK out" goes to the audio pin, which the K6's MCU cannot read without a hardware change).
 
-Not measured, and of no use until a block reads: how weak a signal this path takes in. The zero IF's floor was -93 dBm in the
+Not measured, and of no use since no block reads: how weak a signal this path takes in. The zero IF's floor was -93 dBm in the
 run against -117 at the IF as found, and ACARS at the bench site peaks at -103 dBm.
 
 `dfskcap_acars6` stays the instrument for the bench (the `q` lines, every capture's words,
