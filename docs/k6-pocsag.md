@@ -290,7 +290,23 @@ transmission at all: 345 false starts, no capture. With the AFC off the receiver
 restart leaves it, and the sampler's slicing never sees the preamble's `F0F0`. So the AFC is
 needed; it only has to be left alone. The module now tunes only when it is not on `POC_HZ`
 (wide) already (`tune=0` on the start line): after an upload on the same frequency the AFC keeps
-the pull it had on the upload's signal. Run 8 is to show the first captures clean.
+the pull it had on the upload's signal.
+
+## Bench run 8: no tune, less noise
+
+Run 8 (2026-11-11 21:16-21:20Z, receive only, 440.850, CW ID) ran `pocdump_1200` at 339f7eb,
+which tunes only when it must, under the same two 52 s key-ups. Its start line said `tune=0`.
+
+- Wrong bits in the dumps: 35 and 38 in the first key-up (run 6: 116 and 172 at the same times),
+  then 5, 0, 10 and 0 in the second. Runs a quarter bit or more off: 14 and 16%, then 9, 2, 8 and
+  2%. Codewords past help over the run: 49 (run 6: 126).
+- So most of the early noise was the tune's restart. Some settling is left in the first minute,
+  and the upside-down transmissions (the bench's even rounds) read a little worse than the
+  right-way-up ones.
+- Bit 221 (counted from the preamble's end) is wrong in four dumps and in run 6: a fixed spot in
+  the bench's signal, not noise.
+- On a frequency other than the upload's (DAPNET on 439.9875) the module still tunes, and the
+  first transmissions in the first minute or two may read worse.
 
 ## NOAA SAME: the probe `samecap`
 
@@ -340,8 +356,8 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
 
 ## Next
 
-- Bench run 8: `pocdump_1200` that does not tune (`tune=0`) right after the upload. Clean from the
-  first capture? If not, or if it tunes after all, look at what the restart resets.
+- The settling left after the tune: does the AFC pull faster with a strong signal, or can the
+  module hold off reading until it has? The bench's bit 221 and its upside-down rounds.
 - If the bench's text comes more than 2% off four samples a bit, the slicer should learn the
   samples a bit (it can, from the preamble and the sync codeword) instead of assuming four. Run 5
   stayed within 3%, and a plain DPLL slicer tried on run 4's dumps read no better than the
