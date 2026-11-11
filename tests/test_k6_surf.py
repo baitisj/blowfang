@@ -293,8 +293,8 @@ def test_bargraph_peaks_side_keys_and_audio():
     assert all(height(on, i) <= 2 for i in range(C - KI, C + KI + 1) if off[abs(i - C)] * 500 >= 13_000)
     assert at(fr, 5_100_000)["text"][1] == "441.2000 -95dBm RX"
     # the listening bar is drawn like the others, steady (it blinked until Jeff, 2026-11-10)
-    a, b = on, fr[fr.index(on) + 1]
-    assert height(a, C) >= 20 and abs(height(a, C) - height(b, C)) <= 2
+    rx = [f for f in fr if f["text"][1] == "440.8500 -70dBm RX"]
+    assert len(rx) >= 2 and all(height(f, C) >= 20 for f in rx)
 
 
 @need_clang
@@ -351,8 +351,10 @@ def test_up_down_move_the_scale_with_the_middle():
     ret, said, regs, writes, lcd = go([(441_200_000, -95, 0, FOREVER)], keys)
     fr = lcd["frames"]
     assert height(at(fr, 1_900_000), bin_for(441_200_000, 440_600_000)) > 15
+    # (drawn at once after the press: the old bin's loudest read can land one bin off)
     moved = next(f for f in fr if f["text"][1].startswith("440.7000 "))
-    assert height(moved, bin_for(441_200_000, 440_700_000)) > 15
+    b = bin_for(441_200_000, 440_700_000)
+    assert max(height(moved, j) for j in (b - 1, b, b + 1)) > 15
 
 
 @need_clang
@@ -528,6 +530,35 @@ def test_side_keys_hop_between_remembered_peaks_after_they_stop():
     # the peaks live in the module store's free RAM (128 x 8 B), not on the stack: still under
     # 2.3 KB of the ~3.1 KB the voice images give a module (2,184 B before the carets)
     assert lcd["st"]["stack"] <= 2300, lcd["st"]["stack"]
+
+
+@need_clang
+def test_keys_answer_at_once_even_during_a_refresh_sweep():
+    # Jeff 2026-11-11: jumps and UP / DOWN took a long time. Parked on a carrier, a refresh sweep
+    # (every 5 s, ~0.6 s here, 1-2 s on the radio) held the keys until it ended. Now a key cuts any
+    # sweep short and the screen redraws at once: A/B presses every 0.7 s, some during refreshes
+    sig = [(440_600_000, -80, 0, FOREVER)]
+    t = [1_500_000 + 700_000 * n for n in range(14)]
+    keys = [(a, a + 100_000, "W") for a in t] + [(12_000_000, 12_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    fr = lcd["frames"]
+    notes = ["fall 5m", "fall 20m", "fall 15s", "fall 1m"]
+    for n, a in enumerate(t):
+        f = next(f for f in fr if f["us"] >= a and f["text"][5] == notes[n % 4])
+        assert f["us"] - a < 100_000, (n, f["us"] - a)
+    assert "RX" in at(fr, 11_000_000)["text"][1]              # still parked on it
+
+
+@need_clang
+def test_a_jump_onto_a_live_signal_opens_the_audio_quickly():
+    # the moved scale's lens only (17 reads) before the audio, not the whole sweep
+    sig = [(440_850_000, -80, 0, FOREVER)]
+    keys = taps("A", 3_000_000) + [(5_000_000, 5_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    spk = lcd["st"]["spk"]
+    assert spk[1][1] == 4 and 3_000_000 < spk[1][0] < 3_200_000, spk
+    on = at(lcd["frames"], 3_300_000)
+    assert on["text"][1] == "440.8500 -80dBm RX"
 
 
 @need_clang

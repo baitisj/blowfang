@@ -61,7 +61,9 @@
    read; a signal there SQ_DB over the settled floor opens the audio (REG_47 FM, speaker amp on
    PB2, as dmrdet) and parks on it. It closes HANG_MS after the signal drops, and then sweeps
    again. While parked, a refresh sweep every REFRESH_MS (about 0.3 s of muted audio) keeps the
-   bars current, unless hold (0) or monitor is on. Any retune with the audio open turns the
+   bars current, unless hold (0) or monitor is on. A move onto a signal reads only the lens
+   before the audio opens; the rest waits for that refresh. Any key cuts a sweep short and the
+   screen redraws at once (Jeff, 2026-11-11: jumps and UP / DOWN were slow). Any retune with the audio open turns the
    speaker amp off as well until the bar has settled again (hush): REG_47 muted alone buzzed.
 
    Levels: sweep reads are quick (SETTLE_US after the tune, as Aura's own spectrum: about 59 %
@@ -619,7 +621,7 @@ static void pm_push(sf_t *s) {
       b->h = (uint8_t)(b->h + PUSH > HMAX ? HMAX : b->h + PUSH);
       continue;
     }
-    if (!s->npm || !conf) continue;
+    if (!s->npm || !conf || s->qk) continue;
     conf--;
     d = (uint32_t)read_hz(s, raster(s, f), CHECK_US);
     s->tuned = 0;
@@ -760,8 +762,9 @@ static void sweep_bin(sf_t *s, int i) {
   if (hi - lo <= SUB_HZ) {                 /* the lens and bins up to 20 kHz wide: one read */
     r = read_at(s, i, SETTLE_US);
   } else {
-    for (r = -999, f = lo + SUB_HZ / 2; f < hi; f += SUB_HZ)
+    for (r = -999, f = lo + SUB_HZ / 2; f < hi && !s->qk; f += SUB_HZ)
       if (f >= s->bd->lo && f <= s->bd->hi && (v = read_hz(s, f, SETTLE_US)) > r) r = v, at = f;
+    if (s->qk) return;                     /* a key came: it goes first (the bin keeps its bar) */
     if (r == -999) r = read_at(s, i, SETTLE_US);
   }
   if (r + 174 >= o || !o || s->stale) s->pk[i] = at;
@@ -790,24 +793,27 @@ static void floor_q(sf_t *s) {
   s->qfl = t[k];
 }
 
+/* after a jump: the loudest bin of the lens, if that is another channel, is the station (the
+   bin or caret the jump came from may have been a coarse one far out): the middle moves there
+   once more; 1 if it moved */
+static int refine_lens(sf_t *s) {
+  int i, b = C;
+  s->refine = 0;
+  for (i = C - KI; i <= C + KI; i++)
+    if (s->hz[i] && s->lvl[i] > s->lvl[b]) b = i;
+  if (b == C || s->lvl[b] <= s->lvl[C] + 1 || raster(s, s->pk[b]) == s->cen) return 0;
+  recentre(s, s->pk[b]);
+  moved(s);
+  return 1;
+}
+
 static void sweep_done(sf_t *s) {
   s->sweeps++;
   s->full = 1;
   s->stale = 0;
   floor_q(s);
   pm_push(s);
-  if (s->refine) {
-    /* after a jump: the loudest bin of the lens, if that is another channel, is the station
-       (the bin the jump came from may have been a coarse one far out) */
-    int i, b = C;
-    s->refine = 0;
-    for (i = C - KI; i <= C + KI; i++)
-      if (s->hz[i] && s->lvl[i] > s->lvl[b]) b = i;
-    if (b != C && s->lvl[b] > s->lvl[C] + 1 && raster(s, s->pk[b]) != s->cen) {
-      recentre(s, s->pk[b]);
-      moved(s);
-    }
-  }
+  if (s->refine) refine_lens(s);
 }
 
 /* a settled read of the bar's channel: opens the audio on a signal */
@@ -820,12 +826,14 @@ static void check_bar(sf_t *s) {
   if (d < s->sfl) s->sfl = d;
   if (d >= s->sfl + SQ_DB) {
     if (s->stale) {
-      /* the scale just moved: sweep it once before the audio opens (no sweeps while it plays) */
-      for (i = 0; i < NV; i++)
+      /* the scale just moved: the lens (17 single reads, ~0.1 s) before the audio opens, for the
+         refine and the station's shape; the rest keeps the levels the old scale lent it until the
+         first refresh (a whole sweep here held the audio and the keys 1-2 s: Jeff, 2026-11-11) */
+      for (i = C - KI; i <= C + KI && !s->qk; i++)
         if (s->hz[i]) sweep_bin(s, i);
-      s->next = 0;
-      sweep_done(s);
-      if (s->check) return;             /* that moved the middle again: check there */
+      if (s->qk) return;                /* a key came: it goes first */
+      s->stale = 0;
+      if (s->refine && refine_lens(s)) return;   /* the middle moved again: check there */
       s->tuned = 0;
     }
     s->parked = 1;
@@ -867,9 +875,9 @@ static void park_step(sf_t *s) {
   }
   if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {   /* (stale: a zoom) */
     int i;
-    for (i = 0; i < NV; i++)          /* (read_hz hushes the speaker; the next read unhushes it) */
+    for (i = 0; i < NV && !s->qk; i++)   /* (read_hz hushes the speaker; the next read unhushes it) */
       if (s->hz[i]) sweep_bin(s, i);
-    sweep_done(s);
+    if (!s->qk) sweep_done(s);          /* (a key cut it short: it goes first) */
     s->tuned = 0;
     s->t_full = s->api->ms();
   }
@@ -1105,7 +1113,11 @@ int k6_main(const k6_api_t *api) {
     }
 #endif
     if (k == 'X') break;
-    if (k) on_key(s, k);
+    if (k) {
+      on_key(s, k);
+      s->now = api->ms();
+      draw(s);                        /* (at once: the press shows before the next read) */
+    }
     if (s->check) check_bar(s);
     else if (s->parked) park_step(s);
     else sweep_step(s);

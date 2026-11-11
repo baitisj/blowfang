@@ -111,10 +111,15 @@ The dB values are egzumer's per-field table (LNA short 0, LNA -24..0, mixer -8..
 measured on the K6. RSSI moves with the gain, so each change measures the settled floor again and
 sweeps afresh. 8 puts back REG_13 and REG_7E as the module found them.
 
-**Keys during a long sweep.** A whole sweep at the wide spans (the one before the audio opens, the
-5 s refresh) and the floor's 8 settled reads hold the loop for up to about 0.5 s. Every read now
-looks at the keypad too, and a key read the same twice in a row is kept for the loop, so a press
-in that time isn't lost (before, a 250 ms press there could vanish).
+**Keys during a long sweep.** Every read looks at the keypad too, and a key read the same twice
+in a row is kept for the loop, so a press during a sweep isn't lost (before, a 250 ms press there
+could vanish). Since 2026-11-11 the key also cuts the sweep short: the 5 s refresh, a wide bin's
+sub-reads and the new-peak confirms all stop at once, the key is acted on, and the screen redraws
+straight away. Jeff found jumps and UP / DOWN slow on the radio: a refresh or the sweep before
+the audio opened held the keys 1-2 s. A jump or step onto a live signal now reads only the lens
+(17 single reads, about 0.1 s) before the audio opens, for the refine and the station's shape;
+the rest of the scale keeps the levels the old scale lent it until the first refresh, 5 s later.
+The floor's 8 settled reads (start, BAND, gain keys) still run to the end, about 0.1-0.2 s.
 
 ## How it works
 
@@ -124,7 +129,7 @@ tune). A signal there 10 dB over the settled floor opens the audio (REG_47 FM an
 amplifier on PB2, as `dmrdet`), and the module parks on it. It closes 1.5 s after the signal
 drops and sweeps again. While parked, one refresh sweep every 5 s (about 0.3 s of muted audio)
 keeps the bars current, unless hold or monitor is on. Whenever the receiver tunes with the audio
-open (a refresh, a side-key seek, a step in monitor) the speaker amplifier goes off too and comes
+open (a refresh, a lens read after a jump, a step in monitor) the speaker amplifier goes off too and comes
 back once the bar's frequency has settled: with only REG_47 muted, the retunes buzzed in the
 speaker (Jeff, on the radio, 2026-11-10).
 
