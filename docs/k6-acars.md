@@ -767,10 +767,116 @@ cycles come in a steady pattern and loses them where they stand alone, in every 
 REG_58, REG_72, REG_59 and REG_2B tried (forty-eight in three runs). With the plain receiver
 closed the same way, **ACARS on the K6's chip is parked** (Jeff, 2026-11-11 05:55Z).
 
+#### The tone receiver in AM at the normal IF (run I, 2026-11-11, build 7624cff)
+
+Jeff's point after the parking (06:37Z): every AM run of the tone receiver was at the zero IF,
+where both sidebands fold onto each other. With the chip in its AM mode at the IF as found,
+only the plain receiver was ever tried, and its slicer is the FM discriminator's. Whether the
+tone receiver gets the AM audio was never asked. The zero IF's floor is also some 28 dB over
+the normal IF's, so an answer of yes would matter for real ACARS (-103 dBm at the bench
+site).
+
+Two checks first on run H's captures of 33A9 at 4800 baud (settings 7 and 8, six captures,
+3024 tone bits), for the host-side ideas that came with it:
+
+- The first half cycle of 1200 Hz after n bits of 2400 Hz is seen 248 of 297 times after one
+  bit, 60 of 153 after two, 23 of 61 after three, 72 of 96 after four, 23 of 25 after five.
+  Neither growing with the run (a filter settling) nor flat (the clock's phase). The half
+  cycle's polarity makes no difference (90 of 173 against 92 of 172).
+- A dropped half cycle leaves no mark that tells it from a bit of 2400 Hz: an even count of
+  zero samples in a gap holds a dropped one about as often as an odd count does when both
+  are scored alike. A block loses about 45 of its 270 half cycles and gains about 18 false
+  ones, against one parity bit a character and a 16-bit check: no sequence search brings
+  that back.
+
+`dfskcap_acars6am` (`DFSK_ZIF` for the IF and the AFC a setting, `DFSK_TONE 4`) is the run
+that asks the routing question: sixteen settings of 11 s, all with the pre-key as the sync
+word, 33A9 at 4800 baud and REG_2B + 0700 (de-emphasis and both AF filters off) but where
+said. "AM" is the firmwares' AM mode: REG_47's AF source 7, the AFC off, REG_49 = 1920 and
+REG_14 = 0 (the AM mode's AGC, which keeps the envelope from being flattened), the IF as
+found.
+
+| Setting | What it tries |
+| --- | --- |
+| 0 | AM, wide: the firmwares' AM mode |
+| 1 | the AF source 7 with FM's AGC |
+| 2 | AM with the AF filters as found |
+| 3 | the AF source as found (FM) with AM's AGC: does the AF source matter at all? |
+| 4 | AM, narrow |
+| 5 | AM, sync word FFFF |
+| 6 | AM at 2400 baud |
+| 7, 8 | 33AB, 33A1 in AM |
+| 9 | AM with REG_72 = FFFF |
+| 10, 11 | the AF sources 4 and 5 at the normal IF |
+| 12, 13 | FM, narrow, tuned 2.5 kHz high and low (the filter's edge makes FM of AM) |
+| 14 | FM, wide, tuned 5 kHz high |
+| 15 | the zero IF, AF source 5, filters as found: run H's setting 7 once more |
+
+Nothing handed over in 0 to 11: the AM audio does not reach the tone receiver, and the
+parking stands on routing. Tone bits: their drops against setting 15's and run H's.
+
+**Run I (06:51:08 to 06:54:54Z, 50.650 MHz AM-D at RF power 0.047, SWR 1 at all 110
+readings; the rig back on 440.850 MHz FM-D at power 0 at 06:55Z).** Jeff allowed it on a card
+at 06:38Z, the last of his three. The same signal as run H (K, R and T units, 0.676 s apart).
+The carrier came on at -76 to -80 dBm over a floor of -117 dBm; with the AM mode's AGC the
+RSSI register reads -60 to -63 dBm for the same carrier.
+
+```
+s 0 t=60008 cfg=33a9 b=c195 sy=0000 c=f0 a=7 if=2aab
+v0 n=17 w=1010 b=0 p=-60 f=-63          AM, wide
+v1 n=16 w=1015 b=0 p=-76 f=-80          AF source 7, FM's AGC
+v3 n=17 w=1031 b=0 p=-60 f=-62          AF source as found, AM's AGC
+v4 n=17 w=1432 b=0 p=-61 f=-63          AM, narrow
+v12 n=12 w=628 b=0 p=-76 f=-79          FM, narrow, 2.5 kHz high
+s 15 t=226408 cfg=33a9 b=c195 sy=0000 c=f0 a=0 if=0000
+v15 n=4 w=3477 b=4 p=-81 f=-94          the zero IF again
+```
+
+| Setting | Captures | Words a capture | Turns in 100 samples | Tone bits wrong of 504 |
+| --- | --- | --- | --- | --- |
+| 0 AM, wide | 17 | 63 | 2.4 | 187 to 206 |
+| 1 AF source 7, FM's AGC | 16 | 66 | 2.4 | |
+| 2 AM, AF filters as found | 17 | 68 | 7.6 | 167 to 207 |
+| 3 AF source FM, AM's AGC | 17 | 65 | 3.6 | |
+| 4 AM, narrow | 17 | 84 | 5.1 | 173 to 207 |
+| 5 AM, sync FFFF | 16 | 65 | 4.0 | |
+| 6 AM, 2400 baud | 17 | 37 | 6.0 | |
+| 7 33AB | 15 | 57 | 1.5 | |
+| 8 33A1 | 17 | 75 | 5.1 | |
+| 9 REG_72 = FFFF | 17 | 76 | 4.3 | |
+| 10 AF source 4 | 18 | 66 | 2.6 | |
+| 11 AF source 5 | 16 | 62 | 2.3 | |
+| 12 FM, narrow, 2.5 kHz high | 12 | 60 | 1.9 | |
+| 13 FM, narrow, 2.5 kHz low | 12 | 25 | 1.7 | |
+| 14 FM, wide, 5 kHz high | 14 | 50 | 1.5 | |
+| 15 zero IF | 4 | 1056 | 21.5 | 71 to 88 |
+
+- **At the normal IF the tone receiver starts once a unit and gives no tone bits.** A
+  capture is 0.2 s of long runs, tens to hundreds of samples of one level, two to eight
+  turns in a hundred samples where a block's tone bits make some twenty-five. Laid under the
+  sent units the samples follow nothing of them: the best fit of any unit leaves 167 to 207
+  tone bits of 504 wrong, which is what unrelated bits give, and the fit's sign is as often
+  one way as the other. In the 0.4 s between units (the bare carrier) the output stands
+  still, which is what ends each capture.
+- **REG_47's AF source makes no difference**: 7 (AM), 4, 5 and FM as found give the same
+  kind of capture, with the AM mode's AGC or FM's. So the tone receiver is fed as the plain
+  receiver is, by the FM discriminator, and what it shows of an AM signal is the trace of FM
+  that the signal leaves there: enough to unsettle the tone detector while the audio is on,
+  never its tones. Tuned to the filter's edge (12 to 14) it stands at one level with a lone
+  sample now and then.
+- **The zero IF in the same run is as run H had it** (setting 15: a pulse a half cycle,
+  71 to 88 tone bits of 504 wrong, run H 63 to 90). So the bench and the signal were as
+  before, and the difference is the IF alone.
+
+**So the AM audio does not reach the tone receiver: routing.** The chip's AM demodulator
+feeds the audio output only. Both of the chip's FSK receivers hang on the FM discriminator,
+and the zero IF, with its floor at -93 dBm and its lost half cycles, is the only way an AM
+signal gets into either. ACARS on the K6's chip stays parked.
+
 ### What the 6 m tests say
 
-Nine runs on 6 m (eight on the plain receiver, the last five of those with the carrier 40 dB
-over the K6's floor, then the tone receiver's) and six in FM on 440.850 MHz:
+Ten runs on 6 m (eight on the plain receiver, the last five of those with the carrier 40 dB
+over the K6's floor, then the tone receiver's two) and six in FM on 440.850 MHz:
 
 1. **The plain FSK receiver's slicer is fed by the FM discriminator and nothing else.** REG_47's
    AF source AM changes what the speaker gets, not what the slicer gets.
@@ -787,7 +893,9 @@ over the K6's floor, then the tone receiver's) and six in FM on 440.850 MHz:
 5. The 1200/2400 Hz tone receiver never syncs on ACARS, in FM or in AM at the zero IF. Given
    the pre-key as its sync word it hands over its tone bits, and they are the block's but for
    the lone half cycles of 1200 Hz, which it drops: one tone bit in six to nine wrong at the
-   best settings, in FM and in AM alike (runs E, G and H above).
+   best settings, in FM and in AM alike (runs E, G and H above). With the chip in its AM
+   mode at the normal IF it gives no tone bits at all, whatever REG_47's AF source: it too is
+   fed by the FM discriminator (run I).
 6. Parked, 2026-11-11. What would open it again: a chip or a mode with a receiver clock over
    6348 baud that the host can hold, or a way for the MCU to read the audio itself (REG_47's
    "FSK out" goes to the audio pin, which the K6's MCU cannot read without a hardware change).
@@ -796,6 +904,7 @@ Not measured, and of no use since no block reads: how weak a signal this path ta
 run against -117 at the IF as found, and ACARS at the bench site peaks at -103 dBm.
 
 `dfskcap_acars6` stays the instrument for the bench (the `q` lines, every capture's words,
-`DFSK_NARROW`, `DFSK_ZIF`, `DFSK_SWEEP`, `DFSK_SETS` and `DFSK_TONE`); `dfskcap_acars` on 131.550 MHz is unchanged in
+`DFSK_NARROW`, `DFSK_ZIF`, `DFSK_SWEEP`, `DFSK_SETS` and `DFSK_TONE`), with `dfskcap_acars6am` its AM mode build;
+`dfskcap_acars` on 131.550 MHz is unchanged in
 what it does.
 
