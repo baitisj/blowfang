@@ -7,7 +7,7 @@
    sixteen settings of 11 s from 60 s after the start, as for dfskcap_acarsc. Receive only.
    docs/k6-acars.md. SPDX-License-Identifier: MIT */
 #define DFSK_ACARS
-#define DFSK_TONE
+#define DFSK_TONE 1
 #define DFSK_DUMP_ALL
 #define PROBE_HZ 440850000u
 #define WAIT_MS 60000u

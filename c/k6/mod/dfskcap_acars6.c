@@ -14,7 +14,7 @@
    SPDX-License-Identifier: MIT */
 #define DFSK_ACARS
 #define DFSK_ZIF
-#define DFSK_TONE
+#define DFSK_TONE 1
 #define DFSK_DUMP_ALL
 #define PROBE_HZ 50650000u
 #define WAIT_MS 60000u

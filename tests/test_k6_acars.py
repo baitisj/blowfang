@@ -171,6 +171,8 @@ def test_dfskcap_acars_on_the_model():
     assert len(fm) < len(sets) < len(six) and struct.pack("<I", 440850000) in sets
     tone, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarsd.c"))   # the tone receiver in FM
     assert len(sets) < len(tone) < len(six) and struct.pack("<I", 440850000) in tone
+    tone2, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarse.c"))  # its second round
+    assert len(sets) < len(tone2) < len(tone) and struct.pack("<I", 440850000) in tone2
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)
@@ -694,5 +696,72 @@ def test_dfskcap_acarsd_tone_receiver_on_the_model():
     for ln in e.said:
         if ln[:1] == "c" and " k=0 " in ln:
             assert not any(d.startswith("d" + ln.split()[0][1:] + " " + ln.split()[1] + " ") for d in e.said), ln
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
+        assert e.writes[reg][-1] == 0, hex(reg)
+
+
+TONE2 = [("33a9", "c195", "0"),
+         ("33a9", "d9c8", "0"),
+         ("33a9", "f1fb", "0"),
+         ("33a9", "ffff", "0"),
+         ("33a3", "c195", "0"),
+         ("33a3", "f1fb", "0"),
+         ("33e9", "c195", "0"),
+         ("3369", "c195", "0"),
+         ("3329", "c195", "0"),
+         ("33a1", "c195", "0"),
+         ("33a5", "c195", "0"),
+         ("33ab", "c195", "0"),
+         ("33ad", "c195", "0"),
+         ("3fa9", "c195", "0"),
+         ("37a9", "c195", "0"),
+         ("33a9", "c195", "1")]
+
+
+def test_dfskcap_acarse_second_round_on_the_model():
+    """dfskcap_acarse (DFSK_TONE 2): sixteen settings of the tone receiver, all with the pre-key
+    as the sync word, at 4800 baud and over. On the model (which gives the tone bits as sent,
+    two samples a bit at 4800 baud) every setting at 4800 baud hands over the ladder and the
+    blocks; the faster ones are only checked for their registers (the model's clock has whole
+    steps). The registers are put back"""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    src = os.path.join(K6, "mod", "dfskcap_acarse.c")
+    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_TONE", "2"), ("DFSK_DUMP_ALL", "1"),
+                                 ("PROBE_HZ", "440850000u"), ("FE_S", "3"), ("WAIT_MS", "200u"), ("QN", "2u")],
+                           os.path.join(K6, "mod", "dfskcap.c"))
+    full, _ = k6mod.build(src)
+    total, BASE, k = 49.0, 19200, 0
+    air = [np.zeros(BASE // 4, np.int8)]
+    while sum(map(len, air)) < (total + 9) * BASE:
+        kind = "KRT"[k % 3]
+        t = acars.unit_tones(kind, f"AG7EW TEST 440.850 {kind}{k:03d} THE K6 READS ACARS")
+        air += [np.repeat(t, BASE // 2400), np.zeros(3 * BASE // 10, np.int8)]
+        k += 1
+    air = np.concatenate(air)
+    Chip = modem_chip(le, lambda r58: air, BASE)
+
+    class Tuned(Chip):
+        long5d, early_done, ring, either = True, True, True, True
+        r = {**Chip.r, 0x47: 0}
+
+    e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
+              scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert stack < 700, stack
+    assert e.said[0] == "dfskcap start hz=440850000 n=16" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert [ln.split()[1:2] + ln.split()[3:] for ln in e.said if ln.startswith("s ")] == \
+        [[str(i), "cfg=" + c, "b=" + b, "sy=0000", "c=f0", "a=" + a] for i, (c, b, a) in enumerate(TONE2)]
+    assert [round(acars.baud_of(int(b, 16))) for _, b, _ in TONE2[:4]] == [4800, 5400, 6000, 6348]
+    rep = acars.tone_report(["K6 MOD say " + ln for ln in e.said])
+    tone = {int(ln.split()[0][4:]): ln for ln in rep if ln.startswith("tone")}
+    rungs = {int(ln.split(":")[0][6:]): ln.split("off: ")[1].split() for ln in rep if ln.startswith("ladder")}
+    for fe, (_, b, _) in enumerate(TONE2):
+        if b == "c195":
+            assert int(tone[fe].split()[5]) >= 2 and rungs[fe][0] == "0", (tone[fe], rungs[fe])
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
         assert e.writes[reg][-1] == 0, hex(reg)

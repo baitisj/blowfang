@@ -136,6 +136,17 @@
       13     33a9 at 4800 baud, sync 0000         two samples a bit: where the tones change
       14, 15 33a3 33a9 at 1200 baud, sync 076b 3e36   the control: the L units (a cycle of
                                                   1200 Hz or two of 2400 Hz a bit)
+   What the bench said (2026-11-11 04:44Z, docs/k6-acars.md): with the pre-key as its sync
+   word the receiver starts on every unit and gives its tone bits; with SYN SYN or the
+   pager's word it never starts. At 2400 baud a tone must last a cycle of 1200 Hz to be
+   told, so a lone bit of 1200 Hz is lost; at 4800 baud a lone bit shows as one sample.
+   DFSK_TONE 2 (dfskcap_acarse.c) follows that up, every setting with the sync word 0000:
+      0..3   33a9 at 4800, 5400, 6000 baud and REG_72 = ffff (6348)   more samples a bit
+      4, 5   33a3 at 4800 and 6000 baud       the 1200/1800 Hz bandwidth (the cleanest at 2400)
+      6..8   33e9 3369 3329 at 4800           bits 7:6 = 11, 01, 00 (33a9 has 10)
+      9..12  33a1 33a5 33ab 33ad at 4800      RX bandwidth bits 3:1 = 0, 2, 5, 6
+      13, 14 3fa9 37a9 at 4800                RX mode 7 (the 1200/1800 Hz receiver) and 5
+      15     33a9 at 4800, REG_2B + 0100      the AF de-emphasis off
    A capture of these ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
@@ -247,8 +258,28 @@ static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 
 #else
 #define SWEEP_FE 1, 0 /* FM as found, wide */
 #endif
-#ifdef DFSK_TONE
-#define K_SY 0x076B, 0x3E36 /* the pager's sync word */
+#if defined(DFSK_TONE) && DFSK_TONE == 2
+/* a setting of the tone receiver with the pre-key as its sync word, 512 bytes a capture */
+#define TV(cfg, baud, af, w3) {cfg, baud, 0x0000, 0xFF20, af, w3, FE_S, 0, SWEEP_FE, 0x0000, 0xF0}
+static const var_t V[NV] = {
+    TV(0x33A9, 0xC195, 0, 100),
+    TV(0x33A9, B72(5400u), 0, 89),
+    TV(0x33A9, B72(6000u), 0, 80),
+    TV(0x33A9, 0xFFFF, 0, 76),
+    TV(0x33A3, 0xC195, 0, 100),
+    TV(0x33A3, B72(6000u), 0, 80),
+    TV(0x33E9, 0xC195, 0, 100),
+    TV(0x3369, 0xC195, 0, 100),
+    TV(0x3329, 0xC195, 0, 100),
+    TV(0x33A1, 0xC195, 0, 100),
+    TV(0x33A5, 0xC195, 0, 100),
+    TV(0x33AB, 0xC195, 0, 100),
+    TV(0x33AD, 0xC195, 0, 100),
+    TV(0x3FA9, 0xC195, 0, 100),
+    TV(0x37A9, 0xC195, 0, 100),
+    TV(0x33A9, 0xC195, 0x0100, 100),
+};
+#elif defined(DFSK_TONE)
 static const var_t V[NV] = {
     {0x33A9, B72(2400u), 0x0000, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
     {0x33A9, B72(2400u), 0xFFFF, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0xFFFF, 0xF0},

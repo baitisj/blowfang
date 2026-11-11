@@ -328,6 +328,7 @@ dfskcap_acars6 # level 2, dfskcap_acars on 50.650 MHz for the bench's AM test (r
 dfskcap_acarsb # level 2, dfskcap_acars on 440.850 MHz in FM with the receiver's clock stepped from 5200 to 6300 baud (receive only, docs/k6-acars.md)
 dfskcap_acarsc # level 2, dfskcap_acars on 440.850 MHz in FM with the plain FSK receiver's untried settings, sixteen of them (receive only, docs/k6-acars.md)
 dfskcap_acarsd # level 2, dfskcap_acars on 440.850 MHz in FM with the chip's 1200/2400 Hz tone receiver, the pre-key as its sync word, sixteen settings (receive only, docs/k6-acars.md)
+dfskcap_acarse # level 2, dfskcap_acarsd with the tone receiver's second round: 4800 to 6348 baud, REG_58's other bits (receive only, docs/k6-acars.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md
