@@ -13,9 +13,19 @@ md380tools and the OpenGD77 source, all read on 2026-11-10. Nothing has run on t
 
 "UV-380" almost always means the **TYT (Tytera) MD-UV380**, a dual-band (136-174 / 400-480 MHz)
 DMR + FM handheld. The MD-UV390 (IP67, GPS on some), the MD-UV390 Plus and the Retevis RT3S share
-the board. Still to confirm from Jeff's radio: the label (model, FCC ID), GPS or not, and whether
-it is a newer "Plus" / 10 W revision (OpenRTX's mod guide shows a slightly different board for
-the UV390 Plus).
+the board.
+
+**Jeff's radio (label, 2026-11-11): TYT MD-UV390 "Plus"**, 10 W, 136-174 / 400-480 MHz, FCC ID
+POD-MDUV390, IP67. No "G" in the model, so most likely no GPS. What that means here:
+
+- It is OpenRTX's `mduv3x0` target, the one `firmware/uv380-openrtx` builds. OpenRTX lists the
+  MD-UV390, and its M17 mod guide covers the UV390 Plus (the board layout differs a little; the
+  mod points are marked separately).
+- 10 W: OpenRTX limits TX power to 1-5 W, set between the radio's own low and high power
+  calibration points (`radio_UV3x0.cpp`). PAGER mode uses the channel's power, 1 W by default,
+  which is the low calibration point. Check the real output on the bench before the first test.
+- IP67: the label warns that opening the radio affects the waterproofing, one more reason to
+  prefer the no-mod paths (I2S mic probe, sotto over DMR) to the solder mods.
 
 ## Hardware
 
@@ -128,7 +138,6 @@ can't run yet; it can come later in CI.
 
 ## Open questions for Jeff
 
-- The exact model and label (UV380, UV390, Plus, GPS?).
 - Are hardware mods OK on the UV-380? (The K6 rule was no mods.) Without them, mic and RF audio
   into the MCU depend on the I2S probe working.
 - Ok to back up the stock firmware and codeplug on hamlet before the first flash?

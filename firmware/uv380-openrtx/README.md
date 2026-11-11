@@ -26,9 +26,8 @@ before sending, and # again starts it over.
   transmitter from `c/common/` (MIT) and `blowfang_message.h`, and builds the radio image or the
   Linux emulator.
 - `sotto8k/`: one wrapper per sotto decoder source, to build each with the UV-380's codec
-  flags (`-DSOTTO_V36 -DSOTTO_PITCH_THIRD`, sotto VARIANT=v3.7, in `sotto8k.h`). OpenRTX's
-  GCC 9 lacks the `__smlald` intrinsics, so `sotto8k.h` keeps sotto's Cortex-M4 code but takes
-  its portable C for those (bit-exact). `build.sh` copies `sotto/c`'s
+  flags (`-DSOTTO_V36 -DSOTTO_PITCH_THIRD`, sotto VARIANT=v3.7, in `sotto8k.h`). On OpenRTX's
+  GCC 9, which lacks the `__smlald` intrinsics, sotto's `fx.h` uses inline assembly for them. `build.sh` copies `sotto/c`'s
   headers and `c/fixed` next to them (`git submodule update --init sotto` first).
 - `blowfang_message.h`: the message, 10 s of the Epistle of James (LibriVox, public domain) in
   sotto 1200. `make_message.py` makes it from any `sotto_enc -1200` output.
