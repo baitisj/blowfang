@@ -326,6 +326,7 @@ dfskcap        # level 2, records the chip's plain FSK receiver on Bell 202 audi
 dfskcap_acars  # level 2, dfskcap on 131.550 MHz, four front ends: does the plain FSK receiver hear ACARS (receive only, docs/k6-acars.md)
 dfskcap_acars6 # level 2, dfskcap_acars on 50.650 MHz for the bench's AM test (receive only, docs/k6-acars.md)
 dfskcap_acarsb # level 2, dfskcap_acars on 440.850 MHz in FM with the receiver's clock stepped from 5200 to 6300 baud (receive only, docs/k6-acars.md)
+dfskcap_acarsc # level 2, dfskcap_acars on 440.850 MHz in FM with the plain FSK receiver's untried settings, sixteen of them (receive only, docs/k6-acars.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md

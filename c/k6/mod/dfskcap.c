@@ -89,6 +89,30 @@
    6150 and 6300 baud (the pre-key stays the sync word AAAA: a sample an interval). The FIFO
    is read at 4800 baud's pace all the same, which is the slowest the chip makes words on a
    block when 1.5 is two samples, and the almost-full reads make up the rest.
+   What the bench said (2026-11-11, docs/k6-acars.md): no. The chip's clock locks onto the
+   signal's own 4800 turns a second at every one of these settings, and an interval of 1.5
+   comes as one sample or as two by what went before; no block reads.
+   DFSK_SETS (dfskcap_acarsc.c in FM on 440.850 MHz; with DFSK_ZIF at the zero IF): the
+   settings not yet tried, sixteen of FE_S seconds each. The first eight ask a new question.
+   The audio's slope at a bit's edge IS the ACARS data bit (a bit of 1200 Hz turns it over,
+   one of 2400 Hz turns it twice), and the slope is what this receiver slices: at 2400 baud,
+   one sample a bit, a clock that settles between the turns reads the block's bytes as they
+   are, no tones to tell. The 1200 Hz turns sit on its cell edges and the 2400 Hz ones a
+   quarter either side, so a clock that is pulled gently holds there; one that starts again
+   at every turn does not. The sync word is then SYN SYN as it comes (6868, low bit first),
+   or "+*" before it (d554), each the other way up too (the slope's sense is not known):
+      0..3   00e9 at 2400 baud, sync 6868, 9797, d554, 2aab
+      4, 5   00a9 at 2400, 6868 and 9797   REG_58's bits 7:6 = 10 (the 1200/2400 Hz receiver
+                                           slices better with them)
+      6, 7   00e5 at 2400, 6868 and 9797   its RX bandwidth bits 3:1 = 2 (e9 has 4)
+   The rest, with the pre-key as the sync word as before: does any give an interval of 1.5
+   its own sample count every time, or show the slicer the audio and not its slope?
+      8      00e9 at REG_72 = ffff   the fastest clock there is (6348 baud)
+      9      00e9 at 4800 baud       the control
+      10..12 00e1 00e5 00ed at 4800  RX bandwidth bits 0, 2, 6
+      13, 14 00a9 0069 at 4800       bits 7:6 = 10, 01
+      15     04e9 at 4800            RX mode bits 12:10 = 1 (0 is this receiver, 4 and 7 the
+                                     tone receivers)
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
    k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
    with k of 3 or 4 their d lines. And is there a signal at all? The RSSI is read every 50 ms:
@@ -119,7 +143,9 @@
                             upload's audio ends, and that is no Bell 202 */
 #endif
 #ifdef DFSK_ACARS
-#if defined(DFSK_NARROW) || defined(DFSK_ZIF) || defined(DFSK_SWEEP)
+#if defined(DFSK_SETS)
+#define NV 16
+#elif defined(DFSK_NARROW) || defined(DFSK_ZIF) || defined(DFSK_SWEEP)
 #define NV 8
 #else
 #define NV 4
@@ -156,7 +182,7 @@
 
 typedef struct {
   uint16_t cfg, baud, sync, len, af;
-  uint16_t wticks3; /* three word times in 100 us ticks: 100 at 4800 baud, 80 at 6000 */
+  uint16_t wticks3; /* three word times in 100 us ticks: 100 at 4800 baud, 80 at 6000, 200 at 2400 */
   uint16_t secs;
 #ifdef DFSK_ACARS
   int8_t off, wide, src; /* tuning offset in 100 Hz; the wide filter (bit 0), the AFC off (bit 1,
@@ -180,7 +206,7 @@ static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 
 #endif
 #define SAVED_2B 8
 
-#ifdef DFSK_SWEEP
+#if defined(DFSK_SWEEP) || defined(DFSK_SETS)
 /* REG_72 for a baud: 10.32444 a baud, rounded (C195 at 4800, F1FB at 6000) */
 #define B72(baud) ((uint16_t)(((baud) * 1032444ull + 50000ull) / 100000ull))
 #ifdef DFSK_ZIF
@@ -188,6 +214,26 @@ static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 
 #else
 #define SWEEP_FE 1, 0 /* FM as found, wide */
 #endif
+#ifdef DFSK_SETS
+static const var_t V[NV] = {
+    {0x00E9, B72(2400u), 0x6868, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(2400u), 0x9797, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(2400u), 0xD554, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(2400u), 0x2AAB, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00A9, B72(2400u), 0x6868, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00A9, B72(2400u), 0x9797, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00E5, B72(2400u), 0x6868, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00E5, B72(2400u), 0x9797, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
+    {0x00E9, 0xFFFF, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E1, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E5, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00ED, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00A9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x0069, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x04E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+};
+#else
 static const var_t V[NV] = {
     {0x00E9, B72(5200u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
     {0x00E9, B72(5400u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
@@ -198,6 +244,7 @@ static const var_t V[NV] = {
     {0x00E9, B72(6150u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
     {0x00E9, B72(6300u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
 };
+#endif
 #elif defined(DFSK_ZIF)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 5},

@@ -19,6 +19,8 @@ the low bit first.
                                                          channel, receive only; a front end over
                                                          5000 baud is read as the chip's clock
                                                          gives it (follow_tones)
+                                                         and one under 3000 baud as a sample
+                                                         a bit, the data itself (nrz_blocks)
       [--fit "AG7EW TEST 440.850 R"]                     the bench: the text the blocks open with;
                                                          a line a front end of how many samples
                                                          the chip gave an interval of 1, 1.5 and 2
@@ -365,13 +367,76 @@ def plain_fit(words, head_tones):
     return best[1], best[2]
 
 
+def nrz_samples(tone_bits):
+    """what the plain FSK receiver would give at 2400 baud, a sample a bit, with its clock
+    settled between the audio's turns: the slope's sign at each bit's edge, which is the data
+    bit itself (a bit of 1200 Hz turns it over once, one of 2400 Hz twice). The bench has yet
+    to say that the chip's clock does settle there"""
+    return (1 ^ np.cumsum(np.asarray(tone_bits, np.int8)) % 2).astype(np.int8)
+
+
+def nrz_blocks(words):
+    """a capture's words from the receiver at 2400 baud -> (the blocks' texts, why the last try
+    failed, which way up the samples were read: 0 as they are). The samples are taken as the
+    data bits (nrz_samples), either way up; a block is read from the capture's start (the
+    chip's sync word was SYN SYN) and after every SYN SYN in it"""
+    b = np.array([int(c) for w in words for c in f"{w:016b}"], np.int8)
+    want = "".join(map(str, bits_lsb(bytes([SYN, SYN]))))
+    best = ([], "no SOH", 0)
+    for inv in (0, 1):
+        d = b ^ inv
+        s, out, why = "".join(map(str, d)), [], "no SOH"
+        pos = 0
+        while pos >= 0:
+            text, w = read_block(tones(d[pos:], last=0))
+            if text is not None:
+                out.append(text)
+            elif why == "no SOH":
+                why = w
+            pos = s.find(want, pos)
+            pos = pos + 16 if pos >= 0 else -1
+        if len(out) > len(best[0]) or (not best[0] and best[1] == "no SOH"):
+            best = (out, "ok" if out else why, inv)
+    return best
+
+
+def nrz_head(prefix):
+    """the data bits every block of the bench's signal has after SYN SYN: the SOH to the end
+    of prefix"""
+    return bits_lsb(block(prefix))[:8 * (14 + len(prefix))]
+
+
+def nrz_fit(words, head_bits):
+    """a capture's words at 2400 baud against the bits of the blocks' known opening -> the
+    fewest bits off (wrong, missing or too many) of any place in the capture and either way
+    up"""
+    b = np.array([int(c) for w in words for c in f"{w:016b}"], np.int8)
+    ref = np.asarray(head_bits, np.int8)
+    n, m = len(ref), len(b)
+    if not m:
+        return n
+    col, best = np.arange(m + 1), n
+    for inv in (0, 1):
+        d = b ^ inv
+        D = np.arange(n + 1, dtype=np.int32)[:, None] * np.ones(m + 1, np.int32)
+        D[0] = 0
+        for i in range(1, n + 1):
+            row = np.minimum(np.concatenate([[D[i, 0]], D[i - 1, :-1] + (d != ref[i - 1])]), D[i - 1] + 1)
+            D[i] = np.minimum.accumulate(row - col) + col
+        best = min(best, int(D[n].min()))
+    return best
+
+
 def plain_report(lines, fit=None):
     """dfskcap_acars' say lines (as in the serial log) -> its s, v and b lines, and a line a
     capture: the c line, and for one with words (those that went on like a pre-key) the share
     of runs of one, two and more samples and the block read from them (and how many more),
     by the baud of its front end's s line. fit: the text the bench's blocks open with; then a
     line a front end before its v line, `fit0 5200 baud: 31 blocks read, 33 openings; 1 -> 1:99%
-    2:1%; 1.5 -> ...`: the samples the chip gave each interval (plain_fit)"""
+    2:1%; 1.5 -> ...`: the samples the chip gave each interval (plain_fit). A front end under
+    3000 baud is read as a sample a bit (nrz_blocks), and its line is `nrz0 2400 baud: 17 blocks
+    read, 18 captures; of the opening's 272 bits off: 0 0 1 ...`, a number a capture, the
+    fewest first (nrz_fit)"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
     caps, out = {}, []
@@ -393,21 +458,34 @@ def plain_report(lines, fit=None):
             if words:
                 b = np.array([int(c) for w in words for c in f"{w:016b}"], np.int8)
                 runs = np.diff(np.concatenate([[0], np.flatnonzero(np.diff(b)) + 1, [len(b)]]))
-                texts, why, odd = plain_blocks(words, baud.get(fe, 4800.0))
+                nrz = baud.get(fe, 4800.0) < 3000
+                if nrz:
+                    texts, why, odd = nrz_blocks(words)
+                else:
+                    texts, why, odd = plain_blocks(words, baud.get(fe, 4800.0))
                 ln += (f" : runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} 3+:{np.mean(runs >= 3):.0%}"
-                       f" odd {odd}; " + (f"block [{texts[0]}]" + (f" and {len(texts) - 1} more" if len(texts) > 1 else "")
+                       + (f" up {odd}; " if nrz else f" odd {odd}; ") + (f"block [{texts[0]}]" + (f" and {len(texts) - 1} more" if len(texts) > 1 else "")
                                            if texts else why))
                 t = tally.setdefault(fe, [0, 0, {}])
                 t[0] += len(texts)
-                if head_tones is not None:
+                if nrz:
+                    t[1] += 1
+                    if fit:
+                        t[2].setdefault("off", []).append(nrz_fit(words, nrz_head(fit)))
+                elif head_tones is not None:
                     found, counts = plain_fit(words, head_tones)
                     t[1] += found
                     for key, c in counts.items():
                         t[2][key] = t[2].get(key, 0) + c
             out.append(ln)
-        elif ln[:1] == "v" and f[0][1:].isdigit() and head_tones is not None:
+        elif ln[:1] == "v" and f[0][1:].isdigit() and fit:
             fe = int(f[0][1:])
             n, found, counts = tally.get(fe, [0, 0, {}])
+            if baud.get(fe, 4800.0) < 3000:
+                off = sorted(counts.get("off", []))
+                out += [f"nrz{fe} {baud[fe]:.0f} baud: {n} blocks read, {found} captures; of the opening's "
+                        f"{len(nrz_head(fit))} bits off: " + (" ".join(map(str, off)) or "no capture"), ln]
+                continue
             parts = []
             for iv, name in ((2, "1"), (3, "1.5"), (4, "2")):
                 tot = sum(c for (i, _), c in counts.items() if i == iv)

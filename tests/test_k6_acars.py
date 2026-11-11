@@ -163,10 +163,12 @@ def test_dfskcap_acars_on_the_model():
     plain, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap.c"))
     assert len(full) < 3200 and len(plain) < 2100, (len(full), len(plain))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))      # the 6 m bench build
-    assert len(six) < 3400 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
-    assert len(six) > len(full)                                            # its eight front ends
+    assert len(six) < 3500 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
+    assert len(six) > len(full)                                            # its sixteen settings
     fm, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarsb.c"))       # the clock sweep in FM
     assert len(full) < len(fm) < len(six) and struct.pack("<I", 440850000) in fm
+    sets, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarsc.c"))    # the settings in FM
+    assert len(fm) < len(sets) < len(six) and struct.pack("<I", 440850000) in sets
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)
@@ -455,3 +457,103 @@ def test_dfskcap_acarsb_clock_sweep_on_the_model():
     assert len(got) >= 8 and all("AG7EW TEST 440.850 R0" in ln for ln in got), rep
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
         assert e.writes[reg][-1] == 0, hex(reg)
+
+
+SETS = [("00e9", "60cb", "6868"),
+        ("00e9", "60cb", "9797"),
+        ("00e9", "60cb", "d554"),
+        ("00e9", "60cb", "2aab"),
+        ("00a9", "60cb", "6868"),
+        ("00a9", "60cb", "9797"),
+        ("00e5", "60cb", "6868"),
+        ("00e5", "60cb", "9797"),
+        ("00e9", "ffff", "aaaa"),
+        ("00e9", "c195", "aaaa"),
+        ("00e1", "c195", "aaaa"),
+        ("00e5", "c195", "aaaa"),
+        ("00ed", "c195", "aaaa"),
+        ("00a9", "c195", "aaaa"),
+        ("0069", "c195", "aaaa"),
+        ("04e9", "c195", "aaaa")]
+
+
+def test_nrz_samples_are_the_block():
+    """the slope's sign at each bit's edge is the data bit: nrz_samples of a unit's tone bits
+    are its bytes' bits, and nrz_blocks reads the block from them either way up, from just
+    after SYN SYN (the chip's sync word) or with "+*" SYN SYN still in front"""
+    text = "AG7EW TEST 50.650 R007 THE K6 READS ACARS"
+    d = acars.nrz_samples(acars.unit_tones("R", text))
+    assert np.array_equal(d, np.concatenate([acars.bits_lsb(acars.head()), acars.bits_lsb(acars.block(text))]))
+    assert "".join(map(str, d[8 * 16:8 * 20])) == f"{0xD554:016b}{0x6868:016b}"
+    for inv in (0, 1):
+        for before in (0, 16, 32):
+            b = np.concatenate([d[8 * len(acars.head()) - before:], np.zeros(40, np.int8)]) ^ inv
+            words = [int("".join(map(str, b[i:i + 16])), 2) for i in range(0, len(b) - 15, 16)]
+            texts, why, up = acars.nrz_blocks(words)
+            assert texts == ["2AG7EW..\x15T01\x02" + text] and why == "ok" and up == inv, (inv, before, texts, why)
+            assert acars.nrz_fit(words, acars.nrz_head("AG7EW TEST 50.650 R")) == 0
+            words[3] ^= 0x0180
+            assert acars.nrz_blocks(words)[0] == [] and acars.nrz_fit(words, acars.nrz_head("AG7EW TEST 50.650 R")) == 2
+
+
+def test_dfskcap_acarsc_settings_on_the_model():
+    """dfskcap_acarsc (DFSK_SETS in FM on 440.850 MHz) on the emulated M0: sixteen settings one
+    after the other. The model's chip here gives a sample a bit at 2400 baud that is the data
+    bit (nrz_samples: what a clock settled between the turns would give; whether the real
+    chip's does is the bench's question), so the settings whose sync word is SYN SYN or "+*"
+    as they come get the blocks and those with the words upside down get none; the report
+    reads them and counts the opening's bits off. The registers are put back."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    src = os.path.join(K6, "mod", "dfskcap_acarsc.c")
+    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_SETS", "1"), ("DFSK_DUMP_ALL", "1"),
+                                 ("PROBE_HZ", "440850000u"), ("FE_S", "2"), ("WAIT_MS", "200u"), ("QN", "2u")],
+                           os.path.join(K6, "mod", "dfskcap.c"))
+    full, _ = k6mod.build(src)
+    total, BASE, k = 33.0, 19200, 0
+    air = [np.zeros(BASE // 4, np.int8)]
+    while sum(map(len, air)) < (total + 9) * BASE:
+        d = acars.nrz_samples(acars.unit_tones("R", f"AG7EW TEST 440.850 R{k:03d} THE K6 READS ACARS"))
+        air += [np.repeat(d, BASE // 2400), np.zeros(BASE // 4, np.int8)]
+        k += 1
+    air = np.concatenate(air)
+    Chip = modem_chip(le, lambda r58: air, BASE)
+
+    class Tuned(Chip):
+        long5d, early_done, ring = True, True, True
+        r = {**Chip.r, 0x47: 0}
+
+        def on_stub(self, uc, addr, size, user):
+            if self.names[(addr - self.stubs) // 16] == "tune":
+                self.tunes.append((uc.reg_read(self.A.UC_ARM_REG_R0), uc.reg_read(self.A.UC_ARM_REG_R1)))
+            super().on_stub(uc, addr, size, user)
+
+    Tuned.tunes = []
+    e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
+              scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert stack < 700 and e.over == 0, (stack, e.over)
+    assert e.said[0] == "dfskcap start hz=440850000 n=16" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert [ln.split()[1:2] + ln.split()[3:] for ln in e.said if ln.startswith("s ")] == \
+        [[str(i), "cfg=" + c, "b=" + b, "sy=" + y, "l=ff20"] for i, (c, b, y) in enumerate(SETS)]
+    assert round(acars.baud_of(0x60CB)) == 2400 and round(acars.baud_of(0xFFFF)) == 6348
+    assert e.tunes[-16:] == [(440850000, 1)] * 16, e.tunes
+    rep = acars.plain_report(["K6 MOD say " + ln for ln in e.said], "AG7EW TEST 440.850 R")
+    nrz = {int(ln.split()[0][3:]): ln for ln in rep if ln.startswith("nrz")}
+    assert sorted(nrz) == list(range(8)), rep
+    for fe, ln in nrz.items():
+        n, caps = int(ln.split()[3]), int(ln.split()[6])
+        if fe % 2 == 0:                                           # the sync word as the bits come
+            assert n >= 2 and caps >= n and ln.split("off: ")[1].split()[:n] == ["0"] * n, ln
+        else:
+            assert n == 0, ln
+    got = [ln for ln in rep if "block [" in ln]
+    assert len(got) >= 8 and all("AG7EW TEST 440.850 R0" in ln and " up 0; " in ln for ln in got), rep
+    assert sum(ln.startswith("fit") for ln in rep) == 8, rep     # the eight at 4800 baud and over
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
+        assert e.writes[reg][-1] == 0, hex(reg)
+
