@@ -247,6 +247,67 @@ right way up and upside down alike. All 1200 baud messages: 30 of 188 exact.
   text. The chip's clock recovery likely makes the sample timing uneven, as it does for POCSAG's
   text. SAME through the plain receiver is parked until there's a better idea.
 
+## Bench run 5: the new reading on the air
+
+Run 5 (2026-11-11 20:38-20:47Z, receive only: the IC-7100 sent on 440.850 at power 0 with a CW
+ID; modules built from main 2295746) tried the reading above.
+
+- `pocdump_1200`: 43 of 131 messages exact (run 4: 30 of 188). Laid against their rounds, the six
+  dumps had 0 to 3 bits added a transmission (run 4: 16 to 36). One dump (c4) slipped from its
+  start. The fitted samples a bit were 3.88 to 3.94.
+- `pocsag_440` at 1200 baud: setting 2 (00E9) 9 of 14 exact, three transmissions with every
+  codeword right; setting 1 (00E5) 4 of 34; setting 0 (00E9, as setting 2) 0 of 28. At 512
+  baud settings 1 and 2 read every message, setting 0 8 of 15.
+- What is left is wrong bits, not slips. The samples are noisy: in the bad dumps a run of one
+  sample (a blip) comes about five times as often as in the clean ones, and a quarter of the runs
+  are a quarter bit or more off a whole number of bits (clean: 3 to 5%). Blips sit anywhere in the
+  FIFO's words, so the reading does not make them. Ones and noughts are lengthened alike, so it is
+  no offset of the slicing level.
+- The noise falls with time, in run 4 as in run 5: the first two or three minutes after a module
+  starts (or a key-up begins) are the worst, and settings 0 and 2, the same set-up, differ only in
+  coming first and last. Both the K6 (its AFC settling after the module tunes, about 30 s a time
+  constant on the FT8 bench) and the IC-7100 (its key-up) fit; run 6 sends three short key-ups in
+  a row to tell which.
+
+## Bench run 6: the K6 settles, not the IC-7100
+
+Run 6 (2026-11-11 20:56-21:01Z, receive only, 440.850, CW ID) ran `pocdump_1200` (as run 5) under
+three separate 52 s key-ups of twelve 1200 baud transmissions each, 18 s apart.
+
+- Wrong bits in the dumps, by seconds since the module started: 44 s 116, 48 s 172, 65 s 42,
+  82 s 20 (first key-up); 112 s 10, 116 s 5 (second key-up). Runs a quarter bit or more off: 25,
+  27, 18, 14, then 11 and 3.5%. The second key-up did not bring the noise back.
+- So the noise is the K6's, settling after the module tunes. The tune restarts the receiver, and
+  the AFC (on in FM) then pulls for a minute or two (its time constant was about 30 s on the FT8
+  bench).
+- Of all 168 messages, 39 exact, nearly all of them in the second key-up's captures.
+
+## Bench run 7: the AFC off finds nothing
+
+Run 7 (2026-11-11 21:07-21:12Z, receive only, 440.850, CW ID) ran `pocdump_1200` built to turn
+the AFC off (REG_73 bit 4, before the tune) under two 52 s key-ups. The sampler found no
+transmission at all: 345 false starts, no capture. With the AFC off the receiver stays where the
+restart leaves it, and the sampler's slicing never sees the preamble's `F0F0`. So the AFC is
+needed; it only has to be left alone. The module now tunes only when it is not on `POC_HZ`
+(wide) already (`tune=0` on the start line): after an upload on the same frequency the AFC keeps
+the pull it had on the upload's signal.
+
+## Bench run 8: no tune, less noise
+
+Run 8 (2026-11-11 21:16-21:20Z, receive only, 440.850, CW ID) ran `pocdump_1200` at 339f7eb,
+which tunes only when it must, under the same two 52 s key-ups. Its start line said `tune=0`.
+
+- Wrong bits in the dumps: 35 and 38 in the first key-up (run 6: 116 and 172 at the same times),
+  then 5, 0, 10 and 0 in the second. Runs a quarter bit or more off: 14 and 16%, then 9, 2, 8 and
+  2%. Codewords past help over the run: 49 (run 6: 126).
+- So most of the early noise was the tune's restart. Some settling is left in the first minute,
+  and the upside-down transmissions (the bench's even rounds) read a little worse than the
+  right-way-up ones.
+- Bit 221 (counted from the preamble's end) is wrong in four dumps and in run 6: a fixed spot in
+  the bench's signal, not noise.
+- On a frequency other than the upload's (DAPNET on 439.9875) the module still tunes, and the
+  first transmissions in the first minute or two may read worse.
+
 ## NOAA SAME: the probe `samecap`
 
 SAME (the weather radio's alert headers) is AFSK, not direct FSK: mark 2083.3 Hz, space 1562.5 Hz,
@@ -295,9 +356,12 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
 
 ## Next
 
-- Bench run 5: `pocdump_1200` and `pocsag_440` with the new reading (receive only, 440.850).
+- The settling left after the tune: does the AFC pull faster with a strong signal, or can the
+  module hold off reading until it has? The bench's bit 221 and its upside-down rounds.
 - If the bench's text comes more than 2% off four samples a bit, the slicer should learn the
-  samples a bit (it can, from the preamble and the sync codeword) instead of assuming four.
+  samples a bit (it can, from the preamble and the sync codeword) instead of assuming four. Run 5
+  stayed within 3%, and a plain DPLL slicer tried on run 4's dumps read no better than the
+  module's run lengths.
 
 - Bench run on 440.850 with `pocsag_440` (receive only): the 1200 baud sampler on the air, and
   the hunt's 60 ms look at 4800 a second (does the chip find `F0F0` that fast?).

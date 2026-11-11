@@ -41,7 +41,7 @@
    next sync codeword) and the next batch opens a capture that goes on with the same messages.
 
    Lines (after a transmission, never during one: a line costs milliseconds of listening):
-     pocsag start hz=439987500 n=1 text=1
+     pocsag start hz=439987500 n=1 tune=1 text=1
      s 0 t=32000 cfg=00e9 a=0000         a setting: REG_58, the bits set in REG_2B (besides
                                          de-emphasis off at 512 and 2400 baud)
      p 3 s=0 b=1200 t=40012 w=180 i=0 e=2 r=-41
@@ -58,7 +58,7 @@
    The m and + lines exist only in a build for the amateur band (POC_HZ 430-450 MHz, e.g. DAPNET on
    439.9875): elsewhere a page's text is protected (US ECPA), and the code that would say it is
    not in the module at all. Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 2B, 3F and 02, put back as
-   read. Receive only. Returns the messages, or -3 (old image), -8 (scratch).
+   read. Tunes to POC_HZ (wide) unless it is there already. Receive only. Returns the messages, or -3 (old image), -8 (scratch).
    SPDX-License-Identifier: MIT */
 #ifndef K6_MODULE_LEVEL
 #define K6_MODULE_LEVEL 2
@@ -645,7 +645,7 @@ static int cap_end(const k6_api_t *api, st_t *s, int over) {
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now, tkey = 0, tset, tarm = 0, prev = 0, t0 = 0, nw = 0;
-  int key = 0, cap = 0, follow = 0, armed = 0, sline = 1;
+  int key = 0, cap = 0, follow = 0, armed = 0, sline = 1, retune;
   char *p;
   if (api->level < 2) return -3;
   s = (st_t *)api->scratch(&room);
@@ -653,10 +653,15 @@ int k6_main(const k6_api_t *api) {
   for (i = 0; i < sizeof(st_t) / 4; i++) ((uint32_t *)s)[i] = 0;
   for (i = 0; i < NSV; i++) s->sv[i] = api->fd_read(SAVED[i]);
   for (i = 0; i < 31; i++) s->syn[i] = (uint16_t)rem(1u << i);
-  api->tune(POC_HZ, 1);
+  /* tuned already (on POC_HZ, wide): no tune, whose RX restart sets the AFC going again, and
+     the sampler's 1200 baud samples are noisy for a minute or two while it pulls in (bench run
+     6; with the AFC off the sampler found nothing, run 7) */
+  retune = api->rx_hz() != POC_HZ || api->fd_read(0x43) != 0x3028;
+  if (retune) api->tune(POC_HZ, 1);
   s->tl = (uint16_t)api->ticks();
   p = kv(s->ln, "pocsag start hz=", POC_HZ);
   p = kv(p, " n=", NV);
+  p = kv(p, " tune=", (uint32_t)retune);
 #ifdef POC_TEXT
   p = put(p, " text=1");
 #else
