@@ -216,8 +216,8 @@
    words so that a key-up of 7 s meets every step.
    Run L (2026-11-11): four key-ups, all caught. Down to 24 dB over the floor two thirds to
    four fifths of the sync fields are read, as at full strength; at 10 dB over it the chip
-   still starts but reads one field in six. About -115 dBm at hamlet, by gain taken off, not
-   by a weak station.
+   still starts but reads one field in six. About -122 dBm at hamlet by the K6's meter
+   (docs/k6-dmr.md; first put at -115), by gain taken off, not by a weak station.
    A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
