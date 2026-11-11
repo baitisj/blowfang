@@ -384,6 +384,8 @@ remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)
 rtls
 rxmap          # level 2, its parameter block patched by tools/k6_rxmap.py
+samecap        # level 2, does the chip's plain FSK receiver read NOAA SAME (REG_58 00e5 at 520.83 baud), 440.850 bench, docs/k6-pocsag.md
+samecap_nwr    # level 2, samecap on NOAA Weather Radio 162.550 for an hour, receive only, docs/k6-pocsag.md
 scan           # level 2, patched by tools/k6_scan.py
 settle         # level 2
 spksweep

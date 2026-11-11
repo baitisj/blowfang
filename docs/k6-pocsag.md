@@ -117,6 +117,24 @@ smaller.
 The model can't say how the real receiver takes a 512 or 2400 baud line, which way up the
 IC-7100 sends it, or what the 7100's audio filters do to an NRZ line. Only the bench can.
 
+## NOAA SAME: the probe `samecap`
+
+SAME (the weather radio's alert headers) is AFSK, not direct FSK: mark 2083.3 Hz, space 1562.5 Hz,
+520.83 baud, bytes with the low bit first, sixteen bytes of AB before the text, each header sent
+three times. The datasheet lists a "NOAA SAME RX" mode: the plain receiver with RX bandwidth bits 2
+(REG_58 00E5) and REG_72 about 5377. A plain receiver slices the discriminator's sign, which means
+nothing for two audio tones, unless that setting puts a tone discriminator in front. `samecap`
+(1.6 KB) records what the chip gives. Its sync word is D5D5 (AB with the low bit first), or 2A2A,
+in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 64 words
+(`python3 -m modem.same report LOG`).
+
+- Bench: `python3 -m modem.same wav same.wav` (33 rounds, 161 s) sent right after the
+  `samecap` upload. The bursts have SAME's format but no EAS header (no ZCZC, no event code).
+  Their text is `AG7EW SAME FORMAT TEST <n>`.
+- Live: `samecap_nwr` listens to 162.550 MHz (KHB60 Seattle) for an hour with the datasheet's
+  setting. It says only captures that go on like a preamble, because noise gives D5D5 every couple
+  of minutes. The weekly test is on Wednesdays around midday Pacific.
+
 ## Next
 
 - Bench run on 440.850 with `pocsag_440` (receive only).

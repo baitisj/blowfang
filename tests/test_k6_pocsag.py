@@ -273,3 +273,35 @@ def test_outside_the_amateur_band_counts_only():
     assert len(caps) == 3 and all(c["q"] == "4" and c["m"] == "3" for c in caps), caps
     assert not msgs and not any("AG7EW" in ln or ln.startswith(("m ", "+ ")) for ln in e.said), e.said
     assert ret == 9
+
+
+# ---- NOAA SAME: the probe (whether the chip reads SAME at all is the bench's question) ----
+def test_same_bursts_read_back():
+    from modem import same
+    bits = same.burst_bits("AG7EW SAME FORMAT TEST 3")
+    words = [int("".join(map(str, bits[i:i + 16])), 2) for i in range(0, len(bits) - 15, 16)]
+    assert words[0] == 0xD5D5                       # AB, low bit first, as the chip packs it
+    assert same.best_text(words)[0].endswith("AG7EW SAME FORMAT TEST 3")
+    y = same.bench_wav(rounds=1)
+    assert 4.5 < len(y) / same.FS < 5.5
+
+
+@need_clang
+def test_samecap_on_the_model():
+    """samecap against the plain receiver's model as if the chip handed over SAME's bits (what the
+    datasheet's SAME mode would do): every setting with the sync word D5D5 captures the bursts
+    and the report reads their text"""
+    pytest.importorskip("unicorn")
+    from modem import same
+    segs, t, r = [], 0.3, 1
+    while t < 4 * 40 * 0.15 + 0.5:
+        b = same.burst_bits(f"AG7EW SAME FORMAT TEST {r}")
+        segs.append((t, same.BAUD, b))
+        t, r = t + len(b) / same.BAUD + 1.0, r + 1
+    e, ret = run_plain(os.path.join(K6, "mod", "samecap.c"), [("SLOT_SCALE", "150u"), ("WAIT_MS", "200u")],
+                       segs, t + 5)
+    assert e.said[0] == "samecap start hz=440850000 n=4" and e.said[-1].startswith("samecap end"), e.said[-3:]
+    assert all(len(ln) <= 60 for ln in e.said)
+    rep = same.report(["K6 MOD say " + s for s in e.said])
+    got = [ln for ln in rep if "AG7EW SAME FORMAT TEST" in ln]
+    assert ret >= 4 and len(got) >= 4 and all(" s=0 " in ln or " s=2 " in ln for ln in got), rep
