@@ -412,6 +412,46 @@ def slice_samples(bits, m):
     return np.array([b for (b, _), c in zip(rs, k) for _ in range(c)], np.uint8), g, off
 
 
+def run_slice(samples):
+    """the module's slicer (c/k6/mod/pocsag.c, run_in and run_out) for a 1200 baud line sampled
+    four times a bit: a run of one sample is chatter, shared out between the long runs either side
+    (or joined to them when they are alike); a run of l samples is (l + carry + 2) // 4 bits, at
+    least one, the remainder carried to the next run unless l is a whole number of bits"""
+    out, pv, pl, ch, carry = [], None, 0, 0, 0
+
+    def emit(v, n_s):
+        nonlocal carry
+        q = n_s + carry
+        n = (q + 2) >> 2
+        carry = q - 4 * n if n_s & 3 else 0
+        out.extend([v] * max(1, n))
+
+    for v, n_s in runs_of(np.asarray(samples, np.uint8)):
+        if pv is None:
+            pv, pl = v, n_s
+        elif n_s <= 1:
+            ch += n_s
+        elif ch and pv == v:
+            pl, ch = pl + ch + n_s, 0
+        elif ch:
+            pl += ch // 2
+            emit(pv, pl)
+            pv, pl, ch = v, n_s + ch - ch // 2, 0
+        elif pv == v:
+            pl += n_s
+        else:
+            emit(pv, pl)
+            pv, pl = v, n_s
+    return np.array(out, np.uint8)
+
+
+def past_preamble(bits, keep=48):
+    """bits from a little before the preamble (1010...) ends"""
+    b = np.asarray(bits)
+    rep = np.nonzero(b[16:-1] == b[17:])[0]
+    return b[max(0, int(rep[0]) + 16 - keep):] if len(rep) else b
+
+
 def align(c, e, start, band=96):
     """c laid against e by edit distance, c starting near e[start] (within band) and wandering at
     most band bits; e's ends free. -> (ops [(kind, i in c, j in e)], cost); kind '=' same,
@@ -499,8 +539,13 @@ def lay_against_bench(bits, baud, rounds=80):
 def dump_report(lines, rounds=80):
     out = []
     for cap in dump_captures(lines):
-        m = int(cap.get("m", 1))
-        chip = int(cap.get("b", "0"), 16) / 10.32444
+        try:
+            m = int(cap.get("m", 1))
+            chip = int(cap.get("b", "0"), 16) / 10.32444
+        except ValueError:
+            continue
+        if m < 1 or not chip:
+            continue                     # another module's c lines (samedf's), not pocdump's
         baud = min(BAUDS, key=lambda b: abs(b - chip / m))
         words = cap["words"]
         gaps = sum(w is None for w in words)
@@ -517,6 +562,10 @@ def dump_report(lines, rounds=80):
             bits, g, off = slice_samples(raw, m)
             out.append(f"  samples a bit {g:.2f}, runs a quarter bit or more off {100 * off:.1f}%, "
                        f"{len(bits)} bits")
+            if m == 4 and "i" in cap:            # pocdump_1200: the whole transmission, the
+                bits = past_preamble(run_slice(raw))  # module's own slicer
+                out.append(f"  the module's slicer: {len(bits)} bits past the preamble, "
+                           f"the module had it {'upside down' if cap['i'] == '1' else 'the right way up'}")
         lay = lay_against_bench(bits, baud, rounds)
         if lay is None:
             out.append("  too short to lay against the bench's bits")

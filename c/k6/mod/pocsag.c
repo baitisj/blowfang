@@ -19,13 +19,17 @@
    unlike AAAA, or at 1200 baud PRE_REP bits like the one before), or that finds no sync codeword
    in PRE_W words' worth of bits, is a false start (counted, not said).
 
-   Reading: the FIFO (eight words) is read by time, a word every sixteen bits (or samples), LAG
-   words behind the chip (LAG_S for the sampler). An empty FIFO gives the word of eight reads
-   before and takes nothing (the APRS bench, docs/k6-aprs-clock.md), so a word equal to that one
-   is read again: the same again is the empty FIFO (the reads were early; for the sampler, whose
-   idle codewords give words alike back to back, five alike), anything else is the next word,
-   and the time base starts again so that the reads are LAG words behind once more. So a slow or
-   fast MCU clock costs nothing (the APRS bench: within 0.4% of the chip's).
+   Reading: the FIFO (eight words) is read at the chip's heels, again and again. An empty FIFO
+   takes nothing and gives the word in the slot it would read next, the one taken eight before
+   the next (the APRS bench, docs/k6-aprs-clock.md), so between two words the reads give one
+   word over and over, and a word that comes shows as a read unlike it (or as the next slot's
+   word, unlike it, once the new word is taken). The word's time follows from when that was
+   (the chip's clock is learnt: the sampler's text comes 1.75% slower than its preamble, the
+   bench, run 4); a word alike the one eight before, coming between the next slot's alike too
+   (a preamble's words, idle codewords), is taken by that clock alone. Where a word unlike the
+   empty FIFO's may have been either (that word, or the word alike the one eight before and then
+   the next slot's), the next read tells most; the rest the empty FIFO tells seven words on,
+   when it gives that slot's word itself, and so the words go to the decoder eight behind.
 
    Decoding: a codeword's BCH(31,21) check and parity put up to two wrong bits right (syndromes of
    the 31 single-bit errors, worked out at the start, and their pairs). After sixteen codewords the
@@ -42,7 +46,8 @@
                                          de-emphasis off at 512 and 2400 baud)
      p 3 s=0 b=1200 t=40012 w=180 i=0 e=2 r=-41
                                          a transmission: its number, setting, baud, ms at its
-                                         first word, words read, upside down, empty reads, RSSI peak
+                                         first word, words read, upside down, words the empty FIFO put
+                                         right, RSSI peak
      k 3 q=4 ok=60 f=3 x=1 c=1 m=3       sync codewords, codewords right as read, put right, past
                                          help; captures it took; messages
      m 1234 3 e0 AG7EW TEST 1 1200       a message: address, function, codewords lost, its text (0
@@ -75,6 +80,9 @@
 #ifndef FE_S
 #define FE_S 900u        /* s a setting */
 #endif
+#if defined(POC_DUMP) && !defined(DUMP_CAPS)
+#define DUMP_CAPS 6u     /* transmissions whose words are said */
+#endif
 #ifndef SLOT_SCALE
 #define SLOT_SCALE 1000u /* ms a unit of FE_S (the emulated test shortens it) */
 #endif
@@ -84,11 +92,9 @@
 #define GEN 0x769u       /* x^10 + x^9 + x^8 + x^6 + x^5 + x^3 + 1 */
 #define CTRL_CLR 0x4000u
 #define CTRL_EN 0x1000u
-#define LAG 2u           /* words the reads stay behind the chip (its FIFO holds 8) */
-#define LAG_S 5u         /* and for the sampler (pocdump's on the bench) */
+#define END_W 10u        /* words past its length, by time, a capture is over */
 #define PRE_W 48u        /* words' worth of bits to find the first sync codeword in */
-#define PRE_REP 28u
-#define EMPTY_W 400u     /* sampler words before reads 0.4% fast can find the FIFO empty */      /* bits like the one before (the sync codeword has 15) before it */
+#define PRE_REP 28u      /* bits like the one before (the sync codeword has 15) before it */
 #define LOST_B 1100u     /* bits without a sync codeword: the transmission is over */
 #define TXTN 600u        /* bytes of messages held until the transmission ends */
 
@@ -133,6 +139,14 @@ typedef struct {
   uint16_t sv[NSV];
   uint16_t syn[31];  /* the syndrome of each single wrong bit */
   uint16_t ring[8];  /* the words taken, by number & 7 */
+  uint16_t alt[8];   /* the word it may have been instead (altm: the slots with one) */
+  /* following the chip: when word rn is due and a word's time (units 100 us / 256), the last
+     empty read's time, a pending read's, where the clock was last learnt; fl: 1 the last read
+     was the empty FIFO, 2 a read is pending (fv, at pt), 4 the word taken last is checked by the
+     next read (slot ck, taken cv, else cs) */
+  uint32_t due, per, tp, pt, lmn, lmt;
+  uint16_t fv, cv, cs;
+  uint8_t altm, fl, ck;
   uint32_t sr;       /* the last 32 bits */
   uint32_t nb;       /* bits into a codeword, or since the hunt started */
   uint32_t el;       /* 100 us ticks since the start */
@@ -157,6 +171,11 @@ typedef struct {
   uint8_t txt[TXTN];
 #endif
   char ln[64];
+#ifdef POC_DUMP
+  /* the sampler's words of a transmission, for the host */
+  uint16_t dn, nd;
+  uint16_t dk[POC_DUMP];
+#endif
 } st_t;
 
 static char *put(char *p, const char *s) {
@@ -399,13 +418,15 @@ static int smp_in(st_t *s, uint32_t b) {
   return over;
 }
 
-/* a word of a capture, the rn-th; -> 1 when the transmission is over. Before the first sync
+/* a word of a capture to the decoder; -> 1 when the transmission is over. Before the first sync
    codeword of a hunt the words are the preamble's (AAAA or 5555, a wrong bit or two): four others
    in a row and it was a false start (the sampler's: PRE_REP bits like the one before) */
 static int word_in(st_t *s, uint32_t v) {
   uint32_t i;
   int over = 0;
-  s->ring[s->rn & 7] = (uint16_t)v, s->rn++, s->w++;
+#ifdef POC_DUMP
+  if (s->bi == SMP && s->dn < POC_DUMP) s->dk[s->dn++] = (uint16_t)v;
+#endif
   if (s->bi == SMP) {
     for (i = 16; i--;) over |= smp_in(s, v >> i & 1);
     return over || (!s->q && s->st == HUNT && s->np > PRE_REP);
@@ -454,6 +475,81 @@ static uint32_t clk(const k6_api_t *api, st_t *s) {
   return s->el;
 }
 
+/* word rn taken: the word eight before it (its slot's, which the empty reads since have
+   checked) goes to the decoder. seen: it came between the last empty read and now (when), so
+   the time it was due is put right, and over sixteen words or more the chip's clock */
+static int take(st_t *s, uint32_t v, int seen, uint32_t when) {
+  uint32_t k = s->rn & 7, n;
+  int over = s->rn >= 8 ? word_in(s, s->ring[k]) : 0;
+  s->ring[k] = (uint16_t)v, s->altm &= (uint8_t)~(1u << k), s->rn++, s->w++;
+  if (seen) {
+    int32_t e = (int32_t)(when - s->due);
+    if (e > (int32_t)(s->per >> 2) || -e > (int32_t)(s->per >> 2)) s->due = when;
+    else s->due += (uint32_t)(e / 2);
+    n = s->rn - 1 - s->lmn;
+    if (n >= 16) {
+      if (n <= 64) s->per = (s->per + udiv(s->due - s->lmt, n)) >> 1;
+      s->lmn = s->rn - 1, s->lmt = s->due;
+    }
+  }
+  s->due += s->per;
+  return over;
+}
+
+/* a read v of the FIFO at now; -> 1 when the transmission is over */
+static int fol(st_t *s, uint32_t v, uint32_t now) {
+  uint32_t k, w, q = s->per * 45 >> 7; /* 0.35 of a word */
+  int over = 0;
+  if (s->fl & 4) {
+    /* a word came after the empty FIFO's: the same again and it may have been the empty
+       FIFO's next slot, the word taken alike the one eight before */
+    s->fl &= 3;
+    if (v == s->cv) s->ring[s->ck] = s->cs, s->alt[s->ck] = s->cv, s->altm |= (uint8_t)(1u << s->ck);
+  }
+  if (s->fl & 2) {
+    s->fl &= 5;
+    if (v == s->fv) {
+      /* the same again: the empty FIFO's slot holds not the word taken there but this */
+      s->ring[s->rn & 7] = (uint16_t)v, s->altm &= (uint8_t)~(1u << (s->rn & 7)), s->e++;
+      s->fl |= 1, s->tp = now;
+      return 0;
+    }
+    over = take(s, s->fv, (s->fl & 1) && s->pt - s->tp < (s->per * 51 >> 8), s->tp + (s->pt - s->tp) / 2);
+    s->fl &= 6;
+    if (over) return over;
+  }
+  k = s->rn & 7;
+  w = s->ring[k];
+  if (s->altm >> k & 1) {
+    if (v == w) s->altm &= (uint8_t)~(1u << k);
+    else if (v == s->alt[k]) {
+      /* the other way it may have been */
+      s->ring[k] = (uint16_t)v, s->altm &= (uint8_t)~(1u << k), s->e++;
+      s->fl |= 1, s->tp = now;
+      return 0;
+    }
+  }
+  if (v != w) {
+    int st = s->fl & 1;
+    if ((int32_t)(now - s->due + q) < 0) {
+      /* too early for a word: the next read tells */
+      s->fl |= 2, s->fv = (uint16_t)v, s->pt = now;
+      return 0;
+    }
+    over = take(s, v, st && now - s->tp < (s->per * 51 >> 8), s->tp + (now - s->tp) / 2);
+    s->fl &= 6;
+    if (st && s->rn > 8) s->fl |= 4, s->ck = (uint8_t)k, s->cv = (uint16_t)v, s->cs = (uint16_t)w;
+    return over;
+  }
+  if ((int32_t)(now - s->due - q) >= 0) {
+    /* well past due: a word alike the one eight before came (the next slot's alike too) */
+    s->fl &= 6;
+    return take(s, v, 0, 0);
+  }
+  s->fl |= 1, s->tp = now;
+  return 0;
+}
+
 static void tx_say(const k6_api_t *api, st_t *s) {
   char *p;
   p = kv(s->ln, "p ", ++s->ntx);
@@ -495,6 +591,34 @@ static void tx_say(const k6_api_t *api, st_t *s) {
     }
   }
 #endif
+#ifdef POC_DUMP
+  /* the words as pocdump says them (python3 -m modem.pocsag dump LOG): a c line (e: words the
+     empty FIFO put right), then d lines of twelve words */
+  if (s->bi == SMP && s->dn && s->nd < DUMP_CAPS) {
+    uint32_t i, k = 0;
+    s->nd++;
+    p = kv(s->ln, "c ", s->ntx);
+    p = kv(p, " s=", s->cur);
+    p = kv(p, " t=", s->t0ms);
+    p = kv(p, " w=", s->dn);
+    p = kv(p, " e=", s->e);
+    p = hex4(put(p, " b="), B72[SMP]);
+    p = kv(p, " m=4 i=", s->inv);
+    say(api, s, p);
+    for (i = 0; i < s->dn; i++) {
+      if (!k) {
+        p = kv(s->ln, "d ", s->ntx);
+        *p++ = ' ';
+        p = hex4(p, i);
+        *p++ = ' ';
+      }
+      p = hex4(p, s->dk[i]);
+      if (++k == 12) say(api, s, p), k = 0;
+    }
+    if (k) say(api, s, p);
+  }
+  s->dn = 0;
+#endif
   s->vtx++, s->nmsg += s->nm, s->vmsg += s->nm;
 }
 
@@ -520,7 +644,7 @@ static int cap_end(const k6_api_t *api, st_t *s, int over) {
 
 int k6_main(const k6_api_t *api) {
   st_t *s;
-  uint32_t room, i, now, tkey = 0, tset, tarm = 0, prev = 0, t0 = 0, off = 0, nw = 0, rb = 0;
+  uint32_t room, i, now, tkey = 0, tset, tarm = 0, prev = 0, t0 = 0, nw = 0;
   int key = 0, cap = 0, follow = 0, armed = 0, sline = 1;
   char *p;
   if (api->level < 2) return -3;
@@ -587,8 +711,8 @@ int k6_main(const k6_api_t *api) {
       v = swap(api->fd_read(0x5F));
       if (v != prev) {
         /* the chip's packet has begun: its first word */
-        cap = 1, off = 0, rb = 0, t0 = clk(api, s) << 4;
-        s->rn = 0, s->np = 0, s->nb = 0, s->ncw = 0;
+        cap = 1, t0 = clk(api, s) << 4;
+        s->np = 0, s->nb = 0, s->ncw = 0;
         s->sv1 = s->pv = s->lb = 2, s->ch = 0, s->carry = 0;
         nw = ((uint32_t)((LEN[s->bi] >> 5 & 7) << 8 | LEN[s->bi] >> 8) + 1) >> 1;
         if (!follow) {
@@ -598,6 +722,9 @@ int k6_main(const k6_api_t *api) {
 #ifdef POC_TEXT
           s->tn = 0;
 #endif
+#ifdef POC_DUMP
+          s->dn = 0;
+#endif
         } else if (s->bi == SMP) {
           s->st = HUNT; /* the sampler's packet began anywhere: the next sync codeword */
         } else {
@@ -605,43 +732,28 @@ int k6_main(const k6_api_t *api) {
         }
         s->bx = 0;
         s->ncap++, follow = 0;
-        if (word_in(s, v) || s->rn >= nw) cap = 0, armed = 0, follow = cap_end(api, s, 1);
+        /* word 0 came just now (the slots after it hold what they held before: unknown) */
+        for (i = 0; i < 8; i++) s->ring[i] = (uint16_t)prev;
+        s->ring[0] = (uint16_t)v, s->rn = 1, s->w++, s->altm = 0, s->fl = 0;
+        s->per = (uint32_t)WT[s->bi] << 4, s->lmn = 0, s->lmt = t0 << 4, s->due = s->lmt + s->per;
       }
     }
-    /* the next word is due LAG words after it came in. A word like the one eight before is read
-       again: the same again is the empty FIFO (the reads were early: the time base starts again
-       from here), anything else the next word, taken too (LAG words behind, the FIFO holds it:
-       reading on until the FIFO is empty would put the reads at the chip's heels in every run
-       of idle codewords, where each word is the one eight before) */
-    while (cap && (int32_t)((clk(api, s) << 4) - t0 -
-                            (s->rn + (s->bi == SMP ? LAG_S : LAG)) * WT[s->bi] - off) >= 0) {
-      uint32_t got[5], k, ng = 1, lim = s->bi == SMP ? 5u : 2u;
-      int over = 0;
-      got[0] = api->fd_read(0x5F);
-      /* (in a preamble every word is the same: read by time alone until the first sync) */
-      if (s->rn >= 8 && s->q && swap(got[0]) == s->ring[s->rn & 7]) {
-        do got[ng] = api->fd_read(0x5F);
-        while (got[ng++] == got[0] && ng < lim);
-        /* (five alike from the sampler: a preamble's words or a carrier's, unless the reads can
-           have caught up with the chip: EMPTY_W words since the time base started) */
-        if (got[ng - 1] == got[0] && (s->bi != SMP || s->rn - rb >= EMPTY_W)) {
-          /* the FIFO is empty: word rn comes within a word's time */
-          s->e++, rb = s->rn;
-          off = (clk(api, s) << 4) - t0 - s->rn * WT[s->bi];
-          break;
-        }
-      }
-      for (k = 0; k < ng && !over; k++) over = word_in(s, swap(got[k]));
-      /* (the chip's packet is over by time: words taken for empty reads must not hold the
-         capture open) */
+    /* reading: until the FIFO gives the empty FIFO's word (fol()) */
+    while (cap) {
+      int over = fol(s, swap(api->fd_read(0x5F)), clk(api, s) << 8);
+      /* (the chip's packet is over by time, a sixteenth late) */
       if (over || s->rn >= nw ||
-          (int32_t)((clk(api, s) << 4) - t0 - (nw + 2 * LAG_S) * WT[s->bi] - off) >= 0) {
+          (int32_t)((clk(api, s) << 4) - t0 - (nw + nw / 16 + END_W) * WT[s->bi]) >= 0) {
+        /* the last eight words, unchecked, to the decoder */
+        for (i = s->rn > 8 ? s->rn - 8 : 0; i < s->rn && !over; i++) over = word_in(s, s->ring[i & 7]);
         cap = 0, armed = 0;
         follow = cap_end(api, s, over);
         if (follow) {
           prev = seek(api, s, s->bi == SMP ? 0xF0F0u : s->inv ? 0xEA27u : 0x15D8u);
           armed = 1, tarm = api->ms();
         }
+      } else if ((s->fl & 7) == 1) {
+        break; /* the empty FIFO: on again after a pause */
       }
     }
     api->delay_us(300);
