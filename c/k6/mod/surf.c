@@ -36,22 +36,27 @@
      UP / DOWN       the listening frequency one channel up / down (held: repeats); the scale
                      moves with it, each bin keeping the level of the old bin nearest it
      SIDE1 / SIDE2   (the orange side keys) jump to the nearest caret above / below (on screen or
-                     off it), on the channel raster, whether or not it is on the air now; after
-                     the next sweep the loudest bin of the lens, if it is another channel, moves
-                     it once more (an outer bin is coarse). With no caret that way, line 5 says
+                     off it), on the channel raster, whether or not it is on the air now; a caret
+                     only a coarse outer bin heard is refined after the next read of the lens:
+                     the loudest channel within that bin's width. With no caret that way, line 5 says
                      "no peak" and the middle stays
      A/B             how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the
                      whole height (line 5: "fall 5m")
      BAND            next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX, airband (AM, 118-137
                      MHz, receive only); each starts at its centre with its default step and span
-     #               next channel step: 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
+     #               next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
                      stays; UP / DOWN then move onto the new raster; BAND resets the step)
      5               the band's centre
+     4               the demodulator: FM, DSB, AM, FM (DSB = the chip's "USB", both sidebands at
+                     the zero IF; at the zero IF a steady carrier reads low, so DSB is for
+                     listening); the title shows it when it isn't the band's ("DSB 70cm 25k",
+                     "DSB-12" with a fixed gain); BAND resets it
      7 / 9           fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB (from
                      auto, 9 starts at the top and 7 at -7); the title shows it ("G-12 70cm 25k")
      8               the receiver's own AGC again (the title says SURF)
      1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz
-     *               monitor: audio open on the bar all the time, no sweeping
+     *               monitor: audio open on the bar all the time, no sweeping; the chip's own
+                     squelch open all the way too (put back on leaving MON and at EXIT)
      0               hold: no refresh sweeps while a signal plays (default: one every 5 s)
      MENU            say the bar's frequency and level on the serial port
      EXIT            leave (the module waits for the key's release, so the pager doesn't see it)
@@ -61,7 +66,9 @@
    read; a signal there SQ_DB over the settled floor opens the audio (REG_47 FM, speaker amp on
    PB2, as dmrdet) and parks on it. It closes HANG_MS after the signal drops, and then sweeps
    again. While parked, a refresh sweep every REFRESH_MS (about 0.3 s of muted audio) keeps the
-   bars current, unless hold (0) or monitor is on. Any retune with the audio open turns the
+   bars current, unless hold (0) or monitor is on. A move onto a signal reads only the lens
+   before the audio opens; the rest waits for that refresh. Any key cuts a sweep short and the
+   screen redraws at once (Jeff, 2026-11-11: jumps and UP / DOWN were slow). Any retune with the audio open turns the
    speaker amp off as well until the bar has settled again (hush): REG_47 muted alone buzzed.
 
    Levels: sweep reads are quick (SETTLE_US after the tune, as Aura's own spectrum: about 59 %
@@ -82,11 +89,12 @@
    bench build's jumps: the bar, its settled dBm, the settled floor), "end sw=N".
    Writes REG_47 and GPIOB bit 2 (speaker), REG_73 bit 4 (the AFC, off on airband), REG_13 and
    REG_7E (fixed gain) and the keypad rows' GPIOB BSRR/BRR bits, all put back.
-   Reads the SPI flash (level 5's fl_read), never writes it. No TX. The bitmap (480 B), the state
-   (~760 B) and a move's copy of the old scale (~320 B) live on the stack, about 2.1 KB of the
-   3.1 KB a module has at its call (tests/test_k6_surf.py measures it); the store holds the code
-   and the remembered peaks.
-   Returns the sweeps done, or -3 (an image below level 6).
+   Reads the SPI flash (level 5's fl_read), never writes it. No TX. The state (with the bitmap and
+   a move's copy of the old scale, ~1.7 KB) and the remembered peaks live in the module store's
+   free RAM after the code; the stack holds only calls and locals (tests/test_k6_surf.py measures
+   it: it must leave room for Aura's own calls under the module's, which the emulator doesn't
+   count: with ~2.1 KB measured, the 2,280 B the K6 gives a module ran out on the radio).
+   Returns the sweeps done, -3 (an image below level 6) or -4 (too little free RAM for the state).
    SPDX-License-Identifier: MIT */
 #ifndef K6_MODULE_LEVEL
 #define K6_MODULE_LEVEL 6
@@ -124,6 +132,7 @@
 #define HMAX 152                /* a caret's height, x 1/8 px: 19 px above the axis's row 25 */
 #define PUSH 64                 /* a sweep that hears the peak again lifts its caret 8 px */
 #define NCONF 4                 /* settled reads a sweep may spend confirming new peaks */
+#define NBAD 6                  /* an unconfirmed peak is read again after this many sweeps hear it */
 #define RT_BASE 0x0F0000u       /* c/k6/rt.h: 1024 slots of 64 B */
 #define RT_SLOTS 1024
 
@@ -138,6 +147,7 @@
 #define ROWS_B ((1u << 0) | (1u << 4) | (1u << 9) | (1u << 10) | (1u << 11))
 #define AF_FM 0x6140u
 #define AF_AM 0x6740u           /* REG_47 AF 7 (Aura and egzumer's AM set-up, docs/k6-afsweep.md) */
+#define AF_DSB 0x6540u          /* REG_47 AF 5, the firmwares' "USB": with REG_3D 0 (zero IF) it is DSB */
 #define AF_MUTE 0x6040u
 
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
@@ -151,6 +161,7 @@ typedef struct {
 
 /* the channel steps # goes through (Hz); 8.33 kHz is airband's 25/3 */
 static const uint32_t STEPS[] = {
+    1000u,
     5000u,
     6250u,
     8333u,
@@ -160,10 +171,10 @@ static const uint32_t STEPS[] = {
     25000u,
     50000u,
     100000u};
-#define NSTEPS 9
-#define ST_10K 3
-#define ST_12K5 4
-#define ST_25K 6
+#define NSTEPS 10
+#define ST_10K 4
+#define ST_12K5 5
+#define ST_25K 7
 
 /* airband is receive only (the K6 never transmits there) and sits below its 136-174 MHz filter */
 static const band_t BANDS[] = {
@@ -218,6 +229,15 @@ static const uint8_t ROWPIN[6] = {0xFF, 0, 4, 10, 11, 9};
 static const uint16_t FALL_MS[] = {100, 400, 2000, 8000};
 static const char FALL[4][4] = {"15s", "1m", "5m", "20m"};
 #define NFALL 4
+#define MD_FM 0
+#define MD_DSB 1
+#define MD_AM 2
+#define NMD 3
+static const char MD_NAME[NMD][4] = {"FM", "DSB", "AM"};
+/* the chip's squelch: glitch close (REG_4D [7:0]), glitch open (REG_4E [7:0]), noise close/open
+   (REG_4F), RSSI open/close (REG_78); open all the way = egzumer's squelch 0: glitch 255, noise
+   127, RSSI 0 */
+static const uint8_t SQ_REGS[4] = {0x4D, 0x4E, 0x4F, 0x78};
 
 /* a remembered peak: where (the loudest read's frequency), how wide the bin that heard it was
    (a coarse outer bin only says roughly where), its caret's height (0: free) and whether a
@@ -241,13 +261,16 @@ typedef struct {
   uint8_t qk, k1;               /* a key caught during a long sweep or measure (kp_peek), the last peek */
   uint8_t sc;                   /* surfkeys: the script's next key */
   uint8_t fall;                 /* FALL_MS index */
+  uint8_t md, zif;              /* key 4: the demodulator (MD_FM, MD_DSB, MD_AM); REG_3D written */
   uint32_t t_fall;              /* the carets' fall: worked up to here */
+  uint32_t rw;                  /* a jump's refine: how far (Hz) from the middle it may look */
   pm_t *pm;                     /* the remembered peaks (npm of them; none with no room) */
   uint16_t af;                  /* REG_47 with the audio open: FM or AM */
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
-  uint32_t r47, odr, r13, r73, r7e;
+  uint32_t r47, odr, r13, r73, r7e, r3d;
+  uint16_t sq[4];               /* monitor: the chip's squelch (SQ_REGS) as Aura had it */
   uint8_t lvl[NB];              /* bars: quick reads, dBm + 174, 0 unknown */
   uint32_t heard[2];            /* bins whose last read held their bar up (not a bar falling) */
   char ln[40];
@@ -255,6 +278,11 @@ typedef struct {
   uint32_t khz[NK];             /* the repeater table's valid entries: rx_hz, and their slots */
   uint16_t kslot[NK];
   int nk;
+  /* (work space: the state lives in the module store's free RAM, not on the stack) */
+  uint32_t old[NV];             /* recentre: the old scale's loudest reads */
+  uint8_t lv[NV];               /* recentre: its levels */
+  uint8_t tmp[NB];              /* floor_q's sort, draw's carets */
+  uint8_t bm[16 * ROWS];        /* the bitmap (KM_WF_ROWS rows) */
 } sf_t;
 
 static uint32_t udiv(uint32_t n, uint32_t d) {
@@ -354,16 +382,36 @@ static void audio(sf_t *s, int on) {
   wr(GPIOB + (on ? BSRR : BRR), SPK);
 }
 
-/* the band's demodulator: AM (airband, REG_47 AF 7) with the AFC off, as Aura's
-   apply_modulation; else FM with REG_73 as Aura had it. Aura's AM AGC (REG_14 0, REG_49
+/* the demodulator (the band's, or key 4's): AM (REG_47 AF 7) with the AFC off, as Aura's
+   apply_modulation; DSB (AF 5 at the zero IF, REG_3D 0, the AFC off: the firmwares' "USB",
+   docs/k6-afsweep.md); else FM with REG_73 as Aura had it. Aura's AM AGC (REG_14 0, REG_49
    (50 << 7) | 32) is left out: with it the RSSI never rose on the IC-7100's AM carrier
-   (docs/k6-if-modem.md, 2026-11-06), and the bars and the squelch are all RSSI */
+   (docs/k6-if-modem.md, 2026-11-06), and the bars and the squelch are all RSSI. REG_3D is
+   written only once DSB has been used (the tuning keeps it: docs/k6-acars.md, seventh run) */
 static void demod(sf_t *s) {
-  int am = s->bd->am;
+  int md = s->md;
   const k6_api_t *api = s->api;
-  s->af = (uint16_t)(am ? AF_AM : AF_FM);
-  api->fd_write(0x73, (uint16_t)((s->r73 & ~0x10u) | (am ? 0x10u : 0)));
+  s->af = (uint16_t)(md == MD_AM ? AF_AM : md == MD_DSB ? AF_DSB : AF_FM);
+  if (md == MD_DSB || s->zif) {
+    s->zif = 1;
+    api->fd_write(0x3D, (uint16_t)(md == MD_DSB ? 0 : s->r3d));
+  }
+  api->fd_write(0x73, (uint16_t)((s->r73 & ~0x10u) | (md != MD_FM ? 0x10u : 0)));
   if (s->audio && !s->hush) api->fd_write(0x47, s->af);
+}
+
+/* monitor: the chip's own squelch open all the way (on), or put back as Aura had it. Jeff heard
+   MON cut weak signals (2026-11-11) though the module never closes the audio there: the chip
+   (or Aura under it) still follows its squelch result, REG_0C bit 1 */
+static void squelch(sf_t *s, int on) {
+  const k6_api_t *api = s->api;
+  int k;
+  if (on)
+    for (k = 0; k < 4; k++) s->sq[k] = api->fd_read(SQ_REGS[k]);
+  api->fd_write(0x4D, on ? (uint16_t)((s->sq[0] & 0xFF00u) | 0xFFu) : s->sq[0]);
+  api->fd_write(0x4E, on ? (uint16_t)((s->sq[1] & 0xFF00u) | 0xFFu) : s->sq[1]);
+  api->fd_write(0x4F, on ? 0x7F7Fu : s->sq[2]);
+  api->fd_write(0x78, on ? 0x0000u : s->sq[3]);
 }
 
 /* the receiver's gain: Aura's AGC (gx 0), or fixed at GAINS[gx - 1] (REG_7E bit 15, index 3
@@ -523,8 +571,8 @@ static void moved(sf_t *s) {
    the loudest old bin whose loudest read falls in its range */
 static void recentre(sf_t *s, uint32_t hz) {
   const band_t *b = s->bd;
-  uint32_t old[NV], lo, hi;
-  uint8_t lv[NV];
+  uint32_t *old = s->old, lo, hi;
+  uint8_t *lv = s->lv;
   int i, j;
   if (hz < b->lo) hz = b->lo;
   if (hz > b->hi) hz = b->hi;
@@ -603,7 +651,12 @@ static void pm_push(sf_t *s) {
     while (a > C - KI && z <= C + KI && s->lvl[a - 1] + 2 >= s->lvl[i]) a--;
     while (z < C + KI && a >= C - KI && s->lvl[z + 1] + 2 >= s->lvl[i]) z++;
     f = (s->pk[a] + s->pk[z]) >> 1;
+    /* how well it knows where: a bin's width, but a wide bin's loudest read is one of reads
+       SUB_HZ apart across it, so never coarser than that (matching on a wide bin's whole width,
+       hundreds of kHz at +-2.5 MHz, gave 463.950 to the caret of 463.6375 next to it: the side
+       keys passed it, Jeff 2026-11-11) */
     w = spu(s, i);
+    if (w > SUB_HZ / L_HZ) w = SUB_HZ / L_HZ;
     for (k = 0; k < s->npm; k++) {
       e = &s->pm[k];
       if (e->h < lo->h) lo = e;
@@ -614,19 +667,27 @@ static void pm_push(sf_t *s) {
       if (2 * d <= t && d < bd) bd = d, b = e;
     }
     if (b) {
-      if (b->bad) continue;            /* (a bump: falls on its own, then may be read again) */
-      if (w <= b->w) b->f = f, b->w = (uint16_t)w;   /* a finer bin says better where */
-      b->h = (uint8_t)(b->h + PUSH > HMAX ? HMAX : b->h + PUSH);
-      continue;
+      if (!b->bad) {
+        if (w <= b->w) b->f = f, b->w = (uint16_t)w;   /* a finer bin says better where */
+        b->h = (uint8_t)(b->h + PUSH > HMAX ? HMAX : b->h + PUSH);
+        continue;
+      }
+      /* unconfirmed: a bump, or a station that had just unkeyed at its read (Jeff, 2026-11-11:
+         a -75 dBm one got no caret); read again once NBAD sweeps have heard it */
+      if (--b->bad) continue;
+      b->bad = 1;                      /* (due: if no read is left this sweep, the next one) */
+      lo = b;
     }
-    if (!s->npm || !conf) continue;
+    if (!s->npm || !conf || s->qk) continue;
     conf--;
-    d = (uint32_t)read_hz(s, raster(s, f), CHECK_US);
+    /* (at its loudest read, not its channel: a wide bin's reads are SUB_HZ apart, and its channel
+       can be 12.5 kHz from the station, off the wide filter's edge) */
+    d = (uint32_t)read_hz(s, f, CHECK_US);
     s->tuned = 0;
     lo->f = f;
     lo->w = (uint16_t)w;
     lo->h = PUSH;
-    lo->bad = (int)d < s->sfl + SQ_DB;
+    lo->bad = (int)d < s->sfl + SQ_DB ? NBAD : 0;
   }
 }
 
@@ -642,8 +703,7 @@ static void pm_fall(sf_t *s) {
 
 /* a side key: the middle to the nearest remembered peak (caret still up, confirmed, on another
    channel) going d, whether or not it is on the air now: no search, the sweeps go on as they
-   were; after the next sweep the loudest bin of the lens, if it is another channel, moves it
-   once more (refine). None that way: "no peak" and the middle stays (the bench build wraps) */
+   were; a caret only a coarse bin heard is refined after the next read of the lens (refine_lens). None that way: "no peak" and the middle stays (the bench build wraps) */
 static void jump(sf_t *s, int d) {
   pm_t *e, *b = 0;
   uint32_t c, bc = 0;
@@ -663,8 +723,12 @@ static void jump(sf_t *s, int d) {
   }
   recentre(s, b->f);
   b->f = s->cen;                        /* (it is that channel now: its caret over the middle) */
-  if (L_HZ * b->w > s->ch) b->w = (uint16_t)udiv(s->ch, L_HZ);
-  s->refine = 1;
+  /* a caret only a coarse bin heard says roughly where: refine within that bin's width. One a
+     fine bin heard is its channel: no refine (it pulled a jump to the weaker of two stations
+     20 kHz apart straight back to the louder: Jeff, 2026-11-11) */
+  s->refine = L_HZ * b->w > s->ch;
+  s->rw = L_HZ * b->w / 2 > s->ch ? L_HZ * b->w / 2 : s->ch;   /* (the refine's reach) */
+  if (s->refine) b->w = (uint16_t)udiv(s->ch, L_HZ);
   moved(s);
 #ifdef SURF_AUTO_S
   s->sel_dbm = read_at(s, C, CHECK_US);   /* the bench: its level as the jump lands */
@@ -687,6 +751,7 @@ static void band(sf_t *s, const band_t *b) {
   s->bd = b;
   s->st = b->st;
   s->si = b->si;
+  s->md = b->am ? MD_AM : MD_FM;
   demod(s);
   window(s, (b->lo + b->hi) >> 1);
 }
@@ -738,12 +803,21 @@ static void on_key(sf_t *s, int k) {
     break;
   case '*':
     s->mon ^= 1;
+    squelch(s, s->mon);
     s->tuned = 0;
     s->parked = s->mon;               /* (monitor: park_step opens the audio once tuned) */
     if (!s->mon) moved(s);
     break;
   case '0':
     s->hold ^= 1;
+    break;
+  case '4':                           /* the demodulator: FM, DSB, AM, FM (a new band resets it) */
+    s->md = (uint8_t)(s->md + 1 == NMD ? 0 : s->md + 1);
+    demod(s);
+    note(s, MD_NAME[s->md]);
+    measure_sfl(s);                   /* (the zero IF's floor is another) */
+    s->stale = 1;
+    moved(s);
     break;
   case 'M': say_sel(s); break;
   }
@@ -760,8 +834,9 @@ static void sweep_bin(sf_t *s, int i) {
   if (hi - lo <= SUB_HZ) {                 /* the lens and bins up to 20 kHz wide: one read */
     r = read_at(s, i, SETTLE_US);
   } else {
-    for (r = -999, f = lo + SUB_HZ / 2; f < hi; f += SUB_HZ)
+    for (r = -999, f = lo + SUB_HZ / 2; f < hi && !s->qk; f += SUB_HZ)
       if (f >= s->bd->lo && f <= s->bd->hi && (v = read_hz(s, f, SETTLE_US)) > r) r = v, at = f;
+    if (s->qk) return;                     /* a key came: it goes first (the bin keeps its bar) */
     if (r == -999) r = read_at(s, i, SETTLE_US);
   }
   if (r + 174 >= o || !o || s->stale) s->pk[i] = at;
@@ -775,7 +850,7 @@ static void sweep_bin(sf_t *s, int i) {
 
 /* the quartile of the scale's known bars */
 static void floor_q(sf_t *s) {
-  uint8_t t[NB];
+  uint8_t *t = s->tmp;
   int n = 0, i, j, k;
   for (i = 0; i < NV; i++)
     if (s->lvl[i]) t[n++] = s->lvl[i];
@@ -790,24 +865,33 @@ static void floor_q(sf_t *s) {
   s->qfl = t[k];
 }
 
+/* after a jump to a caret a coarse bin heard: the loudest bin of the lens within half that
+   bin's width (or a channel), if that is another channel, is the station: the middle moves
+   there once more; 1 if it moved */
+static int refine_lens(sf_t *s) {
+  int i, b = C, a, z;
+  uint32_t f;
+  s->refine = 0;
+  for (i = C - KI; i <= C + KI; i++)
+    if (s->hz[i] && (uint32_t)L_HZ * s->off[dist(i)] <= s->rw && s->lvl[i] > s->lvl[b]) b = i;
+  if (b == C || s->lvl[b] <= s->lvl[C] + 1) return 0;
+  /* a carrier fills the lens's bins inside the wide filter: its flat top's middle */
+  for (a = b; a > C - KI && s->lvl[a - 1] + 2 >= s->lvl[b]; a--) {}
+  for (z = b; z < C + KI && s->lvl[z + 1] + 2 >= s->lvl[b]; z++) {}
+  f = (s->pk[a] + s->pk[z]) >> 1;
+  if (raster(s, f) == s->cen) return 0;
+  recentre(s, f);
+  moved(s);
+  return 1;
+}
+
 static void sweep_done(sf_t *s) {
   s->sweeps++;
   s->full = 1;
   s->stale = 0;
   floor_q(s);
   pm_push(s);
-  if (s->refine) {
-    /* after a jump: the loudest bin of the lens, if that is another channel, is the station
-       (the bin the jump came from may have been a coarse one far out) */
-    int i, b = C;
-    s->refine = 0;
-    for (i = C - KI; i <= C + KI; i++)
-      if (s->hz[i] && s->lvl[i] > s->lvl[b]) b = i;
-    if (b != C && s->lvl[b] > s->lvl[C] + 1 && raster(s, s->pk[b]) != s->cen) {
-      recentre(s, s->pk[b]);
-      moved(s);
-    }
-  }
+  if (s->refine) refine_lens(s);
 }
 
 /* a settled read of the bar's channel: opens the audio on a signal */
@@ -818,16 +902,19 @@ static void check_bar(sf_t *s) {
   d = s->sel_dbm = read_at(s, C, CHECK_US);
   s->tuned = 1;
   if (d < s->sfl) s->sfl = d;
+  /* a signal there, or a jump to refine (it may have landed a channel off its station): the lens
+     first (17 single reads, ~0.1 s), for the refine and the station's shape. Parking, the rest
+     keeps the levels the old scale lent it until the first refresh (a whole sweep here held the
+     audio and the keys 1-2 s: Jeff, 2026-11-11); sweeping, the next sweep replaces them all */
+  if (s->stale && (d >= s->sfl + SQ_DB || s->refine)) {
+    for (i = C - KI; i <= C + KI && !s->qk; i++)
+      if (s->hz[i]) sweep_bin(s, i);
+    if (s->qk) return;                  /* a key came: it goes first */
+    if (s->refine && refine_lens(s)) return;   /* the middle moved again: check there */
+    s->tuned = 0;
+  }
   if (d >= s->sfl + SQ_DB) {
-    if (s->stale) {
-      /* the scale just moved: sweep it once before the audio opens (no sweeps while it plays) */
-      for (i = 0; i < NV; i++)
-        if (s->hz[i]) sweep_bin(s, i);
-      s->next = 0;
-      sweep_done(s);
-      if (s->check) return;             /* that moved the middle again: check there */
-      s->tuned = 0;
-    }
+    s->stale = 0;
     s->parked = 1;
     s->t_open = s->t_full = s->api->ms();
     audio(s, 1);
@@ -867,9 +954,9 @@ static void park_step(sf_t *s) {
   }
   if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {   /* (stale: a zoom) */
     int i;
-    for (i = 0; i < NV; i++)          /* (read_hz hushes the speaker; the next read unhushes it) */
+    for (i = 0; i < NV && !s->qk; i++)   /* (read_hz hushes the speaker; the next read unhushes it) */
       if (s->hz[i]) sweep_bin(s, i);
-    sweep_done(s);
+    if (!s->qk) sweep_done(s);          /* (a key cut it short: it goes first) */
     s->tuned = 0;
     s->t_full = s->api->ms();
   }
@@ -946,8 +1033,9 @@ static void draw(sf_t *s) {
   }
   {
     /* the remembered peaks' carets, XOR over the bars: a bin's highest one, its tip (2 px) in row
-       AX - 2 - h / 8 and its feet (2 more px) under it, "^" */
-    uint8_t top[NV];
+       AX - 2 - h / 8 and its feet (2 more px) under it, "^"; one that would sit inside its own
+       bar rides on top of it instead (inside a tall bar it was a notch Jeff couldn't see) */
+    uint8_t *top = s->tmp;
     for (i = 0; i < NV; i++) top[i] = 0;
     for (k = 0; k < s->npm; k++) {
       pm_t *e = &s->pm[k];
@@ -958,6 +1046,8 @@ static void draw(sf_t *s) {
     for (i = 0; i < NV; i++) {
       if (!top[i]) continue;
       r = AX - 2 - (top[i] >> 3);
+      if (r + 1 >= AX - bar_h(s, i)) r = AX - bar_h(s, i) - 2;
+      if (r < BAR0 - 2) r = BAR0 - 2;
       xpx(b, 2 * i, r), xpx(b, 2 * i + 1, r);
       xpx(b, 2 * i - 1, r + 1), xpx(b, 2 * i + 2, r + 1);
     }
@@ -984,9 +1074,10 @@ static void draw(sf_t *s) {
   for (r = 0; r < 3; r++)
     for (i = x - 2 + r; i <= x + 3 - r; i++) px(b, i, r + 1);
 
-  /* "SURF 70cm 25k", or the fixed gain in place of SURF: "G-12 70cm 25k" */
-  if (s->gx) p = sint(put(s->ln, "G"), GAIN_DB[s->gx - 1]);
-  else p = put(s->ln, "SURF");
+  /* "SURF 70cm 25k"; key 4's demodulator (not the band's) in place of SURF, the fixed gain
+     after it or after G: "DSB 70cm 25k", "G-12 70cm 25k", "DSB-12 70cm 25k" (21 columns) */
+  p = put(s->ln, s->md != (s->bd->am ? MD_AM : MD_FM) ? MD_NAME[s->md] : s->gx ? "G" : "SURF");
+  if (s->gx) p = sint(p, GAIN_DB[s->gx - 1]);
   *p++ = ' ';
   p = put(p, s->bd->name);
   *p++ = ' ';
@@ -1023,28 +1114,32 @@ static void draw(sf_t *s) {
 }
 
 int k6_main(const k6_api_t *api) {
-  sf_t st, *s = &st;
-  uint8_t bmp[16 * ROWS];
-  uint32_t n;
-  uint8_t *z = (uint8_t *)s;
+  sf_t *s;
+  uint32_t n, room;
+  uint8_t *z;
   unsigned i;
   int k;
   char *p;
   if (api->level < 6) return -3;
-  for (i = 0; i < sizeof st; i++) z[i] = 0;
+  /* the state, the bitmap and the remembered peaks in the store's free RAM: on the stack (with
+     Aura's own calls under it) the 2,280 B a module has ran out, and the K6 rebooted at the end
+     (stack_free=0 B, Jeff's run 2026-11-11 08:08Z) */
+  z = (uint8_t *)api->scratch(&room);
+  if (room < sizeof(sf_t)) return -4;
+  for (i = 0; i < sizeof(sf_t); i++) z[i] = 0;
+  s = (sf_t *)z;
+  room -= sizeof(sf_t);
   s->api = api;
-  s->bmp = bmp;
+  s->bmp = s->bm;
   s->fall = 1;                          /* carets fall in about a minute */
-  {
-    uint32_t room;
-    s->pm = (pm_t *)api->scratch(&room);
-    s->npm = room >> 3 < NPM ? (int)(room >> 3) : NPM;
-    for (n = 0; n < (uint32_t)s->npm; n++) s->pm[n].h = 0;
-  }
+  s->pm = (pm_t *)(z + sizeof(sf_t));
+  s->npm = room >> 3 < NPM ? (int)(room >> 3) : NPM;
+  for (n = 0; n < (uint32_t)s->npm; n++) s->pm[n].h = 0;
   s->r47 = api->fd_read(0x47);
   s->r13 = api->fd_read(0x13);
   s->r73 = api->fd_read(0x73);
   s->r7e = api->fd_read(0x7E);
+  s->r3d = api->fd_read(0x3D);
   s->odr = rd(GPIOB + ODR) & SPK;
   s->af = AF_FM;
   s->audio = 1;
@@ -1056,6 +1151,7 @@ int k6_main(const k6_api_t *api) {
       if (hz >= BANDS[i].lo && hz <= BANDS[i].hi) s->bd = &BANDS[i];
     s->st = s->bd->st;
     s->si = s->bd->si;
+    s->md = s->bd->am ? MD_AM : MD_FM;
     s->now = api->ms();
     rt_load(s);
     demod(s);
@@ -1105,7 +1201,11 @@ int k6_main(const k6_api_t *api) {
     }
 #endif
     if (k == 'X') break;
-    if (k) on_key(s, k);
+    if (k) {
+      on_key(s, k);
+      s->now = api->ms();
+      draw(s);                        /* (at once: the press shows before the next read) */
+    }
     if (s->check) check_bar(s);
     else if (s->parked) park_step(s);
     else sweep_step(s);
@@ -1117,6 +1217,8 @@ int k6_main(const k6_api_t *api) {
   api->fd_write(0x13, (uint16_t)s->r13);
   api->fd_write(0x73, (uint16_t)s->r73);
   api->fd_write(0x7E, (uint16_t)s->r7e);
+  if (s->zif) api->fd_write(0x3D, (uint16_t)s->r3d);
+  if (s->mon) squelch(s, 0);
   wr(GPIOB + (s->odr ? BSRR : BRR), SPK);
   for (i = 0, n = 0; i < 300 && n < 5; i++) {
     n = kp_scan(s) ? 0 : n + 1;
