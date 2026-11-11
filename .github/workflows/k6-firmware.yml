@@ -134,6 +134,7 @@ jobs:
             tests/test_k6_update.py \
             tests/test_k6_vlr.py \
             tests/test_k6_xscan.py \
+            tests/test_nwr_watch.py \
             tests/test_psk31.py
 
   # One check named host-tests that passes only when every shard passed.

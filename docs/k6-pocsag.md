@@ -285,6 +285,13 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
 - Live: `samecap_nwr` listens to 162.550 MHz (KHB60 Seattle) for an hour with the datasheet's
   setting. It says only captures that go on like a preamble, because noise gives D5D5 every couple
   of minutes. The weekly test is on Wednesdays around midday Pacific.
+- Timing a listen: `tools/nwr_watch.py` (on hamlet; this repo's cloud sessions can't reach
+  api.weather.gov) reads the active Washington alerts and says LISTEN while an alert that can make
+  tones (EAS-ORG WXR: warnings, watches, FLS and SPS statements) names a county it watches
+  (Whatcom 053073 and Skagit 053057 by default), or while the weekly test window is open. Wind and
+  coastal flood advisories carry no tones (blocked from EAS). `--every 300` keeps watching. It
+  matters once the K6 has a SAME receiver that works; the transmitter's counties and its exact
+  weekly test time are still to be checked.
 
 ## Next
 
