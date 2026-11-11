@@ -520,23 +520,65 @@ Not answered: the level. -81 dBm is where the tap's detector gives up, and the c
 read -131 dBm in this run, but no weaker DMR came by. And one key-up met one setting, so the
 other seven are untried.
 
-### Run K (`dfskcap_dmr2`, an hour; built, not yet run)
+### Run K (2026-11-11 12:55:48 to 13:42:31Z, `dfskcap_dmr2`, build fad6693): every key-up, every setting
 
-The same listen with the sense known, 560 rounds:
+The same listen with the sense known, 47 of its 60 minutes (a key ended it for the next
+bench user), 3,401 slots:
 
-| Setting | REG_58 | Sync | Filter | AFC | REG_2B |
-| --- | --- | --- | --- | --- | --- |
-| 0 | 00E9 | 9B4D | wide | off | + 0700 (run J's setting 4) |
-| 1 | 00E9 | CD4D | wide | off | + 0700 |
-| 2 | 00E9 | 9B4D | narrow | off | + 0700 |
-| 3 | 00E9 | CD4D | narrow | off | + 0700 |
-| 4 | 00A9 (bits 7:6 = 10) | 9B4D | wide | off | + 0700 |
-| 5 | 00E9 | 9B4D | wide | off | as found |
-| 6 | 00E9 | 9B4D | wide | on | + 0700 |
-| 7 | 00E9 | CD4D | wide | on | + 0700 |
+| Setting | REG_58 | Sync | Filter | AFC | REG_2B | Starts on DMR | Sync fields, whole + short |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 00E9 | 9B4D | wide | off | + 0700 (run J's setting 4) | 1 | 4 + 7 |
+| 1 | 00E9 | CD4D | wide | off | + 0700 | 2 | 47 + 52 |
+| 2 | 00E9 | 9B4D | narrow | off | + 0700 | 1 | 37 + 34 |
+| 3 | 00E9 | CD4D | narrow | off | + 0700 | 1 | 48 + 43 |
+| 4 | 00A9 (bits 7:6 = 10) | 9B4D | wide | off | + 0700 | 1 | 14 + 20 |
+| 5 | 00E9 | 9B4D | wide | off | as found | 4 | 17 + 42 |
+| 6 | 00E9 | 9B4D | wide | on | + 0700 | 2 | 13 + 17 |
+| 7 | 00E9 | CD4D | wide | on | + 0700 | 1 | 39 + 45 |
 
-What it should say: which sync word and filter start most often on a key-up, and whether
-the starts hold when the signal is weak (the K6's antenna off, or a far repeater).
+- **The repeater keyed six times in DMR, at -83 to -87 dBm, and every key-up was caught**:
+  three of 7 s (at 182, 1085 and 1988 s into the run) and three of half a second (at 788,
+  1691 and 2594 s). It keeps a clock: a long one every 903 s, a short one 606 s after each.
+- **Every setting starts.** Inside the long key-ups each new slot started again, mostly 22
+  to 85 ms after the slot's own start (one took 338 ms: setting 5), whatever the sync word,
+  the filter, the AFC, bits 7:6 or the AF filters. No slot with DMR in it went without a
+  start. (After the short key-up at 1691 s the carrier stayed for 4 s at -86 to -89 dBm and
+  five settings found nothing in it: the repeater's analog ID, most likely; it was not
+  recorded.)
+- **72% of the sync fields read**: 479 in 93,584 signs (some 668 bursts), 219 whole and 260
+  short. A capture runs on to the carrier's end or to 1056 words, so the counts follow the
+  key-up a setting happened to meet, not the setting.
+- **Noise gives none**: 260 captures of noise (285,664 signs), one in 10 s, and no sync
+  field in any. One was a start on the bench's ID keeper next door (-99 dBm in the wide
+  filter), with nothing in it either.
+
+So at this level nothing is left to choose: 9B4D or CD4D, either filter. The narrow filter
+keeps the neighbours out. What is still not known is the level it works down to.
+
+### Run L (`dfskcap_dmr3`; built, not yet run): how weak?
+
+The repeater has one level here, so the receiver is made deaf by steps instead: one setting
+(9B4D, the narrow filter, the AFC off, REG_2B + 0700) with the gain fixed (REG_7E bit 15 with
+index 3, REG_13 as the gain, as `surf.c` does) at eight values, taken off the front first so
+that the signal sinks towards the noise of the stages behind:
+
+| Setting | REG_13 | Gain, about |
+| --- | --- | --- |
+| 0 | 03FF | 0 dB |
+| 1 | 035F | -14 dB |
+| 2 | 031F | -24 dB |
+| 3 | 021F | -35 dB |
+| 4 | 011F | -40 dB |
+| 5 | 001F | -43 dB |
+| 6 | 0007 | -51 dB |
+| 7 | 0004 | -60 dB |
+
+Each slot's `p=` and `f=` give the signal and the floor at that gain, so how far over the
+floor the signal stood is measured, not reckoned; the starts and the sync fields read then
+say from how many dB the chip finds DMR. A capture is cut at 96 words (a third of a second)
+so that a key-up of 7 s meets every gain. Half an hour: two long key-ups and two short ones
+by the repeater's clock. `python3 -m modem.dmrsign LOG` gives a setting's floor, its slots
+with a carrier and in how many of them a sync was found.
 
 ## Bench plan (receive only; done, kept for reruns)
 
