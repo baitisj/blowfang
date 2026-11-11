@@ -279,11 +279,18 @@ three separate 52 s key-ups of twelve 1200 baud transmissions each, 18 s apart.
   27, 18, 14, then 11 and 3.5%. The second key-up did not bring the noise back.
 - So the noise is the K6's, settling after the module tunes. The tune restarts the receiver, and
   the AFC (on in FM) then pulls for a minute or two (its time constant was about 30 s on the FT8
-  bench). The module now turns the AFC off (REG_73 bit 4, before the tune so the restart makes it
-  take hold) and puts REG_73 back at the end; `afc=0` on the start line. A build with `POC_AFC`
-  keeps it on. K6 and IC-7100 sit about 150 Hz apart with the AFC off (FT8 bench), little
-  against POCSAG's 4.5 kHz deviation. Run 7 is to show the first captures clean.
+  bench).
 - Of all 168 messages, 39 exact, nearly all of them in the second key-up's captures.
+
+## Bench run 7: the AFC off finds nothing
+
+Run 7 (2026-11-11 21:07-21:12Z, receive only, 440.850, CW ID) ran `pocdump_1200` built to turn
+the AFC off (REG_73 bit 4, before the tune) under two 52 s key-ups. The sampler found no
+transmission at all: 345 false starts, no capture. With the AFC off the receiver stays where the
+restart leaves it, and the sampler's slicing never sees the preamble's `F0F0`. So the AFC is
+needed; it only has to be left alone. The module now tunes only when it is not on `POC_HZ`
+(wide) already (`tune=0` on the start line): after an upload on the same frequency the AFC keeps
+the pull it had on the upload's signal. Run 8 is to show the first captures clean.
 
 ## NOAA SAME: the probe `samecap`
 
@@ -333,8 +340,8 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
 
 ## Next
 
-- Bench run 7: `pocdump_1200` with the AFC off, one key-up right after the upload. Clean from the
-  first capture, or does something else settle too?
+- Bench run 8: `pocdump_1200` that does not tune (`tune=0`) right after the upload. Clean from the
+  first capture? If not, or if it tunes after all, look at what the restart resets.
 - If the bench's text comes more than 2% off four samples a bit, the slicer should learn the
   samples a bit (it can, from the preamble and the sync codeword) instead of assuming four. Run 5
   stayed within 3%, and a plain DPLL slicer tried on run 4's dumps read no better than the

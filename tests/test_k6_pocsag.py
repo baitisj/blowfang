@@ -61,7 +61,7 @@ def test_bench_audio_slices_back():
 
 def test_report_reads_module_lines():
     lines = ["K6 MOD say " + s for s in [
-        "pocsag start hz=440850000 n=6 afc=0 text=1",
+        "pocsag start hz=440850000 n=6 tune=1 text=1",
         "s 0 t=32000 cfg=00e9 a=0000 h=1",
         "p 1 s=0 b=1200 t=33000 w=180 i=1 e=0 r=-41",
         "k 1 q=4 ok=64 f=0 x=0 c=1 m=3",
@@ -213,7 +213,7 @@ def test_pocsag_440_on_the_model():
     ret, stack = res
     assert stack < 600, stack
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
-    assert e.said[0] == "pocsag start hz=440850000 n=3 afc=0 text=1", e.said[0]
+    assert e.said[0] == "pocsag start hz=440850000 n=3 tune=1 text=1", e.said[0]
     assert e.said[-1].startswith("pocsag end ") and e.over == 0, (e.said[-1], e.over)
     sets, caps, msgs = lines_of(e.said)
     assert sorted(sets) == list(range(3)), sets
@@ -273,7 +273,7 @@ def test_outside_the_amateur_band_counts_only():
         segs.append((t, 1200.0, bits))
         t += len(bits) / 1200 + 0.5
     e, ret = run_plain(src, [("POC_HZ", "157450000u"), ("FE_S", "12u")], segs, t + 15)
-    assert e.said[0] == "pocsag start hz=157450000 n=1 afc=0 text=0", e.said[0]
+    assert e.said[0] == "pocsag start hz=157450000 n=1 tune=1 text=0", e.said[0]
     sets, caps, msgs = lines_of(e.said)
     assert len(caps) == 3 and all(c["q"] == "4" and c["m"] == "3" for c in caps), caps
     assert not msgs and not any("AG7EW" in ln or ln.startswith(("m ", "+ ")) for ln in e.said), e.said
