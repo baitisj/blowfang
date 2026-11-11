@@ -178,6 +178,16 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
   bit clock kept on them, the samples a second searched from 0.8 to 1.2 of REG_72's. On the
   emulator all three rates read the bursts; at 6347 a second the host reads with noise of a
   third of the tone's amplitude.
+- `samerx` (2.5 KB) reads the headers in the radio from those samples: each bit's samples laid
+  against both tones (tables of cos and sin), the bit clock found over the first 24 bits and kept
+  on the early/late difference, bytes set by the preamble's AB, text to the first unprintable
+  byte, cut at a header's last `-`. A capture without at least two AB bytes is noise or speech,
+  only counted (`z`), so it can listen to the broadcast's speech for hours. It reads the FIFO by
+  time; at 4800 and 6347 a second a word read twice alike is the empty FIFO, but at 4166.7 the
+  mark's 1010 makes words alike all the time, so there it reads by time alone. `samerx_440`
+  tries its three rates on the bench (45 s each, `h` and `+` lines); `samerx` listens to
+  162.550 for two hours at the rate `SAME_RATE` names (the bench's best). On the emulator every
+  burst reads exactly at all three rates (noise of a fifth of the tone at 6347, a tenth at 4800).
 - Live: `samecap_nwr` listens to 162.550 MHz (KHB60 Seattle) for an hour with the datasheet's
   setting. It says only captures that go on like a preamble, because noise gives D5D5 every couple
   of minutes. The weekly test is on Wednesdays around midday Pacific.

@@ -396,3 +396,43 @@ def test_samedf_on_the_model():
     for k in ("0", "1", "2"):
         got = [tx for c, tx in zip(caps, texts) if f" s={k} " in c and "AG7EW SAME FORMAT TEST" in tx]
         assert got, (k, rep)
+
+
+@need_clang
+def test_samerx_440_on_the_model():
+    """samerx's three rates on the model (the chip a fixed-clock sampler of the audio's sign, at
+    any phase; noise of a fifth of the tone at 6347 a second, a tenth at 4800): every burst wholly inside
+    a setting is read exactly, at 4166.7 a second with the clock on the mark's peaks"""
+    pytest.importorskip("unicorn")
+    from modem import same
+    scale, wait = 150, 0.2
+    fe = 45 * scale / 1000
+    total = wait + 3 * fe
+    segs, sent, t, r = [], [], 0.4, 1
+    rng = np.random.default_rng(4)
+    while t < total - 1:
+        text = f"ZCZC-WXR-RWT-053033+0015-31518{r:02d}-KSEW/NWS-"
+        b = same.burst_bits(text)
+        for fs, noise in ((6347.6, 0.2), (4800.0, 0.1), (same.DF_RATE, 0.0)):
+            ph = 0.5 if noise == 0 else float(rng.uniform(0, 1))
+            segs.append((t, fs, same.df_samples(b, phase=ph, rate=fs / same.DF_RATE, noise=noise, seed=r)))
+        sent.append((t, t + len(b) / same.BAUD, text))
+        t, r = t + len(b) / same.BAUD + 1.0, r + 1
+    e, ret = run_plain(os.path.join(K6, "mod", "samerx_440.c"),
+                       [("SLOT_SCALE", f"{scale}u"), ("WAIT_MS", f"{int(wait * 1000)}u")], segs, total + 5)
+    assert e.said[0] == "samerx start hz=440850000 n=3" and e.said[-1].startswith("samerx end"), e.said[-3:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    heads, cur = [], None
+    for ln in e.said:
+        if ln.startswith("h "):
+            f = dict(kv.split("=") for kv in ln.split()[2:])
+            cur = [int(f["s"]), int(f["t"]) / 1000, ""]
+            heads.append(cur)
+        elif ln.startswith("+ ") and cur:
+            cur[2] += ln[2:]
+    assert ret == len(heads)
+    for k in range(3):
+        t0, t1 = wait + k * fe + 0.05, wait + (k + 1) * fe - 0.6
+        want = [x for a, b_, x in sent if t0 < a and b_ < t1]
+        got = [h[2] for h in heads if h[0] == k]
+        assert len(want) >= 2 and all(w in got for w in want), (k, want, got)
