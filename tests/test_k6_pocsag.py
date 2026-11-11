@@ -184,16 +184,15 @@ def lines_of(said):
 
 @need_clang
 def test_pocsag_440_on_the_model():
-    """the bench build's six settings on the bench's signal (every baud, every second round the
-    other way up; some rounds sent 0.3% fast or slow, and a bit in 2000 wrong): in the hunting
-    settings every transmission's three messages come out exact; in the direct ones only the
-    1200 baud transmissions the chip's sync word fits (the one way up, then the other)"""
+    """the bench build's three settings on the bench's signal (every baud, every second round the
+    other way up; some rounds sent 0.3% fast or slow, and a bit or sample in 2000 wrong): every
+    transmission's three messages come out exact, 1200 baud through the 4800 sampler"""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     scale, wait = 600, 0.2
     code, entry = le.build("x", [("SLOT_SCALE", f"{scale}u"), ("WAIT_MS", f"{int(wait * 1000)}u")],
                            os.path.join(K6, "mod", "pocsag_440.c"))
-    total = wait + 6 * 45 * scale / 1000
+    total = wait + 3 * 60 * scale / 1000
     segs, t, r = [], 0.5, 1
     while t < total - 1:
         for baud in pocsag.BAUDS:
@@ -211,12 +210,12 @@ def test_pocsag_440_on_the_model():
     ret, stack = res
     assert stack < 600, stack
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
-    assert e.said[0] == "pocsag start hz=440850000 n=6 text=1", e.said[0]
+    assert e.said[0] == "pocsag start hz=440850000 n=3 text=1", e.said[0]
     assert e.said[-1].startswith("pocsag end ") and e.over == 0, (e.said[-1], e.over)
     sets, caps, msgs = lines_of(e.said)
-    assert sorted(sets) == list(range(6)), sets
+    assert sorted(sets) == list(range(3)), sets
     start = {n: int(v["t"]) / 1000 for n, v in sets.items()}
-    ends = {n: start.get(n + 1, total + 20) for n in sets}
+    ends = {n: start.get(n + 1, total) for n in sets}
     known = pocsag.expected()
     exact = {(known[m["text"]][0], known[m["text"]][1], known[m["text"]][2], m["set"])
              for m in msgs if m["text"] in known and m["err"] == 0}
@@ -227,10 +226,9 @@ def test_pocsag_440_on_the_model():
         if n is None:
             continue                                  # across a change of setting
         checked += 1
-        want = n in (0, 1, 2, 5) or (baud == 1200 and inv == (n == 4))
         got = [(r, baud, k, n) in exact for k in range(3)]
-        assert got == [want] * 3, (n, r, baud, inv, got, [c for c in caps if c["set"] == n])
-    assert checked >= 40, checked
+        assert got == [True] * 3, (n, r, baud, inv, got, [c for c in caps if c["set"] == n])
+    assert checked >= 20, checked
     # no message that was not sent, and the false starts said as such
     assert all(m["text"] in known for m in msgs), [m for m in msgs if m["text"] not in known]
     assert ret == len(msgs)
@@ -436,3 +434,33 @@ def test_samerx_440_on_the_model():
         want = [x for a, b_, x in sent if t0 < a and b_ < t1]
         got = [h[2] for h in heads if h[0] == k]
         assert len(want) >= 2 and all(w in got for w in want), (k, want, got)
+
+
+@need_clang
+def test_pocsag_slices_the_bench_samples():
+    """1200 baud as the chip sampled it at 4800 on the bench (run 2, pocdump's setting 5, the AF
+    path as found: chatter of a sample, runs that droop; every second round upside down), handed
+    to the module as the chip's samples behind a preamble of its own: every capture's first batch
+    comes out with no codeword past help and the round's first message read (the dumps end
+    inside the next batch: what follows is the model's noise)"""
+    pytest.importorskip("unicorn")
+    import gzip
+    path = os.path.join(ROOT, "tests", "data", "k6", "pocdump-run2-20261111.log.gz")
+    with gzip.open(path, "rt") as f:
+        caps = pocsag.dump_captures(f)
+    assert len(caps) == 6
+    segs, t = [], 0.3
+    pre = [1, 1, 1, 1, 0, 0, 0, 0] * 240                   # 480 bits of 1010, four samples each
+    for c in caps:
+        smp = np.array(pre + list(pocsag.word_bits(c["words"])), np.uint8)
+        segs.append((t, 4800.0, smp))
+        t += len(smp) / 4800 + 3.0
+    e, ret = run_plain(os.path.join(K6, "mod", "pocsag.c"), [("FE_S", f"{int(t) + 2}u")], segs, t + 8)
+    _, got, msgs = lines_of(e.said)
+    assert len(got) == 6 and all(c["b"] == "1200" and int(c["q"]) >= 1 for c in got), e.said
+    assert [int(c["i"]) for c in got] == [0, 1] * 3, got
+    first = [c["msgs"][0]["text"] for c in got]
+    assert all(m.startswith("AG7EW TEST ") for m in first), first
+    known = pocsag.expected()
+    exact = {known[m][0] for m in first if m in known and known[m][1:] == (1200, 0)}
+    assert len(exact) >= 5, first
