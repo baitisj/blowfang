@@ -30,44 +30,63 @@ put right and past help), and the code that would print text isn't compiled into
 
 ## The module: `c/k6/mod/pocsag.c`
 
-Level 2, receive only, about 3.7 KB. Builds:
+Level 2, receive only, about 4.2 KB. Builds:
 
 | build | frequency | what it does |
 | --- | --- | --- |
 | `pocsag` | 439.9875 MHz (DAPNET) | one setting, 15 minutes, text on |
-| `pocsag_440` | 440.850 MHz (the bench) | six settings of 45 s after a 32 s wait (the bench's questions, below) |
+| `pocsag_440` | 440.850 MHz (the bench) | three settings of 60 s after a 32 s wait (the bench's questions, below) |
 
 How it works:
 
 - **Hunt.** The chip's sync word is `AAAA`, sixteen bits of the preamble. The module tries 1200,
-  2400 and 512 baud in turn (45, 30 and 90 ms each), so the chip starts inside a preamble at
+  2400 and 512 baud in turn (60, 30 and 90 ms each), so the chip starts inside a preamble at
   whatever baud is on the air. The preamble's words then go by, and the module finds the sync
   codeword in the bits itself: at any bit offset, either way up, with up to two wrong bits. A
   capture whose words stop looking like a preamble (four words in a row) before a sync codeword
   turns up is a false start. It is counted (`z=`) and nothing is said.
-- **Direct.** In the bench's settings 3 and 4 the chip's sync word is the sync codeword itself,
-  four bytes, at 1200 baud: one way up, then the other. Does the chip start on it, and does it
-  also take it upside down by itself?
-- **Reading the FIFO.** The FIFO holds eight words and is read by time, a word every 16 bits, two
-  words behind the chip. An empty FIFO gives the word from eight reads before
-  (docs/k6-aprs-clock.md). So a word equal to that one is read again. If the second read is the
-  same, the FIFO was empty and the time base starts over. Otherwise both are real words. Inside
-  a preamble every word is the same, so reads go by time alone until the first sync codeword.
+- **1200 baud is sampled.** The chip at 1200 baud drops bits (run 1), but at 4800 a second it
+  samples a 1200 baud line nearly clean (run 2, below). So 1200 baud runs the receiver at 4800
+  with the AF path as found (de-emphasis on: off made the samples much worse) and sync word
+  `F0F0` (four preamble bits, four samples each), and the module slices the samples itself:
+  - a run of one sample is chatter: it is held until the next long run, then shared out between
+    that run and the one before (or all three join, when those two are alike);
+  - a run of `l` samples is `(l + carry + 2) / 4` bits, at least one. What is left over carries
+    to the next run, unless `l` is a whole number of bits (then the run is taken as it is).
+
+  This reads run 2's droop (a long run, then one or two samples of the other value, then a
+  shorter run) without a bit clock. A sampled capture is 2,048 bytes (3.4 s). Before its first
+  sync codeword, 28 bits alike the bit before mean a false start (a preamble alternates; the
+  sync codeword itself has 15).
+- **Reading the FIFO.** The FIFO holds eight words and is read by time, a word every 16 bits (or
+  samples), two words behind the chip (five for the sampler). An empty FIFO gives the word from
+  eight reads before (docs/k6-aprs-clock.md). So a word equal to that one is read again. If the
+  second read is the same, the FIFO was empty and the time base starts over. Otherwise both are
+  real words. Inside a preamble every word is the same, so reads go by time alone until the first
+  sync codeword. The sampler needs five alike reads, because sampled idle codewords give words
+  alike back to back. Five alike count as empty only after 400 words since the time base
+  started: reads 0.4% fast need that long to catch up with the chip, and a second preamble or a
+  bare carrier inside a capture gives five alike real words. A capture also ends when its time
+  is up, so words taken for empty reads can't hold it open.
 - **Decoding.** BCH and parity put up to two wrong bits right in each codeword. The module works
   out the 31 single-bit syndromes at the start and tries their pairs, so it needs no table in
   flash. After 16 codewords the next 32 bits must be the sync codeword again, with up to four
   wrong bits. If it is missing after a clean batch, the transmission is over. If it is missing
   after a noisy batch, the module keeps hunting for up to 1,100 bits.
-- **Long transmissions.** The chip's packet is 512, 1024 or 2048 bytes (about 7-8 s at 512, 1200
-  or 2400 baud). If a packet ends inside a transmission, the chip's sync word becomes the sync
-  codeword's last two bytes (`15D8`, or `EA27` upside down), and the next batch continues the
-  same transmission. The message cut at the gap gets `e16` or more.
+  A batch counts as noisy when four of its codewords or more were put right or past help.
+- **Long transmissions.** The chip's packet is 512 or 2048 bytes (about 8 s at 512 and 7 s at 2400
+  baud, 3.4 s of 1200 baud samples). If a packet ends inside a transmission, the chip's sync word
+  becomes the sync codeword's last two bytes (`15D8`, or `EA27` upside down; for the sampler
+  `F0F0` again and a hunt for the next sync codeword), and the next batch continues the same
+  transmission. The message cut at the gap gets `e16` or more. The modem is stopped before the
+  lines are said, so the FIFO doesn't overflow meanwhile.
 - **Lines** come after the transmission, never during it, because a line costs milliseconds of
   listening:
 
 ```
-pocsag start hz=440850000 n=6 text=1
-s 0 t=32000 cfg=00e9 a=0000 h=1        a setting: REG_58, REG_2B bits set, 1 hunt / 2, 3 direct
+pocsag start hz=440850000 n=3 text=1
+s 0 t=32000 cfg=00e9 a=0000            a setting: REG_58, REG_2B bits set (besides de-emphasis
+                                       off at 512 and 2400 baud)
 p 3 s=0 b=1200 t=40012 w=180 i=0 e=0 r=-41
                                        a transmission: setting, baud, ms at its first word,
                                        words read, upside down, empty reads, RSSI peak
@@ -82,8 +101,8 @@ pocsag end n=12 m=30 z=4
 ## The bench test
 
 ```sh
-python3 -m modem.pocsag wav poc.wav --rounds 26     # 276 s: every round 512, 1200, 2400 baud
-python3 tools/k6_bench.py send poc.wav --max-s 290  # right after the pocsag_440 upload
+python3 -m modem.pocsag wav poc.wav --rounds 18     # 191 s: every round 512, 1200, 2400 baud
+python3 tools/k6_bench.py send poc.wav --max-s 200  # right after the pocsag_440 upload
 python3 -m modem.pocsag report LOG                  # per setting and baud
 ```
 
@@ -92,27 +111,28 @@ alphanumeric), `<round>-<baud>` (RIC 2005, numeric), and a 75-character message 
 three batches (RIC 4711). Every second round is sent upside down. The report rebuilds the
 messages from the round and the baud, so no key file is needed.
 
-The six settings ask:
+The three settings ask (run 1's six asked about the AF path and a direct sync word; its answers
+are below):
 
-| setting | REG_58 | REG_2B | start | question |
-| --- | --- | --- | --- | --- |
-| 0 | 00E9 | as found | hunt | does the plain receiver take POCSAG at all, and at which bauds? |
-| 1 | 00E9 | + 0700 | hunt | do the AF path's de-emphasis, 300 Hz high-pass and 3 kHz low-pass hurt an NRZ line? |
-| 2 | 00E9 | + 0100 | hunt | de-emphasis off alone |
-| 3 | 00E9 | as found | direct `7CD215D8` | does the chip start on the sync codeword? |
-| 4 | 00E9 | as found | direct `832DEA27` | and the other way up, or does it take either by itself? |
-| 5 | 00E5 | as found | hunt | the RX bandwidth bits at 2 (00E9 has 4) |
+| setting | REG_58 | question |
+| --- | --- | --- |
+| 0 | 00E9 | do all three bauds read, 1200 through the sampler? |
+| 1 | 00E5 | the RX bandwidth bits at 2 (00E9 has 4): run 1's other way to a perfect 512 |
+| 2 | 00E9 | setting 0 again, for numbers |
 
 ## Tested on the emulator
 
 `tests/test_k6_pocsag.py` runs `pocsag_440` on the emulated M0 against a model of the plain FSK
-receiver at the line's own baud. The model's clock is locked to the data, it finds the sync word
-at any bit, it puts 16 bits in each FIFO word, and an empty FIFO's read gives the word from eight
-before. The test sends 25 rounds at all three bauds, every second round upside down, some rounds
-0.3% fast or slow, with one bit in 2,000 wrong. In the hunting settings every transmission's
-three messages come out exact. In the direct settings only the 1200 baud ones whose sense matches
-the sync word come out. Another test checks that a 157.45 MHz build says counts only and is
-smaller.
+receiver at the line's own baud, or at four times it as a sampler. The model's clock is locked to
+the data, it finds the sync word at any bit, it puts 16 bits in each FIFO word, and an empty
+FIFO's read gives the word from eight before. The test sends 11 rounds at all three bauds, every
+second round upside down, some rounds 0.3% fast or slow, with one bit (or sample) in 2,000 wrong.
+Every transmission's three messages come out exact (with one sample in 200 wrong, 82 of 93; one
+in 50, 65). Another test hands the module run 2's real 1200 baud samples (the six captures of
+`tests/data/k6/pocdump-run2-20261111.log.gz`) behind a preamble of their own: every capture's
+first batch has no codeword past help, and five of the six first messages come out exact (the
+sixth runs into the next batch, which the dump doesn't hold). Another test checks that a
+157.45 MHz build says counts only and is smaller.
 
 The model can't say how the real receiver takes a 512 or 2400 baud line, which way up the
 IC-7100 sends it, or what the 7100's audio filters do to an NRZ line. Only the bench can.
@@ -152,6 +172,17 @@ python3 -m modem.pocsag wav poc12.wav --bauds 1200,2400 --rounds 60   # 279 s
 python3 tools/k6_bench.py send poc12.wav --max-s 290                  # right after the pocdump upload
 python3 -m modem.pocsag dump LOG
 ```
+
+## Bench run 2: the 1200 baud sampler
+
+Run 2 (2026-11-11 12:40-12:50Z, `pocdump`) sent the bench signal at 1200 and 2400 baud. At 1200
+baud the chip at 4800 a second with the AF path as found (setting 5) gave nearly clean samples:
+runs of four samples a bit, with one-sample chatter at some edges and a droop after long runs (a
+long run of ones, then a run of zeros one or two samples long, then a shorter run of ones). With
+the de-emphasis off (setting 1) the samples were much worse. The chip at 1200 baud with RX
+bandwidth bits 2 (setting 4) read idle codewords but dropped bits whenever the FIFO ran empty.
+2400 baud was bad both ways. The slicer above, worked out on the six setting-5 captures, reads
+every first batch: 0, 1, 0, 5, 0 and 1 codewords put right, none past help.
 
 ## NOAA SAME: the probe `samecap`
 
@@ -194,7 +225,8 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
 
 ## Next
 
-- Bench run on 440.850 with `pocsag_440` (receive only).
+- Bench run on 440.850 with `pocsag_440` (receive only): the 1200 baud sampler on the air, and
+  the hunt's 60 ms look at 4800 a second (does the chip find `F0F0` that fast?).
 - If it reads: listen on DAPNET 439.9875 with `pocsag`. DAPNET's time messages could become a
   third time source after AIS and APRS. It may not be in range at hamlet.
 - A counts-only census of the VHF paging channels: does the chip's FM sensitivity beat the IF

@@ -2,37 +2,44 @@
 
    POCSAG is direct FSK at 512, 1200 or 2400 baud: behind the FM discriminator a plain NRZ line,
    which is what the chip's plain FSK receiver (REG_58 RX mode 0, 00E9) slices on a clock that
-   follows the data's transitions. The APRS work used that receiver as a 4800-a-second sampler of
-   Bell 202 audio (aprsclk.c, FSK_PLAIN); here it runs at the line's own baud and hands over the
-   pager's bits themselves, the top bit of each byte first, the first byte in a FIFO word's low byte.
+   follows the data's transitions. At 512 and 2400 baud it runs at the line's own baud and hands
+   over the pager's bits themselves, the top bit of each byte first, the first byte in a FIFO
+   word's low byte. At 1200 baud the chip at the line's baud drops bits (bench run 1), so it runs
+   at 4800 as a sampler (as the APRS work used it, aprsclk.c) with the AF path as found, and the
+   module slices the samples itself (bench run 2, docs/k6-pocsag.md): a run of one sample is
+   chatter, shared out between the runs either side (or joined to them when they are alike), and
+   a run of l samples is (l + carry + 2) / 4 bits, at least one, the remainder carried on to the
+   next run (unless l is a whole number of bits: then the run is taken as it is).
 
-   Hunting: the chip's sync word is AAAA (sixteen bits of the preamble, 1010...) at each baud in
-   turn, HUNT_MS each, so the chip starts inside a preamble at whatever baud it is sent; the
-   preamble's words then go by and the module finds the batch sync codeword 7CD215D8 in the bits
-   itself, either way up (no wrong bit or up to two), at any bit offset. A capture whose first
-   word is no preamble, or that finds no sync codeword in PRE_W words, is a false start (counted,
-   not said). In a direct setting (the bench's question) the chip's sync word is the codeword itself,
-   four bytes, at 1200 baud, the one way up or the other.
+   Hunting: the chip's sync word is AAAA (sixteen bits of the preamble, 1010...; at 1200 baud
+   F0F0, four of the preamble's bits sampled) at each baud in turn, HUNT_MS each, so the chip
+   starts inside a preamble at whatever baud it is sent; the preamble's words then go by and the
+   module finds the batch sync codeword 7CD215D8 in the bits itself, either way up (no wrong bit
+   or up to two), at any bit offset. A capture whose first words are no preamble (four words
+   unlike AAAA, or at 1200 baud PRE_REP bits like the one before), or that finds no sync codeword
+   in PRE_W words' worth of bits, is a false start (counted, not said).
 
-   Reading: the FIFO (eight words) is read by time, a word every sixteen bits, LAG words behind
-   the chip. An empty FIFO gives the word of eight reads before and takes nothing (the APRS bench,
-   docs/k6-aprs-clock.md), so a word equal to that one is read again: the same again is the empty
-   FIFO (the reads were early), anything else is the next
-   word, and the time base starts again so that the reads are LAG words behind once more. So a
-   slow or fast MCU clock costs nothing (the APRS bench: within 0.4% of the chip's).
+   Reading: the FIFO (eight words) is read by time, a word every sixteen bits (or samples), LAG
+   words behind the chip (LAG_S for the sampler). An empty FIFO gives the word of eight reads
+   before and takes nothing (the APRS bench, docs/k6-aprs-clock.md), so a word equal to that one
+   is read again: the same again is the empty FIFO (the reads were early; for the sampler, whose
+   idle codewords give words alike back to back, five alike), anything else is the next word,
+   and the time base starts again so that the reads are LAG words behind once more. So a slow or
+   fast MCU clock costs nothing (the APRS bench: within 0.4% of the chip's).
 
    Decoding: a codeword's BCH(31,21) check and parity put up to two wrong bits right (syndromes of
    the 31 single-bit errors, worked out at the start, and their pairs). After sixteen codewords the
    next 32 bits must be the sync codeword again (up to four wrong bits), else the hunt for it
    starts over; two batches' worth of bits without one ends the transmission. A capture is the
-   chip's packet (REG_5D: 512 bytes at 512 baud, 1024 at 1200, 2048 at 2400, about 7 s); when it
-   ends inside a transmission the chip's sync word becomes the codeword's last two bytes (15D8, or
-   EA27 upside down) and the next batch opens a capture that goes on with the same messages.
+   chip's packet (REG_5D: 512 bytes at 512 baud, 2048 at 2400, about 7 s; 2048 bytes of samples
+   at 1200, 3.4 s); when it ends inside a transmission the chip's sync word becomes the codeword's
+   last two bytes (15D8, or EA27 upside down; for the sampler F0F0 again, and the hunt for the
+   next sync codeword) and the next batch opens a capture that goes on with the same messages.
 
    Lines (after a transmission, never during one: a line costs milliseconds of listening):
      pocsag start hz=439987500 n=1 text=1
-     s 0 t=32000 cfg=00e9 a=0 h=1        a setting: REG_58, the bits set in REG_2B, hunt (1), or
-                                         the direct sync word (2 the one way up, 3 the other)
+     s 0 t=32000 cfg=00e9 a=0000         a setting: REG_58, the bits set in REG_2B (besides
+                                         de-emphasis off at 512 and 2400 baud)
      p 3 s=0 b=1200 t=40012 w=180 i=0 e=2 r=-41
                                          a transmission: its number, setting, baud, ms at its
                                          first word, words read, upside down, empty reads, RSSI peak
@@ -78,39 +85,43 @@
 #define CTRL_CLR 0x4000u
 #define CTRL_EN 0x1000u
 #define LAG 2u           /* words the reads stay behind the chip (its FIFO holds 8) */
-#define PRE_W 48u        /* words of a capture to find the first sync codeword in */
+#define LAG_S 5u         /* and for the sampler (pocdump's on the bench) */
+#define PRE_W 48u        /* words' worth of bits to find the first sync codeword in */
+#define PRE_REP 28u
+#define EMPTY_W 400u     /* sampler words before reads 0.4% fast can find the FIFO empty */      /* bits like the one before (the sync codeword has 15) before it */
 #define LOST_B 1100u     /* bits without a sync codeword: the transmission is over */
 #define TXTN 600u        /* bytes of messages held until the transmission ends */
 
-/* a setting: REG_58, REG_2B's bits to set, how it starts (1 hunt, 2 direct, 3 direct upside down) */
+/* a setting: REG_58, REG_2B's bits to set at every baud */
 typedef struct {
   uint16_t cfg, af;
-  uint8_t how;
 } var_t;
 
 #if defined(POC_BENCH)
-#define NV 6
+#define NV 3
 static const var_t V[NV] = {
-    {0x00E9, 0, 1},      /* the receiver as the APRS sampler had it */
-    {0x00E9, 0x0700, 1}, /* the AF path's de-emphasis, 300 Hz high-pass and 3 kHz low-pass off */
-    {0x00E9, 0x0100, 1}, /* de-emphasis off only */
-    {0x00E9, 0, 2},      /* the sync codeword as the chip's sync word, 1200 baud */
-    {0x00E9, 0, 3},      /* and upside down */
-    {0x00E5, 0, 1},      /* RX bandwidth bits 3:1 = 2 */
+    {0x00E9, 0}, /* as built */
+    {0x00E5, 0}, /* RX bandwidth bits 3:1 = 2 */
+    {0x00E9, 0}, /* as built again */
 };
 #else
 #define NV 1
-static const var_t V[NV] = {{0x00E9, 0x0100, 1}};
+static const var_t V[NV] = {{0x00E9, 0}};
 #endif
 
-/* the bauds the hunt goes round: REG_72 (10.32444 a baud), a word in 1/16 ticks of 100 us, the
-   hunt's look, REG_5D (the chip's packet: 512, 1024, 2048 bytes) */
+/* the bauds the hunt goes round: REG_72 (10.32444 a baud; 1200 baud sampled at 4800), a word in
+   1/16 ticks of 100 us, the hunt's look, REG_5D (the chip's packet: 2048 or 512 bytes), the
+   chip's sync word, REG_2B's bits (de-emphasis off: run 1's best at 512 baud; the sampler's
+   worst, run 2) */
 #define NB 3
-static const uint16_t B72[NB] = {12389, 24779, 5286};
+#define SMP 0 /* the sampled baud's place */
+static const uint16_t B72[NB] = {49557, 24779, 5286};
 static const uint16_t BAUD[NB] = {1200, 2400, 512};
-static const uint16_t WT[NB] = {2133, 1067, 5000};
-static const uint8_t HUNT_MS[NB] = {45, 30, 90};
-static const uint16_t LEN[NB] = {0xFF60, 0xFFE0, 0xFF20};
+static const uint16_t WT[NB] = {533, 1067, 5000};
+static const uint8_t HUNT_MS[NB] = {60, 30, 90};
+static const uint16_t LEN[NB] = {0xFFE0, 0xFFE0, 0xFF20};
+static const uint16_t SYNW[NB] = {0xF0F0, 0xAAAA, 0xAAAA};
+static const uint16_t AFB[NB] = {0, 0x0100, 0x0100};
 
 static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F};
 #define NSV sizeof(SAVED)
@@ -128,6 +139,11 @@ typedef struct {
   uint16_t tl;
   uint32_t rn;       /* words taken this capture */
   uint8_t st, inv, ncw, cur, bi, np, bx;
+  /* the sampler's slicer: the sample and its run so far, the run before (2: none), the chatter
+     since, the carry */
+  uint8_t sv1, pv, lb;
+  int8_t carry;
+  uint16_t sl, pl, ch;
   /* the transmission */
   uint32_t t0ms, w, q, ok, f, x, e, rpk, ncap, nm;
   /* the message */
@@ -274,7 +290,7 @@ static void codeword(st_t *s, uint32_t cw) {
     }
     return;
   }
-  if (e) s->f++;
+  if (e) s->f++, s->bx++; /* (a batch put right is a noisy one too) */
   else s->ok++;
   if (cw == IDLE) {
     msg_end(s);
@@ -317,8 +333,8 @@ static int bit_in(st_t *s, uint32_t b) {
     if (pop(s->sr ^ SYNC) <= 4) {
       s->st = BATCH, s->ncw = 0, s->bx = 0, s->q++;
     } else {
-      /* no sync after a clean batch: the transmission is over (after a noisy one, a fade: the
-         hunt for it goes on) */
+      /* no sync after a clean batch: the transmission is over (after a noisy one, four
+         codewords or more put right or past help, a fade: the hunt for it goes on) */
       s->st = HUNT;
       msg_end(s);
       if (s->bx < 4) return 1;
@@ -330,13 +346,70 @@ static int bit_in(st_t *s, uint32_t b) {
   return 0;
 }
 
+/* the sampler: a run of l samples of v is (l + carry + 2) / 4 bits, at least one */
+static int run_out(st_t *s, uint32_t v, uint32_t l) {
+  int32_t q = (int32_t)l + s->carry, n = (q + 2) >> 2;
+  int over = 0;
+  s->carry = (int8_t)(l & 3 ? q - 4 * n : 0);
+  if (n < 1) n = 1;
+  while (n--) {
+    if (v == s->lb && s->np < 255) s->np++; /* (before the first sync: the preamble alternates) */
+    s->lb = (uint8_t)v;
+    over |= bit_in(s, v);
+  }
+  return over;
+}
+
+/* a run of samples ends: one of a sample is chatter, held until the next long run, then shared
+   out between it and the one before (or all of them one run, when those two are alike) */
+static int run_in(st_t *s, uint32_t v, uint32_t l) {
+  int over;
+  if (s->pv > 1) {
+    s->pv = (uint8_t)v, s->pl = (uint16_t)l;
+    return 0;
+  }
+  if (l <= 1) {
+    if (s->ch < 0x7FFF) s->ch++;
+    return 0;
+  }
+  if (s->ch) {
+    if (s->pv == v) {
+      l += s->pl + s->ch, s->ch = 0;
+      s->pl = (uint16_t)(l < 0x7FFF ? l : 0x7FFF);
+      return 0;
+    }
+    s->pl += s->ch >> 1, l += s->ch - (s->ch >> 1), s->ch = 0;
+  } else if (s->pv == v) {
+    s->pl += (uint16_t)l;
+    return 0;
+  }
+  over = run_out(s, s->pv, s->pl);
+  s->pv = (uint8_t)v, s->pl = (uint16_t)(l < 0x7FFF ? l : 0x7FFF);
+  return over;
+}
+
+static int smp_in(st_t *s, uint32_t b) {
+  int over = 0;
+  if (b == s->sv1) {
+    if (s->sl < 0x7FFF) s->sl++;
+    return 0;
+  }
+  if (s->sv1 < 2) over = run_in(s, s->sv1, s->sl);
+  s->sv1 = (uint8_t)b, s->sl = 1;
+  return over;
+}
+
 /* a word of a capture, the rn-th; -> 1 when the transmission is over. Before the first sync
    codeword of a hunt the words are the preamble's (AAAA or 5555, a wrong bit or two): four others
-   in a row and it was a false start */
+   in a row and it was a false start (the sampler's: PRE_REP bits like the one before) */
 static int word_in(st_t *s, uint32_t v) {
   uint32_t i;
   int over = 0;
   s->ring[s->rn & 7] = (uint16_t)v, s->rn++, s->w++;
+  if (s->bi == SMP) {
+    for (i = 16; i--;) over |= smp_in(s, v >> i & 1);
+    return over || (!s->q && s->st == HUNT && s->np > PRE_REP);
+  }
   if (!s->q && s->st == HUNT) {
     if (pop(v ^ 0xAAAAu) <= 2 || pop(v ^ 0x5555u) <= 2) s->np = 0;
     else if (++s->np > 3) return 1;
@@ -345,19 +418,18 @@ static int word_in(st_t *s, uint32_t v) {
   return over;
 }
 
-/* the modem off and on with a sync word (two bytes, or four), armed twice (a new sync word alone
-   does not take hold, and arming alone does not end a packet the chip is in); -> the FIFO's
-   stale word (what an empty FIFO gives) */
-static uint32_t seek(const k6_api_t *api, const st_t *s, uint32_t sync, int four) {
-  uint32_t i, w = 0, ctrl = four ? 0x00F8u : 0x00F0u;
-  const var_t *v = &V[s->cur];
+/* the modem off and on with a two-byte sync word, armed twice (a new sync word alone does not
+   take hold, and arming alone does not end a packet the chip is in); -> the FIFO's stale word
+   (what an empty FIFO gives) */
+static uint32_t seek(const k6_api_t *api, const st_t *s, uint32_t sync) {
+  uint32_t i, w = 0, ctrl = 0x00F0u;
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-  api->fd_write(0x2B, (uint16_t)(s->sv[SAVED_2B] | v->af));
-  api->fd_write(0x5A, (uint16_t)(four ? sync >> 16 : sync));
+  api->fd_write(0x2B, (uint16_t)(s->sv[SAVED_2B] | V[s->cur].af | AFB[s->bi]));
+  api->fd_write(0x5A, (uint16_t)sync);
   api->fd_write(0x5B, (uint16_t)sync);
-  api->fd_write(0x58, v->cfg);
+  api->fd_write(0x58, V[s->cur].cfg);
   api->fd_write(0x72, B72[s->bi]);
   api->fd_write(0x5C, 0x5625); /* no CRC of the chip's */
   api->fd_write(0x5D, LEN[s->bi]);
@@ -436,6 +508,7 @@ static int cap_end(const k6_api_t *api, st_t *s, int over) {
     msg_end(s);
     return 1;
   }
+  api->fd_write(0x59, 0); /* the chip's packet stopped: the FIFO is not filling while lines go */
   if (s->q) {
     msg_end(s);
     tx_say(api, s);
@@ -447,7 +520,7 @@ static int cap_end(const k6_api_t *api, st_t *s, int over) {
 
 int k6_main(const k6_api_t *api) {
   st_t *s;
-  uint32_t room, i, now, tkey = 0, tset, tarm = 0, prev = 0, t0 = 0, off = 0, nw = 0;
+  uint32_t room, i, now, tkey = 0, tset, tarm = 0, prev = 0, t0 = 0, off = 0, nw = 0, rb = 0;
   int key = 0, cap = 0, follow = 0, armed = 0, sline = 1;
   char *p;
   if (api->level < 2) return -3;
@@ -497,7 +570,6 @@ int k6_main(const k6_api_t *api) {
       p = kv(p, " t=", now);
       p = hex4(put(p, " cfg="), V[s->cur].cfg);
       p = hex4(put(p, " a="), V[s->cur].af);
-      p = kv(p, " h=", V[s->cur].how);
       say(api, s, p);
     }
     if (!cap) {
@@ -506,33 +578,28 @@ int k6_main(const k6_api_t *api) {
         follow = 0, armed = 0; /* no next batch: the transmission is over */
         tx_say(api, s);
       }
-      if (!armed || (!follow && now - tarm >= (V[s->cur].how == 1 ? HUNT_MS[s->bi] : 2000u))) {
-        /* the hunt: the next baud with the preamble as the sync word; a direct setting stays
-           on 1200 baud with the codeword as the sync word, armed again every 2 s */
-        if (V[s->cur].how == 1) {
-          if (armed && ++s->bi >= NB) s->bi = 0;
-          prev = seek(api, s, 0xAAAAu, 0);
-        } else {
-          s->bi = 0;
-          prev = seek(api, s, V[s->cur].how == 2 ? SYNC : ~SYNC, 1);
-        }
+      if (!armed || (!follow && now - tarm >= HUNT_MS[s->bi])) {
+        /* the hunt: the next baud with the preamble as the sync word */
+        if (armed && ++s->bi >= NB) s->bi = 0;
+        prev = seek(api, s, SYNW[s->bi]);
         armed = 1, tarm = api->ms();
       }
       v = swap(api->fd_read(0x5F));
       if (v != prev) {
         /* the chip's packet has begun: its first word */
-        cap = 1, off = 0, t0 = clk(api, s) << 4;
+        cap = 1, off = 0, rb = 0, t0 = clk(api, s) << 4;
         s->rn = 0, s->np = 0, s->nb = 0, s->ncw = 0;
+        s->sv1 = s->pv = s->lb = 2, s->ch = 0, s->carry = 0;
         nw = ((uint32_t)((LEN[s->bi] >> 5 & 7) << 8 | LEN[s->bi] >> 8) + 1) >> 1;
         if (!follow) {
           s->t0ms = now, s->w = 0, s->q = 0, s->ok = s->f = s->x = s->e = 0, s->rpk = 0;
           s->nm = 0, s->ncap = 0, s->in = 0;
-          s->st = V[s->cur].how == 1 ? HUNT : BATCH;
-          s->inv = V[s->cur].how == 3;
-          if (s->st == BATCH) s->q = 1;
+          s->st = HUNT, s->inv = 0;
 #ifdef POC_TEXT
           s->tn = 0;
 #endif
+        } else if (s->bi == SMP) {
+          s->st = HUNT; /* the sampler's packet began anywhere: the next sync codeword */
         } else {
           s->st = BATCH, s->q++;
         }
@@ -546,26 +613,33 @@ int k6_main(const k6_api_t *api) {
        from here), anything else the next word, taken too (LAG words behind, the FIFO holds it:
        reading on until the FIFO is empty would put the reads at the chip's heels in every run
        of idle codewords, where each word is the one eight before) */
-    while (cap && (int32_t)((clk(api, s) << 4) - t0 - (s->rn + LAG) * WT[s->bi] - off) >= 0) {
-      uint32_t w = api->fd_read(0x5F), v = swap(w), w2 = 0;
-      int over = 0, two = 0;
+    while (cap && (int32_t)((clk(api, s) << 4) - t0 -
+                            (s->rn + (s->bi == SMP ? LAG_S : LAG)) * WT[s->bi] - off) >= 0) {
+      uint32_t got[5], k, ng = 1, lim = s->bi == SMP ? 5u : 2u;
+      int over = 0;
+      got[0] = api->fd_read(0x5F);
       /* (in a preamble every word is the same: read by time alone until the first sync) */
-      if (s->rn >= 8 && s->q && v == s->ring[s->rn & 7]) {
-        w2 = api->fd_read(0x5F);
-        if (w2 == w) { /* the FIFO is empty: word rn comes within a word's time */
-          s->e++;
+      if (s->rn >= 8 && s->q && swap(got[0]) == s->ring[s->rn & 7]) {
+        do got[ng] = api->fd_read(0x5F);
+        while (got[ng++] == got[0] && ng < lim);
+        /* (five alike from the sampler: a preamble's words or a carrier's, unless the reads can
+           have caught up with the chip: EMPTY_W words since the time base started) */
+        if (got[ng - 1] == got[0] && (s->bi != SMP || s->rn - rb >= EMPTY_W)) {
+          /* the FIFO is empty: word rn comes within a word's time */
+          s->e++, rb = s->rn;
           off = (clk(api, s) << 4) - t0 - s->rn * WT[s->bi];
           break;
         }
-        two = 1;
       }
-      over = word_in(s, v);
-      if (two && !over) over = word_in(s, swap(w2));
-      if (over || s->rn >= nw) {
+      for (k = 0; k < ng && !over; k++) over = word_in(s, swap(got[k]));
+      /* (the chip's packet is over by time: words taken for empty reads must not hold the
+         capture open) */
+      if (over || s->rn >= nw ||
+          (int32_t)((clk(api, s) << 4) - t0 - (nw + 2 * LAG_S) * WT[s->bi] - off) >= 0) {
         cap = 0, armed = 0;
         follow = cap_end(api, s, over);
         if (follow) {
-          prev = seek(api, s, s->inv ? 0xEA27u : 0x15D8u, 0);
+          prev = seek(api, s, s->bi == SMP ? 0xF0F0u : s->inv ? 0xEA27u : 0x15D8u);
           armed = 1, tarm = api->ms();
         }
       }
