@@ -81,7 +81,8 @@ def test_report_reads_module_lines():
 def plain_chip(le, segs, flip=0.0, seed=3):
     """an emulator with a model of the FD6818's plain FSK receiver: segs [(t0 s, true baud, bits)]
     are the air; while one plays at a baud within 2% of REG_72's the chip's clock is the data's
-    (each bit taken once, at its middle), otherwise it takes random bits at REG_72's rate. The
+    (each bit taken once, at its middle), or at a half or a quarter of it the chip samples each bit
+    two or four times, otherwise it takes random bits at REG_72's rate. The
     sync word (REG_5A, or REG_5A REG_5B by REG_59<3>) in any bit position starts a packet of
     REG_5D's length (bits 15:8 and 7:5); each 16 bits go into an 8-word FIFO, the first bit at
     the top of the byte, the first byte in the low byte. An empty FIFO's read gives the slot it
@@ -106,17 +107,20 @@ def plain_chip(le, segs, flip=0.0, seed=3):
                 return
             br = self.baud()
             while True:
-                seg = next((s for s in segs if s[0] <= self.tn < s[0] + len(s[2]) / s[1]
-                            and abs(s[1] - br) < 0.02 * br), None)
+                seg = next(((s, m) for s in segs for m in (1, 2, 4)
+                            if s[0] <= self.tn < s[0] + len(s[2]) / s[1]
+                            and abs(m * s[1] - br) < 0.02 * br), None)
                 if seg:
-                    k = max(0, math.ceil((self.tn - seg[0]) * seg[1] - 0.5 - 1e-6))
-                    self.tn = seg[0] + (k + 0.5) / seg[1]
+                    seg, m = seg
+                    rate = m * seg[1]
+                    k = max(0, math.ceil((self.tn - seg[0]) * rate - 0.5 - 1e-6))
+                    self.tn = seg[0] + (k + 0.5) / rate
                     if self.tn > now:
                         return
-                    if k >= len(seg[2]):
+                    if k >= m * len(seg[2]):
                         continue
-                    bit = int(seg[2][k])
-                    step = 1 / seg[1]
+                    bit = int(seg[2][k // m])
+                    step = 1 / rate
                 else:
                     if self.tn > now:
                         return
@@ -305,3 +309,48 @@ def test_samecap_on_the_model():
     rep = same.report(["K6 MOD say " + s for s in e.said])
     got = [ln for ln in rep if "AG7EW SAME FORMAT TEST" in ln]
     assert ret >= 4 and len(got) >= 4 and all(" s=0 " in ln or " s=2 " in ln for ln in got), rep
+
+
+# ---- the probe pocdump: the chip's words for the host to lay against the bench's bits ----
+def test_dump_slicing_and_alignment():
+    bits = pocsag.transmission_bits(pocsag.bench_messages(7, 1200))
+    got, g, off = pocsag.slice_samples(np.repeat(bits[500:900], 4), 4)
+    assert abs(g - 4) < 0.05 and off == 0 and len(got) > 380
+    c = np.delete(bits[540:1400], [100, 300]) ^ 1         # two bits dropped, upside down
+    c[50] ^= 1
+    r, inv, ops = pocsag.lay_against_bench(c, 1200)
+    assert (r, inv) == (7, 1), (r, inv)
+    assert [k for k, _, _ in ops].count("d") == 2 and [k for k, _, _ in ops].count("x") == 1
+
+
+@need_clang
+def test_pocdump_on_the_model():
+    """pocdump's six settings on the model, 1200 and 2400 baud: the chip at the line's baud hands
+    over the bits as sent, and at 4800 it samples them four or two times; the host lays every
+    capture against the round it came from with nothing wrong, dropped or added"""
+    pytest.importorskip("unicorn")
+    scale, wait = 300, 0.2
+    total = wait + 6 * 40 * scale / 1000
+    segs, t, r = [], 0.5, 1
+    while t < total - 1:
+        for baud in (1200, 2400):
+            bits = pocsag.transmission_bits(pocsag.bench_messages(r, baud))
+            inv = r % 2 == 0
+            segs.append((t, float(baud), (1 - bits) if inv else bits))
+            t += len(bits) / baud + 0.6
+        r += 1
+    e, ret = run_plain(os.path.join(K6, "mod", "pocdump.c"),
+                       [("SLOT_SCALE", f"{scale}u"), ("WAIT_MS", f"{int(wait * 1000)}u")], segs, total + 10)
+    assert e.said[0] == "pocdump start hz=440850000 n=6" and e.said[-1].startswith("pocdump end"), e.said[-3:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    caps = pocsag.dump_captures(["K6 MOD say " + s for s in e.said])
+    assert ret == len(caps) >= 10, (ret, len(caps))
+    rep = pocsag.dump_report(["K6 MOD say " + s for s in e.said])
+    seen = set()
+    for c in caps:
+        seen.add(c["s"])
+    assert seen == {"0", "1", "2", "3", "4", "5"}, seen
+    lays = [ln for ln in rep if ln.startswith("  round ")]
+    assert len(lays) == len(caps), rep
+    assert all("wrong 0, dropped 0, added 0" in ln for ln in lays), rep
+    assert sum("first batch: right 16" in ln for ln in rep) >= len(caps) - 2, rep

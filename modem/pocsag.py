@@ -23,6 +23,9 @@ codeword 7A89C197.
   python3 -m modem.pocsag report LOG   what pocsag_440 made of it: its p, k and m lines in the
                                        K6's serial log, against the messages the rounds carry
   python3 -m modem.pocsag decode BITS  a string of 0 and 1 (or a file of them): the messages in it
+  python3 -m modem.pocsag dump LOG     what the probe pocdump's captures hold: each laid against
+                                       the bench's bits (the round found from them): bits wrong,
+                                       dropped and added, where, and the codewords after the sync
 
 The bench's messages are made from the round and the baud alone, so the report knows them without
 a key file. On a channel outside the amateur band the module says counts only (US ECPA: a page's
@@ -352,6 +355,193 @@ def report(lines, show_text=False):
     return out
 
 
+# ---- the probe pocdump (c/k6/mod/pocdump.c): what the chip hands over ----
+
+DUMP_GAP = None
+DUMP_LAG = 5                  # words pocdump's reads stay behind the chip
+
+
+def dump_captures(lines):
+    """pocdump's captures: [dict] with the setting's fields (cfg, b, sy, m), the c line's and
+    'words' (None for a gap: an empty FIFO read)"""
+    sets, caps, cur = {}, {}, None
+    for s in say_lines(lines):
+        f = s.split()
+        if len(f) < 2 or not f[1].isdigit():
+            continue
+        kv = dict(x.split("=", 1) for x in f[2:] if "=" in x)
+        if f[0] == "s":
+            cur = int(f[1])
+            sets[cur] = kv
+        elif f[0] == "c":
+            caps[int(f[1])] = dict(sets.get(int(kv.get("s", -1)), {}), **kv, n=int(f[1]), words=[])
+        elif f[0] == "d" and len(f) >= 4 and int(f[1]) in caps:
+            for k in range(0, len(f[3]) - 3, 4):
+                w = f[3][k:k + 4]
+                caps[int(f[1])]["words"].append(DUMP_GAP if w == "----" else int(w, 16))
+    return [caps[n] for n in sorted(caps)]
+
+
+def word_bits(words):
+    return np.array([w >> (15 - i) & 1 for w in words if w is not None for i in range(16)], np.uint8)
+
+
+def runs_of(bits):
+    """[(bit, run length)]"""
+    out = []
+    for b in bits:
+        if out and out[-1][0] == b:
+            out[-1][1] += 1
+        else:
+            out.append([int(b), 1])
+    return out
+
+
+def slice_samples(bits, m):
+    """a line sampled m times a bit back to its bits: (bits, samples a bit as fitted, share of runs
+    more than a quarter bit off a whole number of bits); the end runs are left out"""
+    rs = runs_of(bits)[1:-1]
+    if not rs:
+        return np.zeros(0, np.uint8), float(m), 0.0
+    n = np.array([r[1] for r in rs], float)
+    grid = np.linspace(0.8 * m, 1.2 * m, 161)
+    err = [np.sum((n / g - np.maximum(1, np.round(n / g))) ** 2) for g in grid]
+    g = float(grid[int(np.argmin(err))])
+    k = np.maximum(1, np.round(n / g)).astype(int)
+    off = float(np.mean(np.abs(n / g - k) > 0.25))
+    return np.array([b for (b, _), c in zip(rs, k) for _ in range(c)], np.uint8), g, off
+
+
+def align(c, e, start, band=96):
+    """c laid against e by edit distance, c starting near e[start] (within band) and wandering at
+    most band bits; e's ends free. -> (ops [(kind, i in c, j in e)], cost); kind '=' same,
+    'x' wrong, 'd' a bit of e that c dropped, 'a' a bit c added, '+' past e's end"""
+    n, w, big = len(c), 2 * band + 1, 1 << 14
+    e = np.asarray(e, np.int16)
+    D = np.empty((n + 1, w), np.int32)
+    D[0] = 0
+    ks = np.arange(w)
+    for i in range(1, n + 1):
+        j = start + i + ks - band                       # e index + 1 of cell k
+        ok = (j >= 1) & (j <= len(e))
+        sub = np.where(ok, e[np.clip(j - 1, 0, len(e) - 1)] != c[i - 1], big)
+        row = D[i - 1] + sub
+        row[:-1] = np.minimum(row[:-1], D[i - 1][1:] + 1)
+        row = np.minimum.accumulate(row - ks) + ks       # drops: from k - 1 in the same row
+        D[i] = np.minimum(row, big)
+    # c's end free too (bits after the transmission): the cheapest cell where e is used up
+    ends = [(int(D[n][k]), -n, k) for k in range(w)]
+    for i in range(n):
+        k = len(e) - start - i + band
+        if 0 <= k < w:
+            ends.append((int(D[i][k]), -i, k))
+    cost, i, k = min(ends)
+    i, ops = -i, [("+", q, None) for q in range(n - 1, -i - 1, -1)]
+    while i > 0:
+        j = start + i + k - band
+        sub = int(not (1 <= j <= len(e)) or e[j - 1] != c[i - 1]) * (1 if 1 <= j <= len(e) else big)
+        if 1 <= j <= len(e) and D[i][k] == D[i - 1][k] + sub:
+            ops.append(("x" if sub else "=", i - 1, j - 1))
+            i -= 1
+        elif k + 1 < w and D[i][k] == D[i - 1][k + 1] + 1:
+            ops.append(("a", i - 1, j - 1))
+            i, k = i - 1, k + 1
+        else:
+            ops.append(("d", i - 1, j - 1))
+            k -= 1
+    return ops[::-1], cost
+
+
+def codewords_after_sync(bits):
+    """what the module would read from these bits without help: (sync at, inverted, right, put
+    right, past help) for the codewords of the first batch"""
+    sr = 0
+    for i, b in enumerate(bits):
+        sr = (sr << 1 | int(b)) & 0xFFFFFFFF
+        for inv in (0, 1):
+            if i >= 31 and bin(sr ^ SYNC ^ (0xFFFFFFFF if inv else 0)).count("1") <= 2:
+                ok = fx = bad = 0
+                for k in range(16):
+                    p = i + 1 + 32 * k
+                    if p + 32 > len(bits):
+                        break
+                    cw = 0
+                    for b2 in bits[p:p + 32]:
+                        cw = cw << 1 | (int(b2) ^ inv)
+                    _, e = fix(cw)
+                    ok, fx, bad = ok + (e == 0), fx + (e > 0), bad + (e < 0)
+                return i - 31, inv, ok, fx, bad
+    return None
+
+
+def lay_against_bench(bits, baud, rounds=80):
+    """the bench transmission these bits came from: (round, inverted, ops) or None"""
+    if len(bits) < 160:
+        return None
+    ref = transmission_bits(bench_messages(1, baud))
+    best = None
+    for inv in (0, 1):
+        e = ref ^ inv
+        for off in range(PREAMBLE - 200, PREAMBLE + 64):
+            score = int(np.sum(e[off:off + 160] == bits[:160]))
+            if best is None or score > best[0]:
+                best = (score, inv, off)
+    _, inv, off = best
+    # the round: the first message ('AG7EW TEST <round> <baud>') is in the first batch
+    head = bits[:900]
+    cand = [(align(head, transmission_bits(bench_messages(r, baud)) ^ inv, off, 48)[1], r)
+            for r in range(1, rounds + 1)]
+    r = min(cand)[1]
+    ops, _ = align(bits, transmission_bits(bench_messages(r, baud)) ^ inv, off)
+    return r, inv, ops
+
+
+def dump_report(lines, rounds=80):
+    out = []
+    for cap in dump_captures(lines):
+        m = int(cap.get("m", 1))
+        chip = int(cap.get("b", "0"), 16) / 10.32444
+        baud = min(BAUDS, key=lambda b: abs(b - chip / m))
+        words = cap["words"]
+        gaps = sum(w is None for w in words)
+        raw = word_bits(words)
+        head = (f"c{cap['n']} s={cap.get('s')} {baud} baud, chip {chip:.0f}"
+                f"{' (sampler, %d a bit)' % m if m > 1 else ''} r=-{cap.get('r', '?').lstrip('-')}: "
+                f"{len(words) - gaps} words, gaps {gaps}, two alike {cap.get('q', '?')}")
+        u, nw = int(cap.get("u", 0)), int(cap.get("w", 0))
+        if u > 0 and not gaps:
+            head += f", about {16 * (nw + DUMP_LAG - 1) * 1000 / u / m:.0f} bits/s by time"
+        out.append(head)
+        bits = raw
+        if m > 1:
+            bits, g, off = slice_samples(raw, m)
+            out.append(f"  samples a bit {g:.2f}, runs a quarter bit or more off {100 * off:.1f}%, "
+                       f"{len(bits)} bits")
+        lay = lay_against_bench(bits, baud, rounds)
+        if lay is None:
+            out.append("  too short to lay against the bench's bits")
+            continue
+        r, inv, ops = lay
+        cnt = {k: sum(1 for o in ops if o[0] == k) for k in "=xda+"}
+        slips = [i for kind, i, _ in ops if kind in "da"]
+        wrong = [i for kind, i, _ in ops if kind == "x"]
+        j0 = next(j for k, _, j in ops if j is not None)
+        out.append(f"  round {r}{' inverted' if inv else ''}: {len(bits)} bits from bit {j0}: "
+                   f"wrong {cnt['x']}, dropped {cnt['d']}, added {cnt['a']}"
+                   f"{', past the end %d' % cnt['+'] if cnt['+'] else ''}")
+        if slips:
+            out.append("  slips at " + " ".join(f"{k}{i}" for k, i, _ in ops if k in "da")[:200])
+        if wrong:
+            out.append("  wrong at " + " ".join(map(str, wrong))[:200])
+        cw = codewords_after_sync(bits)
+        if cw:
+            out.append(f"  sync codeword at bit {cw[0]}{' inverted' if cw[1] else ''}; first batch: "
+                       f"right {cw[2]}, put right {cw[3]}, past help {cw[4]}")
+        else:
+            out.append("  no sync codeword")
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -366,6 +556,9 @@ def main(argv=None):
     q.add_argument("--show-text", action="store_true")
     q = sub.add_parser("decode")
     q.add_argument("bits")
+    q = sub.add_parser("dump")
+    q.add_argument("log")
+    q.add_argument("--rounds", type=int, default=80)
     a = ap.parse_args(argv)
     if a.cmd == "wav":
         y, times = bench_wav(a.rounds, tuple(int(b) for b in a.bauds.split(",")), level=a.level, gap=a.gap)
@@ -373,6 +566,9 @@ def main(argv=None):
         print(f"{a.out}: {len(y) / FS:.1f} s, {len(times)} transmissions")
         for t0, t1, r, baud, inv in times[:6]:
             print(f"  {t0:7.2f}-{t1:7.2f} s  round {r} {baud} baud{' inverted' if inv else ''}")
+    elif a.cmd == "dump":
+        with open(a.log, errors="replace") as f:
+            print("\n".join(dump_report(f, a.rounds)))
     elif a.cmd == "report":
         with open(a.log, errors="replace") as f:
             print("\n".join(report(f, a.show_text)))

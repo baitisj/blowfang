@@ -117,6 +117,42 @@ smaller.
 The model can't say how the real receiver takes a 512 or 2400 baud line, which way up the
 IC-7100 sends it, or what the 7100's audio filters do to an NRZ line. Only the bench can.
 
+## Bench run 1 and the probe `pocdump`
+
+Run 1 (2026-11-11 08:21-08:27Z, `pocsag_440` at 1b5a174, RSSI -23 dBm) read **512 baud
+perfectly** with the AF de-emphasis off (setting 2) and with REG_58 00E5 (setting 5): 9 of 9
+transmissions exact. With the AF path as found (setting 0) 5 of 16, so the de-emphasis hurts an
+NRZ line. At 1200 baud the chip found the sync codewords, in both direct settings too (so it may
+take either sense), but the codewords were mostly wrong and the FIFO read empty 27 to 92 times a
+transmission: the chip made words more slowly than one every 16 bits. At 2400 it never started.
+
+`pocdump` (2.3 KB) records what the chip hands over at 1200 and 2400 baud, two ways: the
+receiver at the line's own baud, and the receiver at 4800 baud as a sampler of the line (four
+samples a bit of 1200, two of 2400), the way `aprsdfsk` reads Bell 202. If the samples are clean,
+the bits can be had in the MCU without the chip's clock. Six settings of 40 s, all with the
+de-emphasis off but the last:
+
+| setting | REG_58 | REG_72 | sync | what |
+| --- | --- | --- | --- | --- |
+| 0 | 00E9 | 1200 | `AAAA` | the chip's own clock at 1200 |
+| 1 | 00E9 | 4800 | `F0F0` | 1200 sampled four times a bit |
+| 2 | 00E9 | 2400 | `AAAA` | the chip's own clock at 2400 |
+| 3 | 00E9 | 4800 | `CCCC` | 2400 sampled twice a bit |
+| 4 | 00E5 | 1200 | `AAAA` | RX bandwidth bits 2 |
+| 5 | 00E9 | 4800 | `F0F0` | as 1, de-emphasis on |
+
+It skips the preamble's words and says the next 150 (`c` and `d` lines). On the host,
+`python3 -m modem.pocsag dump LOG` slices the samples back to bits, finds the round each capture
+came from and lays the bits against what was sent: bits wrong, dropped and added and where, and
+how many codewords of the first batch the module would read. On the emulator every capture lays
+with nothing wrong.
+
+```sh
+python3 -m modem.pocsag wav poc12.wav --bauds 1200,2400 --rounds 60   # 279 s
+python3 tools/k6_bench.py send poc12.wav --max-s 290                  # right after the pocdump upload
+python3 -m modem.pocsag dump LOG
+```
+
 ## NOAA SAME: the probe `samecap`
 
 SAME (the weather radio's alert headers) is AFSK, not direct FSK: mark 2083.3 Hz, space 1562.5 Hz,
@@ -131,6 +167,8 @@ in four settings of 40 s: 00E5 and 00E9, each sync word. It says each capture's 
 - Bench: `python3 -m modem.same wav same.wav` (33 rounds, 161 s) sent right after the
   `samecap` upload. The bursts have SAME's format but no EAS header (no ZCZC, no event code).
   Their text is `AG7EW SAME FORMAT TEST <n>`.
+- Bench (2026-11-11 08:31Z): no captures in any of the four settings. The plain receiver at
+  REG_72 5377 never finds D5D5 or 2A2A in SAME's tones, so it can't read SAME this way.
 - Live: `samecap_nwr` listens to 162.550 MHz (KHB60 Seattle) for an hour with the datasheet's
   setting. It says only captures that go on like a preamble, because noise gives D5D5 every couple
   of minutes. The weekly test is on Wednesdays around midday Pacific.
