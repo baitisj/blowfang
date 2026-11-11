@@ -185,7 +185,22 @@
    and gives long runs that follow nothing of the tone bits, alike with every AF source and
    either AGC; the zero IF in the same run is as before. The tone receiver is fed by the FM
    discriminator too. Parked.
-   A capture of these ends when the FIFO is empty (the words of eight reads before come
+   DFSK_DMR (dfskcap_dmr.c, with DFSK_NARROW for the AFC bit and DFSK_ROUNDS): the plain
+   receiver on the local DMR repeater, 440.925 MHz. DMR is 4FSK at 4800 symbols a second, and
+   the plain receiver gives the sign of the discriminator at 4800 baud: the first bit of each
+   dibit. The sync words have outer symbols only, so their signs are a fixed 24 bits, and the
+   last sixteen of them are the chip's sync word here. Does the chip find DMR's sync by
+   itself, at its FM receiver's sensitivity (the IF tap's detector needs about -79 dBm)? A
+   capture is 128 bytes, seven bursts on, so the next syncs show in it every 144 bits (python3
+   -m modem.dmrsign LOG). Eight settings of 0.8 s, round and round (a key-up of the
+   repeater's is some 7 s):
+      0, 1   sync 9b4d, 64b2 (the pattern either way up: the discriminator's sense is not
+             known, and a data sync one way up is a voice sync the other), narrow, the AFC
+             off, REG_2B + 0700 (de-emphasis and both AF filters off)
+      2, 3   the same with the AF filters as found
+      4, 5   as 0, 1 in the wide filter
+      6, 7   as 0, 1 with the AFC on
+   A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
@@ -428,6 +443,21 @@ static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 0},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 2, 0},
 };
+#elif defined(DFSK_DMR)
+/* DMR's sync words are outer symbols only, so their signs are a fixed pattern (BS data sync
+   DFF57D75DF5D: 439B4D with + as 1; the voice sync is its inverse). The last sixteen as the
+   sync word, either way up; 128 bytes (seven bursts on) a capture; 4800 baud */
+#define DV(sync, af, fe) {0x00E9, 0xC195, sync, 0x7F00, af, 100, FE_S, 0, fe, 0}
+static const var_t V[NV] = {
+    DV(0x9B4D, 0x0700, 2),
+    DV(0x64B2, 0x0700, 2),
+    DV(0x9B4D, 0, 2),
+    DV(0x64B2, 0, 2),
+    DV(0x9B4D, 0x0700, 3),
+    DV(0x64B2, 0x0700, 3),
+    DV(0x9B4D, 0x0700, 0),
+    DV(0x64B2, 0x0700, 0),
+};
 #elif defined(DFSK_NARROW)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -3, 2, 0},
@@ -619,6 +649,9 @@ int k6_main(const k6_api_t *api) {
   int32_t acc = 0;
   uint16_t saved[sizeof(SAVED)];
   int cur = 0, in = 0, key = 0;
+#ifdef DFSK_ROUNDS
+  uint32_t round = 0;
+#endif
   char ln[64], *p;
   const var_t *v = &V[0];
   if (api->level < 2) return -3;
@@ -704,7 +737,12 @@ int k6_main(const k6_api_t *api) {
       *p = 0;
       api->say(ln);
       total += ncap, ncap = nw = 0;
+#ifdef DFSK_ROUNDS
+      if (++cur == NV && ++round < DFSK_ROUNDS) cur = 0; /* the settings again, for a signal that comes and goes */
+      if (cur == NV) break;
+#else
       if (++cur == NV) break;
+#endif
       v = &V[cur];
       prev = BEGIN(cur);
       t0 = api->ms(), acc = 0, tlast = api->ticks() & 0xFFFF;

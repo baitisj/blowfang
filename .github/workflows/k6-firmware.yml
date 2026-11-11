@@ -100,6 +100,7 @@ jobs:
             tests/test_k6_cwkey.py \
             tests/test_k6_dmr.py \
             tests/test_k6_dmrdec.py \
+            tests/test_k6_dmrsign.py \
             tests/test_k6_explore.py \
             tests/test_k6_ft8.py \
             tests/test_k6_ft8tx.py \

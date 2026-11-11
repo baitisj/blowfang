@@ -444,6 +444,48 @@ So dmrdet now does both:
 To rerun a capture: cable in, `tools/k6_upload.py mod-dmrcap.bin --api-level 2 --run-s 620`
 while 440.925 is busy, with the IC-7100 recording alongside for ground truth.
 
+## Sync by the chip's own FSK receiver (`dfskcap_dmr`, probe built 2026-11-11)
+
+The detector above reads the IF tap, whose own noise sets its limit at about -79 dBm
+(`docs/k6-ais.md`, `docs/k6-aprs-clock.md`); the repeater on 440.925 MHz comes in at -85 to
+-90 dBm. The chip's own FM receiver has its floor at -117 to -123 dBm on 70 cm. What was said
+above of the chip's modem ("2400 baud, binary only") is half out of date: its plain FSK
+receiver runs to 6348 baud, and what it gives is the sign of the discriminator's output on a
+clock that follows the zero crossings (the APRS and ACARS work, `docs/k6-acars.md`). It is
+still binary. But:
+
+- At 4800 baud that sign is the first bit of each dibit (01 and 00 are +3 and +1, 10 and 11
+  are -1 and -3).
+- A sync word has outer symbols only, so its signs are a fixed 24 bits: the BS data sync
+  DFF57D75DF5D is **439B4D** with + as 1, and the voice sync is its inverse. The receiver
+  takes a sync word of two or four bytes and needs no preamble before it (it starts on 3333
+  in APRS flags).
+
+So the chip may find DMR's sync by itself, at its FM receiver's sensitivity: a detector with
+no DMA, no correlator and no CPU load, 30 dB better than the tap's. `dfskcap_dmr` asks
+whether it does (receive only; `python3 -m modem.dmrsign LOG` reads its log). The sync word is
+the last sixteen signs, 9B4D, or 64B2 for the other sense of the discriminator (which is not
+known; a data sync one way up is a voice sync the other). A capture is 128 bytes: the signs
+of the 1024 symbols after the sync, so the sync fields of the next seven bursts are its bits
+120 to 143, 264 to 287 and so on. A capture that shows them is DMR beyond doubt, and the
+signs right in them say how well the slicer and the clock hold on 4FSK.
+
+| Setting | Sync | Filter | AFC | REG_2B |
+| --- | --- | --- | --- | --- |
+| 0, 1 | 9B4D, 64B2 | narrow | off | + 0700 (de-emphasis and both AF filters off) |
+| 2, 3 | 9B4D, 64B2 | narrow | off | as found |
+| 4, 5 | 9B4D, 64B2 | wide | off | + 0700 |
+| 6, 7 | 9B4D, 64B2 | narrow | on | + 0700 |
+
+Eight settings of 0.8 s, 110 times round (12 minutes: a key-up of the repeater's is some
+7 s, so each one meets every setting). The emulated test (`tests/test_k6_dmrsign.py`) checks
+the module and the report on a stream of signs; whether the real slicer follows 4FSK is the
+bench's question.
+
+What it cannot give: the second bit of each dibit. A decoder would still need the tap, or a
+slicer leaned to one side (REG_58's bits 7:6), which is not tried here. A detector, the
+EXPLORE mark and the mute need only the sync.
+
 ## Bench plan (receive only; done, kept for reruns)
 
 1. Real DMR first: the explorer thread's hamlet recorder rotates through 440.925 and is cutting
