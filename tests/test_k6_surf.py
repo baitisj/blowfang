@@ -121,7 +121,7 @@ def go(signals, keys, rx_hz=440_600_000, level=7, regs=None, src=SRC, bumps=(), 
     r = {**START, **AURA, 0x67: m.rssi, 0x47: 0x6040, **(regs or {})}
     ret, said, regs, writes = run(r, code=(code, entry), tune=m.tune, level=level, lcd=lcd, keypad=keys,
                                   spare=ARENA - 24 - len(code), count=3_000_000_000, rx_hz=rx_hz,
-                                  flash={"mem": mem})
+                                  flash={"mem": mem}, paint=True)
     lcd["tunes"] = m.tunes
     return ret, said, regs, writes, lcd
 
@@ -132,14 +132,50 @@ def taps(keys, t0, gap=200_000, hold=100_000):
 
 
 AX = 27                         # the axis line's row; its ticks in rows 28 (all) and 29 (major)
+ROWS = 30
 
 
 def lit(frame, r, x):
     return bool(frame["wf"][r][x >> 3] & (0x80 >> (x & 7)))
 
 
+def split(frame):
+    """(the bars' pixels with the carets taken off, {bin: caret tip row}). A remembered peak's
+    caret is XORed over the bars: its tip on both pixels of its bin in row r, its feet on the
+    neighbours' near pixels in row r + 1. The bars fill both pixels of a bin alike, so only feet
+    make a bin's two pixels differ: in a feet row, bin j's differ where c[j - 1] ^ c[j + 1] (c: a
+    caret at that bin), and x 126 (past the last bin) is the last bin's right foot alone, which
+    solves each row's carets exactly"""
+    if "_split" in frame:
+        return frame["_split"]
+    g = [[lit(frame, r, x) for x in range(128)] for r in range(ROWS)]
+    tips = {}
+    for R in range(7, AX):
+        d = [g[R][2 * j] != g[R][2 * j + 1] for j in range(NV)] + [g[R][126]]
+        c = [False] * NV
+        c[NV - 1] = d[NV]
+        for i in range(NV - 3, -1, -2):
+            c[i] = d[i + 1] ^ c[i + 2]
+        c[1] = d[0]
+        for i in range(3, NV, 2):
+            c[i] = d[i - 1] ^ c[i - 2]
+        for i in (i for i in range(NV) if c[i]):
+            tips[i] = R - 1
+            for x, r in ((2 * i, R - 1), (2 * i + 1, R - 1), (2 * i - 1, R), (2 * i + 2, R)):
+                if 0 <= x < 128:
+                    g[r][x] = not g[r][x]
+    frame["_split"] = (g, tips)
+    return g, tips
+
+
 def height(frame, i):
-    return sum(1 for r in range(6, AX) if lit(frame, r, 2 * i))
+    g = split(frame)[0]
+    return sum(1 for r in range(6, AX) if g[r][2 * i])
+
+
+def carets(frame):
+    """the remembered peaks' carets: {bin: its height in px over the floor (1 .. 19)}"""
+    return {i: AX - 2 - r for i, r in split(frame)[1].items()}
 
 
 def ticks(frame, major=False):
@@ -174,7 +210,9 @@ def test_builds_level_6_and_fits_the_store(src):
     from modem import k6mod
     code, entry = k6mod.build(src)
     assert k6mod.source_level(src) == 6 and entry == 0
-    assert len(code) <= ARENA - 24 - 200           # the arena, with room to grow (bitmap: stack)
+    # the arena, with the remembered peaks (128 x 8 B, the rest of the store) and room to grow
+    # (the bitmap and the state: the stack)
+    assert len(code) <= ARENA - 24 - 8 * 128 - 200
 
 
 def test_lens_scale_steps_grow_outward_and_end_on_the_span():
@@ -193,14 +231,16 @@ def test_lens_scale_steps_grow_outward_and_end_on_the_span():
 
 @need_clang
 def test_bench_build_surfs_by_itself_and_wraps():
-    # 70cm from 440.600: peaks at 440.850 and 441.200, then up the band, wraps to 430.000
+    # 70cm from 440.600: peaks at 440.850 and 441.200, none above (the screen is +-1 MHz), so it
+    # wraps to 430.000 and finds 430.300; then straight back up to 440.850, 10 MHz off the screen
+    # but remembered (its caret still up: Jeff 2026-11-11), and round again
     sig = [(440_850_000, -80, 0, FOREVER), (441_200_000, -95, 0, FOREVER), (430_300_000, -90, 0, FOREVER)]
     ret, said, regs, writes, lcd = go(sig, [], src=AUTO)
     s = sels(said)
     assert s[:2] == ["440.8500", "441.2000"]                 # each with its confirming read
     lv = [ln.split()[2:] for ln in said if ln.startswith("sel ")][:2]
     assert lv[0][0] == "-80" and int(lv[0][1]) < -120 and int(lv[1][0]) > int(lv[1][1]) + 10
-    assert "430.3000" in s and said[-1].startswith("end sw=")
+    assert s[2:6] == ["430.3000", "440.8500", "441.2000", "430.3000"] and said[-1].startswith("end sw=")
     assert lcd["st"]["us"] >= 60_000_000 and regs[0x47] == 0x6040
     # the last bargraph comes back as say lines (under 60 characters), and draws as the screen did
     assert all(len(ln) < 60 for ln in said)
@@ -209,12 +249,9 @@ def test_bench_build_surfs_by_itself_and_wraps():
     last = lcd["frames"][-1]
     same = sum(height(f, i) == height(last, i) for i in range(NV))
     assert same >= NV - 4, same                             # (a last sweep)
-    # it ends near a band edge (the top while hunting, or the bottom after the wrap): the bins past
-    # it say '-' and draw nothing, the rest draw
+    # every bin in the band draws
     cen = float(next(ln for ln in said if ln.startswith("bar ")).split()[1]) * 1e6
-    sc = scale(round(cen))
-    out = [i for i, h in enumerate(sc) if not h]
-    assert out and all(f["heights"][i] == 0 for i in out) and all(f["heights"][i] >= 1 for i, h in enumerate(sc) if h)
+    assert all(f["heights"][i] >= 1 for i, h in enumerate(scale(round(cen))) if h)
 
 
 @need_clang
@@ -271,6 +308,10 @@ def test_side_keys_skip_bumps_a_settled_read_doesnt_confirm():
     hs = {i: height(at(fr, 1_900_000), i) for i in range(NV)}
     assert hs[bin_for(440_700_000, 440_600_000)] > 8                # the bumps do show as bars
     assert hs[bin_for(441_000_000, 440_600_000)] > 8
+    # a settled read never confirmed them: no caret (the station has one)
+    cs = carets(at(fr, 1_900_000))
+    assert bin_for(441_200_000, 440_600_000) in cs
+    assert not {bin_for(440_700_000, 440_600_000), bin_for(441_000_000, 440_600_000)} & set(cs)
     got = sels(said)
     assert got[0] == "441.2000"                              # SIDE1 skips them
     assert got[1] not in ("441.0000", "440.7000")            # SIDE2 too (it hunts on down the band)
@@ -441,15 +482,69 @@ def test_gain_keys_fix_the_gain_and_8_gives_back_the_agc():
 
 
 @need_clang
-def test_side_key_with_no_peak_goes_back_where_it_began():
-    # Jeff 2026-11-10: no peaks found -> back to the previous frequency
-    keys = taps("A", 2_000_000) + [(12_000_000, 12_300_000, "X")]
+def test_side_key_with_no_peak_stays():
+    # no remembered peak that way: "no peak", and the middle never moves
+    keys = taps("A", 2_000_000) + taps("B", 3_000_000) + [(5_000_000, 5_300_000, "X")]
     ret, said, regs, writes, lcd = go([], keys, rx_hz=448_000_000)
     fr = lcd["frames"]
-    assert any(f["text"][1].startswith("449.") or f["text"][1].startswith("450.") for f in fr)
-    msg = [f for f in fr if f["text"][5] == "no peak"]
-    assert msg and msg[0]["text"][1].startswith("448.0000 ")
-    assert fr[-1]["text"][1].startswith("448.0000 ")
+    assert at(fr, 2_300_000)["text"][5] == "no peak" and at(fr, 3_300_000)["text"][5] == "no peak"
+    assert all(f["text"][1].startswith("448.0000 ") for f in fr)
+    assert not any(carets(f) for f in fr)
+
+
+@need_clang
+def test_a_transient_leaves_a_caret_the_side_key_jumps_to():
+    # Jeff 2026-11-11: signals go away when people stop keying; a caret over each peak heard lately
+    # floats up while it is heard and slowly falls; SIDE1 / SIDE2 jump to the carets, not to what
+    # is on the air at the press. 441.200 keys up for 1.5 s; 440.850 is on all the time.
+    sig = [(441_200_000, -90, 1_500_000, 3_000_000), (440_850_000, -80, 0, FOREVER)]
+    keys = taps("AM", 6_000_000, gap=600_000) + taps("AM", 7_500_000, gap=600_000) + [(9_000_000, 9_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    fr = lcd["frames"]
+    b12, b85 = bin_for(441_200_000, 440_600_000), bin_for(440_850_000, 440_600_000)
+    # (a sweep of +-1 MHz takes ~0.6 s here, each lifts a caret 8 px; at the start's fall, 1 min
+    # for the whole 19 px, it falls 1 px in ~3 s)
+    before, heard, later = (carets(at(fr, t)) for t in (1_400_000, 3_400_000, 5_700_000))
+    assert b12 not in before and b85 in before
+    assert heard[b12] >= 14                                   # lifted by every sweep it was in
+    assert 0 < later[b12] < heard[b12]                        # falling since it stopped
+    assert later[b85] >= 17                                   # still on the air: kept up
+    # SIDE1 from 440.600: 440.850 (the nearest caret above), then 441.200, quiet for 3 s by then
+    assert sels(said) == ["440.8500", "441.2000"]
+    assert at(fr, 8_000_000)["text"][1].startswith("441.2000 ")
+    assert "RX" not in at(fr, 8_000_000)["text"][1]           # (nothing there now: no audio)
+
+
+@need_clang
+def test_side_keys_hop_between_remembered_peaks_after_they_stop():
+    # two short overs, both gone before the presses: SIDE1 to the one above, SIDE2 past the start
+    # (no caret there) to the one below, SIDE2 again: none further down, SIDE1: the one above
+    sig = [(441_200_000, -90, 500_000, 2_000_000), (440_400_000, -95, 500_000, 2_000_000)]
+    keys = taps("AM", 4_000_000, gap=500_000) + taps("BM", 5_000_000, gap=500_000) \
+        + taps("BM", 6_000_000, gap=500_000) + taps("AM", 7_000_000, gap=500_000) + [(8_000_000, 8_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    assert sels(said) == ["441.2000", "440.4000", "440.4000", "441.2000"]
+    assert at(lcd["frames"], 6_200_000)["text"][5] == "no peak"
+    # the peaks live in the module store's free RAM (128 x 8 B), not on the stack: still under
+    # 2.3 KB of the ~3.1 KB the voice images give a module (2,184 B before the carets)
+    assert lcd["st"]["stack"] <= 2300, lcd["st"]["stack"]
+
+
+@need_clang
+def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
+    # A/B cycles the fall: 1 min (the start), 5 min, 20 min, 15 s. At 15 s a full caret is down in
+    # ~15 s, and then SIDE1 finds nothing
+    sig = [(441_200_000, -90, 500_000, 2_000_000)]
+    keys = taps("WWW", 2_500_000, gap=400_000) + taps("A", 21_000_000) + [(22_000_000, 22_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    fr = lcd["frames"]
+    assert [at(fr, t)["text"][5] for t in (2_700_000, 3_100_000, 3_500_000)] == ["fall 5m", "fall 20m", "fall 15s"]
+    b12 = bin_for(441_200_000, 440_600_000)
+    h = [carets(at(fr, t)).get(b12, 0) for t in (3_600_000, 8_600_000, 13_600_000, 20_000_000)]
+    assert h[0] > h[1] > h[2] > 0 and h[3] == 0, h            # 5 s: 50 x 1/8 px, about 6 px
+    assert 5 <= h[0] - h[1] <= 7
+    assert at(fr, 21_300_000)["text"][5] == "no peak"
+    assert all(f["text"][1].startswith("440.6000 ") for f in fr)
 
 
 @need_clang
