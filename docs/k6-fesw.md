@@ -22,7 +22,8 @@ where it was and the signal sinks towards it, as a far station's does. Two uses:
   that was too much.) Unplugging the antenna tells the amplifier from the antenna and cable;
   that is on Jeff's hands-on list, shelved.
 - **True weak-signal tests with no hands**: the DMR repeater on 440.925 MHz reads -83 to
-  -87 dBm here, so about 30 dB of loss puts it at the edge run L found (about -115 dBm). The
+  -87 dBm here, so some tens of dB of loss put it at the edge run L found (first put at -115 dBm, -122 dBm
+  after this probe's run 1, below). The
   IC-7100's test signals on 440.850 MHz (-21 dBm at RF power 0) come down by the same amount.
 
 What is not known before the first run: how many dB the wrong path and the open switch lose, on
