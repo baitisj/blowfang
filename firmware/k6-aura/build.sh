@@ -377,6 +377,8 @@ pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRF
 pfprobe_hsi    # level 2, pfprobe stage 1: SYSCLK to HSI and back only
 pfprobe_m2     # level 2, pfprobe stage 4: PRFTBE with MEM_MODE back at 2 (main flash), timed there
 pfprobe_pf     # level 2, pfprobe stage 2: also PRFTBE while on HSI
+pocsag         # level 2, POCSAG pager receiver on the chip's plain FSK receiver, DAPNET 439.9875 (text only in 430-450 MHz builds), docs/k6-pocsag.md
+pocsag_440     # level 2, pocsag on 440.850 for the bench: six settings of 45 s (receive only, docs/k6-pocsag.md)
 ramprobe
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)

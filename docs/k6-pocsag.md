@@ -1,0 +1,128 @@
+# POCSAG pagers on the K6
+
+Jeff asked on 2026-11-11 for new receive formats on the K6's RF chip. POCSAG came first: it is
+direct FSK, the one format here that the FD6818's plain FSK receiver was built for.
+
+## The format
+
+POCSAG (ITU-R M.584) keys the carrier itself high or low for each bit, at 512, 1200 or 2400 baud.
+Behind an FM discriminator that is a plain NRZ line. A transmission is a preamble of at least 576
+bits of 1010..., then batches. Each batch is the sync codeword `7CD215D8` and eight frames of two
+codewords. A codeword is 32 bits, top bit first:
+
+| bits | address codeword | message codeword |
+| --- | --- | --- |
+| 31 | 0 | 1 |
+| 30..13 | the top 18 bits of the 21-bit address (RIC) | 20 bits of message |
+| 12..11 | function (0 to 3) | (message) |
+| 10..1 | BCH(31,21) check, generator x^10+x^9+x^8+x^6+x^5+x^3+1 | the same |
+| 0 | even parity | the same |
+
+The low 3 bits of the RIC are the frame its address codeword sits in. The message codewords that
+follow carry 7-bit characters (alphanumeric) or 4-bit digits (numeric), each with its low bit
+first. A message ends at the next address codeword or at the idle codeword `7A89C197`.
+
+Where to listen: DAPNET, the amateur paging network, sends 1200 baud on 439.9875 MHz. Commercial
+and hospital paging sits around 152-159 MHz. **Only the amateur band gets text.** In the US
+(ECPA) a page's text is protected. So the module says addresses and text only when it is built
+for 430-450 MHz. Any other build says counts only (transmissions, sync codewords, codewords right,
+put right and past help), and the code that would print text isn't compiled into it.
+
+## The module: `c/k6/mod/pocsag.c`
+
+Level 2, receive only, about 3.7 KB. Builds:
+
+| build | frequency | what it does |
+| --- | --- | --- |
+| `pocsag` | 439.9875 MHz (DAPNET) | one setting, 15 minutes, text on |
+| `pocsag_440` | 440.850 MHz (the bench) | six settings of 45 s after a 32 s wait (the bench's questions, below) |
+
+How it works:
+
+- **Hunt.** The chip's sync word is `AAAA`, sixteen bits of the preamble. The module tries 1200,
+  2400 and 512 baud in turn (45, 30 and 90 ms each), so the chip starts inside a preamble at
+  whatever baud is on the air. The preamble's words then go by, and the module finds the sync
+  codeword in the bits itself: at any bit offset, either way up, with up to two wrong bits. A
+  capture whose words stop looking like a preamble (four words in a row) before a sync codeword
+  turns up is a false start. It is counted (`z=`) and nothing is said.
+- **Direct.** In the bench's settings 3 and 4 the chip's sync word is the sync codeword itself,
+  four bytes, at 1200 baud: one way up, then the other. Does the chip start on it, and does it
+  also take it upside down by itself?
+- **Reading the FIFO.** The FIFO holds eight words and is read by time, a word every 16 bits, two
+  words behind the chip. An empty FIFO gives the word from eight reads before
+  (docs/k6-aprs-clock.md). So a word equal to that one is read again. If the second read is the
+  same, the FIFO was empty and the time base starts over. Otherwise both are real words. Inside
+  a preamble every word is the same, so reads go by time alone until the first sync codeword.
+- **Decoding.** BCH and parity put up to two wrong bits right in each codeword. The module works
+  out the 31 single-bit syndromes at the start and tries their pairs, so it needs no table in
+  flash. After 16 codewords the next 32 bits must be the sync codeword again, with up to four
+  wrong bits. If it is missing after a clean batch, the transmission is over. If it is missing
+  after a noisy batch, the module keeps hunting for up to 1,100 bits.
+- **Long transmissions.** The chip's packet is 512, 1024 or 2048 bytes (about 7-8 s at 512, 1200
+  or 2400 baud). If a packet ends inside a transmission, the chip's sync word becomes the sync
+  codeword's last two bytes (`15D8`, or `EA27` upside down), and the next batch continues the
+  same transmission. The message cut at the gap gets `e16` or more.
+- **Lines** come after the transmission, never during it, because a line costs milliseconds of
+  listening:
+
+```
+pocsag start hz=440850000 n=6 text=1
+s 0 t=32000 cfg=00e9 a=0000 h=1        a setting: REG_58, REG_2B bits set, 1 hunt / 2, 3 direct
+p 3 s=0 b=1200 t=40012 w=180 i=0 e=0 r=-41
+                                       a transmission: setting, baud, ms at its first word,
+                                       words read, upside down, empty reads, RSSI peak
+k 3 q=4 ok=60 f=3 x=1 c=1 m=3          sync codewords, codewords right / put right / past help,
+                                       chip packets, messages
+m 1234 3 e0 AG7EW TEST 1 1200          address, function, codewords lost, text (430-450 MHz only)
++ ...                                  more of a long message
+v 0 n=12 m=30 z=4                      a setting's end: transmissions, messages, false starts
+pocsag end n=12 m=30 z=4
+```
+
+## The bench test
+
+```sh
+python3 -m modem.pocsag wav poc.wav --rounds 26     # 276 s: every round 512, 1200, 2400 baud
+python3 tools/k6_bench.py send poc.wav --max-s 290  # right after the pocsag_440 upload
+python3 -m modem.pocsag report LOG                  # per setting and baud
+```
+
+Each round sends three messages at each baud: `AG7EW TEST <round> <baud>` (RIC 1234,
+alphanumeric), `<round>-<baud>` (RIC 2005, numeric), and a 75-character message that runs across
+three batches (RIC 4711). Every second round is sent upside down. The report rebuilds the
+messages from the round and the baud, so no key file is needed.
+
+The six settings ask:
+
+| setting | REG_58 | REG_2B | start | question |
+| --- | --- | --- | --- | --- |
+| 0 | 00E9 | as found | hunt | does the plain receiver take POCSAG at all, and at which bauds? |
+| 1 | 00E9 | + 0700 | hunt | do the AF path's de-emphasis, 300 Hz high-pass and 3 kHz low-pass hurt an NRZ line? |
+| 2 | 00E9 | + 0100 | hunt | de-emphasis off alone |
+| 3 | 00E9 | as found | direct `7CD215D8` | does the chip start on the sync codeword? |
+| 4 | 00E9 | as found | direct `832DEA27` | and the other way up, or does it take either by itself? |
+| 5 | 00E5 | as found | hunt | the RX bandwidth bits at 2 (00E9 has 4) |
+
+## Tested on the emulator
+
+`tests/test_k6_pocsag.py` runs `pocsag_440` on the emulated M0 against a model of the plain FSK
+receiver at the line's own baud. The model's clock is locked to the data, it finds the sync word
+at any bit, it puts 16 bits in each FIFO word, and an empty FIFO's read gives the word from eight
+before. The test sends 25 rounds at all three bauds, every second round upside down, some rounds
+0.3% fast or slow, with one bit in 2,000 wrong. In the hunting settings every transmission's
+three messages come out exact. In the direct settings only the 1200 baud ones whose sense matches
+the sync word come out. Another test checks that a 157.45 MHz build says counts only and is
+smaller.
+
+The model can't say how the real receiver takes a 512 or 2400 baud line, which way up the
+IC-7100 sends it, or what the 7100's audio filters do to an NRZ line. Only the bench can.
+
+## Next
+
+- Bench run on 440.850 with `pocsag_440` (receive only).
+- If it reads: listen on DAPNET 439.9875 with `pocsag`. DAPNET's time messages could become a
+  third time source after AIS and APRS. It may not be in range at hamlet.
+- A counts-only census of the VHF paging channels: does the chip's FM sensitivity beat the IF
+  tap there?
+- MDC1200 (the 33xx tone receiver's own 1200/1800 Hz format) and NOAA SAME (REG_58 bandwidth bits
+  010 by the datasheet) follow.
