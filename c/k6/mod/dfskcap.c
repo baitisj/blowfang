@@ -208,6 +208,12 @@
    sign) in the wide filter (0, 1) and the narrow (2, 3), 9B4D in the wide with REG_58's bits
    7:6 = 10 (4) and with the AF filters as found (5), 9B4D and CD4D in the wide with the AFC
    on (6, 7).
+   Run K (2026-11-11, 43 of its 60 minutes): five key-ups at -83 to -87 dBm, all caught, in
+   every setting, mostly within 85 ms of a slot's start; 72% of the sync fields read, about
+   as many short as whole; none in 236 captures of noise. No setting stands out. DFSK_DMR3
+   (dfskcap_dmr3.c, with DFSK_GAIN and DFSK_CAPMAX) asks how weak the signal may be: one
+   setting, the receiver's gain fixed and stepped down from the front, a capture cut at 96
+   words so that a key-up of 7 s meets every step.
    A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
@@ -308,6 +314,11 @@ static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 
 static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73, 0x3D};
 #define SAVED_47 10
 #define SAVED_3D 12
+#elif defined(DFSK_NARROW) && defined(DFSK_GAIN)
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73, 0x13,
+                                0x7E};
+#define SAVED_47 10
+#define SAVED_7E 13
 #elif defined(DFSK_NARROW)
 static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73};
 #define SAVED_47 10
@@ -456,7 +467,34 @@ static const var_t V[NV] = {
    DFF57D75DF5D: 439B4D with + as 1; the voice sync is its inverse). The last sixteen as the
    sync word, either way up; 128 bytes (seven bursts on) a capture; 4800 baud */
 #define DV(cfg, sync, af, fe) {cfg, 0xC195, sync, 0x7F00, af, 100, FE_S, 0, fe, 0}
-#ifdef DFSK_DMR2
+#ifdef DFSK_DMR3
+/* runs J and K: every setting starts on the repeater at -81 to -87 dBm. How weak may it be?
+   One setting (9B4D, the narrow filter, the AFC off) with the receiver's gain fixed (DFSK_GAIN),
+   stepped down from the front: against the noise of the stages behind, a strong signal is
+   then a weak one, and each slot's p= and f= say how far over the floor it stood */
+static const var_t V[NV] = {
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+};
+/* REG_13 (LNA short [9:8], LNA [7:5], mixer [4:3], PGA [2:0]): about 0, -14, -24, -35, -40,
+   -43, -51 and -60 dB by egzumer's table of the steps */
+static const uint16_t G13[NV] = {
+    0x03FFu,
+    0x035Fu,
+    0x031Fu,
+    0x021Fu,
+    0x011Fu,
+    0x001Fu,
+    0x0007u,
+    0x0004u,
+};
+#elif defined(DFSK_DMR2)
 /* run J's one key-up came in setting 4 of the table below (9B4D, the wide filter): of its 15
    sync fields 5 came whole and 8 with sign 16 dropped (the chip's clock), which the sync word
    9B4D does not match and CD4D, the last sixteen of the 23 that are left, does */
@@ -601,6 +639,9 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, const uint16_t 
 #elif defined(DFSK_ZIF)
 #define BEGIN(c) begin(api, c, af, saved[SAVED_3D])
 static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, uint32_t if0) {
+#elif defined(DFSK_GAIN)
+#define BEGIN(c) begin(api, c, af, saved[SAVED_7E])
+static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, uint32_t r7e) {
 #else
 #define BEGIN(c) begin(api, c, af)
 static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
@@ -634,6 +675,11 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
     again = 1;
   }
 #endif
+#ifdef DFSK_GAIN
+  /* the receiver's gain fixed at this setting's REG_13 (REG_7E bit 15 with index 3, as surf.c) */
+  api->fd_write(0x13, G13[cur]);
+  api->fd_write(0x7E, (uint16_t)((r7e & 0x0FFFu) | 0xB000u));
+#endif
   api->fd_write(0x47, (uint16_t)(v->src ? ((af >> 16) & 0xF0FF) | (uint32_t)v->src << 8 : af >> 16));
 #ifdef DFSK_AMAGC
   /* the firmwares' AM mode has its own AGC, so that the envelope is not flattened: REG_49's
@@ -653,6 +699,9 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
   p = hexn(put(p, " a="), v->af >> 8, 1);
 #else
   p = kx(p, " l=", v->len);
+#endif
+#ifdef DFSK_GAIN
+  p = kx(p, " g=", G13[cur]);
 #endif
 #ifdef DFSK_ZIF
   p = kx(p, " if=", api->fd_read(0x3D));
@@ -802,6 +851,9 @@ int k6_main(const k6_api_t *api) {
       got++;
       if (same >= STALE) got -= STALE, over = 1;
       else if (got >= CAPW) over = 1;
+#ifdef DFSK_CAPMAX
+      else if (got >= DFSK_CAPMAX) over = 1; /* a short capture, so that a key-up meets more settings */
+#endif
 #ifdef DFSK_TONE
       /* the tone receiver's words need not stand still in silence, so the FIFO is empty
          when the last words are those of eight reads before again (which is what an empty

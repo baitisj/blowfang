@@ -72,27 +72,35 @@ def find_syncs(bits):
     return sorted(out)
 
 
+CARRIER = 10                 # dB over a setting's floor for a slot to count as having a carrier
+
+
 def report(lines):
     """dfskcap_dmr's say lines (as in the serial log) -> a line for every capture with a sync
     field in it (where they are, s marking the short ones), and a line a setting: slots,
-    captures, those with a sync inside, the syncs whole and short, the RSSI of those captures
-    and the slots' peaks"""
+    captures, those with a sync inside, the syncs whole and short, the RSSI of those captures,
+    the slots' peaks, the floor (the median of the slots' lowest readings), and of the slots
+    with a carrier (a peak CARRIER dB over the floor) how many had a sync, with their peaks:
+    what the chip found of what there was. A carrier need not be DMR (the repeater's analog
+    ID, the bench's ID keeper next door in the wide filter)"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
-    sets, caps, cur, slots, peak = {}, [], None, {}, {}
+    sets, caps, cur, slots, pending = {}, [], None, [], []
     for ln in said:
         f = ln.split()
         if ln[:2] == "s " and len(f) > 2 and f[1].isdigit():
             sets[int(f[1])] = dict(x.split("=", 1) for x in f[2:] if "=" in x)
         elif ln[:1] == "v" and f and f[0][1:].isdigit():
-            fe, kv = int(f[0][1:]), dict(x.split("=", 1) for x in f[1:] if "=" in x)
-            slots[fe] = slots.get(fe, 0) + 1
-            if "p" in kv:
-                peak.setdefault(fe, []).append(int(kv["p"]))
+            kv = dict(x.split("=", 1) for x in f[1:] if "=" in x)
+            slots.append({"fe": int(f[0][1:]), "p": int(kv["p"]) if "p" in kv else None,
+                          "f": int(kv["f"]) if "f" in kv else None, "caps": pending})
+            pending = []
         elif ln[:1] == "c" and len(f) > 3 and f[0][1:].isdigit() and f[1].isdigit():
             kv = dict(x.split("=", 1) for x in f[2:] if "=" in x)
-            cur = {"fe": int(f[0][1:]), "n": int(f[1]), "t": int(kv.get("t", 0)), "r": int(kv.get("r", 0)), "w": []}
+            cur = {"fe": int(f[0][1:]), "n": int(f[1]), "t": int(kv.get("t", 0)), "r": int(kv.get("r", 0)), "w": [],
+                   "sy": []}
             caps.append(cur)
+            pending.append(cur)
         elif ln[:1] == "d" and len(f) == 4 and f[0][1:].isdigit() and cur is not None:
             if int(f[0][1:]) == cur["fe"] and int(f[1]) == cur["n"] and int(f[2], 16) == len(cur["w"]):
                 cur["w"].extend(int(f[3][i:i + 4], 16) for i in range(0, len(f[3]) - 3, 4))
@@ -104,7 +112,7 @@ def report(lines):
             continue
         bits = np.array([int(ch) for w in c["w"] for ch in f"{w:016b}"], np.int8)
         t["bits"] += len(bits)
-        a = find_syncs(bits)
+        a = c["sy"] = find_syncs(bits)
         if a:
             t["ok"] += 1
             t["whole"] += sum(k == "whole" for _, _, k in a)
@@ -114,13 +122,28 @@ def report(lines):
                        + " ".join(f"{i}{'' if w == '+' else '-'}{'s' if k == 'short' else ''}" for i, w, k in a))
     for fe in sorted(sets):
         t = tally.get(fe, {"caps": 0, "ok": 0, "whole": 0, "short": 0, "bits": 0, "r": []})
-        s = sets[fe]
-        ln = (f"dmr{fe} sy={s.get('sy', '?')} cfg={s.get('cfg', '?')}: {slots.get(fe, 0)} slots, {t['caps']} captures "
-              f"({t['bits']} signs), {t['ok']} with a sync inside; syncs {t['whole']} whole, {t['short']} short")
+        s, mine = sets[fe], [x for x in slots if x["fe"] == fe]
+        ln = f"dmr{fe} sy={s.get('sy', '?')} cfg={s.get('cfg', '?')}"
+        if "g" in s:
+            ln += f" g={s['g']}"
+        ln += (f": {len(mine)} slots, {t['caps']} captures ({t['bits']} signs), {t['ok']} with a sync inside; "
+               f"syncs {t['whole']} whole, {t['short']} short")
         if t["ok"]:
             ln += f"; RSSI {min(t['r'])} to {max(t['r'])}"
-        if peak.get(fe):
-            ln += f"; slot peaks {min(peak[fe])} to {max(peak[fe])}"
+        peak = [x["p"] for x in mine if x["p"] is not None]
+        if peak:
+            ln += f"; slot peaks {min(peak)} to {max(peak)}"
+        low = [x["f"] for x in mine if x["f"] is not None]
+        if low:
+            floor = int(np.median(low))
+            car = [x for x in mine if x["p"] is not None and x["p"] >= floor + CARRIER]
+            hit = [x for x in car if any(c["sy"] for c in x["caps"])]
+            miss = [x for x in car if not any(c["sy"] for c in x["caps"])]
+            ln += f"; floor {floor}; carrier in {len(car)} slots, a sync in {len(hit)}"
+            if hit:
+                ln += f" (peaks {min(x['p'] for x in hit)} to {max(x['p'] for x in hit)})"
+            if miss:
+                ln += f", none in {len(miss)} (peaks {min(x['p'] for x in miss)} to {max(x['p'] for x in miss)})"
         out.append(ln)
     return out
 

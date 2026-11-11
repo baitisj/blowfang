@@ -34,6 +34,9 @@ DMR2 = [("9b4d", 0x0700, 1, 1, "00e9"),
         ("9b4d", 0, 1, 1, "00e9"),
         ("9b4d", 0x0700, 1, 0, "00e9"),
         ("cd4d", 0x0700, 1, 0, "00e9")]
+# run L: one setting, the receiver's gain (REG_13) stepped down
+G13 = ["03ff", "035f", "031f", "021f", "011f", "001f", "0007", "0004"]
+DMR3 = [("9b4d", 0x0700, 0, 1, "00e9", g) for g in G13]
 
 
 def test_sync_signs():
@@ -84,7 +87,13 @@ def test_run_j_capture():
     assert rep == ["c4 t=539697 r=-81: 13 syncs in 2224 signs, at 109 242s 376s 506 638s 787s 1215s 1363s 1510 "
                    "1641 1793s 1941s 2071",
                    "dmr4 sy=9b4d cfg=00e9: 1 slots, 1 captures (2224 signs), 1 with a sync inside; "
-                   "syncs 5 whole, 8 short; RSSI -81 to -81; slot peaks -81 to -81"], rep
+                   "syncs 5 whole, 8 short; RSSI -81 to -81; slot peaks -81 to -81; floor -130; "
+                   "carrier in 1 slots, a sync in 1 (peaks -81 to -81)"], rep
+    # with quiet slots round it and a carrier that is not DMR (the repeater's analog ID)
+    quiet = ["s 4 t=1 cfg=00e9 b=c195 sy=9b4d l=7f00", "v4 n=0 w=0 b=0 p=-129 f=-131"] * 3
+    rep = dmrsign.report(quiet + RUN_J.splitlines() + quiet[:1] + ["v4 n=0 w=0 b=0 p=-88 f=-89"])
+    assert rep[-1].endswith("slot peaks -129 to -81; floor -131; carrier in 2 slots, a sync in 1 (peaks -81 to -81), "
+                            "none in 1 (peaks -88 to -88)"), rep
 
 
 def on_the_model(name, extra, table, rounds, air):
@@ -107,11 +116,15 @@ def on_the_model(name, extra, table, rounds, air):
     class Tuned(Chip):
         long5d, early_done, ring = True, True, True
         r = {**Chip.r, 0x47: 0}
+        found = {0x13: 0x1234, 0x7E: 0x3ABC}                      # the gain registers as found
 
         def on_stub(self, uc, addr, size, user):
-            if self.names[(addr - self.stubs) // 16] == "tune":
-                self.tunes.append((uc.reg_read(self.A.UC_ARM_REG_R0), uc.reg_read(self.A.UC_ARM_REG_R1)))
+            name, r0 = self.names[(addr - self.stubs) // 16], uc.reg_read(self.A.UC_ARM_REG_R0)
+            if name == "tune":
+                self.tunes.append((r0, uc.reg_read(self.A.UC_ARM_REG_R1)))
             super().on_stub(uc, addr, size, user)
+            if name == "fd_read" and r0 in self.found:
+                uc.reg_write(self.A.UC_ARM_REG_R0, self.found[r0])
 
     Tuned.tunes = []
     e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 12, level=8,
@@ -119,12 +132,14 @@ def on_the_model(name, extra, table, rounds, air):
     r = e.run()
     assert r is not None, e.said[-5:]
     ret, stack = r
-    assert stack < 700 and e.over == 0, (stack, e.over)
+    assert stack < 700, stack
+    assert e.over == 0 or ("DFSK_CAPMAX" in dict(extra)), e.over   # a cut capture leaves the chip's words unread
     assert e.said[0] == "dfskcap start hz=440925000 n=8" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     s = [ln.split() for ln in e.said if ln.startswith("s ")]
     assert [ln[1:2] + ln[3:] for ln in s] == \
-        [[str(i % 8), "cfg=" + table[i % 8][4], "b=c195", "sy=" + table[i % 8][0], "l=7f00"] for i in range(n)], s
+        [[str(i % 8), "cfg=" + table[i % 8][4], "b=c195", "sy=" + table[i % 8][0], "l=7f00"]
+         + ["g=" + x for x in table[i % 8][5:]] for i in range(n)], s
     assert e.tunes == [(440925000, 1)] + [(440925000, table[i % 8][2]) for i in range(n)], e.tunes
     assert e.writes[0x73][:n] == [0x10 if table[i % 8][3] else 0 for i in range(n)] and e.writes[0x73][-1] == 0
     assert {w & 0x0700 for w in e.writes[0x2B][:-1]} == {t[1] for t in table}, e.writes[0x2B]
@@ -132,10 +147,16 @@ def on_the_model(name, extra, table, rounds, air):
     dmr = {int(ln.split()[0][3:]): ln for ln in rep if ln.startswith("dmr")}
     assert sorted(dmr) == list(range(8)), rep
     for fe, ln in dmr.items():
-        assert f"sy={table[fe][0]} cfg={table[fe][4]}: {rounds} slots" in ln, ln
+        g = "".join(" g=" + x for x in table[fe][5:])
+        assert f"sy={table[fe][0]} cfg={table[fe][4]}{g}: {rounds} slots" in ln, ln
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73):
         assert e.writes[reg][-1] == 0, hex(reg)
-    return dmr
+    if len(table[0]) > 5:                                         # the gain fixed a setting, then as found
+        assert e.writes[0x13] == [int(table[i % 8][5], 16) for i in range(n)] + [0x1234], e.writes[0x13]
+        assert e.writes[0x7E] == [0xBABC] * n + [0x3ABC], e.writes[0x7E]
+    else:
+        assert 0x13 not in e.writes and 0x7E not in e.writes
+    return dmr, e.said
 
 
 def syncs_of(ln):
@@ -148,7 +169,7 @@ def test_dfskcap_dmr_on_the_model():
     in the first and those with 64b2 in the second, all whole (the model's clock keeps time)"""
     rng = np.random.default_rng(7)
     half = dmrsign.air_signs(int((3 * 8 * 0.8 + 4) * 4800 / 144 / 2) + 1, rng, voice_every=6)
-    dmr = on_the_model("dfskcap_dmr", [], DMR, 3, np.concatenate([half, 1 - half, half]))
+    dmr, _ = on_the_model("dfskcap_dmr", [], DMR, 3, np.concatenate([half, 1 - half, half]))
     assert all(syncs_of(ln)[1] == 0 for ln in dmr.values()), dmr
     assert sum(syncs_of(ln)[0] for ln in dmr.values()) >= 40, dmr  # most slots are in a half that suits them
 
@@ -160,7 +181,22 @@ def test_dfskcap_dmr2_on_the_model():
     rng = np.random.default_rng(9)
     air = dmrsign.air_signs(int((8 * 0.8 + 4) * 4800 / 144) + 2, rng)
     air = np.delete(air, [66 + 15 + 144 * i for i in range(len(air) // 144)])
-    dmr = on_the_model("dfskcap_dmr2", [("DFSK_DMR2", "1")], DMR2, 1, air)
+    dmr, _ = on_the_model("dfskcap_dmr2", [("DFSK_DMR2", "1")], DMR2, 1, air)
     for fe, ln in dmr.items():
         whole, short = syncs_of(ln)
         assert whole == 0 and (short >= 3) == (DMR2[fe][0] == "cd4d"), ln
+
+
+def test_dfskcap_dmr3_on_the_model():
+    """dfskcap_dmr3's table (run L), twice round: one setting, the receiver's gain fixed at
+    eight values of REG_13 (REG_7E bit 15 with index 3) and both registers put back; the s
+    lines and the report name the gain; a capture is cut short (at 40 words here, 96 in the
+    module: the model's packets end at 65), so a slot has several"""
+    rng = np.random.default_rng(11)
+    air = dmrsign.air_signs(int((2 * 8 * 0.8 + 4) * 4800 / 144) + 2, rng)
+    dmr, said = on_the_model("dfskcap_dmr3", [("DFSK_DMR3", "1"), ("DFSK_GAIN", "1"), ("DFSK_CAPMAX", "40u")],
+                             DMR3, 2, air)
+    for fe, ln in dmr.items():
+        assert f"cfg=00e9 g={G13[fe]}: 2 slots" in ln and syncs_of(ln)[0] >= 10, ln
+    w = [int(ln.split(" w=")[1].split()[0]) for ln in said if ln[:1] == "c"]
+    assert len(w) >= 32 and set(w) == {40}, w
