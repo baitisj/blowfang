@@ -181,6 +181,10 @@
       12, 13 FM, narrow, tuned 2.5 kHz high and low   the filter's edge makes FM of AM
       14     FM, wide, tuned 5 kHz high
       15     the zero IF, AF source 5, filters as found: DFSK_TONE 3's setting 7 again
+   What the bench said of those (06:51Z): at the normal IF the receiver starts once a unit
+   and gives long runs that follow nothing of the tone bits, alike with every AF source and
+   either AGC; the zero IF in the same run is as before. The tone receiver is fed by the FM
+   discriminator too. Parked.
    A capture of these ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
