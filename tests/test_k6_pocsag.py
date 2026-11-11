@@ -78,7 +78,7 @@ def test_report_reads_module_lines():
 
 
 # ---- the module on a model of the chip ----
-def plain_chip(le, segs, flip=0.0, seed=3):
+def plain_chip(le, segs, flip=0.0, seed=3, smp=None):
     """an emulator with a model of the FD6818's plain FSK receiver: segs [(t0 s, true baud, bits)]
     are the air; while one plays at a baud within 2% of REG_72's the chip's clock is the data's
     (each bit taken once, at its middle), or at a half or a quarter of it the chip samples each bit
@@ -86,7 +86,9 @@ def plain_chip(le, segs, flip=0.0, seed=3):
     sync word (REG_5A, or REG_5A REG_5B by REG_59<3>) in any bit position starts a packet of
     REG_5D's length (bits 15:8 and 7:5); each 16 bits go into an 8-word FIFO, the first bit at
     the top of the byte, the first byte in the low byte. An empty FIFO's read gives the slot it
-    would read next (the word of eight before). flip: the chance a bit is wrong"""
+    would read next (the word of eight before). flip: the chance a bit is wrong. smp: the
+    sampler's own rate a second (four samples a bit at REG_72's rate, not locked to the data: the
+    bench's 1200 baud came at 3.93 samples a bit in a transmission's text, run 4)"""
     rng = np.random.default_rng(seed)
 
     class Chip(le.Emu):
@@ -112,14 +114,15 @@ def plain_chip(le, segs, flip=0.0, seed=3):
                             and abs(m * s[1] - br) < 0.02 * br), None)
                 if seg:
                     seg, m = seg
-                    rate = m * seg[1]
+                    rate = smp if smp and m == 4 else m * seg[1]
                     k = max(0, math.ceil((self.tn - seg[0]) * rate - 0.5 - 1e-6))
                     self.tn = seg[0] + (k + 0.5) / rate
                     if self.tn > now:
                         return
-                    if k >= m * len(seg[2]):
+                    j = int(k * seg[1] / rate) if smp and m == 4 else k // m
+                    if j >= len(seg[2]):
                         continue
-                    bit = int(seg[2][k // m])
+                    bit = int(seg[2][j])
                     step = 1 / rate
                 else:
                     if self.tn > now:
@@ -238,10 +241,10 @@ def test_pocsag_440_on_the_model():
         assert e.writes[reg][-1] == 0, hex(reg)                       # put back as read
 
 
-def run_plain(src, defs, segs, total):
+def run_plain(src, defs, segs, total, smp=None):
     import k6_live_emu as le
     code, entry = le.build("x", defs, src)
-    Chip = plain_chip(le, segs)
+    Chip = plain_chip(le, segs, smp=smp)
     e = Chip(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total, level=8, scratch=4096)
     res = e.run()
     assert res is not None, e.said[-5:]
@@ -488,3 +491,25 @@ def test_pocdump_1200_on_the_model():
     lays = [ln for ln in rep if ln.startswith("  round ")]
     assert len(lays) == 6 and all("wrong 0, dropped 0, added 0" in ln for ln in lays), rep
     assert [ln.split()[1].rstrip(":") for ln in lays] == [str(r) for r in range(1, 7)], lays
+
+
+@need_clang
+@pytest.mark.parametrize("smp", [4716, 4880])
+def test_pocdump_1200_sampler_off_rate_on_the_model(smp):
+    """the sampler not locked to the data (the bench's text came at 3.93 samples a bit, run 4; and
+    as far the other way): the reads follow the chip word by word, so the dump lays every
+    transmission against its round with nothing wrong, dropped or added, and every message is
+    read"""
+    pytest.importorskip("unicorn")
+    segs, t = [], 0.4
+    for r in range(1, 9):
+        bits = pocsag.transmission_bits(pocsag.bench_messages(r, 1200))
+        segs.append((t, 1200.0, (1 - bits) if r % 2 == 0 else bits))
+        t += len(bits) / 1200 + 2.0
+    e, ret = run_plain(os.path.join(K6, "mod", "pocdump_1200.c"),
+                       [("WAIT_MS", "0u"), ("FE_S", f"{int(t) + 1}u")], segs, t + 10, smp=smp)
+    _, got, msgs = lines_of(e.said)
+    assert len(got) == 8 and ret == 24 and all(m["err"] == 0 for m in msgs), got
+    rep = pocsag.dump_report(["K6 MOD say " + s for s in e.said])
+    lays = [ln for ln in rep if ln.startswith("  round ")]
+    assert len(lays) == 6 and all("wrong 0, dropped 0, added 0" in ln for ln in lays), rep

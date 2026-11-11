@@ -539,8 +539,13 @@ def lay_against_bench(bits, baud, rounds=80):
 def dump_report(lines, rounds=80):
     out = []
     for cap in dump_captures(lines):
-        m = int(cap.get("m", 1))
-        chip = int(cap.get("b", "0"), 16) / 10.32444
+        try:
+            m = int(cap.get("m", 1))
+            chip = int(cap.get("b", "0"), 16) / 10.32444
+        except ValueError:
+            continue
+        if m < 1 or not chip:
+            continue                     # another module's c lines (samedf's), not pocdump's
         baud = min(BAUDS, key=lambda b: abs(b - chip / m))
         words = cap["words"]
         gaps = sum(w is None for w in words)
