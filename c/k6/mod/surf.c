@@ -36,9 +36,9 @@
      UP / DOWN       the listening frequency one channel up / down (held: repeats); the scale
                      moves with it, each bin keeping the level of the old bin nearest it
      SIDE1 / SIDE2   (the orange side keys) jump to the nearest caret above / below (on screen or
-                     off it), on the channel raster, whether or not it is on the air now; after
-                     the next sweep the loudest bin of the lens, if it is another channel, moves
-                     it once more (an outer bin is coarse). With no caret that way, line 5 says
+                     off it), on the channel raster, whether or not it is on the air now; a caret
+                     only a coarse outer bin heard is refined after the next read of the lens:
+                     the loudest channel within that bin's width. With no caret that way, line 5 says
                      "no peak" and the middle stays
      A/B             how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the
                      whole height (line 5: "fall 5m")
@@ -244,6 +244,7 @@ typedef struct {
   uint8_t sc;                   /* surfkeys: the script's next key */
   uint8_t fall;                 /* FALL_MS index */
   uint32_t t_fall;              /* the carets' fall: worked up to here */
+  uint32_t rw;                  /* a jump's refine: the width (Hz) its caret's bin had */
   pm_t *pm;                     /* the remembered peaks (npm of them; none with no room) */
   uint16_t af;                  /* REG_47 with the audio open: FM or AM */
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
@@ -644,8 +645,7 @@ static void pm_fall(sf_t *s) {
 
 /* a side key: the middle to the nearest remembered peak (caret still up, confirmed, on another
    channel) going d, whether or not it is on the air now: no search, the sweeps go on as they
-   were; after the next sweep the loudest bin of the lens, if it is another channel, moves it
-   once more (refine). None that way: "no peak" and the middle stays (the bench build wraps) */
+   were; a caret only a coarse bin heard is refined after the next read of the lens (refine_lens). None that way: "no peak" and the middle stays (the bench build wraps) */
 static void jump(sf_t *s, int d) {
   pm_t *e, *b = 0;
   uint32_t c, bc = 0;
@@ -665,8 +665,12 @@ static void jump(sf_t *s, int d) {
   }
   recentre(s, b->f);
   b->f = s->cen;                        /* (it is that channel now: its caret over the middle) */
-  if (L_HZ * b->w > s->ch) b->w = (uint16_t)udiv(s->ch, L_HZ);
-  s->refine = 1;
+  /* a caret only a coarse bin heard says roughly where: refine within that bin's width. One a
+     fine bin heard is its channel: no refine (it pulled a jump to the weaker of two stations
+     20 kHz apart straight back to the louder: Jeff, 2026-11-11) */
+  s->rw = L_HZ * b->w;
+  s->refine = s->rw > s->ch;
+  if (s->refine) b->w = (uint16_t)udiv(s->ch, L_HZ);
   moved(s);
 #ifdef SURF_AUTO_S
   s->sel_dbm = read_at(s, C, CHECK_US);   /* the bench: its level as the jump lands */
@@ -793,14 +797,14 @@ static void floor_q(sf_t *s) {
   s->qfl = t[k];
 }
 
-/* after a jump: the loudest bin of the lens, if that is another channel, is the station (the
-   bin or caret the jump came from may have been a coarse one far out): the middle moves there
-   once more; 1 if it moved */
+/* after a jump to a caret a coarse bin heard: the loudest bin of the lens within half that
+   bin's width, if that is another channel, is the station: the middle moves there once more;
+   1 if it moved */
 static int refine_lens(sf_t *s) {
   int i, b = C;
   s->refine = 0;
   for (i = C - KI; i <= C + KI; i++)
-    if (s->hz[i] && s->lvl[i] > s->lvl[b]) b = i;
+    if (s->hz[i] && 2 * (uint32_t)L_HZ * s->off[dist(i)] <= s->rw && s->lvl[i] > s->lvl[b]) b = i;
   if (b == C || s->lvl[b] <= s->lvl[C] + 1 || raster(s, s->pk[b]) == s->cen) return 0;
   recentre(s, s->pk[b]);
   moved(s);

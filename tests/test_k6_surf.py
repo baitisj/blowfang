@@ -562,6 +562,21 @@ def test_a_jump_onto_a_live_signal_opens_the_audio_quickly():
 
 
 @need_clang
+def test_a_jump_to_the_weaker_of_two_close_stations_stays_there():
+    # Jeff 2026-11-11 on the radio: with two peaks near each other "it jumps from one back to the
+    # previous". The refine after a jump moved to the loudest channel anywhere in the lens
+    # (+-20 kHz), so a jump to the weaker of two stations 25 kHz apart was pulled straight back.
+    # Now a caret a fine bin heard is its channel (no refine); a coarse one refines within its
+    # bin. (Parked on 440.850, 440.875's caret comes with the first refresh, ~5 s on.)
+    sig = [(440_850_000, -70, 0, FOREVER), (440_875_000, -90, 0, FOREVER)]
+    keys = taps("AM", 3_000_000, gap=700_000) + taps("AM", 10_000_000, gap=700_000) \
+        + taps("BM", 12_000_000, gap=700_000) + taps("AM", 14_000_000, gap=700_000) + [(16_000_000, 16_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    assert sels(said) == ["440.8500", "440.8750", "440.8500", "440.8750"]
+    assert at(lcd["frames"], 11_000_000)["text"][1] == "440.8750 -90dBm RX"
+
+
+@need_clang
 def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
     # A/B cycles the fall: 1 min (the start), 5 min, 20 min, 15 s. At 15 s a full caret is down in
     # ~15 s, and then SIDE1 finds nothing
