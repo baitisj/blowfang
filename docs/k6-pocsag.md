@@ -184,6 +184,29 @@ bandwidth bits 2 (setting 4) read idle codewords but dropped bits whenever the F
 2400 baud was bad both ways. The slicer above, worked out on the six setting-5 captures, reads
 every first batch: 0, 1, 0, 5, 0 and 1 codewords put right, none past help.
 
+## Bench run 3 and the dump `pocdump_1200`
+
+Run 3 (2026-11-11 14:19-14:24Z, `pocsag_440` at a2b7726, RSSI -21 dBm) put the sampler on the
+air. 512 baud stayed perfect: 18 of 18 messages exact with 00E9, and every codeword right with
+00E5. At 1200 baud the best setting (00E9) read 8 messages exact and three of the long ones
+mostly right, where run 1 read none. But the transmissions sent the right way up decoded far
+better than the upside-down ones: 0 to 9 codewords past help against 16 to 26. With 00E5, 1200
+baud was the worst (1 exact of 48). 2400 baud never started. Run 2's dumps held only the first
+batch, which decoded either way up.
+
+`pocdump_1200` (4.7 KB) is `pocsag` with `POC_DUMP`: it keeps every sampled word of a
+transmission and where the reads found the FIFO empty, and after each of the first six 1200 baud
+transmissions says them as `pocdump` does (`c` and `d` lines, `----` for an empty read). On the
+host, `python3 -m modem.pocsag dump LOG` slices them with the module's own slicer (`run_slice`)
+and lays each whole transmission against its round: bits wrong, dropped and added, and where.
+On the emulator every transmission lays with nothing wrong, either way up.
+
+```sh
+python3 -m modem.pocsag wav poc1200.wav --bauds 1200 --gap 2 --rounds 40   # 172 s
+python3 tools/k6_bench.py send poc1200.wav --max-s 180   # right after the pocdump_1200 upload
+python3 -m modem.pocsag dump LOG; python3 -m modem.pocsag report LOG
+```
+
 ## NOAA SAME: the probe `samecap`
 
 SAME (the weather radio's alert headers) is AFSK, not direct FSK: mark 2083.3 Hz, space 1562.5 Hz,

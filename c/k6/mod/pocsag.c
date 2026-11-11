@@ -75,6 +75,9 @@
 #ifndef FE_S
 #define FE_S 900u        /* s a setting */
 #endif
+#if defined(POC_DUMP) && !defined(DUMP_CAPS)
+#define DUMP_CAPS 6u     /* transmissions whose words are said */
+#endif
 #ifndef SLOT_SCALE
 #define SLOT_SCALE 1000u /* ms a unit of FE_S (the emulated test shortens it) */
 #endif
@@ -157,6 +160,12 @@ typedef struct {
   uint8_t txt[TXTN];
 #endif
   char ln[64];
+#ifdef POC_DUMP
+  /* the sampler's words of a transmission and where the empty reads fell, for the host */
+  uint16_t dn, ng, nd;
+  uint16_t gp[16];
+  uint16_t dk[POC_DUMP];
+#endif
 } st_t;
 
 static char *put(char *p, const char *s) {
@@ -406,6 +415,9 @@ static int word_in(st_t *s, uint32_t v) {
   uint32_t i;
   int over = 0;
   s->ring[s->rn & 7] = (uint16_t)v, s->rn++, s->w++;
+#ifdef POC_DUMP
+  if (s->bi == SMP && s->dn < POC_DUMP) s->dk[s->dn++] = (uint16_t)v;
+#endif
   if (s->bi == SMP) {
     for (i = 16; i--;) over |= smp_in(s, v >> i & 1);
     return over || (!s->q && s->st == HUNT && s->np > PRE_REP);
@@ -494,6 +506,37 @@ static void tx_say(const k6_api_t *api, st_t *s) {
       say(api, s, p);
     }
   }
+#endif
+#ifdef POC_DUMP
+  /* the words as pocdump says them (python3 -m modem.pocsag dump LOG): a c line, then d lines
+     of twelve words, ---- where a read found the FIFO empty */
+  if (s->bi == SMP && s->dn && s->nd < DUMP_CAPS) {
+    uint32_t i, k = 0, g = 0;
+    s->nd++;
+    p = kv(s->ln, "c ", s->ntx);
+    p = kv(p, " s=", s->cur);
+    p = kv(p, " t=", s->t0ms);
+    p = kv(p, " w=", s->dn);
+    p = kv(p, " e=", s->ng);
+    p = hex4(put(p, " b="), B72[SMP]);
+    p = kv(p, " m=4 i=", s->inv);
+    say(api, s, p);
+    for (i = 0; i <= s->dn; i++) {
+      int gap = g < s->ng && s->gp[g] == i;
+      if (i == s->dn && !gap) break;
+      if (!k) {
+        p = kv(s->ln, "d ", s->ntx);
+        *p++ = ' ';
+        p = hex4(p, i);
+        *p++ = ' ';
+      }
+      if (gap) p = put(p, "----"), g++, i--;
+      else p = hex4(p, s->dk[i]);
+      if (++k == 12) say(api, s, p), k = 0;
+    }
+    if (k) say(api, s, p);
+  }
+  s->dn = 0, s->ng = 0;
 #endif
   s->vtx++, s->nmsg += s->nm, s->vmsg += s->nm;
 }
@@ -598,6 +641,9 @@ int k6_main(const k6_api_t *api) {
 #ifdef POC_TEXT
           s->tn = 0;
 #endif
+#ifdef POC_DUMP
+          s->dn = 0, s->ng = 0;
+#endif
         } else if (s->bi == SMP) {
           s->st = HUNT; /* the sampler's packet began anywhere: the next sync codeword */
         } else {
@@ -627,6 +673,9 @@ int k6_main(const k6_api_t *api) {
         if (got[ng - 1] == got[0] && (s->bi != SMP || s->rn - rb >= EMPTY_W)) {
           /* the FIFO is empty: word rn comes within a word's time */
           s->e++, rb = s->rn;
+#ifdef POC_DUMP
+          if (s->ng < 16) s->gp[s->ng++] = s->dn;
+#endif
           off = (clk(api, s) << 4) - t0 - s->rn * WT[s->bi];
           break;
         }

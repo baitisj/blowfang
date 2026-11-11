@@ -464,3 +464,27 @@ def test_pocsag_slices_the_bench_samples():
     known = pocsag.expected()
     exact = {known[m][0] for m in first if m in known and known[m][1:] == (1200, 0)}
     assert len(exact) >= 5, first
+
+
+@need_clang
+def test_pocdump_1200_on_the_model():
+    """the dump build says every sampled word of its first six 1200 baud transmissions, either way
+    up, and the host lays each one, sliced as the module slices, against its round with nothing
+    wrong, dropped or added, while the module still reads every message"""
+    pytest.importorskip("unicorn")
+    segs, t = [], 0.4
+    for r in range(1, 9):
+        bits = pocsag.transmission_bits(pocsag.bench_messages(r, 1200))
+        segs.append((t, 1200.0, (1 - bits) if r % 2 == 0 else bits))
+        t += len(bits) / 1200 + 2.0
+    e, ret = run_plain(os.path.join(K6, "mod", "pocdump_1200.c"),
+                       [("WAIT_MS", "0u"), ("FE_S", f"{int(t) + 1}u")], segs, t + 10)
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    _, got, msgs = lines_of(e.said)
+    assert len(got) == 8 and ret == 24 and all(m["err"] == 0 for m in msgs), got
+    caps = pocsag.dump_captures(["K6 MOD say " + s for s in e.said])
+    assert len(caps) == 6 and [c["i"] for c in caps] == ["0", "1"] * 3, caps
+    rep = pocsag.dump_report(["K6 MOD say " + s for s in e.said])
+    lays = [ln for ln in rep if ln.startswith("  round ")]
+    assert len(lays) == 6 and all("wrong 0, dropped 0, added 0" in ln for ln in lays), rep
+    assert [ln.split()[1].rstrip(":") for ln in lays] == [str(r) for r in range(1, 7)], lays
