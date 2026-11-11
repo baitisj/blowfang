@@ -579,9 +579,48 @@ starts again at every turn. Which the chip's is at 2400 baud is for the bench.
 | 13, 14 | 00A9, 0069 | 4800 | AAAA | bits 7:6 |
 | 15 | 04E9 | 4800 | AAAA | RX mode 1, unnamed |
 
+#### Run C: the settings (2026-11-11 03:00:59 to 03:04:42Z, build c7fb47e)
+
+`dfskcap_acarsc`, the IC-7100 in FM on 440.850 MHz at RF power 0, K6 receive only (hamlet
+`~/blowfang-work/runs/acarsc-fm2-20261111/`; the IC-7100 was found on 7.066 MHz PKTUSB at 80%
+power from other work and set to the bench state and read back before keying). **No block in
+any of the sixteen settings.**
+
+```
+nrz0 2400 baud: 0 blocks read, 0 captures       00e9, sync 6868
+nrz1 2400 baud: 0 blocks read, 0 captures       00e9, 9797
+nrz2 2400 baud: 0 blocks read, 9 captures; of the opening's 272 bits off: 65 66 67 67 68 68 68 69 70     d554
+nrz3 2400 baud: 0 blocks read, 10 captures; of the opening's 272 bits off: 65 65 66 66 66 67 67 68 68 240   2aab
+nrz4 to nrz7: 0 captures                        00a9 and 00e5, 6868 and 9797
+fit8 6348 baud: 0 blocks read, 21 openings; 1 -> 1:99% 2:1%; 1.5 -> 1:53% 2:47% 3:0%; 2 -> 1:0% 2:89% 3:11%
+fit9 4800 baud: 0 blocks read, 22 openings; 1 -> 1:100%; 1.5 -> 1:88% 2:12%; 2 -> 1:3% 2:97%
+fit10 to fit12: no capture                      00e1, 00e5, 00ed at 4800
+fit13 4800 baud: 0 blocks read, 22 openings; 1 -> 1:100% 2:0% 3:0%; 1.5 -> 1:98% 2:2%; 2 -> 1:2% 2:98% 3:0%    00a9
+fit14 4800 baud: 0 blocks read, 10 openings; 1 -> 1:89% 2:10% 3:1% 4:0%; 1.5 -> 1:77% 2:22% 3:0% 4:1%; 2 -> 1:0% 2:100%   0069
+fit15 4800 baud: 0 blocks read, 22 openings; 1 -> 1:100%; 1.5 -> 1:87% 2:13%; 2 -> 1:3% 2:97%    04e9
+```
+
+- **At 2400 baud the receiver does not give the bytes.** SYN SYN never comes out of it, either
+  way up, with any of the three REG_58 values. It does start on "+*" (which is mostly bits
+  that alternate, so it matches both ways up, 9 and 10 captures of about 18 blocks), and what
+  follows is three quarters single samples: the clock takes a sample for nearly every turn of
+  the slicer, two a bit inside 2400 Hz, as at 4800 baud, though it is set to one a bit. Runs
+  of two to four samples stand in the same places from block to block, so the block shapes
+  them, but nothing read them back. The clock that would have made this work, one that is
+  pulled gently and keeps its place between the turns, is not what the chip has: it follows
+  each turn at once, at every baud from 2400 to 6348.
+- **REG_72 = FFFF is no further step**: 6348 baud is like 5850 to 6300.
+- **REG_58's RX bandwidth bits 0, 2 and 6 are deaf here** (no pre-key found at 4800 baud; 4 is
+  the only one of them that passes the tones). Bits 7:6 = 10 make an interval of 1.5 one
+  sample still more surely (98%), 01 is worse all round, RX mode 1 is mode 0.
+- So the plain FSK receiver has no setting left that reads ACARS. What it would take is a
+  sample clock that either runs at 9600 baud (1, 1.5 and 2 as two, three and four samples;
+  the chip stops at 6348) or does not follow the turns, and neither is on offer.
+
 ### What the 6 m tests say
 
-Eight runs, the last five with the carrier 40 dB over the K6's floor:
+Eight runs on 6 m, the last five with the carrier 40 dB over the K6's floor, and two in FM on
+440.850 MHz:
 
 1. **The plain FSK receiver's slicer is fed by the FM discriminator and nothing else.** REG_47's
    AF source AM changes what the speaker gets, not what the slicer gets.
@@ -589,13 +628,15 @@ Eight runs, the last five with the carrier 40 dB over the K6's floor:
    100 Hz of swing, enough to start on a block's pre-key and never enough to read its data.
 3. **At the zero IF (REG_3D = 0, the chip's double sideband mode) the discriminator turns the
    AM into something the slicer follows through the whole block**, on tune, in either filter.
-4. What the receiver gives there is the sign of the audio's slope, on a clock that locks onto
-   the signal. Sampled twice a bit or a little faster (4800 to 6300 baud) that cannot be read
-   back into bits: the clock has no steady place between the turns of the two tones. Sampled
-   once a bit it may be the data itself; the settings above ask.
+4. What the receiver gives there is the sign of the audio's slope, on a clock that follows
+   every turn of it. That cannot be read back into bits at any setting tried: 4800 baud,
+   eight clocks from 5200 to 6348 baud, 2400 baud (a sample a bit, where a steadier clock
+   would give the bytes themselves), REG_58's bandwidth bits, its bits 7:6 and RX mode 1.
+   The turns of the two tones are half a sample of 4800 apart, and the chip's clock gives
+   that half away each time.
 5. The 1200/2400 Hz modem never syncs on ACARS (first bench run) and stays closed.
 
-Not known yet: how weak a signal this path still reads. The zero IF's floor was -93 dBm in the
+Not measured, and of no use until a block reads: how weak a signal this path takes in. The zero IF's floor was -93 dBm in the
 run against -117 at the IF as found, and ACARS at the bench site peaks at -103 dBm.
 
 `dfskcap_acars6` stays the instrument for the bench (the `q` lines, every capture's words,
