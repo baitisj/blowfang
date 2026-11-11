@@ -150,7 +150,7 @@ def split(frame):
         return frame["_split"]
     g = [[lit(frame, r, x) for x in range(128)] for r in range(ROWS)]
     tips = {}
-    for R in range(7, AX):
+    for R in range(5, AX):         # (feet rows: a caret riding a full bar has its tip in row 4)
         d = [g[R][2 * j] != g[R][2 * j + 1] for j in range(NV)] + [g[R][126]]
         c = [False] * NV
         c[NV - 1] = d[NV]
@@ -174,7 +174,8 @@ def height(frame, i):
 
 
 def carets(frame):
-    """the remembered peaks' carets: {bin: its height in px over the floor (1 .. 19)}"""
+    """the remembered peaks' carets: {bin: its height in px over the floor (1 .. 21: on top of a
+    tall bar it rides above the bar)}"""
     return {i: AX - 2 - r for i, r in split(frame)[1].items()}
 
 
@@ -441,6 +442,28 @@ def test_airband_listens_in_am_and_other_bands_in_fm():
 
 
 @need_clang
+def test_key_4_cycles_fm_dsb_am_and_a_band_resets_it():
+    # Jeff 2026-11-11: "since the 4 key isn't used, pressing it should go from FM to DSB to AM".
+    # DSB = the firmwares' "USB": REG_47 AF 5 at the zero IF (REG_3D 0), the AFC off
+    sig = [(440_600_000, -80, 0, FOREVER)]
+    keys = taps("4", 1_000_000) + taps("4", 2_000_000) + taps("9", 3_000_000) + taps("4", 4_000_000) \
+        + taps("4", 5_000_000) + taps("N", 6_000_000) + [(7_000_000, 7_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys, regs={0x3D: 0x2AAB})
+    fr = lcd["frames"]
+    assert at(fr, 1_500_000)["text"][0] == "DSB 70cm 25k" and at(fr, 1_300_000)["text"][5] == "DSB"
+    assert at(fr, 2_500_000)["text"][0] == "AM 70cm 25k"
+    assert at(fr, 3_500_000)["text"][0] == "AM0 70cm 25k"         # the fixed gain after it
+    assert at(fr, 4_500_000)["text"][0] == "G0 70cm 25k"          # FM again: the band's own
+    assert at(fr, 5_500_000)["text"][0] == "DSB0 70cm 25k"
+    assert at(fr, 6_500_000)["text"][0].startswith("G0 GMRS")     # a new band: its demodulator
+    assert writes_of(writes, 0x3D) == [0, 0x2AAB, 0x2AAB, 0, 0x2AAB, 0x2AAB]   # (and at EXIT)
+    i = writes.index((0x3D, 0))
+    assert 0x10 in writes_of(writes[i:], 0x73)[:1]               # the AFC off with DSB
+    assert 0x6540 in writes_of(writes, 0x47) and 0x6740 in writes_of(writes, 0x47)
+    assert regs[0x3D] == 0x2AAB and regs[0x73] == 0 and regs[0x47] == 0x6040
+
+
+@need_clang
 def test_step_key_cycles_the_steps_and_a_band_resets_it():
     # Jeff 2026-11-10: # goes through the common steps; a band change goes back to its default
     keys = taps("#", 1_000_000) + taps("UM", 2_000_000) + taps("##", 3_000_000, gap=400_000) + taps("UM", 4_000_000) \
@@ -449,10 +472,10 @@ def test_step_key_cycles_the_steps_and_a_band_resets_it():
     fr = lcd["frames"]
     assert at(fr, 1_300_000)["text"][0] == "SURF 70cm 50k"
     assert at(fr, 1_300_000)["text"][5] == "step 50k"
-    assert at(fr, 4_000_000)["text"][0] == "SURF 70cm 5k"      # 100k, then round to 5k
-    assert at(fr, 5_300_000)["text"][0] == "SURF 70cm 6.25k"
-    assert sels(said) == ["440.6500", "440.6550"]               # one 50 kHz step, one of 5 kHz
-    keys = taps("####", 1_000_000, gap=400_000) + taps("UM", 3_000_000) + [(4_000_000, 4_300_000, "X")]
+    assert at(fr, 4_000_000)["text"][0] == "SURF 70cm 1k"      # 100k, then round to 1k (Jeff 11-11)
+    assert at(fr, 5_300_000)["text"][0] == "SURF 70cm 5k"
+    assert sels(said) == ["440.6500", "440.6510"]               # one 50 kHz step, one of 1 kHz
+    keys = taps("#####", 1_000_000, gap=400_000) + taps("UM", 3_000_000) + [(4_000_000, 4_300_000, "X")]
     ret, said, regs, writes, lcd = go([], keys)
     assert sels(said) == ["440.60625"]                          # 6.25 kHz: five decimals
     assert at(lcd["frames"], 3_700_000)["text"][1].startswith("440.60625 ")
@@ -527,9 +550,10 @@ def test_side_keys_hop_between_remembered_peaks_after_they_stop():
     ret, said, regs, writes, lcd = go(sig, keys)
     assert sels(said) == ["441.2000", "440.4000", "440.4000", "441.2000"]
     assert at(lcd["frames"], 6_200_000)["text"][5] == "no peak"
-    # the peaks live in the module store's free RAM (128 x 8 B), not on the stack: still under
-    # 2.3 KB of the ~3.1 KB the voice images give a module (2,184 B before the carets)
-    assert lcd["st"]["stack"] <= 2300, lcd["st"]["stack"]
+    # the state, the bitmap and the peaks live in the module store's free RAM, not on the stack:
+    # the emulator counts only the module's own frames, and with 2,016 B of them the K6's 2,280 B
+    # ran out under Aura's calls (stack_free=0, a reboot at EXIT, 2026-11-11 08:08Z)
+    assert lcd["st"]["stack"] <= 600, lcd["st"]["stack"]
 
 
 @need_clang
@@ -577,6 +601,31 @@ def test_a_jump_to_the_weaker_of_two_close_stations_stays_there():
 
 
 @need_clang
+def test_far_out_stations_near_each_other_each_get_a_caret():
+    # Jeff 2026-11-11 on GMRS (+-2.5 MHz): the side keys passed a -75 dBm station at 463.950 next
+    # to one at 463.6375. A wide outer bin's peak matched any caret within half its width
+    # (hundreds of kHz there); its place is known to SUB_HZ (20 kHz) from the reads across it
+    sig = [(463_637_500, -84, 0, FOREVER), (463_950_000, -75, 0, FOREVER)]
+    keys = taps("AM", 4_000_000, gap=700_000) + taps("AM", 6_000_000, gap=700_000) + [(8_000_000, 8_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys, rx_hz=463_000_000)
+    assert sels(said) == ["463.6375", "463.9500"]
+
+
+@need_clang
+def test_a_peak_whose_check_failed_is_checked_again():
+    # a station that was off at its settled read (here: quick-read noise there first, the station
+    # keys up at 4 s) gets its caret after a few more sweeps hear it, not after the noise's
+    # unconfirmed entry has fallen (up to 8.5 min at the slowest fall)
+    sig = [(441_000_000, -85, 4_000_000, FOREVER)]
+    keys = taps("WW", 1_000_000, gap=400_000) + [(12_000_000, 12_300_000, "X")]    # (fall 20 min)
+    ret, said, regs, writes, lcd = go(sig, keys, bumps=[(441_000_000, -95)])
+    fr = lcd["frames"]
+    b = bin_for(441_000_000, 440_600_000)
+    assert b not in carets(at(fr, 3_900_000))                 # the noise: no caret
+    assert b in carets(at(fr, 11_000_000))
+
+
+@need_clang
 def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
     # A/B cycles the fall: 1 min (the start), 5 min, 20 min, 15 s. At 15 s a full caret is down in
     # ~15 s, and then SIDE1 finds nothing
@@ -586,7 +635,11 @@ def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
     fr = lcd["frames"]
     assert [at(fr, t)["text"][5] for t in (2_700_000, 3_100_000, 3_500_000)] == ["fall 5m", "fall 20m", "fall 15s"]
     b12 = bin_for(441_200_000, 440_600_000)
-    h = [carets(at(fr, t)).get(b12, 0) for t in (3_600_000, 8_600_000, 13_600_000, 20_000_000)]
+    # while it is on, its caret rides on top of its (full) bar: inside it the caret was a notch
+    # Jeff couldn't see (2026-11-11); then it follows the bar down (3 dB a sweep) and falls on
+    on = at(fr, 1_700_000)
+    assert height(on, b12) == AX - 6 and split(on)[1][b12] == 4    # tip in row 4, over the bar
+    h = [carets(at(fr, t)).get(b12, 0) for t in (5_600_000, 10_600_000, 12_900_000, 20_000_000)]
     assert h[0] > h[1] > h[2] > 0 and h[3] == 0, h            # 5 s: 50 x 1/8 px, about 6 px
     assert 5 <= h[0] - h[1] <= 7
     assert at(fr, 21_300_000)["text"][5] == "no peak"
