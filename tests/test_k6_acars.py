@@ -164,7 +164,9 @@ def test_dfskcap_acars_on_the_model():
     assert len(full) < 3200 and len(plain) < 2100, (len(full), len(plain))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))      # the 6 m bench build
     assert len(six) < 3400 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
-    assert len(six) > len(full)                                            # its six front ends
+    assert len(six) > len(full)                                            # its eight front ends
+    fm, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarsb.c"))       # the clock sweep in FM
+    assert len(full) < len(fm) < len(six) and struct.pack("<I", 440850000) in fm
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)
@@ -242,8 +244,9 @@ def test_dfskcap_acars_on_the_model():
     assert 0x0700 in e.writes[0x47] and e.writes[0x5D][0] == 0xFF20
 
 
-def run_six(defs, total):
-    """the 6 m bench build with defs on the emulated M0, noise only -> the emulator"""
+def run_six(defs, total, follow=False):
+    """the 6 m bench build with defs on the emulated M0, noise only -> the emulator. follow: the
+    chip's clock at the air's 4800 samples a second whatever REG_72 says (it follows the audio)"""
     import k6_live_emu as le
     from modem import k6mod
     code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_DUMP_ALL", "1"), ("PROBE_HZ", "50650000u"),
@@ -273,6 +276,7 @@ def run_six(defs, total):
                 uc.reg_write(self.A.UC_ARM_REG_R0, self.if_now)
 
     Tuned.tunes = []
+    Tuned.times = np.arange(8 * len(noise)) / BASE if follow else None
     e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
               scratch=11776 - 24 - len(six))
     r = e.run()
@@ -336,3 +340,118 @@ def test_dfskcap_acars6_zero_if_front_ends_on_the_model():
     ifs = [ln.split()[-1] for ln in e.said if ln.startswith("s ")]
     assert ifs == ["if=0000"] * 7 + ["if=2aab"], ifs
     assert 0x30 not in e.writes or not e.writes[0x30]             # the tuning kept the IF: no second restart
+
+
+SWEEP_72 = ["b=d1b7", "b=d9c8", "b=dfd5", "b=e5e1", "b=ebee", "b=f1fb", "b=f807", "b=fe14"]
+
+
+def test_dfskcap_acars6_clock_sweep_on_the_model():
+    """the 6 m bench build as it is (DFSK_ZIF and DFSK_SWEEP): eight front ends at the zero IF,
+    wide, the AFC off, AF source 5, the receiver at 5200, 5400, 5550, 5700, 5850, 6000, 6150
+    and 6300 baud. The registers are put back and the receiver tuned once more."""
+    pytest.importorskip("unicorn")
+    e = run_six([("DFSK_ZIF", "1"), ("DFSK_SWEEP", "1")], 16.5, follow=True)
+    assert e.tunes[-9:] == [(50650000, 1)] * 9, e.tunes
+    assert [w >> 8 & 15 for w in e.writes[0x47]][-9:] == [5] * 8 + [0], e.writes[0x47]
+    assert e.writes[0x3D] == [0] * 8 + [0x2AAB], e.writes[0x3D]
+    assert e.writes[0x73] == [0x10] * 8 + [0], e.writes[0x73]
+    s = [ln.split() for ln in e.said if ln.startswith("s ")]
+    assert [x[4] for x in s] == SWEEP_72 and all(x[-1] == "if=0000" for x in s), s
+    assert [round(acars.baud_of(int(x[2:], 16))) for x in SWEEP_72] == [5200, 5400, 5550, 5700, 5850, 6000, 6150, 6300]
+
+
+def test_follow_tones_reads_what_the_chip_gives():
+    """the chip's plain FSK receiver as the seventh 6 m run showed it (chip_samples): the
+    slicer turns over at the audio's peaks and the clock starts again at each turn, so an
+    interval of 1.5 samples of 4800 is one sample at 4800 baud, like 1, and no block reads;
+    at 5700 baud it is two, like 2, and follow_tones reads every block, with a little jitter
+    on the turns too. plain_fit counts what the chip made of each interval."""
+    rng = np.random.default_rng(3)
+    text = "AG7EW TEST 440.850 R123 THE K6 READS ACARS"
+    t = acars.unit_tones("R", text)
+    head = acars.fit_head("AG7EW TEST 440.850 R")
+    assert set(np.round(2 * np.diff(acars.turns(t))).astype(int)) == {2, 3, 4}
+
+    def words(baud, at, jitter):
+        x = np.concatenate([acars.chip_samples(t, baud, at, jitter, rng), np.zeros(40, np.int8)] * 3)[16:]
+        x = np.concatenate([x, np.zeros(-len(x) % 16, np.int8)])
+        return [int("".join(map(str, x[i:i + 16])), 2) for i in range(0, len(x), 16)]
+
+    for at, bauds in ((0.45, (5400, 5550, 5700)), (0.55, (5700, 5850, 6000)), (0.65, (6000, 6150, 6300))):
+        for baud in bauds:
+            got, why, _ = acars.plain_blocks(words(baud, at, 0.02), baud)
+            assert len(got) == 3 and all(g.endswith(text) for g in got), (at, baud, why, got)
+            found, counts = acars.plain_fit(words(baud, at, 0.0), head)
+            assert found == 3 and set(counts) == {(2, 1), (3, 2), (4, 2)}, (at, baud, found, counts)
+    w = words(4800, 0.55, 0.0)
+    assert acars.plain_blocks(w, 4800)[0] == [] and acars.plain_blocks(w, 5700)[0] == []
+    found, counts = acars.plain_fit(w, head)
+    assert found == 3 and set(counts) == {(2, 1), (3, 1), (4, 2)}, counts
+    x, when = acars.chip_samples(t, 5700, 0.55, when=True)
+    assert len(x) == len(when) and np.all(np.diff(when) > 0.5 / 5700) and np.all(np.diff(when) < 1.6 / 5700)
+    assert abs(when[-1] - len(t) / 2400) < 2 / 4800
+
+
+def test_dfskcap_acarsb_clock_sweep_on_the_model():
+    """dfskcap_acarsb (DFSK_SWEEP in FM on 440.850 MHz) on the emulated M0. The model's chip
+    gives the blocks as chip_samples has them at 5700 baud in every front end (a sample when
+    its clock, which follows the audio, takes it; between the blocks 5700 samples a second),
+    and an empty FIFO gives the word of eight reads before, as on the bench. The module reads
+    the FIFO at 4800 baud's pace, never faster than the chip makes words: the report reads the
+    blocks in every front end and its fit lines say what the chip made of each interval."""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    src = os.path.join(K6, "mod", "dfskcap_acarsb.c")
+    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_SWEEP", "1"), ("DFSK_DUMP_ALL", "1"),
+                                 ("PROBE_HZ", "440850000u"), ("FE_S", "3"), ("WAIT_MS", "200u"), ("QN", "2u")],
+                           os.path.join(K6, "mod", "dfskcap.c"))
+    full, _ = k6mod.build(src)
+    total, CHIP = 25.0, 5700
+    bits, when, t, k = [], [], 0.3, 0
+    gap0 = np.arange(0, 0.3, 1 / CHIP)
+    bits.append(np.zeros(len(gap0), np.int8)), when.append(gap0)
+    while t < total + 9:
+        x, w = acars.chip_samples(acars.unit_tones("R", f"AG7EW TEST 440.850 R{k:03d} THE K6 READS ACARS"), CHIP, when=True)
+        g = np.arange(1, int(0.25 * CHIP)) / CHIP
+        bits += [x, (np.arange(len(g)) % 37 == 36).astype(np.int8)]   # the seventh run's silence: a lone bit now and then
+        when += [t + w, t + w[-1] + g]
+        t, k = t + w[-1] + g[-1] + 1 / CHIP, k + 1
+    air, T = np.concatenate(bits), np.concatenate(when)
+    assert np.all(np.diff(T) > 0)
+    Chip = modem_chip(le, lambda r58: air, 4800)
+
+    class Tuned(Chip):
+        long5d, early_done, ring = True, True, True
+        r = {**Chip.r, 0x47: 0}
+        times = T
+
+        def on_stub(self, uc, addr, size, user):
+            if self.names[(addr - self.stubs) // 16] == "tune":
+                self.tunes.append((uc.reg_read(self.A.UC_ARM_REG_R0), uc.reg_read(self.A.UC_ARM_REG_R1)))
+            super().on_stub(uc, addr, size, user)
+
+    Tuned.tunes = []
+    e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
+              scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert stack < 700 and e.over == 0, (stack, e.over)
+    assert e.said[0] == "dfskcap start hz=440850000 n=8" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert [ln.split()[3:] for ln in e.said if ln.startswith("s ")] == [["cfg=00e9", b, "sy=aaaa", "l=ff20"] for b in SWEEP_72]
+    assert e.tunes[-8:] == [(440850000, 1)] * 8, e.tunes
+    assert 0x3D not in e.writes or not e.writes[0x3D]
+    assert 0x73 not in e.writes or not e.writes[0x73]
+    rep = acars.plain_report(["K6 MOD say " + ln for ln in e.said], "AG7EW TEST 440.850 R")
+    fit = [ln for ln in rep if ln.startswith("fit")]
+    assert len(fit) == 8, rep
+    for fe, ln in enumerate(fit):
+        n, found = int(ln.split()[3]), int(ln.split()[6])
+        assert ln.startswith(f"fit{fe} ") and n >= 3 and found >= n, ln
+        assert ln.endswith("1 -> 1:100%; 1.5 -> 2:100%; 2 -> 2:100%"), ln
+    got = [ln for ln in rep if "block [" in ln]
+    assert len(got) >= 8 and all("AG7EW TEST 440.850 R0" in ln for ln in got), rep
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
+        assert e.writes[reg][-1] == 0, hex(reg)

@@ -80,6 +80,15 @@
       7  the IF as found, FM, narrow                the control: the sixth run's front end 3
    The s line ends with if= (REG_3D read back, and a ! if the tuning had put it back and it
    was written again with a restart of the receiver).
+   DFSK_SWEEP (dfskcap_acarsb.c in FM on 440.850 MHz; with DFSK_ZIF the 6 m build): the seventh
+   6 m run's words fit a receiver that sees the audio's derivative (its sign turns over at the
+   audio's peaks: 1, 1.5 or 2 samples of 4800 apart in ACARS) and whose clock starts again at
+   every turn, so it gives each interval a whole number of samples by itself. At 4800 baud 1.5
+   comes as one sample, like 1, and the block cannot be told; a clock a little faster should
+   make it two. Eight front ends, the same receiver at 5200, 5400, 5550, 5700, 5850, 6000,
+   6150 and 6300 baud (the pre-key stays the sync word AAAA: a sample an interval). The FIFO
+   is read at 4800 baud's pace all the same, which is the slowest the chip makes words on a
+   block when 1.5 is two samples, and the almost-full reads make up the rest.
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
    k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
    with k of 3 or 4 their d lines. And is there a signal at all? The RSSI is read every 50 ms:
@@ -110,7 +119,7 @@
                             upload's audio ends, and that is no Bell 202 */
 #endif
 #ifdef DFSK_ACARS
-#if defined(DFSK_NARROW) || defined(DFSK_ZIF)
+#if defined(DFSK_NARROW) || defined(DFSK_ZIF) || defined(DFSK_SWEEP)
 #define NV 8
 #else
 #define NV 4
@@ -157,6 +166,39 @@ typedef struct {
 } var_t;
 
 #ifdef DFSK_ZIF
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73, 0x3D};
+#define SAVED_47 10
+#define SAVED_3D 12
+#elif defined(DFSK_NARROW)
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73};
+#define SAVED_47 10
+#elif defined(DFSK_ACARS)
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47};
+#define SAVED_47 10
+#else
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F};
+#endif
+#define SAVED_2B 8
+
+#ifdef DFSK_SWEEP
+/* REG_72 for a baud: 10.32444 a baud, rounded (C195 at 4800, F1FB at 6000) */
+#define B72(baud) ((uint16_t)(((baud) * 1032444ull + 50000ull) / 100000ull))
+#ifdef DFSK_ZIF
+#define SWEEP_FE 7, 5 /* the zero IF, the AFC off, wide; AF source 5 */
+#else
+#define SWEEP_FE 1, 0 /* FM as found, wide */
+#endif
+static const var_t V[NV] = {
+    {0x00E9, B72(5200u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(5400u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(5550u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(5700u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(5850u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(6000u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(6150u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+    {0x00E9, B72(6300u), 0xAAAA, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE},
+};
+#elif defined(DFSK_ZIF)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 5},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 6, 5},
@@ -167,9 +209,6 @@ static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 0},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 2, 0},
 };
-static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73, 0x3D};
-#define SAVED_47 10
-#define SAVED_3D 12
 #elif defined(DFSK_NARROW)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -3, 2, 0},
@@ -181,8 +220,6 @@ static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 3, 2, 0},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 0, 0},
 };
-static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73};
-#define SAVED_47 10
 #elif defined(DFSK_ACARS)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 1, 0},
@@ -190,8 +227,6 @@ static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 25, 0, 0},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 0, 7},
 };
-static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47};
-#define SAVED_47 10
 #else
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFFE0, 0, 100, 45},
@@ -202,10 +237,7 @@ static const var_t V[NV] = {
     {0x00E9, 0xF1FB, 0xD2DA, 0xFFE0, 0, 80, 20},
     {0x00E9, 0xC195, 0xAAAA, 0xFFE0, 0x0100, 100, 15},
 };
-
-static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F};
 #endif
-#define SAVED_2B 8
 
 typedef struct {
   uint16_t cap[CAPW];

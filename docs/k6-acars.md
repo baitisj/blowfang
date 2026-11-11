@@ -430,23 +430,99 @@ v7 n=28 w=4927 b=0 p=-75 f=-79          AFC on, as tuned
   data's samples fall on both sides of the slicer: the place where the receiver starts at all
   is narrower than one step, and in it the data stays on one side.
 
+**Seventh run (2026-11-11 01:30 to 01:34Z, build 12f0cf1, 5 percent): at the zero IF the
+receiver takes in the whole block.** Jeff asked whether the chip's double sideband mode would
+do it. That mode is REG_3D = 0, a zero IF where both sidebands fold onto each other, with
+REG_47's AF source 5. `DFSK_ZIF`: eight front ends of 22 s, the AFC off in all, REG_3D written
+before the tuning (which kept it: every `s` line says `if=` as written):
+
+```
+v0 n=13 w=5106 b=14 p=-79 f=-93         zero IF, AF source 5 (DSB), wide, as tuned
+v1 n=11 w=6145 b=0 p=-80 f=-86          the same, narrow
+v2 n=0 w=0 b=0 p=-75 f=-78              zero IF, AF source 5, wide, 2.4 kHz high
+v3 n=0 w=0 b=0 p=-75 f=-79              zero IF, AF source 5, wide, 1.0 kHz high
+v4 n=12 w=5119 b=12 p=-80 f=-94         zero IF, AF source 4 (raw), wide
+v5 n=11 w=5675 b=11 p=-80 f=-94         zero IF, AF source 7 (AM), wide
+v6 n=11 w=5350 b=12 p=-80 f=-94         zero IF, AF source as found (FM), wide
+v7 n=40 w=2766 b=0 p=-75 f=-79          the IF as found, FM, narrow: the sixth run's front end 3
+```
+
+- **Every front end at the zero IF and on tune gives long captures full of data**: 250 to
+  1,056 words each, the pre-key as 5555 for 15 words, then dense words that come again from
+  block to block, then near silence until the next pre-key. Runs of one sample 80%, of two
+  18%, as the FM bench had them. The control at the IF as found gives the old picture (short
+  pre-keys, single bits).
+- **It is the zero IF that does it, not the AF source**: 5, 4, 7 and FM as found are alike,
+  wide and narrow alike. 1.0 and 2.4 kHz off tune there is nothing.
+- At the zero IF the RSSI follows the blocks (floor -93 dBm between them, a burst for each):
+  the steady carrier at 0 Hz is taken out there, and what is left is the sidebands.
+- No block reads with the reader as it was, and the reason is the same as on the FM bench.
+  The words fit this to the run (`python3 -m modem.acars plain LOG --fit "AG7EW TEST 50.650 R"`
+  lays every capture against the blocks' known opening):
+
+  | Interval between two turns of the slicer | The chip gave |
+  | --- | --- |
+  | 1 sample of 4800 (inside 2400 Hz) | one sample 100% |
+  | 1.5 (a change of tone) | one sample 96%, two 4% |
+  | 2 (inside 1200 Hz) | two samples 98 to 99% |
+
+  1. **The slicer sees the audio's derivative.** Its sign turns over at the audio's peaks, not
+     at its zero crossings: a quarter and three quarters into a bit of 2400 Hz, the middle of
+     one of 1200 Hz. So the turns are 1 sample of 4800 apart inside 2400 Hz, 2 inside 1200 Hz,
+     and 1.5 at every change of tone. (At the zero IF the discriminator makes a phase of the
+     AM envelope, and its output is that phase's rate of change. In FM it was the sender's
+     pre-emphasis. The FM bench's "13 pairs sent, 12 read, a lone one gone" is this.)
+  2. **The chip's clock starts again at every turn** (docs/k6-aprs-clock.md found the same on
+     Bell 202), so each interval is given a whole number of samples by itself:
+     floor(x - 0.55) + 1 for an interval of x periods of the chip's baud, about. Nothing is
+     carried from one interval to the next.
+  3. At 4800 baud that makes 1.5 one sample, the same as 1. A lone half cycle of 1200 Hz among
+     2400 Hz (`HLH`) reads as five single samples, like two and a half bits of 2400 Hz, and
+     where it stood in them is lost: **at 4800 baud the samples do not hold the block.**
+     Parity and the check cannot make up for it.
+- The module read the FIFO by time at 4800 words' pace, and with 1.5 as one sample the chip
+  made 6% fewer: about every tenth word of a capture's data is a read of the empty FIFO (the
+  word of eight reads before, `modem/aprs.py` `dfsk_destale`). The fit above does not mind
+  (a place with such a word in it does not count).
+
+**What follows: a faster clock.** With the chip at 5400 to 6000 baud an interval of 1.5 is
+1.7 to 1.9 periods and should come as two samples, while 1 stays one and 2 stays two. Then a
+bit of 1200 Hz after 2400 Hz is a run of two, every further one a run of two, and the first
+bit of 2400 Hz after them a run of two and a run of one: a run of n bits of 1200 Hz is n + 1
+runs of two, a run of n of 2400 Hz is 2n - 1 runs of one, and nothing is lost.
+`modem/acars.py` has the model (`chip_samples`) and the reader (`follow_tones`: the likeliest
+bits for the runs, a bit of 2400 Hz two intervals and one of 1200 Hz one; `plain` uses it for
+a front end over 5000 baud). On the model every block reads from 5400 to 6300 baud, as long
+as the turns' jitter stays under about 10 us; where the window sits depends on when after a
+turn the chip takes its sample, which only the chip can say. So `DFSK_SWEEP`: eight front
+ends of 22 s at 5200, 5400, 5550, 5700, 5850, 6000, 6150 and 6300 baud (REG_72 tops out at
+6,347), the pre-key still the sync word AAAA. The FIFO is read at 4800 words' pace still,
+which is now the slowest the chip makes them on a block. Two builds:
+
+- `dfskcap_acarsb`: in FM on 440.850 MHz (the IC-7100 at power 0, blocks only:
+  `python3 -m modem.acars probe OUT.wav --only R`), the IF as found. The FM bench signal has
+  the same turns, so this finds the baud without a key-up on 6 m.
+- `dfskcap_acars6`: the same at the zero IF on 50.650 MHz, for AM.
+
 ### What the 6 m tests say
 
-Six runs, the last three with the carrier 40 dB over the K6's floor:
+Seven runs, the last four with the carrier 40 dB over the K6's floor:
 
 1. **The plain FSK receiver's slicer is fed by the FM discriminator and nothing else.** REG_47's
-   AF source AM changes what the speaker gets, not what the slicer gets (wide filter: nothing
-   either way; narrow filter: the same either way).
-2. Of an AM signal it sees only what a narrow filter turns into FM: under 100 Hz of swing
-   from a fully modulated carrier at 40 dB over the floor. That is enough to start on a block's
-   pre-key and never enough to read a bit of its data.
-3. So **neither of the chip's modems reads ACARS**: the 1200/2400 one never syncs (first bench
-   run), the plain one cannot be given AM audio. On this radio ACARS would have to come
-   through a path that carries AM audio to the MCU, and the only one there is, the GP0 IF
-   tap, needs about -79 dBm (docs/k6-aprs-clock.md); ACARS at the bench site peaks
-   at -103 dBm. The question is closed for the chip as it is.
+   AF source AM changes what the speaker gets, not what the slicer gets.
+2. At the IF as found it sees of an AM signal only what a narrow filter turns into FM: under
+   100 Hz of swing, enough to start on a block's pre-key and never enough to read its data.
+3. **At the zero IF (REG_3D = 0, the chip's double sideband mode) the discriminator turns the
+   AM into something the slicer follows through the whole block**, on tune, in either filter.
+4. What the receiver gives there is the audio's derivative on a clock that starts again at
+   every turn, and at 4800 baud that cannot be read back into bits. A clock a little faster
+   should make it readable; the sweep above asks.
+5. The 1200/2400 Hz modem never syncs on ACARS (first bench run) and stays closed.
 
-`dfskcap_acars6` stays as the instrument it became (the `q` lines, every capture's words, the
-narrow front ends with the AFC off); `dfskcap_acars` on 131.550 MHz is unchanged in what it
-does.
+Not known yet: how weak a signal this path still reads. The zero IF's floor was -93 dBm in the
+run against -117 at the IF as found, and ACARS at the bench site peaks at -103 dBm.
+
+`dfskcap_acars6` stays the instrument for the bench (the `q` lines, every capture's words,
+`DFSK_NARROW`, `DFSK_ZIF` and `DFSK_SWEEP`); `dfskcap_acars` on 131.550 MHz is unchanged in
+what it does.
 
