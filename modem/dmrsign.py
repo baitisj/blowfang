@@ -5,8 +5,9 @@ FSK receiver at 4800 baud gives the sign of the discriminator: one bit a symbol,
 first bit (which way up depends on the discriminator's sense, not known). A sync word has outer
 symbols only, so its signs are a fixed 24 bits: the BS data sync DFF57D75DF5D is 439B4D with +
 as 1, and the voice sync is its inverse. dfskcap_dmr gives the chip the last sixteen of those
-as its sync word; a capture is then the signs of the symbols that follow, and a burst being 144
-symbols, the next bursts' sync fields are its bits 120 to 143, 264 to 287 and so on.
+as its sync word; a capture is then the signs of the symbols that follow, with the next
+bursts' sync fields in it: 144 bits apart if the clock kept time, which the chip's does not
+(it drops some ten signs a burst), so they are searched for wherever they are.
 
     python3 -m modem.dmrsign LOG        the serial log -> what each setting found
 
@@ -44,15 +45,38 @@ def air_signs(bursts, rng, voice_every=0):
 def next_syncs(bits):
     """a capture's bits -> for each later burst in it, how many of its sync field's 24 signs
     agree with the data sync's (24: a sync the same way up; 0: one the other way up; about 12:
-    not a sync, or not DMR)"""
+    not a sync, or not DMR). For a clock that keeps time (the model's): the real chip's drops
+    signs, so its captures are searched with find_syncs"""
     return [int((bits[i:i + 24] == SIGNS).sum()) for i in range(FIRST, len(bits) - 23, BURST)]
 
 
-def report(lines, need=21):
-    """dfskcap_dmr's say lines (as in the serial log) -> a line for every capture that has a
-    later sync (at least need of its 24 signs right, either way up), and a line a setting:
-    slots, captures, those with a later sync, the syncs found of those looked for in them, the
-    signs right in the found ones, and the RSSI of the confirmed captures"""
+# What the real chip gives (run J, 2026-11-11): its clock follows the slicer's turns and drops
+# signs, some ten a burst, so the syncs are not 144 bits apart, and the sync field itself
+# comes whole or, more often, with the second of its signs 15 and 16 (a pair of +3) dropped.
+SHORT = np.delete(SIGNS, 15)
+
+
+def find_syncs(bits):
+    """a capture's bits -> [(bit, way, kind)] of the sync fields in it, wherever they are: way
+    is "+" (the data sync's way up) or "-", kind "whole" (all 24 signs) or "short" (the 23
+    that are left when the chip drops sign 16). Chance gives one in millions of bits"""
+    bits = np.asarray(bits, np.int8)
+    out = []
+    for way, flip in (("+", 0), ("-", 1)):
+        w = (np.lib.stride_tricks.sliding_window_view(bits ^ flip, 24) == SIGNS).all(1) if len(bits) >= 24 else []
+        whole = [int(i) for i in np.flatnonzero(w)]
+        out += [(i, way, "whole") for i in whole]
+        if len(bits) >= 23:
+            sh = (np.lib.stride_tricks.sliding_window_view(bits ^ flip, 23) == SHORT).all(1)
+            out += [(int(i), way, "short") for i in np.flatnonzero(sh)]
+    return sorted(out)
+
+
+def report(lines):
+    """dfskcap_dmr's say lines (as in the serial log) -> a line for every capture with a sync
+    field in it (where they are, s marking the short ones), and a line a setting: slots,
+    captures, those with a sync inside, the syncs whole and short, the RSSI of those captures
+    and the slots' peaks"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
     sets, caps, cur, slots, peak = {}, [], None, {}, {}
@@ -74,28 +98,27 @@ def report(lines, need=21):
                 cur["w"].extend(int(f[3][i:i + 4], 16) for i in range(0, len(f[3]) - 3, 4))
     out, tally = [], {}
     for c in caps:
-        t = tally.setdefault(c["fe"], {"caps": 0, "ok": 0, "found": 0, "looked": 0, "right": 0, "r": []})
+        t = tally.setdefault(c["fe"], {"caps": 0, "ok": 0, "whole": 0, "short": 0, "bits": 0, "r": []})
         t["caps"] += 1
         if not c["w"]:
             continue
         bits = np.array([int(ch) for w in c["w"] for ch in f"{w:016b}"], np.int8)
-        a = next_syncs(bits)
-        hit = [x for x in a if x >= need or x <= 24 - need]
-        if hit:
+        t["bits"] += len(bits)
+        a = find_syncs(bits)
+        if a:
             t["ok"] += 1
-            t["found"] += len(hit)
-            t["looked"] += len(a)
-            t["right"] += sum(max(x, 24 - x) for x in hit)
+            t["whole"] += sum(k == "whole" for _, _, k in a)
+            t["short"] += sum(k == "short" for _, _, k in a)
             t["r"].append(c["r"])
-            out.append(f"c{c['fe']} t={c['t']} r={c['r']}: later syncs, signs like the data sync's of 24: "
-                       + " ".join(str(x) for x in a))
+            out.append(f"c{c['fe']} t={c['t']} r={c['r']}: {len(a)} syncs in {len(bits)} signs, at "
+                       + " ".join(f"{i}{'' if w == '+' else '-'}{'s' if k == 'short' else ''}" for i, w, k in a))
     for fe in sorted(sets):
-        t = tally.get(fe, {"caps": 0, "ok": 0, "found": 0, "looked": 0, "right": 0, "r": []})
+        t = tally.get(fe, {"caps": 0, "ok": 0, "whole": 0, "short": 0, "bits": 0, "r": []})
         s = sets[fe]
-        ln = (f"dmr{fe} sy={s.get('sy', '?')} cfg={s.get('cfg', '?')}: {slots.get(fe, 0)} slots, {t['caps']} captures, "
-              f"{t['ok']} with a later sync; syncs {t['found']} of {t['looked']}")
-        if t["found"]:
-            ln += f", signs right {t['right']} of {24 * t['found']}; RSSI {min(t['r'])} to {max(t['r'])}"
+        ln = (f"dmr{fe} sy={s.get('sy', '?')} cfg={s.get('cfg', '?')}: {slots.get(fe, 0)} slots, {t['caps']} captures "
+              f"({t['bits']} signs), {t['ok']} with a sync inside; syncs {t['whole']} whole, {t['short']} short")
+        if t["ok"]:
+            ln += f"; RSSI {min(t['r'])} to {max(t['r'])}"
         if peak.get(fe):
             ln += f"; slot peaks {min(peak[fe])} to {max(peak[fe])}"
         out.append(ln)
@@ -105,10 +128,9 @@ def report(lines, need=21):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("log")
-    ap.add_argument("--need", type=int, default=21, help="signs of 24 for a later sync (either way up)")
     a = ap.parse_args(argv)
     with open(a.log, errors="replace") as f:
-        print("\n".join(report(f.read().splitlines(), a.need)))
+        print("\n".join(report(f.read().splitlines())))
     return 0
 
 

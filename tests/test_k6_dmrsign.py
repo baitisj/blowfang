@@ -2,8 +2,8 @@
 modem/dmrsign.py, docs/k6-dmr.md): the signs of the sync words' symbols as the chip's sync
 word. The model of the FD6818's packet mode (tests/test_k6_aprsclk.py modem_chip) gives the
 symbols' signs as its bits; whether the real chip's slicer and clock do is the bench's question.
-Checked here: the pattern, the module's settings round and round, its lines, the report's later
-syncs, the registers put back. SPDX-License-Identifier: MIT"""
+Checked here: the pattern, the module's settings round and round, its lines, the report's
+syncs (in the model's stream and in run J's capture off the air), the registers put back. SPDX-License-Identifier: MIT"""
 import os
 import sys
 
@@ -17,15 +17,23 @@ from modem import dmrsign  # noqa: E402
 
 pytestmark = need_clang
 
-# sync word, a= (REG_2B's bits), the wide filter, the AFC off
-DMR = [("9b4d", 0x0700, 0, 1),
-       ("64b2", 0x0700, 0, 1),
-       ("9b4d", 0, 0, 1),
-       ("64b2", 0, 0, 1),
-       ("9b4d", 0x0700, 1, 1),
-       ("64b2", 0x0700, 1, 1),
-       ("9b4d", 0x0700, 0, 0),
-       ("64b2", 0x0700, 0, 0)]
+# sync word, a= (REG_2B's bits), the wide filter, the AFC off, REG_58
+DMR = [("9b4d", 0x0700, 0, 1, "00e9"),
+       ("64b2", 0x0700, 0, 1, "00e9"),
+       ("9b4d", 0, 0, 1, "00e9"),
+       ("64b2", 0, 0, 1, "00e9"),
+       ("9b4d", 0x0700, 1, 1, "00e9"),
+       ("64b2", 0x0700, 1, 1, "00e9"),
+       ("9b4d", 0x0700, 0, 0, "00e9"),
+       ("64b2", 0x0700, 0, 0, "00e9")]
+DMR2 = [("9b4d", 0x0700, 1, 1, "00e9"),
+        ("cd4d", 0x0700, 1, 1, "00e9"),
+        ("9b4d", 0x0700, 0, 1, "00e9"),
+        ("cd4d", 0x0700, 0, 1, "00e9"),
+        ("9b4d", 0x0700, 1, 1, "00a9"),
+        ("9b4d", 0, 1, 1, "00e9"),
+        ("9b4d", 0x0700, 1, 0, "00e9"),
+        ("cd4d", 0x0700, 1, 0, "00e9")]
 
 
 def test_sync_signs():
@@ -42,28 +50,59 @@ def test_sync_signs():
     assert dmrsign.next_syncs(cap) == [24, 0, 24, 24, 0, 24, 24]
     assert dmrsign.next_syncs(1 - cap) == [0, 24, 0, 0, 24, 0, 0]
     assert all(6 <= x <= 18 for x in dmrsign.next_syncs(rng.integers(0, 2, 1024).astype(np.int8)))
+    assert dmrsign.find_syncs(cap) == [(120 + 144 * i, "-" if i % 3 == 1 else "+", "whole") for i in range(7)]
+    assert dmrsign.find_syncs(rng.integers(0, 2, 100000).astype(np.int8)) == []
+    slip = np.delete(cap, 120 + 15)                               # the sign the real chip drops
+    assert dmrsign.find_syncs(slip)[:2] == [(120, "+", "short"), (263, "-", "whole")]
 
 
-def test_dfskcap_dmr_on_the_model():
-    """dfskcap_dmr on the emulated M0: eight settings of 0.8 s, three times round here. The
-    air is a repeater's bursts as signs, the first half one way up and the second half the
-    other, so the settings with 9b4d find the syncs in the first and those with 64b2 in the
-    second; the report finds the later syncs in every such capture. The registers are put
-    back, the tuning is the repeater's in the filter each setting names"""
+# Run J (2026-11-11 07:39:48Z, build 13c7783): the one key-up of the 440.925 repeater's in the
+# 12 minutes, half a second at -81 dBm, as dfskcap_dmr's setting 4 caught it (sync word 9B4D,
+# the wide filter, the AFC off): idle bursts, both slots.
+RUN_J = """s 4 t=539642 cfg=00e9 b=c195 sy=9b4d l=7f00
+c4 1 t=539697 w=139 k=0 r=-81
+d4 1 000 413bec8261b9c13c5803550855da1cda6b04ef9904c373e1
+d4 1 00c b1600aa842aed0e6a6b04ef9904c37387dc5803550855b43
+d4 1 018 9a9a8277d904c373f931600d542156d0e6d3504efb20986e
+d4 1 024 702f1600aa842aed0e6a6b04ef9904c373e1b160aa840d54
+d4 1 030 215768735358277d904c37387d8b006aa10ab68753583535
+d4 1 03c 04efb304c373f931600d5421b687b687609d3535f320986e
+d4 1 048 70278b00554215768735358277cc8261b9f0d8b006aa1576
+d4 1 054 10ab687353504efb20986e70fb1600d5421568736d0e6d35
+d4 1 060 04efb20986e7f262c01550855da1cda6b04ef9904c37f262
+d4 1 06c 3813c5803550855da1cd4d609df64130dcf86e2c01aa855d
+d4 1 078 842ada1cd4d413bec8261b9cfb1600d542157687369a13be
+d4 1 084 c13be64130dc800000389f007687
+v4 n=1 w=139 b=0 p=-81 f=-130"""
+
+
+def test_run_j_capture():
+    """what the real chip gave on a real repeater: thirteen sync fields in 2224 signs, five
+    whole and eight with sign 16 dropped, some 133 to 152 bits apart and not 144: the clock
+    drops signs. Chance would give none (and gave none in the run's 48 captures of noise)"""
+    rep = dmrsign.report(["12.5 K6 MOD say " + ln for ln in RUN_J.splitlines()])
+    assert rep == ["c4 t=539697 r=-81: 13 syncs in 2224 signs, at 109 242s 376s 506 638s 787s 1215s 1363s 1510 "
+                   "1641 1793s 1941s 2071",
+                   "dmr4 sy=9b4d cfg=00e9: 1 slots, 1 captures (2224 signs), 1 with a sync inside; "
+                   "syncs 5 whole, 8 short; RSSI -81 to -81; slot peaks -81 to -81"], rep
+
+
+def on_the_model(name, extra, table, rounds, air):
+    """a dfskcap_dmr build on the emulated M0, rounds times round its table of eight settings
+    of 0.8 s, the air as signs -> its report's line a setting. Checked on the way: the lines,
+    the tuning (the repeater's, in the filter each setting names), the AFC bit, the registers
+    put back"""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
-    src = os.path.join(K6, "mod", "dfskcap_dmr.c")
-    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_NARROW", "1"), ("DFSK_DMR", "1"), ("DFSK_ROUNDS", "3u"),
-                                 ("DFSK_DUMP_ALL", "1"), ("PROBE_HZ", "440925000u"), ("SLOT_SCALE", "100u"),
-                                 ("FE_S", "8"), ("WAIT_MS", "200u"), ("QN", "2u")],
+    src = os.path.join(K6, "mod", name + ".c")
+    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_NARROW", "1"), ("DFSK_DMR", "1")] + extra
+                           + [("DFSK_ROUNDS", f"{rounds}u"), ("DFSK_DUMP_ALL", "1"), ("PROBE_HZ", "440925000u"),
+                              ("SLOT_SCALE", "100u"), ("FE_S", "8"), ("WAIT_MS", "200u"), ("QN", "2u")],
                            os.path.join(K6, "mod", "dfskcap.c"))
     full, _ = k6mod.build(src)
-    total, BASE = 3 * 8 * 0.8 + 4, 4800
-    rng = np.random.default_rng(7)
-    half = dmrsign.air_signs(int(total * BASE / 144 / 2) + 1, rng, voice_every=6)
-    air = np.concatenate([half, 1 - half, half])
-    Chip = modem_chip(le, lambda r58: air, BASE)
+    total, n = rounds * 8 * 0.8 + 4, rounds * 8
+    Chip = modem_chip(le, lambda r58: air, 4800)
 
     class Tuned(Chip):
         long5d, early_done, ring = True, True, True
@@ -85,20 +124,43 @@ def test_dfskcap_dmr_on_the_model():
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     s = [ln.split() for ln in e.said if ln.startswith("s ")]
     assert [ln[1:2] + ln[3:] for ln in s] == \
-        [[str(i % 8), "cfg=00e9", "b=c195", "sy=" + DMR[i % 8][0], "l=7f00"] for i in range(24)], s
-    assert e.tunes == [(440925000, 1)] + [(440925000, DMR[i % 8][2]) for i in range(24)], e.tunes
-    assert e.writes[0x73][:24] == [0x10 if DMR[i % 8][3] else 0 for i in range(24)] and e.writes[0x73][-1] == 0
+        [[str(i % 8), "cfg=" + table[i % 8][4], "b=c195", "sy=" + table[i % 8][0], "l=7f00"] for i in range(n)], s
+    assert e.tunes == [(440925000, 1)] + [(440925000, table[i % 8][2]) for i in range(n)], e.tunes
+    assert e.writes[0x73][:n] == [0x10 if table[i % 8][3] else 0 for i in range(n)] and e.writes[0x73][-1] == 0
+    assert {w & 0x0700 for w in e.writes[0x2B][:-1]} == {t[1] for t in table}, e.writes[0x2B]
     rep = dmrsign.report(["K6 MOD say " + ln for ln in e.said])
     dmr = {int(ln.split()[0][3:]): ln for ln in rep if ln.startswith("dmr")}
     assert sorted(dmr) == list(range(8)), rep
-    found = 0
     for fe, ln in dmr.items():
-        assert f"sy={DMR[fe][0]} cfg=00e9: 3 slots" in ln, ln
-        ok = int(ln.split(" captures, ")[1].split()[0])
-        if ok:
-            got, looked = (int(x) for x in ln.split("syncs ")[1].split(",")[0].split(";")[0].split(" of "))
-            assert got == looked and f"signs right {24 * got} of {24 * got}" in ln, ln
-            found += got
-    assert found >= 40, rep                                       # most slots are in a half that suits them
+        assert f"sy={table[fe][0]} cfg={table[fe][4]}: {rounds} slots" in ln, ln
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73):
         assert e.writes[reg][-1] == 0, hex(reg)
+    return dmr
+
+
+def syncs_of(ln):
+    return tuple(int(x.split()[0]) for x in ln.split("syncs ")[1].split(";")[0].split(", "))
+
+
+def test_dfskcap_dmr_on_the_model():
+    """dfskcap_dmr, three times round. The air is a repeater's bursts as signs, the first
+    half one way up and the second half the other, so the settings with 9b4d find the syncs
+    in the first and those with 64b2 in the second, all whole (the model's clock keeps time)"""
+    rng = np.random.default_rng(7)
+    half = dmrsign.air_signs(int((3 * 8 * 0.8 + 4) * 4800 / 144 / 2) + 1, rng, voice_every=6)
+    dmr = on_the_model("dfskcap_dmr", [], DMR, 3, np.concatenate([half, 1 - half, half]))
+    assert all(syncs_of(ln)[1] == 0 for ln in dmr.values()), dmr
+    assert sum(syncs_of(ln)[0] for ln in dmr.values()) >= 40, dmr  # most slots are in a half that suits them
+
+
+def test_dfskcap_dmr2_on_the_model():
+    """dfskcap_dmr2's table (run K), once round. The air's sync fields come with sign 16
+    dropped, as the real chip gives most of them: the settings with the sync word cd4d start
+    on them and the report counts them as short; those with 9b4d get nothing but chance"""
+    rng = np.random.default_rng(9)
+    air = dmrsign.air_signs(int((8 * 0.8 + 4) * 4800 / 144) + 2, rng)
+    air = np.delete(air, [66 + 15 + 144 * i for i in range(len(air) // 144)])
+    dmr = on_the_model("dfskcap_dmr2", [("DFSK_DMR2", "1")], DMR2, 1, air)
+    for fe, ln in dmr.items():
+        whole, short = syncs_of(ln)
+        assert whole == 0 and (short >= 3) == (DMR2[fe][0] == "cd4d"), ln

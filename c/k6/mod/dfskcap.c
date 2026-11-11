@@ -200,6 +200,14 @@
       2, 3   the same with the AF filters as found
       4, 5   as 0, 1 in the wide filter
       6, 7   as 0, 1 with the AFC on
+   Run J (2026-11-11): the repeater keyed once in the 12 minutes, half a second at -81 dBm,
+   and setting 4 caught it: 15 sync fields in the capture, 5 whole and 8 with sign 16 dropped
+   (the clock follows the slicer's turns and drops some ten signs a burst), none in the 48
+   captures of noise. So it finds DMR and cannot read it. DFSK_DMR2 (dfskcap_dmr2.c, an hour)
+   is the next table, the sense being known: 9B4D and CD4D (the sync word with its dropped
+   sign) in the wide filter (0, 1) and the narrow (2, 3), 9B4D in the wide with REG_58's bits
+   7:6 = 10 (4) and with the AF filters as found (5), 9B4D and CD4D in the wide with the AFC
+   on (6, 7).
    A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
@@ -447,17 +455,33 @@ static const var_t V[NV] = {
 /* DMR's sync words are outer symbols only, so their signs are a fixed pattern (BS data sync
    DFF57D75DF5D: 439B4D with + as 1; the voice sync is its inverse). The last sixteen as the
    sync word, either way up; 128 bytes (seven bursts on) a capture; 4800 baud */
-#define DV(sync, af, fe) {0x00E9, 0xC195, sync, 0x7F00, af, 100, FE_S, 0, fe, 0}
+#define DV(cfg, sync, af, fe) {cfg, 0xC195, sync, 0x7F00, af, 100, FE_S, 0, fe, 0}
+#ifdef DFSK_DMR2
+/* run J's one key-up came in setting 4 of the table below (9B4D, the wide filter): of its 15
+   sync fields 5 came whole and 8 with sign 16 dropped (the chip's clock), which the sync word
+   9B4D does not match and CD4D, the last sixteen of the 23 that are left, does */
 static const var_t V[NV] = {
-    DV(0x9B4D, 0x0700, 2),
-    DV(0x64B2, 0x0700, 2),
-    DV(0x9B4D, 0, 2),
-    DV(0x64B2, 0, 2),
-    DV(0x9B4D, 0x0700, 3),
-    DV(0x64B2, 0x0700, 3),
-    DV(0x9B4D, 0x0700, 0),
-    DV(0x64B2, 0x0700, 0),
+    DV(0x00E9, 0x9B4D, 0x0700, 3),
+    DV(0x00E9, 0xCD4D, 0x0700, 3),
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0xCD4D, 0x0700, 2),
+    DV(0x00A9, 0x9B4D, 0x0700, 3),
+    DV(0x00E9, 0x9B4D, 0, 3),
+    DV(0x00E9, 0x9B4D, 0x0700, 1),
+    DV(0x00E9, 0xCD4D, 0x0700, 1),
 };
+#else
+static const var_t V[NV] = {
+    DV(0x00E9, 0x9B4D, 0x0700, 2),
+    DV(0x00E9, 0x64B2, 0x0700, 2),
+    DV(0x00E9, 0x9B4D, 0, 2),
+    DV(0x00E9, 0x64B2, 0, 2),
+    DV(0x00E9, 0x9B4D, 0x0700, 3),
+    DV(0x00E9, 0x64B2, 0x0700, 3),
+    DV(0x00E9, 0x9B4D, 0x0700, 0),
+    DV(0x00E9, 0x64B2, 0x0700, 0),
+};
+#endif
 #elif defined(DFSK_NARROW)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -3, 2, 0},

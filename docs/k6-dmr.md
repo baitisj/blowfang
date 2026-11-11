@@ -444,7 +444,7 @@ So dmrdet now does both:
 To rerun a capture: cable in, `tools/k6_upload.py mod-dmrcap.bin --api-level 2 --run-s 620`
 while 440.925 is busy, with the IC-7100 recording alongside for ground truth.
 
-## Sync by the chip's own FSK receiver (`dfskcap_dmr`, probe built 2026-11-11)
+## Sync by the chip's own FSK receiver (`dfskcap_dmr`, 2026-11-11)
 
 The detector above reads the IF tap, whose own noise sets its limit at about -79 dBm
 (`docs/k6-ais.md`, `docs/k6-aprs-clock.md`); the repeater on 440.925 MHz comes in at -85 to
@@ -466,9 +466,9 @@ no DMA, no correlator and no CPU load, 30 dB better than the tap's. `dfskcap_dmr
 whether it does (receive only; `python3 -m modem.dmrsign LOG` reads its log). The sync word is
 the last sixteen signs, 9B4D, or 64B2 for the other sense of the discriminator (which is not
 known; a data sync one way up is a voice sync the other). A capture is 128 bytes: the signs
-of the 1024 symbols after the sync, so the sync fields of the next seven bursts are its bits
-120 to 143, 264 to 287 and so on. A capture that shows them is DMR beyond doubt, and the
-signs right in them say how well the slicer and the clock hold on 4FSK.
+of the 1024 symbols after the sync, so the sync fields of the next seven bursts would be its
+bits 120 to 143, 264 to 287 and so on if the clock kept time. A capture that shows them is
+DMR beyond doubt, and where they stand says how well the slicer and the clock hold on 4FSK.
 
 | Setting | Sync | Filter | AFC | REG_2B |
 | --- | --- | --- | --- | --- |
@@ -485,6 +485,58 @@ bench's question.
 What it cannot give: the second bit of each dibit. A decoder would still need the tap, or a
 slicer leaned to one side (REG_58's bits 7:6), which is not tried here. A detector, the
 EXPLORE mark and the mute need only the sync.
+
+### Run J (2026-11-11 07:30:49 to 07:43:13Z, build 13c7783): it finds the sync
+
+The K6 listened on 440.925 MHz for 110 rounds (880 slots), receive only. The repeater keyed
+once, at 07:39:48Z, for about half a second at -81 dBm; every other slot peaked at -124 to
+-132 dBm, but three at -93 to -95 that were the bench's ID keeper on 440.850 MHz. The key-up
+fell into setting 4 (9B4D, the wide filter, the AFC off, REG_2B + 0700), which started on it
+(the capture is stamped 55 ms into the slot) and gave 139 words, 2224 signs, to the carrier's
+end.
+
+- **The capture holds 15 sync fields**: 5 with all 24 signs, 8 with one sign dropped (always
+  sign 16, the second of a pair of +3), 2 with three and four signs off. All the data sync's
+  way up, so 9B4D is the right sense on this channel.
+- **Noise gives none.** The other 48 captures (51,536 signs) hold no sync field, whole or
+  short. They are what chance owes a 16-bit sync word: one in 65,536 bits, 13.7 s of open
+  receiver at 4800 baud.
+- **The clock does not keep time.** The sync fields are 130 to 152 bits apart, 140 on
+  average, not 144: the plain receiver's clock follows each turn of the slicer
+  (`docs/k6-acars.md`), and on 4FSK that drops and adds signs. The bursts were idle ones on
+  both slots (the idle message's 96 bits through `sim/k6if/dmrdec.py`'s `bptc196_encode` and
+  `burst_bits` give the signs that follow each sync), and against that the capture has signs
+  missing where inner symbols stand: a run with a -1 or +1 in it comes one short, a lone +1
+  between negative symbols is not seen.
+
+So the chip finds DMR and cannot read it, not even the first bit of each dibit. For a
+detector that is enough: the chip's start, then one more sync field (whole or short) anywhere
+in what follows, which chance does not give. With 9B4D a third of the sync fields can start
+it, so a key-up is found within some 90 ms; CD4D, the last sixteen signs of the short form,
+would match half of them. `python3 -m modem.dmrsign LOG` finds the sync fields wherever they
+are (`s` marks the short ones), and the capture is a test (`tests/test_k6_dmrsign.py`).
+
+Not answered: the level. -81 dBm is where the tap's detector gives up, and the chip's floor
+read -131 dBm in this run, but no weaker DMR came by. And one key-up met one setting, so the
+other seven are untried.
+
+### Run K (`dfskcap_dmr2`, an hour; built, not yet run)
+
+The same listen with the sense known, 560 rounds:
+
+| Setting | REG_58 | Sync | Filter | AFC | REG_2B |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 00E9 | 9B4D | wide | off | + 0700 (run J's setting 4) |
+| 1 | 00E9 | CD4D | wide | off | + 0700 |
+| 2 | 00E9 | 9B4D | narrow | off | + 0700 |
+| 3 | 00E9 | CD4D | narrow | off | + 0700 |
+| 4 | 00A9 (bits 7:6 = 10) | 9B4D | wide | off | + 0700 |
+| 5 | 00E9 | 9B4D | wide | off | as found |
+| 6 | 00E9 | 9B4D | wide | on | + 0700 |
+| 7 | 00E9 | CD4D | wide | on | + 0700 |
+
+What it should say: which sync word and filter start most often on a key-up, and whether
+the starts hold when the signal is weak (the K6's antenna off, or a far repeater).
 
 ## Bench plan (receive only; done, kept for reruns)
 
