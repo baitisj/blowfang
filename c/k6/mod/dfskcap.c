@@ -113,6 +113,32 @@
       13, 14 00a9 0069 at 4800       bits 7:6 = 10, 01
       15     04e9 at 4800            RX mode bits 12:10 = 1 (0 is this receiver, 4 and 7 the
                                      tone receivers)
+   DFSK_TONE (dfskcap_acarsd.c in FM on 440.850 MHz; with DFSK_ZIF at the zero IF): not the
+   plain receiver but the chip's 1200/2400 Hz tone receiver (REG_58<12:10> = 4), whose format
+   ACARS is but for the framing. acarsfsk asked it for SYN SYN as its sync word, in FM, and
+   got no sync. Here the pre-key is the sync word (0000 as tone bits, ffff the other way up:
+   a steady 2400 Hz), so the chip hands over whatever its tone receiver makes of the rest of
+   the block, unframed, and the host looks for the block in it (python3 -m modem.acars tone
+   LOG). Sixteen settings of FE_S seconds; a setting has its own REG_5B and REG_59 (the s
+   line: sy= with eight digits for a sync word of four bytes, c= REG_59's low byte, a= the
+   bits set in REG_2B's 10:8, no l=):
+      0, 1   33a9 at 2400 baud, sync 0000, ffff   the tone bits as they come (512 bytes)
+      2, 3   33a9 at 2400, sync 5c5c, 3ffe 5c5c   SYN SYN, and "+*" before it (128 bytes)
+      4      33a9 at 2400, sync 076b 3e36         the K units: the chip's own kind of opening
+      5, 6   as 2 and 4 with REG_59<7:4> = 0      the shortest preamble (f: sixteen bytes)
+      7, 8   33e9 at 2400, sync 0000, 076b 3e36   REG_58's bits 7:6 = 11
+      9      33a3 at 2400, sync 0000              the 1200/1800 Hz bandwidth (aprsfsk's)
+      10     3329 at 2400, sync 0000              bits 7:6 = 00
+      11     33a9 at 2400, sync 0000, REG_2B + 0100   the AF de-emphasis off (it takes 6 dB
+                                                  off 2400 Hz against 1200 Hz)
+      12     33a9 at 2400, sync 0000, REG_2B + 0700   and the 300 Hz high-pass and the 3 kHz
+                                                  low-pass off
+      13     33a9 at 4800 baud, sync 0000         two samples a bit: where the tones change
+      14, 15 33a3 33a9 at 1200 baud, sync 076b 3e36   the control: the L units (a cycle of
+                                                  1200 Hz or two of 2400 Hz a bit)
+   A capture of these ends when the FIFO is empty (the words of eight reads before come
+   again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
+   not said. The receiver is off while a capture's words are said.
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
    k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
    with k of 3 or 4 their d lines. And is there a signal at all? The RSSI is read every 50 ms:
@@ -143,7 +169,7 @@
                             upload's audio ends, and that is no Bell 202 */
 #endif
 #ifdef DFSK_ACARS
-#if defined(DFSK_SETS)
+#if defined(DFSK_SETS) || defined(DFSK_TONE)
 #define NV 16
 #elif defined(DFSK_NARROW) || defined(DFSK_ZIF) || defined(DFSK_SWEEP)
 #define NV 8
@@ -170,8 +196,12 @@
 #define CAPW 1056u       /* words kept of a capture: 2048 bytes, the stale reads, and a few */
 #define CAPN 12u         /* captures said per setting */
 #define LAG 3u           /* words the timed reads stay behind the chip (its FIFO holds 8) */
+#ifdef DFSK_TONE
+#define STALE 40u        /* (a K unit's opening is 24 words of one kind at 4800 baud) */
+#else
 #define STALE 24u        /* reads of the same word in a row: the FIFO is empty (80 ms at 4800 baud;
                             no packet holds a tone that long) */
+#endif
 #define CAP_MS 5000u     /* a capture's longest */
 
 #define IRQ_DONE 0x2000u
@@ -188,6 +218,9 @@ typedef struct {
   int8_t off, wide, src; /* tuning offset in 100 Hz; the wide filter (bit 0), the AFC off (bit 1,
                             DFSK_NARROW and DFSK_ZIF) and the zero IF (bit 2, DFSK_ZIF); REG_47's
                             AF source (0: as found) */
+#endif
+#ifdef DFSK_TONE
+  uint16_t sync2, ctrl;  /* REG_5B (a sync word of four bytes: REG_59 bit 3); REG_59 */
 #endif
 } var_t;
 
@@ -206,7 +239,7 @@ static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 
 #endif
 #define SAVED_2B 8
 
-#if defined(DFSK_SWEEP) || defined(DFSK_SETS)
+#if defined(DFSK_SWEEP) || defined(DFSK_SETS) || defined(DFSK_TONE)
 /* REG_72 for a baud: 10.32444 a baud, rounded (C195 at 4800, F1FB at 6000) */
 #define B72(baud) ((uint16_t)(((baud) * 1032444ull + 50000ull) / 100000ull))
 #ifdef DFSK_ZIF
@@ -214,7 +247,27 @@ static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 
 #else
 #define SWEEP_FE 1, 0 /* FM as found, wide */
 #endif
-#ifdef DFSK_SETS
+#ifdef DFSK_TONE
+#define K_SY 0x076B, 0x3E36 /* the pager's sync word */
+static const var_t V[NV] = {
+    {0x33A9, B72(2400u), 0x0000, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
+    {0x33A9, B72(2400u), 0xFFFF, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0xFFFF, 0xF0},
+    {0x33A9, B72(2400u), 0x5C5C, 0x7F00, 0, 200, FE_S, 0, SWEEP_FE, 0x5C5C, 0xF0},
+    {0x33A9, B72(2400u), 0x3FFE, 0x7F00, 0, 200, FE_S, 0, SWEEP_FE, 0x5C5C, 0xF8},
+    {0x33A9, B72(2400u), 0x076B, 0x7F00, 0, 200, FE_S, 0, SWEEP_FE, 0x3E36, 0xF8},
+    {0x33A9, B72(2400u), 0x5C5C, 0x7F00, 0, 200, FE_S, 0, SWEEP_FE, 0x5C5C, 0x00},
+    {0x33A9, B72(2400u), 0x076B, 0x7F00, 0, 200, FE_S, 0, SWEEP_FE, 0x3E36, 0x08},
+    {0x33E9, B72(2400u), 0x0000, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
+    {0x33E9, B72(2400u), 0x076B, 0x7F00, 0, 200, FE_S, 0, SWEEP_FE, 0x3E36, 0xF8},
+    {0x33A3, B72(2400u), 0x0000, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
+    {0x3329, B72(2400u), 0x0000, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
+    {0x33A9, B72(2400u), 0x0000, 0xFF20, 0x0100, 200, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
+    {0x33A9, B72(2400u), 0x0000, 0xFF20, 0x0700, 200, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
+    {0x33A9, 0xC195, 0x0000, 0xFF20, 0, 100, FE_S, 0, SWEEP_FE, 0x0000, 0xF0},
+    {0x33A3, B72(1200u), 0x076B, 0x7F00, 0, 400, FE_S, 0, SWEEP_FE, 0x3E36, 0xF8},
+    {0x33A9, B72(1200u), 0x076B, 0x7F00, 0, 400, FE_S, 0, SWEEP_FE, 0x3E36, 0xF8},
+};
+#elif defined(DFSK_SETS)
 static const var_t V[NV] = {
     {0x00E9, B72(2400u), 0x6868, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
     {0x00E9, B72(2400u), 0x9797, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE},
@@ -327,11 +380,23 @@ static char *hexn(char *p, uint32_t v, int digits) {
 static char *kv(char *p, const char *k, uint32_t v) { return dec(put(p, k), v); }
 static char *kx(char *p, const char *k, uint32_t v) { return hexn(put(p, k), v, 4); }
 
+#ifdef DFSK_TONE
+#define ARM(api, v) arm(api, (v)->ctrl)
+#define SYNC2(v) ((v)->sync2)
+static void arm(const k6_api_t *api, uint32_t ctrl) {
+  api->fd_write(0x59, (uint16_t)(ctrl | CTRL_CLR));
+  api->fd_write(0x59, (uint16_t)(ctrl | CTRL_EN));
+  api->fd_write(0x02, 0);
+}
+#else
+#define ARM(api, v) arm(api)
+#define SYNC2(v) ((v)->sync)
 static void arm(const k6_api_t *api) {
   api->fd_write(0x59, CTRL | CTRL_CLR);
   api->fd_write(0x59, CTRL | CTRL_EN);
   api->fd_write(0x02, 0);
 }
+#endif
 
 /* the modem off and on with this setting, armed twice (a new sync word alone does not take
    hold, and arming alone does not end a packet the chip is in); -> the FIFO's stale last word */
@@ -342,15 +407,15 @@ static uint32_t seek(const k6_api_t *api, const var_t *v, uint32_t af) {
   api->fd_write(0x58, 0);
   api->fd_write(0x2B, (uint16_t)af | v->af);
   api->fd_write(0x5A, v->sync);
-  api->fd_write(0x5B, v->sync);
+  api->fd_write(0x5B, SYNC2(v));
   api->fd_write(0x58, v->cfg);
   api->fd_write(0x72, v->baud);
   api->fd_write(0x5C, 0x5625); /* no CRC of the chip's */
   api->fd_write(0x5D, v->len);
   api->fd_write(0x5E, 0x0206); /* RX almost full at 6 words */
-  arm(api);
+  ARM(api, v);
   api->delay_us(2000);
-  arm(api);
+  ARM(api, v);
   for (i = 0; i < 8; i++) w = api->fd_read(0x5F);
   return (w & 0xFF) << 8 | w >> 8;
 }
@@ -399,7 +464,13 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
   p = kx(p, " cfg=", v->cfg);
   p = kx(p, " b=", v->baud);
   p = kx(p, " sy=", v->sync);
+#ifdef DFSK_TONE
+  if (v->ctrl & 8) p = hexn(p, v->sync2, 4);
+  p = hexn(put(p, " c="), v->ctrl, 2);
+  p = hexn(put(p, " a="), v->af >> 8, 1);
+#else
   p = kx(p, " l=", v->len);
+#endif
 #ifdef DFSK_ZIF
   p = kx(p, " if=", api->fd_read(0x3D));
   if (again) *p++ = ' ', *p++ = '!';
@@ -540,13 +611,32 @@ int k6_main(const k6_api_t *api) {
       got++;
       if (same >= STALE) got -= STALE, over = 1;
       else if (got >= CAPW) over = 1;
+#ifdef DFSK_TONE
+      /* the tone receiver's words need not stand still in silence, so the FIFO is empty
+         when the last words are those of eight reads before again (which is what an empty
+         read gives), for 53 ms: 16 words at 2400 baud. A pre-key is 8 words there, a K
+         unit's opening 12 */
+      else {
+        uint32_t m = udiv(3200, v->wticks3);
+        if (got >= m + 8) {
+          for (i = 1; i <= m && s->cap[got - i] == s->cap[got - i - 8]; i++) {}
+          if (i > m) got -= m, over = 1;
+        }
+      }
+#endif
     }
     if (in && now - tcap >= CAP_MS) over = 1;
     if (in && over) {
       ncap++, nw += got;
 #ifdef DFSK_ACARS
+#ifdef DFSK_TONE
+      api->fd_write(0x59, 0); /* the receiver off while the words are said (512 bytes take a while) */
+      /* k: words unlike the capture's first (0: a steady tone or silence, and not said) */
+      for (i = 1, irq = 0; i < got && i < CAPW; i++) irq += s->cap[i] != s->cap[0];
+#else
       /* a pre-key goes on after the sync word: AAAA or 5555 in the first words */
       for (i = 0, irq = 0; i < 4 && i < got; i++) irq += s->cap[i] == 0xAAAAu || s->cap[i] == 0x5555u;
+#endif
       p = ln, *p++ = 'c', p = dec(p, (uint32_t)cur), *p++ = ' ', p = dec(p, ncap);
       p = kv(p, " t=", tcap);
       p = kv(p, " w=", got);
@@ -554,7 +644,11 @@ int k6_main(const k6_api_t *api) {
       p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(rssi));
       *p = 0;
       api->say(ln);
+#ifdef DFSK_TONE
+      if (irq && ndump < CAPN) {
+#else
       if (irq >= DUMP_K && ndump < (irq >= 3 ? 3 * CAPN : CAPN)) { /* a pre-key's: three times as many */
+#endif
         ndump++;
 #else
       if (ncap <= CAPN) {

@@ -617,6 +617,56 @@ fit15 4800 baud: 0 blocks read, 22 openings; 1 -> 1:100%; 1.5 -> 1:87% 2:13%; 2 
   sample clock that either runs at 9600 baud (1, 1.5 and 2 as two, three and four samples;
   the chip stops at 6348) or does not follow the turns, and neither is on offer.
 
+#### The tone receiver once more (`dfskcap_acarsd`, 2026-11-11)
+
+Point 5 below rests on two runs: the pager's at 2400 baud (2026-11-04, six REG_58 values) and
+`acarsfsk` (2026-11-10, four), both in FM from the IC-7100, both waiting for the chip to find
+a sync word, and both with no sync at all, not even on an opening of the chip's own kind.
+Three things were left open by them, and a reader's list of ideas for this page (2026-11-11
+04:17Z) asks for them:
+
+1. **What does the tone receiver make of the block, sync word or not?** The chip gives the MCU
+   no unframed bit stream (REG_47's "FSK out" is the audio pin, which the K6's MCU cannot
+   read). But the pre-key is a steady 2400 Hz, which is 0000 as tone bits (FFFF the other way
+   up), and a receiver given that as its sync word starts on the pre-key and hands over the
+   tone bits of everything after it. The framing is then the host's: SYN SYN looked for in the
+   bits, either way up, the differences undone, the check tried (`modem.acars tone`).
+2. **Was the probe at fault at 2400 baud?** A control the receiver is known to read: the K
+   unit at 1200 baud (an L unit: a cycle of 1200 Hz or two of 2400 Hz a bit, the format
+   `aprsfsk` reads).
+3. **AM at the zero IF.** Every run of the tone receiver was in FM, through a transmitter
+   whose audio chain is hard on MSK at 2400 baud (docs/k6-if-modem.md: 4% bit errors at any
+   level). Real ACARS would reach it as AM at the zero IF, where the plain receiver showed
+   that the discriminator gives the tones whole.
+
+`dfskcap` with `DFSK_TONE` is the recorder for it: sixteen settings of 11 s, the units K, R and
+L in turn with 0.4 s between them (`python3 -m modem.acars probe OUT.wav --only KRL --gap 0.4`).
+
+| Setting | REG_58 | Baud | Sync word | What it asks |
+| --- | --- | --- | --- | --- |
+| 0, 1 | 33A9 | 2400 | 0000, FFFF | the tone bits as they come, 512 bytes a capture |
+| 2, 3 | 33A9 | 2400 | 5C5C, 3FFE 5C5C | does the chip find SYN SYN itself (`acarsfsk`'s question, read by time now and not by the sync interrupt) |
+| 4 | 33A9 | 2400 | 076B 3E36 | the K units |
+| 5, 6 | 33A9 | 2400 | 5C5C, 076B 3E36 | the same with REG_59's preamble length 0 (it was 15 in every run so far) |
+| 7, 8 | 33E9 | 2400 | 0000, 076B 3E36 | REG_58's bits 7:6 = 11 (10 slices Bell 202 best) |
+| 9 | 33A3 | 2400 | 0000 | the 1200/1800 Hz bandwidth, `aprsfsk`'s setting |
+| 10 | 3329 | 2400 | 0000 | bits 7:6 = 00 |
+| 11 | 33A9 | 2400 | 0000 | REG_2B + 0100: the AF de-emphasis off |
+| 12 | 33A9 | 2400 | 0000 | REG_2B + 0700: and the 300 Hz high-pass and 3 kHz low-pass off |
+| 13 | 33A9 | 4800 | 0000 | two samples a tone bit: where the tones change, for a clock held by the host |
+| 14, 15 | 33A3, 33A9 | 1200 | 076B 3E36 | the control: the L units |
+
+The report gives, a setting, the blocks read, and for every capture how many of the 264 tone
+bits that each unit's block opens with (the SOH to the text's `AG7EW TEST 440.850 `) are off
+at the best place, with those bits laid under the sent ones (`--show`). So a receiver that
+gets the tones nearly right, or wrong in a regular way, shows as that and not as "no sync".
+
+`dfskcap_acarsd` is the build for FM on 440.850 MHz (the IC-7100 at RF power 0) and
+`dfskcap_acars6` the same at the zero IF on 50.650 MHz (AM, with the owner's word; there the
+signal has every second round of units 1.8 times the level, `--levels 1,1.8`, since the
+sender's depth of modulation was never measured). REG_31 (the compander and the scrambler)
+reads 0000 on this K6 and the AFC is off at the zero IF; the receiver's AGC is left as it is.
+
 ### What the 6 m tests say
 
 Eight runs on 6 m, the last five with the carrier 40 dB over the K6's floor, and two in FM on
@@ -634,12 +684,14 @@ Eight runs on 6 m, the last five with the carrier 40 dB over the K6's floor, and
    would give the bytes themselves), REG_58's bandwidth bits, its bits 7:6 and RX mode 1.
    The turns of the two tones are half a sample of 4800 apart, and the chip's clock gives
    that half away each time.
-5. The 1200/2400 Hz modem never syncs on ACARS (first bench run) and stays closed.
+5. The 1200/2400 Hz modem never synced on ACARS in FM (first bench run). What it makes of a
+   block when it is not asked for a sync word, and at the zero IF, is `dfskcap_acarsd`'s
+   question (above), not yet run.
 
 Not measured, and of no use until a block reads: how weak a signal this path takes in. The zero IF's floor was -93 dBm in the
 run against -117 at the IF as found, and ACARS at the bench site peaks at -103 dBm.
 
 `dfskcap_acars6` stays the instrument for the bench (the `q` lines, every capture's words,
-`DFSK_NARROW`, `DFSK_ZIF`, `DFSK_SWEEP` and `DFSK_SETS`); `dfskcap_acars` on 131.550 MHz is unchanged in
+`DFSK_NARROW`, `DFSK_ZIF`, `DFSK_SWEEP`, `DFSK_SETS` and `DFSK_TONE`); `dfskcap_acars` on 131.550 MHz is unchanged in
 what it does.
 

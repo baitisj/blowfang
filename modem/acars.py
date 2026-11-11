@@ -12,6 +12,11 @@ the low bit first.
                                                          for the control, in AM for the test)
       [--only R] [--where 50.650]                        real blocks only; the frequency their
                                                          text names
+      [--only KRL --gap 0.4]                             for the tone receiver's recorder
+                                                         (dfskcap_acarsd): L is a K unit at
+                                                         1200 baud, the control
+      [--levels 1,1.8]                                   the rounds' peaks in turn (the file's
+                                                         peak is half of it): two depths of AM
   python3 -m modem.acars report LOG                      what the chip made of it (the module's
                                                          c and d lines in the K6's serial log)
   python3 -m modem.acars plain LOG                       dfskcap_acars' log: the plain FSK receiver
@@ -24,6 +29,12 @@ the low bit first.
       [--fit "AG7EW TEST 440.850 R"]                     the bench: the text the blocks open with;
                                                          a line a front end of how many samples
                                                          the chip gave an interval of 1, 1.5 and 2
+  python3 -m modem.acars tone LOG                        dfskcap_acarsd's log: the chip's 1200/2400
+      [--fit "AG7EW TEST 440.850 "] [--show 2]           Hz tone receiver with the pre-key as its
+                                                         sync word; the blocks found in its tone
+                                                         bits, how many bits of the known opening
+                                                         are off, and (--show) the first captures'
+                                                         bits laid against it
 
 The test blocks carry AG7EW as their address and "AG7EW TEST" in their text. They are for
 440.850 MHz (FM) and, with the owner's word, 6 m (AM): nothing is ever sent on airband.
@@ -87,7 +98,9 @@ SYNC4 = int("".join(map(str, tones(bits_lsb(head()))[-32:])), 2)
 def unit_tones(kind, text):
     """one unit's tone bits (1 = 1200 Hz). R: a real block. K: the same block after an opening
     of the chip's own kind, alternating tones then K_SYNC as tone bits, so the chip's modem has
-    its usual preamble to start on (a control for the framing)"""
+    its usual preamble to start on (a control for the framing). L: K's bits, sent at 1200 baud
+    (UNIT_BAUD: a cycle of 1200 Hz or two of 2400 Hz a bit, which the chip's tone receiver
+    reads for aprsfsk), a control for the recorder"""
     blk = bits_lsb(block(text))
     if kind == "R":
         return tones(np.concatenate([bits_lsb(head()), blk]))
@@ -95,20 +108,25 @@ def unit_tones(kind, text):
     return np.concatenate([pre, tones(blk, last=0)])
 
 
-def audio(tone_bits, fs=FS):
+UNIT_BAUD = {"K": BAUD, "R": BAUD, "L": BAUD // 2}
+
+
+def audio(tone_bits, fs=FS, baud=BAUD):
     """tone bits -> phase-continuous audio, peak 1"""
-    f = np.repeat(np.where(np.asarray(tone_bits) == 1, F_CHANGE, F_SAME), fs // BAUD)
+    f = np.repeat(np.where(np.asarray(tone_bits) == 1, F_CHANGE, F_SAME), fs // baud)
     return np.sin(2 * np.pi * np.cumsum(f) / fs)
 
 
-def probe_audio(seconds, fs=FS, gap=0.25, kinds="KR", where="440.850"):
+def probe_audio(seconds, fs=FS, gap=0.25, kinds="KR", where="440.850", levels=(1.0,)):
     """-> (audio, [(kind, start s, text)]): K and R units in turn (or kinds), a gap between
-    them, the frequency they are sent on in their text"""
+    them, the frequency they are sent on in their text. levels: the peak of each round of the
+    kinds in turn (a unit's number says which: number // len(kinds) % len(levels)), to try an
+    AM sender's depth of modulation"""
     out, sent, pos, k = [np.zeros(int(0.2 * fs))], [], 0.2, 0
     while pos < seconds:
         kind = kinds[k % len(kinds)]
         text = f"AG7EW TEST {where} {kind}{k:03d} THE K6 READS ACARS"
-        x = audio(unit_tones(kind, text), fs)
+        x = levels[k // len(kinds) % len(levels)] * audio(unit_tones(kind, text), fs, UNIT_BAUD[kind])
         out += [x, np.zeros(int(gap * fs))]
         sent.append((kind, pos, text))
         pos += len(x) / fs + gap
@@ -497,29 +515,187 @@ def plain_report(lines, fit=None):
     return out
 
 
+def tone_ref(prefix):
+    """the tone bits every unit's block opens with, whatever its kind, from just after its sync
+    word (SYN SYN or K_SYNC): the SOH to the end of prefix"""
+    return tones(nrz_head(prefix), last=0)
+
+
+def tone_blocks(bits):
+    """the tone receiver's bits -> (the texts of the blocks in them, which way up: 1 = the
+    chip's 1 is the 2400 Hz tone). A block is read from the start (the chip's sync word may
+    have been SYN SYN or K_SYNC) and after every SYN SYN or K_SYNC in the bits"""
+    b = np.asarray(bits, np.int8)
+    marks = (f"{SYNC2:016b}", "".join(f"{x:08b}" for x in K_SYNC))
+    best = ([], 0)
+    for inv in (0, 1):
+        t = b ^ inv
+        s, at = "".join(map(str, t)), {0}
+        for w in marks:
+            pos = s.find(w)
+            while pos >= 0:
+                at.add(pos + len(w))
+                pos = s.find(w, pos + 1)
+        out = [text for text in (read_block(t[k:])[0] for k in sorted(at)) if text is not None]
+        if len(out) > len(best[0]):
+            best = (out, inv)
+    return best
+
+
+def tone_places(bits, ref, most=0.2):
+    """the tone receiver's bits against the known opening's -> (which way up, [(end, bits
+    off)], rows): every place where the opening fits with at most `most` of its bits off
+    (wrong, missing or too many), the best first, none within its length of another; or the
+    one best place if none is that good. The way up is the one with the more places, then
+    the fewer bits off. rows: the edit table of that way, for tone_show"""
+    b, ref = np.asarray(bits, np.int8), np.asarray(ref, np.int8)
+    n, m = len(ref), len(b)
+    if not m:
+        return 0, [], None
+    col, best = np.arange(m + 1), None
+    for inv in (0, 1):
+        d = b ^ inv
+        D = np.zeros((n + 1, m + 1), np.int32)
+        D[1:, 0] = np.arange(1, n + 1)
+        for i in range(1, n + 1):
+            row = np.minimum(np.concatenate([[D[i, 0]], D[i - 1, :-1] + (d != ref[i - 1])]), D[i - 1] + 1)
+            D[i] = np.minimum.accumulate(row - col) + col
+        end, used = D[n], []
+        for k in sorted((int(k) for k in np.flatnonzero(end <= most * n) if k), key=lambda k: (end[k], k)):
+            if all(abs(k - u) >= n for u, _ in used):
+                used.append((k, int(end[k])))
+        good = len(used)
+        if not used:
+            k = int(np.argmin(end[1:])) + 1
+            used = [(k, int(end[k]))]
+        key = (-good, sum(o for _, o in used))
+        if best is None or key < best[0]:
+            best = (key, inv, used, D)
+    return best[1], best[2], best[3]
+
+
+def tone_show(bits, ref, inv, end, D, width=96):
+    """-> lines: the opening's bits over the receiver's at the place ending at `end` (a dot
+    where one has no partner), `width` a line"""
+    d, ref = np.asarray(bits, np.int8) ^ inv, np.asarray(ref, np.int8)
+    i, j, a, b = len(ref), end, [], []
+    while i > 0:
+        if j > 0 and D[i, j] == D[i - 1, j - 1] + (int(d[j - 1]) != int(ref[i - 1])):
+            a.append(str(ref[i - 1])), b.append(str(d[j - 1]))
+            i, j = i - 1, j - 1
+        elif D[i, j] == D[i - 1, j] + 1:
+            a.append(str(ref[i - 1])), b.append(".")
+            i -= 1
+        else:
+            a.append("."), b.append(str(d[j - 1]))
+            j -= 1
+    a, b = "".join(a[::-1]), "".join(b[::-1])
+    out = []
+    for k in range(0, len(a), width):
+        out += ["  sent " + a[k:k + width], "  got  " + b[k:k + width]]
+    return out
+
+
+def tone_report(lines, fit="AG7EW TEST 440.850 ", show=0):
+    """dfskcap_acarsd's say lines (as in the serial log) -> its s, v, b and q lines, and a line a
+    capture: the c line, the share of ones and of runs of one, two and more bits, the blocks
+    read from its tone bits (tone_blocks), and how many bits of the units' known opening
+    (tone_ref of fit) are off at each place it is found (tone_places). A setting at 4800 baud
+    has two samples a tone bit: each half is read by itself and the better kept. Before a
+    setting's v line, `tone3 33a9 2400 baud sy=0000: 9 blocks read, 5 captures; openings 11;
+    of 264 bits off: 0 0 1 ...`. show: for that many captures of a setting, those with the
+    fewest bits off, their best place's bits under the opening's (before the tone line)"""
+    said = [ln.split("say ", 1)[-1].strip() for ln in lines]
+    said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
+    caps, out = {}, []
+    for ln in said:
+        f = ln.split()
+        if ln[:1] == "d" and len(f) == 4 and f[0][1:].isdigit() and f[1].isdigit():
+            w = caps.setdefault((int(f[0][1:]), int(f[1])), [])
+            if int(f[2], 16) == len(w):
+                w.extend(int(f[3][i:i + 4], 16) for i in range(0, len(f[3]) - 3, 4))
+    ref, sets, tally = tone_ref(fit), {}, {}
+    for ln in said:
+        f = ln.split()
+        if ln[:2] == "s " and len(f) > 2 and f[1].isdigit():
+            kv = dict(x.split("=", 1) for x in f[2:] if "=" in x)
+            sets[int(f[1])] = (kv.get("cfg", "?"), baud_of(int(kv.get("b", "c195"), 16)), kv.get("sy", "?"))
+        if ln[:1] == "c" and len(f) > 3 and f[0][1:].isdigit() and f[1].isdigit():
+            fe = int(f[0][1:])
+            words = caps.get((fe, int(f[1])))
+            if words:
+                b = np.array([int(c) for w in words for c in f"{w:016b}"], np.int8)
+                runs = np.diff(np.concatenate([[0], np.flatnonzero(np.diff(b)) + 1, [len(b)]]))
+                step = max(1, int(round(sets.get(fe, ("", 2400.0))[1] / 2400)))
+                got = None
+                for ph in range(step):
+                    x = b[ph::step]
+                    texts, up = tone_blocks(x)
+                    inv, places, D = tone_places(x, ref)
+                    good = [o for _, o in places if o <= 0.2 * len(ref)]
+                    key = (-len(texts), -len(good), sum(o for _, o in places))
+                    if got is None or key < got[0]:
+                        got = (key, texts, up, inv, places, D, x, good)
+                _, texts, up, inv, places, D, x, good = got
+                ln += (f" : ones {np.mean(b):.0%} runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} 3+:{np.mean(runs >= 3):.0%}; "
+                       + (f"{len(texts)} read" + (" upside down" if up else "") + f" [{texts[0]}]" if texts else "none read")
+                       + "; off " + " ".join(str(o) for _, o in places))
+                t = tally.setdefault(fe, [0, 0, [], 0, []])
+                t[0] += len(texts)
+                t[1] += 1
+                t[2] += good or [o for _, o in places]
+                t[3] += len(good)
+                if show and places:
+                    t[4] = sorted(t[4] + [(places[0][1], t[1], f"  c{fe} {f[1]}'s best place, {places[0][1]} off"
+                                           + (", upside down:" if inv else ":"),
+                                           tone_show(x, ref, inv, places[0][0], D))])[:show]
+            out.append(ln)
+        elif ln[:1] == "v" and f[0][1:].isdigit():
+            fe = int(f[0][1:])
+            n, ncap, off, good, shown = tally.get(fe, [0, 0, [], 0, []])
+            cfg, baud, sy = sets.get(fe, ("?", 0.0, "?"))
+            for _, _, title, rows in shown:
+                out += [title] + rows
+            out += [f"tone{fe} {cfg} {baud:.0f} baud sy={sy}: {n} blocks read, {ncap} captures; openings {good}; "
+                    f"of {len(ref)} bits off: " + (" ".join(map(str, sorted(off))) or "no capture"), ln]
+        elif ln[:1] in ("s", "v", "b", "q") or ln.startswith("dfskcap "):
+            out.append(ln)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     q = sub.add_parser("probe")
     q.add_argument("out")
     q.add_argument("--seconds", type=float, default=200.0)
-    q.add_argument("--only", default="KR", help="the kinds of unit in turn (K, R; default both)")
+    q.add_argument("--only", default="KR", help="the kinds of unit in turn (K, R, L; default K and R)")
     q.add_argument("--where", default="440.850", help="the frequency named in the text")
+    q.add_argument("--gap", type=float, default=0.25, help="seconds of silence between units")
+    q.add_argument("--levels", default="1", help="the rounds' peaks in turn, as 1,1.8 (the file's peak is half of it)")
     q = sub.add_parser("report")
     q.add_argument("log")
     q = sub.add_parser("plain")
     q.add_argument("log")
     q.add_argument("--fit", help="the text the bench's blocks open with: a fit line a front end")
+    q = sub.add_parser("tone")
+    q.add_argument("log")
+    q.add_argument("--fit", default="AG7EW TEST 440.850 ", help="the text every unit's block opens with")
+    q.add_argument("--show", type=int, default=0, help="captures a setting whose bits are laid against the opening's")
     a = ap.parse_args(argv)
-    if a.cmd in ("report", "plain"):
+    if a.cmd in ("report", "plain", "tone"):
         with open(a.log, errors="replace") as f:
             lines = f.read().splitlines()
-        print("\n".join(report(lines) if a.cmd == "report" else plain_report(lines, a.fit)))
+        print("\n".join(report(lines) if a.cmd == "report" else plain_report(lines, a.fit) if a.cmd == "plain"
+                        else tone_report(lines, a.fit, a.show)))
         return 0
     import soundfile as sf
-    if not a.only or set(a.only) - set("KR"):
-        ap.error("--only takes K and R")
-    x, sent = probe_audio(a.seconds, kinds=a.only, where=a.where)
+    if not a.only or set(a.only) - set(UNIT_BAUD):
+        ap.error("--only takes K, R and L")
+    levels = tuple(float(v) for v in a.levels.split(","))
+    if not levels or min(levels) <= 0 or max(levels) > 2:
+        ap.error("--levels takes peaks over 0 and up to 2")
+    x, sent = probe_audio(a.seconds, kinds=a.only, where=a.where, gap=a.gap, levels=levels)
     sf.write(a.out, 0.5 * x, FS)
     print(f"{len(x) / FS:.2f} s, {len(sent)} units, sync words {SYNC2:04x} {SYNC4:08x}")
     return 0

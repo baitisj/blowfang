@@ -3,16 +3,18 @@
    (python3 -m modem.acars probe OUT.wav --only R --where 50.650, sent in AM). 60 s after its
    start (its own upload on 440.850 MHz ends, the sender changes band), then, at the zero IF
    (DFSK_ZIF, the chip's double sideband mode, where the receiver takes in an AM block),
-   dfskcap_acarsc's sixteen settings of 11 s each (DFSK_SETS: the receiver at 2400 baud, a
-   sample a bit, and the settings not yet tried), every capture's words said. With
-   DFSK_SWEEP in DFSK_SETS's place and FE_S 22: the eighth run's clocks from 5200 to 6300
-   baud; with neither: the seventh run's front ends (which IF, which AF source); with
-   DFSK_NARROW in DFSK_ZIF's place: the sixth run's.
+   dfskcap_acarsd's sixteen settings of 11 s each (DFSK_TONE: the chip's 1200/2400 Hz tone
+   receiver with the pre-key as its sync word, the tone bits of all that follows said; the
+   signal is then --only KRL --gap 0.4). With DFSK_SETS in DFSK_TONE's place: dfskcap_acarsc's
+   settings of the plain receiver (staged for a ninth run, not made); with DFSK_SWEEP and
+   FE_S 22: the eighth run's clocks from 5200 to 6300 baud; with none of them: the seventh
+   run's front ends (which IF, which AF source); with DFSK_NARROW in DFSK_ZIF's place: the
+   sixth run's.
    Receive only. docs/k6-acars.md.
    SPDX-License-Identifier: MIT */
 #define DFSK_ACARS
 #define DFSK_ZIF
-#define DFSK_SETS
+#define DFSK_TONE
 #define DFSK_DUMP_ALL
 #define PROBE_HZ 50650000u
 #define WAIT_MS 60000u

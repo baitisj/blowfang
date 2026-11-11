@@ -163,12 +163,14 @@ def test_dfskcap_acars_on_the_model():
     plain, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap.c"))
     assert len(full) < 3200 and len(plain) < 2100, (len(full), len(plain))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))      # the 6 m bench build
-    assert len(six) < 3500 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
+    assert len(six) < 3800 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
     assert len(six) > len(full)                                            # its sixteen settings
     fm, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarsb.c"))       # the clock sweep in FM
     assert len(full) < len(fm) < len(six) and struct.pack("<I", 440850000) in fm
     sets, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarsc.c"))    # the settings in FM
     assert len(fm) < len(sets) < len(six) and struct.pack("<I", 440850000) in sets
+    tone, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acarsd.c"))   # the tone receiver in FM
+    assert len(sets) < len(tone) < len(six) and struct.pack("<I", 440850000) in tone
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
     n = int(total * BASE)
@@ -557,3 +559,129 @@ def test_dfskcap_acarsc_settings_on_the_model():
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
         assert e.writes[reg][-1] == 0, hex(reg)
 
+
+
+TONE = [("33a9", "60cb", "0000", "f0", "0"),
+        ("33a9", "60cb", "ffff", "f0", "0"),
+        ("33a9", "60cb", "5c5c", "f0", "0"),
+        ("33a9", "60cb", "3ffe5c5c", "f8", "0"),
+        ("33a9", "60cb", "076b3e36", "f8", "0"),
+        ("33a9", "60cb", "5c5c", "00", "0"),
+        ("33a9", "60cb", "076b3e36", "08", "0"),
+        ("33e9", "60cb", "0000", "f0", "0"),
+        ("33e9", "60cb", "076b3e36", "f8", "0"),
+        ("33a3", "60cb", "0000", "f0", "0"),
+        ("3329", "60cb", "0000", "f0", "0"),
+        ("33a9", "60cb", "0000", "f0", "1"),
+        ("33a9", "60cb", "0000", "f0", "7"),
+        ("33a9", "c195", "0000", "f0", "0"),
+        ("33a3", "3065", "076b3e36", "f8", "0"),
+        ("33a9", "3065", "076b3e36", "f8", "0")]
+
+
+def test_tone_blocks_and_places():
+    """the host's framing of the tone receiver's bits: a block is found after SYN SYN or the
+    pager's sync word anywhere in them, either way up; the known opening is placed with its
+    bits off counted, and shown"""
+    ref = acars.tone_ref("AG7EW TEST 440.850 ")
+    assert len(ref) == 264
+    rng = np.random.default_rng(5)
+    for kind in "KRL":
+        text = f"AG7EW TEST 440.850 {kind}004 THE K6 READS ACARS"
+        t = acars.unit_tones(kind, text)
+        for inv in (0, 1):
+            b = np.concatenate([rng.integers(0, 2, 37), t, rng.integers(0, 2, 50)]).astype(np.int8) ^ inv
+            texts, up = acars.tone_blocks(b)
+            assert texts == ["2AG7EW..\x15T01\x02" + text] and up == inv, (kind, inv, texts)
+            way, places, D = acars.tone_places(b, ref)
+            assert way == inv and [o for _, o in places] == [0], (kind, inv, places)
+            bad = np.delete(b, places[0][0] - 100)                 # a bit lost: no block, one bit off
+            bad[places[0][0] - 50] ^= 1                            # and one wrong
+            assert acars.tone_blocks(bad)[0] == []
+            way, places, D = acars.tone_places(bad, ref)
+            assert way == inv and [o for _, o in places] == [2], places
+            shown = acars.tone_show(bad, ref, way, places[0][0], D)
+            assert len(shown) == 6 and "".join(shown[1::2]).count(".") == 1 and "." not in "".join(shown[0::2])
+    x, sent = acars.probe_audio(6.0, kinds="KRL", gap=0.4)
+    assert [k for k, _, _ in sent[:4]] == list("KRLK")
+    y, _ = acars.probe_audio(6.0, kinds="KRL", gap=0.4, levels=(1.0, 1.8))     # every second round louder
+    r0, r1 = (int(sent[i][1] * 48000) for i in (0, 3))
+    assert np.allclose(y[r0:r0 + 4800], x[r0:r0 + 4800]) and np.allclose(y[r1:r1 + 4800], 1.8 * x[r1:r1 + 4800])
+    # an L unit is a K unit at half the speed: a cycle of 1200 Hz or two of 2400 Hz a bit
+    k, l = (acars.audio(acars.unit_tones(c, "X"), baud=acars.UNIT_BAUD[c]) for c in "KL")
+    assert len(l) == 2 * len(k) and abs(l[39] - np.sin(2 * np.pi * 2400 * 40 / 48000)) < 1e-9
+
+
+def test_dfskcap_acarsd_tone_receiver_on_the_model():
+    """dfskcap_acarsd (DFSK_TONE in FM on 440.850 MHz) on the emulated M0: sixteen settings of
+    the chip's 1200/2400 Hz tone receiver. The model's chip gives the units' tone bits as sent
+    (whether the real one does at 2400 baud is the bench's question) and zeros in silence, so
+    with the pre-key (0000) as the sync word it hands over every unit unframed and the report
+    finds the K and R blocks in them; with SYN SYN it starts on the R units, with the pager's
+    sync word on the K units; at 4800 baud it gives two samples a bit; at 1200 baud it reads
+    the L units. A setting's REG_5B, REG_59 and REG_2B are its own; the registers are put back"""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    src = os.path.join(K6, "mod", "dfskcap_acarsd.c")
+    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_TONE", "1"), ("DFSK_DUMP_ALL", "1"),
+                                 ("PROBE_HZ", "440850000u"), ("FE_S", "3"), ("WAIT_MS", "200u"), ("QN", "2u")],
+                           os.path.join(K6, "mod", "dfskcap.c"))
+    full, _ = k6mod.build(src)
+    total, BASE, k = 49.0, 4800, 0
+    air = [np.zeros(BASE // 4, np.int8)]
+    while sum(map(len, air)) < (total + 9) * BASE:
+        kind = "KRL"[k % 3]
+        t = acars.unit_tones(kind, f"AG7EW TEST 440.850 {kind}{k:03d} THE K6 READS ACARS")
+        air += [np.repeat(t, BASE // acars.UNIT_BAUD[kind]), np.zeros(3 * BASE // 10, np.int8)]
+        k += 1
+    air = np.concatenate(air)
+    Chip = modem_chip(le, lambda r58: air, BASE)
+
+    class Tuned(Chip):
+        long5d, early_done, ring, either = True, True, True, True
+        r = {**Chip.r, 0x47: 0}
+
+        def on_stub(self, uc, addr, size, user):
+            if self.names[(addr - self.stubs) // 16] == "tune":
+                self.tunes.append((uc.reg_read(self.A.UC_ARM_REG_R0), uc.reg_read(self.A.UC_ARM_REG_R1)))
+            super().on_stub(uc, addr, size, user)
+
+    Tuned.tunes = []
+    e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
+              scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert stack < 700 and e.over == 0, (stack, e.over)
+    assert e.said[0] == "dfskcap start hz=440850000 n=16" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert [ln.split()[1:2] + ln.split()[3:] for ln in e.said if ln.startswith("s ")] == \
+        [[str(i), "cfg=" + c, "b=" + b, "sy=" + y, "c=" + ctl, "a=" + a] for i, (c, b, y, ctl, a) in enumerate(TONE)]
+    assert round(acars.baud_of(0x3065)) == 1200
+    assert e.tunes[-16:] == [(440850000, 1)] * 16, e.tunes
+    # a setting's own registers: REG_5B, REG_59 (armed: + 1000) and REG_2B
+    assert {0xFFFF, 0x5C5C, 0x3E36} == set(e.writes[0x5B]) - {0}
+    assert {0x10F0, 0x10F8, 0x1000, 0x1008} <= set(e.writes[0x59])
+    assert {0x0100, 0x0700} <= set(e.writes[0x2B]) and {0xFF20, 0x7F00} == set(e.writes[0x5D]) - {0}
+    rep = acars.tone_report(["K6 MOD say " + ln for ln in e.said], show=1)
+    tone = {int(ln.split()[0][4:]): ln for ln in rep if ln.startswith("tone")}
+    assert sorted(tone) == list(range(16)), rep
+    kinds = {}
+    for ln in rep:
+        if ln[:1] == "c" and " read [" in ln:
+            kinds.setdefault(int(ln.split()[0][1:]), set()).add(ln.split("AG7EW TEST 440.850 ")[1][0])
+    for fe, ln in tone.items():
+        n, caps, found = int(ln.split()[5]), int(ln.split()[8]), int(ln.split()[11][:-1])
+        assert n >= 1 and caps >= 1 and found >= n and ln.split("off: ")[1].split()[:n] == ["0"] * n, ln
+        want = {"R"} if fe in (2, 3, 5) else {"K"} if fe in (4, 6, 8) else {"L"} if fe >= 14 else {"K", "R"}
+        assert kinds[fe] == want, (fe, kinds[fe], ln)
+    assert not any("upside down" in ln for ln in rep)
+    assert sum(ln.startswith("  sent ") for ln in rep) == 16 * 3 and sum(ln.startswith("  got  ") for ln in rep) == 16 * 3
+    assert sum(ln.endswith("'s best place, 0 off:") for ln in rep) == 16, rep     # the best capture is the one shown
+    # a capture that is one word all through (silence after a restart) has its c line and no words
+    for ln in e.said:
+        if ln[:1] == "c" and " k=0 " in ln:
+            assert not any(d.startswith("d" + ln.split()[0][1:] + " " + ln.split()[1] + " ") for d in e.said), ln
+    for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47):
+        assert e.writes[reg][-1] == 0, hex(reg)
