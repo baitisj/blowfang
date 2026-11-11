@@ -852,3 +852,103 @@ def test_dfskcap_acars6_tone_receiver_at_the_zero_if_on_the_model():
         assert rungs[fe][0] == ("none" if fe in (3, 4, 5) else "0"), (fe, rungs[fe])
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73):
         assert e.writes[reg][-1] == 0, hex(reg)
+
+
+# cfg, REG_72, sync, a=, tuning offset (100 Hz), front end bits, AF source
+TONE4 = [("33a9", "c195", "0000", "7", 0, 11, 7),
+         ("33a9", "c195", "0000", "7", 0, 3, 7),
+         ("33a9", "c195", "0000", "0", 0, 11, 7),
+         ("33a9", "c195", "0000", "7", 0, 11, 0),
+         ("33a9", "c195", "0000", "7", 0, 10, 7),
+         ("33a9", "c195", "ffff", "7", 0, 11, 7),
+         ("33a9", "60cb", "0000", "7", 0, 11, 7),
+         ("33ab", "c195", "0000", "7", 0, 11, 7),
+         ("33a1", "c195", "0000", "7", 0, 11, 7),
+         ("33a9", "ffff", "0000", "7", 0, 11, 7),
+         ("33a9", "c195", "0000", "7", 0, 11, 4),
+         ("33a9", "c195", "0000", "7", 0, 11, 5),
+         ("33a9", "c195", "0000", "7", 25, 2, 0),
+         ("33a9", "c195", "0000", "7", -25, 2, 0),
+         ("33a9", "c195", "0000", "7", 50, 3, 0),
+         ("33a9", "c195", "0000", "0", 0, 7, 5)]
+
+
+def test_dfskcap_acars6am_tone_receiver_in_am_on_the_model():
+    """the 6 m bench build with the chip in AM at its normal IF (DFSK_ZIF, DFSK_TONE 4): the
+    tone receiver with the pre-key as its sync word, fifteen front ends at the IF as found
+    (the AF source, the AM mode's AGC in REG_49 and REG_14, the filter, the tuning) and the
+    zero IF's once more. The model knows nothing of AM (it gives the tone bits as sent): what
+    is checked is every setting's registers, that the blocks and the ladder come through the
+    recorder, and that all is put back"""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from modem import k6mod
+    src = os.path.join(K6, "mod", "dfskcap_acars6am.c")
+    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_ZIF", "1"), ("DFSK_TONE", "4"), ("DFSK_DUMP_ALL", "1"),
+                                 ("PROBE_HZ", "50650000u"), ("FE_S", "3"), ("WAIT_MS", "200u"), ("QN", "2u")],
+                           os.path.join(K6, "mod", "dfskcap.c"))
+    full, _ = k6mod.build(src)
+    total, BASE, k = 49.0, 19200, 0
+    air = [np.zeros(BASE // 4, np.int8)]
+    while sum(map(len, air)) < (total + 9) * BASE:
+        kind = "KRT"[k % 3]
+        t = acars.unit_tones(kind, f"AG7EW TEST 50.650 {kind}{k:03d} THE K6 READS ACARS")
+        air += [np.repeat(t, BASE // 2400), np.zeros(3 * BASE // 10, np.int8)]
+        k += 1
+    air = np.concatenate(air)
+    Chip = modem_chip(le, lambda r58: air, BASE)
+
+    class Tuned(Chip):
+        long5d, early_done, ring, either = True, True, True, True
+        r = {**Chip.r, 0x47: 0}
+        if_now = 0x2AAB                                           # REG_3D reads back as written
+        found = {0x47: 0x6140, 0x49: 0x2A38, 0x14: 0x0019}        # as the firmware leaves them in FM
+
+        def on_stub(self, uc, addr, size, user):
+            name, r0 = self.names[(addr - self.stubs) // 16], uc.reg_read(self.A.UC_ARM_REG_R0)
+            if name == "tune":
+                self.tunes.append((r0, uc.reg_read(self.A.UC_ARM_REG_R1)))
+            if name == "fd_write" and r0 == 0x3D:
+                self.if_now = uc.reg_read(self.A.UC_ARM_REG_R1)
+            super().on_stub(uc, addr, size, user)
+            if name == "fd_read" and r0 == 0x3D:
+                uc.reg_write(self.A.UC_ARM_REG_R0, self.if_now)
+            if name == "fd_read" and r0 in self.found:
+                uc.reg_write(self.A.UC_ARM_REG_R0, self.found[r0])
+
+    Tuned.tunes = []
+    e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
+              scratch=11776 - 24 - len(full))
+    r = e.run()
+    assert r is not None, e.said[-5:]
+    ret, stack = r
+    assert stack < 700, stack
+    assert e.said[0] == "dfskcap start hz=50650000 n=16" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    s_lines = [ln.split() for ln in e.said if ln.startswith("s ")]
+    assert [ln[1:2] + ln[3:6] + ln[7:9] for ln in s_lines] == \
+        [[str(i), "cfg=" + c, "b=" + b, "sy=" + y, "a=" + a, "if=" + ("0000" if fe & 4 else "2aab")]
+         for i, (c, b, y, a, off, fe, af) in enumerate(TONE4)]
+    assert e.tunes[-17:-1] == [(50650000 + 100 * off, fe & 1) for c, b, y, a, off, fe, af in TONE4], e.tunes
+    assert e.writes[0x3D][:16] == [0 if t[5] & 4 else 0x2AAB for t in TONE4] and e.writes[0x3D][-1] == 0x2AAB
+    assert set(e.writes[0x73][:-1]) == {0x10} and e.writes[0x73][-1] == 0, e.writes[0x73]
+    assert [w >> 8 & 15 for w in e.writes[0x47][:16]] == [t[6] or 1 for t in TONE4], e.writes[0x47]
+    assert e.writes[0x49][:16] == [0x1920 if t[5] & 8 else 0x2A38 for t in TONE4], e.writes[0x49]
+    assert e.writes[0x14][:16] == [0 if t[5] & 8 else 0x0019 for t in TONE4], e.writes[0x14]
+    assert e.writes[0x2B][:1] == [0x0700], e.writes[0x2B][:4]
+    rep = acars.tone_report(["K6 MOD say " + ln for ln in e.said], fit="AG7EW TEST 50.650 ")
+    tone = {int(ln.split()[0][4:]): ln for ln in rep if ln.startswith("tone")}
+    rungs = {int(ln.split(":")[0][6:]): ln.split("off: ")[1].split() for ln in rep if ln.startswith("ladder")}
+    kinds = {}
+    for ln in rep:
+        if ln[:1] == "c" and " read [" in ln:
+            kinds.setdefault(int(ln.split()[0][1:]), set()).add(ln.split("AG7EW TEST 50.650 ")[1][0])
+    for fe in range(16):
+        if fe == 9:                                               # (the model's clock has whole steps: not ffff)
+            continue
+        assert int(tone[fe].split()[5]) >= 1, tone[fe]
+        assert kinds[fe] == {"K", "R"}, (fe, kinds[fe])
+        assert rungs[fe][0] == "0", (fe, rungs[fe])
+    for reg, found in ((0x58, 0), (0x59, 0), (0x5A, 0), (0x5B, 0), (0x5C, 0), (0x5D, 0), (0x5E, 0), (0x72, 0),
+                       (0x2B, 0), (0x3F, 0), (0x47, 0x6140), (0x73, 0), (0x49, 0x2A38), (0x14, 0x0019)):
+        assert e.writes[reg][-1] == found, hex(reg)

@@ -163,6 +163,24 @@
    What the bench said of those (05:37Z, AM on 50.650 MHz): no block and no sync of the chip's
    own. 33a9 at 4800 baud gives a pulse a half cycle of 1200 Hz and keeps time, but drops
    the first one after two or more bits of 2400 Hz about half the time. Parked.
+   DFSK_TONE 4 (dfskcap_acars6am.c: AM on 50.650 MHz at the normal IF) asks what none of those
+   did: does the tone receiver get the chip's AM audio? The plain receiver's slicer is the FM
+   discriminator's whatever REG_47 says; the tone receiver was only ever shown FM and the
+   zero IF. All 33a9 at 4800 baud with the sync word 0000 and REG_2B + 0700 but where said;
+   "AM" is the AF source 7, the AFC off and the AM mode's AGC (REG_49 = 1920, REG_14 = 0):
+      0      AM, wide                         the firmwares' AM mode
+      1      the AF source 7 with FM's AGC
+      2      AM with the AF filters as found
+      3      the AF source as found (FM), AM's AGC   does the AF source matter at all?
+      4      AM, narrow
+      5      AM, sync ffff                    the pre-key the other way up
+      6      AM at 2400 baud
+      7, 8   33ab 33a1, AM
+      9      AM with REG_72 = ffff
+      10, 11 the AF sources 4 and 5 at the normal IF
+      12, 13 FM, narrow, tuned 2.5 kHz high and low   the filter's edge makes FM of AM
+      14     FM, wide, tuned 5 kHz high
+      15     the zero IF, AF source 5, filters as found: DFSK_TONE 3's setting 7 again
    A capture of these ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
@@ -243,15 +261,23 @@ typedef struct {
   uint16_t secs;
 #ifdef DFSK_ACARS
   int8_t off, wide, src; /* tuning offset in 100 Hz; the wide filter (bit 0), the AFC off (bit 1,
-                            DFSK_NARROW and DFSK_ZIF) and the zero IF (bit 2, DFSK_ZIF); REG_47's
-                            AF source (0: as found) */
+                            DFSK_NARROW and DFSK_ZIF), the zero IF (bit 2, DFSK_ZIF) and the AM
+                            mode's AGC (bit 3, DFSK_TONE 4); REG_47's AF source (0: as found) */
 #endif
 #ifdef DFSK_TONE
   uint16_t sync2, ctrl;  /* REG_5B (a sync word of four bytes: REG_59 bit 3); REG_59 */
 #endif
 } var_t;
 
-#ifdef DFSK_ZIF
+#if defined(DFSK_ZIF) && defined(DFSK_TONE) && DFSK_TONE == 4
+#define DFSK_AMAGC /* a setting may have the AGC of the firmwares' AM mode */
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73, 0x3D,
+                                0x49, 0x14};
+#define SAVED_47 10
+#define SAVED_3D 12
+#define SAVED_49 13
+#define SAVED_14 14
+#elif defined(DFSK_ZIF)
 static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73, 0x3D};
 #define SAVED_47 10
 #define SAVED_3D 12
@@ -278,7 +304,28 @@ static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 
 /* a setting of the tone receiver with the pre-key as its sync word, 512 bytes a capture */
 #define TV(cfg, baud, af, w3) {cfg, baud, 0x0000, 0xFF20, af, w3, FE_S, 0, SWEEP_FE, 0x0000, 0xF0}
 #endif
-#if defined(DFSK_TONE) && DFSK_TONE == 3
+#if defined(DFSK_TONE) && DFSK_TONE == 4
+/* a raw setting with its own front end: tuning offset, filter/AFC/IF/AGC bits, AF source */
+#define TA(cfg, baud, af, w3, off, fe, src) {cfg, baud, 0x0000, 0xFF20, af, w3, FE_S, off, fe, src, 0x0000, 0xF0}
+static const var_t V[NV] = {
+    TA(0x33A9, 0xC195, 0x0700, 100, 0, 11, 7),
+    TA(0x33A9, 0xC195, 0x0700, 100, 0, 3, 7),
+    TA(0x33A9, 0xC195, 0, 100, 0, 11, 7),
+    TA(0x33A9, 0xC195, 0x0700, 100, 0, 11, 0),
+    TA(0x33A9, 0xC195, 0x0700, 100, 0, 10, 7),
+    {0x33A9, 0xC195, 0xFFFF, 0xFF20, 0x0700, 100, FE_S, 0, 11, 7, 0xFFFF, 0xF0},
+    TA(0x33A9, B72(2400u), 0x0700, 200, 0, 11, 7),
+    TA(0x33AB, 0xC195, 0x0700, 100, 0, 11, 7),
+    TA(0x33A1, 0xC195, 0x0700, 100, 0, 11, 7),
+    TA(0x33A9, 0xFFFF, 0x0700, 76, 0, 11, 7),
+    TA(0x33A9, 0xC195, 0x0700, 100, 0, 11, 4),
+    TA(0x33A9, 0xC195, 0x0700, 100, 0, 11, 5),
+    TA(0x33A9, 0xC195, 0x0700, 100, 25, 2, 0),
+    TA(0x33A9, 0xC195, 0x0700, 100, -25, 2, 0),
+    TA(0x33A9, 0xC195, 0x0700, 100, 50, 3, 0),
+    TA(0x33A9, 0xC195, 0, 100, 0, 7, 5),
+};
+#elif defined(DFSK_TONE) && DFSK_TONE == 3
 static const var_t V[NV] = {
     TV(0x33A9, B72(2400u), 0, 200),
     {0x33A9, B72(2400u), 0xFFFF, 0xFF20, 0, 200, FE_S, 0, SWEEP_FE, 0xFFFF, 0xF0},
@@ -489,7 +536,11 @@ static uint32_t seek(const k6_api_t *api, const var_t *v, uint32_t af) {
 }
 
 /* a setting begins: its s line, the modem set; -> the FIFO's stale last word */
-#ifdef DFSK_ZIF
+#ifdef DFSK_AMAGC
+#define BEGIN(c) begin(api, c, af, saved)
+static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, const uint16_t *sv) {
+  uint32_t if0 = sv[SAVED_3D];
+#elif defined(DFSK_ZIF)
 #define BEGIN(c) begin(api, c, af, saved[SAVED_3D])
 static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, uint32_t if0) {
 #else
@@ -526,6 +577,12 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
   }
 #endif
   api->fd_write(0x47, (uint16_t)(v->src ? ((af >> 16) & 0xF0FF) | (uint32_t)v->src << 8 : af >> 16));
+#ifdef DFSK_AMAGC
+  /* the firmwares' AM mode has its own AGC, so that the envelope is not flattened: REG_49's
+     thresholds 50 and 32 (FM has 84 and 56) and REG_14 = 0. After the tuning, or as found */
+  api->fd_write(0x49, (uint16_t)(v->wide & 8 ? 0x1920u : sv[SAVED_49]));
+  api->fd_write(0x14, (uint16_t)(v->wide & 8 ? 0u : sv[SAVED_14]));
+#endif
 #endif
   *p++ = 's', *p++ = ' ', p = dec(p, (uint32_t)cur);
   p = kv(p, " t=", api->ms());
