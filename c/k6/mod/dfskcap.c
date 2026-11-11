@@ -67,6 +67,19 @@
    seven with the AFC off (REG_73 bit 4; on, it pulls the carrier to the centre) and tuned
    300, 200 and 100 Hz low, as tuned, 100, 200 and 300 Hz high; the last as tuned with the AFC
    on. Is there a place where the data's samples fall on both sides of the slicer?
+   DFSK_ZIF (the 6 m bench build's last question): the chip's "USB" mode is REG_3D = 0, a zero
+   IF where both sidebands fold onto each other (double sideband), with REG_47's AF source 5.
+   Does the plain receiver get anything of an AM signal there? Eight front ends, AFC off:
+      0  zero IF, AF source 5 (DSB), wide, as tuned
+      1  the same, narrow
+      2  zero IF, AF source 5, wide, 2.4 kHz high   the carrier then beats at the pre-key's tone
+      3  zero IF, AF source 5, wide, 1.0 kHz high
+      4  zero IF, AF source 4 (raw), wide
+      5  zero IF, AF source 7 (AM), wide
+      6  zero IF, AF source as found (FM), wide     the zero IF alone
+      7  the IF as found, FM, narrow                the control: the sixth run's front end 3
+   The s line ends with if= (REG_3D read back, and a ! if the tuning had put it back and it
+   was written again with a restart of the receiver).
    Noise gives a sync word now and then, so every capture gets its c line (with the RSSI and
    k=, how many of its first four words are AAAA or 5555: the rest of a pre-key) and only those
    with k of 3 or 4 their d lines. And is there a signal at all? The RSSI is read every 50 ms:
@@ -97,7 +110,7 @@
                             upload's audio ends, and that is no Bell 202 */
 #endif
 #ifdef DFSK_ACARS
-#ifdef DFSK_NARROW
+#if defined(DFSK_NARROW) || defined(DFSK_ZIF)
 #define NV 8
 #else
 #define NV 4
@@ -137,12 +150,27 @@ typedef struct {
   uint16_t wticks3; /* three word times in 100 us ticks: 100 at 4800 baud, 80 at 6000 */
   uint16_t secs;
 #ifdef DFSK_ACARS
-  int8_t off, wide, src; /* tuning offset in 100 Hz; the wide filter (bit 0) and, DFSK_NARROW, the
-                            AFC off (bit 1); REG_47's AF source (0: as found) */
+  int8_t off, wide, src; /* tuning offset in 100 Hz; the wide filter (bit 0), the AFC off (bit 1,
+                            DFSK_NARROW and DFSK_ZIF) and the zero IF (bit 2, DFSK_ZIF); REG_47's
+                            AF source (0: as found) */
 #endif
 } var_t;
 
-#ifdef DFSK_NARROW
+#ifdef DFSK_ZIF
+static const var_t V[NV] = {
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 5},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 6, 5},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 24, 7, 5},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 10, 7, 5},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 4},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 7},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 7, 0},
+    {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, 0, 2, 0},
+};
+static const uint8_t SAVED[] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73, 0x3D};
+#define SAVED_47 10
+#define SAVED_3D 12
+#elif defined(DFSK_NARROW)
 static const var_t V[NV] = {
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -3, 2, 0},
     {0x00E9, 0xC195, 0xAAAA, 0xFF20, 0, 100, FE_S, -2, 2, 0},
@@ -249,19 +277,42 @@ static uint32_t seek(const k6_api_t *api, const var_t *v, uint32_t af) {
 }
 
 /* a setting begins: its s line, the modem set; -> the FIFO's stale last word */
+#ifdef DFSK_ZIF
+#define BEGIN(c) begin(api, c, af, saved[SAVED_3D])
+static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, uint32_t if0) {
+#else
+#define BEGIN(c) begin(api, c, af)
 static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
+#endif
   const var_t *v = &V[cur];
   char ln[64], *p = ln;
+#ifdef DFSK_ZIF
+  int again = 0;
+#endif
 #ifdef DFSK_ACARS
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-#ifdef DFSK_NARROW
+#if defined(DFSK_NARROW) || defined(DFSK_ZIF)
   /* REG_73 bit 4: the AFC off (or it pulls the carrier back to the centre in half a minute),
      or on. It takes hold at the receiver's restart, which the tuning is */
   api->fd_write(0x73, (uint16_t)((api->fd_read(0x73) & ~0x10u) | (v->wide & 2 ? 0x10u : 0)));
 #endif
+#ifdef DFSK_ZIF
+  api->fd_write(0x3D, (uint16_t)(v->wide & 4 ? 0 : if0)); /* the IF: zero, or as found */
+#endif
   api->tune((uint32_t)((int32_t)PROBE_HZ + 100 * v->off), v->wide & 1);
+#ifdef DFSK_ZIF
+  /* should the tuning have put the IF back: once more, and the receiver off and on (REG_30)
+     for it to take hold, as the firmwares do after REG_38/39 */
+  if (api->fd_read(0x3D) != (uint16_t)(v->wide & 4 ? 0 : if0)) {
+    uint16_t r30 = api->fd_read(0x30);
+    api->fd_write(0x3D, (uint16_t)(v->wide & 4 ? 0 : if0));
+    api->fd_write(0x30, 0);
+    api->fd_write(0x30, r30);
+    again = 1;
+  }
+#endif
   api->fd_write(0x47, (uint16_t)(v->src ? ((af >> 16) & 0xF0FF) | (uint32_t)v->src << 8 : af >> 16));
 #endif
   *p++ = 's', *p++ = ' ', p = dec(p, (uint32_t)cur);
@@ -270,6 +321,10 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
   p = kx(p, " b=", v->baud);
   p = kx(p, " sy=", v->sync);
   p = kx(p, " l=", v->len);
+#ifdef DFSK_ZIF
+  p = kx(p, " if=", api->fd_read(0x3D));
+  if (again) *p++ = ' ', *p++ = '!';
+#endif
   *p = 0;
   api->say(ln);
   return seek(api, v, af);
@@ -321,7 +376,7 @@ int k6_main(const k6_api_t *api) {
 #ifdef DFSK_ACARS
   rmin = 0x1FF, rpk = 0, rup = 0;
 #endif
-  prev = begin(api, cur, af);
+  prev = BEGIN(cur);
   t0 = api->ms(), tlast = api->ticks() & 0xFFFF;
   for (;;) {
     uint32_t f, tk, n = 0, over = 0;
@@ -372,7 +427,7 @@ int k6_main(const k6_api_t *api) {
       total += ncap, ncap = nw = 0;
       if (++cur == NV) break;
       v = &V[cur];
-      prev = begin(api, cur, af);
+      prev = BEGIN(cur);
       t0 = api->ms(), acc = 0, tlast = api->ticks() & 0xFFFF;
       continue;
     }
@@ -454,6 +509,9 @@ int k6_main(const k6_api_t *api) {
     api->delay_us(300);
   }
   for (i = 0; i < sizeof(SAVED); i++) api->fd_write(SAVED[i], saved[i]);
+#ifdef DFSK_ZIF
+  api->tune(PROBE_HZ, 1); /* the IF and the AFC as found take hold at a restart */
+#endif
   api->fd_write(0x02, 0);
   if (cur < NV) total += ncap; /* a key, mid-setting */
   p = kv(ln, "dfskcap end n=", total);

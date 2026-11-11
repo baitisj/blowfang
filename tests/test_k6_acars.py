@@ -163,7 +163,7 @@ def test_dfskcap_acars_on_the_model():
     plain, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap.c"))
     assert len(full) < 3200 and len(plain) < 2100, (len(full), len(plain))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))      # the 6 m bench build
-    assert len(six) < 3200 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
+    assert len(six) < 3400 and struct.pack("<I", 50650000) in six and struct.pack("<I", 131550000) not in six
     assert len(six) > len(full)                                            # its six front ends
     total, BASE = 21.5, 4800
     rng = np.random.default_rng(11)
@@ -242,19 +242,15 @@ def test_dfskcap_acars_on_the_model():
     assert 0x0700 in e.writes[0x47] and e.writes[0x5D][0] == 0xFF20
 
 
-def test_dfskcap_acars6_narrow_front_ends_on_the_model():
-    """the 6 m bench build's eight front ends (DFSK_NARROW): all in the narrow filter and FM,
-    seven with the AFC off (REG_73 bit 4) tuned from 300 Hz low to 300 Hz high in steps of 100,
-    the last as tuned with the AFC on. Noise only here: every capture gets its c line and
-    (DFSK_DUMP_ALL) its words up to the limit; REG_47 is left alone and REG_73 put back."""
-    pytest.importorskip("unicorn")
+def run_six(defs, total):
+    """the 6 m bench build with defs on the emulated M0, noise only -> the emulator"""
     import k6_live_emu as le
     from modem import k6mod
-    defs = [("DFSK_ACARS", "1"), ("DFSK_NARROW", "1"), ("DFSK_DUMP_ALL", "1"), ("PROBE_HZ", "50650000u"),
-            ("FE_S", "2"), ("WAIT_MS", "200u"), ("QN", "2u")]
-    code, entry = le.build("x", defs, os.path.join(K6, "mod", "dfskcap.c"))
+    code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_DUMP_ALL", "1"), ("PROBE_HZ", "50650000u"),
+                                 ("FE_S", "2"), ("WAIT_MS", "200u"), ("QN", "2u")] + defs,
+                           os.path.join(K6, "mod", "dfskcap.c"))
     six, _ = k6mod.build(os.path.join(K6, "mod", "dfskcap_acars6.c"))
-    total, BASE = 16.5, 4800
+    BASE = 4800
     rng = np.random.default_rng(5)
     noise = rng.integers(0, 2, int(total * BASE))
     for i in range(BASE // 2, len(noise) - BASE, BASE):           # a sync word in the noise every second
@@ -264,11 +260,17 @@ def test_dfskcap_acars6_narrow_front_ends_on_the_model():
     class Tuned(Chip):
         long5d, early_done = True, True
         r = {**Chip.r, 0x47: 0}
+        if_now = 0x2AAB                                           # REG_3D reads back as written
 
         def on_stub(self, uc, addr, size, user):
-            if self.names[(addr - self.stubs) // 16] == "tune":
-                self.tunes.append((uc.reg_read(self.A.UC_ARM_REG_R0), uc.reg_read(self.A.UC_ARM_REG_R1)))
+            name, r0 = self.names[(addr - self.stubs) // 16], uc.reg_read(self.A.UC_ARM_REG_R0)
+            if name == "tune":
+                self.tunes.append((r0, uc.reg_read(self.A.UC_ARM_REG_R1)))
+            if name == "fd_write" and r0 == 0x3D:
+                self.if_now = uc.reg_read(self.A.UC_ARM_REG_R1)
             super().on_stub(uc, addr, size, user)
+            if name == "fd_read" and r0 == 0x3D:
+                uc.reg_write(self.A.UC_ARM_REG_R0, self.if_now)
 
     Tuned.tunes = []
     e = Tuned(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 8, level=8,
@@ -280,6 +282,20 @@ def test_dfskcap_acars6_narrow_front_ends_on_the_model():
     assert e.said[0] == "dfskcap start hz=50650000 n=8" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     assert [ln.split()[1] for ln in e.said if ln.startswith("s ")] == list("01234567")
+    c = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "c"}
+    d = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "d" and ln[1].isdigit()}
+    v = {int(ln[1]): dict(kv.split("=") for kv in ln.split()[1:]) for ln in e.said if ln[0] == "v"}
+    assert sorted(v) == [0, 1, 2, 3, 4, 5, 6, 7] and ret == len(c) == sum(int(x["n"]) for x in v.values()) >= 8, v
+    assert d == c, (sorted(c - d), sorted(d - c))                 # every capture's words
+    return e
+
+
+def test_dfskcap_acars6_narrow_front_ends_on_the_model():
+    """the sixth run's eight front ends (DFSK_NARROW): all in the narrow filter and FM, seven
+    with the AFC off (REG_73 bit 4) tuned from 300 Hz low to 300 Hz high in steps of 100, the
+    last as tuned with the AFC on. REG_47 is left alone and REG_73 put back."""
+    pytest.importorskip("unicorn")
+    e = run_six([("DFSK_NARROW", "1")], 16.5)
     assert e.tunes[-8:] == [
         (50649700, 0),
         (50649800, 0),
@@ -292,9 +308,31 @@ def test_dfskcap_acars6_narrow_front_ends_on_the_model():
     ], e.tunes
     assert [w >> 8 & 15 for w in e.writes[0x47]].count(7) == 0 and e.writes[0x47][-1] == 0, e.writes[0x47]
     assert e.writes[0x73] == [0x10] * 7 + [0, 0], e.writes[0x73]  # off seven times, on, as found
-    c = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "c"}
-    d = {(int(ln[1]), int(ln.split()[1])) for ln in e.said if ln[0] == "d" and ln[1].isdigit()}
-    v = {int(ln[1]): dict(kv.split("=") for kv in ln.split()[1:]) for ln in e.said if ln[0] == "v"}
-    assert sorted(v) == [0, 1, 2, 3, 4, 5, 6, 7] and ret == len(c) == sum(int(x["n"]) for x in v.values()) >= 8, v
-    assert d == c, (sorted(c - d), sorted(d - c))                 # every capture's words
+    assert 0x3D not in e.writes or not e.writes[0x3D]
 
+
+def test_dfskcap_acars6_zero_if_front_ends_on_the_model():
+    """the 6 m bench build as it is (DFSK_ZIF): seven front ends at the zero IF (REG_3D = 0, the
+    chip's double sideband mode) with the AF sources 5, 5 narrow, 5 tuned 2.4 and 1.0 kHz high,
+    4, 7 and as found, then the IF as found in the narrow filter; the AFC off in all. Each s
+    line says REG_3D as read back. At the end the registers are put back and the receiver is
+    tuned once more for them to take hold."""
+    pytest.importorskip("unicorn")
+    e = run_six([("DFSK_ZIF", "1")], 16.5)
+    assert e.tunes[-9:] == [
+        (50650000, 1),
+        (50650000, 0),
+        (50652400, 1),
+        (50651000, 1),
+        (50650000, 1),
+        (50650000, 1),
+        (50650000, 1),
+        (50650000, 0),
+        (50650000, 1),
+    ], e.tunes
+    assert [w >> 8 & 15 for w in e.writes[0x47]][-9:] == [5, 5, 5, 5, 4, 7, 0, 0, 0], e.writes[0x47]
+    assert e.writes[0x3D] == [0] * 7 + [0x2AAB] * 2, e.writes[0x3D]
+    assert e.writes[0x73] == [0x10] * 8 + [0], e.writes[0x73]
+    ifs = [ln.split()[-1] for ln in e.said if ln.startswith("s ")]
+    assert ifs == ["if=0000"] * 7 + ["if=2aab"], ifs
+    assert 0x30 not in e.writes or not e.writes[0x30]             # the tuning kept the IF: no second restart
