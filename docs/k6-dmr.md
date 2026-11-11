@@ -548,7 +548,7 @@ bench user), 3,401 slots:
 - **72% of the sync fields read**: 479 in 93,584 signs (some 668 bursts), 219 whole and 260
   short. A capture runs on to the carrier's end or to 1056 words, so the counts follow the
   key-up a setting happened to meet, not the setting.
-- **Noise gives none**: 260 captures of noise (285,664 signs), one in 10 s, and no sync
+- **Noise gives none**: 260 captures of noise (285,664 signs), one in about 11 s, and no sync
   field in any. One was a start on the bench's ID keeper next door (-99 dBm in the wide
   filter), with nothing in it either.
 
