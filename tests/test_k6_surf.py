@@ -626,6 +626,22 @@ def test_a_peak_whose_check_failed_is_checked_again():
 
 
 @need_clang
+def test_a_station_that_opens_the_squelch_on_the_bar_gets_its_caret_at_once():
+    # Jeff 2026-11-11: 464.500 played on the bar and its bar stood tall, but it never got a caret
+    # (its one confirm read landed between overs). Quick-read noise on the bar's channel first
+    # leaves an unconfirmed entry; when the station keys up there, the squelch opening confirms it
+    # at once, not after NBAD more sweeps (while parked, a refresh sweep only every 5 s)
+    sig = [(440_600_000, -85, 4_000_000, FOREVER)]
+    ret, said, regs, writes, lcd = go(sig, [(7_000_000, 7_300_000, "X")], bumps=[(440_600_000, -95)])
+    fr = lcd["frames"]
+    assert C not in carets(at(fr, 3_900_000))
+    spk = lcd["st"]["spk"]
+    t_on = next(t for t, v in spk if v)
+    assert 4_000_000 <= t_on < 4_300_000
+    assert C in carets(at(fr, t_on + 200_000))
+
+
+@need_clang
 def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
     # A/B cycles the fall: 1 min (the start), 5 min, 20 min, 15 s. At 15 s a full caret is down in
     # ~15 s, and then SIDE1 finds nothing

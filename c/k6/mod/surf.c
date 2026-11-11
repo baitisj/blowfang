@@ -691,6 +691,34 @@ static void pm_push(sf_t *s) {
   }
 }
 
+/* the bar's channel read settled SQ_DB over the floor (the squelch opened on it, or a parked
+   read): that is a confirm. Its caret (or a new one) is good and at least PUSH high. A single
+   confirm read after a sweep can land between overs and leave a station that plays on the bar
+   with no caret (Jeff, 2026-11-11: 464.500 sounded fine and its bar stood tall) */
+static void pm_heard(sf_t *s) {
+  pm_t *e, *b = 0, *lo = s->pm;
+  uint32_t d, t, bd = ~0u, f = s->cen;
+  int k;
+  if (!s->npm) return;
+  for (k = 0; k < s->npm; k++) {
+    e = &s->pm[k];
+    if (e->h < lo->h) lo = e;
+    if (!e->h) continue;
+    d = e->f > f ? e->f - f : f - e->f;
+    t = L_HZ * e->w;
+    if (t < s->ch) t = s->ch;
+    if (2 * d <= t && d < bd) bd = d, b = e;
+  }
+  if (!b) {
+    b = lo;
+    b->f = f;
+    b->w = (uint16_t)udiv(s->ch, L_HZ);
+    b->h = 0;
+  }
+  b->bad = 0;
+  if (b->h < PUSH) b->h = PUSH;
+}
+
 /* the carets fall one 1/8 px every FALL_MS (time, not sweeps: a sweep takes 0.1 to 2.5 s) */
 static void pm_fall(sf_t *s) {
   uint32_t n = udiv(s->now - s->t_fall, FALL_MS[s->fall]);
@@ -918,6 +946,7 @@ static void check_bar(sf_t *s) {
     s->parked = 1;
     s->t_open = s->t_full = s->api->ms();
     audio(s, 1);
+    pm_heard(s);
   }
 }
 
@@ -946,6 +975,7 @@ static void park_step(sf_t *s) {
     d = dbm(s);
   }
   s->sel_dbm = d;
+  if (d >= s->sfl + SQ_DB) pm_heard(s);   /* (monitor too: what plays gets a caret) */
   if (d >= s->sfl + SQ_DB - HYST_DB) s->t_open = s->now;
   if (!s->mon && s->now - s->t_open > HANG_MS) {
     audio(s, 0);

@@ -79,7 +79,11 @@ unconfirmed (no caret, not hoppable) and read again after NBAD (6) more hearings
 that was between overs at its first check gets its caret later (Jeff, 2026-11-11: 463.950 at
 -75 dBm had none and the side keys passed it). The confirm read is at the peak's own frequency.
 A coarse bin's peak is as wide as its 20 kHz read spacing at most, so it can't swallow a
-station further off. A peak matches a caret
+station further off.
+A settled read SQ_DB over the floor on the bar's own channel (the squelch opening on it, or a
+parked read, monitor too) also confirms: its caret turns good at once, or a new one starts there.
+Jeff's 464.500 (2026-11-11) played on the bar with a tall bar and never got a caret; its one
+confirm read had landed between overs. A peak matches a caret
 within half the wider of the two bins (or half a channel); a finer bin moves the caret to its
 frequency, and a carrier's flat top in the lens counts at its middle. A side key's jump puts the
 caret on the channel it lands on. A caret that would sit inside its own bar rides on top of it.
