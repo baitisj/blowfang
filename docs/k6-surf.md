@@ -48,8 +48,9 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 | SIDE1 / SIDE2 (orange) | the nearest caret (remembered peak, below) above / below, on screen or off it, whether or not it is on the air now; it moves to the middle on the channel raster. No search: the sweeps go on as they were. If only a coarse outer bin heard the caret, the loudest channel of the lens within that bin's width is then taken instead; a caret a fine bin heard is its channel and stays (until 2026-11-11 any louder channel in the whole lens won, which pulled a jump to the weaker of two close stations straight back: Jeff on the radio). With no caret that way, line 5 says "no peak" and the middle stays (Jeff, 2026-11-11; until then a press searched what was on the air at that moment) |
 | A/B | how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the whole height (line 5 says "fall 5m" for 1.5 s) |
 | BAND | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather), AIR (118-137, 25 kHz, AM, receive only). Each starts at its centre with its default step and span |
-| # | next channel step: 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (line 5 says "step 50k" for 1.5 s). The middle stays put; UP / DOWN then move onto the new raster. BAND resets the step to the band's default |
+| # | next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (line 5 says "step 50k" for 1.5 s). The middle stays put; UP / DOWN then move onto the new raster. BAND resets the step to the band's default |
 | 5 | the band's centre |
+| 4 | the demodulator: FM, DSB, AM, FM (Jeff, 2026-11-11). DSB is the chip's "USB": REG_47 AF 5 at the zero IF (REG_3D 0), the AFC off, both sidebands heard (docs/k6-afsweep.md). The title shows a mode that isn't the band's own in place of SURF (`DSB 70cm 25k`; with a fixed gain `DSB-12`); line 5 says the mode for 1.5 s. The floor is measured again, since the zero IF's is another. At the zero IF a steady carrier is taken out of the RSSI (docs/k6-acars.md, seventh run), so DSB is for listening, not for finding carriers. BAND resets it; EXIT puts REG_3D back |
 | 7 / 9 | fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB. From auto, 9 starts at the top (0 dB) and 7 at -7 dB (Aura's own top AGC step). The title shows it in place of SURF (`G-12 70cm 25k`), line 5 says "gain -12 dB" for 1.5 s |
 | 8 | the receiver's own AGC again ("gain auto") |
 | 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz (defaults: 2m and 1.25m 500 kHz, 70cm and MAR/WX 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
@@ -74,14 +75,18 @@ time it falls, by time and not by sweeps (a sweep takes 0.1 to 2.5 s): the whole
 1 minute at the start, A/B for 5 min, 20 min or 15 s. A caret on the floor is forgotten and no
 longer hoppable. A new peak first needs a settled read 10 dB over the settled floor (4 a sweep at
 most), so the quick-read noise bumps of bench run 1 get no caret; one that fails is kept as
-unconfirmed (no caret, not hoppable, not read again) until it falls. A peak matches a caret
+unconfirmed (no caret, not hoppable) and read again after NBAD (6) more hearings, so a station
+that was between overs at its first check gets its caret later (Jeff, 2026-11-11: 463.950 at
+-75 dBm had none and the side keys passed it). The confirm read is at the peak's own frequency.
+A coarse bin's peak is as wide as its 20 kHz read spacing at most, so it can't swallow a
+station further off. A peak matches a caret
 within half the wider of the two bins (or half a channel); a finer bin moves the caret to its
 frequency, and a carrier's flat top in the lens counts at its middle. A side key's jump puts the
-caret on the channel it lands on.
+caret on the channel it lands on. A caret that would sit inside its own bar rides on top of it.
 
 How many: 128, 8 bytes each (frequency, bin width, height, confirmed), 1 KB in the module store's
 free RAM after the code (about 4.9 KB free on the voice images' 11,776 B arena, so room is not
-the limit; the stack, with about 1 KB spare, never holds them). One screen can show at most 63
+the limit). One screen can show at most 63
 distinct carets and in practice about 30 (a carrier lights a few bins), so 128 keeps two screens'
 worth: what is on screen plus what was heard before a zoom or a move along the band. They are the
 band's: BAND forgets them, zoom and UP / DOWN keep them. With all 128 in use, a new peak takes
@@ -120,6 +125,13 @@ the audio opened held the keys 1-2 s. A jump or step onto a live signal now read
 (17 single reads, about 0.1 s) before the audio opens, for the refine and the station's shape;
 the rest of the scale keeps the levels the old scale lent it until the first refresh, 5 s later.
 The floor's 8 settled reads (start, BAND, gain keys) still run to the end, about 0.1-0.2 s.
+
+**The stack.** The K6 gives a module about 2.3 KB of stack, and the emulator counts only the
+module's own frames, not what Aura's calls (lcd_flush, tune, say) use under them. The #69 build
+measured 2,016 B in the emulator and ran out on the radio: the log said `stack_free=0 B`, then the
+stack guard rebooted the K6 at EXIT (2026-11-11 08:08Z). Since then the whole state (bins, levels,
+bitmap, work arrays) lives at the start of the module store's free RAM (`api->scratch`), the carets
+after it, and the module's own stack is about 300 B. With too little free RAM it returns -4.
 
 ## How it works
 
