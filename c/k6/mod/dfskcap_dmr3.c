@@ -8,6 +8,7 @@
    setting (9B4D, the narrow filter, the AFC off), eight gains of 0.8 s, 280 times round; a
    capture is cut at 96 words (a third of a second) so that a key-up of 7 s meets every gain;
    from 32 s after the start; a key ends it. python3 -m modem.dmrsign LOG. docs/k6-dmr.md.
+   Run L (2026-11-11): full yield down to 24 dB over the floor, the edge at 10 dB.
    SPDX-License-Identifier: MIT */
 #define DFSK_ACARS
 #define DFSK_NARROW

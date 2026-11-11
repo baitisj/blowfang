@@ -555,30 +555,66 @@ bench user), 3,401 slots:
 So at this level nothing is left to choose: 9B4D or CD4D, either filter. The narrow filter
 keeps the neighbours out. What is still not known is the level it works down to.
 
-### Run L (`dfskcap_dmr3`; built, not yet run): how weak?
+### Run L (2026-11-11 14:32:13 to 15:03:01Z, `dfskcap_dmr3`, the module built from 9b7dd51): how weak?
 
 The repeater has one level here, so the receiver is made deaf by steps instead: one setting
 (9B4D, the narrow filter, the AFC off, REG_2B + 0700) with the gain fixed (REG_7E bit 15 with
 index 3, REG_13 as the gain, as `surf.c` does) at eight values, taken off the front first so
-that the signal sinks towards the noise of the stages behind:
+that the signal sinks towards the noise of the stages behind. Each slot's `p=` and `f=` give
+the signal and the floor at that gain, so how far over the floor the signal stood is
+measured, not reckoned. A capture is cut at 96 words (a third of a second) so that a key-up
+of 7 s meets every gain.
 
-| Setting | REG_13 | Gain, about |
-| --- | --- | --- |
-| 0 | 03FF | 0 dB |
-| 1 | 035F | -14 dB |
-| 2 | 031F | -24 dB |
-| 3 | 021F | -35 dB |
-| 4 | 011F | -40 dB |
-| 5 | 001F | -43 dB |
-| 6 | 0007 | -51 dB |
-| 7 | 0004 | -60 dB |
+The K6 only listened (the IC-7100 sent the one upload on 440.850 at RF power 0): 2,240 slots
+of 0.8 s, 166 captures, "dfskcap end n=166", ret=166, stack_free=408 B. The repeater keyed
+four times: 0.5 s at t=489 s and t=1397 s, 7 s at t=791 s and t=1693 s (903 s apart again,
+the short one 606 s after the long one). All four were caught: the short ones fell on
+settings 5 and 4 and both gave sync fields.
 
-Each slot's `p=` and `f=` give the signal and the floor at that gain, so how far over the
-floor the signal stood is measured, not reckoned; the starts and the sync fields read then
-say from how many dB the chip finds DMR. A capture is cut at 96 words (a third of a second)
-so that a key-up of 7 s meets every gain. Half an hour: two long key-ups and two short ones
-by the repeater's clock. `python3 -m modem.dmrsign LOG` gives a setting's floor, its slots
-with a carrier and in how many of them a sync was found.
+| Setting | REG_13 | Gain by the tables | DMR read | Floor read | Over the floor | Slots with DMR | Sync fields (whole + short) | Of the bursts |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 03FF | 0 dB | -77 dBm | -125 | 48 dB | 2 | 16 + 14 | 76% |
+| 1 | 035F | -14 dB | -96 | -144 | 48 dB | 2 | 17 + 18 | 82% |
+| 2 | 031F | -24 dB | -108 | -153 | 45 dB or more | 3 | 24 + 17 | 77% |
+| 3 | 021F | -35 dB | -121 | -156 | 35 dB or more | 2 | 14 + 18 | 75% |
+| 4 | 011F | -40 dB | -127 | -156 | 28 dB or more | 3 | 27 + 14 | 60% |
+| 5 | 001F | -43 dB | -131 | -156 | 24 dB or more | 3 | 14 + 17 | 66% |
+| 6 | 0007 | -51 dB | -136 | -146 | 10 dB | 2 | 1 + 0 | 7% |
+| 7 | 0004 | -60 dB | -145 | -155 | 10 dB | 2 | 5 + 2 | 21% |
+
+("Of the bursts": sync fields found over the signs captured with DMR in them, at 144 signs a
+burst. Setting 4's figure includes the tail of a short key-up.)
+
+- **Down to 24 dB over the floor nothing is lost**: two thirds to four fifths of the sync
+  fields, as run K's 72% at full strength.
+- **At 10 dB over the floor it is at its edge**: the chip still started in all four slots
+  that had the carrier (six captures; a start is a 16-sign match), and four of the six held
+  at least one more sync field, but only 8 fields in some 48 bursts. That is where an FM discriminator
+  falls into its threshold, so the chip's clock and slicer cost little on top of it.
+- **In this station's terms**: the floor at full gain reads -125 dBm on 440.925, so the edge
+  is near -115 dBm and full yield holds to about -100 dBm. The GP0 IF tap's detector needs
+  about -79 dBm (48 dB-Hz).
+- **What the figures are not**: a weak signal made by taking gain off is not a weak station.
+  The floor reads at the bottom of the RSSI's scale (-153 to -156) on settings 2 to 5, so
+  their "over the floor" is a lower bound and there is no point between 24 and 10 dB. The
+  gain that the RSSI lost (19, 31, 44, 50, 54, 59, 68 dB) is more than the tables say. With
+  the mixer's gain at its least (settings 6 and 7) the floor comes up by 9 dB against setting
+  5 though the gain is lower: the noise there is the mixer's own. A truly weak station (an
+  attenuator, or the antenna off) would settle it.
+- **Noise**: about 130 noise captures gave one lone match of the short form, upside down
+  (setting 5, r=-155, near the end of a capture; left out of the table). Over runs J, K and L (some
+  480,000 noise signs) about 0.1 such match is expected by chance; the rule of a second sync
+  field in the capture throws it out.
+- Six slots of settings 1 to 5 held a carrier with no sync in it, 10 to 30 dB under the DMR
+  key-ups' level at those gains (about -87 to -106 dBm by the gain lost): not the key-ups
+  missed, but something else on the channel, as the plain carrier of run K. They were not in
+  the seconds after the long key-ups; their times were not looked up.
+
+The detector that follows from J, K and L: the plain receiver at 4800 baud with the sync
+word 9B4D (or CD4D), the narrow filter, the AFC off, and a capture counted as DMR when a
+second sync field (whole or short, either way up) stands in it. `python3 -m modem.dmrsign
+LOG` gives a setting's floor, its slots with a carrier and in how many of them a sync was
+found.
 
 ## Bench plan (receive only; done, kept for reruns)
 
