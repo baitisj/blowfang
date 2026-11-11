@@ -13,9 +13,20 @@
    ticks as on log paper, every 5 kHz to 20 kHz, every 10 kHz to 100 kHz, every 100 kHz to 1 MHz
    and every 1 MHz, taller at 20 kHz, 100 kHz and 1 MHz (Jeff: "axis tic marks to help understand
    the frequency intervals"); line 5 labels it "-1M   -20k +20k   +1M" (the span at each end, the
-   lens's edges under their ticks). A small tick over a bar marks a peak, a dot in the top row a repeater
-   the explorer saved (its table, c/k6/rt.h, read once at the start). Bins outside the band stay
-   empty. The title line says the band and its channel step (a fixed gain in place of SURF), line 1 the listening frequency and
+   lens's edges under their ticks). A dot in the top row marks a repeater the explorer saved (its
+   table, c/k6/rt.h, read once at the start). Bins outside the band stay empty.
+
+   Remembered peaks (Jeff, 2026-11-11: signals go away when people stop keying): every peak a
+   sweep hears gets a caret "^" (4 px wide, 2 tall, XORed over the bars) that each sweep hearing
+   it again pushes up 8 px, to 19 px over the floor at most, and that falls slowly the rest of
+   the time (A/B: the whole height in about 1 minute at the start, then 5 min, 20 min, 15 s). A
+   new peak first needs a settled read SQ_DB over the settled floor (at most NCONF a sweep): a
+   quick-read noise bump gets no caret. A caret on the floor is forgotten. The side keys jump to
+   the carets, not to what is on the air at the press, so a press never searches: the sweeps go
+   on as they were. Up to NPM (128) are kept, 8 B each in the module store's free RAM (about
+   4.9 KB is free after the code, so room is not the limit; 128 is two screens' worth of
+   carets), for the band only (BAND forgets them; zoom and UP / DOWN keep them, off the screen
+   too); with all in use a new one takes the lowest caret's place. The title line says the band and its channel step (a fixed gain in place of SURF), line 1 the listening frequency and
    its level in dBm (a settled read), line 5 the axis's labels, or with the bar on a saved
    repeater its call, offset and TX tone ("N0CALL +5.0 103.5").
 
@@ -24,13 +35,13 @@
    PC13/PC14/PF6/PB14, side keys read with no row driven):
      UP / DOWN       the listening frequency one channel up / down (held: repeats); the scale
                      moves with it, each bin keeping the level of the old bin nearest it
-     SIDE1 / SIDE2   (the orange side keys) jump to the next peak above / below that a settled
-                     read confirms as a signal (SQ_DB over the settled floor), on the channel
-                     raster; after the next sweep the loudest bin of the lens, if it is another
-                     channel, moves it once more (an outer bin is coarse). With none left on
-                     screen, the scale's edge becomes the middle and it looks again after the
-                     next sweep, on up the band; at the band's edge with none found, line 5 says
-                     "no peak" and the middle goes back where the search began (Jeff, 2026-11-10)
+     SIDE1 / SIDE2   (the orange side keys) jump to the nearest caret above / below (on screen or
+                     off it), on the channel raster, whether or not it is on the air now; after
+                     the next sweep the loudest bin of the lens, if it is another channel, moves
+                     it once more (an outer bin is coarse). With no caret that way, line 5 says
+                     "no peak" and the middle stays
+     A/B             how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the
+                     whole height (line 5: "fall 5m")
      BAND            next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX, airband (AM, 118-137
                      MHz, receive only); each starts at its centre with its default step and span
      #               next channel step: 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
@@ -62,10 +73,9 @@
    AGC is left alone (dmrdet's frozen gain shifts RSSI by up to 15 dB).
 
    surfauto.c builds the same module for unattended bench runs: SIDE1 presses itself every
-   SURF_AUTO_MS (each peak it finds says "sel" with the settled read that confirmed it and the
-   settled floor), it wraps to the band's bottom at
-   the top, and it leaves after SURF_AUTO_S; keys still work. Before it ends it says its last
-   bargraph ("bar 441.2000 1000k lens": the middle and the span, then two lines of a letter a
+   SURF_AUTO_MS (each caret it lands on says "sel" with a settled read there and the settled
+   floor), with no caret above it wraps to the band's bottom, and it leaves after SURF_AUTO_S;
+   keys still work. Before it ends it says its last bargraph ("bar 441.2000 1000k lens": the middle and the span, then two lines of a letter a
    bin, tools/k6_screen.py draws them).
 
    Lines (K6 MOD say ...): "surf 70cm 440.850 25k", "sel 441.2000 -71 -127" (MENU, or the
@@ -73,8 +83,9 @@
    Writes REG_47 and GPIOB bit 2 (speaker), REG_73 bit 4 (the AFC, off on airband), REG_13 and
    REG_7E (fixed gain) and the keypad rows' GPIOB BSRR/BRR bits, all put back.
    Reads the SPI flash (level 5's fl_read), never writes it. No TX. The bitmap (480 B), the state
-   (~750 B) and a move's copy of the old scale (~320 B) live on the stack, about 1.6 KB of the
-   3 KB a module has at its call; the store holds only the code.
+   (~760 B) and a move's copy of the old scale (~320 B) live on the stack, about 2.1 KB of the
+   3.1 KB a module has at its call (tests/test_k6_surf.py measures it); the store holds the code
+   and the remembered peaks.
    Returns the sweeps done, or -3 (an image below level 6).
    SPDX-License-Identifier: MIT */
 #ifndef K6_MODULE_LEVEL
@@ -90,7 +101,7 @@
 #define U_HZ 2500u              /* the unit of channel steps and spans */
 #define L_HZ 500u               /* the unit of every bin's offset (the inner steps are finer) */
 #define ROWS 30                 /* bitmap rows (KM_WF_ROWS) */
-#define BAR0 6                  /* first bar row: caret rows 1-3, peak ticks row 4 */
+#define BAR0 6                  /* first bar row: the middle's caret rows 1-3 */
 #define AX 27                   /* the axis: its line, then ticks in rows 28 (all) and 29 (major) */
 #define BARH (AX - BAR0)
 #define SETTLE_US 3000          /* a sweep read after its tune (Aura's spectrum, wide) */
@@ -109,6 +120,10 @@
 #define MSG_MS 1500
 #define WIDE 1
 #define NK 24                   /* known repeaters (the explorer's table) kept at a time */
+#define NPM 128                 /* remembered peaks (8 B each, in the module store's free RAM) */
+#define HMAX 152                /* a caret's height, x 1/8 px: 19 px above the axis's row 25 */
+#define PUSH 64                 /* a sweep that hears the peak again lifts its caret 8 px */
+#define NCONF 4                 /* settled reads a sweep may spend confirming new peaks */
 #define RT_BASE 0x0F0000u       /* c/k6/rt.h: 1024 slots of 64 B */
 #define RT_SLOTS 1024
 
@@ -199,6 +214,19 @@ static const uint16_t TICKS[] = {5,   10,  15,  20,  30,  40,  50,  60,  70,   8
 static const char KEYS[24] = {0,   'A', 0,   'B', '7', '8', '#', '9', '4', '5', '0', '6',
                               '1', '2', '*', '3', 'M', 'U', 'X', 'D', 'V', 'W', 0,   'N'};
 static const uint8_t ROWPIN[6] = {0xFF, 0, 4, 10, 11, 9};
+/* a caret's fall, ms per 1/8 px (A/B cycles it): the whole height in about 15 s, 1, 5, 20 min */
+static const uint16_t FALL_MS[] = {100, 400, 2000, 8000};
+static const char FALL[4][4] = {"15s", "1m", "5m", "20m"};
+#define NFALL 4
+
+/* a remembered peak: where (the loudest read's frequency), how wide the bin that heard it was
+   (a coarse outer bin only says roughly where), its caret's height (0: free) and whether a
+   settled read confirmed it (a quick-read noise bump stays BAD, unhoppable, until it falls) */
+typedef struct {
+  uint32_t f;
+  uint16_t w;                   /* x L_HZ */
+  uint8_t h, bad;
+} pm_t;
 
 typedef struct {
   const k6_api_t *api;
@@ -206,19 +234,22 @@ typedef struct {
   uint8_t *bmp;
   uint32_t ch, cen, now;         /* channel step, the middle (listening) frequency */
   uint32_t t_flush, t_open, t_full, t_sfl, t_msg, t_key, t_rep, t_auto, t_chk;
-  int next, pend, sj, sweeps;
+  int next, sweeps, npm;
   int sfl, sel_dbm;
   uint8_t si, qfl, parked, tuned, check, mon, hold, audio, hush, key, raw, full, refine, stale;
-  uint8_t st, gx;
-  uint8_t qk, k1;
-  uint8_t sc;                   /* surfkeys: the script's next key */               /* a key caught during a long sweep or measure (kp_peek), the last peek */               /* the channel step (STEPS index); fixed gain GAINS[gx - 1], 0 auto */
-  uint32_t home;                /* where a side key's search began: back there if it finds none */
+  uint8_t st, gx;               /* the channel step (STEPS index); fixed gain GAINS[gx - 1], 0 auto */
+  uint8_t qk, k1;               /* a key caught during a long sweep or measure (kp_peek), the last peek */
+  uint8_t sc;                   /* surfkeys: the script's next key */
+  uint8_t fall;                 /* FALL_MS index */
+  uint32_t t_fall;              /* the carets' fall: worked up to here */
+  pm_t *pm;                     /* the remembered peaks (npm of them; none with no room) */
   uint16_t af;                  /* REG_47 with the audio open: FM or AM */
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
   uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
   uint32_t r47, odr, r13, r73, r7e;
   uint8_t lvl[NB];              /* bars: quick reads, dBm + 174, 0 unknown */
+  uint32_t heard[2];            /* bins whose last read held their bar up (not a bar falling) */
   char ln[40];
   char msg[22];                 /* line 5 for MSG_MS after a key: "no peak", "gain -12 dB" */
   uint32_t khz[NK];             /* the repeater table's valid entries: rx_hz, and their slots */
@@ -433,11 +464,14 @@ static void lens(sf_t *s) {
 /* bin i's distance from the middle, in bins */
 static int dist(int i) { return i < C ? C - i : i - C; }
 
-/* the step around bin i (Hz) */
-static uint32_t sp(sf_t *s, int i) {
+/* the step around bin i, x L_HZ */
+static uint32_t spu(sf_t *s, int i) {
   int a = dist(i);
-  return L_HZ * (a < C ? s->off[a + 1] - s->off[a] : s->off[C] - s->off[C - 1]);
+  return a < C ? s->off[a + 1] - s->off[a] : s->off[C] - s->off[C - 1];
 }
+
+/* the step around bin i (Hz) */
+static uint32_t sp(sf_t *s, int i) { return L_HZ * spu(s, i); }
 
 /* the frequencies bin i stands for: halfway to its neighbours */
 static void cov(sf_t *s, int i, uint32_t *lo, uint32_t *hi) {
@@ -521,7 +555,6 @@ static void window(sf_t *s, uint32_t hz) {
   recentre(s, hz);
   s->t_chk = s->api->ms();
   s->next = 0;
-  s->pend = 0;
   s->full = 0;
   s->refine = 0;
   measure_sfl(s);
@@ -546,77 +579,111 @@ static void say_sel(sf_t *s) {
   say_end(s, sint(p, s->sfl));
 }
 
-/* bin j's channel: the middle frequency its loudest read would make */
-static uint32_t chan(sf_t *s, int j) {
+/* ---- remembered peaks (Jeff, 2026-11-11): a caret over each peak heard lately ---- */
+
+/* f on the band's channel raster */
+static uint32_t raster(sf_t *s, uint32_t f) {
   uint32_t lo = s->bd->lo;
-  return lo + udiv(s->pk[j] - lo + s->ch / 2, s->ch) * s->ch;
+  return lo + udiv(f - lo + s->ch / 2, s->ch) * s->ch;
 }
 
-/* the first peak from bin j on, going d (+1 up, -1 down) that a settled read confirms (SQ_DB over
-   the settled floor; bench run 1 on 2026-11-08 stopped on -103 to -122 dBm bumps without it)
-   on a channel other than the middle's: the middle moves there; 1 if found */
-static int seek(sf_t *s, int d, int j) {
-  for (; j >= 0 && j < NV; j += d)
-    if (is_peak(s, j) && chan(s, j) != s->cen) {
-      int v = read_hz(s, chan(s, j), CHECK_US);
-      s->tuned = 0;
-      if (v < s->sfl + SQ_DB) continue;   /* a noise bump in the quick reads: not a station */
-      recentre(s, s->pk[j]);
-      s->sel_dbm = v;
-      s->refine = 1;
-      moved(s);
-#ifdef SURF_AUTO_S
-      say_sel(s);                         /* the bench: the read that confirmed it */
-#endif
-      return 1;
+/* after a sweep: each peak lifts the caret of the remembered peak it is (the nearest within half
+   the wider bin of the two, or a channel), or takes a free entry (else the lowest caret's) once
+   a settled read confirms it (SQ_DB over the settled floor; bench run 1 on 2026-11-08 stopped
+   on -103 to -122 dBm quick-read bumps without it), NCONF a sweep at most; a peak that fails
+   is kept BAD so it isn't read again until its caret falls */
+static void pm_push(sf_t *s) {
+  int i, k, conf = NCONF;
+  for (i = 0; i < NV; i++) {
+    uint32_t f, w, t, d, bd = ~0u;
+    pm_t *e, *b = 0, *lo = s->pm;
+    int a = i, z = i;
+    if (!is_peak(s, i) || !(s->heard[i >> 5] & (1u << (i & 31)))) continue;   /* (heard now) */
+    /* a carrier fills the lens's bins inside the wide filter (+-12 kHz): its flat top's middle */
+    while (a > C - KI && z <= C + KI && s->lvl[a - 1] + 2 >= s->lvl[i]) a--;
+    while (z < C + KI && a >= C - KI && s->lvl[z + 1] + 2 >= s->lvl[i]) z++;
+    f = (s->pk[a] + s->pk[z]) >> 1;
+    w = spu(s, i);
+    for (k = 0; k < s->npm; k++) {
+      e = &s->pm[k];
+      if (e->h < lo->h) lo = e;
+      if (!e->h) continue;
+      d = e->f > f ? e->f - f : f - e->f;
+      t = L_HZ * (e->w > w ? e->w : w);
+      if (t < s->ch) t = s->ch;
+      if (2 * d <= t && d < bd) bd = d, b = e;
     }
-  return 0;
+    if (b) {
+      if (b->bad) continue;            /* (a bump: falls on its own, then may be read again) */
+      if (w <= b->w) b->f = f, b->w = (uint16_t)w;   /* a finer bin says better where */
+      b->h = (uint8_t)(b->h + PUSH > HMAX ? HMAX : b->h + PUSH);
+      continue;
+    }
+    if (!s->npm || !conf) continue;
+    conf--;
+    d = (uint32_t)read_hz(s, raster(s, f), CHECK_US);
+    s->tuned = 0;
+    lo->f = f;
+    lo->w = (uint16_t)w;
+    lo->h = PUSH;
+    lo->bad = (int)d < s->sfl + SQ_DB;
+  }
 }
 
-/* no peak left on screen going d: the scale's last bin that way becomes the middle, and it looks
-   again after the next sweep; at the band's edge, give up (the bench build wraps) */
-static void hunt(sf_t *s, int d) {
-  int e = d > 0 ? NV - 1 : 0;
-  while (e != C && !s->hz[e]) e -= d;
-  if (e != C && chan(s, e) != s->cen) {
-    recentre(s, s->hz[e]);
-    s->pend = d;
-    s->sj = C + d;
-    moved(s);
-  } else {
+/* the carets fall one 1/8 px every FALL_MS (time, not sweeps: a sweep takes 0.1 to 2.5 s) */
+static void pm_fall(sf_t *s) {
+  uint32_t n = udiv(s->now - s->t_fall, FALL_MS[s->fall]);
+  int k;
+  if (!n) return;
+  s->t_fall += n * FALL_MS[s->fall];
+  if (n > 255) n = 255;
+  for (k = 0; k < s->npm; k++) s->pm[k].h = (uint8_t)(s->pm[k].h > n ? s->pm[k].h - n : 0);
+}
+
+/* a side key: the middle to the nearest remembered peak (caret still up, confirmed, on another
+   channel) going d, whether or not it is on the air now: no search, the sweeps go on as they
+   were; after the next sweep the loudest bin of the lens, if it is another channel, moves it
+   once more (refine). None that way: "no peak" and the middle stays (the bench build wraps) */
+static void jump(sf_t *s, int d) {
+  pm_t *e, *b = 0;
+  uint32_t c, bc = 0;
+  int k;
+  for (k = 0; k < s->npm; k++) {
+    e = &s->pm[k];
+    if (!e->h || e->bad || e->f < s->bd->lo || e->f > s->bd->hi) continue;
+    c = raster(s, e->f);
+    if (d > 0 ? c > s->cen && (!b || c < bc) : c < s->cen && (!b || c > bc)) b = e, bc = c;
+  }
+  if (!b) {
     note(s, "no peak");
 #ifdef SURF_AUTO_S
     window(s, s->bd->lo);
-#else
-    /* none to the band's edge: back where the search began (Jeff, 2026-11-10) */
-    if (s->home != s->cen) {
-      recentre(s, s->home);
-      moved(s);
-    }
 #endif
+    return;
   }
+  recentre(s, b->f);
+  b->f = s->cen;                        /* (it is that channel now: its caret over the middle) */
+  if (L_HZ * b->w > s->ch) b->w = (uint16_t)udiv(s->ch, L_HZ);
+  s->refine = 1;
+  moved(s);
+#ifdef SURF_AUTO_S
+  s->sel_dbm = read_at(s, C, CHECK_US);   /* the bench: its level as the jump lands */
+  s->tuned = 0;
+  say_sel(s);
+#endif
 }
 
-static void jump(sf_t *s, int d) {
-  if (!s->pend) s->home = s->cen;   /* (a press while it hunts keeps the first start) */
-  if (!s->full) {               /* the scale not swept yet: look after its first sweep */
-    s->pend = d;
-    s->sj = C + d;
-  } else if (!seek(s, d, C + d)) {
-    hunt(s, d);
-  }
-}
-
-/* the middle to f (in the band) and listen there; a side key's search stops */
+/* the middle to f (in the band) and listen there */
 static void go_to(sf_t *s, uint32_t f) {
   if (f < s->bd->lo || f > s->bd->hi) return;
-  s->pend = 0;
   recentre(s, f);
   moved(s);
 }
 
 /* a new band: its default step and span, AM or FM, the middle on its centre */
 static void band(sf_t *s, const band_t *b) {
+  int k;
+  for (k = 0; k < s->npm; k++) s->pm[k].h = 0;   /* (the remembered peaks are the band's) */
   s->bd = b;
   s->st = b->st;
   s->si = b->si;
@@ -633,6 +700,11 @@ static void on_key(sf_t *s, int k) {
     break;
   case 'A': jump(s, 1); break;
   case 'B': jump(s, -1); break;
+  case 'W':                           /* A/B: how fast the carets fall */
+    s->fall = (uint8_t)(s->fall + 1 == NFALL ? 0 : s->fall + 1);
+    put(put(s->msg, "fall "), FALL[s->fall])[0] = 0;
+    s->t_msg = s->now + MSG_MS;
+    break;
   case 'N': band(s, s->bd + 1 == BANDS + NBANDS ? BANDS : s->bd + 1); break;
   case '#':                           /* the next channel step (a new band resets it) */
     s->st = (uint8_t)(s->st + 1 == NSTEPS ? 0 : s->st + 1);
@@ -663,7 +735,6 @@ static void on_key(sf_t *s, int k) {
     s->si = (uint8_t)(s->si + (k == '1' ? -1 : 1));
     lens(s);
     recentre(s, s->cen);
-    s->pend = 0;
     break;
   case '*':
     s->mon ^= 1;
@@ -696,6 +767,8 @@ static void sweep_bin(sf_t *s, int i) {
   if (r + 174 >= o || !o || s->stale) s->pk[i] = at;
   r += 174;
   if (r < 1) r = 1;
+  if (r + DECAY_DB > o) s->heard[i >> 5] |= 1u << (i & 31);
+  else s->heard[i >> 5] &= ~(1u << (i & 31));
   /* (the first sweep after a move replaces the levels the old scale lent it) */
   s->lvl[i] = (uint8_t)(r >= o || !o || s->stale ? r : (o - r > DECAY_DB ? o - DECAY_DB : r));
 }
@@ -722,6 +795,7 @@ static void sweep_done(sf_t *s) {
   s->full = 1;
   s->stale = 0;
   floor_q(s);
+  pm_push(s);
   if (s->refine) {
     /* after a jump: the loudest bin of the lens, if that is another channel, is the station
        (the bin the jump came from may have been a coarse one far out) */
@@ -729,17 +803,10 @@ static void sweep_done(sf_t *s) {
     s->refine = 0;
     for (i = C - KI; i <= C + KI; i++)
       if (s->hz[i] && s->lvl[i] > s->lvl[b]) b = i;
-    if (b != C && s->lvl[b] > s->lvl[C] + 1 && chan(s, b) != s->cen) {
+    if (b != C && s->lvl[b] > s->lvl[C] + 1 && raster(s, s->pk[b]) != s->cen) {
       recentre(s, s->pk[b]);
       moved(s);
     }
-  }
-  if (s->pend) {
-    int d = s->pend, j = s->sj;
-    s->pend = 0;
-    if (j < 0) j = 0;
-    if (j >= NV) j = NV - 1;
-    if (!seek(s, d, j)) hunt(s, d);
   }
 }
 
@@ -814,6 +881,10 @@ static void px(uint8_t *b, int x, int r) {
   if ((unsigned)x < 128) b[16 * r + (x >> 3)] |= (uint8_t)(0x80 >> (x & 7));
 }
 
+static void xpx(uint8_t *b, int x, int r) {
+  if ((unsigned)x < 128) b[16 * r + (x >> 3)] ^= (uint8_t)(0x80 >> (x & 7));
+}
+
 /* bin i's two pixels in row r */
 static void pair(uint8_t *b, int i, int r) { b[16 * r + (i >> 2)] |= (uint8_t)(0xC0 >> (2 * (i & 3))); }
 
@@ -871,8 +942,25 @@ static void draw(sf_t *s) {
   for (i = 0; i < NV; i++) {
     if (!s->hz[i]) continue;
     for (r = AX - bar_h(s, i); r < AX; r++) pair(b, i, r);
-    if (is_peak(s, i)) pair(b, i, BAR0 - 2);
     pair(b, i, AX);                       /* the axis line */
+  }
+  {
+    /* the remembered peaks' carets, XOR over the bars: a bin's highest one, its tip (2 px) in row
+       AX - 2 - h / 8 and its feet (2 more px) under it, "^" */
+    uint8_t top[NV];
+    for (i = 0; i < NV; i++) top[i] = 0;
+    for (k = 0; k < s->npm; k++) {
+      pm_t *e = &s->pm[k];
+      int j;
+      if (!e->h || e->bad || (j = bin_of(s, e->f)) < 0) continue;
+      if (e->h > top[j]) top[j] = e->h;
+    }
+    for (i = 0; i < NV; i++) {
+      if (!top[i]) continue;
+      r = AX - 2 - (top[i] >> 3);
+      xpx(b, 2 * i, r), xpx(b, 2 * i + 1, r);
+      xpx(b, 2 * i - 1, r + 1), xpx(b, 2 * i + 2, r + 1);
+    }
   }
   for (i = 0, k = -1; i < s->nk; i++) {   /* known repeaters: a mark in row 0 */
     int j = bin_of(s, s->khz[i]);
@@ -946,6 +1034,13 @@ int k6_main(const k6_api_t *api) {
   for (i = 0; i < sizeof st; i++) z[i] = 0;
   s->api = api;
   s->bmp = bmp;
+  s->fall = 1;                          /* carets fall in about a minute */
+  {
+    uint32_t room;
+    s->pm = (pm_t *)api->scratch(&room);
+    s->npm = room >> 3 < NPM ? (int)(room >> 3) : NPM;
+    for (n = 0; n < (uint32_t)s->npm; n++) s->pm[n].h = 0;
+  }
   s->r47 = api->fd_read(0x47);
   s->r13 = api->fd_read(0x13);
   s->r73 = api->fd_read(0x73);
@@ -975,10 +1070,11 @@ int k6_main(const k6_api_t *api) {
   s->t_flush = api->ms() - FLUSH_MS;
   for (;;) {
     s->now = api->ms();
+    pm_fall(s);
     k = kp_event(s);
     if (s->qk) k = s->qk, s->qk = 0;   /* (one caught during a sweep comes first) */
 #ifdef SURF_AUTO_S
-    if (!k && !s->pend && !s->check && s->now - s->t_auto >= SURF_AUTO_MS) {
+    if (!k && !s->check && s->now - s->t_auto >= SURF_AUTO_MS) {
       k = 'A';
       s->t_auto = s->now;
     }

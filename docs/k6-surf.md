@@ -45,7 +45,8 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 | key | does |
 |---|---|
 | UP / DOWN | the middle one channel up / down (the band's step); held, it repeats. The scale moves with it, each bin keeping the level of the old one nearest it |
-| SIDE1 / SIDE2 (orange) | next peak above / below that a settled read confirms (10 dB over the settled floor), on the channel raster; it moves to the middle, and the moved scale is swept once before the audio opens. If the loudest bin of the lens is then another channel, it moves there once more (a wide bin far out is coarse). With none left on screen, the scale's edge becomes the middle and it looks again after the sweep, on up the band. At the band's edge with none found, line 5 says "no peak" and the middle goes back where the search began (Jeff, 2026-11-10) |
+| SIDE1 / SIDE2 (orange) | the nearest caret (remembered peak, below) above / below, on screen or off it, whether or not it is on the air now; it moves to the middle on the channel raster. No search: the sweeps go on as they were. If the loudest bin of the lens is then another channel, it moves there once more (a wide bin far out is coarse). With no caret that way, line 5 says "no peak" and the middle stays (Jeff, 2026-11-11; until then a press searched what was on the air at that moment) |
+| A/B | how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the whole height (line 5 says "fall 5m" for 1.5 s) |
 | BAND | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather), AIR (118-137, 25 kHz, AM, receive only). Each starts at its centre with its default step and span |
 | # | next channel step: 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (line 5 says "step 50k" for 1.5 s). The middle stays put; UP / DOWN then move onto the new raster. BAND resets the step to the band's default |
 | 5 | the band's centre |
@@ -59,10 +60,32 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 
 Screen: the title bar says SURF (or the fixed gain, `G-12`), the band and its channel step; line 1 the bar's frequency and its
 level (a settled read, dBm) and RX while the audio is open; the bargraph (63 bins x 2 pixels on
-the lens scale, the bar always in the middle under the caret, a tick over each peak, a dot in the
-top row over each repeater the explorer saved, the axis and its ticks under the bars, nothing
+the lens scale, the bar always in the middle under the caret, a small caret over each remembered
+peak, a dot in the top row over each repeater the explorer saved, the axis and its ticks under the bars, nothing
 past the band's edge); line 5 the axis's labels (`-1M   -20k +20k   +1M`), or with the bar on a
 saved repeater its call, offset and TX tone (`N0CALL +5.0 103.5`), or "no peak" for 1.5 s.
+
+**Remembered peaks.** Jeff, 2026-11-11: "SURF is doing a great job catching transient signals
+when it's doing a band scan, but sometimes those signals go away when people stop keying." So
+every peak a sweep hears gets a small caret, `^` 4 px wide and 2 tall, XORed over the bars so it
+shows inside a bar too. Each sweep that hears it again (a peak whose read held its bar up, not a
+bar falling 3 dB a sweep) pushes it up 8 px, to 19 px over the floor at most; the rest of the
+time it falls, by time and not by sweeps (a sweep takes 0.1 to 2.5 s): the whole 19 px in about
+1 minute at the start, A/B for 5 min, 20 min or 15 s. A caret on the floor is forgotten and no
+longer hoppable. A new peak first needs a settled read 10 dB over the settled floor (4 a sweep at
+most), so the quick-read noise bumps of bench run 1 get no caret; one that fails is kept as
+unconfirmed (no caret, not hoppable, not read again) until it falls. A peak matches a caret
+within half the wider of the two bins (or half a channel); a finer bin moves the caret to its
+frequency, and a carrier's flat top in the lens counts at its middle. A side key's jump puts the
+caret on the channel it lands on.
+
+How many: 128, 8 bytes each (frequency, bin width, height, confirmed), 1 KB in the module store's
+free RAM after the code (about 4.9 KB free on the voice images' 11,776 B arena, so room is not
+the limit; the stack, with about 1 KB spare, never holds them). One screen can show at most 63
+distinct carets and in practice about 30 (a carrier lights a few bins), so 128 keeps two screens'
+worth: what is on screen plus what was heard before a zoom or a move along the band. They are the
+band's: BAND forgets them, zoom and UP / DOWN keep them. With all 128 in use, a new peak takes
+the lowest caret's place. Matching costs 63 x 128 compares a sweep (about 2 ms).
 
 **The scale.** Bin C+-k sits `off[k]` x 500 Hz from the middle, `off[k] = a (r^k - 1)` worked in
 fixed point (`g += g * k >> 12` from `g = 256 a`), each step at least one unit. The ratio and `a`
@@ -151,8 +174,10 @@ It leaves after the last line (about 54 s). Receive only, like surf.
 ## Bench build (surfauto)
 
 `mod-surfauto.bin` is the same module for unattended runs: SIDE1 presses itself every 4 s. Each
-peak it jumps to says `sel <MHz> <dBm> <floor>`: the settled read that confirmed it and the
-settled floor it beat by 10 dB (runs 1 and 2 said the bar's level 4 s later, before the jump). It wraps to the band's bottom at the top and leaves after 60 s. The keys
+caret it jumps to says `sel <MHz> <dBm> <floor>`: a settled read where it landed and the
+settled floor (runs 1 and 2 said the bar's level 4 s later, before the jump). With no caret above,
+it wraps to the band's bottom; carets from before the wrap are still there, so it goes round the
+peaks it has heard. It leaves after 60 s. The keys
 still work. Before it ends it says its last bargraph: `bar <middle MHz> <span> lens` (before the
 lens: `bar <first bin MHz> <step>`), then two
 lines of 32 letters, one a bin, `a` for 1 pixel up to `x` for 24 (about 112 bytes of the 684 the
