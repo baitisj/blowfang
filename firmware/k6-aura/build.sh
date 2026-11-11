@@ -379,11 +379,19 @@ pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRF
 pfprobe_hsi    # level 2, pfprobe stage 1: SYSCLK to HSI and back only
 pfprobe_m2     # level 2, pfprobe stage 4: PRFTBE with MEM_MODE back at 2 (main flash), timed there
 pfprobe_pf     # level 2, pfprobe stage 2: also PRFTBE while on HSI
+pocsag         # level 2, POCSAG pager receiver on the chip's plain FSK receiver, DAPNET 439.9875 (text only in 430-450 MHz builds), docs/k6-pocsag.md
+pocsag_440     # level 2, pocsag on 440.850 for the bench: six settings of 45 s (receive only, docs/k6-pocsag.md)
+pocdump        # level 2, what the plain FSK receiver hands over on POCSAG 1200/2400 (its own clock and a 4800 sampler), 440.850 bench, docs/k6-pocsag.md
 ramprobe
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)
 rtls
 rxmap          # level 2, its parameter block patched by tools/k6_rxmap.py
+samecap        # level 2, does the chip's plain FSK receiver read NOAA SAME (REG_58 00e5 at 520.83 baud), 440.850 bench, docs/k6-pocsag.md
+samecap_nwr    # level 2, samecap on NOAA Weather Radio 162.550 for an hour, receive only, docs/k6-pocsag.md
+samedf         # level 2, the plain FSK receiver as a sampler of NOAA SAME audio (4167/4800/6347 a second), 440.850 bench, docs/k6-pocsag.md
+samerx         # level 2, NOAA SAME headers read in the radio from the plain FSK receiver as a sampler, 162.550 for 2 h, docs/k6-pocsag.md
+samerx_440     # level 2, samerx on 440.850 for the bench: its three sample rates (receive only, docs/k6-pocsag.md)
 scan           # level 2, patched by tools/k6_scan.py
 settle         # level 2
 spksweep

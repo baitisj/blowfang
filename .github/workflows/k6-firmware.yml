@@ -122,6 +122,7 @@ jobs:
             tests/test_k6_morse.py \
             tests/test_k6_pager.py \
             tests/test_k6_pages.py \
+            tests/test_k6_pocsag.py \
             tests/test_k6_rt.py \
             tests/test_k6_rxmap.py \
             tests/test_k6_scan.py \
