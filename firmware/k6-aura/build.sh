@@ -333,6 +333,7 @@ dfskcap_acarse # level 2, dfskcap_acarsd with the tone receiver's second round: 
 dfskcap_dmr    # level 2, dfskcap on 440.925 MHz: does the plain FSK receiver find DMR's sync words by their signs (receive only, docs/k6-dmr.md)
 dfskcap_dmr2   # level 2, dfskcap_dmr's second table, an hour: the sync word with the sign the chip drops, filters, AFC (receive only, docs/k6-dmr.md)
 dfskcap_dmr3   # level 2, dfskcap_dmr with the receiver's gain stepped down: how weak may DMR be for the chip to find its sync (receive only, docs/k6-dmr.md)
+dfskcap_dmr4   # level 2, dfskcap_dmr3 in blocks tuned at every setting, not tuned, and not tuned with the AFC on: does the tuning's restart cost the weak steps (receive only, docs/k6-dmr.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md

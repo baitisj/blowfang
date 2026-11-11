@@ -37,6 +37,9 @@ DMR2 = [("9b4d", 0x0700, 1, 1, "00e9"),
 # run L: one setting, the receiver's gain (REG_13) stepped down
 G13 = ["03ff", "035f", "031f", "021f", "011f", "001f", "0007", "0004"]
 DMR3 = [("9b4d", 0x0700, 0, 1, "00e9", g) for g in G13]
+# dfskcap_dmr4: the mixer's steps between 001f and 0007 in the place of two strong steps
+G13B = ["03ff", "021f", "011f", "001f", "0017", "000f", "0007", "0004"]
+DMR4 = [("9b4d", 0x0700, 0, 1, "00e9", g) for g in G13B]
 
 
 def test_sync_signs():
@@ -96,11 +99,13 @@ def test_run_j_capture():
                             "none in 1 (peaks -88 to -88)"), rep
 
 
-def on_the_model(name, extra, table, rounds, air):
+def on_the_model(name, extra, table, rounds, air, block=0):
     """a dfskcap_dmr build on the emulated M0, rounds times round its table of eight settings
     of 0.8 s, the air as signs -> its report's line a setting. Checked on the way: the lines,
     the tuning (the repeater's, in the filter each setting names), the AFC bit, the registers
-    put back"""
+    put back. block: dfskcap_dmr4's blocks of that many rounds, three kinds by turns (0 tuned
+    at every setting, 1 not tuned, 2 not tuned but once at the block's start, the AFC on):
+    the report's lines are then keyed (setting, kind)"""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
@@ -137,18 +142,27 @@ def on_the_model(name, extra, table, rounds, air):
     assert e.said[0] == "dfskcap start hz=440925000 n=8" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     s = [ln.split() for ln in e.said if ln.startswith("s ")]
+    kind = [i // 8 // block % 3 if block else -1 for i in range(n)]
     assert [ln[1:2] + ln[3:] for ln in s] == \
         [[str(i % 8), "cfg=" + table[i % 8][4], "b=c195", "sy=" + table[i % 8][0], "l=7f00"]
-         + ["g=" + x for x in table[i % 8][5:]] for i in range(n)], s
-    assert e.tunes == [(440925000, 1)] + [(440925000, table[i % 8][2]) for i in range(n)], e.tunes
-    assert e.writes[0x73][:n] == [0x10 if table[i % 8][3] else 0 for i in range(n)] and e.writes[0x73][-1] == 0
+         + ["g=" + x for x in table[i % 8][5:]] + [f"bk={kind[i]}"] * (block > 0) for i in range(n)], s
+    assert e.tunes == [(440925000, 1)] + [(440925000, table[i % 8][2]) for i in range(n)
+                                          if kind[i] <= 0 or kind[i] == 2 and i % (8 * block) == 0], e.tunes
+    assert e.writes[0x73][:n] == [0x10 if table[i % 8][3] and kind[i] != 2 else 0 for i in range(n)]
+    assert e.writes[0x73][-1] == 0
     assert {w & 0x0700 for w in e.writes[0x2B][:-1]} == {t[1] for t in table}, e.writes[0x2B]
     rep = dmrsign.report(["K6 MOD say " + ln for ln in e.said])
-    dmr = {int(ln.split()[0][3:]): ln for ln in rep if ln.startswith("dmr")}
-    assert sorted(dmr) == list(range(8)), rep
-    for fe, ln in dmr.items():
-        g = "".join(" g=" + x for x in table[fe][5:])
-        assert f"sy={table[fe][0]} cfg={table[fe][4]}{g}: {rounds} slots" in ln, ln
+    if block:
+        dmr = {(int(ln.split()[0][3:]), int(ln.split(" bk=")[1][0])): ln for ln in rep if ln.startswith("dmr")}
+        assert sorted(dmr) == [(fe, k) for fe in range(8) for k in sorted(set(kind))], rep
+        for (fe, k), ln in dmr.items():
+            assert f"sy={table[fe][0]} cfg={table[fe][4]} g={table[fe][5]} bk={k}: {kind.count(k) // 8} slots" in ln, ln
+    else:
+        dmr = {int(ln.split()[0][3:]): ln for ln in rep if ln.startswith("dmr")}
+        assert sorted(dmr) == list(range(8)), rep
+        for fe, ln in dmr.items():
+            g = "".join(" g=" + x for x in table[fe][5:])
+            assert f"sy={table[fe][0]} cfg={table[fe][4]}{g}: {rounds} slots" in ln, ln
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73):
         assert e.writes[reg][-1] == 0, hex(reg)
     if len(table[0]) > 5:                                         # the gain fixed a setting, then as found
@@ -200,3 +214,28 @@ def test_dfskcap_dmr3_on_the_model():
         assert f"cfg=00e9 g={G13[fe]}: 2 slots" in ln and syncs_of(ln)[0] >= 10, ln
     w = [int(ln.split(" w=")[1].split()[0]) for ln in said if ln[:1] == "c"]
     assert len(w) >= 32 and set(w) == {40}, w
+
+
+def test_dfskcap_dmr4_on_the_model():
+    """dfskcap_dmr4 (run M's module): eight gains (G13B) in blocks of three kinds, here of
+    one round each, four rounds: tuned at every setting (kind 0, as run L), not tuned (1), the
+    AFC on and tuned once at the block's start (2), and kind 0 again, which turns the AFC off
+    again. on_the_model checks the tuning, the AFC bit and bk= on the s lines; the gain is
+    written at every setting whatever the kind, and the report has a line a gain and kind"""
+    rng = np.random.default_rng(13)
+    air = dmrsign.air_signs(int((4 * 8 * 0.8 + 4) * 4800 / 144) + 2, rng)
+    dmr, said = on_the_model("dfskcap_dmr4", [("DFSK_DMR3", "1"), ("DFSK_GAIN", "1"), ("DFSK_CAPMAX", "40u"),
+                                              ("DFSK_BLOCK", "1u")], DMR4, 4, air, block=1)
+    assert len(dmr) == 24 and all(syncs_of(ln)[0] >= 4 for ln in dmr.values()), dmr
+    assert sum(syncs_of(ln)[0] for (_, k), ln in dmr.items() if k == 0) >= 150, dmr
+
+
+def test_dfskcap_dmr4_is_dmr3_in_blocks():
+    """the module as built: nine blocks of 144 rounds (each at least 921.6 s, the repeater keys
+    every 903 s), all else dfskcap_dmr3's but the gains (dfskcap.c's table under DFSK_BLOCK)"""
+    with open(os.path.join(K6, "mod", "dfskcap_dmr4.c")) as f:
+        d4 = dict(ln.split()[1:3] for ln in f if ln.startswith("#define ") and len(ln.split()) == 3)
+    with open(os.path.join(K6, "mod", "dfskcap_dmr3.c")) as f:
+        d3 = dict(ln.split()[1:3] for ln in f if ln.startswith("#define ") and len(ln.split()) == 3)
+    assert d4.pop("DFSK_BLOCK") == "144u" and d4.pop("DFSK_ROUNDS") == "1296u" and d3.pop("DFSK_ROUNDS") == "280u"
+    assert d4 == d3 and 144 * 8 * 0.8 > 903 + 15

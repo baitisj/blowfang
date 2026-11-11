@@ -620,6 +620,46 @@ second sync field (whole or short, either way up) stands in it. `python3 -m mode
 LOG` gives a setting's floor, its slots with a carrier and in how many of them a sync was
 found.
 
+### Run M (planned, `dfskcap_dmr4`): did the tuning cost run L its weak steps?
+
+Run L tuned at every one of its 0.8 s settings, and `api->tune` restarts the receiver. The
+POCSAG sampler, which reads the same plain receiver, gave noisy bits for a minute or two after
+a restart and far fewer when the module left the tuning out (docs/k6-pocsag.md, runs 6 to 8).
+That was put down to the AFC pulling in again, and run L had the AFC off, so it may not carry
+over; but run L never had a setting that was not half a second from a restart. It matters for
+the explorer, whose detector comes to a channel by tuning to it: if the restart costs
+sensitivity, a visit should last longer than the cost.
+
+`dfskcap_dmr4` is run L's setting in blocks of 144 rounds (922 s or a little more, so every
+block meets one of the repeater's 7 s key-ups, which come 903 s apart), three kinds by turns,
+three blocks each, some two hours and twenty minutes, receive only:
+
+| `bk=` | The tuning | The AFC |
+| --- | --- | --- |
+| 0 | at every setting, as run L | off |
+| 1 | none: the receiver runs on from kind 0's last restart | off |
+| 2 | once at the block's start (for the AFC bit to take hold), then none | on |
+
+The gains are 03FF, 021F, 011F, 001F, 0017, 000F, 0007 and 0004: run L's without 035F and
+031F, which told nothing new, and with the mixer's two steps between 001F and 0007, where run
+L jumped from 24 dB or more over the floor to 10. The s line carries `bk=`, and `python3 -m
+modem.dmrsign LOG` gives a line a gain and kind.
+
+What it would say:
+
+- Kind 1 reads sync fields further down than kind 0: the restart cost run L, the edge is lower
+  than -122 dBm, and a detector should stay on a channel rather than come back to it often.
+- Kinds 0 and 1 alike: the restart costs the plain receiver nothing when the AFC is off, and
+  POCSAG's settling is the AFC's alone.
+- Kind 2 against kind 1: what the AFC does to a 7 s burst that it has no time to pull in (its
+  time constant is about 30 s). Run K saw no difference at full strength. POCSAG's sampler
+  found nothing with the AFC off (its run 7) where DMR's sync is found either way, and the two
+  radios of that bench are only 145 Hz apart (docs/k6-ft8-wspr.md, run 5): not explained yet.
+- A key-up in the first two minutes of a kind 1 or kind 2 block is counted apart (the s
+  lines' `t=` say when the last tuning was).
+- Whether the gain takes hold without a tuning shows in each slot's `f=`: the floor must step
+  with the gain in kinds 1 and 2 as it does in kind 0.
+
 ## Bench plan (receive only; done, kept for reruns)
 
 1. Real DMR first: the explorer thread's hamlet recorder rotates through 440.925 and is cutting
