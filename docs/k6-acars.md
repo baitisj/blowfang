@@ -639,8 +639,12 @@ Three things were left open by them, and a reader's list of ideas for this page 
    level). Real ACARS would reach it as AM at the zero IF, where the plain receiver showed
    that the discriminator gives the tones whole.
 
-`dfskcap` with `DFSK_TONE` is the recorder for it: sixteen settings of 11 s, the units K, R and
-L in turn with 0.4 s between them (`python3 -m modem.acars probe OUT.wav --only KRL --gap 0.4`).
+`dfskcap` with `DFSK_TONE` is the recorder for it: sixteen settings of 11 s, the units K, R, L
+and T in turn with 0.4 s between them (`python3 -m modem.acars probe OUT.wav --only KRLT --gap
+0.4`). A T unit is no block but a ladder, the first rungs of a receiver's test: 80 ms of
+2400 Hz alone, 80 ms of 1200 Hz alone, then the two in turn, 8, 4, 2 and 1 bits of each. (The
+K unit's opening is the tones in turn bit by bit, and the R unit's the pre-key and the bit
+sync, so the ladder is whole with them.)
 
 | Setting | REG_58 | Baud | Sync word | What it asks |
 | --- | --- | --- | --- | --- |
@@ -658,8 +662,10 @@ L in turn with 0.4 s between them (`python3 -m modem.acars probe OUT.wav --only 
 
 The report gives, a setting, the blocks read, and for every capture how many of the 264 tone
 bits that each unit's block opens with (the SOH to the text's `AG7EW TEST 440.850 `) are off
-at the best place, with those bits laid under the sent ones (`--show`). So a receiver that
-gets the tones nearly right, or wrong in a regular way, shows as that and not as "no sync".
+at the best place, with those bits laid under the sent ones (`--show`), and the same for the
+ladder's 336 bits wherever a capture has them. So a receiver that gets the tones nearly
+right, or wrong in a regular way (a clock that slips, a tone it does not tell, the bits
+upside down), shows as that and not as "no sync".
 
 `dfskcap_acarsd` is the build for FM on 440.850 MHz (the IC-7100 at RF power 0) and
 `dfskcap_acars6` the same at the zero IF on 50.650 MHz (AM, with the owner's word; there the

@@ -604,6 +604,11 @@ def test_tone_blocks_and_places():
             assert len(shown) == 6 and "".join(shown[1::2]).count(".") == 1 and "." not in "".join(shown[0::2])
     x, sent = acars.probe_audio(6.0, kinds="KRL", gap=0.4)
     assert [k for k, _, _ in sent[:4]] == list("KRLK")
+    t = acars.unit_tones("T", "")                                  # the ladder: no block in it, and found
+    assert len(t) == 656 and acars.tone_blocks(t)[0] == [] and list(t[:384]) == [0] * 192 + [1] * 192
+    b = np.concatenate([rng.integers(0, 2, 60), t, rng.integers(0, 2, 60)]).astype(np.int8) ^ 1
+    way, places, _ = acars.tone_places(b, acars.LADDER_REF)
+    assert way == 1 and [o for _, o in places] == [0] and len(acars.LADDER_REF) == 336
     y, _ = acars.probe_audio(6.0, kinds="KRL", gap=0.4, levels=(1.0, 1.8))     # every second round louder
     r0, r1 = (int(sent[i][1] * 48000) for i in (0, 3))
     assert np.allclose(y[r0:r0 + 4800], x[r0:r0 + 4800]) and np.allclose(y[r1:r1 + 4800], 1.8 * x[r1:r1 + 4800])
@@ -619,19 +624,20 @@ def test_dfskcap_acarsd_tone_receiver_on_the_model():
     with the pre-key (0000) as the sync word it hands over every unit unframed and the report
     finds the K and R blocks in them; with SYN SYN it starts on the R units, with the pager's
     sync word on the K units; at 4800 baud it gives two samples a bit; at 1200 baud it reads
-    the L units. A setting's REG_5B, REG_59 and REG_2B are its own; the registers are put back"""
+    the L units. The T units' ladder of tones is found where the tone bits come unframed. A
+    setting's REG_5B, REG_59 and REG_2B are its own; the registers are put back"""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
     src = os.path.join(K6, "mod", "dfskcap_acarsd.c")
     code, entry = le.build("x", [("DFSK_ACARS", "1"), ("DFSK_TONE", "1"), ("DFSK_DUMP_ALL", "1"),
-                                 ("PROBE_HZ", "440850000u"), ("FE_S", "3"), ("WAIT_MS", "200u"), ("QN", "2u")],
+                                 ("PROBE_HZ", "440850000u"), ("FE_S", "4"), ("WAIT_MS", "200u"), ("QN", "2u")],
                            os.path.join(K6, "mod", "dfskcap.c"))
     full, _ = k6mod.build(src)
-    total, BASE, k = 49.0, 4800, 0
+    total, BASE, k = 65.0, 4800, 0
     air = [np.zeros(BASE // 4, np.int8)]
     while sum(map(len, air)) < (total + 9) * BASE:
-        kind = "KRL"[k % 3]
+        kind = "KRLT"[k % 4]
         t = acars.unit_tones(kind, f"AG7EW TEST 440.850 {kind}{k:03d} THE K6 READS ACARS")
         air += [np.repeat(t, BASE // acars.UNIT_BAUD[kind]), np.zeros(3 * BASE // 10, np.int8)]
         k += 1
@@ -677,7 +683,12 @@ def test_dfskcap_acarsd_tone_receiver_on_the_model():
         want = {"R"} if fe in (2, 3, 5) else {"K"} if fe in (4, 6, 8) else {"L"} if fe >= 14 else {"K", "R"}
         assert kinds[fe] == want, (fe, kinds[fe], ln)
     assert not any("upside down" in ln for ln in rep)
-    assert sum(ln.startswith("  sent ") for ln in rep) == 16 * 3 and sum(ln.startswith("  got  ") for ln in rep) == 16 * 3
+    rungs = {int(ln.split(":")[0][6:]): ln.split("off: ")[1].split() for ln in rep if ln.startswith("ladder")}
+    assert sorted(rungs) == list(range(16)), rep
+    for fe, off in rungs.items():       # the ladder whole wherever the tone bits come unframed at 2400 a second
+        assert off[0] == ("0" if fe in (0, 1, 7, 9, 10, 11, 12, 13) else "none"), (fe, off)
+    assert sum(ln.endswith("'s ladder, 0 off:") for ln in rep) == 8, rep
+    assert sum(ln.startswith("  sent ") for ln in rep) == 16 * 3 + 8 * 4, rep
     assert sum(ln.endswith("'s best place, 0 off:") for ln in rep) == 16, rep     # the best capture is the one shown
     # a capture that is one word all through (silence after a restart) has its c line and no words
     for ln in e.said:

@@ -5,7 +5,7 @@
    (DFSK_ZIF, the chip's double sideband mode, where the receiver takes in an AM block),
    dfskcap_acarsd's sixteen settings of 11 s each (DFSK_TONE: the chip's 1200/2400 Hz tone
    receiver with the pre-key as its sync word, the tone bits of all that follows said; the
-   signal is then --only KRL --gap 0.4). With DFSK_SETS in DFSK_TONE's place: dfskcap_acarsc's
+   signal is then --only KRLT --gap 0.4). With DFSK_SETS in DFSK_TONE's place: dfskcap_acarsc's
    settings of the plain receiver (staged for a ninth run, not made); with DFSK_SWEEP and
    FE_S 22: the eighth run's clocks from 5200 to 6300 baud; with none of them: the seventh
    run's front ends (which IF, which AF source); with DFSK_NARROW in DFSK_ZIF's place: the

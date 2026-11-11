@@ -12,9 +12,10 @@ the low bit first.
                                                          for the control, in AM for the test)
       [--only R] [--where 50.650]                        real blocks only; the frequency their
                                                          text names
-      [--only KRL --gap 0.4]                             for the tone receiver's recorder
+      [--only KRLT --gap 0.4]                            for the tone receiver's recorder
                                                          (dfskcap_acarsd): L is a K unit at
-                                                         1200 baud, the control
+                                                         1200 baud, the control; T a ladder of
+                                                         steady and alternating tones
       [--levels 1,1.8]                                   the rounds' peaks in turn (the file's
                                                          peak is half of it): two depths of AM
   python3 -m modem.acars report LOG                      what the chip made of it (the module's
@@ -100,7 +101,10 @@ def unit_tones(kind, text):
     of the chip's own kind, alternating tones then K_SYNC as tone bits, so the chip's modem has
     its usual preamble to start on (a control for the framing). L: K's bits, sent at 1200 baud
     (UNIT_BAUD: a cycle of 1200 Hz or two of 2400 Hz a bit, which the chip's tone receiver
-    reads for aprsfsk), a control for the recorder"""
+    reads for aprsfsk), a control for the recorder. T: no block but a ladder (LADDER): a steady
+    2400 Hz, a steady 1200 Hz, then the two in turn, 8, 4, 2 and 1 bits of each"""
+    if kind == "T":
+        return LADDER.copy()
     blk = bits_lsb(block(text))
     if kind == "R":
         return tones(np.concatenate([bits_lsb(head()), blk]))
@@ -108,7 +112,12 @@ def unit_tones(kind, text):
     return np.concatenate([pre, tones(blk, last=0)])
 
 
-UNIT_BAUD = {"K": BAUD, "R": BAUD, "L": BAUD // 2}
+UNIT_BAUD = {"K": BAUD, "R": BAUD, "L": BAUD // 2, "T": BAUD}
+# the T unit's tone bits: 80 ms of each tone alone (the recorder takes 107 ms of one tone for
+# an empty FIFO), then 8, 4, 2 and 1 bits of each in turn, and 2400 Hz to end on
+LADDER = np.array([0] * 192 + [1] * 192 + ([0] * 8 + [1] * 8) * 6 + ([0] * 4 + [1] * 4) * 8
+                  + ([0] * 2 + [1] * 2) * 12 + [0, 1] * 24 + [0] * 16, np.int8)
+LADDER_REF = LADDER[320:]       # what a capture is laid against: the last of the steady 1200 Hz on
 
 
 def audio(tone_bits, fs=FS, baud=BAUD):
@@ -604,7 +613,9 @@ def tone_report(lines, fit="AG7EW TEST 440.850 ", show=0):
     has two samples a tone bit: each half is read by itself and the better kept. Before a
     setting's v line, `tone3 33a9 2400 baud sy=0000: 9 blocks read, 5 captures; openings 11;
     of 264 bits off: 0 0 1 ...`. show: for that many captures of a setting, those with the
-    fewest bits off, their best place's bits under the opening's (before the tone line)"""
+    fewest bits off, their best place's bits under the opening's (before the tone line). And
+    `ladder3: 2 found; of 336 bits off: 0 4`: the T units' ladder (LADDER_REF) wherever a
+    capture has it with at most one bit in five off, shown likewise"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
     caps, out = {}, []
@@ -614,7 +625,7 @@ def tone_report(lines, fit="AG7EW TEST 440.850 ", show=0):
             w = caps.setdefault((int(f[0][1:]), int(f[1])), [])
             if int(f[2], 16) == len(w):
                 w.extend(int(f[3][i:i + 4], 16) for i in range(0, len(f[3]) - 3, 4))
-    ref, sets, tally = tone_ref(fit), {}, {}
+    ref, sets, tally, ladder = tone_ref(fit), {}, {}, {}
     for ln in said:
         f = ln.split()
         if ln[:2] == "s " and len(f) > 2 and f[1].isdigit():
@@ -637,6 +648,10 @@ def tone_report(lines, fit="AG7EW TEST 440.850 ", show=0):
                     if got is None or key < got[0]:
                         got = (key, texts, up, inv, places, D, x, good)
                 _, texts, up, inv, places, D, x, good = got
+                rung = min((tone_places(b[ph::step], LADDER_REF) + (b[ph::step],) for ph in range(step)),
+                           key=lambda r: r[1][0][1])
+                if rung[1][0][1] <= 0.2 * len(LADDER_REF):
+                    ladder.setdefault(fe, []).append((rung[1][0][1], f[1], rung))
                 ln += (f" : ones {np.mean(b):.0%} runs 1:{np.mean(runs == 1):.0%} 2:{np.mean(runs == 2):.0%} 3+:{np.mean(runs >= 3):.0%}; "
                        + (f"{len(texts)} read" + (" upside down" if up else "") + f" [{texts[0]}]" if texts else "none read")
                        + "; off " + " ".join(str(o) for _, o in places))
@@ -656,6 +671,12 @@ def tone_report(lines, fit="AG7EW TEST 440.850 ", show=0):
             cfg, baud, sy = sets.get(fe, ("?", 0.0, "?"))
             for _, _, title, rows in shown:
                 out += [title] + rows
+            rungs = sorted(ladder.get(fe, []), key=lambda r: r[0])
+            for loff, cap, (linv, lplaces, lD, lx) in rungs[:show]:
+                out += [f"  c{fe} {cap}'s ladder, {loff} off" + (", upside down:" if linv else ":")]
+                out += tone_show(lx, LADDER_REF, linv, lplaces[0][0], lD)
+            out += [f"ladder{fe}: {len(rungs)} found; of {len(LADDER_REF)} bits off: "
+                    + (" ".join(str(r[0]) for r in rungs) or "none")]
             out += [f"tone{fe} {cfg} {baud:.0f} baud sy={sy}: {n} blocks read, {ncap} captures; openings {good}; "
                     f"of {len(ref)} bits off: " + (" ".join(map(str, sorted(off))) or "no capture"), ln]
         elif ln[:1] in ("s", "v", "b", "q") or ln.startswith("dfskcap "):
