@@ -673,6 +673,60 @@ signal has every second round of units 1.8 times the level, `--levels 1,1.8`, si
 sender's depth of modulation was never measured). REG_31 (the compander and the scrambler)
 reads 0000 on this K6 and the AFC is off at the zero IF; the receiver's AGC is left as it is.
 
+#### The two FM rounds (2026-11-11, builds 2075259 and 8f5a2b8)
+
+K6 receive only in both, the IC-7100 in FM on 440.850 MHz at RF power 0. Run E:
+`dfskcap_acarsd`, keyed 04:44:27 to 04:48:13Z (hamlet
+`~/blowfang-work/runs/acarsd-fm3-20261111/`). Run G: `dfskcap_acarse` (`DFSK_TONE 2`, the
+units K, R and T), keyed 05:08:42 to 05:12:27Z (`runs/acarse-fm4-20261111/`). **No block read
+in any of the thirty-two settings.**
+
+- **The pre-key as the sync word works.** With 0000 (or FFFF) the receiver starts on every
+  unit and hands over what it makes of the rest, a unit a capture. This is the first sight of
+  the tone receiver's own bits on ACARS.
+- **The chip's own sync never comes**: no capture with 5C5C, 3FFE 5C5C or the pager's word,
+  with either preamble length. The 1200 baud control gave none either (the L units on the
+  pager's word), so it proved nothing and was dropped.
+- **At 2400 baud a tone must last about a cycle of 1200 Hz to be told.** The steady tones and
+  the ladder's runs of 8 and 4 come exact but for one bit at each change (8 of 1200 Hz as 7,
+  8 of 2400 Hz as 9), a pair of bits of 1200 Hz as one bit or none, and a lone one not at
+  all. A block's SYN SYN has lone ones in it, which is why the chip never finds it. The
+  ladder is placed with 53 to 62 of its 336 bits off, a block's opening with 55 to 65 of 264.
+  33A3 is the most regular, bits 7:6 = 11 or 00 are worse, de-emphasis and filters change
+  nothing.
+- **At 4800 baud (two samples a bit) the bandwidth bits decide what is seen**:
+
+  | REG_58 | 2400 Hz, n bits | 1200 Hz, n bits | a pair of 1200 Hz | a lone bit of 1200 Hz |
+  | --- | --- | --- | --- | --- |
+  | 33A9 (bits 3:1 = 4) | 2n + 1 samples, exact | fewer than 2n - 1, often split by a lone 0 | one sample (59%), `101` (14%), two (8%) | one sample; 4% missed in a block, a third missed where they come every other bit |
+  | 33A1, 33AB (0, 5) | 2n + 1 | 2n - 1: time is kept | two samples (half), one or three | seen 61% and 78% in a block, never where they come every other bit (the ladder's last rung reads as silence) |
+  | 33A3, 33AD (1, 6) | 2n + 1 | 2n - 2 | one sample or two | mostly lost |
+  | 33A5 (2) | 2n + 2 | 2n - 2 | lost | lost |
+
+  Only 33A9, the setting the chip's notes give for these tones, shows a lone bit of 1200 Hz,
+  and it cannot tell it from a pair: both are mostly one sample, the pair with the zeros
+  after it one sample longer about two times in three. 33A1 and 33AB keep time and tell a
+  pair, and lose the lone bits that 33A9 shows.
+- **Faster clocks gain nothing**: at 5400, 6000 and 6348 baud the runs of 2400 Hz keep their
+  time and those of 1200 Hz lose more of it (8 bits as 14 or 15 samples of 21); a lone bit is
+  one sample still. RX mode 7 and 5 (3FA9, 37A9) give nothing like the tones. Bits 7:6 = 11,
+  01 or 00 break the long runs of 1200 Hz up with lone zeros.
+- **How far from a block**: with each setting's runs read by its own rule, a block's 512 tone
+  bits come with 54 to 90 wrong at 33A9 and 58 to 65 at 33AB and 33A1. A block needs them
+  all. Part of it is not the pattern's doing: two captures of the same block (but for the
+  three digits of its number) differ in a tenth of their samples at 33A9, and in 2 to 3 in a
+  hundred at 33AB, at -21 dBm. Per character parity and the check cannot carry that.
+
+So the tone receiver, like the plain one, falls short on the half cycle: MSK at 2400 baud
+has a bit in half a cycle of 1200 Hz, and this receiver wants about a whole one (it was made
+for a cycle a bit: 1200 baud). What FM cannot say is whether the audio of an AM signal at the
+zero IF suits it better (the IC-7100's FM audio is hard on these tones, point 3 above), so
+`dfskcap_acars6` now has `DFSK_TONE 3`, the pick of both tables, for one run on 6 m: 33A9 and
+33A3 at 2400 baud unframed, the chip's own sync on 5C5C, 3FFE 5C5C and the pager's word,
+33A9 with de-emphasis and filters off, then at 4800 baud 33A9 (and with de-emphasis off),
+33A1, 33AB, 33AD, 33A3, 33E9 and 3329, and 33A9 at 6348 baud. The signal there is `--only
+KRT --gap 0.4 --where 50.650 --levels 1,1.8`.
+
 ### What the 6 m tests say
 
 Eight runs on 6 m, the last five with the carrier 40 dB over the K6's floor, and two in FM on
