@@ -131,3 +131,25 @@ def test_report_marks_moved_pins():
     assert fesw.report(lines) == ["fe 144390 all: 1 rounds, RSSI -102 / -102 / -119 dBm (own, other, neither), "
                                   "loss 0 and 17 dB, noise 40 / 40 / 60, pins moved in 1"]
     assert fesw.report(lines[:2]) == ["fe 144390 all: no round with all three states"]
+
+
+def test_report_reads_run_1():
+    """the bench's first run (2026-11-11, docs/k6-fesw.md): the IC-7100's carrier on 440.850
+    for five of the twenty rounds"""
+    import gzip
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "k6", "fesw-1-20261111.log.gz")
+    with gzip.open(path, "rt") as f:
+        lines = f.read().splitlines()
+    assert len(lines) == 242 and lines[0].endswith("fesw start n=4 rounds=20 odr=8192")
+    assert lines[-1].endswith("fesw end n=240")
+    assert fesw.report(lines) == [
+        "fe 144390 all: 20 rounds, RSSI -111 / -142 / -154 dBm (own, other, neither), loss 31 and 43 dB, "
+        "noise 67 / 67 / 68",
+        "fe 162550 all: 20 rounds, RSSI -105 / -130 / -146 dBm (own, other, neither), loss 25 and 41 dB, "
+        "noise 64 / 68.5 / 53",
+        "fe 440850 carrier: 5 rounds, RSSI -21 / -69 / -73 dBm (own, other, neither), loss 48 and 52 dB, "
+        "noise 53 / 52 / 52",
+        "fe 440850 no carrier: 15 rounds, RSSI -132 / -137 / -151 dBm (own, other, neither), loss 5 and 19 dB, "
+        "noise 66 / 66 / 67",
+        "fe 440925 all: 20 rounds, RSSI -132 / -135 / -151 dBm (own, other, neither), loss 3 and 19 dB, "
+        "noise 66.5 / 67 / 67"]

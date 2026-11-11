@@ -591,9 +591,13 @@ burst. Setting 4's figure includes the tail of a short key-up.)
   that had the carrier (six captures; a start is a 16-sign match), and four of the six held
   at least one more sync field, but only 8 fields in some 48 bursts. That is where an FM discriminator
   falls into its threshold, so the chip's clock and slicer cost little on top of it.
-- **In this station's terms**: the floor at full gain reads -125 dBm on 440.925, so the edge
-  is near -115 dBm and full yield holds to about -100 dBm. The GP0 IF tap's detector needs
-  about -79 dBm (48 dB-Hz).
+- **In this station's terms**: the repeater reads -83 to -87 dBm with the AGC on and stood
+  48 dB over the floor, so the floor is near -133 dBm, the edge near **-122 dBm** and full
+  yield holds to about **-108 dBm**. (This line first said -115 and -100 dBm: it added the
+  10 and 24 dB to the floor as it read at the fixed gain, -125 dBm, where the signal read
+  8 dB high as well. The front-end probe of the same day read the floor directly at
+  -132 dBm with the AGC on, docs/k6-fesw.md.) All by the K6's own meter, which is not
+  calibrated. The GP0 IF tap's detector needs about -79 dBm (48 dB-Hz).
 - **What the figures are not**: a weak signal made by taking gain off is not a weak station.
   The floor reads at the bottom of the RSSI's scale (-153 to -156) on settings 2 to 5, so
   their "over the floor" is a lower bound and there is no point between 24 and 10 dB. The

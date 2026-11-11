@@ -7,10 +7,14 @@
    through the wrong path's leakage: a loss ahead of the receiver, which is what a weak station
    is and what taking gain off inside the chip is not (docs/k6-dmr.md, run L's caution).
 
-   How much loss, nobody has measured. This probe does, and asks the 2 m question on the way
+   How much loss, this probe measures, and it asks the 2 m question on the way
    (docs/k6-aprs-clock.md: 144.390 MHz at hamlet has a floor of -102 dBm against -117 to -123
-   elsewhere). If that floor falls with the front end off, the noise comes in from the antenna
-   side; if it stays, it is made behind the switch.
+   elsewhere). If that floor stays with the front end off, the noise is made behind the
+   switch; if it falls, it comes from the VHF path (the antenna, the cable, or the VHF
+   amplifier itself, whose noise goes with the path too).
+   Run 1 (2026-11-11, docs/k6-fesw.md): about 50 dB of loss on a strong 70 cm signal (48 the
+   other path, 52 neither); the chip's own floor reads -151 to -154 dBm, the UHF path's -132,
+   the VHF path's -111 on 144.390, and that noise is gone with the path off.
 
    FE_ROUNDS times round the table of frequencies (FE_KHZ), and on each the three states:
      s=0  the path api->tune picked
