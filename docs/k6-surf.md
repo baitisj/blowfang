@@ -164,11 +164,10 @@ a bar rises at once but falls at most 3 dB a sweep. A peak is a local maximum 6 
 the floor. The squelch and line 1 use settled reads against a settled floor: the second lowest
 of 8 bins' settled reads, measured when the window changes, again at the end of a new band's
 first sweep (reads right after the big retune may not have settled: Jeff, 2026-11-12, no carets
-after BAND until UP / DOWN), and every 30 s of sweeping. A read of the bar up to 3 dB quieter
-lowers it; one quieter still has the floor measured again at the sweep's end instead. Right
-after the bar leaves a strong signal the AGC is still turned down, and a floor dragged down by
-such a read let plain noise pass the confirm once the gain came back (Jeff, 2026-11-12: little
-peaks everywhere after moving off a strong one). When the squelch opens on a window that has had no whole sweep yet
+after BAND until UP / DOWN), and every 30 s of sweeping. A quieter read of the bar lowers it. (Moving
+off a strong signal, the AGC comes back up and the band fills with small peaks: Jeff,
+2026-11-12, "we would expect to see more activity on a band than nothing". That's the band as
+it is, and stays.) When the squelch opens on a window that has had no whole sweep yet
 (BAND, the start), the first refresh sweep comes at once rather than 5 s later, so the band's
 other stations get their carets while the centre plays (Jeff, 2026-11-12: no carets after BAND
 until UP / DOWN). The AGC is left alone, because freezing the gain, as `dmrdet`

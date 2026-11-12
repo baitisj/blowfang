@@ -124,7 +124,6 @@
 #define SFL_MS 30000            /* settled floor re-measured this often while sweeping */
 #define FLUSH_MS 200            /* the screen (each flush ~20-40 ms) */
 #define PEAK_DB 6               /* a peak: quick dB over the floor */
-#define FLOOR_STEP_DB 3         /* a settled read may lower the floor this far at once */
 #define DECAY_DB 3
 #define MSG_MS 1500
 #define WIDE 1
@@ -993,14 +992,7 @@ static void check_bar(sf_t *s) {
   s->t_chk = s->api->ms();
   d = s->sel_dbm = read_at(s, C, CHECK_US);
   s->tuned = 1;
-  /* a read a little under the floor is the floor; one far under it is measured again at the
-     sweep's end instead. Right after the bar leaves a strong signal the receiver's AGC is still
-     turned down, and a floor dragged down by such a read let noise pass the confirm once the
-     gain came back: carets everywhere (Jeff, 2026-11-12) */
-  if (d < s->sfl) {
-    if (d >= s->sfl - FLOOR_STEP_DB) s->sfl = d;
-    else s->t_sfl = s->t_chk - SFL_MS;
-  }
+  if (d < s->sfl) s->sfl = d;
   /* a signal there, or a jump to refine (it may have landed a channel off its station): the lens
      first (17 single reads, ~0.1 s), for the refine and the station's shape. Parking, the rest
      keeps the levels the old scale lent it until the first refresh (a whole sweep here held the
