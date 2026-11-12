@@ -43,10 +43,11 @@
      A/B             how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the
                      whole height (line 5: "fall 5m")
      BAND            next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX, airband (AM, 118-137
-                     MHz, receive only); each starts at its centre with its default step and span
+                     MHz, receive only); each starts at its centre (MAR/WX: on NOAA weather's
+                     162.475, with the marine coast channels below) with its default step and span
      #               next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
                      stays; UP / DOWN then move onto the new raster; BAND resets the step)
-     5               the band's centre
+     5               the band's centre (MAR/WX: 162.475)
      4               the demodulator: FM, DSB, AM, FM (DSB = the chip's "USB", both sidebands at
                      the zero IF; at the zero IF a steady carrier reads low, so DSB is for
                      listening); the title shows it when it isn't the band's ("DSB 70cm 25k",
@@ -154,10 +155,10 @@ static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
 
 typedef struct {
-  uint32_t lo, hi;
+  uint32_t lo, hi, home;        /* the band's edges, and where BAND and 5 put the middle */
   uint8_t st, si, am;           /* default channel step (STEPS index), span (SPANS index), AM */
   char name[7];
-} band_t;                       /* 20 */
+} band_t;                       /* 24 */
 
 /* the channel steps # goes through (Hz); 8.33 kHz is airband's 25/3 */
 static const uint32_t STEPS[] = {
@@ -176,14 +177,16 @@ static const uint32_t STEPS[] = {
 #define ST_12K5 5
 #define ST_25K 7
 
-/* airband is receive only (the K6 never transmits there) and sits below its 136-174 MHz filter */
+/* airband is receive only (the K6 never transmits there) and sits below its 136-174 MHz filter.
+   Home is the band's centre, but MAR/WX's: NOAA weather's 162.475 (Jeff 2026-11-12: its centre,
+   159.275 at +-1 MHz, showed neither the weather channels nor most of marine) */
 static const band_t BANDS[] = {
-    {144000000u, 148000000u, ST_10K, 2, 0, "2m"},
-    {222000000u, 225000000u, ST_10K, 2, 0, "1.25m"},
-    {430000000u, 450000000u, ST_25K, 3, 0, "70cm"},
-    {462550000u, 467725000u, ST_12K5, 4, 0, "GMRS"},
-    {156000000u, 162550000u, ST_25K, 3, 0, "MAR/WX"},
-    {118000000u, 137000000u, ST_25K, 3, 1, "AIR"}};
+    {144000000u, 148000000u, 146000000u, ST_10K, 2, 0, "2m"},
+    {222000000u, 225000000u, 223500000u, ST_10K, 2, 0, "1.25m"},
+    {430000000u, 450000000u, 440000000u, ST_25K, 3, 0, "70cm"},
+    {462550000u, 467725000u, 465137500u, ST_12K5, 4, 0, "GMRS"},
+    {156000000u, 162550000u, 162475000u, ST_25K, 3, 0, "MAR/WX"},
+    {118000000u, 137000000u, 127500000u, ST_25K, 3, 1, "AIR"}};
 #define NBANDS 6
 /* fixed receiver gains (REG_13: LNA short [9:8], LNA [7:5], mixer [4:3], PGA [2:0]) from the
    most down, about 0, -7, -12, -17, -22, -27, -33 and -45 dB by egzumer's table of the steps;
@@ -816,7 +819,7 @@ static void band(sf_t *s, const band_t *b) {
   s->si = b->si;
   s->md = b->am ? MD_AM : MD_FM;
   demod(s);
-  window(s, (b->lo + b->hi) >> 1);
+  window(s, b->home);
 }
 
 static void on_key(sf_t *s, int k) {
@@ -824,7 +827,7 @@ static void on_key(sf_t *s, int k) {
   case 'U': go_to(s, s->cen + s->ch); break;
   case 'D': go_to(s, s->cen - s->ch); break;
   case '5':
-    go_to(s, (s->bd->lo + s->bd->hi) >> 1);
+    go_to(s, s->bd->home);
     break;
   case 'A': jump(s, 1); break;
   case 'B': jump(s, -1); break;
