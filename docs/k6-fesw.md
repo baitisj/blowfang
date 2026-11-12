@@ -172,7 +172,9 @@ Where a cell has two figures they are the two runs'.
   the second to a dB at every frequency (144.200 to 144.600 all -111 again): the floor fell
   some time between 01:37 and 03:14Z and then held. An amplifier's own noise does not move
   4 dB in an hour and a half; noise from outside does. Two runs are too few to say more than
-  that this leans towards the antenna's side.
+  that this leans towards the antenna's side. (Explained later that night: a
+  motion-activated LED lamp beside the bench, see "Antenna, charger and a garage lamp"
+  below. The 01:37Z run read noisy in all five rounds, as the lamp does while it is lit.)
 - **Its shape follows the front end.** The floor is highest at 146 to 148 MHz and falls off
   towards 136 and 170 MHz, which is the VHF path's passband. Both an amplifier's noise and
   a broad noise picked up would show it, so the shape says nothing either way.
@@ -184,9 +186,55 @@ Where a cell has two figures they are the two runs'.
 The reports are on hamlet under `~/blowfang-work/runs/dmr-N-20261112/` (`fesw-V-before.txt`,
 `fesw-V-after.txt`).
 
+### Antenna, charger and a garage lamp (2026-11-12 05:30 to 08:26Z, Jeff at the bench)
+
+Jeff's antenna-off check, done at last, with two more suspects he named on the way: the
+K6's USB-C charger and a motion-activated LED lamp in the garage beside the bench. Each row
+is one `fesw_vhf` run (five rounds, three minutes). The K6 only listened; the IC-7100 sent the
+CW ID and the upload on 440.850 MHz before each run, at RF power 0 with the antenna on and at
+0.5 (about 10 W, Jeff's word, for the antenna-off runs only) when the deaf K6 could not hear
+power 0. The 144.390 column is the median of the five rounds with the VHF path in use; the
+chip's own floor with neither path on read -153 to -154 in every run.
+
+| UTC | Antenna | Charger | Lamp | 144.390 | 136 | 148 | 162.550 | 170 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 03:32 | on | in | dark (as far as known) | -111 | -118 | -108 | -106 | -117 |
+| 05:30 | off | in | lit (Jeff there) | -120 | -125 | -118 | -110 | -115 |
+| 05:40 | on | in | lit (Jeff there) | -104 | -114 | -103 | -101 | -115 |
+| 05:51 | on | in | dark | -108 | -117 | -104 | -103 | -117 |
+| 08:03 | off | out | lit (Jeff there) | -135 | -136 | -133 | -126 | -132 |
+| 08:22 | on | out | dark | -108 | -118 | -107 | -103 | -118 |
+
+- **The lamp**: while it was lit the floor read -104 to -98 dBm on 144.390 in every round
+  (noise meter 74 to 81); dark, -108 to -111 (noise meter 66 to 73). Its timer is about 11
+  minutes (Jeff's last move about 05:38:30Z, dark at 05:49:45Z). Single noisy rounds at
+  03:15:54 and 03:34:24Z were something else: a lamp on an 11-minute timer would have covered
+  whole runs. With the antenna off the lamp made no difference, so it comes in on the
+  antenna. Bench rule: wait 12 minutes after anyone has been at the bench before reading a
+  VHF floor.
+- **The charger**: with the antenna off, unplugging it took the floor from -120 to -135 dBm,
+  flat from 136 to 170 MHz, and our 440.850 carrier at the K6 fell about 15 dB too. The
+  charger's cable is an antenna, and it brings the charger's own noise with it. What had
+  looked like the K6's own noise (-120, run 1's "goes with the VHF path") was mostly the
+  charger.
+- **The K6 itself**: -135 dBm with nothing attached but the serial cable, 19 dB over the
+  chip's floor with the path off. That is the VHF amplifier's noise, or the serial cable's
+  share: the one thing not unplugged.
+- **On air the charger does not matter**: antenna on, charger out, lamp dark read -108 on
+  144.390, the same as with the charger in (05:51). The noise from outside is some 27 dB over
+  the K6's own -135 and swamps the charger's.
+- **So for 2 m APRS at hamlet** the floor is the site's: -108 to -111 dBm with the lamp
+  dark, worse with it lit. A decoder gain of a few dB is small beside that; a quieter
+  antenna site (or the lamp on another circuit, or a better LED driver) is where the dB are.
+  The runs' reports are on hamlet under `~/blowfang-work/runs/dmr-N-20261112/`
+  (`fesw-V-*.txt`).
+
 ## Next
 
-- Run `fesw_vhf` at other hours (morning, midday, a weekend) and lay the tables side by side
-  with the two below. A floor that keeps moving by several dB, with the chip's own floor
-  steady, says picked-up noise.
-- Jeff's antenna-off check (shelved) remains the direct answer.
+- The site's noise from outside, -108 to -111 dBm with the lamp dark: run `fesw_vhf` at
+  other hours (morning, midday, a weekend), 12 minutes after anyone was at the bench, to see
+  whether it moves.
+- The lamp: on another circuit, a different LED driver, or the antenna further from it, and
+  the table again with the antenna on.
+- No ferrite is needed on the charger cable for live listening: with the antenna on it made
+  no difference.
