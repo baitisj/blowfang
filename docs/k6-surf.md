@@ -83,7 +83,13 @@ station further off.
 A settled read SQ_DB over the floor on the bar's own channel (the squelch opening on it, or a
 parked read, monitor too) also confirms: its caret turns good at once, or a new one starts there.
 Jeff's 464.500 (2026-11-11) played on the bar with a tall bar and never got a caret; its one
-confirm read had landed between overs. A peak matches a caret
+confirm read had landed between overs.
+The confirm read is taken in the sweep itself when it can be: a lens bin (or any one-read bin)
+whose quick read rises to a peak, with no confirmed caret there yet, is read again settled on the
+spot (9 ms more, 4 a sweep at most), and that read decides. A read after the sweep came 0.1 to
+2.5 s after the sweep heard the peak, so a station that pulses was always off by then (Jeff,
+2026-11-12: a pulsing peak about 20 kHz up never got a caret). Wide outer bins still get their
+read after the sweep. A peak matches a caret
 within half the wider of the two bins (or half a channel); a finer bin moves the caret to its
 frequency, and a carrier's flat top in the lens counts at its middle. A side key's jump puts the
 caret on the channel it lands on. A caret that would sit inside its own bar rides on top of it.
