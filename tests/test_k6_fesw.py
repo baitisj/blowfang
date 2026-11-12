@@ -5,6 +5,7 @@ the bench's question. Checked here: the lines, the report, that the two pins are
 together, that the path the firmware picked is put back after every frequency, and that a
 board whose pins are not as expected is left alone. SPDX-License-Identifier: MIT"""
 import os
+import re
 import sys
 
 import numpy as np
@@ -25,14 +26,16 @@ AIR = {144390: -102, 162550: -70, 440925: -118, 440850: -121}
 FLOOR = -123
 
 
-def run(rounds, tune_pins=None, carrier_from=None):
+def run(rounds, tune_pins=None, carrier_from=None, name="fesw", air=None):
     """fesw on the model -> (return value, lines, the emulator). tune_pins: what api->tune
     leaves on the pins (default: as Aura, VHF below 300 MHz). carrier_from: the round from
-    which 440.850 holds the bench's carrier (-21 dBm)"""
+    which 440.850 holds the bench's carrier (-21 dBm). name, air: another build (fesw_vhf)
+    and what its frequencies hold"""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     code, entry = le.build("x", [("FE_ROUNDS", f"{rounds}u"), ("FE_STEP_US", "2000u"), ("FE_SETTLE_MS", "20u")],
-                           os.path.join(K6, "mod", "fesw.c"))
+                           os.path.join(K6, "mod", name + ".c"))
+    air = air or AIR
 
     class Board(le.Emu):
         def __init__(self, *a, **k):
@@ -57,7 +60,7 @@ def run(rounds, tune_pins=None, carrier_from=None):
             if name == "tune":
                 assert self.tunes == [] or self.reg[ODR] & (UHF | VHF) == self.own, "not put back"
                 self.khz = r0 // 1000
-                self.round = len(self.tunes) // len(AIR)
+                self.round = len(self.tunes) // len(air)
                 self.tunes.append((r0, uc.reg_read(self.A.UC_ARM_REG_R1)))
                 self.own = (tune_pins or (lambda k: VHF if k < 300000 else UHF))(self.khz)
                 self.reg[ODR] = self.reg[ODR] & ~(UHF | VHF) | self.own
@@ -68,14 +71,14 @@ def run(rounds, tune_pins=None, carrier_from=None):
                 uc.reg_write(self.A.UC_ARM_REG_R0, 0x0300 | 17)
 
         def rssi(self):
-            lvl = AIR[self.khz]
+            lvl = air[self.khz]
             if self.khz == 440850 and carrier_from is not None and self.round >= carrier_from:
                 lvl = -21
             p = self.reg[ODR] & (UHF | VHF)
             lvl -= 0 if p == self.own else OTHER if p else NEITHER
             return max(lvl, FLOOR)
 
-    e = Board(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=rounds * 4 * 3 * 0.25 + 5, level=8)
+    e = Board(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=rounds * len(air) * 3 * 0.25 + 5, level=8)
     r = e.run()
     assert r is not None, e.said[-5:]
     assert r[1] < 700, r[1]
@@ -113,6 +116,33 @@ def test_fesw_on_the_model():
         own = VHF if k < 300000 else UHF
         want += [own, own, 0, own ^ (UHF | VHF), 0, 0, own]   # BRR then BSRR a state; BRR alone for neither
     assert e.odrs == want, (e.odrs[:14], want[:14])
+
+
+def test_fesw_vhf_on_the_model():
+    """fesw_vhf: fesw's states on fifteen frequencies of the VHF path, 136 to 174 MHz, with
+    144.390 and its neighbours 50 kHz either side among them, and 440.925 for the UHF path.
+    Here the VHF path has a floor of -111 dBm on every one and a hump of 6 dB on 144.390:
+    the report has a row a frequency, and the hump stands out of it"""
+    with open(os.path.join(K6, "mod", "fesw_vhf.c")) as f:
+        khz = [int(x) for x in re.findall(r"^  (\d+)u", f.read(), re.M)]
+    assert len(khz) == 16 and khz == sorted(khz) and khz[-1] == 440925 and khz[-2] < 174001 and khz[0] >= 136000
+    assert {144340, 144390, 144440, 162550} < set(khz)
+    air = {k: -105 if k == 144390 else -111 if k < 300000 else -118 for k in khz}
+    ret, said, e = run(2, name="fesw_vhf", air=air)
+    assert ret == 2 * 16 * 3 and said[0] == "fesw start n=16 rounds=2 odr=0" and said[-1] == "fesw end n=96", said
+    assert e.tunes == [(k * 1000, 0) for k in khz] * 2, e.tunes
+    assert e.reg[ODR] == 0x0008 | UHF and e.writes == {}
+    rep = fesw.report(said)
+    assert [int(ln.split()[1]) for ln in rep] == khz, rep
+    own = {int(ln.split()[1]): int(ln.split("RSSI ")[1].split()[0]) for ln in rep}
+    assert own == air, own
+    assert all("loss 12 and 12 dB" in ln for ln in rep if " 144390 " not in ln and " 440925 " not in ln), rep
+    # the module as built: five rounds, some three minutes
+    from modem import k6mod
+    full, _ = k6mod.build(os.path.join(K6, "mod", "fesw_vhf.c"))
+    with open(os.path.join(K6, "mod", "fesw_vhf.c")) as f:
+        assert "#define FE_ROUNDS 5u" in f.read()
+    assert len(full) < 1500, len(full)
 
 
 def test_fesw_leaves_an_unknown_board_alone():

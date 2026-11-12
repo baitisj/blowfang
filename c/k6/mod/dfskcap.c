@@ -218,6 +218,29 @@
    four fifths of the sync fields are read, as at full strength; at 10 dB over it the chip
    still starts but reads one field in six. About -122 dBm at hamlet by the K6's meter
    (docs/k6-dmr.md; first put at -115), by gain taken off, not by a weak station.
+   DFSK_BLOCK (dfskcap_dmr4.c, with DFSK_GAIN): run L tuned at every setting, and the tuning
+   is a restart of the receiver, after which the sampler of docs/k6-pocsag.md read noisy bits
+   for a minute or two (its runs 6 to 8). Did that cost run L's weak steps? Blocks of
+   DFSK_BLOCK rounds, of three kinds by turns (bk= on the s line):
+      0   the tuning at every setting, the AFC off: as run L
+      1   no tuning: the receiver left running from kind 0's last restart, the AFC off
+      2   the AFC on, taken hold by one tuning at the block's start, then none
+   The gain is still written at every setting, and two of run L's strong steps give way to
+   the mixer's two between 001F and 0007. python3 -m modem.dmrsign LOG gives a line a gain
+   and kind.
+   Run M (2026-11-11/12, seventeen key-ups): no. Kind 1 read no further down than kind 0 (61
+   and 52% of the bursts over all gains), so the edge stands: two thirds of the sync fields
+   at 26 dB or more over the floor, half at 17 dB, a quarter at 11 dB. With the AFC on more
+   slots started (39 of 43 against 60 of 76) and more sync fields came whole (72% against 54
+   to 59%): the dropped sign has to do with where the signal sits against the slicer. The
+   gain takes hold without a tuning.
+   DFSK_DMR5 (dfskcap_dmr5.c): where does the slicer sit? One setting (9B4D, narrow, the AFC
+   off, the gain the radio's own) tuned 1.3, 0.9, 0.5 and 0.2 kHz below and above the
+   repeater (o= on the s line, in 100 Hz). If the plain receiver slices the discriminator at
+   the tuned centre, the inner symbols (648 Hz off the middle) fall on the other side of it
+   from about 0.65 kHz off, and the share of ones in the captures goes from a half towards a
+   quarter one way and three quarters the other; if it slices at the signal's own mean, the
+   share stays a half. The sync fields (outer symbols, 1944 Hz) should hold throughout.
    A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
@@ -471,7 +494,21 @@ static const var_t V[NV] = {
    DFF57D75DF5D: 439B4D with + as 1; the voice sync is its inverse). The last sixteen as the
    sync word, either way up; 128 bytes (seven bursts on) a capture; 4800 baud */
 #define DV(cfg, sync, af, fe) {cfg, 0xC195, sync, 0x7F00, af, 100, FE_S, 0, fe, 0}
-#ifdef DFSK_DMR3
+#ifdef DFSK_DMR5
+/* the tuning offset in 100 Hz: the signal then sits that far the other way against the tuned
+   centre. Symmetric, so that the middle shows where the K6 and the repeater differ */
+#define DVO(off) {0x00E9, 0xC195, 0x9B4D, 0x7F00, 0x0700, 100, FE_S, off, 2, 0}
+static const var_t V[NV] = {
+    DVO(-13),
+    DVO(-9),
+    DVO(-5),
+    DVO(-2),
+    DVO(2),
+    DVO(5),
+    DVO(9),
+    DVO(13),
+};
+#elif defined(DFSK_DMR3)
 /* runs J and K: every setting starts on the repeater at -81 to -87 dBm. How weak may it be?
    One setting (9B4D, the narrow filter, the AFC off) with the receiver's gain fixed (DFSK_GAIN),
    stepped down from the front: against the noise of the stages behind, a strong signal is
@@ -488,6 +525,21 @@ static const var_t V[NV] = {
 };
 /* REG_13 (LNA short [9:8], LNA [7:5], mixer [4:3], PGA [2:0]): about 0, -14, -24, -35, -40,
    -43, -51 and -60 dB by egzumer's table of the steps */
+#ifdef DFSK_BLOCK
+/* run L had no step between 24 and 10 dB over the floor (001F and 0007: the mixer's gain from
+   its most to its least in one step). Here the mixer's two steps between (about -3 and -6 dB)
+   take the place of two of the strong steps: about 0, -35, -40, -43, -46, -49, -51, -60 dB */
+static const uint16_t G13[NV] = {
+    0x03FFu,
+    0x021Fu,
+    0x011Fu,
+    0x001Fu,
+    0x0017u,
+    0x000Fu,
+    0x0007u,
+    0x0004u,
+};
+#else
 static const uint16_t G13[NV] = {
     0x03FFu,
     0x035Fu,
@@ -498,6 +550,7 @@ static const uint16_t G13[NV] = {
     0x0007u,
     0x0004u,
 };
+#endif
 #elif defined(DFSK_DMR2)
 /* run J's one key-up came in setting 4 of the table below (9B4D, the wide filter): of its 15
    sync fields 5 came whole and 8 with sign 16 dropped (the chip's clock), which the sync word
@@ -643,6 +696,9 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, const uint16_t 
 #elif defined(DFSK_ZIF)
 #define BEGIN(c) begin(api, c, af, saved[SAVED_3D])
 static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, uint32_t if0) {
+#elif defined(DFSK_GAIN) && defined(DFSK_BLOCK)
+#define BEGIN(c) begin(api, c, af, saved[SAVED_7E], bk, !bn && !(c))
+static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, uint32_t r7e, uint32_t bk, int first) {
 #elif defined(DFSK_GAIN)
 #define BEGIN(c) begin(api, c, af, saved[SAVED_7E])
 static uint32_t begin(const k6_api_t *api, int cur, uint32_t af, uint32_t r7e) {
@@ -662,12 +718,19 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
 #if defined(DFSK_NARROW) || defined(DFSK_ZIF)
   /* REG_73 bit 4: the AFC off (or it pulls the carrier back to the centre in half a minute),
      or on. It takes hold at the receiver's restart, which the tuning is */
+#ifdef DFSK_BLOCK
+  api->fd_write(0x73, (uint16_t)((api->fd_read(0x73) & ~0x10u) | (bk == 2 ? 0 : 0x10u)));
+#else
   api->fd_write(0x73, (uint16_t)((api->fd_read(0x73) & ~0x10u) | (v->wide & 2 ? 0x10u : 0)));
+#endif
 #endif
 #ifdef DFSK_ZIF
   api->fd_write(0x3D, (uint16_t)(v->wide & 4 ? 0 : if0)); /* the IF: zero, or as found */
 #endif
-  api->tune((uint32_t)((int32_t)PROBE_HZ + 100 * v->off), v->wide & 1);
+#ifdef DFSK_BLOCK
+  if (!bk || (bk == 2 && first)) /* kind 0: at every setting; kind 2: once, for the AFC to take hold */
+#endif
+    api->tune((uint32_t)((int32_t)PROBE_HZ + 100 * v->off), v->wide & 1);
 #ifdef DFSK_ZIF
   /* should the tuning have put the IF back: once more, and the receiver off and on (REG_30)
      for it to take hold, as the firmwares do after REG_38/39 */
@@ -707,6 +770,14 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
 #ifdef DFSK_GAIN
   p = kx(p, " g=", G13[cur]);
 #endif
+#ifdef DFSK_BLOCK
+  p = kv(p, " bk=", bk);
+#endif
+#ifdef DFSK_DMR5
+  p = put(p, " o=");
+  if (v->off < 0) *p++ = '-';
+  p = dec(p, (uint32_t)(v->off < 0 ? -v->off : v->off));
+#endif
 #ifdef DFSK_ZIF
   p = kx(p, " if=", api->fd_read(0x3D));
   if (again) *p++ = ' ', *p++ = '!';
@@ -728,6 +799,9 @@ int k6_main(const k6_api_t *api) {
   int cur = 0, in = 0, key = 0;
 #ifdef DFSK_ROUNDS
   uint32_t round = 0;
+#endif
+#ifdef DFSK_BLOCK
+  uint32_t bk = 0, bn = 0; /* the block's kind, and the rounds of it done */
 #endif
   char ln[64], *p;
   const var_t *v = &V[0];
@@ -815,7 +889,12 @@ int k6_main(const k6_api_t *api) {
       api->say(ln);
       total += ncap, ncap = nw = 0;
 #ifdef DFSK_ROUNDS
-      if (++cur == NV && ++round < DFSK_ROUNDS) cur = 0; /* the settings again, for a signal that comes and goes */
+      if (++cur == NV && ++round < DFSK_ROUNDS) {
+        cur = 0; /* the settings again, for a signal that comes and goes */
+#ifdef DFSK_BLOCK
+        if (++bn == DFSK_BLOCK) bn = 0, bk = bk == 2 ? 0 : bk + 1;
+#endif
+      }
       if (cur == NV) break;
 #else
       if (++cur == NV) break;

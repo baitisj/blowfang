@@ -135,7 +135,13 @@ between 24 and 10 dB. Through the VHF path it would stand near -133 dBm at a flo
 
 ## Next
 
-- Whether the 2 m noise is picked up or the amplifier's: read the same table at intervals
-  over a night and on more VHF frequencies. Picked-up noise moves with the hour and with the
-  frequency; an amplifier's does not. Receive only, no hands.
+- Whether the 2 m noise is picked up or the amplifier's: `fesw_vhf` (built, not yet run) is
+  the same probe on fifteen frequencies of the VHF path, one per line in
+  `c/k6/mod/fesw_vhf.c`: 136, 140 and 143 MHz, 144.200, 144.340, 144.390, 144.440 and
+  144.600 MHz, 146, 148, 152, 156 and 160 MHz, 162.550 MHz (NOAA) and 170 MHz, with
+  440.925 MHz as the UHF path's reference. Five rounds, three minutes, to be run at several
+  hours. Picked-up noise moves with the hour and with the frequency (a hump round 144.390,
+  or steps 50 kHz apart that differ, mean a source outside); an amplifier's does not. A
+  floor that is flat and steady says the amplifier, or a noise too broad to tell from it.
+  Receive only, no hands; the upload on 440.850 MHz at RF power 0 is its one transmission.
 - Jeff's antenna-off check (shelved) remains the direct answer.

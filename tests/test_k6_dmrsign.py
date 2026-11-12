@@ -37,6 +37,19 @@ DMR2 = [("9b4d", 0x0700, 1, 1, "00e9"),
 # run L: one setting, the receiver's gain (REG_13) stepped down
 G13 = ["03ff", "035f", "031f", "021f", "011f", "001f", "0007", "0004"]
 DMR3 = [("9b4d", 0x0700, 0, 1, "00e9", g) for g in G13]
+# dfskcap_dmr4: the mixer's steps between 001f and 0007 in the place of two strong steps
+G13B = ["03ff", "021f", "011f", "001f", "0017", "000f", "0007", "0004"]
+DMR4 = [("9b4d", 0x0700, 0, 1, "00e9", g) for g in G13B]
+# dfskcap_dmr5: one setting tuned off the repeater, in 100 Hz
+OFFS = [-13,
+        -9,
+        -5,
+        -2,
+        2,
+        5,
+        9,
+        13]
+DMR5 = [("9b4d", 0x0700, 0, 1, "00e9")] * 8
 
 
 def test_sync_signs():
@@ -96,11 +109,14 @@ def test_run_j_capture():
                             "none in 1 (peaks -88 to -88)"), rep
 
 
-def on_the_model(name, extra, table, rounds, air):
+def on_the_model(name, extra, table, rounds, air, block=0, offs=None):
     """a dfskcap_dmr build on the emulated M0, rounds times round its table of eight settings
     of 0.8 s, the air as signs -> its report's line a setting. Checked on the way: the lines,
     the tuning (the repeater's, in the filter each setting names), the AFC bit, the registers
-    put back"""
+    put back. block: dfskcap_dmr4's blocks of that many rounds, three kinds by turns (0 tuned
+    at every setting, 1 not tuned, 2 not tuned but once at the block's start, the AFC on):
+    the report's lines are then keyed (setting, kind). offs: dfskcap_dmr5's tuning offsets
+    in 100 Hz, a setting each (o= on the s lines and in the report)"""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
@@ -137,18 +153,29 @@ def on_the_model(name, extra, table, rounds, air):
     assert e.said[0] == "dfskcap start hz=440925000 n=8" and e.said[-1] == f"dfskcap end n={ret}", e.said[-2:]
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     s = [ln.split() for ln in e.said if ln.startswith("s ")]
+    kind = [i // 8 // block % 3 if block else -1 for i in range(n)]
     assert [ln[1:2] + ln[3:] for ln in s] == \
         [[str(i % 8), "cfg=" + table[i % 8][4], "b=c195", "sy=" + table[i % 8][0], "l=7f00"]
-         + ["g=" + x for x in table[i % 8][5:]] for i in range(n)], s
-    assert e.tunes == [(440925000, 1)] + [(440925000, table[i % 8][2]) for i in range(n)], e.tunes
-    assert e.writes[0x73][:n] == [0x10 if table[i % 8][3] else 0 for i in range(n)] and e.writes[0x73][-1] == 0
+         + ["g=" + x for x in table[i % 8][5:]] + [f"bk={kind[i]}"] * (block > 0)
+         + ([f"o={offs[i % 8]}"] if offs else []) for i in range(n)], s
+    hz = [440925000 + 100 * o for o in offs or [0] * 8]
+    assert e.tunes == [(440925000, 1)] + [(hz[i % 8], table[i % 8][2]) for i in range(n)
+                                          if kind[i] <= 0 or kind[i] == 2 and i % (8 * block) == 0], e.tunes
+    assert e.writes[0x73][:n] == [0x10 if table[i % 8][3] and kind[i] != 2 else 0 for i in range(n)]
+    assert e.writes[0x73][-1] == 0
     assert {w & 0x0700 for w in e.writes[0x2B][:-1]} == {t[1] for t in table}, e.writes[0x2B]
     rep = dmrsign.report(["K6 MOD say " + ln for ln in e.said])
-    dmr = {int(ln.split()[0][3:]): ln for ln in rep if ln.startswith("dmr")}
-    assert sorted(dmr) == list(range(8)), rep
-    for fe, ln in dmr.items():
-        g = "".join(" g=" + x for x in table[fe][5:])
-        assert f"sy={table[fe][0]} cfg={table[fe][4]}{g}: {rounds} slots" in ln, ln
+    if block:
+        dmr = {(int(ln.split()[0][3:]), int(ln.split(" bk=")[1][0])): ln for ln in rep if ln.startswith("dmr")}
+        assert sorted(dmr) == [(fe, k) for fe in range(8) for k in sorted(set(kind))], rep
+        for (fe, k), ln in dmr.items():
+            assert f"sy={table[fe][0]} cfg={table[fe][4]} g={table[fe][5]} bk={k}: {kind.count(k) // 8} slots" in ln, ln
+    else:
+        dmr = {int(ln.split()[0][3:]): ln for ln in rep if ln.startswith("dmr")}
+        assert sorted(dmr) == list(range(8)), rep
+        for fe, ln in dmr.items():
+            g = "".join(" g=" + x for x in table[fe][5:]) + (f" o={offs[fe]}" if offs else "")
+            assert f"sy={table[fe][0]} cfg={table[fe][4]}{g}: {rounds} slots" in ln, ln
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F, 0x47, 0x73):
         assert e.writes[reg][-1] == 0, hex(reg)
     if len(table[0]) > 5:                                         # the gain fixed a setting, then as found
@@ -200,3 +227,83 @@ def test_dfskcap_dmr3_on_the_model():
         assert f"cfg=00e9 g={G13[fe]}: 2 slots" in ln and syncs_of(ln)[0] >= 10, ln
     w = [int(ln.split(" w=")[1].split()[0]) for ln in said if ln[:1] == "c"]
     assert len(w) >= 32 and set(w) == {40}, w
+
+
+def test_dfskcap_dmr4_on_the_model():
+    """dfskcap_dmr4 (run M's module): eight gains (G13B) in blocks of three kinds, here of
+    one round each, four rounds: tuned at every setting (kind 0, as run L), not tuned (1), the
+    AFC on and tuned once at the block's start (2), and kind 0 again, which turns the AFC off
+    again. on_the_model checks the tuning, the AFC bit and bk= on the s lines; the gain is
+    written at every setting whatever the kind, and the report has a line a gain and kind"""
+    rng = np.random.default_rng(13)
+    air = dmrsign.air_signs(int((4 * 8 * 0.8 + 4) * 4800 / 144) + 2, rng)
+    dmr, said = on_the_model("dfskcap_dmr4", [("DFSK_DMR3", "1"), ("DFSK_GAIN", "1"), ("DFSK_CAPMAX", "40u"),
+                                              ("DFSK_BLOCK", "1u")], DMR4, 4, air, block=1)
+    assert len(dmr) == 24 and all(syncs_of(ln)[0] >= 4 for ln in dmr.values()), dmr
+    assert sum(syncs_of(ln)[0] for (_, k), ln in dmr.items() if k == 0) >= 150, dmr
+
+
+def test_dfskcap_dmr5_on_the_model():
+    """dfskcap_dmr5 (the off-tune sweep), three times round: one setting tuned 1.3, 0.9, 0.5
+    and 0.2 kHz below and above the repeater (on_the_model checks the tunings and o= on the s
+    lines), the gain registers left alone. The report names the offset and ends a setting's
+    line with the share of ones in its captures with a sync: a half here, the model's signs
+    being the symbols' own whatever the tuning (what the real chip makes of it is the run's
+    question). ones_at says what a slicer at the tuned centre would give"""
+    rng = np.random.default_rng(17)
+    air = dmrsign.air_signs(int((3 * 8 * 0.8 + 4) * 4800 / 144) + 2, rng)
+    dmr, _ = on_the_model("dfskcap_dmr5", [("DFSK_DMR5", "1")], DMR5, 3, air, offs=OFFS)
+    for fe, ln in dmr.items():
+        assert f"cfg=00e9 o={OFFS[fe]}: 3 slots" in ln and syncs_of(ln)[0] >= 10, ln
+        assert 45 <= int(ln.rsplit("; ones ", 1)[1].rstrip("%")) <= 55, ln
+    assert [dmrsign.ones_at(100 * o) for o in OFFS] == [75, 75, 50, 50, 50, 50, 25, 25]
+    with open(os.path.join(K6, "mod", "dfskcap_dmr5.c")) as f:
+        d5 = dict(ln.split()[1:3] for ln in f if ln.startswith("#define ") and len(ln.split()) == 3)
+    assert d5["DFSK_ROUNDS"] == "840u" and d5["PROBE_HZ"] == "440925000u" and "DFSK_GAIN" not in d5
+
+
+def test_dfskcap_dmr4_is_dmr3_in_blocks():
+    """the module as built: nine blocks of 144 rounds (each at least 921.6 s, the repeater keys
+    every 903 s), all else dfskcap_dmr3's but the gains (dfskcap.c's table under DFSK_BLOCK)"""
+    with open(os.path.join(K6, "mod", "dfskcap_dmr4.c")) as f:
+        d4 = dict(ln.split()[1:3] for ln in f if ln.startswith("#define ") and len(ln.split()) == 3)
+    with open(os.path.join(K6, "mod", "dfskcap_dmr3.c")) as f:
+        d3 = dict(ln.split()[1:3] for ln in f if ln.startswith("#define ") and len(ln.split()) == 3)
+    assert d4.pop("DFSK_BLOCK") == "144u" and d4.pop("DFSK_ROUNDS") == "1296u" and d3.pop("DFSK_ROUNDS") == "280u"
+    assert d4 == d3 and 144 * 8 * 0.8 > 903 + 15
+
+
+def test_report_reads_run_m():
+    """three of run M's seventeen key-ups (2026-11-11/12, docs/k6-dmr.md), one of each kind of
+    block, with four rounds of quiet before each for the floors: 22:44:06Z (kind 0, tuned at
+    every setting), 00:30:17Z (kind 1, not tuned) and 23:14:32Z (kind 2, not tuned, the AFC
+    on). The report keeps the kinds apart; the sync is found in every kind at every gain but
+    the weakest of kind 0, and the gain's floor is the same whatever the kind"""
+    import gzip
+    import re
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "k6", "dfskcap-dmr4-runM-20261111.log.gz")
+    with gzip.open(path, "rt") as f:
+        lines = f.read().splitlines()
+    assert len(lines) == 809 and lines[0].endswith("dfskcap start hz=440925000 n=8")
+    assert lines[-1].endswith("dfskcap end n=1025")
+    rep = [ln for ln in dmrsign.report(lines) if ln.startswith("dmr")]
+    assert [ln.split(":")[0] for ln in rep] == [f"dmr{fe} sy=9b4d cfg=00e9 g={G13B[fe]} bk={k}"
+                                                for fe in range(8) for k in range(3)], rep
+    tot, floor = {}, {}
+    for ln in rep:
+        k, fe = int(ln.split(" bk=")[1][0]), int(ln[3])
+        sy, car = re.search(r"syncs (\d+) whole, (\d+) short", ln), re.search(r"carrier in (\d+) slots, a sync in (\d+)", ln)
+        t = tot.setdefault(k, [0, 0, 0, 0])
+        for i, x in enumerate(sy.groups() + car.groups()):
+            t[i] += int(x)
+        floor.setdefault(fe, []).append(int(ln.split("; floor ")[1].split(";")[0]))
+    # sync fields whole and short, slots with a carrier, those with a sync
+    assert tot == {0: [47, 33, 13, 8], 1: [58, 45, 8, 8], 2: [75, 36, 9, 9]}, tot
+    assert all(max(f) - min(f) <= 2 for f in floor.values()), floor
+    assert [min(f) for f in floor.values()] == [-125, -156, -156, -156, -150, -147, -146, -155], floor
+    assert rep[21] == ("dmr7 sy=9b4d cfg=00e9 g=0004 bk=0: 7 slots, 1 captures (1536 signs), 0 with a sync inside; "
+                       "syncs 0 whole, 0 short; slot peaks -153 to -144; floor -154; carrier in 1 slots, a sync in 0, "
+                       "none in 1 (peaks -144 to -144)")
+    assert rep[23] == ("dmr7 sy=9b4d cfg=00e9 g=0004 bk=2: 7 slots, 4 captures (5184 signs), 2 with a sync inside; "
+                       "syncs 4 whole, 3 short; RSSI -143 to -142; slot peaks -154 to -144; floor -155; "
+                       "carrier in 1 slots, a sync in 1 (peaks -144 to -144)")
