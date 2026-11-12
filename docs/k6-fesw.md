@@ -137,7 +137,8 @@ between 24 and 10 dB. Through the VHF path it would stand near -133 dBm at a flo
 
 The same probe on fifteen frequencies of the VHF path and 440.925 MHz, five rounds in three
 minutes, run twice around run N (docs/k6-dmr.md): 01:37:13 to 01:40:15Z and 03:13:53 to
-03:16:55Z. The K6 only listened. The IC-7100 sent a CW ID and the upload before each, on
+03:16:55Z, and once more at 03:32:22 to 03:35:25Z (not in the table: within a dB of the
+second everywhere). The K6 only listened. The IC-7100 sent a CW ID and the upload before each, on
 440.850 MHz at RF power 0, and nothing during. Each: "fesw end n=240", ret=240,
 stack_free=408 B, no line marked `x`. dBm is the K6's uncalibrated meter, the narrow filter,
 the radio's own AGC.
@@ -167,7 +168,9 @@ Where a cell has two figures they are the two runs'.
   dB: no narrow source near the APRS channel (a digipeater's, a neighbour's).
 - **The floor moved with the hour.** The VHF path read 2 to 5 dB lower at 03:14Z than at 01:37Z
   from 143 to 170 MHz (136, 140 and 160 MHz did not move), while the chip's floor with neither path on held at -153 to -154.
-  Run 1 (17:32Z the day before) had -111 on 144.390. An amplifier's own noise does not move
+  Run 1 (17:32Z the day before) had -111 on 144.390. A third run at 03:32Z read the same as
+  the second to a dB at every frequency (144.200 to 144.600 all -111 again): the floor fell
+  some time between 01:37 and 03:14Z and then held. An amplifier's own noise does not move
   4 dB in an hour and a half; noise from outside does. Two runs are too few to say more than
   that this leans towards the antenna's side.
 - **Its shape follows the front end.** The floor is highest at 146 to 148 MHz and falls off
