@@ -1,14 +1,15 @@
 diff --git a/meson.build b/meson.build
-index fc5581d..2e5b710 100644
+index fc5581d..dc7bcd7 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,15 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,16 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
 +               'openrtx/src/rtx/OpMode_Pager.cpp',
 +               'openrtx/src/blowfang/pager_tx.c',
 +               'openrtx/src/blowfang/ffsk_tx.c',
++               'openrtx/src/blowfang/range_tx.c',
 +               'openrtx/src/blowfang/cw_tx.c',
 +               'openrtx/src/blowfang/i2sprobe.c',
 +               'openrtx/src/blowfang/sotto8k_fx_math.c',
@@ -18,7 +19,7 @@ index fc5581d..2e5b710 100644
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +78,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +79,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -149,10 +150,10 @@ index 4e8e063..f65f493 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..0d7a4af
+index 0000000..c87a6cc
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,494 @@
+@@ -0,0 +1,507 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -178,6 +179,7 @@ index 0000000..0d7a4af
 +extern "C" {
 +#include "pager_tx.h"
 +#include "ffsk_tx.h"
++#include "range_tx.h"
 +#include "cw_tx.h"
 +#include "sotto/sotto.h"
 +}
@@ -211,6 +213,9 @@ index 0000000..0d7a4af
 +static bool            pvJoinable = false;
 +static pthread_t       pvThread;
 +static pt_air  air;
++#ifdef BLOWFANG_RANGE
++static rg_air  rair;    // the range build: PHY R (docs/k6-range.md) in place of the pager's PHY F
++#endif
 +static ffsk_tx ffsk;
 +static cw_tx   cw;
 +static char    ident[12];
@@ -582,8 +587,17 @@ index 0000000..0d7a4af
 +    strncpy(ident, call, sizeof(ident) - 1);
 +    ident[sizeof(ident) - 1] = '\0';
 +
++#ifdef BLOWFANG_RANGE
++    // The range build (BLOWFANG_RANGE=1 sh build.sh): the same XL packets as
++    // PHY R, coded FFSK at 600/1200 Hz and 1200 baud for the K6's sensitive
++    // receiver (c/k6/mod/rangerx.c), through the same pre-emphasised voice path.
++    (void) air;
++    rg_air_defaults(&rair, pt_message_source, &msg);
++    ffsk_init_src(&ffsk, rg_air_next, &rair, FS, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ, LEVEL);
++#else
 +    pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
 +    ffsk_init(&ffsk, &air, FS, BAUD, 0, 0, LEVEL);
++#endif
 +    cw_init(&cw, ident, FS, 20, 800, CW_LEVEL);
 +
 +#ifdef PLATFORM_LINUX
@@ -710,10 +724,18 @@ index 679be11..f50ee87 100644
                              if(!state.tone_enabled)
                              {
 diff --git a/openrtx/src/ui/default/ui_main.c b/openrtx/src/ui/default/ui_main.c
-index eed473a..123fbcc 100644
+index eed473a..3250259 100644
 --- a/openrtx/src/ui/default/ui_main.c
 +++ b/openrtx/src/ui/default/ui_main.c
-@@ -126,6 +126,13 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
+@@ -14,6 +14,7 @@
+ #include "ui/ui_strings.h"
+ #include "core/utils.h"
+ #include "ui/utils.h"
++#include "blowfang_config.h"
+ 
+ void _ui_drawMainBackground()
+ {
+@@ -126,6 +127,17 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
                      color_white, "DMR TG%s", "");
              break;
  
@@ -721,7 +743,11 @@ index eed473a..123fbcc 100644
 +            // blowfang: PTT sends the stored sotto message to a K6, # plays
 +            // it on the speaker
 +            gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
++#ifdef BLOWFANG_RANGE
++                    color_white, "K6 RANGE PTT #");
++#else
 +                    color_white, "K6 PAGER PTT #");
++#endif
 +            break;
 +
          #ifdef CONFIG_M17

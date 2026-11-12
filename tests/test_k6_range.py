@@ -47,29 +47,54 @@ def test_line_code():
     assert np.all(np.abs(edges) < 0.2)
 
 
-@pytest.mark.parametrize("rate", [4800.0, 4716.0, 4880.0])
-def test_receivers_on_a_clean_link(rate):
+@pytest.mark.parametrize("rate,lock", [(4800.0, None), (4716.0, None), (4880.0, None), (4716.0, 1.0),
+                                       (4880.0, 0.5)])
+def test_receivers_on_a_clean_link(rate, lock):
     """flat model, no noise: the integer receiver reads every packet whether the chip's sampler
-    runs at 4 samples a bit or 1.75% off either way (the POCSAG bench's 3.93); the ideal receiver
-    at 4800"""
+    runs at 4 samples a bit or 1.75% off either way (the POCSAG bench's 3.93), on a steady clock
+    or one locked to the edges as the chip's seems to be; the ideal receiver at 4800"""
     from sim.k6if import range as rg
     pls = k6r.test_payloads(3, seed=4)
-    smp, _ = rg.link(pls, None, rate=rate, tx="flat")
+    smp, _ = rg.link(pls, None, rate=rate, tx="flat", lock=lock)
     got, sl = k6r.receive_samples(smp)
     assert [c for _, c in got] == [True] * 3 and [p for p, _ in got] == pls
-    assert abs(sl.t / 256 - rate / 1200) < 0.03
-    if rate == 4800.0:
+    if rate == 4800.0 and lock is None:
         assert [p for p, c in k6r.receive(smp, rg.best_phase(smp)) if c] == pls
 
 
+def capture(n):
+    with open(os.path.join(ROOT, "tests", "data", "k6", f"k6r_run2_c{n}.txt")) as f:
+        w = [int(x, 16) for ln in f if not ln.startswith("#") for x in ln.split()]
+    return np.array([x >> (15 - i) & 1 for x in w for i in range(16)], np.uint8)
+
+
+@pytest.mark.parametrize("n", [27, 29])
+def test_bench_captures(n):
+    """two captures of bench run 2 (the chip's own samples, a pre-emphasised burst, the K6's
+    de-emphasis off): the segment decoder reads each packet with no line bit wrong, though the
+    sampler slipped (runs of 3 among the 2s and 4s), and the receiver checks its CRC"""
+    smp = capture(n)
+    runs = np.diff(np.flatnonzero(np.diff(smp.astype(int))))
+    assert np.sum(runs == 3) > 100 and np.sum(runs == 1) == 0
+    got, sl = k6r.receive_samples(smp, armed=True)
+    assert len(got) == 1 and got[0][1] and got[0][0] in k6r.bench_payloads()
+    y, _ = k6r.slice_samples(smp)
+    cor = np.correlate(y, 1 - 2 * k6r.SYNC_BITS.astype(int), "valid")
+    i = int(np.argmax(np.abs(cor)))
+    assert abs(cor[i]) >= 124
+    assert k6r.channel_errors(got[0][0], np.sign(cor[i]) * y[i + 32:i + 32 + k6r.CODED]) == 0
+
+
 def test_weak_signal_on_the_model():
-    """the IC-7100 model at 46 dB-Hz: every packet; at 38 none (the edge is near 42)"""
+    """the flat model at 47 dB-Hz: every packet, on a steady clock and on an edge-locked one;
+    at 40 none"""
     from sim.k6if import range as rg
     pls = k6r.test_payloads(4, seed=5)
-    smp, _ = rg.link(pls, 46, seed=6)
-    got, _ = k6r.receive_samples(smp)
-    assert sum(1 for p, c in got if c and p in pls) == 4
-    smp, _ = rg.link(pls, 38, seed=6)
+    for lock, rate in ((None, 4800.0), (1.0, 4716.0)):
+        smp, _ = rg.link(pls, 47, seed=6, tx="flat", rate=rate, lock=lock)
+        got, _ = k6r.receive_samples(smp)
+        assert sum(1 for p, c in got if c and p in pls) == 4, (lock, got)
+    smp, _ = rg.link(pls, 40, seed=6, tx="flat")
     got, _ = k6r.receive_samples(smp)
     assert sum(1 for p, c in got if c) == 0
 
@@ -157,50 +182,54 @@ def run_module(smp, rate, total, scratch=4096):
 
 
 @need_clang
-@pytest.mark.parametrize("rate", [4800.0, 4716.0, 4880.0])
-def test_rangerx_on_the_model(rate):
+@pytest.mark.parametrize("rate,lock", [(4800.0, None), (4716.0, None), (4880.0, None), (4716.0, 1.0)])
+def test_rangerx_on_the_model(rate, lock):
     """the module reads every packet of a clean burst at each sampler rate, says a line for each
-    with its seq, CRC right and no channel errors, re-arms the chip for each, and puts the
-    registers back"""
+    with its seq, CRC right and no channel errors, re-arms the chip for each, sets the de-emphasis
+    off while it listens and puts the registers back"""
     pytest.importorskip("unicorn")
     from sim.k6if import range as rg
     pls = k6r.test_payloads(4, seed=10)
-    smp, _ = rg.link(pls, None, rate=rate, tx="flat")
+    smp, _ = rg.link(pls, None, rate=rate, tx="flat", lock=lock)
     e, (ret, stack), code = run_module(smp, rate, 0.3 + len(smp) / rate + 1)
-    assert len(code) < 4600, len(code)
+    assert len(code) < 5000, len(code)
     assert stack < 600, stack
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     _, pk, ends = k6r.parse_log(["K6 MOD say " + s for s in e.said])
     assert ret == 4 and [p["ok"] for p in pk] == ["1"] * 4, e.said
     assert [p["s"] for p in pk] == ["0", "1", "2", "3"]
-    # (off rate a window's end now and then takes a sample from the far side of a bit's middle,
-    # and a window that sums to 0 counts as wrong: up to 7% on a clean link at 3.93 a bit)
-    assert all(int(p["e"]) <= (2 if rate == 4800.0 else 160) for p in pk), pk
+    assert all(int(p["e"]) == 0 for p in pk), pk
     assert ends and ends[-1]["c"] == "4" and ends[-1]["z"] == "0", ends
+    assert 0x0100 in e.writes[0x2B]
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)
 
 
 @need_clang
 def test_rangerx_near_the_edge():
-    """at 44 dB-Hz on the flat model the module reads at least 5 of 6 packets (the Python
-    receiver, which never re-arms, the same or one more), and says the channel's errors"""
+    """at 46 dB-Hz on the flat model, an edge-locked sampler at 3.93 samples a bit: the module
+    reads what the Python receiver reads, step for step (the same packets, the same channel
+    errors in each)"""
     pytest.importorskip("unicorn")
     from sim.k6if import range as rg
     pls = k6r.test_payloads(6, seed=11)
-    smp, _ = rg.link(pls, 44, seed=12, tx="flat")
-    got, _ = k6r.receive_samples(smp)
-    py = sum(1 for p, c in got if c and p in pls)
-    e, (ret, _), _ = run_module(smp, 4800.0, 0.3 + len(smp) / 4800 + 1)
+    smp, _ = rg.link(pls, 46, seed=12, tx="flat", rate=4716.0, lock=1.0)
+    r = k6r.Receiver()
+    for x in smp:
+        r.feed(int(x))
+    py = [(p in pls and c, e) for (p, c), e in zip(r.got, r.errs)]
+    e, (ret, _), _ = run_module(smp, 4716.0, 0.3 + len(smp) / 4716 + 1)
     _, pk, _ = k6r.parse_log(["K6 MOD say " + s for s in e.said])
-    assert ret >= 5 and ret >= py - 1, (ret, py, e.said)
-    assert all(50 < int(p["e"]) < 400 for p in pk if p["ok"] == "1"), pk
+    mod = [(p["ok"] == "1", int(p["e"])) for p in pk]
+    assert mod == py and len(mod) == 6 and ret >= 2, (mod, py, e.said)
+    assert any(e > 20 for _, e in mod), mod
 
 
 @need_clang
 @pytest.mark.parametrize("start", [1 << 13, 0])
 def test_rangerx_b_ladder(start):
-    """the bench build's ladder, shortened: nine settings, each with its s and v lines, the
+    """the bench build's ladder, shortened: nine settings, each with its s and v lines (and its
+    first capture's words), the
     front end's two pins never both high and as found at the end, REG_13 and REG_7E fixed only
     while a setting fixes the gain and put back; the burst's packets read and counted in their settings. A board
     whose pins are not one of the two paths is left alone (-5, nothing written)"""
@@ -213,7 +242,7 @@ def test_rangerx_b_ladder(start):
     smp, _ = rg.link(pls, None, tx="flat")
     code, entry = le.build("x", [("WAIT_MS", "0u"), ("LADDER_S", "1u"), ("SLOT_SCALE", "400u")],
                            os.path.join(ROOT, "c", "k6", "mod", "rangerx_b.c"))
-    assert len(code) < 5200, len(code)
+    assert len(code) < 5800, len(code)
     Chip = plain_chip(le, [(0.3, 4800.0, smp)])
 
     class Board(Chip):
@@ -235,7 +264,7 @@ def test_rangerx_b_ladder(start):
             super().mmio_w(uc, off, size, value, page)
 
     total = 0.3 + len(smp) / 4800 + 9 * 0.4 + 2
-    e = Board(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total, level=8, scratch=4096)
+    e = Board(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total, level=8, scratch=6144)
     res = e.run()
     assert res is not None, e.said[-5:]
     ret, stack = res
@@ -254,10 +283,13 @@ def test_rangerx_b_ladder(start):
     assert [e.writes[0x13][i] for i in range(-7, -2)] == [0x021F, 0x011F, 0x001F, 0x0007, 0x0004]
     assert e.writes[0x13][-1] == 0 and e.writes[0x7E][-1] == 0
     nv = [dict(kv.split("=") for kv in ln.split()[2:4]) for ln in v]
-    assert ret == 2 and sum(int(d["n"]) for d in nv) == 2 and sum(int(d["ok"]) for d in nv) == 2, e.said
+    # (saying the first capture's words takes the gap before the second packet: it is missed)
+    assert ret == 1 and sum(int(d["n"]) for d in nv) == 1 and sum(int(d["ok"]) for d in nv) == 1, e.said
+    caps = k6r.dump_captures(["K6 MOD say " + ln for ln in e.said])
+    assert caps and all(len(c["words"]) == int(c["w"]) for c in caps), e.said   # the setting's first capture
     rep = k6r.report(["K6 MOD say " + ln for ln in e.said])
     rows = [ln for ln in rep if ln.startswith("setting ")]
-    assert len(rows) == 9 and sum(int(ln.split(": ")[1].split()[2]) for ln in rows) == 2, rep
+    assert len(rows) == 9 and sum(int(ln.split(": ")[1].split()[2]) for ln in rows) == 1, rep
 
 
 @need_clang

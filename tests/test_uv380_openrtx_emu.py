@@ -144,3 +144,48 @@ def test_preview_is_sottos_own_decode(sent):
     assert len(ref) == 320 * n and len(pv) == 320 * (n + 2)
     assert np.array_equal(pv[640:], ref)
     assert np.abs(ref).max() > 1000
+
+
+# ---- the range image (BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh linux) ----
+
+EMU_RANGE = os.path.join(FW, "out", "openrtx_linux_range")
+
+
+def range_payloads_heard(x):
+    """the PTT's samples (48 kHz, the radio's FFSK peak) through the flat model of the air and
+    the K6's plain receiver (sim/k6if/range.py) into the module's receiver (modem.k6r)"""
+    from modem import k6r
+    from sim.k6if import range as rg
+    z = np.zeros(int(0.2 * rg.FSA))
+    a = x * (k6r.LEVEL / max(1e-9, np.max(np.abs(x))))
+    d = rg.chip_audio(np.concatenate([z, a, z]), None, tx="flat")
+    got, _ = k6r.receive_samples(rg.sample(d))
+    return got
+
+
+@pytest.mark.skipif(not os.path.exists(EMU_RANGE),
+                    reason="needs BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh linux")
+def test_range_image_sends_phy_r():
+    """the range image's PTT sends the stored message's XL packets as PHY R (coded 600/1200 Hz
+    FFSK, docs/k6-range.md): every packet reads back through the K6 model, in order, then the
+    AG7EW ident follows"""
+    global EMU
+    saved, EMU = EMU, EMU_RANGE
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            r, out = run_emulator(d, "sleep 3000\nptt\nsleep 500\nptt\nsleep 1000\nquit\n")
+            log = r.stdout + r.stderr
+            assert "blowfang: pager message sent" in log, log[-3000:]
+            with open(out, "rb") as f:
+                x = np.frombuffer(f.read(), "<i2").astype(float) / 32768
+    finally:
+        EMU = saved
+    frames = message_frames()
+    want = pager.profile("XL", "1200").pack(frames, k6.msg_id_for(frames))
+    ident = k6.cw("AG7EW", FS)
+    got = range_payloads_heard(x[:len(x) - len(ident)])     # FFSK, then the ident's first ms at most
+    assert [p for p, ok in got if ok] == want, [ok for _, ok in got]
+    # the air time PHY R takes for these packets (modem.k6r.burst_seconds), the ident after it
+    from modem import k6r
+    n_ffsk = k6r.burst_seconds(len(want)) * FS
+    assert abs(len(x) - n_ffsk - len(ident)) <= 960 + 3000

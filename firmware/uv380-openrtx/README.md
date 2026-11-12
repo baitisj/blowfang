@@ -54,6 +54,17 @@ codeplug and calibration need backing up on hamlet (never committed).
 Edit the patch by applying it to a clone at `20b4088`, changing the tree, and
 `git add -N` the new files then `git diff > uv380-blowfang.patch`.
 
+## The range image
+
+`BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh` builds `out/openrtx_mduv3x0_range_wrap.bin`.
+It is the PAGER mode with one change: PTT sends the same XL packets as PHY R, the K6's range mode
+(docs/k6-range.md), instead of the 1800 baud pager FFSK. PHY R is coded FFSK at 600 and 1200 Hz,
+1200 baud, about three times the air time, for the K6 module `rangerx`, which reads it on the
+chip's sensitive receiver. The screen says `K6 RANGE PTT #`. The audio takes the same
+pre-emphasised voice path, which is what the K6 reads best (bench run 2). In the emulator,
+`tests/test_uv380_openrtx_emu.py` sends with the range build and reads every packet back through
+the K6 model.
+
 ## The I2S probe image
 
 `BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh` builds `out/openrtx_mduv3x0_i2sprobe_wrap.bin`
