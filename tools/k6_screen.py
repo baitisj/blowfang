@@ -115,6 +115,8 @@ FONT = {
 
 def _text(fb, s, x, y, ink):
     for i, ch in enumerate(s):
+        if ord(ch) >= 0x80:            # a module's own glyph (level 9): drawn by _glyphs
+            continue
         g = bytes.fromhex(FONT.get(ord(ch), FONT[ord("?")]))
         for r in range(10):
             for c in range(6):
@@ -130,8 +132,22 @@ def _rect(fb, x, y, w, h, ink, fill=True):
                 fb[yy][xx] = ink
 
 
+def _glyphs(fb, s, y, ink, gl):
+    """a line's module glyphs (API level 9): chr(0x80 + k) draws gl[k], six 16-bit columns, column c
+    at x = 6 * cell + c, bit r on row y - 8 + r (bits 0-9)"""
+    for i, ch in enumerate(s):
+        k = ord(ch) - 0x80
+        if 0 <= k < len(gl):
+            for c, m in enumerate(gl[k]):
+                for r in range(10):
+                    px, py = 6 * i + c, y - 8 + r
+                    if m >> r & 1 and 0 <= px < W and 0 <= py < H:
+                        fb[py][px] = ink
+
+
 def render(frame):
-    """frame: {"text": six lines, "bar": six (num, den), "wf": rows of 16 bytes} -> 64 rows of 128 0/1"""
+    """frame: {"text": six lines, "bar": six (num, den), "wf": rows of 16 bytes, "glyphs": a module's
+    glyphs (optional)} -> 64 rows of 128 0/1"""
     fb = [[0] * W for _ in range(H)]
     _rect(fb, 0, 0, W, 11, 1)
     wf = frame.get("wf") or []
@@ -142,6 +158,7 @@ def render(frame):
         y = 9 + 10 * i
         ink = 0 if i == 0 else 1
         _text(fb, t, 1, y, ink)
+        _glyphs(fb, t, y, ink, frame.get("glyphs") or [])
         num, den = frame.get("bar", [(0, 0)] * 6)[i]
         x0 = 1 + 6 * len(t) + (3 if t else 0)
         if den and x0 < 118:

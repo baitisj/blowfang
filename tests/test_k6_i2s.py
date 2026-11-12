@@ -2,6 +2,7 @@
 FD6818 whose GP0 drives the MCU's PB1."""
 import os
 import shutil
+import struct
 import sys
 
 import pytest
@@ -23,7 +24,7 @@ need_clang = pytest.mark.skipif(not (shutil.which("clang") and shutil.which("ld.
 NAMES = ["say", "ticks", "fd_read", "fd_write", "delay_us", "tune", "rx_hz", "ms", "key_down",
          "scratch", "tx_on", "tx_off", "tx_pa", "key_poll", "cal_read", "cal_write",
          "fl_read", "fl_prog", "fl_erase", "lcd_text", "lcd_bar", "lcd_wf", "lcd_flush", "led",
-         "clock_set", "clock_get"]
+         "clock_set", "clock_get", "lcd_glyphs"]
 FL_LO, FL_HI, FL_READ_HI = 0x0F0000, 0x100000, 0x200000   # level 5's flash (c/k6/k6_mod.h)
 REFUSED = (0x30, 0x33, 0x36, 0x37)
 PERIOD = 400            # samples between modelled DFS edges
@@ -53,7 +54,8 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
     erase in 0x0F0000-0x0FFFFF only, a program inside one page and only clearing bits, at most 32
     erases); flash["progs"], flash["erases"] and flash["refused"] count the calls.
     lcd: a dict for level 6's screen: lcd["frames"] gets one dict a flush (us, text: six lines,
-    bar: six (num, den), wf: the waterfall's rows top first, as bytes), each flush costing 30 ms;
+    bar: six (num, den), wf: the waterfall's rows top first, as bytes, glyphs: level 9's module
+    glyphs, six 16-bit columns each), each flush costing 30 ms;
     without it (or below level 6) a screen call fails the test.
     pb_idr(st): GPIOB's input bits other than PB1 (default only PB4 high, a keypad row; a module
     that reads the side keys wants PB14 high too, Side 2 up: tests/test_k6_morse.py). led: a list that gets level 7's led calls as (us, on).
@@ -240,12 +242,17 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
                 ret = tx.get("on_ret", 0)
             elif name == "tx_pa" and st["us"] >= tx.get("dead_us", float("inf")):
                 ret = -1                           # the core's time limit keyed down
-        elif name in ("lcd_text", "lcd_bar", "lcd_wf", "lcd_flush"):
-            assert lcd is not None and level >= 6, f"{name} called (level {level})"
-            scr = lcd.setdefault("scr", {"text": [""] * 6, "bar": [(0, 0)] * 6, "wf": (0, 0, 0)})
+        elif name in ("lcd_text", "lcd_bar", "lcd_wf", "lcd_flush", "lcd_glyphs"):
+            assert lcd is not None and level >= (9 if name == "lcd_glyphs" else 6), f"{name} called (level {level})"
+            scr = lcd.setdefault("scr", {"text": [""] * 6, "bar": [(0, 0)] * 6, "wf": (0, 0, 0), "gl": (0, 0)})
             if name == "lcd_text" and 0 <= r0 < 6:
-                t = bytes(uc.mem_read(r1, 21)).split(b"\0")[0].decode() if r1 else ""
+                # (latin-1: a module's glyph bytes 0x80 + k come through as chr(0x80 + k), and
+                # below level 9 the firmware shows '?' for them, as for any byte outside 0x20-0x7E)
+                t = bytes(uc.mem_read(r1, 21)).split(b"\0")[0].decode("latin-1") if r1 else ""
+                t = "".join(c if " " <= c <= "~" or (level >= 9 and 0x80 <= ord(c) < 0x88) else "?" for c in t)
                 scr["text"][r0] = t
+            elif name == "lcd_glyphs":
+                scr["gl"] = (r0, max(0, min(8, r1 if r1 < 1 << 31 else 0)) if r0 else 0)
             elif name == "lcd_bar" and 0 <= r0 < 6:
                 scr["bar"][r0] = (min(r1, r2), r2)
             elif name == "lcd_wf":
@@ -254,8 +261,10 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
             elif name == "lcd_flush":
                 ptr, rows, head = scr["wf"]
                 wf = [bytes(uc.mem_read(ptr + 16 * ((head + i) % rows), 16)) for i in range(rows)]
+                gp, gn = scr["gl"]
+                gl = [struct.unpack("<6H", bytes(uc.mem_read(gp + 12 * k, 12))) for k in range(gn)]
                 lcd.setdefault("frames", []).append({"us": st["us"], "text": list(scr["text"]),
-                                                     "bar": list(scr["bar"]), "wf": wf})
+                                                     "bar": list(scr["bar"]), "wf": wf, "glyphs": gl})
                 st["us"] += 30000
         elif name in ("clock_set", "clock_get"):
             assert level >= 8 and clock is not None, f"{name} called (level {level})"

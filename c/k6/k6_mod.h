@@ -48,7 +48,7 @@ extern "C" {
 #define KM_HDR 16
 #define KM_TAG 8
 #define KM_ABI 1
-#define KM_LEVEL 8
+#define KM_LEVEL 9
 
 typedef struct k6_api {
   uint16_t abi, level;              /* KM_ABI, KM_LEVEL */
@@ -139,7 +139,21 @@ typedef struct k6_api {
      run-time check as level 6 for a module that also runs on older images. */
   int (*clock_set)(uint32_t utc_ms, uint32_t date, uint32_t w_ms);
   int (*clock_get)(uint32_t *utc_ms, uint32_t *date, uint32_t *w_ms);
+  /* level 9 (2026-11-12, for surf's surfer and speaker, Jeff picked them): the module's own
+     glyphs on its screen. lcd_glyphs points the firmware at n (at most KM_GLYPHS) glyphs of
+     KM_GLYPH_COLS columns each in the module's memory (valid until it returns or calls again;
+     n 0 takes them away); a text line's byte 0x80 + k then draws glyph k in that character's
+     cell: column c at x = 6 * cell + c (from one pixel left of the cell, so a glyph in cell 0
+     starts at the screen's edge), bit r of a column the row y - 8 + r of a line whose
+     baseline is y (bits 0-9: on the title bar, rows 1-10). It is drawn in the line's ink (dark
+     on the title bar) over the line's text; the cell itself stays empty. Images before level 9
+     show '?' for those bytes, so a module that also runs there reads api->level and writes
+     plain text instead (same run-time check as level 6). */
+  void (*lcd_glyphs)(const uint16_t *cols, int n);
 } k6_api_t;
+
+#define KM_GLYPH_COLS 6
+#define KM_GLYPHS 8
 
 #define KM_DATE(day, mon, yr) ((uint32_t)(day) | (uint32_t)(mon) << 8 | (uint32_t)(yr) << 16)
 #define KM_DAY_MS 86400000u
