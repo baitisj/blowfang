@@ -128,7 +128,7 @@ class Emu:
         self.names = ["say", "ticks", "fd_read", "fd_write", "delay_us", "tune", "rx_hz", "ms",
                       "key_down", "scratch", "tx_on", "tx_off", "tx_pa", "key_poll", "cal_read",
                       "cal_write", "fl_read", "fl_prog", "fl_erase", "lcd_text", "lcd_bar", "lcd_wf",
-                      "lcd_flush", "led", "clock_set", "clock_get"]
+                      "lcd_flush", "led", "clock_set", "clock_get", "lcd_glyphs"]
         for i in range(len(self.names)):
             mu.mem_write(self.stubs + 16 * i, b"\x70\x47")
         mu.mem_write(self.stop, b"\x00\xbf" * 8)
@@ -270,7 +270,7 @@ class Emu:
                 if p:
                     uc.mem_write(p, int(v).to_bytes(4, "little"))
         elif name == "lcd_text":
-            self.lcd[r0] = bytes(uc.mem_read(r1, 32)).split(b"\0")[0].decode()
+            self.lcd[r0] = bytes(uc.mem_read(r1, 32)).split(b"\0")[0].decode("latin-1")
             us = 50
         elif name == "scratch":
             if r0:

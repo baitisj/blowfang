@@ -26,7 +26,8 @@
    on as they were. Up to NPM (128) are kept, 8 B each in the module store's free RAM (about
    4.9 KB is free after the code, so room is not the limit; 128 is two screens' worth of
    carets), for the band only (BAND forgets them; zoom and UP / DOWN keep them, off the screen
-   too); with all in use a new one takes the lowest caret's place. The title line says the band and its channel step (a fixed gain in place of SURF), line 1 the listening frequency and
+   too); with all in use a new one takes the lowest caret's place. The title line has a surfer, the band and its channel step, a fixed gain and the demodulator at
+   the far right, line 1 the listening frequency and
    its level in dBm (a settled read), line 5 the axis's labels, or with the bar on a saved
    repeater its call, offset and TX tone ("N0CALL +5.0 103.5").
 
@@ -43,17 +44,17 @@
      A/B             how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the
                      whole height (line 5: "fall 5m")
      BAND            next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX, airband (AM, 118-137
-                     MHz, receive only); each starts at its centre with its default step and span
+                     MHz, receive only); each starts at its centre (MAR/WX: on NOAA weather's
+                     162.475, with the marine coast channels below) with its default step and span
      #               next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
                      stays; UP / DOWN then move onto the new raster; BAND resets the step)
-     5               the band's centre
+     5               the band's centre (MAR/WX: 162.475)
      4               the demodulator: FM, DSB, AM, FM (DSB = the chip's "USB", both sidebands at
                      the zero IF; at the zero IF a steady carrier reads low, so DSB is for
-                     listening); the title shows it when it isn't the band's ("DSB 70cm 25k",
-                     "DSB-12" with a fixed gain); BAND resets it
+                     listening); the title always shows it, at its far right; BAND resets it
      7 / 9           fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB (from
-                     auto, 9 starts at the top and 7 at -7); the title shows it ("G-12 70cm 25k")
-     8               the receiver's own AGC again (the title says SURF)
+                     auto, 9 starts at the top and 7 at -7); the title shows it ("70cm 25k G-12")
+     8               the receiver's own AGC again (the gain leaves the title)
      1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz
      *               monitor: audio open on the bar all the time, no sweeping; the chip's own
                      squelch open all the way too (put back on leaving MON and at EXIT)
@@ -154,10 +155,10 @@ static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
 
 typedef struct {
-  uint32_t lo, hi;
+  uint32_t lo, hi, home;        /* the band's edges, and where BAND and 5 put the middle */
   uint8_t st, si, am;           /* default channel step (STEPS index), span (SPANS index), AM */
   char name[7];
-} band_t;                       /* 20 */
+} band_t;                       /* 24 */
 
 /* the channel steps # goes through (Hz); 8.33 kHz is airband's 25/3 */
 static const uint32_t STEPS[] = {
@@ -176,14 +177,16 @@ static const uint32_t STEPS[] = {
 #define ST_12K5 5
 #define ST_25K 7
 
-/* airband is receive only (the K6 never transmits there) and sits below its 136-174 MHz filter */
+/* airband is receive only (the K6 never transmits there) and sits below its 136-174 MHz filter.
+   Home is the band's centre, but MAR/WX's: NOAA weather's 162.475 (Jeff 2026-11-12: its centre,
+   159.275 at +-1 MHz, showed neither the weather channels nor most of marine) */
 static const band_t BANDS[] = {
-    {144000000u, 148000000u, ST_10K, 2, 0, "2m"},
-    {222000000u, 225000000u, ST_10K, 2, 0, "1.25m"},
-    {430000000u, 450000000u, ST_25K, 3, 0, "70cm"},
-    {462550000u, 467725000u, ST_12K5, 4, 0, "GMRS"},
-    {156000000u, 162550000u, ST_25K, 3, 0, "MAR/WX"},
-    {118000000u, 137000000u, ST_25K, 3, 1, "AIR"}};
+    {144000000u, 148000000u, 146000000u, ST_10K, 2, 0, "2m"},
+    {222000000u, 225000000u, 223500000u, ST_10K, 2, 0, "1.25m"},
+    {430000000u, 450000000u, 440000000u, ST_25K, 3, 0, "70cm"},
+    {462550000u, 467725000u, 465137500u, ST_12K5, 4, 0, "GMRS"},
+    {156000000u, 162550000u, 162475000u, ST_25K, 3, 0, "MAR/WX"},
+    {118000000u, 137000000u, 127500000u, ST_25K, 3, 1, "AIR"}};
 #define NBANDS 6
 /* fixed receiver gains (REG_13: LNA short [9:8], LNA [7:5], mixer [4:3], PGA [2:0]) from the
    most down, about 0, -7, -12, -17, -22, -27, -33 and -45 dB by egzumer's table of the steps;
@@ -234,6 +237,13 @@ static const char FALL[4][4] = {"15s", "1m", "5m", "20m"};
 #define MD_AM 2
 #define NMD 3
 static const char MD_NAME[NMD][4] = {"FM", "DSB", "AM"};
+/* the title's own glyphs (API level 9; Jeff 2026-11-12 picked them from mock-ups): 0x80 a surfer
+   (in cell 0, from the screen's edge), 0x81 a speaker for MON, 0x82 a pause for HLD. Six columns
+   each, from a pixel left of the character's cell; bit r is the title bar's row 1 + r */
+static const uint16_t GLYPHS[3 * 6] = {
+    0x108, 0x1C4, 0x0A4, 0x09F, 0x0E7, 0x048,
+    0x038, 0x038, 0x07C, 0x1FF, 0x000, 0x0BA,
+    0x000, 0x0FE, 0x0FE, 0x000, 0x0FE, 0x0FE};
 /* the chip's squelch: glitch close (REG_4D [7:0]), glitch open (REG_4E [7:0]), noise close/open
    (REG_4F), RSSI open/close (REG_78); open all the way = egzumer's squelch 0: glitch 255, noise
    127, RSSI 0 */
@@ -816,7 +826,7 @@ static void band(sf_t *s, const band_t *b) {
   s->si = b->si;
   s->md = b->am ? MD_AM : MD_FM;
   demod(s);
-  window(s, (b->lo + b->hi) >> 1);
+  window(s, b->home);
 }
 
 static void on_key(sf_t *s, int k) {
@@ -824,7 +834,7 @@ static void on_key(sf_t *s, int k) {
   case 'U': go_to(s, s->cen + s->ch); break;
   case 'D': go_to(s, s->cen - s->ch); break;
   case '5':
-    go_to(s, (s->bd->lo + s->bd->hi) >> 1);
+    go_to(s, s->bd->home);
     break;
   case 'A': jump(s, 1); break;
   case 'B': jump(s, -1); break;
@@ -1170,16 +1180,32 @@ static void draw(sf_t *s) {
   for (r = 0; r < 3; r++)
     for (i = x - 2 + r; i <= x + 3 - r; i++) px(b, i, r + 1);
 
-  /* "SURF 70cm 25k"; key 4's demodulator (not the band's) in place of SURF, the fixed gain
-     after it or after G: "DSB 70cm 25k", "G-12 70cm 25k", "DSB-12 70cm 25k" (21 columns) */
-  p = put(s->ln, s->md != (s->bd->am ? MD_AM : MD_FM) ? MD_NAME[s->md] : s->gx ? "G" : "SURF");
-  if (s->gx) p = sint(p, GAIN_DB[s->gx - 1]);
-  *p++ = ' ';
+  /* the title (Jeff 2026-11-12): the surfer, the band and its step, MON or HLD, a fixed gain,
+     and the demodulator always at the far right ("<surfer>GMRS 12.5k <spk> G-12     DSB", 21
+     columns). The glyphs need API level 9; before it '~' is the surfer, '*' MON (its key) and
+     '=' HLD. Short of room the gain drops its G, then goes (line 5 said it when it was set) */
+  x = api->level >= 9;
+  if (x) api->lcd_glyphs(GLYPHS, 3);
+  p = s->ln;
+  *p++ = x ? (char)0x80 : '~';
   p = put(p, s->bd->name);
   *p++ = ' ';
   p = stepn(p, s->ch);
-  if (s->mon) p = put(p, " MON");
-  else if (s->hold) p = put(p, " HLD");
+  if (s->mon || s->hold) {
+    *p++ = ' ';
+    *p++ = s->mon ? (x ? (char)0x81 : '*') : (x ? (char)0x82 : '=');
+  }
+  if (s->gx) {
+    char t[5], *e = sint(t, GAIN_DB[s->gx - 1]);
+    int n = e - t, room = 21 - 4 - (p - s->ln);       /* 4: a space and the longest mode */
+    if (room >= n + 2) *p++ = ' ', *p++ = 'G';
+    else if (room > n) *p++ = ' ';
+    else n = 0;
+    for (r = 0; r < n; r++) *p++ = t[r];
+  }
+  for (r = 0; MD_NAME[s->md][r]; r++) ;
+  while (p < s->ln + 21 - r) *p++ = ' ';
+  p = put(p, MD_NAME[s->md]);
   *p = 0;
   api->lcd_text(0, s->ln);
   p = mhz(s->ln, s->cen, cdec(s));

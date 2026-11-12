@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..c3fcf0a
+index 0000000..2bed5d7
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4433 @@
+@@ -0,0 +1,4456 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -589,6 +589,8 @@ index 0000000..c3fcf0a
 +        // level 8: the radio's UTC clock
 +        pub clock_set: unsafe extern "C" fn(u32, u32, u32) -> i32,
 +        pub clock_get: unsafe extern "C" fn(*mut u32, *mut u32, *mut u32) -> i32,
++        // level 9: a module's own glyphs on its screen (bytes 0x80 + k of a text line)
++        pub lcd_glyphs: unsafe extern "C" fn(*const u16, i32),
 +    }
 +    /// c/k6/k6_lib.h kl_flash_t and kl_info_t
 +    #[repr(C)]
@@ -631,7 +633,7 @@ index 0000000..c3fcf0a
 +/// through MOD_CTX, set only while a module runs.
 +static MOD_API: ffi::K6Api = ffi::K6Api {
 +    abi: 1,
-+    level: 8,
++    level: 9,
 +    say: mod_say,
 +    ticks: mod_ticks,
 +    fd_read: mod_fd_read,
@@ -658,6 +660,7 @@ index 0000000..c3fcf0a
 +    led: mod_led,
 +    clock_set: mod_clock_set,
 +    clock_get: mod_clock_get,
++    lcd_glyphs: mod_lcd_glyphs,
 +};
 +
 +// ---- level 8: the radio's UTC clock (Jeff OK'd 2026-11-09; docs/k6-aprs-clock.md) ----
@@ -1261,6 +1264,10 @@ index 0000000..c3fcf0a
 +    pub wf: *const u8,
 +    pub wf_rows: i32,
 +    pub wf_head: i32,
++    /// level 9: the module's glyphs, MOD_GLYPH_COLS columns each (bit r the row y - 8 + r of a
++    /// line whose baseline is y), in the module's memory; gl_n of them
++    pub gl: *const u16,
++    pub gl_n: i32,
 +}
 +pub static mut MOD_SCREEN: ModScreen = ModScreen {
 +    text: [[0; MOD_COLS]; MOD_LINES],
@@ -1268,7 +1275,12 @@ index 0000000..c3fcf0a
 +    wf: core::ptr::null(),
 +    wf_rows: 0,
 +    wf_head: 0,
++    gl: core::ptr::null(),
++    gl_n: 0,
 +};
++/// level 9: a module glyph's width (from its cell's x - 1) and the most a module may give
++pub const MOD_GLYPH_COLS: usize = 6;
++pub const MOD_GLYPHS: i32 = 8;
 +static mut MOD_LCD: Option<unsafe fn() -> i32> = None;
 +
 +/// main.rs: the function that draws MOD_SCREEN and flushes the display
@@ -1287,9 +1299,12 @@ index 0000000..c3fcf0a
 +    s.wf = core::ptr::null();
 +    s.wf_rows = 0;
 +    s.wf_head = 0;
++    s.gl = core::ptr::null();
++    s.gl_n = 0;
 +}
 +
-+/// line 0-5 (0 is the title bar), up to 21 characters; "" or null clears it
++/// line 0-5 (0 is the title bar), up to 21 characters; "" or null clears it. 0x80 + k (level 9)
++/// draws the module's glyph k (lcd_glyphs); other bytes outside 0x20-0x7E show '?'
 +unsafe extern "C" fn mod_lcd_text(line: i32, t: *const u8) {
 +    if !(0..MOD_LINES as i32).contains(&line) {
 +        return;
@@ -1299,7 +1314,7 @@ index 0000000..c3fcf0a
 +    for c in 0..MOD_COLS {
 +        let b = if end { 0 } else { unsafe { *t.add(c) } };
 +        end |= b == 0;
-+        row[c] = if b >= 0x20 && b < 0x7F { b } else if b == 0 { 0 } else { b'?' };
++        row[c] = if (b >= 0x20 && b < 0x7F) || (b >= 0x80 && b < 0x80 + MOD_GLYPHS as u8) || b == 0 { b } else { b'?' };
 +    }
 +}
 +
@@ -1318,6 +1333,14 @@ index 0000000..c3fcf0a
 +    s.wf = ring;
 +    s.wf_rows = rows;
 +    s.wf_head = if rows > 0 { head.rem_euclid(rows) } else { 0 };
++}
++
++/// level 9: n glyphs of MOD_GLYPH_COLS u16 columns in the module's memory (valid until it
++/// returns or calls again), drawn where a line has 0x80 + k; n 0 or a null takes them away
++unsafe extern "C" fn mod_lcd_glyphs(cols: *const u16, n: i32) {
++    let s = unsafe { &mut *addr_of_mut!(MOD_SCREEN) };
++    s.gl_n = if cols.is_null() { 0 } else { n.clamp(0, MOD_GLYPHS) };
++    s.gl = cols;
 +}
 +
 +unsafe extern "C" fn mod_lcd_flush() -> i32 {
@@ -9175,10 +9198,10 @@ index 8dd4ad1..3916854 100644
  }
 diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
 new file mode 100644
-index 0000000..5084a3a
+index 0000000..c8b254e
 --- /dev/null
 +++ b/src/ui/glyph.rs
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,156 @@
 +//! Text without embedded-graphics' text code or its 6x10 font (Jeff 2026-11-10: "switching over
 +//! to the stock fonts -- save some space!"). The SC5260 has no character ROM, so Baofeng's own
 +//! firmware kept its fonts in the K6's SPI flash, and Aura's first-boot format leaves them there
@@ -9243,8 +9266,12 @@ index 0000000..5084a3a
 +    rl!("K6 FONT 5x7 crc={:08x} ok={}", crc, stock() as u8);
 +}
 +
-+/// A glyph's columns (bit 0 the top row) and its cell's width: 6 for the 5x7, 4 for the 4x6
++/// A glyph's columns (bit 0 the top row) and its cell's width: 6 for the 5x7, 4 for the 4x6.
++/// 0x80 and up (a RAM module's own glyphs, ui::pager draws them) leave the cell empty
 +fn glyph(c: u8, small: bool, cols: &mut [u8; 5]) -> i32 {
++    if c >= 0x80 {
++        return if small { 4 } else { 6 };
++    }
 +    let i = if (0x20..0x7F).contains(&c) { c - 0x20 } else { b'?' - 0x20 };
 +    if !small && stock() {
 +        unsafe { (*NOR).read_bytes(F5X7 + 8 * i as u32, cols) };
@@ -9276,13 +9303,21 @@ index 0000000..5084a3a
 +where
 +    D: DrawTarget<Color = BinaryColor>,
 +{
++    text_b(lcd, x, top, t.as_bytes(), small, on)
++}
++
++/// text's bytes (a module's line may hold its glyphs' 0x80 + k, which no &str holds)
++pub fn text_b<D>(lcd: &mut D, x: i32, top: i32, t: &[u8], small: bool, on: bool)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
 +    let bb = lcd.bounding_box();
 +    if top + 7 <= bb.top_left.y || top >= bb.top_left.y + bb.size.height as i32 {
 +        return;
 +    }
 +    let ink = if on { BinaryColor::On } else { BinaryColor::Off };
 +    let mut x = x;
-+    for &c in t.as_bytes() {
++    for &c in t {
 +        if x >= 128 {
 +            break;
 +        }
@@ -9546,10 +9581,10 @@ index cdfa0f7..831732f 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..f9e8d58
+index 0000000..281dd2e
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,360 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -9766,7 +9801,7 @@ index 0000000..f9e8d58
 +where
 +    D: DrawTarget<Color = BinaryColor>,
 +{
-+    use app::pager::{MOD_COLS, MOD_LINES, WF_TOP};
++    use app::pager::{MOD_COLS, MOD_GLYPH_COLS, MOD_LINES, WF_TOP};
 +    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 64)), BinaryColor::Off).ok();
 +    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 11)), BinaryColor::On).ok();
 +    let wf = s.wf_rows > 0 && !s.wf.is_null();
@@ -9780,8 +9815,20 @@ index 0000000..f9e8d58
 +            n += 1;
 +        }
 +        let y = 9 + 10 * i as i32;
-+        if let Ok(txt) = core::str::from_utf8(&t[..n]) {
-+            super::glyph::text(lcd, 1, y - 6, txt, false, i != 0);
++        let ink = if i != 0 { BinaryColor::On } else { BinaryColor::Off };
++        super::glyph::text_b(lcd, 1, y - 6, &t[..n], false, i != 0);
++        // the module's glyphs (level 9): 0x80 + k, 6 columns from the cell's x - 1, rows y - 8 ..
++        for (k, &b) in t[..n].iter().enumerate() {
++            let g = b.wrapping_sub(0x80) as i32;
++            if b < 0x80 || g >= s.gl_n {
++                continue;
++            }
++            let x0 = 6 * k as i32;
++            let px = (0..MOD_GLYPH_COLS as i32).flat_map(move |c| {
++                let m = unsafe { *s.gl.add(MOD_GLYPH_COLS * g as usize + c as usize) } & 0x3FF;
++                (0..10).filter(move |&r| m >> r & 1 != 0).map(move |r| Pixel(Point::new(x0 + c, y - 8 + r), ink))
++            });
++            lcd.draw_iter(px).ok();
 +        }
 +        let (mut num, mut den) = s.bar[i];
 +        let x0 = 1 + 6 * n as i32 + if n > 0 { 3 } else { 0 };
@@ -9826,7 +9873,7 @@ index 0000000..f9e8d58
 +/// touches only the lines that reach its rows, and no embedded-graphics code is built for it.
 +#[cfg(all(not(feature = "lean"), shared_lcd))]
 +pub fn draw_mod_page(buf: &mut [u8; 128], page: u8, s: &app::pager::ModScreen) {
-+    use app::pager::{MOD_COLS, MOD_LINES, WF_TOP};
++    use app::pager::{MOD_COLS, MOD_GLYPH_COLS, MOD_LINES, WF_TOP};
 +    let y0 = 8 * page as i32;
 +    // rows top .. top + h of columns x .. x + w, lit or dark, clipped to the page
 +    let rect = |buf: &mut [u8; 128], x: i32, top: i32, w: i32, h: i32, on: bool| {
@@ -9844,8 +9891,8 @@ index 0000000..f9e8d58
 +    let wf = s.wf_rows > 0 && !s.wf.is_null();
 +    for i in 0..MOD_LINES {
 +        let y = 9 + 10 * i as i32; // baseline: glyph rows y - 6 .. y, a bar's y - 7 .. y
-+        if (wf && (2..5).contains(&i)) || y + 1 <= y0 || y - 7 >= y0 + 8 {
-+            continue;
++        if (wf && (2..5).contains(&i)) || y + 2 <= y0 || y - 8 >= y0 + 8 {
++            continue; // (a module glyph's rows: y - 8 .. y + 1)
 +        }
 +        let on = i != 0;
 +        let t = &s.text[i];
@@ -9854,6 +9901,20 @@ index 0000000..f9e8d58
 +            n += 1; // mod_lcd_text keeps only 0x20-0x7E
 +        }
 +        super::glyph::text_page(buf, y0, 1, y - 6, &t[..n], on);
++        // the module's glyphs (level 9): 0x80 + k, 6 columns from the cell's x - 1, rows y - 8 ..
++        let sh = y - 8 - y0; // the glyph's bit 0 lands on page bit sh (-9 .. 7 here)
++        for (k, &b) in t[..n].iter().enumerate() {
++            let g = b.wrapping_sub(0x80) as usize;
++            if b < 0x80 || g as i32 >= s.gl_n {
++                continue;
++            }
++            for c in 0..MOD_GLYPH_COLS {
++                let m = (unsafe { *s.gl.add(MOD_GLYPH_COLS * g + c) } & 0x3FF) as u32;
++                let m = if sh >= 0 { m << sh } else { m >> -sh } as u8;
++                let p = &mut buf[6 * k + c];
++                *p = if on { *p | m } else { *p & !m };
++            }
++        }
 +        let (mut num, mut den) = s.bar[i];
 +        let x0 = 1 + 6 * n as i32 + if n > 0 { 3 } else { 0 };
 +        if den > 0 && x0 < 118 {

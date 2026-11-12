@@ -103,6 +103,15 @@ class Bumpy(Receiver):
         return 10 * math.log10(p)
 
 
+# the title's glyphs (API level 9): the surfer, MON's speaker, HLD's pause
+S, SPK, HLD = "\x80", "\x81", "\x82"
+
+
+def title(left, mode="FM"):
+    """the title line: left, then the demodulator at the far right (21 columns)"""
+    return left + " " * (21 - len(left) - len(mode)) + mode
+
+
 def rt_record(slot, rx_hz, call=b"", off=0, tx_tone=0, state=0xFFFC):
     """(slot, 64 bytes): an explorer repeater-table record as c/k6/rt.h lays it out (no CRC: surf
     doesn't check it)"""
@@ -110,7 +119,7 @@ def rt_record(slot, rx_hz, call=b"", off=0, tx_tone=0, state=0xFFFC):
                              b"", call, 0, 0, 0, 0, slot + 1, slot + 1, 0)
 
 
-def go(signals, keys, rx_hz=440_600_000, level=7, regs=None, src=SRC, bumps=(), table=()):
+def go(signals, keys, rx_hz=440_600_000, level=9, regs=None, src=SRC, bumps=(), table=()):
     from modem import k6mod
     code, entry = k6mod.build(src)
     m = Bumpy([(f, d, a, b) for f, d, a, b in signals], list(bumps))
@@ -273,7 +282,7 @@ def test_bargraph_peaks_side_keys_and_audio():
     assert 3_000_000 < spk[1][0] < 3_700_000 and spk[1][1] == 4
     fr = lcd["frames"]
     quiet = at(fr, 2_000_000)
-    assert quiet["text"][0] == "SURF 70cm 25k"
+    assert quiet["text"][0] == title(S + "70cm 25k")
     assert quiet["text"][1] == "440.6000 -137dBm"
     assert quiet["text"][5] == labels(400) == "-1M   -20k +20k   +1M"
     # the three signals stand out in order of level (a carrier between two wide bins lights
@@ -404,14 +413,14 @@ def test_band_and_zoom_keys():
     fr = lcd["frames"]
     gm = (462_550_000, 467_725_000)
     gmrs = at(fr, 2_000_000)
-    assert gmrs["text"][0] == "SURF GMRS 12.5k"
+    assert gmrs["text"][0] == title(S + "GMRS 12.5k")
     assert gmrs["text"][1].startswith("465.1375 ")          # mid-band, on the 12.5 kHz raster
     assert gmrs["text"][5] == labels(1000)                  # +-2.5 MHz
     assert at(fr, 4_000_000)["text"][5] == labels(400)      # 1: +-1 MHz
     assert at(fr, 4_000_000)["text"][1].startswith("465.1375 ")           # the middle stays
     assert at(fr, 6_000_000)["text"][5] == labels(1000)
     # five more: marine/WX, airband, 2m, 1.25m, 70cm
-    assert at(fr, 8_500_000)["text"][0] == "SURF 70cm 25k"
+    assert at(fr, 8_500_000)["text"][0] == title(S + "70cm 25k")
     assert at(fr, 8_500_000)["text"][1].startswith("440.0000 ")
 
 
@@ -427,7 +436,7 @@ def test_airband_listens_in_am_and_other_bands_in_fm():
     ret, said, regs, writes, lcd = go(sig, keys)
     fr = lcd["frames"]
     air = at(fr, 2_500_000)
-    assert air["text"][0] == "SURF AIR 25k" and air["text"][1].startswith("127.5000 ")
+    assert air["text"][0] == title(S + "AIR 25k", "AM") and air["text"][1].startswith("127.5000 ")
     assert at(fr, 4_000_000)["text"][1] == "127.5000 -80dBm RX"
     # AM (AF 7, AFC off) on the way in, FM (Aura's REG_73) on the way out; Aura's AM AGC left
     # out (REG_14 / 49: the RSSI never rose with it on 2026-11-06)
@@ -435,7 +444,7 @@ def test_airband_listens_in_am_and_other_bands_in_fm():
     assert 0x10 in writes_of(writes, 0x73)
     assert not {0x14, 0x49} & {r for r, _ in writes}
     two = at(fr, 6_500_000)
-    assert two["text"][0] == "SURF 2m 10k" and two["text"][1].startswith("146.0000 ")
+    assert two["text"][0] == title(S + "2m 10k") and two["text"][1].startswith("146.0000 ")
     assert regs[0x73] == 0 and regs[0x14] == 0x0019 and regs[0x49] == 0x2A38
     i = max(j for j, (r, v) in enumerate(writes) if v == 0x6740)
     assert writes_of(writes[i:], 0x73)[0] == 0                   # back to FM after airband
@@ -450,12 +459,12 @@ def test_key_4_cycles_fm_dsb_am_and_a_band_resets_it():
         + taps("4", 5_000_000) + taps("N", 6_000_000) + [(7_000_000, 7_300_000, "X")]
     ret, said, regs, writes, lcd = go(sig, keys, regs={0x3D: 0x2AAB})
     fr = lcd["frames"]
-    assert at(fr, 1_500_000)["text"][0] == "DSB 70cm 25k" and at(fr, 1_300_000)["text"][5] == "DSB"
-    assert at(fr, 2_500_000)["text"][0] == "AM 70cm 25k"
-    assert at(fr, 3_500_000)["text"][0] == "AM0 70cm 25k"         # the fixed gain after it
-    assert at(fr, 4_500_000)["text"][0] == "G0 70cm 25k"          # FM again: the band's own
-    assert at(fr, 5_500_000)["text"][0] == "DSB0 70cm 25k"
-    assert at(fr, 6_500_000)["text"][0].startswith("G0 GMRS")     # a new band: its demodulator
+    assert at(fr, 1_500_000)["text"][0] == title(S + "70cm 25k", "DSB") and at(fr, 1_300_000)["text"][5] == "DSB"
+    assert at(fr, 2_500_000)["text"][0] == title(S + "70cm 25k", "AM")
+    assert at(fr, 3_500_000)["text"][0] == title(S + "70cm 25k G0", "AM")   # the fixed gain
+    assert at(fr, 4_500_000)["text"][0] == title(S + "70cm 25k G0")         # FM again: the band's own
+    assert at(fr, 5_500_000)["text"][0] == title(S + "70cm 25k G0", "DSB")
+    assert at(fr, 6_500_000)["text"][0] == title(S + "GMRS 12.5k G0")      # a new band: its demodulator
     assert writes_of(writes, 0x3D) == [0, 0x2AAB, 0x2AAB, 0, 0x2AAB, 0x2AAB]   # (and at EXIT)
     i = writes.index((0x3D, 0))
     assert 0x10 in writes_of(writes[i:], 0x73)[:1]               # the AFC off with DSB
@@ -470,17 +479,17 @@ def test_step_key_cycles_the_steps_and_a_band_resets_it():
         + taps("#", 5_000_000) + taps("N", 6_000_000) + [(7_500_000, 7_800_000, "X")]
     ret, said, regs, writes, lcd = go([], keys)
     fr = lcd["frames"]
-    assert at(fr, 1_300_000)["text"][0] == "SURF 70cm 50k"
+    assert at(fr, 1_300_000)["text"][0] == title(S + "70cm 50k")
     assert at(fr, 1_300_000)["text"][5] == "step 50k"
-    assert at(fr, 4_000_000)["text"][0] == "SURF 70cm 1k"      # 100k, then round to 1k (Jeff 11-11)
-    assert at(fr, 5_300_000)["text"][0] == "SURF 70cm 5k"
+    assert at(fr, 4_000_000)["text"][0] == title(S + "70cm 1k")      # 100k, then round to 1k (Jeff 11-11)
+    assert at(fr, 5_300_000)["text"][0] == title(S + "70cm 5k")
     assert sels(said) == ["440.6500", "440.6510"]               # one 50 kHz step, one of 1 kHz
     keys = taps("#####", 1_000_000, gap=400_000) + taps("UM", 3_000_000) + [(4_000_000, 4_300_000, "X")]
     ret, said, regs, writes, lcd = go([], keys)
     assert sels(said) == ["440.60625"]                          # 6.25 kHz: five decimals
     assert at(lcd["frames"], 3_700_000)["text"][1].startswith("440.60625 ")
     gm = at(fr, 7_000_000)
-    assert gm["text"][0] == "SURF GMRS 12.5k"
+    assert gm["text"][0] == title(S + "GMRS 12.5k")
 
 
 @need_clang
@@ -499,10 +508,10 @@ def test_gain_keys_fix_the_gain_and_8_gives_back_the_agc():
     fr = lcd["frames"]
     assert writes_of(writes, 0x13)[:4] == [0x03FF, 0x03BE, 0x037E, 0x03BE]   # top, -7, -12, auto
     assert writes_of(writes, 0x7E)[:4] == [0xB02E, 0xB02E, 0xB02E, 0x302E]
-    assert at(fr, 1_300_000)["text"][0] == "G0 70cm 25k" and at(fr, 1_300_000)["text"][5] == "gain 0 dB"
-    assert at(fr, 2_600_000)["text"][0] == "G-12 70cm 25k"
-    assert at(fr, 3_300_000)["text"][0] == "SURF 70cm 25k" and at(fr, 3_300_000)["text"][5] == "gain auto"
-    assert at(fr, 4_300_000)["text"][0] == "G-7 70cm 25k"      # 7 from auto: just under the top
+    assert at(fr, 1_300_000)["text"][0] == title(S + "70cm 25k G0") and at(fr, 1_300_000)["text"][5] == "gain 0 dB"
+    assert at(fr, 2_600_000)["text"][0] == title(S + "70cm 25k G-12")
+    assert at(fr, 3_300_000)["text"][0] == title(S + "70cm 25k") and at(fr, 3_300_000)["text"][5] == "gain auto"
+    assert at(fr, 4_300_000)["text"][0] == title(S + "70cm 25k G-7")      # 7 from auto: just under the top
     assert regs[0x13] == 0x03BE and regs[0x7E] == 0x302E        # put back at EXIT
 
 
@@ -674,6 +683,64 @@ def test_after_band_a_busy_centre_still_gets_the_other_stations_carets_at_once()
 
 
 @need_clang
+def test_mar_wx_opens_on_the_weather_channels():
+    # Jeff 2026-11-12: on MAR/WX peaks took a long time to show. Its centre, 159.275 at +-1 MHz,
+    # had neither NOAA weather (162.400-162.550) nor most of marine on screen. BAND now opens it on
+    # 162.475, where the weather stations' carets come in the first sweeps; 5 goes back there
+    mar = (156_000_000, 162_550_000)
+    sig = [(162_400_000, -100, 0, FOREVER), (162_550_000, -95, 0, FOREVER)]
+    keys = taps("NN", 1_000_000, gap=400_000) + taps("DDD5", 6_000_000) + [(8_000_000, 8_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    fr = lcd["frames"]
+    assert at(fr, 2_000_000)["text"][0] == title(S + "MAR/WX 25k")
+    assert at(fr, 2_000_000)["text"][1].startswith("162.4750 ")
+    got = {}
+    for f in fr:
+        for hz in (162_400_000, 162_550_000):
+            b = bin_for(hz, 162_475_000, band=mar)        # (a bar two bins wide: its caret on either)
+            if hz not in got and f["us"] > 1_400_000 and {b - 1, b, b + 1} & set(carets(f)):
+                got[hz] = f["us"] - 1_400_000
+    assert set(got) == {162_400_000, 162_550_000} and max(got.values()) < 1_500_000, got
+    assert at(fr, 7_500_000)["text"][1].startswith("162.4750 ")
+
+
+@need_clang
+def test_title_has_the_surfer_and_the_mode_always_at_the_right():
+    # Jeff 2026-11-12: on airband 4 went "FM air", "DSB air", "SURF air": the band's own mode
+    # showed as SURF. Now a surfer glyph (rider F) starts the title and FM / AM / DSB always sits
+    # at the far right; MON is a speaker glyph (S2b). In the busiest title the gain drops its G
+    keys = taps("N", 1_000_000) + taps("*", 1_500_000) + taps("977", 2_000_000, gap=400_000) \
+        + taps("4", 3_400_000) + [(4_200_000, 4_500_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys)
+    fr = lcd["frames"]
+    assert at(fr, 500_000)["text"][0] == title(S + "70cm 25k")
+    busy = at(fr, 3_800_000)
+    assert busy["text"][0] == title(S + "GMRS 12.5k " + SPK + " -12", "DSB")
+    assert len(busy["glyphs"]) == 3
+    fb = k6_screen.render(busy)
+    rider = ["...##.", "...##.", ".####.", "#..#.#", "...#..", "..#.#.", ".#..##", ".####.", "##...."]
+    assert ["".join("#" if not fb[1 + r][x] else "." for x in range(6)) for r in range(9)] == rider
+    assert all(fb[r][6] for r in range(11))          # a lit column between him and the band's name
+    assert all(fb[r][x] for r in (0, 10) for x in range(6))    # the bar's own rows stay lit
+    x = 6 * 12                                       # the speaker's cell (13th), from a pixel left
+    spk = ["...#..", "...#.#", "..##..", "####.#", "####.#", "####.#", "..##..", "...#.#", "...#.."]
+    assert ["".join("#" if not fb[1 + r][x + c] else "." for c in range(6)) for r in range(9)] == spk
+
+
+@need_clang
+def test_title_on_an_image_before_level_9_is_plain_text():
+    # an image without lcd_glyphs (the emulator fails a call to it below level 9): '~' for the
+    # surfer, '*' for MON, '=' for HLD
+    keys = taps("*", 1_000_000) + taps("*0", 2_000_000) + [(3_000_000, 3_300_000, "X")]
+    ret, said, regs, writes, lcd = go([], keys, level=8)
+    fr = lcd["frames"]
+    assert at(fr, 500_000)["text"][0] == title("~70cm 25k")
+    assert at(fr, 1_500_000)["text"][0] == title("~70cm 25k *")
+    assert at(fr, 2_700_000)["text"][0] == title("~70cm 25k =")
+    assert all(not f["glyphs"] for f in fr)
+
+
+@need_clang
 def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
     # A/B cycles the fall: 1 min (the start), 5 min, 20 min, 15 s. At 15 s a full caret is down in
     # ~15 s, and then SIDE1 finds nothing
@@ -722,8 +789,8 @@ def test_monitor_opens_the_audio_without_a_signal():
     assert [v for _, v in spk][:3] == [0, 4, 0]
     assert 1_000_000 < spk[1][0] < 1_200_000 and 3_000_000 < spk[2][0] < 3_300_000
     fr = lcd["frames"]
-    assert at(fr, 2_000_000)["text"][0] == "SURF 70cm 25k MON"
-    assert at(fr, 3_400_000)["text"][0] == "SURF 70cm 25k"
+    assert at(fr, 2_000_000)["text"][0] == title(S + "70cm 25k " + SPK)
+    assert at(fr, 3_400_000)["text"][0] == title(S + "70cm 25k")
 
 
 @need_clang
