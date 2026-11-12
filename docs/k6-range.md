@@ -147,9 +147,13 @@ bursts. What the samples showed:
 Captures 27 and 29 are in tests/data/k6/ and the tests read them. `python3 -m modem.k6r dump
 LOG` lays each capture against the bench's own packets.
 
-**Run 3 (to come, rangerx_b).** The ladder with the new decoder and the de-emphasis off, the wav
-pre-emphasised (`python3 -m modem.k6r wav OUT.wav`, now the default). It should show packets
-decoding, and the first capture of each setting gives the chip's samples further down the ladder.
+**Run 3 (2026-11-12, 03:21-03:29Z, rangerx_b at 9de4228).** The new decoder with the
+de-emphasis off, the IC-7100 sending the pre-emphasised wav. 189 of 189 packets right with no
+channel errors, in all nine settings (13 to 23 packets each), RSSI readings from -20 down to
+-126 dBm. Every dumped capture after the first (settling noise) laid on the bench's packets with
+0 of 2064 bits wrong. The last settings read low because their gain is fixed low, not because the
+signal is weak: the ladder still leaves about 40 dB of S/N, so with no errors at all this run
+says nothing about the edge. That needs the IC-7100 on a dummy load or behind an attenuator.
 
 Keys in /mnt/project-files/k6-range/bench-keys.md. `python3 -m modem.k6r report k6.log` gives, per
 setting, packets, those right, channel errors and RSSI.
