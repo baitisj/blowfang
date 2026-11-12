@@ -386,6 +386,8 @@ pocsag_440     # level 2, pocsag on 440.850 for the bench: three settings of 60 
 pocdump        # level 2, what the plain FSK receiver hands over on POCSAG 1200/2400 (its own clock and a 4800 sampler), 440.850 bench, docs/k6-pocsag.md
 pocdump_1200   # level 2, pocsag on 440.850 saying every sampled word of six 1200 baud transmissions, for the host (receive only, docs/k6-pocsag.md)
 ramprobe
+rangerx        # level 2, PHY R: the range mode's receiver, coded 600/1200 Hz FFSK on the plain FSK receiver as a sampler, the radio's own frequency (receive only, docs/k6-range.md)
+rangerx_b      # level 2, rangerx for the bench: 440.850, 32 s wait, then nine 45 s settings of front-end path and gain (receive only, docs/k6-range.md)
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)
 rtls
