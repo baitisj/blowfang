@@ -642,6 +642,38 @@ def test_a_station_that_opens_the_squelch_on_the_bar_gets_its_caret_at_once():
 
 
 @need_clang
+def test_a_station_that_pulses_gets_its_caret_from_the_sweep_that_heard_it():
+    # Jeff 2026-11-12: an FSK station on 464.495 (0.3 s bursts about once a second; -87 dBm on a
+    # burst, 38 dB over the floor) never got a caret. Its one settled read came after the sweep,
+    # 0.1-2.5 s after the sweep heard it, between bursts every time. Now the sweep reads a rising
+    # bin settled at once, while the burst is still on: a lens bin, and a wide bin at its first
+    # sub-read that rises. Bursts one channel up (just past the lens) and 400 kHz up (a wide bin),
+    # the middle quiet so surf sweeps on; then SIDE1 goes there (main's surf.c: "no peak")
+    for f0 in (440_625_000, 441_000_000):
+        sig = [(f0, -85, t, t + 300_000) for t in range(1_000_000, 12_000_000, 1_000_000)]
+        keys = taps("AM", 10_000_000, gap=600_000) + [(12_000_000, 12_300_000, "X")]
+        ret, said, regs, writes, lcd = go(sig, keys)
+        assert bin_for(f0, 440_600_000) in carets(at(lcd["frames"], 9_500_000)), f0
+        assert sels(said) == [f"{f0 / 1e6:.4f}"]
+        assert lcd["st"]["stack"] <= 600, lcd["st"]["stack"]
+
+
+@need_clang
+def test_after_band_a_busy_centre_still_gets_the_other_stations_carets_at_once():
+    # Jeff 2026-11-12: after BAND no carets came until UP / DOWN. With the new band's centre busy,
+    # surf parked on it before any whole sweep, and the first refresh came 5 s on. Now a window
+    # with no whole sweep yet sweeps at once (from 70 cm to GMRS; 466.000 is the other station)
+    gmrs = (462_550_000, 467_725_000)
+    sig = [(465_137_500, -80, 0, FOREVER), (466_000_000, -85, 0, FOREVER)]
+    ret, said, regs, writes, lcd = go(sig, taps("N", 1_000_000) + [(5_000_000, 5_300_000, "X")])
+    fr = lcd["frames"]
+    assert at(fr, 2_500_000)["text"][1] == "465.1375 -80dBm RX"
+    b = bin_for(466_000_000, 465_137_500, span=1000, band=gmrs)
+    t = next(f["us"] for f in fr if f["us"] > 1_000_000 and b in carets(f))
+    assert t - 1_000_000 < 2_500_000, t
+
+
+@need_clang
 def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
     # A/B cycles the fall: 1 min (the start), 5 min, 20 min, 15 s. At 15 s a full caret is down in
     # ~15 s, and then SIDE1 finds nothing

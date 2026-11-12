@@ -83,7 +83,15 @@ station further off.
 A settled read SQ_DB over the floor on the bar's own channel (the squelch opening on it, or a
 parked read, monitor too) also confirms: its caret turns good at once, or a new one starts there.
 Jeff's 464.500 (2026-11-11) played on the bar with a tall bar and never got a caret; its one
-confirm read had landed between overs. A peak matches a caret
+confirm read had landed between overs.
+The confirm read is taken in the sweep itself when it can be: a lens bin (or any one-read bin)
+whose quick read rises to a peak, with no confirmed caret there yet, is read again settled on the
+spot (9 ms more, 4 a sweep at most), and that read decides. A read after the sweep came 0.1 to
+2.5 s after the sweep heard the peak, so a station that pulses was always off by then (Jeff,
+2026-11-12: an FSK station on 464.495, 0.3 s bursts about once a second, -87 dBm on a burst,
+never got a caret). A wide outer bin does the same at its first sub-read that rises to a peak,
+once a bin. In the emulator, with bursts like that at six places from one channel to 900 kHz
+out: main got 4 of 24 runs, confirming in the lens only 17, every bin 23. A peak matches a caret
 within half the wider of the two bins (or half a channel); a finer bin moves the caret to its
 frequency, and a carrier's flat top in the lens counts at its middle. A side key's jump puts the
 caret on the channel it lands on. A caret that would sit inside its own bar rides on top of it.
@@ -154,8 +162,15 @@ about 59% of the way in dB from the -173 dBm restart (explorer Phase 0), so the 
 relative. The floor is the quartile of the window's bins, one pixel is about 1.1 quick dB, and
 a bar rises at once but falls at most 3 dB a sweep. A peak is a local maximum 6 quick dB over
 the floor. The squelch and line 1 use settled reads against a settled floor: the second lowest
-of 8 bins' settled reads, measured when the window changes and every 30 s of sweeping. A
-quieter read of the bar lowers it. The AGC is left alone, because freezing the gain, as `dmrdet`
+of 8 bins' settled reads, measured when the window changes, again at the end of a new band's
+first sweep (reads right after the big retune may not have settled: Jeff, 2026-11-12, no carets
+after BAND until UP / DOWN), and every 30 s of sweeping. A quieter read of the bar lowers it. (Moving
+off a strong signal, the AGC comes back up and the band fills with small peaks: Jeff,
+2026-11-12, "we would expect to see more activity on a band than nothing". That's the band as
+it is, and stays.) When the squelch opens on a window that has had no whole sweep yet
+(BAND, the start), the first refresh sweep comes at once rather than 5 s later, so the band's
+other stations get their carets while the centre plays (Jeff, 2026-11-12: no carets after BAND
+until UP / DOWN). The AGC is left alone, because freezing the gain, as `dmrdet`
 does, shifts RSSI by up to 15 dB.
 
 **Speed (estimated from the emulator and Phase 0's ~0.9 ms tune).** A read costs about 3.9 ms.

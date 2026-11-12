@@ -273,6 +273,9 @@ typedef struct {
   uint16_t sq[4];               /* monitor: the chip's squelch (SQ_REGS) as Aura had it */
   uint8_t lvl[NB];              /* bars: quick reads, dBm + 174, 0 unknown */
   uint32_t heard[2];            /* bins whose last read held their bar up (not a bar falling) */
+  uint8_t cf[NB];               /* this sweep: a bin's settled read right after its quick read rose
+                                   to a peak, dBm + 174 (0 none) */
+  uint8_t ncf;                  /* such reads left this sweep */
   char ln[40];
   char msg[22];                 /* line 5 for MSG_MS after a key: "no peak", "gain -12 dB" */
   uint32_t khz[NK];             /* the repeater table's valid entries: rx_hz, and their slots */
@@ -580,6 +583,7 @@ static void recentre(sf_t *s, uint32_t hz) {
   if (s->cen > b->hi) s->cen -= s->ch;
   for (i = 0; i < NV; i++) {
     uint32_t o = L_HZ * s->off[dist(i)], f = i < C ? s->cen - o : s->cen + o;
+    s->cf[i] = 0;                       /* (the old scale's reads are not these bins') */
     old[i] = s->pk[i];
     lv[i] = s->lvl[i];
     s->hz[i] = s->pk[i] = f >= b->lo && f <= b->hi ? f : 0;
@@ -606,6 +610,9 @@ static void window(sf_t *s, uint32_t hz) {
   s->full = 0;
   s->refine = 0;
   measure_sfl(s);
+  s->t_sfl = s->t_sfl - SFL_MS;        /* and again after the first sweep: reads right after a
+                                         new band's big retune may not have settled (Jeff,
+                                         2026-11-12: no carets after BAND until UP / DOWN) */
   moved(s);
 }
 
@@ -641,7 +648,7 @@ static uint32_t raster(sf_t *s, uint32_t f) {
    on -103 to -122 dBm quick-read bumps without it), NCONF a sweep at most; a peak that fails
    is kept BAD so it isn't read again until its caret falls */
 static void pm_push(sf_t *s) {
-  int i, k, conf = NCONF;
+  int i, k, c, conf = NCONF;
   for (i = 0; i < NV; i++) {
     uint32_t f, w, t, d, bd = ~0u;
     pm_t *e, *b = 0, *lo = s->pm;
@@ -651,6 +658,8 @@ static void pm_push(sf_t *s) {
     while (a > C - KI && z <= C + KI && s->lvl[a - 1] + 2 >= s->lvl[i]) a--;
     while (z < C + KI && a >= C - KI && s->lvl[z + 1] + 2 >= s->lvl[i]) z++;
     f = (s->pk[a] + s->pk[z]) >> 1;
+    for (c = 0, k = a; k <= z; k++)
+      if (s->cf[k] > c) c = s->cf[k];
     /* how well it knows where: a bin's width, but a wide bin's loudest read is one of reads
        SUB_HZ apart across it, so never coarser than that (matching on a wide bin's whole width,
        hundreds of kHz at +-2.5 MHz, gave 463.950 to the caret of 463.6375 next to it: the side
@@ -674,16 +683,26 @@ static void pm_push(sf_t *s) {
       }
       /* unconfirmed: a bump, or a station that had just unkeyed at its read (Jeff, 2026-11-11:
          a -75 dBm one got no caret); read again once NBAD sweeps have heard it */
+      if (c - 174 >= s->sfl + SQ_DB) {  /* the sweep's own settled read caught it on */
+        b->bad = 0;
+        if (w <= b->w) b->f = f, b->w = (uint16_t)w;
+        continue;
+      }
       if (--b->bad) continue;
       b->bad = 1;                      /* (due: if no read is left this sweep, the next one) */
       lo = b;
     }
-    if (!s->npm || !conf || s->qk) continue;
-    conf--;
-    /* (at its loudest read, not its channel: a wide bin's reads are SUB_HZ apart, and its channel
-       can be 12.5 kHz from the station, off the wide filter's edge) */
-    d = (uint32_t)read_hz(s, f, CHECK_US);
-    s->tuned = 0;
+    if (!s->npm) continue;
+    if (c) {
+      d = (uint32_t)(c - 174);          /* read in the sweep, while it was on */
+    } else {
+      if (!conf || s->qk) continue;
+      conf--;
+      /* (at its loudest read, not its channel: a wide bin's reads are SUB_HZ apart, and its
+         channel can be 12.5 kHz from the station, off the wide filter's edge) */
+      d = (uint32_t)read_hz(s, f, CHECK_US);
+      s->tuned = 0;
+    }
     lo->f = f;
     lo->w = (uint16_t)w;
     lo->h = PUSH;
@@ -717,6 +736,22 @@ static void pm_heard(sf_t *s) {
   }
   b->bad = 0;
   if (b->h < PUSH) b->h = PUSH;
+}
+
+/* 1 if a confirmed caret already covers f (no settled read needed for it) */
+static int pm_good(sf_t *s, uint32_t f) {
+  pm_t *e;
+  uint32_t d, t;
+  int k;
+  for (k = 0; k < s->npm; k++) {
+    e = &s->pm[k];
+    if (!e->h || e->bad) continue;
+    d = e->f > f ? e->f - f : f - e->f;
+    t = L_HZ * e->w;
+    if (t < s->ch) t = s->ch;
+    if (2 * d <= t) return 1;
+  }
+  return 0;
 }
 
 /* the carets fall one 1/8 px every FALL_MS (time, not sweeps: a sweep takes 0.1 to 2.5 s) */
@@ -853,17 +888,44 @@ static void on_key(sf_t *s, int k) {
 
 /* ---- sweeping ---- */
 
+/* a quick read r (dBm) at f, where the bin had o, rose to a new peak with no confirmed caret: a
+   settled read is due here and now (one of NCONF a sweep): wait for it, 1. One after the sweep
+   (0.1-2.5 s later) missed a station that pulses, and its caret never came (Jeff, 2026-11-12:
+   a peak at +20 kHz). After a move a bin's level is lent from the old scale: any rise counts */
+static int conf_now(sf_t *s, int r, int o, uint32_t f) {
+  r += 174;
+  if (!s->full || !s->ncf || r < s->qfl + PEAK_DB || (r + DECAY_DB <= o && !s->stale) || pm_good(s, f))
+    return 0;
+  s->ncf--;
+  s->api->delay_us(CHECK_US - SETTLE_US);
+  return 1;
+}
+
 /* bin i's quick level: the loudest of reads SUB_HZ apart across its range (the wide filter's
    width: a coarse bin far out would miss a carrier between two bins), and where it was */
 static void sweep_bin(sf_t *s, int i) {
   uint32_t lo, hi, f, at = s->hz[i];
   int r, o = s->lvl[i], v;
   cov(s, i, &lo, &hi);
+  s->cf[i] = 0;
   if (hi - lo <= SUB_HZ) {                 /* the lens and bins up to 20 kHz wide: one read */
     r = read_at(s, i, SETTLE_US);
+    /* a new peak's settled read, here and now: one after the sweep (0.1-2.5 s later) misses a
+       station that pulses, and its caret never came (Jeff, 2026-11-12: a peak at +20 kHz) */
+    if (conf_now(s, r, o, at)) {
+      v = dbm(s) + 174;
+      s->cf[i] = (uint8_t)(v < 1 ? 1 : v);
+    }
   } else {
     for (r = -999, f = lo + SUB_HZ / 2; f < hi && !s->qk; f += SUB_HZ)
-      if (f >= s->bd->lo && f <= s->bd->hi && (v = read_hz(s, f, SETTLE_US)) > r) r = v, at = f;
+      if (f >= s->bd->lo && f <= s->bd->hi && (v = read_hz(s, f, SETTLE_US)) > r) {
+        r = v, at = f;
+        /* the same for a wide bin: at its first sub-read that rises to a peak, once a bin */
+        if (!s->cf[i] && conf_now(s, r, o, f)) {
+          v = dbm(s) + 174;
+          s->cf[i] = (uint8_t)(v < 1 ? 1 : v);
+        }
+      }
     if (s->qk) return;                     /* a key came: it goes first (the bin keeps its bar) */
     if (r == -999) r = read_at(s, i, SETTLE_US);
   }
@@ -919,6 +981,7 @@ static void sweep_done(sf_t *s) {
   s->stale = 0;
   floor_q(s);
   pm_push(s);
+  s->ncf = NCONF;
   if (s->refine) refine_lens(s);
 }
 
@@ -945,6 +1008,9 @@ static void check_bar(sf_t *s) {
     s->stale = 0;
     s->parked = 1;
     s->t_open = s->t_full = s->api->ms();
+    /* no whole sweep yet on this window (BAND, the start): one now, not 5 s on, so the band's
+       other stations get their carets while this one plays (Jeff, 2026-11-12) */
+    if (!s->full) s->t_full -= REFRESH_MS;
     audio(s, 1);
     pm_heard(s);
   }
