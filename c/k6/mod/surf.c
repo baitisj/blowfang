@@ -124,6 +124,7 @@
 #define SFL_MS 30000            /* settled floor re-measured this often while sweeping */
 #define FLUSH_MS 200            /* the screen (each flush ~20-40 ms) */
 #define PEAK_DB 6               /* a peak: quick dB over the floor */
+#define FLOOR_STEP_DB 3         /* a settled read may lower the floor this far at once */
 #define DECAY_DB 3
 #define MSG_MS 1500
 #define WIDE 1
@@ -610,6 +611,9 @@ static void window(sf_t *s, uint32_t hz) {
   s->full = 0;
   s->refine = 0;
   measure_sfl(s);
+  s->t_sfl = s->t_sfl - SFL_MS;        /* and again after the first sweep: reads right after a
+                                         new band's big retune may not have settled (Jeff,
+                                         2026-11-12: no carets after BAND until UP / DOWN) */
   moved(s);
 }
 
@@ -885,6 +889,19 @@ static void on_key(sf_t *s, int k) {
 
 /* ---- sweeping ---- */
 
+/* a quick read r (dBm) at f, where the bin had o, rose to a new peak with no confirmed caret: a
+   settled read is due here and now (one of NCONF a sweep): wait for it, 1. One after the sweep
+   (0.1-2.5 s later) missed a station that pulses, and its caret never came (Jeff, 2026-11-12:
+   a peak at +20 kHz). After a move a bin's level is lent from the old scale: any rise counts */
+static int conf_now(sf_t *s, int r, int o, uint32_t f) {
+  r += 174;
+  if (!s->full || !s->ncf || r < s->qfl + PEAK_DB || (r + DECAY_DB <= o && !s->stale) || pm_good(s, f))
+    return 0;
+  s->ncf--;
+  s->api->delay_us(CHECK_US - SETTLE_US);
+  return 1;
+}
+
 /* bin i's quick level: the loudest of reads SUB_HZ apart across its range (the wide filter's
    width: a coarse bin far out would miss a carrier between two bins), and where it was */
 static void sweep_bin(sf_t *s, int i) {
@@ -896,15 +913,20 @@ static void sweep_bin(sf_t *s, int i) {
     r = read_at(s, i, SETTLE_US);
     /* a new peak's settled read, here and now: one after the sweep (0.1-2.5 s later) misses a
        station that pulses, and its caret never came (Jeff, 2026-11-12: a peak at +20 kHz) */
-    if (s->full && s->ncf && r + 174 >= s->qfl + PEAK_DB && r + 174 + DECAY_DB > o && !pm_good(s, at)) {
-      s->ncf--;
-      s->api->delay_us(CHECK_US - SETTLE_US);
+    if (conf_now(s, r, o, at)) {
       v = dbm(s) + 174;
       s->cf[i] = (uint8_t)(v < 1 ? 1 : v);
     }
   } else {
     for (r = -999, f = lo + SUB_HZ / 2; f < hi && !s->qk; f += SUB_HZ)
-      if (f >= s->bd->lo && f <= s->bd->hi && (v = read_hz(s, f, SETTLE_US)) > r) r = v, at = f;
+      if (f >= s->bd->lo && f <= s->bd->hi && (v = read_hz(s, f, SETTLE_US)) > r) {
+        r = v, at = f;
+        /* the same for a wide bin: at its first sub-read that rises to a peak, once a bin */
+        if (!s->cf[i] && conf_now(s, r, o, f)) {
+          v = dbm(s) + 174;
+          s->cf[i] = (uint8_t)(v < 1 ? 1 : v);
+        }
+      }
     if (s->qk) return;                     /* a key came: it goes first (the bin keeps its bar) */
     if (r == -999) r = read_at(s, i, SETTLE_US);
   }
@@ -971,7 +993,14 @@ static void check_bar(sf_t *s) {
   s->t_chk = s->api->ms();
   d = s->sel_dbm = read_at(s, C, CHECK_US);
   s->tuned = 1;
-  if (d < s->sfl) s->sfl = d;
+  /* a read a little under the floor is the floor; one far under it is measured again at the
+     sweep's end instead. Right after the bar leaves a strong signal the receiver's AGC is still
+     turned down, and a floor dragged down by such a read let noise pass the confirm once the
+     gain came back: carets everywhere (Jeff, 2026-11-12) */
+  if (d < s->sfl) {
+    if (d >= s->sfl - FLOOR_STEP_DB) s->sfl = d;
+    else s->t_sfl = s->t_chk - SFL_MS;
+  }
   /* a signal there, or a jump to refine (it may have landed a channel off its station): the lens
      first (17 single reads, ~0.1 s), for the refine and the station's shape. Parking, the rest
      keeps the levels the old scale lent it until the first refresh (a whole sweep here held the

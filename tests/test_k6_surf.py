@@ -643,17 +643,19 @@ def test_a_station_that_opens_the_squelch_on_the_bar_gets_its_caret_at_once():
 
 @need_clang
 def test_a_station_that_pulses_gets_its_caret_from_the_sweep_that_heard_it():
-    # Jeff 2026-11-12: a peak about 20 kHz up kept pulsing and never got a caret. Its one settled
-    # read came after the sweep (0.1-2.5 s after the sweep heard it), between pulses, every time.
-    # Now the sweep reads a rising bin settled at once, while the pulse is still on. Here: 120 ms
-    # bursts every 1.1 s one channel up (just past the lens), the middle quiet, so surf sweeps on;
-    # then SIDE1 goes there (main's surf.c: no caret, "no peak")
-    sig = [(440_625_000, -85, t, t + 120_000) for t in range(1_000_000, 12_000_000, 1_100_000)]
-    keys = taps("AM", 10_000_000, gap=600_000) + [(12_000_000, 12_300_000, "X")]
-    ret, said, regs, writes, lcd = go(sig, keys)
-    assert bin_for(440_625_000, 440_600_000) in carets(at(lcd["frames"], 9_900_000))
-    assert sels(said) == ["440.6250"]
-    assert lcd["st"]["stack"] <= 600, lcd["st"]["stack"]
+    # Jeff 2026-11-12: an FSK station on 464.495 (0.3 s bursts about once a second; -87 dBm on a
+    # burst, 38 dB over the floor) never got a caret. Its one settled read came after the sweep,
+    # 0.1-2.5 s after the sweep heard it, between bursts every time. Now the sweep reads a rising
+    # bin settled at once, while the burst is still on: a lens bin, and a wide bin at its first
+    # sub-read that rises. Bursts one channel up (just past the lens) and 400 kHz up (a wide bin),
+    # the middle quiet so surf sweeps on; then SIDE1 goes there (main's surf.c: "no peak")
+    for f0 in (440_625_000, 441_000_000):
+        sig = [(f0, -85, t, t + 300_000) for t in range(1_000_000, 12_000_000, 1_000_000)]
+        keys = taps("AM", 10_000_000, gap=600_000) + [(12_000_000, 12_300_000, "X")]
+        ret, said, regs, writes, lcd = go(sig, keys)
+        assert bin_for(f0, 440_600_000) in carets(at(lcd["frames"], 9_500_000)), f0
+        assert sels(said) == [f"{f0 / 1e6:.4f}"]
+        assert lcd["st"]["stack"] <= 600, lcd["st"]["stack"]
 
 
 @need_clang
