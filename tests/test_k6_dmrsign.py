@@ -239,3 +239,39 @@ def test_dfskcap_dmr4_is_dmr3_in_blocks():
         d3 = dict(ln.split()[1:3] for ln in f if ln.startswith("#define ") and len(ln.split()) == 3)
     assert d4.pop("DFSK_BLOCK") == "144u" and d4.pop("DFSK_ROUNDS") == "1296u" and d3.pop("DFSK_ROUNDS") == "280u"
     assert d4 == d3 and 144 * 8 * 0.8 > 903 + 15
+
+
+def test_report_reads_run_m():
+    """three of run M's seventeen key-ups (2026-11-11/12, docs/k6-dmr.md), one of each kind of
+    block, with four rounds of quiet before each for the floors: 22:44:06Z (kind 0, tuned at
+    every setting), 00:30:17Z (kind 1, not tuned) and 23:14:32Z (kind 2, not tuned, the AFC
+    on). The report keeps the kinds apart; the sync is found in every kind at every gain but
+    the weakest of kind 0, and the gain's floor is the same whatever the kind"""
+    import gzip
+    import re
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "k6", "dfskcap-dmr4-runM-20261111.log.gz")
+    with gzip.open(path, "rt") as f:
+        lines = f.read().splitlines()
+    assert len(lines) == 809 and lines[0].endswith("dfskcap start hz=440925000 n=8")
+    assert lines[-1].endswith("dfskcap end n=1025")
+    rep = [ln for ln in dmrsign.report(lines) if ln.startswith("dmr")]
+    assert [ln.split(":")[0] for ln in rep] == [f"dmr{fe} sy=9b4d cfg=00e9 g={G13B[fe]} bk={k}"
+                                                for fe in range(8) for k in range(3)], rep
+    tot, floor = {}, {}
+    for ln in rep:
+        k, fe = int(ln.split(" bk=")[1][0]), int(ln[3])
+        sy, car = re.search(r"syncs (\d+) whole, (\d+) short", ln), re.search(r"carrier in (\d+) slots, a sync in (\d+)", ln)
+        t = tot.setdefault(k, [0, 0, 0, 0])
+        for i, x in enumerate(sy.groups() + car.groups()):
+            t[i] += int(x)
+        floor.setdefault(fe, []).append(int(ln.split("; floor ")[1].split(";")[0]))
+    # sync fields whole and short, slots with a carrier, those with a sync
+    assert tot == {0: [47, 33, 13, 8], 1: [58, 45, 8, 8], 2: [75, 36, 9, 9]}, tot
+    assert all(max(f) - min(f) <= 2 for f in floor.values()), floor
+    assert [min(f) for f in floor.values()] == [-125, -156, -156, -156, -150, -147, -146, -155], floor
+    assert rep[21] == ("dmr7 sy=9b4d cfg=00e9 g=0004 bk=0: 7 slots, 1 captures (1536 signs), 0 with a sync inside; "
+                       "syncs 0 whole, 0 short; slot peaks -153 to -144; floor -154; carrier in 1 slots, a sync in 0, "
+                       "none in 1 (peaks -144 to -144)")
+    assert rep[23] == ("dmr7 sy=9b4d cfg=00e9 g=0004 bk=2: 7 slots, 4 captures (5184 signs), 2 with a sync inside; "
+                       "syncs 4 whole, 3 short; RSSI -143 to -142; slot peaks -154 to -144; floor -155; "
+                       "carrier in 1 slots, a sync in 1 (peaks -144 to -144)")

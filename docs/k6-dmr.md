@@ -696,6 +696,9 @@ bursts" is the sync fields found (whole and short) over the signs captured in th
 - No key-up fell in the first two minutes of a kind 1 or kind 2 block but the long call, so
   nothing had to be counted apart.
 - The numbers are small: three or four key-ups a kind, one repeater, one evening.
+- Three of the key-ups, one of each kind, with the quiet rounds before them, are in
+  `tests/data/k6/dfskcap-dmr4-runM-20261111.log.gz` (the whole log, 2.5 MB of lines, is on
+  hamlet under `~/blowfang-work/runs/dmr-M-20261111/`).
 
 ## Bench plan (receive only; done, kept for reruns)
 
