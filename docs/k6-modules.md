@@ -238,6 +238,22 @@ them only on 8 or more; `clkget` (level 8) says the clock. The emulator
 (`tests/k6_live_emu.py`) keeps the same clock: set `Emu.clock` to start with one, and
 `Emu.clock_sets` records each call.
 
+## API level 9: a module's own glyphs
+
+Added 2026-11-12, for surf's title (Jeff picked a surfer and a speaker from mock-ups,
+`/mnt/project-files/k6-surf/`). `lcd_glyphs(cols, n)` points the firmware at n (at most 8)
+glyphs of 6 16-bit columns each in the module's memory, like `lcd_wf`'s rows: valid until the
+module returns or calls again, and n 0 takes them away. A text line's byte `0x80 + k` then
+draws glyph k in that character's cell. Column c lands at x = 6 * cell + c, starting one pixel
+left of the cell, so a glyph in cell 0 starts at the screen's edge and keeps a lit column before
+the next character. Bit r is row y - 8 + r of a line whose baseline is y (bits 0-9; on the
+title bar, rows 1-10). The glyph is drawn in the line's ink over an empty cell. Older images
+show `?` for those bytes, so a module reads `api->level` and writes plain text below 9. surf
+writes `~` for the surfer, `*` for MON and `=` for HLD there. Both the embedded-graphics
+screen (`draw_mod_screen`) and the paged one (`draw_mod_page`) draw them. The cost is about
+200 B of flash and 8 B of RAM. The emulator (`tests/test_k6_i2s.py`) records each frame's
+glyphs, and `tools/k6_screen.py` draws them.
+
 ## The SPI module library
 
 Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).
