@@ -12,12 +12,17 @@
 #                                                 the I2S probe image (i2sprobe.h): PAGER mode
 #                                                 receives while idle and runs the probe, its
 #                                                 lines to USB serial; out/*_i2sprobe*
+#   BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh
+#                                                 the range image: PAGER mode's PTT sends the
+#                                                 message as PHY R (docs/k6-range.md: coded
+#                                                 600/1200 Hz FFSK at 1200 baud, for the K6's
+#                                                 rangerx); out/*_range*
 #
 # Steps: a fresh clone of OpenRTX at the commit the patch was written against (into
 # firmware/uv380-openrtx/build/openrtx, which this script owns and deletes), git apply
 # uv380-blowfang.patch, copy blowfang's portable transmitter (c/common: pager_tx, ffsk_tx,
-# cw_tx), blowfang_message.h and the fixed-point sotto 1200 decoder (the sotto submodule, with
-# the wrappers in sotto8k/) into openrtx/src/blowfang, then meson.
+# range_tx, cw_tx), blowfang_message.h and the fixed-point sotto 1200 decoder (the sotto
+# submodule, with the wrappers in sotto8k/) into openrtx/src/blowfang, then meson.
 #
 # Needs: what OpenRTX's own build needs (openrtx.org, compiling.md). The radio build uses
 # OpenRTX's arm-miosix-eabi toolchain; CI runs it in OpenRTX's published devcontainer image.
@@ -48,6 +53,8 @@ pager_tx.c
 pager_tx.h
 ffsk_tx.c
 ffsk_tx.h
+range_tx.c
+range_tx.h
 cw_tx.c
 cw_tx.h
 EOF
@@ -64,6 +71,10 @@ SUFFIX=
   if [ "${BLOWFANG_I2SPROBE:-0}" = 1 ]; then
     echo "#define BLOWFANG_I2SPROBE 1"
     SUFFIX=_i2sprobe
+  fi
+  if [ "${BLOWFANG_RANGE:-0}" = 1 ]; then
+    echo "#define BLOWFANG_RANGE 1"
+    SUFFIX=${SUFFIX}_range
   fi
 } > "$WORK/openrtx/src/blowfang/blowfang_config.h"
 

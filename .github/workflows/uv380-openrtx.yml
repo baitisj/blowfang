@@ -28,6 +28,9 @@ jobs:
       # the I2S probe image (firmware/uv380-openrtx/i2sprobe.h): out/*_i2sprobe*
       - name: build (mduv3x0, I2S probe)
         run: BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh mduv3x0
+      # the range image (docs/k6-range.md): PTT sends PHY R; out/*_range*
+      - name: build (mduv3x0, range)
+        run: BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh mduv3x0
       - uses: actions/upload-artifact@v4
         with:
           name: uv380-openrtx-image
@@ -56,6 +59,8 @@ jobs:
             codec2
       - name: build (linux emulator)
         run: sh firmware/uv380-openrtx/build.sh linux
+      - name: build (linux emulator, range)
+        run: BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh linux
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

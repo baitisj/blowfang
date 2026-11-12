@@ -110,7 +110,9 @@ ffsk_init_src(&m, rg_air_next, &a, fs, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ, level);
 ```
 
 UV-380 settings: 1200 baud, mark 600 Hz, space 1200 Hz, the same level and path as its pager mode
-(MCU PWM into the C6000's line input, then FM). `range_tx_host tones|audio` writes what it sends
+(MCU PWM into the C6000's line input, then FM). The UV-380 range image
+(`BLOWFANG_RANGE=1 firmware/uv380-openrtx/build.sh`, firmware/uv380-openrtx/README.md) sends
+the stored message this way on PTT. `range_tx_host tones|audio` writes what it sends
 for the tests. For the IC-7100 bench, `python3 -m modem.k6r wav OUT.wav` writes bursts of six
 packets for 440 s, pre-emphasised as the UV-380 sends them (`--preemph off` or `alt` otherwise).
 
