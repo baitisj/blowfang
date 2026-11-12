@@ -1016,6 +1016,9 @@ static void check_bar(sf_t *s) {
     s->stale = 0;
     s->parked = 1;
     s->t_open = s->t_full = s->api->ms();
+    /* no whole sweep yet on this window (BAND, the start): one now, not 5 s on, so the band's
+       other stations get their carets while this one plays (Jeff, 2026-11-12) */
+    if (!s->full) s->t_full -= REFRESH_MS;
     audio(s, 1);
     pm_heard(s);
   }

@@ -168,7 +168,10 @@ after BAND until UP / DOWN), and every 30 s of sweeping. A read of the bar up to
 lowers it; one quieter still has the floor measured again at the sweep's end instead. Right
 after the bar leaves a strong signal the AGC is still turned down, and a floor dragged down by
 such a read let plain noise pass the confirm once the gain came back (Jeff, 2026-11-12: little
-peaks everywhere after moving off a strong one). The AGC is left alone, because freezing the gain, as `dmrdet`
+peaks everywhere after moving off a strong one). When the squelch opens on a window that has had no whole sweep yet
+(BAND, the start), the first refresh sweep comes at once rather than 5 s later, so the band's
+other stations get their carets while the centre plays (Jeff, 2026-11-12: no carets after BAND
+until UP / DOWN). The AGC is left alone, because freezing the gain, as `dmrdet`
 does, shifts RSSI by up to 15 dB.
 
 **Speed (estimated from the emulator and Phase 0's ~0.9 ms tune).** A read costs about 3.9 ms.
