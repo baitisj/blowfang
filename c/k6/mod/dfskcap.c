@@ -228,6 +228,12 @@
    The gain is still written at every setting, and two of run L's strong steps give way to
    the mixer's two between 001F and 0007. python3 -m modem.dmrsign LOG gives a line a gain
    and kind.
+   Run M (2026-11-11/12, seventeen key-ups): no. Kind 1 read no further down than kind 0 (61
+   and 52% of the bursts over all gains), so the edge stands: two thirds of the sync fields
+   at 26 dB or more over the floor, half at 17 dB, a quarter at 11 dB. With the AFC on more
+   slots started (39 of 43 against 60 of 76) and more sync fields came whole (72% against 54
+   to 59%): the dropped sign has to do with where the signal sits against the slicer. The
+   gain takes hold without a tuning.
    A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.

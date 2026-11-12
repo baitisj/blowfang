@@ -2,7 +2,7 @@
 
 - From: the APRS sensitivity thread, 2026-11-11, reading the POCSAG thread's runs 4 to 8
   ([k6-pocsag.md](../k6-pocsag.md)) against the other decoders at Jeff's asking. The control
-  run is built (`c/k6/mod/dfskcap_dmr4.c`, [k6-dmr.md](../k6-dmr.md), run M) and not yet run.
+  run for DMR is done (`c/k6/mod/dfskcap_dmr4.c`, [k6-dmr.md](../k6-dmr.md), run M).
 - `api->tune` restarts the receiver. After one, the POCSAG sampler read noisy bits for a
   minute or two, and far fewer when the module left the tuning out because the radio was on
   the frequency already (`api->rx_hz()` and REG_43, as `pocsag.c` asks). Three things follow
@@ -12,7 +12,10 @@
   - Settings tried one after another are not alike in those minutes. Say the first again at
     the end, or go round the table more than once.
   - A table that tunes at every setting (`dfskcap.c` does) measures the receiver just after a
-    restart every time. Run L's weak steps for DMR were all taken so.
+    restart every time. Run L's weak steps for DMR were all taken so. Run M says it did them
+    no harm: with the AFC off the plain receiver reads DMR's sync as well half a second
+    after a restart as a quarter of an hour after. So what POCSAG saw is likely the AFC's
+    pull or the sampler's own need, not the restart by itself.
 - The chip's AFC (REG_73 bit 4 = off; it takes hold at the next tuning) has two right answers:
   - **On** for a decoder that slices the chip's own discriminator at the tuned centre, when
     there is a steady carrier for it to pull in (the POCSAG sampler found nothing with it
@@ -20,8 +23,12 @@
     bench's settled state does not exist on the air.
   - **Off** for a decoder that does its own frequency sums on the IF tap (`gp0rx.h`: FT8,
     WSPR, ifcal), where the pull shows as drift. The softmodem read the same either way.
-  - Not explained: DMR's sync is found with the AFC off and a restart every 0.8 s (runs K and
-    L), POCSAG's preamble is not, and the two radios of that bench are only 145 Hz apart.
+  - Not explained: DMR's sync is found with the AFC off and a restart every 0.8 s (runs K, L
+    and M), POCSAG's preamble is not, and the two radios of that bench are only 145 Hz apart.
+    A lead from run M: with the AFC on more of DMR's sync fields come whole (72% against 54
+    to 59%, 83% in a call long enough for the AFC to settle), so where the signal sits
+    against the slicer does change what the chip's clock makes of it, and a sampler that
+    needs every bit four samples long would feel that far more than a sync word does.
 - What does not carry over: the sampler's slipping clock (3.93 samples a bit in text). The
   APRS slicer loses a fixed 4 to 9 units at each change of tone whatever the run's length, and
   learns that from the flags already. FT8 has a cousin, the second CIC's rate picked in the
@@ -29,7 +36,10 @@
   moves with the CPU loop").
 - The POCSAG reader that follows the FIFO word by word knows nothing of POCSAG. It is the one
   to share between the chip-receiver modules; the APRS reader leans on Bell 202's tones.
-- It would buy: bench figures that mean the same from run to run, a truer edge for the DMR
-  detector, and a rule for how long the explorer should stay on a channel it has just tuned.
-- Settled by: run M (blocks tuned at every setting, not tuned, and not tuned with the AFC
-  on), and for WSPR a receive run judged from its second two-minute slot on.
+- It would buy: bench figures that mean the same from run to run, and a rule for how long
+  the explorer should stay on a channel it has just tuned (run M: no longer than the burst
+  it is after).
+- Half settled 2026-11-12 by run M (blocks tuned at every setting, not tuned, and not tuned
+  with the AFC on): for DMR's sync the restart costs nothing and the AFC on helps a little.
+  Still to do: for WSPR a receive run judged from its second two-minute slot on, and the
+  POCSAG sampler with the AFC off on a signal tuned a few hundred Hz either way.

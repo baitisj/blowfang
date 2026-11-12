@@ -620,19 +620,18 @@ second sync field (whole or short, either way up) stands in it. `python3 -m mode
 LOG` gives a setting's floor, its slots with a carrier and in how many of them a sync was
 found.
 
-### Run M (planned, `dfskcap_dmr4`): did the tuning cost run L its weak steps?
+### Run M (2026-11-11 22:30:46 to 2026-11-12 00:51:26Z, `dfskcap_dmr4`, the module built from 4f588ca): did the tuning cost run L its weak steps?
 
 Run L tuned at every one of its 0.8 s settings, and `api->tune` restarts the receiver. The
 POCSAG sampler, which reads the same plain receiver, gave noisy bits for a minute or two after
 a restart and far fewer when the module left the tuning out (docs/k6-pocsag.md, runs 6 to 8).
-That was put down to the AFC pulling in again, and run L had the AFC off, so it may not carry
+That was put down to the AFC pulling in again, and run L had the AFC off, so it need not carry
 over; but run L never had a setting that was not half a second from a restart. It matters for
-the explorer, whose detector comes to a channel by tuning to it: if the restart costs
-sensitivity, a visit should last longer than the cost.
+the explorer, whose detector comes to a channel by tuning to it.
 
 `dfskcap_dmr4` is run L's setting in blocks of 144 rounds (922 s or a little more, so every
-block meets one of the repeater's 7 s key-ups, which come 903 s apart), three kinds by turns,
-three blocks each, some two hours and twenty minutes, receive only:
+block meets one of the repeater's key-ups, which come 903 s apart), three kinds by turns,
+three blocks each:
 
 | `bk=` | The tuning | The AFC |
 | --- | --- | --- |
@@ -645,20 +644,58 @@ The gains are 03FF, 021F, 011F, 001F, 0017, 000F, 0007 and 0004: run L's without
 L jumped from 24 dB or more over the floor to 10. The s line carries `bk=`, and `python3 -m
 modem.dmrsign LOG` gives a line a gain and kind.
 
-What it would say:
+The K6 only listened (the IC-7100 sent a CW ID to wake it at 22:30:07Z and the one upload at
+22:30:24Z, both on 440.850 at RF power 0, serial 1794436223): 10,368 slots of 0.8 s, 1,025
+captures, "dfskcap end n=1025", ret=1025, stack_free=408 B. The repeater keyed seventeen times:
+6 to 10 s every 903 s or so, a single slot's worth five minutes before most of those, a 37 s
+one, and one call of 129 s (00:37:09 to 00:39:17Z, in a kind 2 block). The logger was cut at
+00:27:50Z (the hamlet session's two-hour limit on a background command took the go script and
+its logger with it) and a new one ran from 00:28:35Z: 46 s of a kind 1 block are missing, seven
+rounds, none with a key-up. The module ran on untouched.
 
-- Kind 1 reads sync fields further down than kind 0: the restart cost run L, the edge is lower
-  than -122 dBm, and a detector should stay on a channel rather than come back to it often.
-- Kinds 0 and 1 alike: the restart costs the plain receiver nothing when the AFC is off, and
-  POCSAG's settling is the AFC's alone.
-- Kind 2 against kind 1: what the AFC does to a 7 s burst that it has no time to pull in (its
-  time constant is about 30 s). Run K saw no difference at full strength. POCSAG's sampler
-  found nothing with the AFC off (its run 7) where DMR's sync is found either way, and the two
-  radios of that bench are only 145 Hz apart (docs/k6-ft8-wspr.md, run 5): not explained yet.
-- A key-up in the first two minutes of a kind 1 or kind 2 block is counted apart (the s
-  lines' `t=` say when the last tuning was).
-- Whether the gain takes hold without a tuning shows in each slot's `f=`: the floor must step
-  with the gain in kinds 1 and 2 as it does in kind 0.
+A slot has a carrier when its peak stands 10 dB over the floor of its gain and kind. "Of the
+bursts" is the sync fields found (whole and short) over the signs captured in those slots, at
+144 signs a burst. Kind 2 is given without the long call, which is on its own line.
+
+| REG_13 | DMR read | Floor read | Over the floor | Kind 0: slots with a sync, of the bursts | Kind 1 | Kind 2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 03FF | -74 to -84 dBm | -122 to -125 | 46 dB | 4 of 4, 83% | 5 of 6, 79% | 7 of 7, 84% |
+| 021F | -120 to -128 | -156 | 33 dB or more | 5 of 6, 58% | 3 of 4, 77% | 7 of 7, 69% |
+| 011F | -124 to -133 | -156 | 28 dB or more | 5 of 7, 62% | 3 of 4, 67% | 5 of 6, 77% |
+| 001F | -127 to -136 | -156 | 26 dB or more | 6 of 8, 62% | 4 of 4, 67% | 5 of 6, 81% |
+| 0017 | -129 to -139 | -150 | 17 dB | 4 of 5, 54% | 3 of 3, 51% | 4 of 5, 77% |
+| 000F | -132 to -140 | -147 | 13 dB | 4 of 6, 46% | 3 of 3, 44% | 5 of 6, 35% |
+| 0007 | -133 to -139 | -146 | 11 dB | 5 of 5, 20% | 2 of 3, 39% | 3 of 3, 28% |
+| 0004 | -142 to -147 | -155 | 11 dB | 3 of 4, 17% | 1 of 4, 14% | 3 of 3, 33% |
+| all | | | | 36 of 45, 52.5% | 24 of 31, 61.2% | 39 of 43, 64.3% |
+| the long call | | | | | | 100 of 103, 48% |
+
+- **The tuning cost run L nothing.** With no tuning at all (kind 1) the chip read no further
+  down than with one at every setting (kind 0): 61% against 52% of the bursts over all gains,
+  and at the two weakest steps 39 and 14% against 20 and 17%, on three or four slots each.
+  POCSAG's settling after a restart is the AFC's, or the sampler's alone; the plain receiver
+  with the AFC off is as good half a second after a restart as a quarter of an hour after.
+  The explorer may come to a channel as often as it likes.
+- **The edge stands, and it is a slope, not a step.** At 26 dB or more over the floor two
+  thirds of the sync fields are read; at 17 dB half or more; at 13 dB under half; at 11 dB a
+  quarter over all the kinds (run L: 7 and 21% on two slots each). In this station's terms (the floor
+  near -133 dBm with the AGC on): full yield to about -107 dBm, half at -116 to -120, the
+  edge near -122 dBm, as run L had it.
+- **The AFC on is no worse and probably better.** Kind 2 had a sync in 39 of its 43 slots
+  with a carrier (kinds 0 and 1 together: 60 of 76), and read more of the bursts on the
+  middle steps. What differs most is the form: with the AFC on 72% of the sync fields came
+  whole (83% in the long call, where the AFC had two minutes to pull in), with it off 54 to
+  59%. So the sign that the chip's clock drops (run J) has to do with where the signal sits
+  against the slicer, and the AFC moves it towards the middle even in a burst of seven
+  seconds, or keeps its pull from one key-up to the next. The chip starts on the whole word
+  only, which is why more slots started. A detector may leave the AFC as the firmware has it.
+- **The gain takes hold without a tuning**: every gain's floor is the same in the three
+  kinds (03FF: -125, -123 and -122).
+- The long call reads less of its bursts at the strong steps (59% at 03FF against 84%) and
+  as much at the weak ones: a call's traffic is not the idle key-up's. Not looked into.
+- No key-up fell in the first two minutes of a kind 1 or kind 2 block but the long call, so
+  nothing had to be counted apart.
+- The numbers are small: three or four key-ups a kind, one repeater, one evening.
 
 ## Bench plan (receive only; done, kept for reruns)
 

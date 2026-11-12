@@ -12,6 +12,8 @@
    three times each. If bk=1 reads further down than bk=0, the restart cost run L and a
    detector should not tune more often than it must; bk=2 against bk=1 says what the AFC does
    to a burst it has no time to pull in. From 32 s after the start; a key ends it.
+   Run M (2026-11-11/12): the restart cost nothing, the edge stands, and the AFC on gave more
+   starts and more whole sync fields (docs/k6-dmr.md).
    python3 -m modem.dmrsign LOG. docs/k6-dmr.md. SPDX-License-Identifier: MIT */
 #define DFSK_ACARS
 #define DFSK_NARROW
