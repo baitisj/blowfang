@@ -170,6 +170,13 @@ typedef struct {
   uint32_t own, lcur, tset, vnp, vok, vlo, vhi; /* the path tune picked; the setting, its start, its
                                                     packets, those right, RSSI low and high */
 #endif
+#ifdef RG_DUMP
+#ifndef DUMP_CAPS
+#define DUMP_CAPS 6u
+#endif
+  uint16_t dk[RG_DUMP]; /* the capture's words as they went to the slicer (rangerx_d) */
+  uint32_t dn, nd, dt, af, dset; /* af: REG_2B's bits set (the second half: 0100, de-emphasis off) */
+#endif
   char ln[64];
 } st_t;
 
@@ -429,9 +436,50 @@ static void smp(st_t *s, const k6_api_t *api, uint32_t b) {
 /* a word of the chip's (16 samples, the first at the top); -> 1: the packet is in, re-arm */
 static int word_in(st_t *s, const k6_api_t *api, uint32_t v) {
   uint32_t i;
+#ifdef RG_DUMP
+  if (s->nd < DUMP_CAPS && s->dn < RG_DUMP) s->dk[s->dn++] = (uint16_t)v;
+#endif
   for (i = 16; i--;) smp(s, api, v >> i & 1);
   return s->over;
 }
+
+#ifdef RG_DUMP
+static char *hex4(char *p, uint32_t v) {
+  uint32_t i;
+  for (i = 4; i--;) {
+    uint32_t d = (v >> (4 * i)) & 15u;
+    *p++ = (char)(d < 10 ? '0' + d : 'a' + d - 10);
+  }
+  *p = 0;
+  return p;
+}
+
+/* the capture's words, for the host (python3 -m modem.k6r dump LOG): a c line, then d lines of
+   twelve words, the first sample at the top of each */
+static void dump_say(const k6_api_t *api, st_t *s) {
+  uint32_t i, k = 0;
+  char *p;
+  if (!s->dn || s->nd >= DUMP_CAPS) return;
+  s->nd++;
+  p = kv(s->ln, "c ", s->ncap);
+  p = kv(p, " t=", s->dt);
+  p = kv(p, " w=", s->dn);
+  p = kv(p, " k=", (uint32_t)s->t);
+  say(api, s, p);
+  for (i = 0; i < s->dn; i++) {
+    if (!k) {
+      p = kv(s->ln, "d ", s->ncap);
+      *p++ = ' ';
+      p = hex4(p, i);
+      *p++ = ' ';
+    }
+    p = hex4(p, s->dk[i]);
+    if (++k == 12) say(api, s, p), k = 0;
+  }
+  if (k) say(api, s, p);
+  s->dn = 0;
+}
+#endif
 
 /* ---- following the chip (pocsag.c) ---- */
 
@@ -514,7 +562,11 @@ static uint32_t seek(const k6_api_t *api, const st_t *s) {
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
+#ifdef RG_DUMP
+  api->fd_write(0x2B, (uint16_t)(s->sv[SAVED_2B] | s->af));
+#else
   api->fd_write(0x2B, s->sv[SAVED_2B]);
+#endif
   api->fd_write(0x5A, SYNW);
   api->fd_write(0x5B, SYNW);
   api->fd_write(0x58, CFG);
@@ -602,6 +654,11 @@ int k6_main(const k6_api_t *api) {
 #else
   tend = api->ms() + RG_S * SLOT_SCALE;
 #endif
+#ifdef RG_DUMP
+  p = kv(s->ln, "s 0 t=", api->ms());
+  p = put(p, " p=0 g=0 a=0");
+  say(api, s, p);
+#endif
   while (!key) {
     now = api->ms();
     clk(api, s);
@@ -627,6 +684,17 @@ int k6_main(const k6_api_t *api) {
 #else
     if (!cap && (int32_t)(now - tend) >= 0 && !s->inpk && !s->dpend) break;
 #endif
+#ifdef RG_DUMP
+    /* the second half with the AF path's de-emphasis off (REG_2B bit 8, as pocsag.c's 512 baud),
+       its first captures said too */
+    if (!s->dset && !cap && !s->inpk && !s->dpend && (int32_t)(now - tend + RG_S * SLOT_SCALE / 2) >= 0) {
+      char *q;
+      s->dset = 1, s->af = 0x0100u, s->nd = 0, armed = 0;
+      q = kv(s->ln, "s 1 t=", now);
+      q = kv(q, " p=0 g=0 a=", s->af);
+      say(api, s, q);
+    }
+#endif
     if (!cap) {
       uint32_t v;
       if (!armed) {
@@ -638,6 +706,9 @@ int k6_main(const k6_api_t *api) {
         /* the chip's packet has begun (on F0F0: a bit's edge just before its first sample) */
         cap = 1, t0 = clk(api, s) << 4;
         s->ncap++, s->capsync = 0, s->over = 0;
+#ifdef RG_DUMP
+        s->dn = 0, s->dt = now;
+#endif
         s->n = 0, s->e = 0, s->nb = 0, s->son = s->shalf = 0, s->hold = 0, s->inpk = 0, s->ny = 0;
         for (i = 0; i < 8; i++) s->ring[i] = (uint16_t)prev;
         s->ring[0] = (uint16_t)v, s->rn = 1, s->altm = 0, s->fl = 0;
@@ -655,6 +726,9 @@ int k6_main(const k6_api_t *api) {
         if (!s->capsync) s->nz++;
         cap = 0, armed = 0;
         api->fd_write(0x59, 0);
+#ifdef RG_DUMP
+        dump_say(api, s);
+#endif
       } else if ((s->fl & 7) == 1) {
         break; /* the empty FIFO: on again after a pause */
       }

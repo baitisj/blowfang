@@ -99,6 +99,20 @@ block for K6 to UV-380, and the I2S probe looks for a path without one.
 
 ## Bench
 
+**Run 1 (2026-11-12, 01:00-01:08Z, rangerx_b).** The K6 found a packet's sync in every setting
+from -21 to -126 dBm (130 packets, c ±56..93 where the model gives ±110..128), but none decoded:
+about 700 of 2064 coded bits wrong at every level, mean |soft| 2.2 where the model gives 3.5.
+So it's systematic, not noise. The sampler ran at 3.9-3.96 samples a bit as on the POCSAG bench.
+The model reads the same packets through a flat or an IC-7100 sender, with or without
+pre-emphasis, low-passes down to 600 Hz and offsets to 300 Hz. Only a carrier offset of 600 Hz
+or more, or pre-emphasis with the de-emphasis off, breaks it like this.
+
+**Run 2 (rangerx_d).** Each capture's sampled words go to the log (`c` and `d` lines), 60 s
+with the AF path as found and 60 s with its de-emphasis off. The wav alternates plain and
+pre-emphasised bursts (`modem.k6r wav --preemph alt`). `python3 -m modem.k6r dump LOG` lays each
+capture against the bench's own packets and counts the wrong bits by the two tones the soft
+value spans.
+
 Keys in /mnt/project-files/k6-range/bench-keys.md. `python3 -m modem.k6r report k6.log` gives, per
 setting, packets, those right, channel errors and RSSI.
 

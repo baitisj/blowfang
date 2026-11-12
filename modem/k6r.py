@@ -331,15 +331,22 @@ def slice_samples(samples):
 FS = 48000
 
 
-def bench_wav(seconds=440.0, npk=6, level=0.3, gap=0.5, lead=0.3, fs=FS):
+def bench_wav(seconds=440.0, npk=6, level=0.3, gap=0.5, lead=0.3, fs=FS, preemph="off"):
     """bursts of npk packets back to back for `seconds` (rangerx_b: a 32 s wait, then nine
     settings of 45 s; the module starts about 29 s before its upload ends, so a wav sent straight
-    after the upload covers the ladder from its 3rd second) -> (audio, [(t0, t1, burst)]). level:
-    the wav's peak (the IC-7100 at USB MOD 30% as the POCSAG bench: its 0.35 was clean)"""
+    after the upload covers the ladder from its 3rd second) -> (audio, [(t0, t1, burst, pre)]).
+    level: the wav's peak (the IC-7100 at USB MOD 30% as the POCSAG bench: its 0.35 was clean).
+    preemph: "on" puts a voice transmitter's pre-emphasis on each burst (+6 dB an octave from
+    300 Hz to 3 kHz, as the UV-380's PAGER mode does in the C6000), "alt" on every odd burst"""
+    pre = fsk.Channel(pre_emph=300, emph_top=3000, hpf=None, lpf=None)
     parts, times, t, b = [np.zeros(int(lead * fs))], [], lead, 0
     while t + burst_seconds(npk) < seconds:
         x = audio(burst_bits(test_payloads(npk, seed=100 + b)), fs, level)
-        times.append((t, t + len(x) / fs, b))
+        pe = preemph == "on" or (preemph == "alt" and b % 2 == 1)
+        if pe:
+            x = pre.apply(x, fs)
+            x = level * x / np.max(np.abs(x))
+        times.append((t, t + len(x) / fs, b, pe))
         parts += [x, np.zeros(int(gap * fs))]
         t += len(x) / fs + gap
         b += 1
@@ -400,6 +407,83 @@ def report(lines):
     return out
 
 
+# ---- rangerx_d's dumps: what the chip's sampler handed over (python3 -m modem.k6r dump LOG) ----
+
+def dump_captures(lines):
+    """rangerx_d's c and d lines -> [dict(n, t, k, samples)]"""
+    import re
+    caps = {}
+    for ln in lines:
+        m = re.search(r"K6 MOD say (.*)", ln)
+        if not m:
+            continue
+        f = m.group(1).split()
+        if len(f) < 2 or not f[1].isdigit():
+            continue
+        n = int(f[1])
+        if f[0] == "c":
+            kv = dict(x.split("=", 1) for x in f[2:] if "=" in x)
+            caps[n] = dict(kv, n=n, words=[])
+        elif f[0] == "d" and len(f) >= 4 and n in caps:
+            caps[n]["words"] += [int(f[3][k:k + 4], 16) for k in range(0, len(f[3]) - 3, 4)]
+    out = []
+    for n in sorted(caps):
+        c = caps[n]
+        c["samples"] = np.array([w >> (15 - i) & 1 for w in c["words"] for i in range(16)], np.uint8)
+        out.append(c)
+    return out
+
+
+def bench_payloads(bursts=48, npk=6):
+    """every packet modem.k6r wav sends (bursts seeded 100, 101, ...)"""
+    return [p for b in range(bursts) for p in test_payloads(npk, seed=100 + b)]
+
+
+def dump_report(lines, cands=None):
+    """per capture: the sample runs (a clean link: runs of 2 at 1200 Hz, 4 at 600 Hz), the
+    receiver's result, and the line bits against the best of the bench's packets: wrong bits by
+    the two tone bits the soft value's window spans"""
+    cands = bench_payloads() if cands is None else cands
+    ref = {p: interleave(coded_bits(p)) for p in cands}
+    out = []
+    for c in dump_captures(lines):
+        smp = c["samples"]
+        if len(smp) < 64:
+            continue
+        ed = np.flatnonzero(np.diff(smp.astype(int))) + 1
+        runs = np.diff(ed)
+        h = np.bincount(np.minimum(runs, 9), minlength=10)[1:]
+        out.append(f"c{c['n']} t={c.get('t')} {len(smp)} samples, {100 * smp.mean():.0f}% ones; "
+                   f"runs 1..9+: {' '.join(map(str, h))}")
+        got, sl = receive_samples(smp)
+        out.append(f"  receiver: {len(got)} packets, {sum(ok for _, ok in got)} right, "
+                   f"samples a bit {sl.t / 256:.3f}")
+        y, _ = slice_samples(smp)
+        if len(y) < 32 + CODED:
+            continue
+        sref = 1 - 2 * SYNC_BITS.astype(int)
+        cor = np.correlate(y, sref, "valid")
+        i = int(np.argmax(np.abs(cor)))
+        pol = 1 if cor[i] > 0 else -1
+        a = pol * y[i + 32:i + 32 + CODED]
+        if len(a) < CODED:
+            out.append(f"  sync at {i} (c={cor[i]}): packet cut off")
+            continue
+        hard = (a < 0).astype(np.uint8)
+        best = min(ref, key=lambda p: int(np.sum(ref[p] != hard)))
+        line = np.concatenate([SYNC_BITS, ref[best]])
+        wrong = ref[best] != hard
+        tb = tone_bits(np.concatenate([[0], line, [0]]))[1:]        # tone bits around each line bit
+        k = np.arange(32, 32 + CODED)
+        ctx = 2 * tb[k] + tb[k + 1]
+        names = ["1200|1200", "1200|600", "600|1200", "600|600"]
+        by = " ".join(f"{names[v]} {int(wrong[ctx == v].sum())}/{int((ctx == v).sum())}" for v in range(4))
+        out.append(f"  sync at {i} (c={cor[i]}), best match {cands.index(best)} (burst {cands.index(best) // 6}): {int(wrong.sum())} of {CODED} "
+                   f"wrong, |y| {np.mean(np.abs(a)):.2f}; by tone bits (bit, next): {by}")
+        out.append("  first 64 samples after the sync: " + "".join(map(str, smp[int(round((i + 32) * sl.t / 256)):][:64])))
+    return out
+
+
 def main(argv=None):
     import argparse
     import sys
@@ -410,14 +494,20 @@ def main(argv=None):
     q.add_argument("--seconds", type=float, default=440.0)
     q.add_argument("--packets", type=int, default=6, help="packets a burst")
     q.add_argument("--level", type=float, default=0.3)
+    q.add_argument("--preemph", choices=["off", "on", "alt"], default="off")
     q = sub.add_parser("report", help="a K6 log's range lines, per setting")
+    q.add_argument("log")
+    q = sub.add_parser("dump", help="rangerx_d's captured words, against the bench's packets")
     q.add_argument("log")
     a = ap.parse_args(argv)
     if a.cmd == "wav":
-        y, times = bench_wav(a.seconds, a.packets, a.level)
+        y, times = bench_wav(a.seconds, a.packets, a.level, preemph=a.preemph)
         write_wav(a.out, y)
         print(f"{a.out}: {len(y) / FS:.1f} s, {len(times)} bursts of {a.packets} packets "
               f"({burst_seconds(a.packets):.1f} s each)")
+    elif a.cmd == "dump":
+        with open(a.log, errors="replace") as f:
+            print("\n".join(dump_report(f)))
     else:
         with open(a.log, errors="replace") as f:
             print("\n".join(report(f)))

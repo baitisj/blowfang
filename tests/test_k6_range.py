@@ -93,11 +93,24 @@ def test_bench_wav_reads():
     from sim.k6if import range as rg
     y, times = k6r.bench_wav(26.0, npk=2, level=k6r.LEVEL)
     assert len(times) == 5 and all(t1 - t0 == pytest.approx(k6r.burst_seconds(2), abs=1e-3)
-                                   for t0, t1, _ in times)
-    t0, t1, _ = times[1]
+                                   for t0, t1, _, _ in times)
+    t0, t1, _, _ = times[1]
     d = rg.chip_audio(y[int((t0 - 0.2) * k6r.FS):int((t1 + 0.2) * k6r.FS)], None, tx="flat")
     got, _ = k6r.receive_samples(rg.sample(d))
     assert [p for p, c in got if c] == k6r.test_payloads(2, seed=101)
+    # pre-emphasised every other burst ("alt"): 1200 Hz up on 600 Hz by about the filter's
+    # 20 log10(|1 + 4j| / |1 + 2j|) = 5.4 dB, the same peak
+    y, times = k6r.bench_wav(10.0, npk=2, level=k6r.LEVEL, preemph="alt")
+    assert [pe for _, _, _, pe in times] == [False, True]
+
+    def ratio(t0, t1):
+        x = y[int(t0 * k6r.FS):int(t1 * k6r.FS)]
+        f = np.abs(np.fft.rfft(x)) ** 2
+        hz = np.fft.rfftfreq(len(x), 1 / k6r.FS)
+        return f[abs(hz - 1200) < 150].sum() / f[abs(hz - 600) < 150].sum()
+    db = 10 * np.log10(ratio(*times[1][:2]) / ratio(*times[0][:2]))
+    assert 4 < db < 7, db
+    assert abs(np.max(np.abs(y)) - k6r.LEVEL) < 1e-3
 
 
 def host(mode, pls, *opts):
@@ -245,3 +258,30 @@ def test_rangerx_b_ladder(start):
     rep = k6r.report(["K6 MOD say " + ln for ln in e.said])
     rows = [ln for ln in rep if ln.startswith("setting ")]
     assert len(rows) == 9 and sum(int(ln.split(": ")[1].split()[2]) for ln in rows) == 2, rep
+
+
+@need_clang
+def test_rangerx_d_dump():
+    """the dump build says each capture's words; the host's dump report reads them back into the
+    samples the module sliced, finds the sync and lays the packet on the bench's own: no bit
+    wrong on a clean link"""
+    pytest.importorskip("unicorn")
+    import k6_live_emu as le
+    from sim.k6if import range as rg
+    from test_k6_pocsag import plain_chip
+    pls = k6r.test_payloads(6, seed=100)[:2]
+    smp, _ = rg.link(pls, None, tx="flat")
+    total = 0.3 + len(smp) / 4800 + 1
+    code, entry = le.build("x", [("WAIT_MS", "0u"), ("RG_S", f"{int(total) + 1}u")],
+                           os.path.join(ROOT, "c", "k6", "mod", "rangerx_d.c"))
+    Chip = plain_chip(le, [(0.3, 4800.0, smp)])
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total + 4, level=8, scratch=6144)
+    res = e.run()
+    assert res is not None, e.said[-5:]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    log = ["K6 MOD say " + ln for ln in e.said]
+    caps = k6r.dump_captures(log)
+    assert len(caps) >= 1 and all(len(c["words"]) == int(c["w"]) for c in caps)
+    rep = k6r.dump_report(log, cands=k6r.test_payloads(6, seed=100))
+    hits = [ln for ln in rep if "best match" in ln]
+    assert hits and all(" 0 of 2064 wrong" in ln for ln in hits), rep
