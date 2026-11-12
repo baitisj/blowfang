@@ -48,18 +48,36 @@ def chip_audio(audio, cn0=None, bw=4000.0, deemph=300.0, seed=1, f_off=0.0, tx="
     return signal.sosfilt(signal.butter(4, 3000, fs=FSA, output="sos"), d)
 
 
-def sample(d, rate=4800.0, t0=0.0):
-    """the chip's signs (0/1) at `rate` a second from t0 s"""
-    t = np.arange(t0, len(d) / FSA - 1 / rate, 1 / rate)
-    return (d[(t * FSA).astype(int)] > 0).astype(np.uint8)
+def sample(d, rate=4800.0, t0=0.0, lock=None, osr=16):
+    """the chip's signs (0/1) at `rate` a second from t0 s. lock=None: a steady clock. lock=g: a
+    clock locked to the edges, as the chip's seems to be (bench run 2: runs of exactly 2 and 4
+    samples at a rate of 3.93 a bit, a sample short now and then): it ticks osr times a sample,
+    and at each change of sign moves its phase g of the way to half a sample before the next
+    sample is taken"""
+    if lock is None:
+        t = np.arange(t0, len(d) / FSA - 1 / rate, 1 / rate)
+        return (d[(t * FSA).astype(int)] > 0).astype(np.uint8)
+    pos = np.arange(t0 * FSA, len(d) - 1, FSA / (rate * osr)).astype(int)
+    v = d[pos] > 0
+    out, ph, prev = [], 0.0, v[0]
+    for x in v:
+        if x != prev:
+            ph += lock * (osr / 2 - ph)
+            prev = x
+        ph -= 1
+        if ph <= 0:
+            out.append(x)
+            ph += osr
+    return np.array(out, np.uint8)
 
 
-def link(payloads, cn0=None, bw=4000.0, level=k6r.LEVEL, seed=1, rate=4800.0, pad=0.2, tx="ic7100"):
+def link(payloads, cn0=None, bw=4000.0, level=k6r.LEVEL, seed=1, rate=4800.0, pad=0.2, tx="ic7100",
+         lock=None):
     """payloads -> (chip samples, start of the burst in samples)"""
     a = k6r.audio(k6r.burst_bits(payloads), FSA, level)
     z = np.zeros(int(pad * FSA))
     d = chip_audio(np.concatenate([z, a, z]), cn0, bw, seed=seed, tx=tx)
-    return sample(d, rate), int(pad * rate)
+    return sample(d, rate, lock=lock), int(pad * rate)
 
 
 def best_phase(smp):

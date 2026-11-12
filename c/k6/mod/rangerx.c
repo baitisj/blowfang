@@ -5,22 +5,24 @@
    tones of 600 Hz (bit 1) and 1200 Hz (bit 0) at 1200 baud, precoded (tone bit = line bit ^ the
    line bit before), so the audio's sign always changes at a bit's edge and its sign across that
    edge follows the line bit. The chip samples the sign of its discriminator's audio 4800 times a
-   second (REG_58 00E9, REG_72 C195: four samples a bit), de-emphasis and the rest of the AF path
-   as found, the AFC on and no tune unless asked (the POCSAG bench: a tune restarts the AFC and
-   the samples are noisy for a minute or two after).
+   second (REG_58 00E9, REG_72 C195: four samples a bit), the AF path's de-emphasis off (REG_2B
+   bit 8, RG_AF; bench run 2: with a pre-emphasised sender, as the UV-380's PAGER mode is, that
+   gave clean samples, and the path as found did not), the AFC on and no tune unless asked (the
+   POCSAG bench: a tune restarts the AFC and the samples are noisy for a minute or two after).
 
    Reading: the chip's packet starts on the sync word F0F0, which the burst's 600 Hz lead and gaps
    give every two bits, and the FIFO is followed word by word as pocsag.c does (bench run 4's fix,
    PR #74: an empty FIFO's read gives the word of eight before; words go on eight behind).
 
-   Slicing (modem.k6r.Slicer, step for step): times in Q8 samples, sample i centred at 256 i + 128;
-   the bit edge e and the bit's length t (4 samples, learnt within 4 +- 0.62). A line bit's soft
-   value y = (samples centred in the half bit before the next edge) - (those in the half bit
-   after it), at most +-5. The same window one sample early and one late steers the clock: the
-   edge moves by KP (|late| - |early|), t by the running sum of those over 2^KI_SHIFT. Every
-   HALF_WIN bits the window half a bit on is compared, and when its |y| sum beats the clock's by
-   HALF_MARGIN the clock took the bits' middles for their edges and moves half a bit (not during a
-   packet).
+   Slicing (modem.k6r.SegSlicer, step for step): the chip's sampler is locked to the audio's
+   edges, not a steady clock (bench run 2: runs of exactly 2 and 4 samples, a sample short now and
+   then at 3.93 samples a bit), so a window slicer on a bit clock lost a third of the bits. The
+   samples are parsed into half bits of 1..3 samples by a Viterbi over 12 states (the half's sign,
+   first or second half of its bit, samples so far): a sample against the sign costs 1, a half of
+   1 or 3 samples costs 1; a bit's edge always changes the sign, its middle may (1200 Hz) or not
+   (600 Hz). Every SEG_TB samples it traces back from the best state and says the halves that end
+   SEG_D samples back or more. A line bit's soft value is (the samples of its second half) -
+   (those of the next bit's first half), each +-1: +-4 from a clean bit, at most +-6.
 
    Packets: the sync, 32 line bits 1ACFFC1D, is a correlation of the last 32 soft values with
    it, |c| >= SYNC_MIN (of 128 at most), whose sign says which way up the burst is. The 2064 soft
@@ -30,17 +32,18 @@
    checked. As soon as a packet's last soft value is in the chip is re-armed for the next gap.
 
    Lines:
-     range start hz=440850000 tune=0 sm=60 s=600
+     range start hz=440850000 tune=0 sm=96 s=600
      r 3 t=12345 c=-118 y=31 e=41 ok=1 s=2 r=-118 k=1024
                     a packet: its number, ms at its sync, the sync's correlation (its sign: the
                     burst's way up), the mean |soft value| x 10 (4 bits a soft value: 40 at most
                     from a clean four samples), the line bits whose sign the decoded packet's own
                     code disagrees with (the channel's errors, out of 2064), CRC right, seq (header
-                    bytes 2-3, low 13 bits; meaningless unless ok=1), RSSI peak, bit length (Q8
-                    samples)
+                    bytes 2-3, low 13 bits; meaningless unless ok=1), RSSI peak, halves of 1 or 3
+                    samples in the packet (the sampler's slips, and noise)
      range end n=12 ok=11 c=30 z=18 f=2 l=0 m=-124
-                    packets, CRC right, chip packets started, of those with no sync, half-bit
-                    moves, packets whose decode was not done when the next one came, RSSI min
+                    packets, CRC right, chip packets started, of those with no sync, traces that
+                    disagreed with halves already said (samples lost), packets whose decode was not
+                    done when the next one came, RSSI min
    Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 2B, 3F and 02, put back as read. Receive only.
    Returns the packets that checked, or -3 (old image), -8 (scratch).
    SPDX-License-Identifier: MIT */
@@ -62,7 +65,7 @@
 #define RG_TUNE 0        /* 0: as found (no tune); 1: tune rx_hz narrow, 2: wide */
 #endif
 #ifndef SYNC_MIN
-#define SYNC_MIN 56
+#define SYNC_MIN 96      /* of 128 (56 in runs 1 and 2 let coded bits start false packets) */
 #endif
 #define RESYNC_BITS 160u /* a packet's first soft values: a sync better by RESYNC_MARGIN than the */
 #define RESYNC_MARGIN 16 /* one it started on starts it again there */
@@ -76,12 +79,13 @@
 #define NROW 24u
 #define NCOL 86u
 #define Q_MAX 7
-#define T0 1024
-#define KP 8
-#define KI_SHIFT 4
-#define T_LIM 160
-#define HALF_WIN 32
-#define HALF_MARGIN 24
+#define SEG_D 64         /* the segment decoder says a segment SEG_D samples after its end */
+#define SEG_TB 16        /* it traces back every SEG_TB samples */
+#define SEG_RING 128     /* samples and decisions kept */
+#define SEG_MAX 32       /* segments said by a trace at most */
+#ifndef RG_AF
+#define RG_AF 0x0100u    /* REG_2B bits set: de-emphasis off (bench run 2) */
+#endif
 #define TB_RING 96
 #define TB_OUT 32
 #define VIT_SLICE 64     /* trellis steps between FIFO reads */
@@ -143,11 +147,13 @@ typedef struct {
   uint32_t el;
   uint16_t tl;
   uint32_t rn;
-  /* the slicer */
-  uint32_t n;
-  int8_t hist[16];
-  int32_t e, t, acc, son, shalf;
-  uint8_t nb, hold, inpk, dpend;
+  /* the segment decoder */
+  uint32_t n, em, lst, odd, kodd, segflips;
+  uint16_t c[12];
+  uint16_t dk2[SEG_RING]; /* a sample's decisions */
+  uint16_t segs[SEG_MAX];
+  uint8_t sb[SEG_RING / 8];
+  uint8_t lln, lsp, lv, inpk, dpend;
   /* the sync hunt and the packet */
   int8_t yr[32];
   uint8_t yi, ny;
@@ -175,7 +181,7 @@ typedef struct {
 #define DUMP_CAPS 6u
 #endif
   uint16_t dk[RG_DUMP]; /* the capture's words as they went to the slicer (rangerx_d) */
-  uint32_t dn, nd, dt, af, dset; /* af: REG_2B's bits set (the second half: 0100, de-emphasis off) */
+  uint32_t dn, nd, dt;
 #endif
   char ln[64];
 } st_t;
@@ -383,54 +389,91 @@ static void soft(st_t *s, const k6_api_t *api, int32_t y) {
     qput(s, s->ni, v);
     s->ysum += (uint32_t)iabs(v);
     if (++s->ni == CODED) {
-      s->inpk = 0, s->hold = 0, s->ny = 0;
-      s->lc = s->pcs, s->lt0 = s->pt0, s->lrssi = s->prssi, s->lys = s->ysum, s->lk = (uint32_t)s->t;
+      s->inpk = 0, s->ny = 0;
+      s->lc = s->pcs, s->lt0 = s->pt0, s->lrssi = s->prssi, s->lys = s->ysum, s->lk = s->odd - s->kodd;
       vit_start(s);
       s->dpend = 1, s->over = 1;
     }
     return;
   }
   if (iabs(c) >= SYNC_MIN) {
-    s->inpk = 1, s->pol = (int8_t)(c > 0 ? 1 : -1), s->hold = 1, s->ni = 0, s->ysum = 0;
+    s->inpk = 1, s->pol = (int8_t)(c > 0 ? 1 : -1), s->ni = 0, s->ysum = 0, s->kodd = s->odd;
     s->pc = iabs(c), s->pcs = c, s->pt0 = api->ms(), s->prssi = s->rssi, s->capsync = 1;
   }
 }
 
-/* sum over samples centred in [a, a + t/2) minus those in [a + t/2, a + t) */
-static int32_t win(const st_t *s, int32_t a) {
-  int32_t h = s->t >> 1, y = 0;
-  uint32_t i = s->n > 16 ? s->n - 16 : 0;
-  for (; i < s->n; i++) {
-    int32_t c = (int32_t)(i << 8) + 128;
-    if (c < a) continue;
-    if (c < a + h) y += s->hist[i & 15];
-    else if (c < a + s->t) y -= s->hist[i & 15];
-    else break;
-  }
-  return y;
+/* the segment decoder (modem.k6r.SegSlicer, step for step): the samples parsed into half bits
+   of 1..3 samples by a Viterbi over 12 states (sign s, first or second half p, samples so far l) */
+static uint32_t seg_sum(const st_t *s, uint32_t start, uint32_t len) {
+  uint32_t v = 0, i;
+  for (i = start; i < start + len; i++) v += (s->sb[(i & (SEG_RING - 1)) >> 3] >> (i & 7)) & 1;
+  return 2 * v - len; /* (ones) - (zeros), as uint32 */
 }
 
-static void smp(st_t *s, const k6_api_t *api, uint32_t b) {
-  s->hist[s->n & 15] = (int8_t)(b ? 1 : -1);
-  s->n++;
+static void say_seg(st_t *s, const k6_api_t *api, uint32_t start, uint32_t len, uint32_t sp) {
+  if (len != 2) s->odd++;
+  if (s->lv && (s->lsp & 1) && !(sp & 1))
+    soft(s, api, (int32_t)(seg_sum(s, s->lst, s->lln) - seg_sum(s, start, len)));
+  s->lst = start, s->lln = (uint8_t)len, s->lsp = (uint8_t)sp, s->lv = 1;
+}
+
+/* say the segments from em on that end before sample upto */
+static void trace(st_t *s, const k6_api_t *api, uint32_t upto) {
+  uint32_t k = 0, b = 0, sg = 0, p = 0, ln = 1, cnt = 0, q;
+  int32_t t = (int32_t)s->n - 1;
+  for (q = 0; q < 4; q++)
+    for (k = 1; k <= 3; k++, b++)
+      if (s->c[b] < s->c[3 * (2 * sg + p) + ln - 1]) sg = q >> 1, p = q & 1, ln = k;
   for (;;) {
-    int32_t t = s->t, a = s->e + (t >> 1), y, el, lim = T_LIM << KI_SHIFT;
-    if ((int32_t)(s->n << 8) < a + t + 384) break;
-    y = win(s, a);
-    el = iabs(win(s, a + 256)) - iabs(win(s, a - 256));
-    s->son += iabs(y);
-    s->shalf += iabs(win(s, a + (t >> 1)));
-    if (++s->nb >= HALF_WIN) {
-      if (s->shalf > s->son + HALF_MARGIN && !s->hold) s->e += t >> 1, s->flips++;
-      s->nb = 0, s->son = 0, s->shalf = 0;
+    int32_t start = t - (int32_t)ln + 1;
+    uint32_t d;
+    if (start < (int32_t)s->em) break;
+    if (t < (int32_t)upto && cnt < SEG_MAX)
+      s->segs[cnt++] = (uint16_t)((uint32_t)(start - (int32_t)s->em) << 4 | ln << 2 | sg << 1 | p);
+    if (start == (int32_t)s->em) break;
+    d = s->dk2[start & (SEG_RING - 1)];
+    if (p) {
+      uint32_t f = (d >> (3 * sg)) & 7;
+      ln = f & 3, sg = f & 4 ? sg ^ 1 : sg, p = 0;
+    } else {
+      ln = (d >> (6 + 2 * sg)) & 3, sg ^= 1, p = 1;
     }
-    s->e += t + KP * el;
-    s->acc += el;
-    if (s->acc > lim) s->acc = lim;
-    if (s->acc < -lim) s->acc = -lim;
-    s->t = T0 + (s->acc >> KI_SHIFT);
-    soft(s, api, y);
+    t = start - 1;
   }
+  if (cnt && (s->segs[cnt - 1] >> 4)) s->segflips++;
+  q = s->em;
+  while (cnt--) {
+    uint32_t v = s->segs[cnt], start = q + (v >> 4), len = (v >> 2) & 3;
+    say_seg(s, api, start, len, v & 3);
+    s->em = start + len;
+  }
+}
+
+static void smp(st_t *s, const k6_api_t *api, uint32_t x) {
+  uint16_t *c = s->c, nc[12], e[4], m = 0xFFFF;
+  uint32_t el[4], d = 0, k, sg, i = s->n & (SEG_RING - 1);
+  for (k = 0; k < 4; k++) {
+    uint32_t v1 = c[3 * k] + 1u, v2 = c[3 * k + 1], v3 = c[3 * k + 2] + 1u;
+    if (v2 <= v1 && v2 <= v3) e[k] = (uint16_t)v2, el[k] = 2;
+    else if (v1 <= v3) e[k] = (uint16_t)v1, el[k] = 1;
+    else e[k] = (uint16_t)v3, el[k] = 3;
+  }
+  for (sg = 0; sg < 2; sg++) {
+    uint32_t o = x ? sg ^ 1 : sg, k0 = 6 * sg, k1 = k0 + 3, a = e[2 * sg], b = e[2 * (sg ^ 1)];
+    nc[k0 + 1] = (uint16_t)(c[k0] + o), nc[k0 + 2] = (uint16_t)(c[k0 + 1] + o);
+    nc[k1 + 1] = (uint16_t)(c[k1] + o), nc[k1 + 2] = (uint16_t)(c[k1 + 1] + o);
+    if (a <= b) nc[k1] = (uint16_t)(a + o), d |= el[2 * sg] << (3 * sg);
+    else nc[k1] = (uint16_t)(b + o), d |= (el[2 * (sg ^ 1)] | 4) << (3 * sg);
+    nc[k0] = (uint16_t)(e[2 * (sg ^ 1) + 1] + o), d |= el[2 * (sg ^ 1) + 1] << (6 + 2 * sg);
+  }
+  for (k = 0; k < 12; k++)
+    if (nc[k] < m) m = nc[k];
+  for (k = 0; k < 12; k++) c[k] = (uint16_t)(nc[k] - m);
+  s->dk2[i] = (uint16_t)d;
+  if (x) s->sb[i >> 3] |= (uint8_t)(1u << (i & 7));
+  else s->sb[i >> 3] &= (uint8_t)~(1u << (i & 7));
+  s->n++;
+  if (!(s->n & (SEG_TB - 1)) && s->n >= SEG_D + SEG_TB) trace(s, api, s->n - SEG_D);
 }
 
 /* a word of the chip's (16 samples, the first at the top); -> 1: the packet is in, re-arm */
@@ -464,7 +507,7 @@ static void dump_say(const k6_api_t *api, st_t *s) {
   p = kv(s->ln, "c ", s->ncap);
   p = kv(p, " t=", s->dt);
   p = kv(p, " w=", s->dn);
-  p = kv(p, " k=", (uint32_t)s->t);
+  p = kv(p, " k=", s->odd);
   say(api, s, p);
   for (i = 0; i < s->dn; i++) {
     if (!k) {
@@ -562,11 +605,7 @@ static uint32_t seek(const k6_api_t *api, const st_t *s) {
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-#ifdef RG_DUMP
-  api->fd_write(0x2B, (uint16_t)(s->sv[SAVED_2B] | s->af));
-#else
-  api->fd_write(0x2B, s->sv[SAVED_2B]);
-#endif
+  api->fd_write(0x2B, (uint16_t)(s->sv[SAVED_2B] | RG_AF));
   api->fd_write(0x5A, SYNW);
   api->fd_write(0x5B, SYNW);
   api->fd_write(0x58, CFG);
@@ -598,6 +637,9 @@ static void lset(const k6_api_t *api, st_t *s, uint32_t now) {
     api->fd_write(0x13, s->sv[SAVED_13]);
   }
   s->tset = now, s->vnp = s->vok = 0, s->vlo = 0x1FF, s->vhi = 0;
+#ifdef RG_DUMP
+  s->nd = 0; /* the setting's first captures said too */
+#endif
   p = kv(s->ln, "s ", c);
   p = kv(p, " t=", now);
   p = kv(p, " p=", LPATH[c]);
@@ -629,7 +671,7 @@ int k6_main(const k6_api_t *api) {
   if (room < sizeof(st_t)) return -8;
   for (i = 0; i < sizeof(st_t) / 4; i++) ((uint32_t *)s)[i] = 0;
   for (i = 0; i < NSV; i++) s->sv[i] = api->fd_read(SAVED[i]);
-  s->t = T0, s->rmin = 0x1FF;
+  s->rmin = 0x1FF;
   if (RG_TUNE) api->tune(api->rx_hz(), RG_TUNE == 2);
 #ifdef RG_LADDER
   s->own = rd(GPIOA_ODR) & PINS;
@@ -653,11 +695,6 @@ int k6_main(const k6_api_t *api) {
   lset(api, s, api->ms());
 #else
   tend = api->ms() + RG_S * SLOT_SCALE;
-#endif
-#ifdef RG_DUMP
-  p = kv(s->ln, "s 0 t=", api->ms());
-  p = put(p, " p=0 g=0 a=0");
-  say(api, s, p);
 #endif
   while (!key) {
     now = api->ms();
@@ -684,17 +721,6 @@ int k6_main(const k6_api_t *api) {
 #else
     if (!cap && (int32_t)(now - tend) >= 0 && !s->inpk && !s->dpend) break;
 #endif
-#ifdef RG_DUMP
-    /* the second half with the AF path's de-emphasis off (REG_2B bit 8, as pocsag.c's 512 baud),
-       its first captures said too */
-    if (!s->dset && !cap && !s->inpk && !s->dpend && (int32_t)(now - tend + RG_S * SLOT_SCALE / 2) >= 0) {
-      char *q;
-      s->dset = 1, s->af = 0x0100u, s->nd = 0, armed = 0;
-      q = kv(s->ln, "s 1 t=", now);
-      q = kv(q, " p=0 g=0 a=", s->af);
-      say(api, s, q);
-    }
-#endif
     if (!cap) {
       uint32_t v;
       if (!armed) {
@@ -709,7 +735,8 @@ int k6_main(const k6_api_t *api) {
 #ifdef RG_DUMP
         s->dn = 0, s->dt = now;
 #endif
-        s->n = 0, s->e = 0, s->nb = 0, s->son = s->shalf = 0, s->hold = 0, s->inpk = 0, s->ny = 0;
+        s->n = 0, s->em = 0, s->lv = 0, s->inpk = 0, s->ny = 0;
+        for (i = 0; i < 12; i++) s->c[i] = 0;
         for (i = 0; i < 8; i++) s->ring[i] = (uint16_t)prev;
         s->ring[0] = (uint16_t)v, s->rn = 1, s->altm = 0, s->fl = 0;
         s->per = (uint32_t)WT << 4, s->lmn = 0, s->lmt = t0 << 4, s->due = s->lmt + s->per;
@@ -722,7 +749,7 @@ int k6_main(const k6_api_t *api) {
         /* re-armed at once for the next packet; a packet cut off by the chip is dropped */
         for (i = s->rn > 8 ? s->rn - 8 : 0; i < s->rn && !over && s->inpk; i++)
           over = word_in(s, api, s->ring[i & 7]);
-        if (s->inpk) s->inpk = 0, s->hold = 0;
+        s->inpk = 0;
         if (!s->capsync) s->nz++;
         cap = 0, armed = 0;
         api->fd_write(0x59, 0);
@@ -751,7 +778,7 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " ok=", s->nok);
   p = kv(p, " c=", s->ncap);
   p = kv(p, " z=", s->nz);
-  p = kv(p, " f=", s->flips);
+  p = kv(p, " f=", s->segflips);
   p = kv(p, " l=", s->late);
   p = kv(p, " x=", s->resync);
   p = kv(p, " m=-", (uint32_t)-KM_RSSI_DBM(s->rmin));

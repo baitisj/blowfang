@@ -23,7 +23,7 @@ A burst, in line bits a:
     a row give the chip's sync word F0F0 once in 8 bits)
   then for each packet: SYNC (32 bits, 1ACFFC1D, MSB first) and the packet's 2064 coded bits
     (packets after the first: GAP_BITS of lead before the sync, for the module to re-arm the
-    chip and catch the next one: it finds a packet's end 8 FIFO words, 32 bits, late)
+    chip and catch the next one: it finds a packet's end about 50 bits late)
   TAIL_BITS of lead
 A packet is a K6 pager payload (XL, 128 bytes, whitened, CRC: modem/pager.py) coded as PHY G
 codes it (modem/k6g.py: K=7, polynomials 133 and 171, 1032 steps with 8 zero tail bits, 2064
@@ -51,8 +51,11 @@ CODED = 2 * STEPS               # 2064
 ROWS, COLS = 24, 86
 RESYNC_BITS = 160               # a packet's first soft values: a sync better by RESYNC_MARGIN
 RESYNC_MARGIN = 16              # than the one it started on starts it again there
-SYNC_MIN = 56                   # the module's sync threshold: |correlation| of 32 soft values
-                                # (each -4..4 at 4 samples a bit) with the sync's +-1
+SYNC_MIN = 96                   # the module's sync threshold: |correlation| of 32 soft values
+                                # (+-4 from a clean bit) with the sync's +-1: 128 from a clean
+                                # sync, 116 or more from every packet that decoded at 46-47 dB-Hz
+                                # on the model; 56 (run 1 and 2) let coded bits start false
+                                # packets about once in 80 bits
 
 
 def coded_bits(payload):
@@ -204,97 +207,169 @@ def parse_log(lines):
 CODE_OUT = [0, 2, 0, 2, 3, 1, 3, 1, 3, 1, 3, 1, 0, 2, 0, 2,       # as c/k6/ifpager.c's ifp_out
             1, 3, 1, 3, 2, 0, 2, 0, 2, 0, 2, 0, 1, 3, 1, 3]
 Q_MAX = 7                       # a stored soft value: -7..7 (4 bits)
-T0 = SPS << 8                   # samples a bit, Q8
-KP = 8                         # the bit clock: an edge moves by KP x (|late| - |early|) (Q8 samples)
-KI_SHIFT = 4                    # and the bit's length by the sum of them / 2^KI_SHIFT
-T_LIM = 160                     # the length stays within T0 +- T_LIM (Q8): 4 +- 0.62 samples
-HALF_WIN = 32                   # bits between half-bit checks
-HALF_MARGIN = 24                # the half-shifted windows' sum of |y| must beat the clock's by this
+SEG_D = 64                      # samples the segment decoder looks back before it says a segment
+SEG_TB = 16                     # it traces back every SEG_TB samples
+SEG_RING = 128                  # samples and decisions kept (more than SEG_D + SEG_TB + 3)
+SEG_MAX = 32                    # segments said by one trace at most
 
 
-class Slicer:
-    """chip samples (0/1) one at a time -> soft line bits y (ints), as rangerx.c's slicer.
-    Times are Q8 samples (sample i's centre at 256 i + 128). Bit k's edge is at e (the next at
-    e + t, t the bit's length): y[k] = (samples centred in [e + t/2, e + t)) - (those in
-    [e + t, e + 3t/2)), the window across the next edge, where the sign always changes. The same
-    window a sample early and a sample late steers the clock (early-late on |y|: the edge moves by
-    KP x (|late| - |early|), t by their running sum / 2^KI_SHIFT), and every HALF_WIN bits the window half a bit on is
-    compared (sum of |y|): when it beats the clock's by HALF_MARGIN the clock has taken the
-    middle of the bits for their edges, and moves half a bit (not while hold: a packet)"""
+class SegSlicer:
+    """chip samples (0/1) one at a time -> soft line bits y (-6..6, +-4 from a clean bit), as
+    rangerx.c's slicer since bench run 2.
+
+    Why not a clock: the chip's sampler is no steady clock. It is locked to the audio's edges, so
+    a 1200 Hz half cycle is two samples and a 600 Hz bit four, but now and then a run is a sample
+    short or long (run 2: the rate wanders 3.88..4.0 samples a bit from block to block, and the
+    slips come at the ends of runs of 600 Hz bits). Windows on a bit clock lost about a third of
+    the bits that way; the samples themselves were clean.
+
+    So it parses the samples into half bits ("segments") of 1 to 3 samples each, with a Viterbi
+    over 12 states: the segment's sign s, whether it is a bit's first half or second (p), and how
+    many samples it has had (l). A sample against s costs 1, a segment of 1 or 3 samples costs 1
+    (2 is right). A bit's edge always changes the sign (the precoded biphase); the middle of a bit
+    may (1200 Hz) or may not (600 Hz). Every SEG_TB samples it traces back from the best state and
+    says the segments that end more than SEG_D samples back. At each edge, the line bit's soft
+    value is (the samples of the bit's second half) - (those of the next bit's first half), each
+    sample +-1: what the window slicer summed, on the edges the samples show.
+
+    Decisions, a 16 bit word a sample: bits 3s..3s+2 for a second half of sign s begun on this
+    sample (the first half's length l, and 4 if that half's sign was the other), bits 6+2s..7+2s
+    for a first half of sign s begun here (the second half before it, of sign 1-s: its length)."""
 
     def __init__(self):
+        self.c = [0] * 12               # cost of state (2 s + p) * 3 + l - 1
+        self.dec = [0] * SEG_RING
+        self.smp = [0] * SEG_RING       # +-1
         self.n = 0                      # samples in
-        self.hist = [0] * 16            # the last 16 samples (+-1), by n & 15
-        self.e, self.t = 0, T0          # the edge before the window being built
-        self.acc = 0                    # the sum of the early-late errors (t = T0 + acc >> KI_SHIFT)
-        self.hold = 0
-        self.nb = self.son = self.shalf = 0
-        self.flips = 0
+        self.em = 0                     # the next segment to say begins on this sample
+        self.last = None                # the segment said last: (start, length, s, p)
         self.out = []
+        self.flips = 0                  # traces that disagreed with what was said (samples lost)
+        self.odd = 0                    # segments said of 1 or 3 samples
 
-    def win(self, a):
-        """sum over samples centred in [a, a + t/2) minus those in [a + t/2, a + t)"""
-        h = self.t >> 1
-        y = 0
-        i0 = max(self.n - 16, (a - 128 + 255) >> 8 if a > 128 else 0)
-        for i in range(i0, self.n):
-            c = 256 * i + 128
-            if c < a:
-                continue
-            if c < a + h:
-                y += self.hist[i & 15]
-            elif c < a + self.t:
-                y -= self.hist[i & 15]
+    def feed(self, x):
+        c, o = self.c, (1 if x else 0, 0 if x else 1)
+        e, el = [0] * 4, [0] * 4        # a segment ends: (2 s + p) -> best cost, its length
+        for k in range(4):
+            v1, v2, v3 = c[3 * k] + 1, c[3 * k + 1], c[3 * k + 2] + 1
+            if v2 <= v1 and v2 <= v3:
+                e[k], el[k] = v2, 2
+            elif v1 <= v3:
+                e[k], el[k] = v1, 1
             else:
-                break
-        return y
-
-    def feed(self, s):
-        self.hist[self.n & 15] = 1 if s else -1
+                e[k], el[k] = v3, 3
+        nc, d = [0] * 12, 0
+        for sg in (0, 1):
+            k0, k1 = 3 * (2 * sg), 3 * (2 * sg + 1)
+            nc[k0 + 1], nc[k0 + 2] = c[k0] + o[sg], c[k0 + 1] + o[sg]
+            nc[k1 + 1], nc[k1 + 2] = c[k1] + o[sg], c[k1 + 1] + o[sg]
+            a, b = e[2 * sg], e[2 * (1 - sg)]               # a second half after a first
+            if a <= b:
+                nc[k1], d = a + o[sg], d | el[2 * sg] << 3 * sg
+            else:
+                nc[k1], d = b + o[sg], d | (el[2 * (1 - sg)] | 4) << 3 * sg
+            nc[k0] = e[2 * (1 - sg) + 1] + o[sg]               # a first half after a second
+            d |= el[2 * (1 - sg) + 1] << (6 + 2 * sg)
+        m = min(nc)
+        self.c = [v - m for v in nc]
+        i = self.n % SEG_RING
+        self.dec[i], self.smp[i] = d, 1 if x else -1
         self.n += 1
-        t = self.t
-        a = self.e + (t >> 1)           # the window: [a, a + t), the next edge at a + t/2
-        while 256 * self.n >= a + t + 256 + 128:      # the late window is in
-            y = self.win(a)
-            el = abs(self.win(a + 256)) - abs(self.win(a - 256))
-            self.out.append(y)
-            self.nb += 1
-            self.son += abs(y)
-            self.shalf += abs(self.win(a + (t >> 1)))
-            if self.nb >= HALF_WIN:
-                if self.shalf > self.son + HALF_MARGIN and not self.hold:
-                    self.e += t >> 1
-                    self.flips += 1
-                self.nb = self.son = self.shalf = 0
-            self.e += t + KP * el
-            lim = T_LIM << KI_SHIFT
-            self.acc = min(max(self.acc + el, -lim), lim)
-            self.t = T0 + (self.acc >> KI_SHIFT)
-            t = self.t
-            a = self.e + (t >> 1)
+        if self.n % SEG_TB == 0 and self.n >= SEG_D + SEG_TB:
+            self.trace(self.n - SEG_D)
+
+    def trace(self, upto):
+        """say the segments from em on that end before sample upto"""
+        k = min(range(12), key=lambda j: self.c[j])
+        sg, p, ln = k // 6, (k // 3) & 1, k % 3 + 1
+        t, segs = self.n - 1, []
+        while True:
+            start = t - ln + 1
+            if start < self.em:
+                break
+            if t < upto and len(segs) < SEG_MAX:
+                segs.append((start, ln, sg, p))
+            if start == self.em:
+                break
+            d = self.dec[start % SEG_RING]
+            if p:
+                f = d >> 3 * sg & 7
+                ln, sg, p = f & 3, 1 - sg if f & 4 else sg, 0
+            else:
+                ln, sg, p = d >> (6 + 2 * sg) & 3, 1 - sg, 1
+            t = start - 1
+        if segs and segs[-1][0] != self.em:
+            self.flips += 1
+        for seg in reversed(segs):
+            self.say(seg)
+            self.em = seg[0] + seg[1]
+
+    def flush(self):
+        """the stream's end: say the rest, SEG_TB samples a trace"""
+        u = self.em + SEG_TB
+        while u < self.n:
+            self.trace(u)
+            u += SEG_TB
+        self.trace(self.n)
+
+    def total(self, seg):
+        return sum(self.smp[(seg[0] + j) % SEG_RING] for j in range(seg[1]))
+
+    def say(self, seg):
+        self.odd += seg[1] != 2
+        if self.last is not None and self.last[3] == 1 and seg[3] == 0:
+            self.out.append(self.total(self.last) - self.total(seg))
+        self.last = seg
+
+
+CHIP_SYNC = 0xF0F0              # the chip's sync word: a capture starts on the sample after it
+CHIP_SAMPLES = 1024 * 16        # and is 1024 words of 16 samples at most (rangerx.c's NWORDS)
 
 
 class Receiver:
-    """rangerx.c's receiver above the slicer: hunt the sync in the soft values (|correlation| at
-    least SYNC_MIN), then take CODED of them, its sign put right and clamped to +-Q_MAX, decode,
-    check; the slicer's half-bit moves held while a packet is read"""
+    """rangerx.c's receiver above the slicer, with the chip's captures: the chip starts one on
+    its sync word F0F0 in the samples (the lead's 600 Hz bits) and stops after CHIP_SAMPLES or
+    when the module has its packet and re-arms it. In a capture, a new slicer; hunt the sync in
+    the soft values (|correlation| at least SYNC_MIN), then take CODED of them, its sign put
+    right and clamped to +-Q_MAX, decode, check"""
 
-    def __init__(self, thr=SYNC_MIN):
-        self.sl, self.thr = Slicer(), thr
+    def __init__(self, thr=SYNC_MIN, armed=False):
+        self.thr = thr
+        self.sl = SegSlicer()
+        self.armed, self.w, self.k = armed, 0, 0
         self.ring = []
         self.pkt, self.pol = None, 1
         self.got = []
-        self.pc = self.resyncs = 0
+        self.pc = self.resyncs = self.caps = 0
+        self.pcs = []                   # each packet's |sync correlation|
+        self.errs = []                  # each packet's channel errors (the module's e=)
         self.ref = 1 - 2 * HUNT_BITS.astype(int)
 
     def feed(self, s):
-        n0 = len(self.sl.out)
+        if not self.armed:
+            self.w = (self.w << 1 | (1 if s else 0)) & 0xFFFF
+            if self.w == CHIP_SYNC:
+                self.armed, self.k, self.caps = True, 0, self.caps + 1
+                self.sl, self.ring, self.pkt = SegSlicer(), [], None
+            return
         self.sl.feed(s)
-        for y in self.sl.out[n0:]:
+        for y in self.sl.out:
             self.soft(y)
         del self.sl.out[:]
+        self.k += 1
+        if self.armed and self.k >= CHIP_SAMPLES:
+            self.armed, self.w = False, 0        # the chip's capture is over; a packet cut off is lost
+
+    def flush(self):
+        if self.armed:
+            self.sl.flush()
+            for y in self.sl.out:
+                self.soft(y)
+            del self.sl.out[:]
 
     def soft(self, y):
+        if not self.armed:
+            return
         self.ring = (self.ring + [y])[-len(self.ref):]
         c = int(np.dot(self.ring, self.ref)) if len(self.ring) == len(self.ref) else 0
         if self.pkt is not None and len(self.pkt) < RESYNC_BITS and abs(c) >= max(self.thr, self.pc + RESYNC_MARGIN):
@@ -306,23 +381,36 @@ class Receiver:
             if len(self.pkt) == CODED:
                 p = decode_soft(self.pkt)
                 self.got.append((p, crc_ok(p)))
-                self.pkt, self.sl.hold, self.ring = None, 0, []
+                self.pcs.append(self.pc)
+                self.errs.append(channel_errors(p, self.pkt))
+                self.pkt, self.armed, self.w = None, False, 0     # re-armed for the next one
             return
         if abs(c) >= self.thr:
-            self.pkt, self.pol, self.sl.hold, self.pc = [], 1 if c > 0 else -1, 1, abs(c)
+            self.pkt, self.pol, self.pc = [], 1 if c > 0 else -1, abs(c)
 
 
-def receive_samples(samples, thr=SYNC_MIN):
-    r = Receiver(thr)
+def channel_errors(payload, ys):
+    """the line bits whose soft value the decoded payload's own code disagrees with (0 counts as
+    wrong), as rangerx.c's e="""
+    c = interleave(coded_bits(payload))
+    ys = np.asarray(ys)
+    return int(np.sum(np.where(c == 1, ys >= 0, ys <= 0)))
+
+
+def receive_samples(samples, thr=SYNC_MIN, armed=False):
+    """armed: the samples are one of the chip's captures (rangerx_d's dump), begun on its F0F0"""
+    r = Receiver(thr, armed)
     for s in samples:
         r.feed(int(s))
+    r.flush()
     return r.got, r.sl
 
 
 def slice_samples(samples):
-    sl = Slicer()
+    sl = SegSlicer()
     for s in samples:
         sl.feed(int(s))
+    sl.flush()
     return np.array(sl.out, int), sl
 
 
@@ -455,15 +543,18 @@ def dump_report(lines, cands=None):
         h = np.bincount(np.minimum(runs, 9), minlength=10)[1:]
         out.append(f"c{c['n']} t={c.get('t')} {len(smp)} samples, {100 * smp.mean():.0f}% ones; "
                    f"runs 1..9+: {' '.join(map(str, h))}")
-        got, sl = receive_samples(smp)
+        got, sl = receive_samples(smp, armed=True)
         out.append(f"  receiver: {len(got)} packets, {sum(ok for _, ok in got)} right, "
-                   f"samples a bit {sl.t / 256:.3f}")
+                   f"segments of 1 or 3 samples {sl.odd}, traces lost {sl.flips}")
         y, _ = slice_samples(smp)
         if len(y) < 32 + CODED:
             continue
         sref = 1 - 2 * SYNC_BITS.astype(int)
         cor = np.correlate(y, sref, "valid")
         i = int(np.argmax(np.abs(cor)))
+        if abs(cor[i]) < SYNC_MIN:
+            out.append(f"  no sync (best c={cor[i]} at {i})")
+            continue
         pol = 1 if cor[i] > 0 else -1
         a = pol * y[i + 32:i + 32 + CODED]
         if len(a) < CODED:
@@ -480,7 +571,7 @@ def dump_report(lines, cands=None):
         by = " ".join(f"{names[v]} {int(wrong[ctx == v].sum())}/{int((ctx == v).sum())}" for v in range(4))
         out.append(f"  sync at {i} (c={cor[i]}), best match {cands.index(best)} (burst {cands.index(best) // 6}): {int(wrong.sum())} of {CODED} "
                    f"wrong, |y| {np.mean(np.abs(a)):.2f}; by tone bits (bit, next): {by}")
-        out.append("  first 64 samples after the sync: " + "".join(map(str, smp[int(round((i + 32) * sl.t / 256)):][:64])))
+        out.append("  first 64 samples after the sync: " + "".join(map(str, smp[(i + 32) * SPS:][:64])))
     return out
 
 
@@ -494,7 +585,9 @@ def main(argv=None):
     q.add_argument("--seconds", type=float, default=440.0)
     q.add_argument("--packets", type=int, default=6, help="packets a burst")
     q.add_argument("--level", type=float, default=0.3)
-    q.add_argument("--preemph", choices=["off", "on", "alt"], default="off")
+    q.add_argument("--preemph", choices=["off", "on", "alt"], default="on",
+                   help="on (the default since bench run 2: what the UV-380 sends, and what the "
+                        "K6 reads with its de-emphasis off), off, or alt (every other burst)")
     q = sub.add_parser("report", help="a K6 log's range lines, per setting")
     q.add_argument("log")
     q = sub.add_parser("dump", help="rangerx_d's captured words, against the bench's packets")
