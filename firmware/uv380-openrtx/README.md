@@ -53,3 +53,36 @@ codeplug and calibration need backing up on hamlet (never committed).
 
 Edit the patch by applying it to a clone at `20b4088`, changing the tree, and
 `git add -N` the new files then `git diff > uv380-blowfang.patch`.
+
+## The I2S probe image
+
+`BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh` builds `out/openrtx_mduv3x0_i2sprobe_wrap.bin`
+(CI builds both images). It asks whether the radio's received audio can reach the MCU with no
+mod, which is the block for K6 to UV-380. In this image, PAGER mode receives while it's idle, and
+`i2sprobe.c` runs a pass every 5 s. Each pass writes its lines to the radio's USB serial port.
+PTT and # still work: the probe stands aside for them.
+
+The idea: on this radio the AT1846S's FM audio goes into the HR_C6000 (PD9 high), and the C6000's
+codec digitises it for the speaker. That codec has an I2S port, and the stock MD-380 firmware
+uses SPI3/I2S3 to its C5000. PA15, PC10, PC11 and PC12 aren't in OpenRTX's pin map for this
+radio. A pass:
+
+1. **Census** (passive). Each candidate pin is read with a pull-up, then a pull-down: `F` follows
+   the pulls (nothing drives it), `H` or `L` means driven, and `T<n>` means it toggles n times a
+   ms. This runs with the codec as OpenRTX sets it (E0 `c9`) and with E0 bit 0 cleared (`c8`),
+   which might make the C6000 the I2S master.
+2. **Captures.** If the C6000 clocks a port, the MCU listens as a slave and drives nothing. If
+   nothing drives the port's clock and word select (both `F`), the MCU clocks them as master and
+   listens on SD (PC12) and ext SD (PC11). There are four codec settings, both settings of PD9,
+   four frame formats, and 8 and 16 kHz. Each line sums up each channel: nonzero samples,
+   changes, mean, RMS, the strongest of 31 bands and its share of the power.
+3. **PC3** through OpenRTX's own input stream, as a baseline. With no mod it should hold nothing.
+
+Pins, C6000 registers and DMA streams are put back after every step. Drive risk: the MCU only
+drives PC10 and PA15, and only when the census found nothing driving them.
+
+Run it with a signal on the radio's frequency: the IC-7100 sending PSK31 "AG7EW TEST" (1000 Hz
+audio, CW ID first), then a pass with no signal. Read the port with
+`python3 tools/uv380_i2sprobe.py listen /dev/ttyACM0 probe.log`, then
+`python3 tools/uv380_i2sprobe.py report probe.log`. That ranks the captures by how much of their
+power sits at the tone. A capture with the tone on and not off is the path.

@@ -25,6 +25,9 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           sh firmware/uv380-openrtx/build.sh mduv3x0
+      # the I2S probe image (firmware/uv380-openrtx/i2sprobe.h): out/*_i2sprobe*
+      - name: build (mduv3x0, I2S probe)
+        run: BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh mduv3x0
       - uses: actions/upload-artifact@v4
         with:
           name: uv380-openrtx-image
