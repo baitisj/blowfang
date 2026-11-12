@@ -48,8 +48,8 @@ def ones_at(off_hz):
     Hz either side, equal shares in a payload) come off_hz lower, and a one is a symbol over
     the centre. A half within 648 Hz, a quarter above that (three quarters below), none or
     all beyond 1944. The other way round if the chip's discriminator is the other way up (it
-    is not: the sync is found as 9B4D, not as its complement). dfskcap_dmr5's run asks whether
-    the real chip follows this, or takes the signal's mean out and stays at a half"""
+    is not: the sync is found as 9B4D, not as its complement). dfskcap_dmr5's run (run N,
+    2026-11-12) says the real chip follows the tuning: 68% 0.9 kHz below, 40% 0.2 kHz above"""
     return 25 * sum(f - off_hz > 0 for f in (-1944, -648, 648, 1944))
 
 

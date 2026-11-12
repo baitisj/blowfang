@@ -700,12 +700,13 @@ bursts" is the sync fields found (whole and short) over the signs captured in th
   `tests/data/k6/dfskcap-dmr4-runM-20261111.log.gz` (the whole log, 2.5 MB of lines, is on
   hamlet under `~/blowfang-work/runs/dmr-M-20261111/`).
 
-### Run N (planned, `dfskcap_dmr5`): where does the slicer sit?
+### Run N (2026-11-12 01:41:16 to 03:13:00Z, `dfskcap_dmr5`, the module built from 3ce8f73): where does the slicer sit?
 
 Run M's lead was that more sync fields come whole with the AFC on, so where the signal sits
 against the chip's slicer matters. `dfskcap_dmr5` asks where that slicer is. One setting
 (9B4D, the narrow filter, the AFC off, the gain the radio's own), tuned off the repeater by
-steps, 0.8 s each, 840 times round (an hour and a half, six of the repeater's key-ups):
+steps, 0.8 s each, 840 times round (an hour and a half). The plan, with what each answer
+would give:
 
 | o= (100 Hz) | tuned | ones, slicer at the tuned centre | ones, slicer at the signal's mean |
 |---|---|---|---|
@@ -741,6 +742,57 @@ What each answer buys:
 Receive only on 440.925 MHz; the one transmission is the upload on 440.850 MHz at RF power 0.
 In the model the signs are the symbols' own whatever the tuning
 (`test_dfskcap_dmr5_on_the_model` checks the tunings, the `o=` on the lines and the report).
+
+**What happened.** The K6 only listened, on 440.925 MHz. The IC-7100 sent a CW ID
+(01:40:38Z) and the upload (01:40:55 to 01:41:18Z, serial 1794447651), both on 440.850 MHz at
+RF power 0, and nothing after. "dfskcap end n=1317", ret=1317, stack_free=408 B, 6,720 slots.
+The repeater was far busier than in run M and off its quarter-hour pattern: 23 key-ups, 1,200
+slots with a carrier (10 dB or more over the floor, which read -130 dBm at every offset),
+peaks -80 to -86 dBm. One call ran from 03:00:01Z to the module's end and holds 70% of the
+carrier slots. A carrier fell on every offset alike (146 to 153 slots each).
+
+| o= | Tuned | Carrier slots with a sync | Sync fields whole / short | Ones |
+| --- | --- | --- | --- | --- |
+| -13 | 1.3 kHz below | 0 of 148 | 0 / 0 | |
+| -9 | 0.9 kHz below | 10 of 149 | 10 / 1 | 68% |
+| -5 | 0.5 kHz below | 150 of 152 | 1947 / 15 | 59% |
+| -2 | 0.2 kHz below | 149 of 150 | 1846 / 22 | 52% |
+| 2 | 0.2 kHz above | 24 of 152 | 0 / 27 | 40% |
+| 5 | 0.5 kHz above | 0 of 153 | 0 / 0 | |
+| 9 | 0.9 kHz above | 0 of 150 | 0 / 0 | |
+| 13 | 1.3 kHz above | 0 of 146 | 0 / 0 | |
+
+What it says:
+
+- **The slicer sits at the tuned centre.** With the AFC off the share of ones moves with the
+  tuning, from 68% at 0.9 kHz below to 40% at 0.2 kHz above, the way `dmrsign.ones_at`
+  says (tuned below, the signal sits above the centre and more of it reads as ones). The
+  chip does not take the signal's mean out.
+- **The sync is found only within some 0.4 kHz of the best tuning**, not out to 1.3 kHz as the
+  plan expected from the outer symbols alone. Why the window is so narrow is not settled: the
+  narrow filter's edge, or the chip's clock, which follows the slicer's turns and has fewer of
+  them on the right side when one side's inner symbols all read the same.
+- **The best tuning is 0.2 to 0.5 kHz below 440.925 MHz**, and the share of ones crosses a
+  half about 0.1 to 0.2 kHz below. That is the K6's and the repeater's offset together (FT8
+  run 5 put the K6 145 Hz from the IC-7100). Tuned to the nominal frequency, as every run
+  before this one was, the K6 sat near the window's upper edge.
+- **That explains run M's short sync fields and its AFC.** Inside the window nearly every
+  sync field comes whole (99% at -5 and -2); at 0.2 kHz above every one is short. Run M,
+  tuned on the nominal frequency, found 54 to 59% whole with the AFC off and 72% with it on
+  (83% in a call long enough for the AFC to settle): the dropped sign 16 is the mark of a
+  signal off the slicer's centre, and the AFC pulls it back. So run L's edge (-122 dBm) was
+  measured off centre too, and may be a few dB better centred: not measured.
+- For the detector (`dmrdet`, the explorer's DMR mute): with the AFC off a radio a few hundred
+  Hz off a repeater misses it. Latch the AFC on with one tuning (it takes hold at the next
+  tune, insight 48), or learn the radio's own offset once and tune by it.
+- For a two-level mode through this receiver (idea D): the sender and the K6 must agree within
+  a few hundred Hz, or the K6 must run the AFC; and the mode's own bits should be balanced, so
+  that a slicer at the tuned centre sees as many of each.
+- The colour code through three listens off tune is out: off by 0.9 kHz the sync is lost, so
+  there is nothing to hang the off-tune signs on.
+
+The whole log is on hamlet under `~/blowfang-work/runs/dmr-N-20261112/` (`listen-N.log`,
+`dmrsign-N.txt`).
 
 ## Bench plan (receive only; done, kept for reruns)
 
