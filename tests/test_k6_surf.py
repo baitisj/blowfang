@@ -674,6 +674,28 @@ def test_after_band_a_busy_centre_still_gets_the_other_stations_carets_at_once()
 
 
 @need_clang
+def test_mar_wx_opens_on_the_weather_channels():
+    # Jeff 2026-11-12: on MAR/WX peaks took a long time to show. Its centre, 159.275 at +-1 MHz,
+    # had neither NOAA weather (162.400-162.550) nor most of marine on screen. BAND now opens it on
+    # 162.475, where the weather stations' carets come in the first sweeps; 5 goes back there
+    mar = (156_000_000, 162_550_000)
+    sig = [(162_400_000, -100, 0, FOREVER), (162_550_000, -95, 0, FOREVER)]
+    keys = taps("NN", 1_000_000, gap=400_000) + taps("DDD5", 6_000_000) + [(8_000_000, 8_300_000, "X")]
+    ret, said, regs, writes, lcd = go(sig, keys)
+    fr = lcd["frames"]
+    assert at(fr, 2_000_000)["text"][0] == "SURF MAR/WX 25k"
+    assert at(fr, 2_000_000)["text"][1].startswith("162.4750 ")
+    got = {}
+    for f in fr:
+        for hz in (162_400_000, 162_550_000):
+            b = bin_for(hz, 162_475_000, band=mar)        # (a bar two bins wide: its caret on either)
+            if hz not in got and f["us"] > 1_400_000 and {b - 1, b, b + 1} & set(carets(f)):
+                got[hz] = f["us"] - 1_400_000
+    assert set(got) == {162_400_000, 162_550_000} and max(got.values()) < 1_500_000, got
+    assert at(fr, 7_500_000)["text"][1].startswith("162.4750 ")
+
+
+@need_clang
 def test_a_b_key_sets_the_fall_and_a_fallen_caret_is_not_hoppable():
     # A/B cycles the fall: 1 min (the start), 5 min, 20 min, 15 s. At 15 s a full caret is down in
     # ~15 s, and then SIDE1 finds nothing
