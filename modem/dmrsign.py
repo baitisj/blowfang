@@ -42,6 +42,17 @@ def air_signs(bursts, rng, voice_every=0):
     return np.concatenate(out)
 
 
+def ones_at(off_hz):
+    """the share of ones (%) in a DMR burst's signs if the chip slices its discriminator at the
+    tuned centre and the K6 is tuned off_hz above the repeater: the four symbols (648 and 1944
+    Hz either side, equal shares in a payload) come off_hz lower, and a one is a symbol over
+    the centre. A half within 648 Hz, a quarter above that (three quarters below), none or
+    all beyond 1944. The other way round if the chip's discriminator is the other way up (it
+    is not: the sync is found as 9B4D, not as its complement). dfskcap_dmr5's run asks whether
+    the real chip follows this, or takes the signal's mean out and stays at a half"""
+    return 25 * sum(f - off_hz > 0 for f in (-1944, -648, 648, 1944))
+
+
 def next_syncs(bits):
     """a capture's bits -> for each later burst in it, how many of its sync field's 24 signs
     agree with the data sync's (24: a sync the same way up; 0: one the other way up; about 12:
@@ -84,7 +95,10 @@ def report(lines):
     what the chip found of what there was. A carrier need not be DMR (the repeater's analog
     ID, the bench's ID keeper next door in the wide filter). dfskcap_dmr4's s lines carry bk=
     (the block's kind: 0 tuned at every setting, 1 not tuned, 2 not tuned with the AFC on), and
-    then a setting has a line a kind"""
+    then a setting has a line a kind. dfskcap_dmr5's carry o= (the tuning offset in 100 Hz),
+    and its lines end with the share of ones in the captures that hold a sync: a half with
+    the slicer in the signal's middle, towards a quarter or three quarters with it between
+    the inner and the outer symbols of one side"""
     said = [ln.split("say ", 1)[-1].strip() for ln in lines]
     said = said[max([i for i, ln in enumerate(said) if ln.startswith("dfskcap start")] or [0]):]
     sets, caps, cur, slots, pending, key = {}, [], None, [], [], None
@@ -110,7 +124,8 @@ def report(lines):
                 cur["w"].extend(int(f[3][i:i + 4], 16) for i in range(0, len(f[3]) - 3, 4))
     out, tally = [], {}
     for c in caps:
-        t = tally.setdefault(c["key"], {"caps": 0, "ok": 0, "whole": 0, "short": 0, "bits": 0, "r": []})
+        t = tally.setdefault(c["key"], {"caps": 0, "ok": 0, "whole": 0, "short": 0, "bits": 0, "r": [], "ones": 0,
+                                        "of": 0})
         t["caps"] += 1
         if not c["w"]:
             continue
@@ -122,16 +137,20 @@ def report(lines):
             t["whole"] += sum(k == "whole" for _, _, k in a)
             t["short"] += sum(k == "short" for _, _, k in a)
             t["r"].append(c["r"])
+            t["ones"] += int(bits.sum())
+            t["of"] += len(bits)
             out.append(f"c{c['fe']} t={c['t']} r={c['r']}: {len(a)} syncs in {len(bits)} signs, at "
                        + " ".join(f"{i}{'' if w == '+' else '-'}{'s' if k == 'short' else ''}" for i, w, k in a))
     for k in sorted(sets):
-        t = tally.get(k, {"caps": 0, "ok": 0, "whole": 0, "short": 0, "bits": 0, "r": []})
+        t = tally.get(k, {"caps": 0, "ok": 0, "whole": 0, "short": 0, "bits": 0, "r": [], "ones": 0, "of": 0})
         s, mine = sets[k], [x for x in slots if x["key"] == k]
         ln = f"dmr{k[0]} sy={s.get('sy', '?')} cfg={s.get('cfg', '?')}"
         if "g" in s:
             ln += f" g={s['g']}"
         if k[1]:
             ln += f" bk={k[1]}"
+        if "o" in s:
+            ln += f" o={s['o']}"
         ln += (f": {len(mine)} slots, {t['caps']} captures ({t['bits']} signs), {t['ok']} with a sync inside; "
                f"syncs {t['whole']} whole, {t['short']} short")
         if t["ok"]:
@@ -150,6 +169,8 @@ def report(lines):
                 ln += f" (peaks {min(x['p'] for x in hit)} to {max(x['p'] for x in hit)})"
             if miss:
                 ln += f", none in {len(miss)} (peaks {min(x['p'] for x in miss)} to {max(x['p'] for x in miss)})"
+        if "o" in s and t["of"]:
+            ln += f"; ones {100 * t['ones'] / t['of']:.0f}%"
         out.append(ln)
     return out
 

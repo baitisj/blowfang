@@ -334,6 +334,7 @@ dfskcap_dmr    # level 2, dfskcap on 440.925 MHz: does the plain FSK receiver fi
 dfskcap_dmr2   # level 2, dfskcap_dmr's second table, an hour: the sync word with the sign the chip drops, filters, AFC (receive only, docs/k6-dmr.md)
 dfskcap_dmr3   # level 2, dfskcap_dmr with the receiver's gain stepped down: how weak may DMR be for the chip to find its sync (receive only, docs/k6-dmr.md)
 dfskcap_dmr4   # level 2, dfskcap_dmr3 in blocks tuned at every setting, not tuned, and not tuned with the AFC on: does the tuning's restart cost the weak steps (receive only, docs/k6-dmr.md)
+dfskcap_dmr5   # level 2, dfskcap_dmr tuned 0.2 to 1.3 kHz off the repeater either way: where does the chip's slicer sit (receive only, docs/k6-dmr.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md
@@ -343,6 +344,7 @@ fdirq          # level 2, fdtime plus interrupt state and the CPU share interrup
 fdtime         # level 2, how long the module API's calls take (xdmr's gap between waits)
 fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
 fesw           # level 2, the receive front end's band switch as an attenuator: how much the wrong path loses (receive only, docs/k6-fesw.md)
+fesw_vhf       # level 2, fesw on fifteen frequencies of the VHF path, 136 to 174 MHz: is the 2 m floor the same everywhere (receive only, docs/k6-fesw.md)
 fskaprs        # level 2, the chip's FSK modem on AX.25 packets (docs/k6-aprs-clock.md)
 ft8tx          # level 3
 ft8wf

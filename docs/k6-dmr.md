@@ -700,6 +700,48 @@ bursts" is the sync fields found (whole and short) over the signs captured in th
   `tests/data/k6/dfskcap-dmr4-runM-20261111.log.gz` (the whole log, 2.5 MB of lines, is on
   hamlet under `~/blowfang-work/runs/dmr-M-20261111/`).
 
+### Run N (planned, `dfskcap_dmr5`): where does the slicer sit?
+
+Run M's lead was that more sync fields come whole with the AFC on, so where the signal sits
+against the chip's slicer matters. `dfskcap_dmr5` asks where that slicer is. One setting
+(9B4D, the narrow filter, the AFC off, the gain the radio's own), tuned off the repeater by
+steps, 0.8 s each, 840 times round (an hour and a half, six of the repeater's key-ups):
+
+| o= (100 Hz) | tuned | ones, slicer at the tuned centre | ones, slicer at the signal's mean |
+|---|---|---|---|
+| -13 | 1.3 kHz below | 75% | 50% |
+| -9 | 0.9 kHz below | 75% | 50% |
+| -5 | 0.5 kHz below | 50% | 50% |
+| -2 | 0.2 kHz below | 50% | 50% |
+| 2 | 0.2 kHz above | 50% | 50% |
+| 5 | 0.5 kHz above | 50% | 50% |
+| 9 | 0.9 kHz above | 25% | 50% |
+| 13 | 1.3 kHz above | 25% | 50% |
+
+DMR's inner symbols are 648 Hz off the middle and its outer ones 1944 Hz. A slicer at the
+tuned centre puts the inner symbols of one side on the wrong side of it from 0.65 kHz off,
+and the share of ones in a capture goes from a half to a quarter or three quarters
+(`dmrsign.ones_at`); the sync fields, outer symbols only, should still be found. The report
+ends each offset's line with the share of ones in its captures that hold a sync.
+
+What each answer buys:
+
+- **Follows the tuning**: a listen 0.9 kHz above tells the upper outer symbol from the
+  other three, and one 0.9 kHz below the lower outer one. With the sign from a listen on
+  tune that is the whole symbol, from three listens: of use only for what a repeater says
+  in every burst, which the colour code is (the slot type either side of the sync). A lead
+  towards the colour code for the explorer through the sensitive receiver, not yet a way.
+  And a two-level mode through this receiver must be tuned within a few hundred Hz, or
+  carry its own balance.
+- **Stays at a half**: the chip takes the mean out itself, and POCSAG's need for the AFC
+  (insight 48) is not a matter of where the slicer sits.
+- **The whole fields' share by offset** says how far the K6 sits from the repeater: it
+  should peak where the two agree.
+
+Receive only on 440.925 MHz; the one transmission is the upload on 440.850 MHz at RF power 0.
+In the model the signs are the symbols' own whatever the tuning
+(`test_dfskcap_dmr5_on_the_model` checks the tunings, the `o=` on the lines and the report).
+
 ## Bench plan (receive only; done, kept for reruns)
 
 1. Real DMR first: the explorer thread's hamlet recorder rotates through 440.925 and is cutting

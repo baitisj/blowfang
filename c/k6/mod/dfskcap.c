@@ -234,6 +234,13 @@
    slots started (39 of 43 against 60 of 76) and more sync fields came whole (72% against 54
    to 59%): the dropped sign has to do with where the signal sits against the slicer. The
    gain takes hold without a tuning.
+   DFSK_DMR5 (dfskcap_dmr5.c): where does the slicer sit? One setting (9B4D, narrow, the AFC
+   off, the gain the radio's own) tuned 1.3, 0.9, 0.5 and 0.2 kHz below and above the
+   repeater (o= on the s line, in 100 Hz). If the plain receiver slices the discriminator at
+   the tuned centre, the inner symbols (648 Hz off the middle) fall on the other side of it
+   from about 0.65 kHz off, and the share of ones in the captures goes from a half towards a
+   quarter one way and three quarters the other; if it slices at the signal's own mean, the
+   share stays a half. The sync fields (outer symbols, 1944 Hz) should hold throughout.
    A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.
@@ -487,7 +494,21 @@ static const var_t V[NV] = {
    DFF57D75DF5D: 439B4D with + as 1; the voice sync is its inverse). The last sixteen as the
    sync word, either way up; 128 bytes (seven bursts on) a capture; 4800 baud */
 #define DV(cfg, sync, af, fe) {cfg, 0xC195, sync, 0x7F00, af, 100, FE_S, 0, fe, 0}
-#ifdef DFSK_DMR3
+#ifdef DFSK_DMR5
+/* the tuning offset in 100 Hz: the signal then sits that far the other way against the tuned
+   centre. Symmetric, so that the middle shows where the K6 and the repeater differ */
+#define DVO(off) {0x00E9, 0xC195, 0x9B4D, 0x7F00, 0x0700, 100, FE_S, off, 2, 0}
+static const var_t V[NV] = {
+    DVO(-13),
+    DVO(-9),
+    DVO(-5),
+    DVO(-2),
+    DVO(2),
+    DVO(5),
+    DVO(9),
+    DVO(13),
+};
+#elif defined(DFSK_DMR3)
 /* runs J and K: every setting starts on the repeater at -81 to -87 dBm. How weak may it be?
    One setting (9B4D, the narrow filter, the AFC off) with the receiver's gain fixed (DFSK_GAIN),
    stepped down from the front: against the noise of the stages behind, a strong signal is
@@ -751,6 +772,11 @@ static uint32_t begin(const k6_api_t *api, int cur, uint32_t af) {
 #endif
 #ifdef DFSK_BLOCK
   p = kv(p, " bk=", bk);
+#endif
+#ifdef DFSK_DMR5
+  p = put(p, " o=");
+  if (v->off < 0) *p++ = '-';
+  p = dec(p, (uint32_t)(v->off < 0 ? -v->off : v->off));
 #endif
 #ifdef DFSK_ZIF
   p = kx(p, " if=", api->fd_read(0x3D));
