@@ -133,15 +133,60 @@ amplifier's noise away with the signal. With neither path on, the repeater would
 between 24 and 10 dB. Through the VHF path it would stand near -133 dBm at a floor of
 -135 dBm, under the edge.
 
+### `fesw_vhf` (2026-11-12, the module built from 3ce8f73): the 2 m floor by frequency and hour
+
+The same probe on fifteen frequencies of the VHF path and 440.925 MHz, five rounds in three
+minutes, run twice around run N (docs/k6-dmr.md): 01:37:13 to 01:40:15Z and 03:13:53 to
+03:16:55Z, and once more at 03:32:22 to 03:35:25Z (not in the table: within a dB of the
+second everywhere). The K6 only listened. The IC-7100 sent a CW ID and the upload before each, on
+440.850 MHz at RF power 0, and nothing during. Each: "fesw end n=240", ret=240,
+stack_free=408 B, no line marked `x`. dBm is the K6's uncalibrated meter, the narrow filter,
+the radio's own AGC.
+
+| MHz | Own path, 01:37Z | Own path, 03:14Z | Other path | Neither |
+| --- | --- | --- | --- | --- |
+| 136.000 | -118 | -118 | -147 | -154 / -153 |
+| 140.000 | -108 | -108 | -144 | -153 |
+| 143.000 | -108 | -111 | -130 | -131 |
+| 144.200 | -107 | -111 | -142 | -153 / -154 |
+| 144.340 | -107 | -111 | -142 | -153 / -154 |
+| 144.390 | -107 | -111 | -142 | -153 / -154 |
+| 144.440 | -107 | -111 | -141 | -153 / -154 |
+| 144.600 | -107 | -111 | -141 | -153 |
+| 146.000 | -104 | -109 | -139 / -140 | -153 / -154 |
+| 148.000 | -104 | -108 | -138 / -140 | -153 |
+| 152.000 | -110 | -114 | -134 / -137 | -153 |
+| 156.000 | -106 | -110 | -115 | -118 |
+| 160.000 | -108 | -108 | -134 / -139 | -154 / -153 |
+| 162.550 (NOAA) | -104 | -106 | -129 / -131 | -146 |
+| 170.000 | -115 | -117 | -124 | -153 / -152 |
+| 440.925 | -85 (the repeater, all rounds) | -132 (2 quiet rounds) | -134 / -136 | -136 / -151 |
+
+Where a cell has two figures they are the two runs'.
+
+- **No hump at 144.390 MHz.** The floor is the same from 144.200 to 144.600 in both runs, to the
+  dB: no narrow source near the APRS channel (a digipeater's, a neighbour's).
+- **The floor moved with the hour.** The VHF path read 2 to 5 dB lower at 03:14Z than at 01:37Z
+  from 143 to 170 MHz (136, 140 and 160 MHz did not move), while the chip's floor with neither path on held at -153 to -154.
+  Run 1 (17:32Z the day before) had -111 on 144.390. A third run at 03:32Z read the same as
+  the second to a dB at every frequency (144.200 to 144.600 all -111 again): the floor fell
+  some time between 01:37 and 03:14Z and then held. An amplifier's own noise does not move
+  4 dB in an hour and a half; noise from outside does. Two runs are too few to say more than
+  that this leans towards the antenna's side.
+- **Its shape follows the front end.** The floor is highest at 146 to 148 MHz and falls off
+  towards 136 and 170 MHz, which is the VHF path's passband. Both an amplifier's noise and
+  a broad noise picked up would show it, so the shape says nothing either way.
+- 143.000 and 156.000 MHz read the same with the path off (-131 and -118, the noise meter
+  low): signals made inside the K6, not on the air.
+- 440.925 MHz is a poor reference in this pair: the repeater was keyed through the first run
+  and three rounds of the second. Its two quiet rounds read -132, as in run 1.
+
+The reports are on hamlet under `~/blowfang-work/runs/dmr-N-20261112/` (`fesw-V-before.txt`,
+`fesw-V-after.txt`).
+
 ## Next
 
-- Whether the 2 m noise is picked up or the amplifier's: `fesw_vhf` (built, not yet run) is
-  the same probe on fifteen frequencies of the VHF path, one per line in
-  `c/k6/mod/fesw_vhf.c`: 136, 140 and 143 MHz, 144.200, 144.340, 144.390, 144.440 and
-  144.600 MHz, 146, 148, 152, 156 and 160 MHz, 162.550 MHz (NOAA) and 170 MHz, with
-  440.925 MHz as the UHF path's reference. Five rounds, three minutes, to be run at several
-  hours. Picked-up noise moves with the hour and with the frequency (a hump round 144.390,
-  or steps 50 kHz apart that differ, mean a source outside); an amplifier's does not. A
-  floor that is flat and steady says the amplifier, or a noise too broad to tell from it.
-  Receive only, no hands; the upload on 440.850 MHz at RF power 0 is its one transmission.
+- Run `fesw_vhf` at other hours (morning, midday, a weekend) and lay the tables side by side
+  with the two below. A floor that keeps moving by several dB, with the chip's own floor
+  steady, says picked-up noise.
 - Jeff's antenna-off check (shelved) remains the direct answer.

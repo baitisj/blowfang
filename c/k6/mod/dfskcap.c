@@ -241,6 +241,10 @@
    from about 0.65 kHz off, and the share of ones in the captures goes from a half towards a
    quarter one way and three quarters the other; if it slices at the signal's own mean, the
    share stays a half. The sync fields (outer symbols, 1944 Hz) should hold throughout.
+   Run N (2026-11-12, 23 key-ups): the slicer is at the tuned centre (ones 68% 0.9 kHz below,
+   40% 0.2 kHz above), but the sync held only 0.2 and 0.5 kHz below (99% of the slots, 99%
+   whole), a few at 0.9 below and 0.2 above (all short), none further out: the K6 and the
+   repeater differ by some 0.2 to 0.5 kHz, and with the AFC off that is the window's edge.
    A capture of the tone receiver's ends when the FIFO is empty (the words of eight reads before come
    again for 53 ms), and its c line's k= counts its words unlike the first: one with none is
    not said. The receiver is off while a capture's words are said.

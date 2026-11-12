@@ -36,10 +36,21 @@
   moves with the CPU loop").
 - The POCSAG reader that follows the FIFO word by word knows nothing of POCSAG. It is the one
   to share between the chip-receiver modules; the APRS reader leans on Bell 202's tones.
+- The rule for chip-sliced decoders then reads: AFC on (latched with one tune) unless the
+  radio's offset is known and tuned out.
 - It would buy: bench figures that mean the same from run to run, and a rule for how long
   the explorer should stay on a channel it has just tuned (run M: no longer than the burst
   it is after).
+- Run N (2026-11-12, `dfskcap_dmr5`, [k6-dmr.md](../k6-dmr.md)) found why the AFC helps a
+  chip-sliced decoder: with the AFC off the plain receiver slices at the tuned centre, not
+  at the signal's mean (the share of ones in DMR moved from 68% to 40% over 1.1 kHz of
+  tuning), and DMR's sync is found only within some 0.4 kHz of the best tuning, which on this
+  bench is 0.2 to 0.5 kHz below the nominal frequency. Every run before tuned on the nominal
+  and sat near the edge: hence run M's short sync fields, and the AFC's gain. For POCSAG the
+  same is likely, though its sender was only 145 Hz off: its 1-bit sampler needs every bit,
+  not 24 of them.
 - Half settled 2026-11-12 by run M (blocks tuned at every setting, not tuned, and not tuned
   with the AFC on): for DMR's sync the restart costs nothing and the AFC on helps a little.
   Still to do: for WSPR a receive run judged from its second two-minute slot on, and the
-  POCSAG sampler with the AFC off on a signal tuned a few hundred Hz either way.
+  POCSAG sampler with the AFC off on a signal tuned a few hundred Hz either way (run N says
+  what to expect: a narrow window round the true centre).
