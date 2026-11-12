@@ -8,6 +8,11 @@
 #                                                 bare .bin and the ELF
 #   sh firmware/uv380-openrtx/build.sh linux      OpenRTX's Linux emulator (out/openrtx_linux)
 #
+#   BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh
+#                                                 the I2S probe image (i2sprobe.h): PAGER mode
+#                                                 receives while idle and runs the probe, its
+#                                                 lines to USB serial; out/*_i2sprobe*
+#
 # Steps: a fresh clone of OpenRTX at the commit the patch was written against (into
 # firmware/uv380-openrtx/build/openrtx, which this script owns and deletes), git apply
 # uv380-blowfang.patch, copy blowfang's portable transmitter (c/common: pager_tx, ffsk_tx,
@@ -46,7 +51,21 @@ ffsk_tx.h
 cw_tx.c
 cw_tx.h
 EOF
-cp "$HERE/blowfang_message.h" "$WORK/openrtx/src/blowfang/"
+while read -r f; do
+  cp "$HERE/$f" "$WORK/openrtx/src/blowfang/"
+done <<EOF
+blowfang_message.h
+i2sprobe.c
+i2sprobe.h
+EOF
+SUFFIX=
+{
+  echo "/* written by build.sh */"
+  if [ "${BLOWFANG_I2SPROBE:-0}" = 1 ]; then
+    echo "#define BLOWFANG_I2SPROBE 1"
+    SUFFIX=_i2sprobe
+  fi
+} > "$WORK/openrtx/src/blowfang/blowfang_config.h"
 
 # the fixed-point sotto 1200 decoder (8 kHz) from the sotto submodule, for the speaker preview:
 # sotto/c's headers and c/fixed, and the wrappers that build its sources with the codec flags
@@ -64,13 +83,13 @@ cd "$WORK"
 if [ "$TARGET" = linux ]; then
   meson setup build_linux
   meson compile -C build_linux openrtx_linux
-  cp build_linux/openrtx_linux "$OUT/"
+  cp build_linux/openrtx_linux "$OUT/openrtx_linux$SUFFIX"
 else
   meson setup --cross-file cross_cm4.txt build_cm4
   meson compile -C build_cm4 openrtx_mduv3x0_wrap
-  cp build_cm4/openrtx_mduv3x0_wrap "$OUT/openrtx_mduv3x0_wrap.bin"
-  cp build_cm4/openrtx_mduv3x0_bin "$OUT/openrtx_mduv3x0.bin"
-  cp build_cm4/openrtx_mduv3x0 "$OUT/openrtx_mduv3x0.elf"
-  arm-miosix-eabi-size "$OUT/openrtx_mduv3x0.elf" | tee "$OUT/size.txt"
+  cp build_cm4/openrtx_mduv3x0_wrap "$OUT/openrtx_mduv3x0${SUFFIX}_wrap.bin"
+  cp build_cm4/openrtx_mduv3x0_bin "$OUT/openrtx_mduv3x0$SUFFIX.bin"
+  cp build_cm4/openrtx_mduv3x0 "$OUT/openrtx_mduv3x0$SUFFIX.elf"
+  arm-miosix-eabi-size "$OUT/openrtx_mduv3x0$SUFFIX.elf" | tee "$OUT/size$SUFFIX.txt"
 fi
 echo "built $TARGET in $OUT"

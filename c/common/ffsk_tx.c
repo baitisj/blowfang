@@ -39,13 +39,24 @@ static uint32_t inc_for(uint32_t hz, uint32_t fs) {
     return (uint32_t)(((uint64_t)hz << 32) / fs);
 }
 
+static int air_next(void *ctx) { return pt_air_bit((pt_air *)ctx); }
+
 void ffsk_init(ffsk_tx *m, pt_air *air, uint32_t fs, uint32_t baud, uint32_t mark_hz,
                uint32_t space_hz, int16_t level) {
+    pt_air_start(air);
+    ffsk_init_src(m, air_next, air, fs, baud, mark_hz, space_hz, level);
+    m->air = air;
+}
+
+void ffsk_init_src(ffsk_tx *m, int (*next)(void *ctx), void *ctx, uint32_t fs, uint32_t baud,
+                   uint32_t mark_hz, uint32_t space_hz, int16_t level) {
     if (!mark_hz)
         mark_hz = 1200;
     if (!space_hz)
         space_hz = baud >= 2400 ? 2400 : 1800;
-    m->air = air;
+    m->air = 0;
+    m->next = next;
+    m->ctx = ctx;
     m->fs = fs;
     m->baud = baud;
     m->inc_mark = inc_for(mark_hz, fs);
@@ -57,8 +68,7 @@ void ffsk_init(ffsk_tx *m, pt_air *air, uint32_t fs, uint32_t baud, uint32_t mar
     m->n = 0;
     m->tail = 0;
     m->done = 0;
-    pt_air_start(air);
-    m->bit = pt_air_bit(air);
+    m->bit = next(ctx);
     if (m->bit < 0) {
         m->done = 1;
     }
@@ -92,7 +102,7 @@ unsigned ffsk_render(ffsk_tx *m, int16_t *out, unsigned n) {
             m->acc += m->baud;
             if (m->acc >= m->fs) {
                 m->acc -= m->fs;
-                int b = pt_air_bit(m->air);
+                int b = m->next(m->ctx);
                 if (b < 0) {
                     m->done = 1;
                     m->tail = m->ramp;

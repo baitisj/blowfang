@@ -65,6 +65,14 @@ Two likely no-mod routes, both unproven on this radio:
   4FSK modem both ways with no mod. (The K6 can't send DMR, so this is for UV-380 to UV-380 and
   for receiving.)
 
+The I2S route may also carry **received** audio. On the UV-380 the AT1846S's FM audio goes into
+the HR_C6000 (OpenRTX holds RX_AUDIO_MUX, PD9, high "to keep audio connected to HR_C6000"), and
+the C6000's codec digitises it and passes it to its DAC for the speaker (E3 "internal ADC and DAC
+passthrough"). If the codec's I2S port gives out those samples, the UV-380 can receive K6
+packets with no mod. The I2S probe image (firmware/uv380-openrtx/README.md, `i2sprobe.c`) asks
+the radio which pins are driven, which toggle, and whether any I2S capture holds a tone sent on
+the air.
+
 So for now: UV-380 transmit of anything the MCU makes (FFSK, sotto from a stored message) works on
 a stock radio; live sotto from the mic needs the I2S probe or a mod; receiving the K6's FFSK on
 the UV-380 needs the RF mod or another route.

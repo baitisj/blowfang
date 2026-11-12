@@ -16,6 +16,8 @@
 
 typedef struct {
     pt_air *air;
+    int (*next)(void *ctx);     /* the bit source: the next bit, or -1 at the end */
+    void *ctx;
     uint32_t fs, baud, inc_mark, inc_space, phase, acc;
     int16_t level;              /* peak, out of 32767 */
     unsigned ramp, n, tail;     /* ramp length, samples so far, ramp-down samples left */
@@ -25,6 +27,10 @@ typedef struct {
 /* mark_hz / space_hz 0: the K6's pair for the baud rate (1200/1800, or 1200/2400 at 2400). */
 void ffsk_init(ffsk_tx *m, pt_air *air, uint32_t fs, uint32_t baud, uint32_t mark_hz,
                uint32_t space_hz, int16_t level);
+
+/* The same with any bit source (c/common/range_tx.h's rg_air_next for PHY R). */
+void ffsk_init_src(ffsk_tx *m, int (*next)(void *ctx), void *ctx, uint32_t fs, uint32_t baud,
+                   uint32_t mark_hz, uint32_t space_hz, int16_t level);
 
 /* Fills up to n samples; returns how many (fewer than n only at the end of the burst, then 0). */
 unsigned ffsk_render(ffsk_tx *m, int16_t *out, unsigned n);

@@ -75,6 +75,7 @@ jobs:
         run: |
           make -C sotto/c VARIANT=v3.7 fixed PYTHON=false
           make -C c/k6
+          make -C c/common
       # Each shard: its share of the tests, spread over the runner's cores (-n auto, work stealing), so the
       # long emulated-M0 sessions (aprsclk, ifpager, ft8wf, ifrx, dmr: 50-90 s each) run side by side.
       # Add a new test file as one line, in alphabetical order.
@@ -124,6 +125,7 @@ jobs:
             tests/test_k6_pager.py \
             tests/test_k6_pages.py \
             tests/test_k6_pocsag.py \
+            tests/test_k6_range.py \
             tests/test_k6_rt.py \
             tests/test_k6_rxmap.py \
             tests/test_k6_scan.py \
