@@ -307,3 +307,23 @@ def test_report_reads_run_m():
     assert rep[23] == ("dmr7 sy=9b4d cfg=00e9 g=0004 bk=2: 7 slots, 4 captures (5184 signs), 2 with a sync inside; "
                        "syncs 4 whole, 3 short; RSSI -143 to -142; slot peaks -154 to -144; floor -155; "
                        "carrier in 1 slots, a sync in 1 (peaks -144 to -144)")
+
+
+def test_report_reads_run_n():
+    """one of run N's 23 key-ups (2026-11-12 02:12:52Z, about 12 s, docs/k6-dmr.md), with two
+    rounds of quiet before it and one after: dfskcap_dmr5's eight offsets. The sync is found
+    0.9, 0.5 and 0.2 kHz below the nominal frequency and nowhere above it, every field whole,
+    and the share of ones falls as the tuning rises: the chip slices at the tuned centre"""
+    import gzip
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "k6", "dfskcap-dmr5-runN-20261112.log.gz")
+    with gzip.open(path, "rt") as f:
+        lines = f.read().splitlines()
+    assert len(lines) == 208 and lines[0].endswith("dfskcap start hz=440925000 n=8")
+    assert lines[-1].endswith("ret=1317 (0x525) in 5505170 ms stack_free=408 B")
+    rep = [ln for ln in dmrsign.report(lines) if ln.startswith("dmr")]
+    assert [ln.split(":")[0] for ln in rep] == [f"dmr{fe} sy=9b4d cfg=00e9 o={o}" for fe, o in enumerate(OFFS)], rep
+    whole = [syncs_of(ln) for ln in rep]
+    assert whole == [(0, 0), (1, 0), (18, 0), (28, 0), (0, 0), (0, 0), (0, 0), (0, 0)], whole
+    ones = {OFFS[fe]: int(ln.rsplit("; ones ", 1)[1].rstrip("%")) for fe, ln in enumerate(rep) if "; ones " in ln}
+    assert ones == {-9: 68, -5: 60, -2: 52}, ones
+    assert all("floor -130" in ln and "carrier in " in ln for ln in rep), rep

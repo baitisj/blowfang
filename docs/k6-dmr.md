@@ -767,7 +767,9 @@ What it says:
 - **The slicer sits at the tuned centre.** With the AFC off the share of ones moves with the
   tuning, from 68% at 0.9 kHz below to 40% at 0.2 kHz above, the way `dmrsign.ones_at`
   says (tuned below, the signal sits above the centre and more of it reads as ones). The
-  chip does not take the signal's mean out.
+  chip does not take the signal's mean out. The long call and the other 22 key-ups give the
+  same shares to a point (69/59/52% and 68/58/52% at 0.9, 0.5 and 0.2 kHz below), so the long
+  call does not decide it.
 - **The sync is found only within some 0.4 kHz of the best tuning**, not out to 1.3 kHz as the
   plan expected from the outer symbols alone. Why the window is so narrow is not settled: the
   narrow filter's edge, or the chip's clock, which follows the slicer's turns and has fewer of
@@ -782,6 +784,9 @@ What it says:
   (83% in a call long enough for the AFC to settle): the dropped sign 16 is the mark of a
   signal off the slicer's centre, and the AFC pulls it back. So run L's edge (-122 dBm) was
   measured off centre too, and may be a few dB better centred: not measured.
+- The 24 slots with a sync at 0.2 kHz above all fell in the long call; in the other key-ups
+  that offset found none. A long call may sit a little higher than an idle key-up, or the
+  K6 warmed and moved over the 13 minutes: not told apart.
 - For the detector (`dmrdet`, the explorer's DMR mute): with the AFC off a radio a few hundred
   Hz off a repeater misses it. Latch the AFC on with one tuning (it takes hold at the next
   tune, insight 48), or learn the radio's own offset once and tune by it.
@@ -791,8 +796,9 @@ What it says:
 - The colour code through three listens off tune is out: off by 0.9 kHz the sync is lost, so
   there is nothing to hang the off-tune signs on.
 
-The whole log is on hamlet under `~/blowfang-work/runs/dmr-N-20261112/` (`listen-N.log`,
-`dmrsign-N.txt`).
+One key-up (02:12:52Z, about 12 s) with two quiet rounds before it and one after is
+`tests/data/k6/dfskcap-dmr5-runN-20261112.log.gz` (`test_report_reads_run_n`). The whole log
+is on hamlet under `~/blowfang-work/runs/dmr-N-20261112/` (`listen-N.log`, `dmrsign-N.txt`).
 
 ## Bench plan (receive only; done, kept for reruns)
 
