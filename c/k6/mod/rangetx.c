@@ -18,14 +18,16 @@
      600 Hz, 1/256) and times each change to cancel it, so the phase stays within a write's
      jitter of where it should be. RT_PPM: the FD6818's crystal against the MCU's, if known;
    - writes REG_71 only where the tone changes, starting each write its own length early (the
-     last write's, measured: a register write takes about 100-400 us);
+     last write's, measured: a register write takes about 100-400 us), and REG_70 right after it
+     for the new tone's gain (RT_GAIN 600 Hz, RT_GAIN12 1200 Hz: pre-emphasis, as an FM data
+     sender's; the UV-380's de-emphasis takes the 1200 Hz tone about 6 dB down otherwise);
    - RT_PA 0 (rangetx_lo.c) turns the PA off right after tx_on and keeps it off: the lowest
      power the K6 has, only the chip's leak, for the bench;
    - after the burst, tone off, then AG7EW in MCW (the 800 Hz tone keyed with REG_70) at 20 wpm,
      and keys down. TIM17 and its clock enable are put back on every way out.
 
    It says
-     K6 MOD say rangetx n=6 bits=13848 g=60 pa=1 rx=440850000
+     K6 MOD say rangetx n=6 bits=13848 g=44/110 pa=1 rx=440850000
      K6 MOD say rangetx w=6912 late=0 wr=9000-9100 d=12 a=40
                                  tone changes; writes started late; a write's length (cycles at
                                  96 MHz, min-max); the worst error left at a change and |A| (cycles)
@@ -46,7 +48,15 @@
 #define RT_HZ 440850000u
 #endif
 #ifndef RT_GAIN
-#define RT_GAIN 60          /* REG_70 tone-1 gain, 0-127 (Aura's tone and SSTV, ft8tx: 60) */
+#define RT_GAIN 44          /* REG_70 tone-1 gain for the 600 Hz bits, 0-127 (Aura's tone, ft8tx: 60) */
+#endif
+#ifndef RT_GAIN12
+#define RT_GAIN12 110       /* and for the 1200 Hz bits: 2.5 times, the FM pre-emphasis a receiver's
+                               de-emphasis expects (the UV-380 takes the 1200 Hz tone about 6 dB
+                               under the 600 Hz one; RT_GAIN to send both alike) */
+#endif
+#ifndef ID_GAIN
+#define ID_GAIN 60
 #endif
 #ifndef RT_PPM
 #define RT_PPM 0.0          /* the FD6818's crystal against the MCU's, ppm (its tone fast: +) */
@@ -93,7 +103,9 @@
 #define OFF_MAX 9600                                 /* a change moves at most 100 us */
 #define WR_MAX (BIT * 3u / 4u)                       /* a write longer than this can't keep up */
 #define KEY_EVERY 4800000u                           /* cycles between key checks: 50 ms */
-#define REG70_ON ((uint16_t)(0x8000u | ((RT_GAIN & 0x7Fu) << 8)))
+#define REG70(g) ((uint16_t)(0x8000u | (((g) & 0x7Fu) << 8)))
+#define REG70_ON REG70(ID_GAIN)
+#define TWO (RT_GAIN12 != RT_GAIN)                   /* a REG_70 write with each change too */
 #define WORD(hz) ((uint16_t)((uint32_t)(hz) * 1032444u / 100000u))
 #define UNIT_MS (1200u / ID_WPM)
 #define ID_UNITS 52                                  /* AG7EW: A 8, G 12, 7 16, E 4, W 12 */
@@ -235,9 +247,9 @@ static int burst(const k6_api_t *api, clk_t *c, stat_t *s) {
     if (t1 > len) len = t1;
   }
   s->wmin = s->wmax = len;
-  if (len > WR_MAX) return -8;
+  if (len * (TWO ? 2u : 1u) > WR_MAX) return -8;
   /* bit 0's leading edge: the tone on */
-  api->fd_write(0x70, REG70_ON);
+  api->fd_write(0x70, REG70(cur ? RT_GAIN : RT_GAIN12));
   edge = tkey = now(c);
   for (k = 0; k < RT_NBITS; k++) {
     unsigned b = tone(k);
@@ -254,6 +266,9 @@ static int burst(const k6_api_t *api, clk_t *c, stat_t *s) {
       api->fd_write(0x71, b ? W600 : W1200);
       t1 = now(c);
       len = t1 - t0;
+      if (TWO)                /* the gain right after: the bit's first write-length is at the
+                                 other tone's level */
+        api->fd_write(0x70, REG70(b ? RT_GAIN : RT_GAIN12));
       if (len < s->wmin) s->wmin = len;
       if (len > s->wmax) s->wmax = len;
       d = (int32_t)(t1 - edge);
@@ -301,6 +316,8 @@ int k6_main(const k6_api_t *api) {
   p = dec(p, RT_NBITS);
   p = put(p, " g=");
   p = dec(p, RT_GAIN);
+  p = put(p, "/");
+  p = dec(p, RT_GAIN12);
   p = put(p, " pa=");
   p = dec(p, RT_PA);
   p = put(p, " rx=");

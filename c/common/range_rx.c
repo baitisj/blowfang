@@ -3,29 +3,72 @@
 
 #define RR_MASK (RR_HIST - 1u)
 #ifndef RR_HYST
-#define RR_HYST 8               /* a phase move needs the best E 1/RR_HYST over the current's */
+#define RR_HYST 16              /* a phase move needs a neighbour's E 1/RR_HYST over the current's */
 #endif
 #ifndef RR_EAVG
-#define RR_EAVG 32              /* E's running mean: 1/RR_EAVG of each step */
+#define RR_EAVG 16              /* E's running mean: 1/RR_EAVG of each step */
 #endif
 #define Q_MAX 7
+#ifndef RR_TRK_G
+#define RR_TRK_G 4              /* the phase follower moves 1/2^RR_TRK_G of its error a bit */
+#endif
+#define RR_HM 15                /* the quadrature filter's half length (taps hs apart) */
+#define RR_XMASK (RR_XR - 1u)
+
+#if RR_TRACK
+/* the Hilbert filter's taps at 1, 3 .. 15 (2 / (pi k), Hamming windowed, Q13): within 1% and a
+   tenth of a degree from 450 to 3000 Hz at 8 kHz */
+static const int16_t hq[8] = {5163, 1586, 803, 438, 231, 110, 48, 28};
+
+/* a c / 2^14 for |c| <= 2^15 and |a| < 2^20 (y to 48 kHz), c to 1/1024 */
+static int32_t mul14(int32_t a, int32_t c) {
+    return a * (c >> 4) >> 10;
+}
+#endif
 
 void rr_init(rr_state *r, unsigned fs) {
     unsigned char *p = (unsigned char *)r;
     for (unsigned i = 0; i < sizeof *r; i++)    /* no memset: a module has no library */
         p[i] = 0;
     r->T = ((uint32_t)fs << 16) / 1200u;       /* 32-bit: a module has no 64-bit divide */
+#if RR_TRACK
+    r->hs = (fs + 4000u) / 8000u;
+    while (r->hs > 1u && 2u * RR_HM * r->hs >= RR_XR)
+        r->hs--;
+    r->rc = 1 << 14;
+#endif
     /* the first step's last phase needs 2 bits of audio: start it a bit and a half in */
     r->base = r->T + r->T / 2u;
 }
 
 /* the sum of the audio from its start to t (Q16 samples), the sample at floor(t) counted for the
    fraction of it before t; needs floor(t) + 1 <= n and floor(t) > n - RR_HIST */
-static uint32_t at(const rr_state *r, uint32_t t) {
+static uint32_t at(const uint32_t *cum, uint32_t t) {
     uint32_t i = t >> 16, f = (t & 0xFFFFu) >> 4;      /* Q12 */
-    uint32_t c0 = r->cum[i & RR_MASK], c1 = r->cum[(i + 1u) & RR_MASK];
+    uint32_t c0 = cum[i & RR_MASK], c1 = cum[(i + 1u) & RR_MASK];
     int32_t x = (int32_t)(c1 - c0);
     return c0 + (uint32_t)((x * (int32_t)f) >> 12);
+}
+
+/* the integrate and dump on the edge at e, h either side */
+static int32_t dump(const uint32_t *cum, uint32_t e, uint32_t h) {
+    return (int32_t)(2u * at(cum, e) - at(cum, e - h) - at(cum, e + h));
+}
+
+/* the soft value's y at e: the audio turned back by the follower's angle; *yd: the turned
+   quadrature's (where y would go if the angle grew) */
+static int32_t y_at(const rr_state *r, uint32_t e, uint32_t h, int32_t *yd) {
+    int32_t yi = dump(r->cum, e, h);
+#if RR_TRACK
+    int32_t yq = dump(r->cumq, e, h);
+    if (yd)
+        *yd = mul14(yq, r->rc) - mul14(yi, r->rs);
+    return mul14(yi, r->rc) + mul14(yq, r->rs);
+#else
+    if (yd)
+        *yd = 0;
+    return yi;
+#endif
 }
 
 static int32_t clamp_q(int32_t v) {
@@ -108,20 +151,28 @@ static int step(rr_state *r) {
     unsigned best = 0, p, old = r->ph;
     int done = 0;
     for (p = 0; p < RR_NPH; p++) {
-        uint32_t e = r->base + r->T * p / RR_NPH;
-        int32_t y = (int32_t)(2u * at(r, e) - at(r, e - h) - at(r, e + h));
+        int32_t y = y_at(r, r->base + r->T * p / RR_NPH, h, 0);
         int32_t a = (y < 0 ? -y : y) << 4;
-        r->yp[p] = r->y[p];
-        r->y[p] = y;
         r->E[p] += (a - r->E[p]) / RR_EAVG;
         if (r->E[p] > ebest)
             ebest = r->E[p], best = p;
     }
     if (r->warm < 255)
         r->warm++;
-    /* move when the best is clearly better (RR_HYST), or freely while the bank warms up */
-    if (best != old && (r->warm < 64 || ebest > r->E[old] + r->E[old] / RR_HYST))
-        r->ph = (uint8_t)best;
+    /* while the bank warms up, or when another phase is far better (a burst starting, or a
+       lock half a bit off), straight to the best phase */
+    if (r->warm < 64 || ebest > r->E[old] + r->E[old] / 2) {
+        if (best != old)
+            r->ph = (uint8_t)best;
+    } else {
+        /* otherwise a step to a neighbour at most (a drift is far slower): the bank mustn't hop
+           between peaks and count a bit twice or not at all (11-13 K11: the K6's clock wandering
+           against its tone made it do that) */
+        unsigned up = (old + 1u) % RR_NPH, dn = (old + RR_NPH - 1u) % RR_NPH;
+        unsigned nb = r->E[up] > r->E[dn] ? up : dn;
+        if (r->E[nb] > r->E[old] + r->E[old] / RR_HYST)
+            r->ph = (uint8_t)nb;
+    }
     int d = (int)r->ph - (int)old;
     unsigned nout = 1;
     if (d < -(int)(RR_NPH / 2))
@@ -149,14 +200,26 @@ static int step(rr_state *r) {
             off = nd ? -(a * 128) / nd : 0;
         }
     }
-    int32_t yf = r->y[r->ph];
-    if (off) {
-        uint32_t e = r->base + r->T * r->ph / RR_NPH + (uint32_t)((int32_t)(r->T / RR_NPH) * off / 256);
-        yf = (int32_t)(2u * at(r, e) - at(r, e - h) - at(r, e + h));
-    }
+    int32_t yd;
+    int32_t yf = y_at(r, r->base + r->T * r->ph / RR_NPH + (uint32_t)((int32_t)(r->T / RR_NPH) * off / 256),
+                      h, &yd);
     int32_t amp = r->E[r->ph] >> 4;
+#if RR_TRACK
+    /* the follower: turn the angle by (the soft value's sign) yd / amp (about the angle's error
+       in radians, clean), 1/2^RR_TRK_G of it, then back to length 1 (one Newton step) */
+    if (amp > 0) {
+        int32_t er = yd * 256 / amp;                     /* Q8 */
+        er = er > 256 ? 256 : er < -256 ? -256 : er;
+        int32_t da = (yf < 0 ? -er : er) * 64 / (1 << RR_TRK_G);   /* Q14 radians */
+        int32_t c = r->rc - mul14(r->rs, da), sn = r->rs + mul14(r->rc, da);
+        int32_t m = (c * c + sn * sn) >> 14;
+        r->rc = (c * (3 * (1 << 14) - m)) >> 15;
+        r->rs = (sn * (3 * (1 << 14) - m)) >> 15;
+    }
+#endif
     for (unsigned k = 0; k < nout; k++) {
-        int32_t y = nout == 2 && k == 0 ? r->yp[r->ph] : yf;
+        /* the step before's edge at this phase: its audio is still in (3 bits back) */
+        int32_t y = nout == 2 && k == 0 ? y_at(r, r->base - r->T + r->T * r->ph / RR_NPH, h, 0) : yf;
         int32_t q = amp > 0 ? clamp_q((4 * y + (y < 0 ? -amp / 2 : amp / 2)) / amp) : 0;
         if (bit_in(r, (int8_t)q))
             done = 1;               /* a pair's second soft value starts the hunt again */
@@ -169,7 +232,26 @@ int rr_push(rr_state *r, const int16_t *x, unsigned n, unsigned *used) {
     for (unsigned i = 0; i < n; i++) {
         int32_t v = (int32_t)x[i] * 256 - r->dc;
         r->dc += v / 1024;          /* a high-pass near fs / 6400 (1.2 Hz at 8 kHz) */
+#if RR_TRACK
+        v /= 256;
+        r->xr[r->nin & RR_XMASK] = (int16_t)(v > 32767 ? 32767 : v < -32768 ? -32768 : v);
+        r->nin++;
+        /* the receiver's sample m: RR_HM taps behind (its quadrature needs the audio after it);
+           the ring before the first sample is zeros */
+        uint32_t hs = r->hs, d = RR_HM * hs;
+        if (r->nin <= d)
+            continue;
+        uint32_t m = r->nin - 1u - d;
+        int32_t q = 0;
+        for (unsigned k = 0; k < 8u; k++) {
+            uint32_t o = (2u * k + 1u) * hs;
+            q += hq[k] * (r->xr[(m - o) & RR_XMASK] - r->xr[(m + o) & RR_XMASK]);
+        }
+        r->cumq[(r->n + 1u) & RR_MASK] = r->cumq[r->n & RR_MASK] + (uint32_t)(q >> 13);
+        r->cum[(r->n + 1u) & RR_MASK] = r->cum[r->n & RR_MASK] + (uint32_t)(int32_t)r->xr[m & RR_XMASK];
+#else
         r->cum[(r->n + 1u) & RR_MASK] = r->cum[r->n & RR_MASK] + (uint32_t)(v / 256);
+#endif
         r->n++;
         /* this step's last phase, one more (the soft value's fine timing) and the half bit
            after it are in */

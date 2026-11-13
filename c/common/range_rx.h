@@ -9,8 +9,19 @@
  * and dump on the edge. The clock is a bank of RR_NPH phases a bit apart by T / RR_NPH, each
  * keeping a running mean of |y|: the bank's best phase is where the edges are (half a bit off, the
  * 600 Hz bits give 0), and it follows a drifting clock by moving to the next phase, a wrap adding
- * or dropping one soft value. Soft values are scaled to the best phase's mean |y| as 4 (clean:
+ * or dropping one soft value. Once warm it moves one phase at a time (unless another phase is
+ * half again better): free to hop, it could count a bit twice when the sender's clock wanders. Soft values are scaled to the best phase's mean |y| as 4 (clean:
  * +-4, as the K6's four chip samples a bit) and kept -7..7.
+ *
+ * The tones' phase against the edges (RR_TRACK): a sender whose tones and bit clock aren't one
+ * clock (the K6: its tone oscillator runs on the radio chip's crystal, its bits on the MCU's,
+ * 270-380 ppm apart and wandering) lets the tones' phase at the edges walk, both tones alike, tens
+ * of degrees a second; past about 45 degrees y fades and the bits go. So y is taken from the
+ * audio turned back by an angle the receiver follows: y = cos a yI + sin a yQ, yI and yQ the
+ * integrate and dump on the audio and on its quadrature (a 31-tap Hilbert filter, which delays
+ * the receiver 15 fs / 8000 samples), and a moves 1/2^RR_TRK_G of the way to the angle that would
+ * make each soft value biggest (decision-directed: its sign times the turned quadrature's).
+ * A constant phase (the receive filters' at 600 and 1200 Hz, the sender's start) is taken too.
  *
  * Above that, as rangerx.c and modem.k6r.Receiver: the sync 1ACFFC1D by correlating the last 32
  * soft values (|c| >= RR_SYNC_MIN of 128; its sign says which way up the burst is; a better one by
@@ -32,8 +43,16 @@
 
 #define RR_NPH 16               /* clock phases a bit */
 #ifndef RR_HIST
-#define RR_HIST 128             /* audio kept (prefix sums), a power of 2 above 2 bits + 2 samples:
+#define RR_HIST 128             /* audio kept (prefix sums), a power of 2 above 3 bits + 2 samples:
                                    128 to 48 kHz; a module at 8 kHz builds with 32 */
+#endif
+#ifndef RR_TRACK
+#define RR_TRACK 1              /* follow the tones' phase against the bit edges (below) */
+#endif
+#ifndef RR_XR
+#define RR_XR 256               /* audio kept for the quadrature filter, a power of 2 over
+                                   30 fs / 8000 + 1 samples: 256 to 64 kHz; a module at 8 kHz
+                                   builds with 32 */
 #endif
 #define RR_SYNC 0x1ACFFC1Du
 #define RR_SYNC_MIN 96          /* |correlation| of 32 soft values (128 from clean ones) */
@@ -51,9 +70,14 @@ typedef struct {
     uint32_t base;              /* the edge of this step's phase 0, Q16 samples (wraps) */
     int32_t dc;                 /* the audio's mean, Q8 (a slow high-pass) */
     uint32_t cum[RR_HIST];      /* cum[i % RR_HIST]: the sum of the first i samples (mod 2^32) */
+#if RR_TRACK
+    uint32_t cumq[RR_HIST];     /* the same of the audio's quadrature (90 degrees behind) */
+    int16_t xr[RR_XR];          /* the audio in, a ring (the quadrature filter's taps) */
+    uint32_t nin;               /* samples in; the receiver runs RR_HM hs behind */
+    uint32_t hs;                /* the quadrature filter's tap spacing, fs / 8000 */
+    int32_t rc, rs;             /* the tones' phase as the receiver takes it: cos, sin, Q14 */
+#endif
     int32_t E[RR_NPH];          /* mean |y| at each phase, Q4 */
-    int32_t y[RR_NPH];          /* this step's y at each phase */
-    int32_t yp[RR_NPH];         /* the step before's */
     uint8_t ph;                 /* the phase the soft values come from */
     uint8_t warm;               /* steps seen, to 255 */
     /* the bit layer */

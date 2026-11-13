@@ -11,7 +11,8 @@ Hz bit, a whole one a 1200 Hz bit, from the burst's start), with each tone's own
 (the receive filters' phase at 600 and 1200 Hz) taken out from the first 0.5 s. rangetx holds
 both tones to one error, so a tone p ppm off its bit clock beyond what RT_PPM says walks both by
 about 0.32 p degrees a second (the model's figure); a good burst stays within a few degrees.
-MIT licence."""
+It also gives the 1200 Hz bits' level against the 600 Hz bits' (rangetx sends them at RT_GAIN12
+/ RT_GAIN, 2.5 times: pre-emphasis). MIT licence."""
 import argparse
 import os
 import sys
@@ -106,11 +107,20 @@ def analyse(x, fs, npk=6):
     f6 = tw.W6 * fs / k6_s
     f12 = tw.W12 * fs / k6_s
     err = edge_errors(x, fs, e0, spb, tb, f6, f12)
+    # the tones' levels: rms over the middle of each bit, 1200 Hz bits against 600 Hz ones (the
+    # K6 sends the 1200s at RT_GAIN12 / RT_GAIN; a flat receiver should show that ratio)
+    lv = [[], []]
+    for k in range(len(tb)):
+        a, b = int(e0 + (k + 0.15) * spb), int(e0 + (k + 0.85) * spb)
+        if b > len(x):
+            break
+        lv[int(tb[k])].append(np.sqrt(np.mean(x[a:b] ** 2)))
     k = np.array([e[0] for e in err])
     tone = np.array([e[1] for e in err])
     ph = np.array([e[2] for e in err])
     t = k / BAUD
-    out = {"start_s": e0 / fs, "ppm": (k6_s / fs - 1) * 1e6, "fit_us": rms * 1e6, "rows": []}
+    out = {"start_s": e0 / fs, "ppm": (k6_s / fs - 1) * 1e6, "fit_us": rms * 1e6, "rows": [],
+           "level_db": float(20 * np.log10(np.mean(lv[0]) / np.mean(lv[1])))}
     ref = {}
     for tn in (0, 1):
         m = (tone == tn) & (t < 0.5)
@@ -139,6 +149,7 @@ def report(r):
            f"walk: 600 Hz bits {r['walk_600']:+.1f} deg/s, 1200 Hz bits {r['walk_1200']:+.1f} deg/s: "
            f"the tone against rangetx's bit clock, about {r['walk_600'] / PPM_DEG_S:+.0f} ppm more than "
            f"its RT_PPM says",
+           f"level: 1200 Hz bits {r['level_db']:+.1f} dB against 600 Hz bits",
            "    s   600 Hz deg  R     1200 Hz deg  R"]
     for t0, m6, r6, m12, r12 in r["rows"]:
         out.append(f"{t0:5.1f}  {m6:+8.0f}  {r6:5.2f}  {m12:+10.0f}  {r12:5.2f}")
