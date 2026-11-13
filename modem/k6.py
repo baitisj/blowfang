@@ -343,7 +343,7 @@ def main(argv=None):
                    help="write one FD6818 receive register, hex, e.g. 58=73e9 (allowed: 2b 43 44 58 59 5c 5e 72 73 7e 96 9b; 43 on images after 647a60e, 44 73 7e after 691c237, 5e 96 9b after that; 5e also switches to interrupt FIFO reads; "
                         "59 low byte only; 0=0 drops every write); the K6 prints K6 REGS and undoes "
                         "the writes after 60 s without a good packet. --action regs only prints them")
-    k.add_argument("--slot", type=int, help="with --action lib: the SPI library slot to run (0-11), "
+    k.add_argument("--slot", type=int, help="with --action lib: the SPI library slot to run (0-31; images before the release plan: 0-11), "
                                             "or 255 to print the slots")
     k.add_argument("--seq", type=int, help="0-255; the K6 applies one seq once (default: from the clock)")
     k.add_argument("--copies", type=int, default=3, help="packets per PHY (default 3)")
@@ -375,7 +375,7 @@ def main(argv=None):
                    help="with --arq: send back up to N parts (57 characters each, 12 at most) of the "
                         "module's say lines after it runs, so no serial cable is needed")
     m.add_argument("--install", type=int, metavar="SLOT",
-                   help="keep the module in the K6's SPI module library, slot 0-11 (16 KB each), "
+                   help="keep the module in the K6's SPI module library, slot 0-31 (16 KB each; images before the release plan take 0-11), "
                         "instead of running it; run it later with `ctl --action lib --slot SLOT`. "
                         "Written to SPI once per install, never while the K6 transmits")
     m.add_argument("--page", action="store_true",
@@ -484,8 +484,9 @@ def main(argv=None):
         reg = tuple(int(v, 16) for v in a.reg.split("=", 1)) if a.reg else None
         if (a.action == "lib") != (a.slot is not None):
             sys.exit("--action lib takes --slot N (and --slot goes only with it)")
-        if a.slot is not None and not (0 <= a.slot < 12 or a.slot == 255):
-            sys.exit("--slot 0-11, or 255 to print the slots")
+        from . import k6mod
+        if a.slot is not None and not (0 <= a.slot < k6mod.LIB_SLOTS or a.slot == 255):
+            sys.exit(f"--slot 0-{k6mod.LIB_SLOTS - 1}, or 255 to print the slots")
         pk = pager.control_packet(seq, settings, a.action, length, reg=reg, arg=a.slot)
         cw_id, a.cw_id = a.cw_id, None
         parts = []
