@@ -217,3 +217,29 @@ def test_c6sweep_drives_the_probe(elf):
     assert "mod say sweep 26 7c->7d" in out
     i = probe.index("c6w 26 7d")
     assert probe[i + 1] == "cap SPI3 s S16 8000"
+
+
+@emu
+def test_c6codec_checks_after_each_flip(elf):
+    out = run(elf, tool.mod_lines(img(uv380mod.build(os.path.join(MOD, "c6codec.c")))))
+    assert "mod say c6codec reg00=5a" in out
+    assert len([ln for ln in out if ln.startswith("mod say sweep e")]) == 6 * 8
+    assert any(re.fullmatch(r"ok mod run ret=48 ms=\d+", ln) for ln in out), out
+    probe = [ln[6:] for ln in out if ln.startswith("probe ")]
+    assert probe.count("raw a 32") == 2 + 48
+
+
+def test_mod_commands_end_on_their_own_line():
+    assert "ok c6 06=21".startswith(tool.ends("mod run")) is False
+    assert "ok mod run ret=0 ms=3".startswith(tool.ends("mod run"))
+    assert "err mod run refused r=-6: x".startswith(tool.ends("mod run"))
+    assert "ok mod hex 80 128".startswith(tool.ends("mod hex 80 00"))
+    assert "ok buf".startswith(tool.ends("buf"))
+
+
+def test_serials_always_grow(tmp_path):
+    f = str(tmp_path / "serial")
+    assert tool.next_serial(f, now=1000) == 1000
+    assert tool.next_serial(f, now=1000) == 1001
+    assert tool.next_serial(f, now=999) == 1002
+    assert tool.next_serial(f, now=5000) == 5000

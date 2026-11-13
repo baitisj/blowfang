@@ -13,7 +13,8 @@ listener on the port first: two readers split its lines.
 
 mod sends a signed RAM module (firmware/uv380-openrtx/ortx_mod.h) with "mod begin", "mod hex" lines
 and "mod run", and prints what it says. A .c source is built and signed first (modem.uv380mod,
-key ~/.config/sotto/k6-mod.key by default, serial the time). A module still running after
+key ~/.config/sotto/k6-mod.key by default, serial the time in seconds, or one more than the last
+this machine gave, kept in ~/.config/sotto/uv380-mod-serial). A module still running after
 --run-timeout seconds gets a Ctrl-C byte, which ends it at its next stop() check.
 
 A capture "hears" the radio when a channel's strongest tone is the test tone (within one bin,
@@ -114,6 +115,17 @@ def mod_lines(img):
     return lines + ["mod run"]
 
 
+def ends(c):
+    """the prefixes of the line that ends command c: a "mod" command ends only on its own
+    "ok mod <sub>" / "err mod <sub>" (a module's own probe commands print "ok ..." lines too),
+    anything else on any "ok " or "err " line; "err busy" ends any"""
+    w = c.split()
+    if w[:1] == ["mod"]:
+        sub = w[1] if len(w) > 1 else "info"
+        return (f"ok mod {sub}", f"err mod {sub}", "err busy")
+    return ("ok ", "err ")
+
+
 def long_command(c):
     """a pass, a module run, or "mod begin" (the radio reads it once a pass in progress ends)"""
     return c.split()[:1] == ["pass"] or c.split()[:2] in (["mod", "run"], ["mod", "begin"])
@@ -162,7 +174,7 @@ def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, st
                     if not ln:
                         continue
                     out(ln)
-                    if ln.startswith(("ok ", "err ")):
+                    if ln.startswith(ends(c)):
                         done = ln
             if done is None:
                 out(f"timeout: {c}")
@@ -173,7 +185,28 @@ def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, st
     return bad
 
 
-def module_image(path, key_file):
+SERIAL_FILE = "~/.config/sotto/uv380-mod-serial"
+
+
+def next_serial(path=SERIAL_FILE, now=None):
+    """a module serial newer than any this machine gave before: the time in seconds, or one more
+    than the last if that is later (the radio refuses a serial not newer than the last it ran,
+    so two modules built in the same second would otherwise clash)"""
+    import os
+    path = os.path.expanduser(path)
+    now = int(time.time()) if now is None else now
+    try:
+        last = int(open(path).read().split()[0])
+    except (OSError, ValueError, IndexError):
+        last = 0
+    serial = max(now, last + 1)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(f"{serial}\n")
+    return serial
+
+
+def module_image(path, key_file, serial_file=SERIAL_FILE):
     """a signed image: the file itself, or a .c source built and signed now"""
     if not path.endswith(".c"):
         return open(path, "rb").read()
@@ -184,7 +217,7 @@ def module_image(path, key_file):
     if table != "openrtx":
         raise SystemExit(f"{path}: not an OpenRTX module (include ortx_mod.h)")
     code, entry = uv380mod.build(path)
-    return uv380mod.image(code, entry, int(time.time()), k6mod.read_key(os.path.expanduser(key_file)),
+    return uv380mod.image(code, entry, next_serial(serial_file), k6mod.read_key(os.path.expanduser(key_file)),
                           uv380mod.source_level(path), table)
 
 

@@ -163,5 +163,8 @@ key refuses every module (`err mod run refused r=-5`).
 
 Modules so far (`mod/`): `hello` (the loader's own check), `c6dump` (all 256 C6000 configuration
 registers), `c6sweep` (flips each bit of the FM-mode and codec registers in turn and captures I2S3
-after each: does any one bit put receiver audio there?). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
+after each: does any one bit put receiver audio there? On the radio, 11-13, no: the flips only
+rescaled the idle waveform, and B9 bit 2 put the C6000 to sleep until a power cycle), `c6codec`
+(the same for the codec registers E0-E5, with a read-back and an is-it-still-answering check after
+every flip, and the first samples of each capture). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
 (`make -C radios/uv380 omqemu`).
