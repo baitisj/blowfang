@@ -116,6 +116,34 @@ the stored message this way on PTT. `range_tx_host tones|audio` writes what it s
 for the tests. For the IC-7100 bench, `python3 -m modem.k6r wav OUT.wav` writes bursts of six
 packets for 440 s, pre-emphasised as the UV-380 sends them (`--preemph off` or `alt` otherwise).
 
+## The K6's sender (c/k6/mod/rangetx.c)
+
+A level-3 RAM module that keys up on 440.850 (after the channel has been clear for 1 s), sends one
+burst of six test packets (`rangetx_bits.h`, written by `python -m modem.k6r txhdr`, the same
+packets as the bench wav) and identifies in MCW. The FFSK comes from the FD6818's tone oscillator
+(REG_70 on with gain 60, REG_71 the frequency word: 6195 for 600.033 Hz, 12389 for 1199.968 Hz),
+written only where the tone changes. The bits are timed on the MCU's TIM17 at 96 MHz (80000
+cycles a bit), unwrapped by Aura's TIM14 as dmrdet does.
+
+The oscillator is phase continuous, so what matters is its phase at each bit edge, not just when
+the word changes. A change up that lands d late takes 600 Hz x d of phase off, a change down
+puts it on, and the words' own errors (+54 and -27 ppm) add a little every bit. The module keeps
+the sum as A and aims each change to cancel it, starting each register write its own measured
+length early (the last write's; it refuses to send, -8, if a write takes over 3/4 of a bit). In
+the emulator, with writes of 180-200 us, the phase stays within 6 degrees of the edges over the
+11.5 s burst, and the UV-380's receiver reads 6 of 6 through a model of its receive path, with
+or without de-emphasis on the K6's tone (tests/test_k6_rangetx.py).
+
+What the emulator can't say:
+
+- The FD6818's crystal against the MCU's. The tone follows the first, the bits the second, so a
+  difference walks the phase: 30 ppm is a third of a cycle over a burst, and on the model the
+  receiver starts losing packets near there (10 ppm is fine). `-DRT_PPM=` trims it once it's
+  measured; a recording of the K6's burst on the UV-380 (rangetap) gives it.
+- Whether the oscillator starts at phase 0 when REG_70 turns it on (the receiver reads any start
+  phase, so this only matters for analysis), and whether the K6 pre-emphasises the tone.
+- The deviation at gain 60 against the IC-7100's level; `-DRT_GAIN=` sets it.
+
 ## The other way: the UV-380 receiving
 
 The UV-380's receive audio doesn't reach its MCU without a hardware mod (OpenRTX). That is the

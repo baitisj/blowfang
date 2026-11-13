@@ -392,6 +392,7 @@ ramprobe
 rangerx        # level 2, PHY R: the range mode's receiver, coded 600/1200 Hz FFSK on the plain FSK receiver as a sampler, the radio's own frequency (receive only, docs/k6-range.md)
 rangerx_b      # level 2, rangerx for the bench: 440.850, 32 s wait, then nine 45 s settings of front-end path and gain (receive only, docs/k6-range.md)
 rangerx_d      # level 2, rangerx on 440.850 for 120 s after 32 s, the first six captures' words said for the host (receive only, docs/k6-range.md)
+rangetx        # level 3, PHY R sender: six test packets as 600/1200 Hz FFSK from the tone oscillator on 440.850, timed on TIM17, then MCW ID (docs/k6-range.md)
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)
 rtls

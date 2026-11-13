@@ -31,6 +31,9 @@ one of them changes.
 - No per-symbol crystal FSK: REG_3B/38 are latched until RX on (M, k6-own-fsk.md).
 - With the PA off it still leaks about -40 dB at bench range: judge keying by edges (M).
 - tx_on takes about 1.4-1.9 s before RF is up (M).
+- PHY R FFSK from the tone oscillator (rangetx): bits timed on TIM17, tone changes aimed to keep
+  the phase on the bit edges; the FD6818's crystal against the MCU's is unmeasured (over about
+  20 ppm needs RT_PPM), and so is the deviation at gain 60 (I, emulator, k6-range.md).
 
 ## Memory and code
 
