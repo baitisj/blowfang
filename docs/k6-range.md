@@ -190,3 +190,11 @@ USB) matched the host bit for bit. rangetap, which copies the receiver's input t
 the I2S slave had started out of step with the codec's frames, so every halfword was a sample's
 last bit or two and fill. rxrec had started in step by chance. rxaudio.h now enables the slave on a
 WS edge and checks the samples (each comes twice, a halfword apart), trying again until they do.
+
+**UV-380 run 5 (2026-11-13, 15:48-15:50Z, rangetap at 0097a6d).** The IC-7100 sent 7 bursts of 6
+packets on 440.850 at RF power 0; the UV-380, unmodified, read 42 of 42 with the CRC right
+(align=1, c 125-137, no ring overruns, longest gap between reads 49 ms). range_rx_host read the
+tapped input the same, line for line. Five more starts all aligned at the first try. Within a
+burst the channel errors climb from 0-11 at its first packet to 50-150 (of 2064) at its sixth and
+start again at the next burst's sync: the clock bank follows the drift between the IC-7100's wav
+and the codec's 8 kHz, but late, so longer bursts or weaker signals would have less margin.
