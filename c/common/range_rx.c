@@ -2,6 +2,12 @@
 #include "range_rx.h"
 
 #define RR_MASK (RR_HIST - 1u)
+#ifndef RR_HYST
+#define RR_HYST 8               /* a phase move needs the best E 1/RR_HYST over the current's */
+#endif
+#ifndef RR_EAVG
+#define RR_EAVG 32              /* E's running mean: 1/RR_EAVG of each step */
+#endif
 #define Q_MAX 7
 
 void rr_init(rr_state *r, unsigned fs) {
@@ -107,14 +113,14 @@ static int step(rr_state *r) {
         int32_t a = (y < 0 ? -y : y) << 4;
         r->yp[p] = r->y[p];
         r->y[p] = y;
-        r->E[p] += (a - r->E[p]) / 32;
+        r->E[p] += (a - r->E[p]) / RR_EAVG;
         if (r->E[p] > ebest)
             ebest = r->E[p], best = p;
     }
     if (r->warm < 255)
         r->warm++;
-    /* move when the best is clearly better (1/8), or freely while the bank warms up */
-    if (best != old && (r->warm < 64 || ebest > r->E[old] + r->E[old] / 8))
+    /* move when the best is clearly better (RR_HYST), or freely while the bank warms up */
+    if (best != old && (r->warm < 64 || ebest > r->E[old] + r->E[old] / RR_HYST))
         r->ph = (uint8_t)best;
     int d = (int)r->ph - (int)old;
     unsigned nout = 1;
@@ -123,9 +129,34 @@ static int step(rr_state *r) {
     else if (d > (int)(RR_NPH / 2))
         nout = 2;                   /* earlier past a wrap: the step before's edge at the new
                                        phase (a bit after the old one's), then this step's */
+    /* between phases: the top of a parabola through E at ph - 1, ph, ph + 1 (1/256 phase, at
+       most one phase either way), where this step's soft value is taken. The bank only says
+       which phase; a drift between phase moves costs nothing (11-13 run 5: 4 ppm left the
+       soft values up to 1/16 bit early by a burst's end, and the errors climbed) */
+    int32_t em = r->E[(r->ph + RR_NPH - 1u) % RR_NPH], e0 = r->E[r->ph];
+    int32_t ep = r->E[(r->ph + 1u) % RR_NPH], den = em - 2 * e0 + ep, off = 0;
+    if (den < 0) {
+        /* 128 (em - ep) / den in 32 bits (a module has no 64-bit divide): past 2 |den| it clamps
+           anyway; otherwise scale both under 2^23 first */
+        int32_t a = em - ep, nd = -den;
+        if (a >= 2 * nd || -a >= 2 * nd)
+            off = a > 0 ? -256 : 256;
+        else {
+            while (nd > (1 << 22)) {
+                a /= 2;
+                nd /= 2;
+            }
+            off = nd ? -(a * 128) / nd : 0;
+        }
+    }
+    int32_t yf = r->y[r->ph];
+    if (off) {
+        uint32_t e = r->base + r->T * r->ph / RR_NPH + (uint32_t)((int32_t)(r->T / RR_NPH) * off / 256);
+        yf = (int32_t)(2u * at(r, e) - at(r, e - h) - at(r, e + h));
+    }
     int32_t amp = r->E[r->ph] >> 4;
     for (unsigned k = 0; k < nout; k++) {
-        int32_t y = nout == 2 && k == 0 ? r->yp[r->ph] : r->y[r->ph];
+        int32_t y = nout == 2 && k == 0 ? r->yp[r->ph] : yf;
         int32_t q = amp > 0 ? clamp_q((4 * y + (y < 0 ? -amp / 2 : amp / 2)) / amp) : 0;
         if (bit_in(r, (int8_t)q))
             done = 1;               /* a pair's second soft value starts the hunt again */
@@ -140,8 +171,9 @@ int rr_push(rr_state *r, const int16_t *x, unsigned n, unsigned *used) {
         r->dc += v / 1024;          /* a high-pass near fs / 6400 (1.2 Hz at 8 kHz) */
         r->cum[(r->n + 1u) & RR_MASK] = r->cum[r->n & RR_MASK] + (uint32_t)(v / 256);
         r->n++;
-        /* this step's last phase and the half bit after it are in */
-        uint32_t last = r->base + r->T * (RR_NPH - 1u) / RR_NPH + r->T / 2u;
+        /* this step's last phase, one more (the soft value's fine timing) and the half bit
+           after it are in */
+        uint32_t last = r->base + r->T + r->T / 2u;
         /* sample counts mod 2^16, as base's whole part (RR_HIST divides 2^16) */
         if ((int16_t)(uint16_t)((last >> 16) + 1u - r->n) <= 0 && step(r)) {
             rr_decode(r);

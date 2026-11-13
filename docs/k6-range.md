@@ -198,3 +198,19 @@ tapped input the same, line for line. Five more starts all aligned at the first 
 burst the channel errors climb from 0-11 at its first packet to 50-150 (of 2064) at its sixth and
 start again at the next burst's sync: the clock bank follows the drift between the IC-7100's wav
 and the codec's 8 kHz, but late, so longer bursts or weaker signals would have less margin.
+
+Why (hamlet's look at run 5's tapped audio): the audio clocks agree to about 4 ppm, with the
+wander 0.04-0.09 samples, so the clock was never lost. The bank keeps one phase until another's
+mean edge energy E beats it by 1/8, and E at the neighbour reaches 1.08 times E at the phase in
+use without a move: the soft values drift up to 1/16 bit early before the phase moves, and the
+errors climb. Host runs on that audio: a 1/32 threshold with E averaged over 64 steps kept 42 of 42
+with the errors at most 68 (mean about 22, against 50 and 152 before); 1/32 with E over 32 lost
+two packets.
+
+**Fix (11-13): fractional timing.** The bank still picks the phase (RR_HYST, RR_EAVG keep 8 and
+32), but each soft value is now taken at the top of a parabola through E at ph - 1, ph and ph + 1,
+to 1/256 of a phase, so a drift between phase moves costs nothing. The step runs one phase later so
+that audio is in; 32-bit only (a module has no 64-bit divide). Simulated 6-packet bursts, channel
+errors per packet, old against new: at 4 dB SNR and 4 ppm 1-7 against 0-2, at 1000 ppm 6-12 against
+0-4; at 2 dB SNR and 1000 ppm 20-32 against 9-16. rangerx grows 220 B to 3910 B (about 570 B under
+the arena).
