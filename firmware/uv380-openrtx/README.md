@@ -165,7 +165,12 @@ plays in place of the stored one until the next recording or a power-off. A modu
 and only on 440.850 MHz. `mod/usbenc.c` records audio sent over USB
 (`tools/uv380_i2sprobe.py inject /dev/ttyACM0 SPEECH.raw --module
 firmware/uv380-openrtx/mod/usbenc.c`) and dumps the superframes, to check the radio's encoder
-against `sotto_enc -1200`. A level 1 image refuses level 2 modules (`r=-3`). The image for this
+against `sotto_enc -1200`. Sends a module asks for go at 1 W whatever the channel says. `tx_mic(ms)` is the
+keyed mic test (Jeff's pick, 11-13): up to 5 s of FM carrying the microphone as FM mode sends it
+(MIC_PWR on, the C6000's mic input), at 1 W on 440.850 MHz only, then the Morse ident, while the
+module runs on; `mod/mictx.c` captures I2S3 through it with the route left as the firmware sets
+it (`rx_start_as_is`), to see whether the mic reaches the MCU while keyed. A level 1 image refuses
+level 2 modules (`r=-3`). The image for this
 is both builds at once: `BLOWFANG_I2SPROBE=1 BLOWFANG_RANGE=1 sh build.sh mduv3x0p`
 (`out/openrtx_mduv3x0p_i2sprobe_range*`).
 

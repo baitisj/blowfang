@@ -142,7 +142,7 @@ static int q_tx_request(void) {
 
 static const om_host host = {q_line, q_write, q_read, q_now, q_stop, q_sleep, q_c6r, q_c6w, NULL, q_rssi,
                              q_probe, q_enc_begin, q_enc_push, q_enc_end, q_msg, q_preview,
-                             q_tx_request};
+                             q_tx_request, NULL};
 
 int main(void) {
     int n = host_read_file("in.txt", (uint8_t *)in, sizeof in - 1);

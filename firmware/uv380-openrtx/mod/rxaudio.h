@@ -35,7 +35,7 @@ typedef struct {
     uint32_t dma[6];
     rxa_pin ws, ck, sd;
     uint32_t mux;
-    uint8_t r26;
+    uint8_t r26, route;       /* route: rx_start set 26 and PD9 (rx_stop puts them back) */
     unsigned ring;            /* halfwords */
     volatile int16_t *buf;
 } rxa_state;
@@ -97,12 +97,15 @@ static int rxa_aligned(const rxa_state *s, unsigned wr) {
 
 /* ring: n halfwords (a power of 2) in DMA-capable RAM (the module's scratch). Returns the tries
    it took to start in step with the codec's frames (1 to 16), or 0 if none looked right */
-static unsigned rx_start(const ortx_api_t *api, rxa_state *s, volatile int16_t *ring, unsigned n) {
-    s->ring = n, s->buf = ring;
+static unsigned rxa_start(const ortx_api_t *api, rxa_state *s, volatile int16_t *ring, unsigned n,
+                          unsigned route) {
+    s->ring = n, s->buf = ring, s->route = (uint8_t)route;
     s->r26 = api->c6000_read(0x26);
     s->mux = (RXA_REG(RXA_GPIOD + 0x14u) >> RXA_MUX_PIN) & 1u;      /* ODR */
-    api->c6000_write(0x26, 0xFD);
-    RXA_REG(RXA_GPIOD + 0x18u) = 1u << RXA_MUX_PIN;
+    if (route) {
+        api->c6000_write(0x26, 0xFD);
+        RXA_REG(RXA_GPIOD + 0x18u) = 1u << RXA_MUX_PIN;
+    }
     RXA_REG(RXA_RCC_AHB1ENR) |= 1u << 21;
     for (unsigned i = 0; i < 6; i++)
         s->dma[i] = RXA_REG(RXA_S0 + 4u * i);
@@ -128,6 +131,18 @@ static unsigned rx_start(const ortx_api_t *api, rxa_state *s, volatile int16_t *
     return 0;
 }
 
+__attribute__((unused)) static unsigned rx_start(const ortx_api_t *api, rxa_state *s,
+                                                 volatile int16_t *ring, unsigned n) {
+    return rxa_start(api, s, ring, n, 1);
+}
+
+/* the capture alone: whatever the codec takes now (register 26 and PD9 left as they are, and
+   left alone by rx_stop), e.g. while OpenRTX transmits */
+__attribute__((unused)) static unsigned rx_start_as_is(const ortx_api_t *api, rxa_state *s,
+                                                       volatile int16_t *ring, unsigned n) {
+    return rxa_start(api, s, ring, n, 0);
+}
+
 /* the DMA's write position in the ring (halfwords) */
 static unsigned rx_wr(const rxa_state *s) {
     return (s->ring - RXA_REG(RXA_S0 + 4u)) & (s->ring - 1u);
@@ -147,8 +162,10 @@ static void rx_stop(const ortx_api_t *api, rxa_state *s) {
     RXA_REG(RXA_RCC_APB1RSTR) |= 1u << 15;
     RXA_REG(RXA_RCC_APB1RSTR) &= ~(1u << 15);
     RXA_REG(RXA_RCC_APB1ENR) &= ~(1u << 15);
-    api->c6000_write(0x26, s->r26);
-    RXA_REG(RXA_GPIOD + 0x18u) = s->mux ? 1u << RXA_MUX_PIN : 1u << (RXA_MUX_PIN + 16);
+    if (s->route) {
+        api->c6000_write(0x26, s->r26);
+        RXA_REG(RXA_GPIOD + 0x18u) = s->mux ? 1u << RXA_MUX_PIN : 1u << (RXA_MUX_PIN + 16);
+    }
 }
 
 /* halfwords the DMA wrote in `ms` ms, timed from one ms tick to another (sleeping between

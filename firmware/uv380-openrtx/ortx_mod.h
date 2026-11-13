@@ -85,6 +85,12 @@ typedef struct ortx_api {
     /* send the message as a PTT press would (PHY R in the range build, then the Morse ident),
        once the module has ended; only on 440.850 MHz: 0, or -1 (another frequency, TX off) */
     int (*tx_request)(void);
+    /* the keyed mic test: ms (at most 5000) of FM carrying the microphone as FM mode sends it
+       (MIC_PWR on, the C6000's mic input), at 1 W whatever the channel says, then the Morse
+       ident; only on 440.850 MHz. Starts within about 30 ms while the module runs on, so it can
+       capture I2S3 meanwhile (rxaudio.h's rx_start_as_is: register 26 and PD9 left alone):
+       0, or -1 (refused) */
+    int (*tx_mic)(unsigned ms);
 } ortx_api_t;
 
 /* the image's side: what the loader needs from OpenRTX (all of it, or NULL where noted) */
@@ -107,6 +113,7 @@ typedef struct {
     unsigned (*msg)(const uint8_t **bytes);
     void (*preview)(void);
     int (*tx_request)(void);
+    int (*tx_mic)(unsigned ms);
 } om_host;
 
 /* One "mod ..." command; args is what follows "mod". Returns 0, or -1 after an "err" line. */

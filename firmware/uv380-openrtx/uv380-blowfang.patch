@@ -172,10 +172,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..9be8e98
+index 0000000..d31d5ba
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,823 @@
+@@ -0,0 +1,884 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -260,9 +260,20 @@ index 0000000..9be8e98
 +static unsigned        recFrames  = 0;
 +static volatile bool   recValid   = false;
 +static volatile bool   msgChanged = false;  // update() makes a new msg_id
++static bool            sendIdentOnly = false;   // send(): the Morse ident alone
 +#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
 +static constexpr freq_t SEND_HZ   = 440850000;  // tx_request sends only here
 +static volatile bool   txRequest  = false;  // a module asked for a send
++static volatile unsigned micTxMs  = 0;      // a module asked for the keyed mic test
++#endif
++#if defined(PLATFORM_MDUV3x0)
++// radio_UV3x0.cpp (blowfang): 1 W whatever the channel says, and the mic in
++// place of the line in
++extern "C" volatile bool blowfang_txLow;
++extern "C" volatile bool blowfang_txMic;
++#else
++__attribute__((unused)) static volatile bool blowfang_txLow = false;
++__attribute__((unused)) static volatile bool blowfang_txMic = false;
 +#endif
 +
 +static const uint8_t *msgBytes()
@@ -681,6 +692,36 @@ index 0000000..9be8e98
 +    pager_requestPreview();
 +}
 +
++// The keyed mic test (tx_mic): ms of FM carrying the microphone, as FM mode
++// sends it (MIC_PWR on, the C6000's mic input), at 1 W, then the Morse ident.
++// A module captures I2S3 meanwhile, to see whether the mic reaches the MCU
++// while keyed.
++static int omTxMic(unsigned ms)
++{
++    rtxStatus_t st = rtx_getCurrentStatus();
++    if((ms == 0) || (ms > 5000) || (st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++        return -1;
++    micTxMs = ms;
++    return 0;
++}
++
++static void micTest(rtxStatus_t *const status, unsigned ms)
++{
++    pathId path = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
++    if(path < 0)
++        return;
++    blowfang_txMic = true;
++    status->opStatus = TX;
++    platform_ledOn(RED);
++    radio_enableTx();
++    for(unsigned t = 0; (t < ms) && (platform_getPttStatus() == false); t += 10)
++        sleepFor(0, 10);
++    radio_disableRtx();
++    blowfang_txMic = false;
++    audioPath_release(path);
++    platform_ledOff(RED);
++}
++
 +static int omTxRequest()
 +{
 +    rtxStatus_t st = rtx_getCurrentStatus();
@@ -693,7 +734,7 @@ index 0000000..9be8e98
 +static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
 +                               omSleep, omC6r, omC6w, omAdc, omRssi,
 +                               omProbe, omEncBegin, omEncPush, omEncEnd,
-+                               omMsg, omPreview, omTxRequest};
++                               omMsg, omPreview, omTxRequest, omTxMic};
 +#endif
 +
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
@@ -864,7 +905,27 @@ index 0000000..9be8e98
 +        {
 +            holdProbe();
 +            joinPreview(true);
++            blowfang_txLow = true;
 +            send(status);
++            blowfang_txLow = false;
++        }
++    }
++    // tx_mic: keyed while the module runs on (it captures meanwhile), then
++    // the ident
++    if(micTxMs != 0)
++    {
++        unsigned ms = micTxMs;
++        micTxMs = 0;
++        if((ptt == false) && (status->txDisable == 0) &&
++           (status->txFrequency == SEND_HZ))
++        {
++            joinPreview(true);
++            blowfang_txLow = true;
++            micTest(status, ms);
++            sendIdentOnly = true;
++            send(status);
++            sendIdentOnly = false;
++            blowfang_txLow = false;
 +        }
 +    }
 +#endif
@@ -950,7 +1011,7 @@ index 0000000..9be8e98
 +        return;
 +    status->opStatus = TX;
 +    radio_enableTx();
-+    bool inCw = false;
++    bool inCw = sendIdentOnly;
 +    while(fill(txBuf, BLOCK, inCw))
 +        fwrite(txBuf, sizeof(stream_sample_t), BLOCK, f);
 +    fclose(f);
@@ -973,7 +1034,7 @@ index 0000000..9be8e98
 +                                        STREAM_OUTPUT | BUF_CIRC_DOUBLE);
 +    if(stream >= 0)
 +    {
-+        bool inCw     = false;
++        bool inCw     = sendIdentOnly;
 +        bool released = false;
 +        stream_sample_t *idle = outputStream_getIdleBuffer(stream);
 +        while(audioPath_getStatus(path) == PATH_OPEN)
@@ -1106,10 +1167,25 @@ index d71444c..5877479 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a9..d0cb245 100644
+index 64b77a9..99c408c 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
-@@ -95,6 +95,7 @@ void radio_setOpmode(const enum opmode mode)
+@@ -19,6 +19,14 @@
+ 
+ static const rtxStatus_t *config;                // Pointer to data structure with radio configuration
+ 
++// blowfang PAGER mode (OpMode_Pager.cpp): a send a RAM module asked for goes at
++// the lowest power whatever the channel says, and the keyed mic test takes the
++// microphone, as FM mode does, in place of the MCU's line in
++extern "C" {
++volatile bool blowfang_txLow = false;
++volatile bool blowfang_txMic = false;
++}
++
+ static mduv3x0Calib_t calData;                   // Calibration data
+ static Band    currRxBand = BND_NONE;            // Current band for RX
+ static Band    currTxBand = BND_NONE;            // Current band for TX
+@@ -95,6 +103,7 @@ void radio_setOpmode(const enum opmode mode)
      switch(mode)
      {
          case OPMODE_FM:
@@ -1117,7 +1193,16 @@ index 64b77a9..d0cb245 100644
              at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
              C6000.fmMode();                         // HR_C6000 in FM mode
              C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
-@@ -207,6 +208,16 @@ void radio_enableTx()
+@@ -188,6 +197,8 @@ void radio_enableTx()
+     // Constrain output power between 1W and 5W.
+     float power  = static_cast < float >(config->txPower) / 1000.0f;
+           power  = std::max(std::min(power, 5.0f), 1.0f);
++    if(blowfang_txLow)
++        power = 1.0f;
+     float pwrHi  = static_cast< float >(txpwr_hi);
+     float pwrLo  = static_cast< float >(txpwr_lo);
+     float apc    = pwrLo + (pwrHi - pwrLo)/4.0f*(power - 1.0f);
+@@ -207,6 +218,17 @@ void radio_enableTx()
              C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
              break;
  
@@ -1127,14 +1212,15 @@ index 64b77a9..d0cb245 100644
 +            // path's pre-emphasis (the K6 receiver de-emphasises)
 +            FmConfig cfg = (config->bandwidth == BW_12_5) ? FmConfig::BW_12p5kHz
 +                                                          : FmConfig::BW_25kHz;
-+            C6000.startAnalogTx(TxAudioSource::LINE_IN, cfg | FmConfig::PREEMPH_EN);
++            C6000.startAnalogTx(blowfang_txMic ? TxAudioSource::MIC : TxAudioSource::LINE_IN,
++                                cfg | FmConfig::PREEMPH_EN);
 +        }
 +            break;
 +
          default:
              break;
      }
-@@ -286,7 +297,7 @@ void radio_updateConfiguration()
+@@ -286,7 +308,7 @@ void radio_updateConfiguration()
      freq_t  *txCalPoints = calData.vhfCal.txFreq;
      uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
      uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
@@ -1143,7 +1229,7 @@ index 64b77a9..d0cb245 100644
                           ? calData.vhfCal.analogSendQrange
                           : calData.vhfCal.sendQrange;
  
-@@ -296,7 +307,7 @@ void radio_updateConfiguration()
+@@ -296,7 +318,7 @@ void radio_updateConfiguration()
          txCalPoints = calData.uhfCal.txFreq;
          loPwrCal    = calData.uhfCal.txLowPower;
          hiPwrCal    = calData.uhfCal.txHighPower;
@@ -1152,7 +1238,7 @@ index 64b77a9..d0cb245 100644
                      ? calData.uhfCal.analogSendQrange
                      : calData.uhfCal.sendQrange;
      }
-@@ -313,7 +324,7 @@ void radio_updateConfiguration()
+@@ -313,7 +335,7 @@ void radio_updateConfiguration()
      C6000.setModAmplitude(0, Q);
  
      // Set bandwidth, only for analog FM mode

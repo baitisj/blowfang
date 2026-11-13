@@ -162,6 +162,10 @@ static int api_tx_request(void) {
     return H->tx_request ? H->tx_request() : -1;
 }
 
+static int api_tx_mic(unsigned ms) {
+    return H->tx_mic ? H->tx_mic(ms) : -1;
+}
+
 static const ortx_api_t api = {
     .abi = MC_ABI,
     .level = OM_LEVEL,
@@ -186,6 +190,7 @@ static const ortx_api_t api = {
     .msg = api_msg,
     .preview = api_preview,
     .tx_request = api_tx_request,
+    .tx_mic = api_tx_mic,
 };
 
 uint8_t *om_arena(void) {
