@@ -64,6 +64,7 @@ def test_micprobe_and_micadc_fit():
         ("micprobe.c", 3072),
         ("micprobe2.c", 3072),
         ("micadc.c", 2048),
+        ("micspk.c", 3072),
     ):
         path = os.path.join(ROOT, "firmware", "uv380-openrtx", "mod", name)
         code, entry = uv380mod.build(path)

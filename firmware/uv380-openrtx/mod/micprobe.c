@@ -163,7 +163,7 @@ static void one(const ortx_api_t *api, mp_t *m, char *line, uint8_t r26, unsigne
     m->k++;
 }
 
-static int alive(const ortx_api_t *api, mp_t *m, char *line, uint8_t reg) {
+__attribute__((unused)) static int alive(const ortx_api_t *api, mp_t *m, char *line, uint8_t reg) {
     uint8_t now = api->c6000_read(0x00);
     if (now == m->id)
         return 1;
@@ -172,6 +172,7 @@ static int alive(const ortx_api_t *api, mp_t *m, char *line, uint8_t reg) {
     return 0;
 }
 
+#ifndef MP_NO_MAIN
 int uv_main(const ortx_api_t *api) {
     char line[24 + BLK * 5u];
     uint32_t bytes;
@@ -256,3 +257,4 @@ int uv_main(const ortx_api_t *api) {
     api->say(line);
     return ok ? (int)m.k : -(int)m.k;
 }
+#endif
