@@ -53,6 +53,7 @@ extern "C" {
 /* 0x40 is the app's (EXPLORE: the table's call has been looked up) */
 #define EX_SKIRT_HZ 100000       /* a carrier this close and EX_SKIRT_DB louder, ending with it: a skirt */
 #define EX_SKIRT_DB 25
+#define EX_CAP_MAX 64             /* ex_init keeps at most this many candidates */
 #define EX_STALE_MS 600000u      /* a one-over '?' this long without another leaves the screen list */
 
 typedef struct {
@@ -123,6 +124,9 @@ ex_cand_t *ex_rank(ex_t *e, unsigned i);
    screen; and how many that leaves */
 ex_cand_t *ex_view(ex_t *e, unsigned i);
 unsigned ex_view_n(const ex_t *e);
+/* the screen list's rows i, i+1, ... (as ex_view gives them) into out, up to k; how many. One
+   sort for a whole screen, where k ex_view calls sort k times. */
+unsigned ex_view_rows(ex_t *e, unsigned i, ex_cand_t **out, unsigned k);
 /* on its band plan row's channel raster (within 1 kHz), or on a row without one, or off the plan */
 int ex_on_raster(uint32_t hz);
 /* Which of the frequencies up now (up_hz, n of them: the scan's hot entries that are keyed) the

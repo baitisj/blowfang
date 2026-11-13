@@ -5,6 +5,7 @@ SPDX-License-Identifier: MIT"""
 import ctypes
 import os
 import shutil
+import struct
 import subprocess
 import sys
 
@@ -44,7 +45,109 @@ def test_builds_for_the_m0_without_library_calls(tmp_path):
     assert und == [], und
     size = subprocess.run(["llvm-size", o], capture_output=True, text=True, check=True).stdout.split("\n")[1]
     text, data, bss = (int(x) for x in size.split()[:3])
-    assert text < 2816 and data == 0 and bss == 0   # 2690 with the stale rule (2026-11-08)
+    # 2690 with the stale rule (2026-11-08); 2880 with the one-sort ranking (2026-11-13)
+    assert text < 2944 and data == 0 and bss == 0
+
+
+M0_DRAW = r'''
+#include "explore.h"
+static ex_cand_t store[EX_CAP_MAX];
+static uint32_t knownb[EX_CAP_MAX];
+static ex_t E;
+volatile unsigned sink;
+void fill(unsigned n, unsigned nknown) {
+  unsigned i;
+  ex_init(&E, store, EX_CAP_MAX);
+  ex_known_store(&E, knownb, EX_CAP_MAX);
+  for (i = 0; i < nknown; i++) ex_know(&E, 440000000u + i * 25000u);
+  for (i = 0; i < n; i++) {
+    uint32_t hz = 440000000u + i * 25000u;
+    ex_over(&E, hz, 1000u * i, 3000, -100 + (int)(i & 31));
+    if ((i & 3) == 0) ex_over(&E, hz, 1000u * i + 60000, 3000, -100 + (int)(i & 31));
+  }
+}
+/* one List redraw as explore.rs draws it: the selection check, the header's count, the row
+   above the screen and the screen's 7 in one ex_view_rows, the footer's row */
+void draw(unsigned sel) {
+  ex_cand_t *r[8];
+  unsigned top = sel > 6 ? sel - 6 : 0;
+  sink = ex_view_n(&E);
+  sink = ex_view_n(&E);
+  sink = ex_view_rows(&E, top ? top - 1 : 0, r, top ? 8 : 7);
+  sink = (unsigned)ex_view(&E, sel);
+}
+void stop(void) { for (;;) ; }
+'''
+
+
+def test_a_redraw_stays_cheap_on_a_full_list(tmp_path):
+    """Jeff 2026-11-12: EXPLORE left on all day found 57, and the keys took seconds. The list
+    ranked the whole list again for each row (place i cost (i+1)*n comparisons), and the 8 kHz
+    voice + EXPLORE image draws the screen once for each of its 8 bands: ~3.2M M0 instructions a
+    draw with 64 candidates and the selection at the end, ~26M a frame. One sort a draw now."""
+    if not (shutil.which("clang") and shutil.which("ld.lld") and shutil.which("llvm-nm")):
+        pytest.skip("needs clang and ld.lld")
+    unicorn = pytest.importorskip("unicorn")
+    from unicorn import arm_const as A
+    (tmp_path / "draw.c").write_text(M0_DRAW)
+    (tmp_path / "link.ld").write_text("SECTIONS { . = 0x20001000; .text : { *(.text*) *(.rodata*) } "
+                                      ".data : { *(.data*) } .bss : { *(.bss*) *(COMMON) } }\n")
+    objs = []
+    for src in (os.path.join(K6, "explore.c"), str(tmp_path / "draw.c")):
+        o = str(tmp_path / (os.path.basename(src) + ".o"))
+        subprocess.run(["clang", "--target=thumbv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-Oz",
+                        "-ffreestanding", "-fno-builtin", "-I", K6, "-c", src, "-o", o], check=True)
+        objs.append(o)
+    elf = str(tmp_path / "draw.elf")
+    subprocess.run(["ld.lld", "-e", "stop", "-T", str(tmp_path / "link.ld"), *objs, "-o", elf], check=True)
+    syms = {}
+    for ln in subprocess.run(["llvm-nm", elf], capture_output=True, text=True, check=True).stdout.splitlines():
+        f = ln.split()
+        if len(f) == 3:
+            syms[f[2]] = int(f[0], 16)
+    mu = unicorn.Uc(unicorn.UC_ARCH_ARM, unicorn.UC_MODE_THUMB | unicorn.UC_MODE_MCLASS)
+    mu.ctl_set_cpu_model(A.UC_CPU_ARM_CORTEX_M0)
+    mu.mem_map(0x20000000, 1 << 20)
+    data = open(elf, "rb").read()
+    shoff, shentsize, shnum = struct.unpack_from("<I", data, 0x20)[0], *struct.unpack_from("<HH", data, 0x2E)
+    for i in range(shnum):
+        _, typ, _, addr, off, size = struct.unpack_from("<IIIIII", data, shoff + i * shentsize)
+        if typ == 1 and addr:                       # SHT_PROGBITS, loaded
+            mu.mem_write(addr, data[off:off + size])
+    count = [0]
+    mu.hook_add(unicorn.UC_HOOK_CODE, lambda *_: count.__setitem__(0, count[0] + 1))
+
+    def call(fn, *args):
+        for r, v in zip((A.UC_ARM_REG_R0, A.UC_ARM_REG_R1), args):
+            mu.reg_write(r, v)
+        mu.reg_write(A.UC_ARM_REG_SP, 0x200F0000)
+        mu.reg_write(A.UC_ARM_REG_LR, syms["stop"] | 1)
+        count[0] = 0
+        mu.emu_start(syms[fn] | 1, syms["stop"])
+        return count[0]
+
+    call("fill", 64, 57)
+    worst = max(call("draw", sel) for sel in (0, 30, 56, 63))
+    # ~186k (2026-11-13), was ~3.2M: 8 bands a frame stay under ~30 ms at 96 MHz
+    assert worst < 300_000, worst
+
+
+def test_view_rows_match_view_one_at_a_time(lib):
+    x = List(lib, cap=64)
+    for k in range(70):                                 # past the cap: the weakest make room
+        hz = 440_000_000 + k * 25_000
+        x.over(hz, k * 1000, 3000, -110 + (k * 7) % 40)
+        if k % 3 == 0:
+            x.over(hz, k * 1000 + MIN, 3000, -110 + (k * 7) % 40)
+    lib.ex_know(ctypes.byref(x.e), 440_100_000)
+    n = lib.ex_view_n(ctypes.byref(x.e))
+    one = [ctypes.addressof(lib.ex_view(ctypes.byref(x.e), i).contents) for i in range(n)]
+    assert not lib.ex_view(ctypes.byref(x.e), n)
+    out = (ctypes.POINTER(kx.Cand) * 8)()
+    for first in (0, 1, n - 8, n - 3, n):
+        got = lib.ex_view_rows(ctypes.byref(x.e), first, out, 8)
+        assert got == min(8, n - first)
+        assert [ctypes.addressof(out[i].contents) for i in range(got)] == one[first:first + got]
 
 
 def test_a_repeater_output_grades_up_with_its_cw_id(lib):

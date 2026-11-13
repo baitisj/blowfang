@@ -25,6 +25,7 @@ static void zero(void *p, unsigned n) {
 }
 
 void ex_init(ex_t *e, ex_cand_t *store, unsigned cap) {
+  if (cap > EX_CAP_MAX) cap = EX_CAP_MAX;    /* order() sorts byte indices on the stack */
   e->c = store, e->n = 0, e->cap = (uint16_t)cap, e->tol_hz = 5000;
   e->known = 0, e->known_n = e->known_cap = 0, e->now = 0;
 }
@@ -217,27 +218,39 @@ static int hidden(const ex_t *e, const ex_cand_t *c) {
                       e->now - c->last_ms > EX_STALE_MS && e->now - c->last_ms < 0x80000000u);
 }
 
-static ex_cand_t *nth(ex_t *e, unsigned i, int all) {
-  unsigned k = 0, j;
-  ex_cand_t *prev = 0;
-  for (;;) {
-    ex_cand_t *best = 0;
-    for (j = 0; j < e->n; j++) {
-      ex_cand_t *c = &e->c[j];
-      if (prev && !before(prev, c)) {
-        /* c ranks at or above prev: only a later index on an exact tie may follow it */
-        if (before(c, prev) || c <= prev) continue;
-      }
-      if (!best || before(c, best)) best = c;
-    }
-    if (!best) return 0;
-    prev = best;
-    if (all || !hidden(e, best)) {
-      if (k == i) return best;
-      k++;
-    }
+/* All the candidates in rank order, as indices into e->c: a stable insertion sort, so an exact
+   tie keeps the lower index first. About n*n/4 comparisons, once per call. The old nth() picked
+   the best after the last one again for each place, (i+1)*n comparisons for place i, and a
+   redraw asks for 9 places: with 64 candidates and the selection near the end that was ~3.2M
+   M0 instructions a redraw (Jeff 2026-11-12, 57 found: keys took seconds). */
+static unsigned order(const ex_t *e, uint8_t *ix) {
+  unsigned j, k, n = e->n;
+  for (j = 0; j < n; j++) {
+    for (k = j; k > 0 && before(&e->c[j], &e->c[ix[k - 1]]); k--) ix[k] = ix[k - 1];
+    ix[k] = (uint8_t)j;
   }
+  return n;
 }
+
+/* up to k candidates in rank order from place i on (skirts and stale ones left out unless all),
+   into out; how many */
+static unsigned rows(ex_t *e, unsigned i, int all, ex_cand_t **out, unsigned k) {
+  uint8_t ix[EX_CAP_MAX];
+  unsigned j, p = 0, got = 0, n = order(e, ix);
+  for (j = 0; j < n && got < k; j++) {
+    ex_cand_t *c = &e->c[ix[j]];
+    if (!all && hidden(e, c)) continue;
+    if (p++ >= i) out[got++] = c;
+  }
+  return got;
+}
+
+static ex_cand_t *nth(ex_t *e, unsigned i, int all) {
+  ex_cand_t *c = 0;
+  return rows(e, i, all, &c, 1) ? c : 0;
+}
+
+unsigned ex_view_rows(ex_t *e, unsigned i, ex_cand_t **out, unsigned k) { return rows(e, i, 0, out, k); }
 
 ex_cand_t *ex_rank(ex_t *e, unsigned i) { return nth(e, i, 1); }
 ex_cand_t *ex_view(ex_t *e, unsigned i) { return nth(e, i, 0); }
