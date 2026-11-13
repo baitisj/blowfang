@@ -4771,10 +4771,10 @@ index 0000000..2bed5d7
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..ef76d41
+index 0000000..62c92d1
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2124 @@
+@@ -0,0 +1,2143 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5096,6 +5096,7 @@ index 0000000..ef76d41
 +        pub fn ex_rank(e: *mut Ex, i: u32) -> *mut Cand;
 +        pub fn ex_view(e: *mut Ex, i: u32) -> *mut Cand;
 +        pub fn ex_view_n(e: *const Ex) -> u32;
++        pub fn ex_view_rows(e: *mut Ex, i: u32, out: *mut *mut Cand, k: u32) -> u32;
 +        pub fn ex_cw(e: *mut Ex, hz: u32, call: *const u8);
 +        pub fn ex_grade(c: *mut Cand);
 +        pub fn ex_listen_cap(c: *const Cand, max_s: u32, min_s: u32) -> u32;
@@ -6577,19 +6578,29 @@ index 0000000..ef76d41
 +}
 +
 +/// the candidate rows (Jeff 2026-11-07): new ones above a rule, known (saved) ones below it,
-+/// the selected row inverted, an arrow at the one at boxed_hz (being listened to; 0 none)
-+fn list_rows<D>(lcd: &mut D, t: &State, boxed_hz: u32)
++/// the selected row inverted, an arrow at the one at boxed_hz (being listened to; 0 none).
++/// The selected row's candidate, for the footer.
++fn list_rows<D>(lcd: &mut D, t: &State, boxed_hz: u32) -> Option<&'static mut Cand>
 +where
 +    D: DrawTarget<Color = BinaryColor>,
 +{
 +    // keep the selected row on screen
 +    let top = (t.sel as usize).saturating_sub(ROWS - 1) as u32;
++    // the row above the screen (for the rule) and the screen's rows from one sort: a shown()
++    // a row ranked the whole list again, and the 8 kHz voice + EXPLORE image draws the screen
++    // once for each of its 8 bands (Jeff 2026-11-12: 57 found, the keys took seconds)
++    let mut got = [core::ptr::null_mut::<Cand>(); ROWS + 1];
++    let first = top.saturating_sub(1);
++    let n = unsafe { ffi::ex_view_rows(&mut st().ex, first, got.as_mut_ptr(), (ROWS + 1) as u32) } as usize;
++    let (above, rows) = if top > 0 { (got[0], &got[1..n.max(1)]) } else { (core::ptr::null_mut(), &got[..n]) };
++    let mut sel_p = core::ptr::null_mut::<Cand>();
 +    // new repeaters above a rule, known (saved) ones below it (Jeff 2026-11-07): the
 +    // rows under it move down 2 px, which the 4 px above the footer leave room for
 +    let mut shift = 0;
-+    let mut was_new = top > 0 && shown(top - 1).is_some_and(|c| c.flags & EX_F_KNOWN == 0);
-+    for k in 0..ROWS as u32 {
-+        let Some(c) = shown(top + k) else { break };
++    let mut was_new = !above.is_null() && unsafe { (*above).flags } & EX_F_KNOWN == 0;
++    for (k, &p) in rows.iter().take(ROWS).enumerate() {
++        let k = k as u32;
++        let c = unsafe { &mut *p };
 +        let known = c.flags & EX_F_KNOWN != 0;
 +        let ruled = known && was_new && shift == 0;
 +        if ruled {
@@ -6609,6 +6620,9 @@ index 0000000..ef76d41
 +        off_text(&mut b, c);
 +        let y = 11 + 6 * k as i32 + shift;
 +        let sel = top + k == t.sel as u32;
++        if sel {
++            sel_p = p;
++        }
 +        // the selected row inverted (Jeff 2026-11-07, for the column a '>' took) and the one
 +        // being listened to boxed: both from the blank pixel row above, unless that touches
 +        // the header or the rule
@@ -6670,6 +6684,11 @@ index 0000000..ef76d41
 +            // DMR heard, no ID yet (Jeff 2026-11-08: detect DMR and mute it)
 +            glyph::text(lcd, x, y, "DMR", true, !sel);
 +        }
++    }
++    if sel_p.is_null() {
++        None
++    } else {
++        Some(unsafe { &mut *sel_p })
 +    }
 +}
 +
@@ -6791,9 +6810,9 @@ index 0000000..ef76d41
 +                out!(b, "{}  {} found", BANDS[t.band as usize].0, unsafe { ffi::ex_view_n(&t.ex) });
 +                head_text(lcd, 19, b.as_str());
 +            }
-+            list_rows(lcd, t, 0);
++            let sel_c = list_rows(lcd, t, 0);
 +            let mut b: TextBuf<32> = TextBuf::new();
-+            if let Some(c) = shown(t.sel as u32) {
++            if let Some(c) = sel_c {
 +                if c.flags & EX_F_SPUR != 0 {
 +                    out!(b, "{} dBm  birdie, not a station", c.hi);
 +                } else {
@@ -6867,7 +6886,7 @@ index 0000000..ef76d41
 +            }
 +            if t.auto_now {
 +                // the automatic listen keeps the list on screen, an arrow at its row
-+                list_rows(lcd, t, t.hz);
++                let _ = list_rows(lcd, t, t.hz);
 +                line(lcd, FOOT, "listening ^v scroll  keys stop");
 +                return;
 +            }

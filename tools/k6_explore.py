@@ -88,6 +88,8 @@ def load(so=None):
     L.ex_rank.argtypes = L.ex_view.argtypes = [P, ctypes.c_uint]
     L.ex_rank.restype = L.ex_view.restype = ctypes.POINTER(Cand)
     L.ex_view_n.argtypes = [P]
+    L.ex_view_rows.argtypes = [P, ctypes.c_uint, ctypes.POINTER(ctypes.POINTER(Cand)), ctypes.c_uint]
+    L.ex_view_rows.restype = ctypes.c_uint
     L.ex_view_n.restype = ctypes.c_uint
     L.ex_on_raster.argtypes = [ctypes.c_uint32]
     L.ex_to_rt.argtypes = [ctypes.POINTER(Cand), ctypes.POINTER(Rec)]
