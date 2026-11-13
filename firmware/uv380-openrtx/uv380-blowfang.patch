@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index fc5581d..dc7bcd7 100644
+index fc5581d..6f4dd5f 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,16 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,18 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -12,6 +12,8 @@ index fc5581d..dc7bcd7 100644
 +               'openrtx/src/blowfang/range_tx.c',
 +               'openrtx/src/blowfang/cw_tx.c',
 +               'openrtx/src/blowfang/i2sprobe.c',
++               'openrtx/src/blowfang/ortx_mod.c',
++               'openrtx/src/blowfang/mod_core.c',
 +               'openrtx/src/blowfang/sotto8k_fx_math.c',
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
 +               'openrtx/src/blowfang/sotto8k_fx_dec.c',
@@ -19,7 +21,7 @@ index fc5581d..dc7bcd7 100644
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +79,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +81,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -168,10 +170,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..0edf833
+index 0000000..331a468
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,564 @@
+@@ -0,0 +1,639 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -361,6 +363,7 @@ index 0000000..0edf833
 +// speaker preview: update() holds it and waits for the step running to end.
 +extern "C" {
 +#include "i2sprobe.h"
++#include "ortx_mod.h"
 +#ifndef PLATFORM_LINUX
 +#include "drivers/usb_vcom.h"
 +#endif
@@ -369,7 +372,8 @@ index 0000000..0edf833
 +#include "hwconfig.h"
 +#endif
 +
-+static constexpr size_t   PB_STACK = 4096;
++// 6 KB: a RAM module (ortx_mod.h) runs on this stack too
++static constexpr size_t   PB_STACK = 6144;
 +static constexpr unsigned PB_PAUSE_MS = 5000;   // between passes
 +static volatile bool pbRun  = false;
 +static volatile bool pbHold = false;
@@ -464,11 +468,79 @@ index 0000000..0edf833
 +#endif
 +}
 +
++static const i2sp_ops pbOps = {pbSay, pbWrite, pbRead, pbSleep, pbStop, pbAdc,
++                               NULL};
++
++// RAM modules (ortx_mod.h): "mod ..." lines load signed code over USB serial
++// and run it on this thread, so hamlet can try new code with no reflash.
++#ifndef PLATFORM_LINUX
++static void omWrite(const void *b, unsigned n)
++{
++    vcom_writeBlock(b, n);
++}
++
++static unsigned omRead(void *b, unsigned n)
++{
++    ssize_t r = vcom_readBlock(b, n);
++    return (r > 0) ? (unsigned) r : 0;
++}
++
++static void omLine(const char *s)
++{
++    pbSay(NULL, s);
++}
++
++static uint32_t omNow()
++{
++    return (uint32_t) getTick();
++}
++
++static int omStop()
++{
++    return pbStop(NULL);
++}
++
++static void omSleep(uint32_t ms)
++{
++    sleepFor(0, ms);
++}
++
++static uint8_t omC6r(uint8_t reg)
++{
++    return pbRead(NULL, reg);
++}
++
++static void omC6w(uint8_t reg, uint8_t val)
++{
++    pbWrite(NULL, reg, val);
++}
++
++static unsigned omAdc(int16_t *buf, unsigned n, unsigned fs)
++{
++    return pbAdc(NULL, buf, n, fs);
++}
++
++static int32_t omRssi()
++{
++    return (int32_t) rtx_getRssi();   // the RTX thread's last reading
++}
++
++// a probe command line from a module ("cap ...", "c6w ...")
++static int omProbe(const char *line)
++{
++    return (i2sp_command(&pbOps, line) < 0) ? -1 : 0;
++}
++
++static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
++                               omSleep, omC6r, omC6w, omAdc, omRssi,
++                               omProbe};
++#endif
++
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
 +// passes, so hamlet can drive the probe with no reflash: "auto 0" stops the
-+// passes, "help" lists the rest.
++// passes, "help" lists the rest, "mod ..." goes to the module loader.
 +static bool     pbAuto = true;
-+static char     pbCmd[96];
++static char     pbCmd[OM_LINE];
 +static unsigned pbCmdLen = 0;
 +
 +static void pbPoll(const i2sp_ops *ops)
@@ -495,7 +567,12 @@ index 0000000..0edf833
 +            continue;
 +        }
 +        pbBusy = true;
-+        int r = i2sp_command(ops, pbCmd);
++        int r = 0;
++        if((strncmp(pbCmd, "mod", 3) == 0) &&
++           ((pbCmd[3] == ' ') || (pbCmd[3] == '\0')))
++            om_command(&omHost, pbCmd + 3);
++        else
++            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
 +        if(r == I2SP_AUTO_ON)
 +            pbAuto = true;
@@ -508,7 +585,7 @@ index 0000000..0edf833
 +static void *probeFunc(void *arg)
 +{
 +    (void) arg;
-+    const i2sp_ops ops = {pbSay, pbWrite, pbRead, pbSleep, pbStop, pbAdc, NULL};
++    const i2sp_ops &ops = pbOps;
 +    while(pbRun)
 +    {
 +        if(pbAuto && (pbStop(NULL) == false))

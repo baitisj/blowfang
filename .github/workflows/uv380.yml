@@ -45,6 +45,7 @@ jobs:
         run: |
           make -C radios/uv380
           make -C radios/uv380 qemu
+          make -C radios/uv380 omqemu
       - name: tests (host and emulated)
         run: |
           python -m pytest -q \
@@ -53,7 +54,8 @@ jobs:
             tests/test_uv380_emu.py \
             tests/test_uv380_codec.py \
             tests/test_uv380_i2sprobe.py \
-            tests/test_uv380_mod.py
+            tests/test_uv380_mod.py \
+            tests/test_uv380_ortx_mod.py
       - uses: actions/upload-artifact@v4
         with:
           name: uv380-image

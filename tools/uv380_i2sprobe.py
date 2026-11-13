@@ -5,10 +5,17 @@ at the test tone (the IC-7100's PSK31 "AG7EW TEST" at 1000 Hz, or PHY R's 600 an
   python3 tools/uv380_i2sprobe.py report LOG [--tone 1000] [--top 12]
   python3 tools/uv380_i2sprobe.py listen /dev/ttyACM0 LOG [--seconds 120]
   python3 tools/uv380_i2sprobe.py cmd /dev/ttyACM0 "auto 0" "cap SPI3 s P16 8000" "raw 64" [--log LOG]
+  python3 tools/uv380_i2sprobe.py mod /dev/ttyACM0 MODULE.u3r|MODULE.c [--key-file K] [--log LOG]
 
 cmd sends each command line in turn (i2sprobe.h, i2sp_command: "help" lists them), prints what
 comes back and waits for that command's "ok" or "err" line ("pass" may take minutes). Stop any
 listener on the port first: two readers split its lines.
+
+mod sends a signed RAM module (firmware/uv380-openrtx/ortx_mod.h) with "mod begin", "mod hex" lines
+and "mod run", and prints what it says. A .c source is built and signed first (modem.uv380mod,
+key ~/.config/sotto/k6-mod.key by default, serial the time in seconds, or one more than the last
+this machine gave, kept in ~/.config/sotto/uv380-mod-serial). A module still running after
+--run-timeout seconds gets a Ctrl-C byte, which ends it at its next stop() check.
 
 A capture "hears" the radio when a channel's strongest tone is the test tone (within one bin,
 fs / 64) and holds a good share of its power, and the same channel with no signal does not.
@@ -97,9 +104,37 @@ def listen(dev, log, seconds):
                 g.flush()
 
 
-def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print):
+HEX_MAX = 128           # ortx_mod.h OM_HEX_MAX
+
+
+def mod_lines(img):
+    """the command lines that load and run a signed module image"""
+    lines = [f"mod begin {len(img)}"]
+    for off in range(0, len(img), HEX_MAX):
+        lines.append(f"mod hex {off:x} {img[off:off + HEX_MAX].hex()}")
+    return lines + ["mod run"]
+
+
+def ends(c):
+    """the prefixes of the line that ends command c: a "mod" command ends only on its own
+    "ok mod <sub>" / "err mod <sub>" (a module's own probe commands print "ok ..." lines too),
+    anything else on any "ok " or "err " line; "err busy" ends any"""
+    w = c.split()
+    if w[:1] == ["mod"]:
+        sub = w[1] if len(w) > 1 else "info"
+        return (f"ok mod {sub}", f"err mod {sub}", "err busy")
+    return ("ok ", "err ")
+
+
+def long_command(c):
+    """a pass, a module run, or "mod begin" (the radio reads it once a pass in progress ends)"""
+    return c.split()[:1] == ["pass"] or c.split()[:2] in (["mod", "run"], ["mod", "begin"])
+
+
+def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, stop_on_err=False):
     """send each command, print its lines; -> the number of commands that ended in "err" or
-    timed out"""
+    timed out. "pass" and "mod run" wait pass_timeout; a "mod run" still going then gets a Ctrl-C
+    and 5 s more. stop_on_err: send nothing after the first error."""
     import os
     import termios
     import tty
@@ -119,8 +154,15 @@ def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print):
         buf = b""
         for c in cmds:
             os.write(fd, c.encode() + b"\n")
-            t0, wait, done = time.time(), pass_timeout if c.split()[:1] == ["pass"] else timeout, None
-            while done is None and time.time() - t0 < wait:
+            t0, wait, done = time.time(), pass_timeout if long_command(c) else timeout, None
+            ctrl_c = c.split()[:2] == ["mod", "run"]
+            while done is None:
+                if time.time() - t0 >= wait:
+                    if not ctrl_c:
+                        break
+                    out(f"ctrl-c: {c} still running after {wait:.0f} s")
+                    os.write(fd, b"\x03")
+                    t0, wait, ctrl_c = time.time(), 5.0, False
                 b = os.read(fd, 512)
                 if g and b:
                     g.write(b)
@@ -132,13 +174,51 @@ def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print):
                     if not ln:
                         continue
                     out(ln)
-                    if ln.startswith(("ok ", "err ")):
+                    if ln.startswith(ends(c)):
                         done = ln
             if done is None:
                 out(f"timeout: {c}")
             if done is None or done.startswith("err "):
                 bad += 1
+                if stop_on_err:
+                    break
     return bad
+
+
+SERIAL_FILE = "~/.config/sotto/uv380-mod-serial"
+
+
+def next_serial(path=SERIAL_FILE, now=None):
+    """a module serial newer than any this machine gave before: the time in seconds, or one more
+    than the last if that is later (the radio refuses a serial not newer than the last it ran,
+    so two modules built in the same second would otherwise clash)"""
+    import os
+    path = os.path.expanduser(path)
+    now = int(time.time()) if now is None else now
+    try:
+        last = int(open(path).read().split()[0])
+    except (OSError, ValueError, IndexError):
+        last = 0
+    serial = max(now, last + 1)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(f"{serial}\n")
+    return serial
+
+
+def module_image(path, key_file, serial_file=SERIAL_FILE):
+    """a signed image: the file itself, or a .c source built and signed now"""
+    if not path.endswith(".c"):
+        return open(path, "rb").read()
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from modem import k6mod, uv380mod
+    table = uv380mod.source_table(path)
+    if table != "openrtx":
+        raise SystemExit(f"{path}: not an OpenRTX module (include ortx_mod.h)")
+    code, entry = uv380mod.build(path)
+    return uv380mod.image(code, entry, next_serial(serial_file), k6mod.read_key(os.path.expanduser(key_file)),
+                          uv380mod.source_level(path), table)
 
 
 def main(argv=None):
@@ -157,12 +237,22 @@ def main(argv=None):
     q.add_argument("cmds", nargs="+")
     q.add_argument("--log")
     q.add_argument("--timeout", type=float, default=10.0)
+    q = sub.add_parser("mod")
+    q.add_argument("dev")
+    q.add_argument("module", help="signed .u3r image, or a .c source to build and sign")
+    q.add_argument("--key-file", default="~/.config/sotto/k6-mod.key")
+    q.add_argument("--log")
+    q.add_argument("--run-timeout", type=float, default=60.0)
     a = ap.parse_args(argv)
     if a.cmd == "report":
         with open(a.log, errors="replace") as f:
             print("\n".join(report(f, a.tone, a.top)))
     elif a.cmd == "cmd":
         return 1 if command(a.dev, a.cmds, a.log, a.timeout) else 0
+    elif a.cmd == "mod":
+        img = module_image(a.module, a.key_file)
+        return 1 if command(a.dev, mod_lines(img), a.log, pass_timeout=a.run_timeout,
+                            stop_on_err=True) else 0
     else:
         listen(a.dev, a.log, a.seconds)
     return 0

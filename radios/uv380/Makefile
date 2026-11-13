@@ -2,6 +2,9 @@
 # (apt install gcc-arm-none-eabi libnewlib-arm-none-eabi).
 #   make -C radios/uv380            build/uv380.elf + .bin (radio, linked at 0x0800C000)
 #   make -C radios/uv380 qemu       build/uv380-qemu.elf (QEMU netduinoplus2, at 0x08000000)
+#   make -C radios/uv380 omqemu     build/ortxmod-qemu.elf: the OpenRTX image's module loader
+#                                   (firmware/uv380-openrtx/ortx_mod.c) on QEMU, for
+#                                   tests/test_uv380_ortx_mod.py
 #   make -C radios/uv380 MOD_KEY_FILE=~/.config/sotto/k6-mod.key
 #                                   an image that takes modules signed with that key (keep it
 #                                   on your machine); without it, key a built image with
@@ -71,7 +74,22 @@ build/uv380-qemu.elf: $(SRC) src/board_qemu.c src/*.h link/*.ld $(COMMON)/*.h $(
 	    $(SRC) src/board_qemu.c $(SOTTO_OBJ)
 	$(SIZE) $@
 
+# the OpenRTX image's module loader alone (firmware/uv380-openrtx/qemu/om_qemu.c)
+ORTX = ../../firmware/uv380-openrtx
+OM_SRC = src/startup.c \
+         src/board_qemu.c \
+         $(ORTX)/qemu/om_qemu.c \
+         $(ORTX)/ortx_mod.c \
+         $(COMMON)/mod_core.c
+
+omqemu: build/ortxmod-qemu.elf
+
+build/ortxmod-qemu.elf: $(OM_SRC) $(ORTX)/ortx_mod.h src/*.h link/*.ld $(COMMON)/*.h
+	@mkdir -p build
+	$(CC) $(CFLAGS) -DBOARD_QEMU -I$(ORTX) -I$(COMMON) $(LDFLAGS) -Wl,-Tlink/qemu.ld -o $@ $(OM_SRC)
+	$(SIZE) $@
+
 clean:
 	rm -rf build
 
-.PHONY: all qemu clean
+.PHONY: all qemu omqemu clean

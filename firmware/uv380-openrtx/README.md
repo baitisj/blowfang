@@ -134,3 +134,40 @@ audio, CW ID first), then a pass with no signal. Read the port with
 `python3 tools/uv380_i2sprobe.py listen /dev/ttyACM0 probe.log`, then
 `python3 tools/uv380_i2sprobe.py report probe.log`. That ranks the captures by how much of their
 power sits at the tone. A capture with the tone on and not off is the path.
+
+## RAM modules (the probe image)
+
+The probe image also takes signed RAM modules over the same USB serial port (`ortx_mod.h`), so new
+code reaches the radio in seconds, with no reflash and no bootloader keys. A module is
+position-independent Thumb-2 for the M4F, signed with the same key as K6 modules
+(`~/.config/sotto/k6-mod.key`), with its own header magic `U3R` (the bare-metal port's table is
+`U3M`), and it runs once in the probe's thread against the table in `ortx_mod.h`: say lines,
+snprintf, ms, sleep, stop, scratch RAM (DMA-capable), the C6000's registers, raw USB serial in and
+out, PC3 captures, the RSSI, and the probe's own command lines (`api->probe("cap SPI3 s S16 8000")`),
+so a module can sweep codec settings and capture after each.
+
+    python3 tools/uv380_i2sprobe.py mod /dev/ttyACM0 firmware/uv380-openrtx/mod/c6dump.c
+
+builds, signs and sends a module (`mod begin`, `mod hex` lines, `mod run`), and prints its lines.
+`mod info` says where the arena is (16 KB taken from the heap, in the 128 KB RAM; never CCM, which
+can neither run code nor take DMA) and whether the image has a key. A module must call
+`api->stop()` in any long loop: it ends on PTT, the speaker preview, a mode change, or the Ctrl-C
+byte the tool sends after `--run-timeout` seconds.
+
+**The key.** CI builds images without it. Before flashing, write it in on hamlet with
+`python -m modem.k6 keyimage out/openrtx_mduv3x0p_i2sprobe.bin keyed.bin --key-file
+~/.config/sotto/k6-mod.key`, then wrap `keyed.bin` for TYT's bootloader with radio_tool, as
+OpenRTX's own build does (`radio_tool --wrap -o keyed_wrap.bin -r UV3X0 -s 0x0800C000:keyed.bin`).
+The wrapped file is scrambled, so the key can't be written into a `_wrap.bin`. An image with no
+key refuses every module (`err mod run refused r=-5`).
+
+Modules so far (`mod/`): `hello` (the loader's own check), `c6dump` (all 256 C6000 configuration
+registers), `c6sweep` (flips each bit of the FM-mode and codec registers in turn and captures I2S3
+after each: does any one bit put receiver audio there? On the radio, 11-13, no: the flips only
+rescaled the idle waveform, and B9 bit 2 put the C6000 to sleep until a power cycle), `c6codec`
+(the same for the codec registers E0-E5, with a read-back and an is-it-still-answering check after
+every flip, and the first samples of each capture; on the radio, E1 turned out to be a gain on
+what I2S3 carries, x2 to x32, and E3 partly a status register), `c6listen` (routes the receive
+audio to the C6000 as the probe's pass does, register 26 fd and PD9 high, and captures in rounds for
+90 s at two gains, for a tone run). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
+(`make -C radios/uv380 omqemu`).
