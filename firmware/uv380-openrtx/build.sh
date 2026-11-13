@@ -6,6 +6,12 @@
 #   sh firmware/uv380-openrtx/build.sh            the radio: out/openrtx_mduv3x0_wrap.bin (for
 #                                                 TYT's updater, radio_tool or dmr.tools), the
 #                                                 bare .bin and the ELF
+#   sh firmware/uv380-openrtx/build.sh mduv3x0p   the MD-UV380/390 PLUS (10 W, Jeff's radio):
+#                                                 out/openrtx_mduv3x0p_wrap.bin. The Plus swaps two
+#                                                 pins (backlight PC6, PA band select PD8); the plain
+#                                                 image on a Plus leaves the screen dark and drives
+#                                                 the backlight PWM into the PA band select, so
+#                                                 never flash a plain image on a Plus
 #   sh firmware/uv380-openrtx/build.sh linux      OpenRTX's Linux emulator (out/openrtx_linux)
 #
 #   BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh
@@ -36,12 +42,18 @@ ROOT=$(cd "$HERE/../.." && pwd)
 OPENRTX_REPO=${OPENRTX_REPO:-https://github.com/OpenRTX/OpenRTX}
 OPENRTX_REV=20b4088d216b63aa9ae060f87d3b125c4accdfe8     # master, 2026-11-07
 TARGET=${1:-mduv3x0}
+if [ "$TARGET" = mduv3x0p ]; then
+  # OpenRTX's mduv3x0-plus branch: master 20b4088 plus "Add MD-UV3x0 Plus target" (PR #300,
+  # issue #275: target mduv3x0p, PLATFORM_MDUV3x0P swaps PA_SEL_SW and LCD_BKLIGHT in pinmap.h)
+  OPENRTX_REV=f969eff04220106ace6edccbeef91632cb486856   # mduv3x0-plus, 2026-11-09
+fi
 WORK="$HERE/build/openrtx"
 OUT="$HERE/out"
 
 rm -rf "$WORK"
 mkdir -p "$HERE/build" "$OUT"
 git clone -q "$OPENRTX_REPO" "$WORK"
+git -C "$WORK" fetch -q origin "$OPENRTX_REV" 2>/dev/null || true
 git -C "$WORK" checkout -q "$OPENRTX_REV"
 git -C "$WORK" apply "$HERE/uv380-blowfang.patch"
 
@@ -96,11 +108,16 @@ if [ "$TARGET" = linux ]; then
   meson compile -C build_linux openrtx_linux
   cp build_linux/openrtx_linux "$OUT/openrtx_linux$SUFFIX"
 else
+  if [ "$TARGET" = mduv3x0p ]; then
+    # the swap must be in the tree, or this would be a plain image under a Plus name
+    grep -q 'define LCD_BKLIGHT GPIOC,6' platform/targets/MD-UV3x0/pinmap.h
+  fi
+  T=$TARGET
   meson setup --cross-file cross_cm4.txt build_cm4
-  meson compile -C build_cm4 openrtx_mduv3x0_wrap
-  cp build_cm4/openrtx_mduv3x0_wrap "$OUT/openrtx_mduv3x0${SUFFIX}_wrap.bin"
-  cp build_cm4/openrtx_mduv3x0_bin "$OUT/openrtx_mduv3x0$SUFFIX.bin"
-  cp build_cm4/openrtx_mduv3x0 "$OUT/openrtx_mduv3x0$SUFFIX.elf"
-  arm-miosix-eabi-size "$OUT/openrtx_mduv3x0$SUFFIX.elf" | tee "$OUT/size$SUFFIX.txt"
+  meson compile -C build_cm4 "openrtx_${T}_wrap"
+  cp "build_cm4/openrtx_${T}_wrap" "$OUT/openrtx_$T${SUFFIX}_wrap.bin"
+  cp "build_cm4/openrtx_${T}_bin" "$OUT/openrtx_$T$SUFFIX.bin"
+  cp "build_cm4/openrtx_$T" "$OUT/openrtx_$T$SUFFIX.elf"
+  arm-miosix-eabi-size "$OUT/openrtx_$T$SUFFIX.elf" | tee "$OUT/size_$T$SUFFIX.txt"
 fi
 echo "built $TARGET in $OUT"

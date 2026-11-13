@@ -31,6 +31,14 @@ jobs:
       # the range image (docs/k6-range.md): PTT sends PHY R; out/*_range*
       - name: build (mduv3x0, range)
         run: BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh mduv3x0
+      # the MD-UV380/390 PLUS (10 W, Jeff's radio): OpenRTX's mduv3x0-plus target, which swaps
+      # the backlight and PA band select pins; out/openrtx_mduv3x0p*
+      - name: build (mduv3x0p)
+        run: sh firmware/uv380-openrtx/build.sh mduv3x0p
+      - name: build (mduv3x0p, I2S probe)
+        run: BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh mduv3x0p
+      - name: build (mduv3x0p, range)
+        run: BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh mduv3x0p
       - uses: actions/upload-artifact@v4
         with:
           name: uv380-openrtx-image

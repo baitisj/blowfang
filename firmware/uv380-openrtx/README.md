@@ -65,6 +65,23 @@ pre-emphasised voice path, which is what the K6 reads best (bench run 2). In the
 `tests/test_uv380_openrtx_emu.py` sends with the range build and reads every packet back through
 the K6 model.
 
+## The MD-UV380/390 PLUS (10 W)
+
+Jeff's radio is an MD-UV390 PLUS 10 W (firmware D219.043). The Plus swaps two pins against
+the plain MD-UV380: the LCD backlight is PC6 and the RF PA band select is PD8, not the other way
+round. A plain image on a Plus boots with the screen fully dark (OpenRTX runs: its USB serial
+port comes up) and drives the backlight PWM into the PA band select line, so never flash a plain
+image on a Plus, and never key one. Found on the first flash, 2026-11-13 08:49Z (I2S probe image).
+
+`sh firmware/uv380-openrtx/build.sh mduv3x0p` builds from OpenRTX's `mduv3x0-plus` branch
+(`f969eff`: master `20b4088`, which the patch was written against, plus "Add MD-UV3x0 Plus target",
+OpenRTX PR #300 and issue #275), target `mduv3x0p`, which defines `PLATFORM_MDUV3x0P` on top of
+the MD-UV3x0 target and swaps `PA_SEL_SW` and `LCD_BKLIGHT` in `pinmap.h`. Images:
+`out/openrtx_mduv3x0p*` (with `BLOWFANG_I2SPROBE=1` or `BLOWFANG_RANGE=1` as for the plain
+radio). CI builds all three. OpenRTX issue #275 notes that OpenGD77 also treats the 10 W radio's
+power levels and calibration differently, so TX power on these images may not match its labels:
+keep power low and check it on the bench before any on-air use.
+
 ## The I2S probe image
 
 `BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh` builds `out/openrtx_mduv3x0_i2sprobe_wrap.bin`
