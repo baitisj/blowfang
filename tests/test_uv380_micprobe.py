@@ -1,5 +1,5 @@
 """tools/uv380_micprobe.py: the setting whose audio is a stretch of the reference stands out by
-its correlation; the others (noise) don't. micprobe.c builds and fits.
+its correlation; the others (noise) don't. micprobe.c and micadc.c build and fit.
 SPDX-License-Identifier: MIT"""
 import os
 import shutil
@@ -53,9 +53,13 @@ def test_the_mic_setting_stands_out(tmp_path, capsys):
 
 
 @pytest.mark.skipif(not TOOLS, reason="needs clang and lld")
-def test_micprobe_fits():
+def test_micprobe_and_micadc_fit():
     from modem import uv380mod
-    path = os.path.join(ROOT, "firmware", "uv380-openrtx", "mod", "micprobe.c")
-    code, entry = uv380mod.build(path)
-    assert entry == 0 and len(code) < 3072, len(code)
-    assert uv380mod.source_table(path) == "openrtx"
+    for name, most in (
+        ("micprobe.c", 3072),
+        ("micadc.c", 2048),
+    ):
+        path = os.path.join(ROOT, "firmware", "uv380-openrtx", "mod", name)
+        code, entry = uv380mod.build(path)
+        assert entry == 0 and len(code) < most, (name, len(code))
+        assert uv380mod.source_table(path) == "openrtx"

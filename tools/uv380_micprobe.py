@@ -104,7 +104,7 @@ def main(argv=None):
     if a.ref:
         ref = bandpass(read_wav(a.ref))
     for ln in lines:
-        if "micprobe" in ln or "STOP" in ln:
+        if any(w in ln for w in ("micprobe", "micadc", "rate n=", "STOP")):
             print(ln[ln.index("mod say") + 8:] if "mod say" in ln else ln)
     print(f"{'k':>3} {'rms':>7} {'voice':>6} {'corr':>6}  setting / device line")
     for k, lab, x, got in sets:
