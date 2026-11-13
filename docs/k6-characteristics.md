@@ -29,11 +29,15 @@ one of them changes.
 - Audio FSK from the tone oscillator (REG_70/71, continuous phase, about 0.097 Hz a step) reaches
   the carrier with tx_on's REG_30 0xC1FA: FT8 decoded at -14 dB on the IC-7100 (M, k6-ft8-wspr.md).
 - No per-symbol crystal FSK: REG_3B/38 are latched until RX on (M, k6-own-fsk.md).
-- With the PA off it still leaks about -40 dB at bench range: judge keying by edges (M).
+- With the PA off it still leaks about -40 dB at bench range: judge keying by edges (M). A module
+  can stay keyed with the PA off (tx_pa(0)) as its lowest power: rangetx_lo does.
 - tx_on takes about 1.4-1.9 s before RF is up (M).
-- PHY R FFSK from the tone oscillator (rangetx): bits timed on TIM17, tone changes aimed to keep
-  the phase on the bit edges; the FD6818's crystal against the MCU's is unmeasured (over about
-  20 ppm needs RT_PPM), and so is the deviation at gain 60 (I, emulator, k6-range.md).
+- The tone oscillator (REG_70/71) is phase continuous across a REG_71 change, a same-word write
+  does nothing, and tone 1 runs on while REG_70 has it off (M, tonewr K9 11-13). Tone 2 (REG_72,
+  REG_70 bit 7) gives nothing (M).
+- The MCU's clock runs about 270 ppm slow against the FD6818's crystal (and true time): the tone
+  is 271 ppm fast in MCU time (M, K9). Anything that times audio on TIM17/TIM14 against the chip
+  must trim for it (rangetx: RT_PPM 271). A register write takes about 117 us keyed (M).
 
 ## Memory and code
 

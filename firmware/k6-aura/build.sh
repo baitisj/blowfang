@@ -393,6 +393,7 @@ rangerx        # level 2, PHY R: the range mode's receiver, coded 600/1200 Hz FF
 rangerx_b      # level 2, rangerx for the bench: 440.850, 32 s wait, then nine 45 s settings of front-end path and gain (receive only, docs/k6-range.md)
 rangerx_d      # level 2, rangerx on 440.850 for 120 s after 32 s, the first six captures' words said for the host (receive only, docs/k6-range.md)
 rangetx        # level 3, PHY R sender: six test packets as 600/1200 Hz FFSK from the tone oscillator on 440.850, timed on TIM17, then MCW ID (docs/k6-range.md)
+rangetx_lo     # level 3, rangetx with the PA off while keyed: only the chip's leak, for the bench (docs/k6-range.md)
 remapsoak      # level 1, 10 s on the SRAM vector table (hal::txdog)
 remapspeed     # level 1, does SRAM at address 0 slow code down (hal::txdog)
 rtls
@@ -409,6 +410,7 @@ stockfont      # level 6, reads the stock fonts from SPI flash itself (READ only
 surf           # level 6, docs/k6-surf.md
 surfauto       # level 6, docs/k6-surf.md
 surfkeys       # level 6, docs/k6-surf.md: Jeff's keys of 2026-11-10 pressed by a script
+tonewr         # level 3, what a write does to the tone oscillator's phase: 7 s of scheduled REG_70/71 writes on 440.850, PA off, then MCW ID (docs/k6-range.md)
 vecprobe       # level 1, can Aura catch its own HardFaults (docs/k6-modules.md)
 vectab         # level 1, is 0x08000000's vector table the live one (hal::txdog)
 wsprbcn

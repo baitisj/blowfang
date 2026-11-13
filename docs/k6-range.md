@@ -134,6 +134,11 @@ the emulator, with writes of 180-200 us, the phase stays within 6 degrees of the
 11.5 s burst, and the UV-380's receiver reads 6 of 6 through a model of its receive path, with
 or without de-emphasis on the K6's tone (tests/test_k6_rangetx.py).
 
+For the bench, `rangetx_lo` is the same with the PA off from just after tx_on to the end (Jeff
+asked for low-power K6 sends, 11-13): only the FD6818's leak goes out, about 40 dB under the
+module's low power at bench range (docs/k6-own-fsk.md), still plenty for the UV-380 a few feet
+away. Both say `pa=` on their first line.
+
 What the emulator can't say:
 
 - The FD6818's crystal against the MCU's. The tone follows the first, the bits the second, so a
@@ -143,6 +148,39 @@ What the emulator can't say:
 - Whether the oscillator starts at phase 0 when REG_70 turns it on (the receiver reads any start
   phase, so this only matters for analysis), and whether the K6 pre-emphasises the tone.
 - The deviation at gain 60 against the IC-7100's level; `-DRT_GAIN=` sets it.
+
+### K6 to UV-380 on air: runs K7 and K8 (2026-11-13)
+
+K7 (17:00Z, rangetx, full low power) and K8 (17:13Z, rangetx_lo, PA off, RT_PPM 248): the K6 sent
+the burst both times (`rangetx w=6503 late=0 wr=11223-11232 d=99`: a register write takes
+about 117 us), and the UV-380, unmodified, heard it at -17 and -48 dBm, but read 0 of 6, with
+about 390-430 channel errors a packet from the first. The recording shows why: at every 600 to
+1200 Hz change the tone has a runt half cycle of 0.06-0.2 ms, a phase jump; 1200 to 600 looks
+clean, and the IC-7100's audio has no runts. So the oscillator isn't phase continuous across a
+REG_71 write, or not the way rangetx assumed. (A first fit read the jumps as the tone running
++248 ppm against the bit clock; RT_PPM 248 changed nothing, so that was the fit.) The received
+1200 Hz comes out about 2 dB over 600 Hz after the UV-380's de-emphasis: the K6's tone path is
+flat or mildly pre-emphasised.
+
+`tonewr` (c/k6/mod/tonewr.c, PA off) measures what a write does: 7 s of scheduled writes from
+tone-on (same-word REG_71 rewrites, 600/1200 changes at every phase, tone 1 off and on, tone 2
+(REG_72) against tone 1), timed on TIM17. `tools/k6_tonewr.py report REC` reads a recording
+(IC-7100 48 kHz, or the UV-380's rxrec log) and says for each kind of write whether the phase runs
+on through it or is set at it, and whether a tone runs on while it's off.
+
+**K9 (2026-11-13 17:37Z, tonewr, PA off), the IC-7100's 48 kHz recording:**
+- A REG_71 change is phase continuous, both ways (jump R 1.00, the phase after it spread out),
+  and rewriting the same word does nothing (0.1 degree rms).
+- Tone 1 runs on while REG_70 has it off: turned on again, it comes back on its own line.
+- The FD6818's tone runs 271 ppm fast against the K6's MCU clock (600.195 Hz in K6 time for
+  600.033 Hz written); the recorder agrees with the tone within 2 ppm, so it's the MCU's clock
+  that's about 270 ppm slow.
+- Tone 2 doesn't sound: REG_72 = 1200 Hz with REG_70 bit 7 gave nothing (level 2 against tone
+  1's 7810). REG_72 read 0x4898 before (the pager's FSK set-up) and was put back.
+
+So K7's failure was the clock: 271 ppm walks the tone about 87 degrees a second off the bit
+edges, through the bad phases within each packet. `tools/k6_rangetx_check.py REC` measures that
+walk on a recording of a burst (both tones' phase at every bit edge against ideal FFSK).
 
 ## The other way: the UV-380 receiving
 
