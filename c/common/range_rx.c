@@ -3,14 +3,14 @@
 
 #define RR_MASK (RR_HIST - 1u)
 #ifndef RR_HYST
-#define RR_HYST 8               /* a phase move needs the best E 1/RR_HYST over the current's */
+#define RR_HYST 16              /* a phase move needs a neighbour's E 1/RR_HYST over the current's */
 #endif
 #ifndef RR_EAVG
-#define RR_EAVG 32              /* E's running mean: 1/RR_EAVG of each step */
+#define RR_EAVG 16              /* E's running mean: 1/RR_EAVG of each step */
 #endif
 #define Q_MAX 7
 #ifndef RR_TRK_G
-#define RR_TRK_G 5              /* the phase follower moves 1/2^RR_TRK_G of its error a bit */
+#define RR_TRK_G 4              /* the phase follower moves 1/2^RR_TRK_G of its error a bit */
 #endif
 #define RR_HM 15                /* the quadrature filter's half length (taps hs apart) */
 #define RR_XMASK (RR_XR - 1u)
@@ -159,9 +159,20 @@ static int step(rr_state *r) {
     }
     if (r->warm < 255)
         r->warm++;
-    /* move when the best is clearly better (RR_HYST), or freely while the bank warms up */
-    if (best != old && (r->warm < 64 || ebest > r->E[old] + r->E[old] / RR_HYST))
-        r->ph = (uint8_t)best;
+    /* while the bank warms up, or when another phase is far better (a burst starting, or a
+       lock half a bit off), straight to the best phase */
+    if (r->warm < 64 || ebest > r->E[old] + r->E[old] / 2) {
+        if (best != old)
+            r->ph = (uint8_t)best;
+    } else {
+        /* otherwise a step to a neighbour at most (a drift is far slower): the bank mustn't hop
+           between peaks and count a bit twice or not at all (11-13 K11: the K6's clock wandering
+           against its tone made it do that) */
+        unsigned up = (old + 1u) % RR_NPH, dn = (old + RR_NPH - 1u) % RR_NPH;
+        unsigned nb = r->E[up] > r->E[dn] ? up : dn;
+        if (r->E[nb] > r->E[old] + r->E[old] / RR_HYST)
+            r->ph = (uint8_t)nb;
+    }
     int d = (int)r->ph - (int)old;
     unsigned nout = 1;
     if (d < -(int)(RR_NPH / 2))

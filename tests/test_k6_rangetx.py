@@ -202,6 +202,39 @@ def test_the_uv380_as_measured(g12, tmp_path):
         assert len(e) < 6 or max(e) > 100, pk
 
 
+# K11 (11-13): rangetx_check's walk on the IC-7100's recording, degrees at 600 Hz every 0.5 s
+# from the burst's start: the K6's MCU clock wandering against its tone by hundreds of ppm
+K11_WALK = [0, 55, 106, 137, 161, 160, 182, 159, 173, 209, 249, 305, 324, 391, 452, 472, 509, 485,
+            506, 541, 549, 558, 613, 601]
+
+
+def wandered(ev, walk=K11_WALK):
+    """the writes' times as they land when the MCU's clock wanders: off a straight line by the
+    walk (as time at 600 Hz) from tone-on; the tone, on the chip's crystal, runs on steadily"""
+    on = next(t for t, r, v in ev if r == 0x70 and v & 0x8000)
+    tt = np.arange(len(walk)) * 0.5
+    return [(t + np.interp(t - on, tt, walk) / 360 / 600 if t > on else t, r, v) for t, r, v in ev]
+
+
+@need_clang
+@pytest.mark.skipif(not os.path.exists(RX), reason="needs make -C c/common")
+@pytest.mark.parametrize("path", ["measured", "flat"])
+def test_the_uv380_follows_a_wandering_clock(path):
+    """K11's wander (its bursts' edges moving off a straight line against the tone by up to a bit
+    in a second): the receiver's clock steps one phase at a time, so it follows the edges and
+    doesn't count a bit twice, and the follower takes the tone's phase. (Before, with the clock
+    free to hop to its best phase: 6 of 18 on this model, and K11 itself 0 of 6 on the IC-7100.)"""
+    pytest.importorskip("scipy")
+    import test_range_rx
+    ret, said, regs, tx, ev = send(write_us=jitter(2))
+    x = audio(wandered(ev), tx["log"][-1][2] * 1e-6)
+    y = uv380_measured(x, snr_db=12, seed=1) if path == "measured" else uv380(x, deemph=False, snr_db=12)
+    pk = test_range_rx.receive(y)
+    e = [e for _, _, e, ok, p in pk if ok and p in test_range_rx.PL]
+    assert len(e) == 6 and max(e) < 30, pk
+    assert np.all(np.diff([s for s, _, _, _, _ in pk if s > 1000]) == 2224), pk
+
+
 @need_clang
 def test_rt_ppm_trims_the_chips_crystal(tmp_path):
     """the FD6818's crystal 30 ppm fast against the MCU's: the phase walks a third of a cycle

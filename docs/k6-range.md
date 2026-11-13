@@ -191,7 +191,8 @@ behaves like an RC oscillator, so no RT_PPM holds the phase through 11.5 s.
 **So the receiver follows it (11-13, range_rx.c RR_TRACK).** The walk turns both tones' phase
 alike, which is a slow rotation of the audio's analytic signal; range_rx now takes each y from the
 audio turned back by an angle it follows (a 31-tap Hilbert filter gives the quadrature;
-decision-directed, 1/32 of the error a bit; the bank's phases use the turned audio too). On the
+decision-directed, 1/32 of the error a bit, 1/16 since K11; the bank's phases use the turned
+audio too). On the
 emulated K6 burst with RT_PPM 0 and the tone -400 to +500 ppm off, through the UV-380 model
 (de-emphasis or flat, 8 dB SNR): 6 of 6 every time, channel errors at most 8; without the follower
 0 of 6 past 300 ppm and packets lost from 30 ppm. It costs nothing where nothing walks (2-6 dB SNR:
@@ -218,6 +219,23 @@ hundreds of errors in the rest even at 20 dB and no walk; pre-emphasised, with t
 half a bit off now and then). 2.0 times is nearly as good, 1.5 not. Whether REG_70's gain is
 linear isn't measured: `tools/k6_rangetx_check.py` now prints the 1200 Hz bits' level against the
 600s' on the IC-7100's recording (the model: +7 dB for 8 dB sent, through its band-pass).
+
+**K11 (2026-11-13 18:22Z, dfb3ba7, rangetx_lo, RT_PPM 320, pre-emphasised): 1 of 6** on the
+UV-380 (-49 dBm). Every sync strong (c 134-146 against about 100 before), channel errors about 200
+a packet against 400; the levels came out as sent (1200 Hz bits +7.7 dB for 8.0). But the IC-7100's
+copy read 0 of 6 too: the tone ran about 487 ppm against the bit clock (320 + 167), and the walk
+wasn't steady (about +80 deg/s for 2 s, flat for 2, +120 for 3...; fit rms 115 us against 55-69
+before). The MCU's clock wanders, by hundreds of ppm within seconds.
+
+What that does to the receiver (the model: the writes' times moved off a straight line by K11's
+walk, the tone steady, `wandered` in tests/test_k6_rangetx.py): the bank's best phase hops
+between peaks as the edges move against the tone, so it says a bit twice or drops one (the syncs
+2225 apart instead of 2224), and the rest of the packet is shifted: e 150-250, as K11. **Fix:**
+once warm, the bank steps one phase at a time toward the better neighbour (a jump only when
+another phase is half again better: a burst starting); with that, E averaged over 16 steps,
+RR_HYST 16 and the follower at 1/16, the model reads 140 of 144 over K11's walk and twice it,
+0 and 300 ppm, flat or through the UV-380's response (6 of 18 before); no cost in noise (2-6 dB:
+fewer errors than before) and the receiver's tests unchanged.
 
 ## The other way: the UV-380 receiving
 

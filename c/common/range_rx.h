@@ -9,7 +9,8 @@
  * and dump on the edge. The clock is a bank of RR_NPH phases a bit apart by T / RR_NPH, each
  * keeping a running mean of |y|: the bank's best phase is where the edges are (half a bit off, the
  * 600 Hz bits give 0), and it follows a drifting clock by moving to the next phase, a wrap adding
- * or dropping one soft value. Soft values are scaled to the best phase's mean |y| as 4 (clean:
+ * or dropping one soft value. Once warm it moves one phase at a time (unless another phase is
+ * half again better): free to hop, it could count a bit twice when the sender's clock wanders. Soft values are scaled to the best phase's mean |y| as 4 (clean:
  * +-4, as the K6's four chip samples a bit) and kept -7..7.
  *
  * The tones' phase against the edges (RR_TRACK): a sender whose tones and bit clock aren't one
