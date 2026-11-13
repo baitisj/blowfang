@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index fc5581d..6f4dd5f 100644
+index 6bb1ade..d711997 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,18 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,20 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -18,10 +18,12 @@ index fc5581d..6f4dd5f 100644
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
 +               'openrtx/src/blowfang/sotto8k_fx_dec.c',
 +               'openrtx/src/blowfang/sotto8k_fx_lr.c',
++               'openrtx/src/blowfang/sotto8k_fx_enc.c',
++               'openrtx/src/blowfang/sotto8k_fx_lr_enc.c',
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +81,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +83,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -170,10 +172,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..331a468
+index 0000000..9be8e98
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,639 @@
+@@ -0,0 +1,823 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -249,6 +251,30 @@ index 0000000..331a468
 +static cw_tx   cw;
 +static char    ident[12];
 +
++// The message PTT sends and # plays: the stored one (blowfang_message.h), or
++// the last recording a RAM module made with the radio's sotto 1200 encoder
++// (ortx_mod.h level 2), kept until the next one or a power-off. .bss: CCM on
++// the radio, which is fine (no DMA reads it).
++static constexpr unsigned REC_MAX   = 750;      // superframes: 30 s
++static uint8_t         recMsg[REC_MAX * PT_FRAME_BYTES];
++static unsigned        recFrames  = 0;
++static volatile bool   recValid   = false;
++static volatile bool   msgChanged = false;  // update() makes a new msg_id
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++static constexpr freq_t SEND_HZ   = 440850000;  // tx_request sends only here
++static volatile bool   txRequest  = false;  // a module asked for a send
++#endif
++
++static const uint8_t *msgBytes()
++{
++    return recValid ? recMsg : blowfang_message;
++}
++
++static unsigned msgFrames()
++{
++    return recValid ? recFrames : BLOWFANG_MESSAGE_FRAMES;
++}
++
 +void pager_requestPreview()
 +{
 +    pvRequest = true;
@@ -258,9 +284,9 @@ index 0000000..331a468
 + * decoder has given all of it (its last superframes come from the flush). */
 +static bool pvNext(struct sotto_lr_dec *dec, unsigned &frame, stream_sample_t *out)
 +{
-+    if(frame < BLOWFANG_MESSAGE_FRAMES)
++    if(frame < msgFrames())
 +    {
-+        sotto_lr_decode(dec, blowfang_message + frame * PT_FRAME_BYTES, 1, out);
++        sotto_lr_decode(dec, msgBytes() + frame * PT_FRAME_BYTES, 1, out);
 +        frame++;
 +        return true;
 +    }
@@ -531,9 +557,143 @@ index 0000000..331a468
 +    return (i2sp_command(&pbOps, line) < 0) ? -1 : 0;
 +}
 +
++// Level 2: the fixed-point sotto 1200 encoder (8 kHz). It runs in a thread of
++// its own, whose stack it needs (its deepest calls take about 8 KB, more than
++// the module's); enc_push hands it 320 samples at a time in two buffers and
++// waits while it is still on the other one.
++static constexpr size_t ENC_STACK = 16384;
++static struct sotto_lr_enc *enc = NULL;
++static int16_t        encIn[2][SOTTO_LR_SAMPLES_PER_FRAME];
++static unsigned       encCur  = 0;
++static unsigned       encFill = 0;
++static volatile int   encReady = -1;    // the buffer handed over, -1: none
++static volatile bool  encQuit  = false;
++static pthread_t      encThread;
++
++static void encAppend(const uint8_t *f)
++{
++    if(recFrames < REC_MAX)
++    {
++        memcpy(recMsg + recFrames * PT_FRAME_BYTES, f, PT_FRAME_BYTES);
++        recFrames++;
++    }
++}
++
++static void *encFunc(void *arg)
++{
++    (void) arg;
++    uint8_t out[SOTTO_BYTES_PER_FRAME];
++    for(;;)
++    {
++        int b = encReady;
++        if(b >= 0)
++        {
++            if(sotto_lr_encode(enc, encIn[b], out))
++                encAppend(out);
++            encReady = -1;
++            continue;
++        }
++        if(encQuit)
++            break;
++        sleepFor(0, 1);
++    }
++    // the last part (whole 10 ms blocks of it), then the flush
++    if(encFill >= 80)
++        sotto_lr_encode_part(enc, encIn[encCur], (int) (encFill / 80));
++    while(sotto_lr_enc_flush(enc, out))
++        encAppend(out);
++    return NULL;
++}
++
++static int omEncEnd()
++{
++    if(enc == NULL)
++        return -1;
++    for(unsigned t = 0; (encReady >= 0) && (t < 2000); t++)
++        sleepFor(0, 1);
++    encQuit = true;
++    pthread_join(encThread, NULL);
++    sotto_lr_enc_destroy(enc);
++    enc        = NULL;
++    recValid   = (recFrames > 0);
++    msgChanged = true;
++    return (int) recFrames;
++}
++
++static int omEncBegin()
++{
++    if(enc != NULL)
++        omEncEnd();
++    recValid   = false;
++    msgChanged = true;
++    recFrames  = 0;
++    encCur     = 0;
++    encFill    = 0;
++    encReady   = -1;
++    encQuit    = false;
++    enc = sotto_lr_enc_create();
++    if(enc == NULL)
++        return -1;
++    pthread_attr_t attr;
++    pthread_attr_init(&attr);
++    pthread_attr_setstacksize(&attr, ENC_STACK);
++    int r = pthread_create(&encThread, &attr, encFunc, NULL);
++    pthread_attr_destroy(&attr);
++    if(r != 0)
++    {
++        sotto_lr_enc_destroy(enc);
++        enc = NULL;
++        return -1;
++    }
++    return 0;
++}
++
++static int omEncPush(const int16_t *x, unsigned n)
++{
++    if(enc == NULL)
++        return -1;
++    for(unsigned i = 0; i < n; i++)
++    {
++        if(recFrames >= REC_MAX)
++            return -1;
++        encIn[encCur][encFill++] = x[i];
++        if(encFill < SOTTO_LR_SAMPLES_PER_FRAME)
++            continue;
++        for(unsigned t = 0; (encReady >= 0) && (t < 2000); t++)
++            sleepFor(0, 1);
++        if(encReady >= 0)
++            return -1;          // the encoder thread is stuck
++        encReady = (int) encCur;
++        encCur  ^= 1;
++        encFill  = 0;
++    }
++    return (int) recFrames;
++}
++
++static unsigned omMsg(const uint8_t **bytes)
++{
++    *bytes = msgBytes();
++    return msgFrames();
++}
++
++static void omPreview()
++{
++    pager_requestPreview();
++}
++
++static int omTxRequest()
++{
++    rtxStatus_t st = rtx_getCurrentStatus();
++    if((st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++        return -1;
++    txRequest = true;
++    return 0;
++}
++
 +static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
 +                               omSleep, omC6r, omC6w, omAdc, omRssi,
-+                               omProbe};
++                               omProbe, omEncBegin, omEncPush, omEncEnd,
++                               omMsg, omPreview, omTxRequest};
 +#endif
 +
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
@@ -570,7 +730,11 @@ index 0000000..331a468
 +        int r = 0;
 +        if((strncmp(pbCmd, "mod", 3) == 0) &&
 +           ((pbCmd[3] == ' ') || (pbCmd[3] == '\0')))
++        {
 +            om_command(&omHost, pbCmd + 3);
++            if(enc != NULL)     // a module that ended mid-recording: keep what it made
++                omEncEnd();
++        }
 +        else
 +            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
@@ -650,7 +814,7 @@ index 0000000..331a468
 +{
 +    armed = false;      // a PTT held while switching modes doesn't send
 +    pvRequest = false;
-+    msgId = pt_msg_id(blowfang_message, BLOWFANG_MESSAGE_FRAMES);
++    msgId = pt_msg_id(msgBytes(), msgFrames());
 +    startProbe();
 +}
 +
@@ -682,6 +846,28 @@ index 0000000..331a468
 +    }
 +    if((pvRunning == false) && pvJoinable)
 +        joinPreview(false);
++
++    if(msgChanged)
++    {
++        msgChanged = false;
++        msgId = pt_msg_id(msgBytes(), msgFrames());
++    }
++
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++    // a module's tx_request (ortx_mod.h): the message as a PTT press sends it,
++    // once the module has ended, only on SEND_HZ
++    if(txRequest && (pbBusy == false))
++    {
++        txRequest = false;
++        if((ptt == false) && (status->txDisable == 0) &&
++           (status->txFrequency == SEND_HZ))
++        {
++            holdProbe();
++            joinPreview(true);
++            send(status);
++        }
++    }
++#endif
 +
 +    if(ptt && armed && (status->txDisable == 0))
 +    {
@@ -730,7 +916,7 @@ index 0000000..331a468
 +void OpMode_Pager::send(rtxStatus_t *const status)
 +{
 +    static const pt_profile prof = PT_PROFILE_XL(PT_MAGIC_1200);
-+    pt_message msg = {&prof, blowfang_message, BLOWFANG_MESSAGE_FRAMES, 1, msgId};
++    pt_message msg = {&prof, msgBytes(), msgFrames(), 1, msgId};
 +    msgId++;            // a new msg_id for each message sent
 +
 +    const char *call = state.settings.callsign;

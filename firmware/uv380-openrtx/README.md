@@ -154,6 +154,21 @@ can neither run code nor take DMA) and whether the image has a key. A module mus
 `api->stop()` in any long loop: it ends on PTT, the speaker preview, a mode change, or the Ctrl-C
 byte the tool sends after `--run-timeout` seconds.
 
+**Level 2 (11-13): sotto 1200 on the radio.** The image carries the fixed-point sotto 1200
+encoder (8 kHz, the sotto submodule, built by `sotto8k/sotto8k_fx_enc.c` and `_fx_lr_enc.c`) beside
+the decoder, and PAGER mode keeps a recorded message (up to 30 s, in CCM) that PTT sends and #
+plays in place of the stored one until the next recording or a power-off. A module records with
+`enc_begin`, `enc_push` (8 kHz audio, from anywhere: USB serial, the codec, later the mic) and
+`enc_end`; the encoder runs in a thread of its own (16 KB stack: its deepest calls take about
+8 KB, more than a module's), handed 320 samples at a time. `msg` gives the message back,
+`preview` presses #, and `tx_request` sends it as a PTT press would, once the module has ended
+and only on 440.850 MHz. `mod/usbenc.c` records audio sent over USB
+(`tools/uv380_i2sprobe.py inject /dev/ttyACM0 SPEECH.raw --module
+firmware/uv380-openrtx/mod/usbenc.c`) and dumps the superframes, to check the radio's encoder
+against `sotto_enc -1200`. A level 1 image refuses level 2 modules (`r=-3`). The image for this
+is both builds at once: `BLOWFANG_I2SPROBE=1 BLOWFANG_RANGE=1 sh build.sh mduv3x0p`
+(`out/openrtx_mduv3x0p_i2sprobe_range*`).
+
 **The key.** CI builds images without it. Before flashing, write it in on hamlet with
 `python -m modem.k6 keyimage out/openrtx_mduv3x0p_i2sprobe.bin keyed.bin --key-file
 ~/.config/sotto/k6-mod.key`, then wrap `keyed.bin` for TYT's bootloader with radio_tool, as

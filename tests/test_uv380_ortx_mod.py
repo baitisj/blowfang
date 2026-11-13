@@ -79,7 +79,8 @@ def test_images_name_their_table(hello):
     assert uv380mod.image(code, entry, 1, KEY, table="openrtx")[:4] == b"U3R\x01"
     assert uv380mod.image(code, entry, 1, KEY)[:4] == b"U3M\x01"
     with pytest.raises(ValueError):
-        uv380mod.image(code, entry, 1, KEY, level=2, table="openrtx")
+        uv380mod.image(code, entry, 1, KEY, level=3, table="openrtx")
+    assert uv380mod.image(code, entry, 1, KEY, level=2, table="openrtx")[:4] == b"U3R\x01"
 
 
 def test_mod_lines():
@@ -97,7 +98,7 @@ def test_mod_lines():
 @emu
 def test_hello_runs(elf, hello):
     out = run(elf, ["mod info"] + tool.mod_lines(img(hello)) + ["mod info"])
-    assert re.fullmatch(r"ok mod info magic=U3R level=1 arena=2[0-9a-f]{7} size=16384 loaded=0/0 "
+    assert re.fullmatch(r"ok mod info magic=U3R level=2 arena=2[0-9a-f]{7} size=16384 loaded=0/0 "
                         r"key=yes serial=0", out[0]), out
     say = [ln[8:] for ln in out if ln.startswith("mod say ")]
     assert re.fullmatch(r"hello world from RAM at 0x2[0-9a-f]{7}", say[0])
@@ -136,7 +137,7 @@ def test_refusals(elf, hello):
     code, entry = hello
     assert refused(run(elf, tool.mod_lines(img(hello, key=secrets.token_bytes(16))))) == [-4]
     assert refused(run(elf, tool.mod_lines(img(hello, magic=b"U3M")))) == [-3]
-    assert refused(run(elf, tool.mod_lines(img(hello, level=2)))) == [-3]
+    assert refused(run(elf, tool.mod_lines(img(hello, level=3)))) == [-3]
     bad = bytearray(img(hello))
     bad[40] ^= 1
     assert refused(run(elf, tool.mod_lines(bytes(bad)))) == [-4]
@@ -324,6 +325,28 @@ def test_rrinject_decodes_on_the_mcu(elf):
     cut = len(feed) * 2 // 5
     out = run(elf, tool.mod_lines(img(m, serial=2)), usb=feed[:cut] + b"\x03" + feed[cut:])
     assert any(ln.startswith("mod say inject end") and " n=1 " in ln for ln in out), out
+
+
+@emu
+def test_usbenc_hands_the_audio_to_the_encoder(elf):
+    """usbenc (level 2) feeds what comes over USB to enc_push in 64-sample blocks, ends the
+    recording on "q" and dumps the message: the emulator's stand-in encoder makes a superframe a
+    320 samples, its first two bytes the first sample's, so the dump shows each sample arrived"""
+    x = [(i * 37) % 2000 - 1000 for i in range(320 * 30 + 100)]
+    import array
+    feed = tool.feed_lines(array.array("h", x).tobytes())
+    m = uv380mod.build(os.path.join(MOD, "usbenc.c"))
+    assert uv380mod.source_level(os.path.join(MOD, "usbenc.c")) == 2
+    out = run(elf, tool.mod_lines(img(m, level=2)), usb=feed)
+    assert "mod say enc start" in out
+    assert f"mod say enc end samples={len(x)} frames=31" in " ".join(out), out
+    dump = [ln.split()[4:] for ln in out if ln.startswith("mod say m ")]
+    frames = [f for ln in dump for f in ln]
+    assert len(frames) == 31 and [len(d) for d in dump] == [12, 12, 7]
+    for k, f in enumerate(frames):
+        b = bytes.fromhex(f)
+        assert int.from_bytes(b[:2], "little", signed=True) == x[320 * k] and b[2] == k, (k, f)
+    assert "ok mod run ret=31" in " ".join(out)
 
 
 @pytest.mark.skipif(not TOOLS, reason="needs clang and lld")

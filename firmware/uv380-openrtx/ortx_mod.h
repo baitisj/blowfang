@@ -46,7 +46,7 @@ extern "C" {
 #endif
 
 #define OM_MAGIC "U3R"
-#define OM_LEVEL 1
+#define OM_LEVEL 2                      /* 2: sotto 1200 encoder, the message, send (11-13) */
 #define OM_ARENA 16384                  /* module image plus scratch (half if the heap is short) */
 #define OM_HEX_MAX 128                  /* image bytes in one "mod hex" line */
 #define OM_LINE 320                     /* the longest command line the image reads */
@@ -72,6 +72,19 @@ typedef struct ortx_api {
        ...), its lines to USB serial as if hamlet had sent it: 0, or -1 after an "err" line.
        A module can sweep codec settings and capture after each with no reflash. */
     int (*probe)(const char *line);
+
+    /* level 2: sotto 1200 (8 kHz, the fixed-point encoder) on the radio, and the message PTT
+       sends. The encoder runs in a thread of its own (its stack is bigger than the module's);
+       enc_push hands it 320 samples at a time and waits while it is behind. */
+    int (*enc_begin)(void);             /* a new recording: 0, or -1 (no memory for it) */
+    int (*enc_push)(const int16_t *x, unsigned n);  /* 8 kHz audio: superframes so far, -1 full */
+    int (*enc_end)(void);               /* the rest, flushed; the recording becomes the message
+                                           PTT sends and # plays: its superframes, or -1 */
+    unsigned (*msg)(const uint8_t **bytes);         /* the message: superframes (6 bytes each) */
+    void (*preview)(void);              /* the # key: the message on the speaker */
+    /* send the message as a PTT press would (PHY R in the range build, then the Morse ident),
+       once the module has ended; only on 440.850 MHz: 0, or -1 (another frequency, TX off) */
+    int (*tx_request)(void);
 } ortx_api_t;
 
 /* the image's side: what the loader needs from OpenRTX (all of it, or NULL where noted) */
@@ -87,6 +100,13 @@ typedef struct {
     unsigned (*adc_capture)(int16_t *buf, unsigned n, unsigned fs);     /* NULL: 0 samples */
     int32_t (*rssi)(void);                      /* NULL: -999 */
     int (*probe)(const char *line);             /* NULL: says "err probe: not here", -1 */
+    /* level 2 (NULL: the calls return -1, 0 or nothing) */
+    int (*enc_begin)(void);
+    int (*enc_push)(const int16_t *x, unsigned n);
+    int (*enc_end)(void);
+    unsigned (*msg)(const uint8_t **bytes);
+    void (*preview)(void);
+    int (*tx_request)(void);
 } om_host;
 
 /* One "mod ..." command; args is what follows "mod". Returns 0, or -1 after an "err" line. */
