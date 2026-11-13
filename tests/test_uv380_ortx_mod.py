@@ -295,15 +295,15 @@ def test_c6listen_builds_for_the_openrtx_table():
 @emu
 def test_rrinject_decodes_on_the_mcu(elf):
     """the range receiver as rangerx builds it (RR_HIST 32, -fropi, -Os), on the emulated F405, fed
-    three packets of 8 kHz audio as the tool's inject sends them (rxrec's "a" lines), reads all
-    three; a Ctrl-C byte in the feed ends it there"""
+    five packets of 8 kHz audio as the tool's inject sends them (rxrec's "a" lines, past line 1000:
+    a 4-digit SEQ is no sample), reads all five; a Ctrl-C byte in the feed ends it there"""
     signal = pytest.importorskip("scipy.signal")
     import numpy as np
     from modem import k6r
     tx = os.path.join(ROOT, "c", "common", "range_tx_host")
     if not os.path.exists(tx):
         pytest.skip("needs make -C c/common")
-    pl = k6r.test_payloads(3)
+    pl = k6r.test_payloads(5)
     with tempfile.TemporaryDirectory() as d:
         open(os.path.join(d, "in.bin"), "wb").write(b"".join(pl))
         subprocess.run([tx, "audio", os.path.join(d, "in.bin"), os.path.join(d, "a.raw"), "--fs", "48000",
@@ -312,21 +312,23 @@ def test_rrinject_decodes_on_the_mcu(elf):
     x = signal.resample_poly(a, 1, 6)
     x = np.clip(np.round(np.concatenate([np.zeros(2000), x, np.zeros(2000)])), -32768, 32767)
     feed = tool.feed_lines(x.astype("<i2").tobytes())
-    assert feed.endswith(b"q\r\n") and feed.count(b"\r\n") == (len(x) + 63) // 64 + 1
+    assert feed.endswith(b"q\r\n") and feed.count(b"\r\n") == (len(x) + 63) // 64 + 1 > 1001
     m = uv380mod.build(os.path.join(MOD, "rrinject.c"))
     out = run(elf, tool.mod_lines(img(m)), usb=feed)
     pk = [ln for ln in out if ln.startswith("mod say r ")]
-    assert len(pk) == 3 and all(" ok=1 " in ln and " e=0 " in ln for ln in pk), out
-    assert [int(re.search(r" s=(\d+)", ln).group(1)) for ln in pk] == [0, 1, 2]
-    assert f"mod say inject end samples={len(x)} n=3 ok=3" in out
-    assert "ok mod run ret=3" in " ".join(out)
+    assert len(pk) == 5 and all(" ok=1 " in ln and " e=0 " in ln for ln in pk), out
+    assert [int(re.search(r" s=(\d+)", ln).group(1)) for ln in pk] == [0, 1, 2, 3, 4]
+    assert f"mod say inject end samples={len(x)} n=5 ok=5" in out
+    assert "ok mod run ret=5" in " ".join(out)
     # Ctrl-C half way: it ends with what it had
-    out = run(elf, tool.mod_lines(img(m, serial=2)), usb=feed[:len(feed) // 2] + b"\x03" + feed[len(feed) // 2:])
+    cut = len(feed) * 2 // 5
+    out = run(elf, tool.mod_lines(img(m, serial=2)), usb=feed[:cut] + b"\x03" + feed[cut:])
     assert any(ln.startswith("mod say inject end") and " n=1 " in ln for ln in out), out
 
 
 @pytest.mark.skipif(not TOOLS, reason="needs clang and lld")
 def test_rxrec_and_rangerx_fit():
-    for name, most in (("rxrec.c", 2048), ("rangerx.c", 3600), ("rrinject.c", 3072)):
+    for name, most in (("rxrec.c", 2048), ("rangerx.c", 3600), ("rangetap.c", 3600), ("rrinject.c", 3072)):
         code, entry = uv380mod.build(os.path.join(MOD, name))
         assert entry == 0 and len(code) < most, (name, len(code))
+        assert uv380mod.source_table(os.path.join(MOD, name)) == "openrtx"

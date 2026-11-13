@@ -1,7 +1,8 @@
 /* rrinject: rangerx's receiver (c/common/range_rx.c built as rangerx builds it) fed audio from the
    USB serial instead of the radio, to tell the receiver on the MCU from the audio it gets. The
-   audio comes as lines "WORD hhhh hhhh ...": 4 hex digits a 16-bit sample (two's complement),
-   the line's first word skipped, so rxrec's "a SEQ ..." lines can be sent back as logged. Ends
+   audio comes as lines "a SEQ hhhh hhhh ...": 4 hex digits a 16-bit sample (two's complement),
+   the line's first two words skipped (a 4-digit SEQ is not a sample), so rxrec's lines can be
+   sent back as logged. Ends
    after 3 s with nothing, a "q", Ctrl-C or RG_S. It never calls stop(), which would take bytes
    from USB serial past what the loader keeps for usb_read (256; the loader flashed on 11-13
    drops the rest): it reads the Ctrl-C byte itself.
@@ -58,8 +59,8 @@ int uv_main(const ortx_api_t *api) {
                 nd++;
                 continue;
             }
-            if (nd) {                    /* a word ended: a sample unless it's the line's first */
-                if (word++ > 0 && nd == 4u) {
+            if (nd) {                    /* a word ended: a sample unless it's "a" or SEQ */
+                if (word++ > 1 && nd == 4u) {
                     x[nx++] = (int16_t)(uint16_t)acc;
                     samples++;
                 }

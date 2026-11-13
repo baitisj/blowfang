@@ -13,9 +13,10 @@
                     soft values; its sign: the burst's way up), the mean |soft value| x 10 (40
                     clean), the line bits whose sign the decoded packet's own code disagrees with
                     (of 2064), CRC right, seq (meaningless unless ok=1), RSSI (dBm) at its end
-     range end n=12 ok=11 ov=0 worst=9 s=600
+     range end n=12 ok=11 ov=0 worst=9 in=4800000 s=600
                     packets, CRC right, ring overruns (audio lost), the longest gap between reads
-                    of the ring (ms; 64 or more: it may have gone round unseen), seconds listened
+                    of the ring (ms; 64 or more: it may have gone round unseen), samples to the
+                    receiver (8000 a second), seconds listened
    Listens RG_S seconds (Ctrl-C or PTT end it sooner); receive only: touches no RF register.
    Puts back register 26, PD9, the pins, SPI3 and the DMA stream as it found them.
    Returns the packets that checked, or -8 (scratch too small).
@@ -31,6 +32,24 @@
 #endif
 #define RING 1024u               /* halfwords: 64 ms of audio */
 #define FS 8000u
+
+#ifdef RANGERX_TAP
+/* rangetap.c: what goes to the receiver, to the USB serial too, as rxrec's "a SEQ hhhh ..." */
+static void tap(const ortx_api_t *api, const int16_t *x, unsigned n, uint32_t seq) {
+    char t[24 + 64 * 5];
+    unsigned k = (unsigned)api->fmt(t, sizeof t, "a %lu", (unsigned long)seq);
+    for (unsigned i = 0; i < n; i++) {
+        t[k++] = ' ';
+        for (int b = 12; b >= 0; b -= 4) {
+            unsigned d = ((uint16_t)x[i] >> b) & 15u;
+            t[k++] = (char)(d < 10u ? '0' + d : 'a' + d - 10u);
+        }
+    }
+    t[k++] = '\r';
+    t[k++] = '\n';
+    api->usb_write(t, k);
+}
+#endif
 
 int uv_main(const ortx_api_t *api) {
     char line[96];
@@ -55,6 +74,9 @@ int uv_main(const ortx_api_t *api) {
     int16_t x[64];
     uint32_t seen = api->ms();
     unsigned worst = 0;
+#ifdef RANGERX_TAP
+    uint32_t tseq = 0;
+#endif
     while (api->ms() < RG_S * 1000u && !api->stop()) {
         unsigned wr = rx_wr(&rs), avail = (wr - rd + RING) % RING;
         uint32_t now = api->ms(), gap = now - seen;
@@ -76,6 +98,9 @@ int uv_main(const ortx_api_t *api) {
             rd = (rd + 2u) % RING;
             avail -= 2u;
         }
+#ifdef RANGERX_TAP
+        tap(api, x, n, tseq++);
+#endif
         unsigned off = 0, used;
         while (off < n) {
             if (rr_push(r, x + off, n - off, &used)) {
@@ -91,8 +116,8 @@ int uv_main(const ortx_api_t *api) {
     }
 
     rx_stop(api, &rs);
-    api->fmt(line, sizeof line, "range end n=%u ok=%u ov=%u worst=%u s=%lu", npk, nok, ov, worst,
-             (unsigned long)(api->ms() / 1000u));
+    api->fmt(line, sizeof line, "range end n=%u ok=%u ov=%u worst=%u in=%lu s=%lu", npk, nok, ov,
+             worst, (unsigned long)r->n, (unsigned long)(api->ms() / 1000u));
     api->say(line);
     return (int)nok;
 }

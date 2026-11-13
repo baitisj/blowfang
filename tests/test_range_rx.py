@@ -111,10 +111,12 @@ def test_noise_between_bursts(burst):
 
 
 @pytest.mark.skipif(not (shutil.which("clang") and shutil.which("ld.lld")), reason="needs clang and ld.lld")
-def test_the_module_fits():
+@pytest.mark.parametrize("name", ["rangerx.c", "rangetap.c"])
+def test_the_module_fits(name):
     from modem import uv380mod
-    code, entry = uv380mod.build(MOD)
-    assert entry == 0 and uv380mod.source_table(MOD) == "openrtx"
+    src = os.path.join(os.path.dirname(MOD), name)
+    code, entry = uv380mod.build(src)
+    assert entry == 0 and uv380mod.source_table(src) == "openrtx"
     image = (16 + len(code) + 8 + 7) // 8 * 8
     # rr_state with RR_HIST 32 (as the module builds it) and the 1024-halfword ring
     with tempfile.TemporaryDirectory() as d:
