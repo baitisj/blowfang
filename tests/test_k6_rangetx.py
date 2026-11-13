@@ -186,3 +186,27 @@ def test_lo_keeps_the_pa_off():
     assert log[0][0] == "tx_on" and log[1][:2] == ("tx_pa", 0) and log[-1][0] == "tx_off"
     assert all(a == 0 for n, a, _ in log if n == "tx_pa"), log
     assert np.max(np.abs(edge_error(ev))) * 360 < 6
+
+
+@need_clang
+@pytest.mark.parametrize("trim", [0.0, 271.0])
+def test_check_measures_the_walk(trim, tmp_path):
+    """tools/k6_rangetx_check.py on a modelled burst whose tone runs 271 ppm fast against the
+    MCU (K9's figure), with RT_PPM 0 and 271, through the receive filters and a recorder 269 ppm
+    off: it walks about 87 deg/s untrimmed and stays put trimmed"""
+    pytest.importorskip("scipy")
+    from scipy import signal
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import k6_rangetx_check as chk
+    w = tmp_path / "rt.c"
+    w.write_text('#define RT_PPM %.1f\n#include "%s"\n' % (trim, SRC))
+    ret, said, regs, tx, ev = send(write_us=jitter(5), src=str(w))
+    fs = 48000
+    x = audio(ev, tx["log"][-1][2] * 1e-6, fs, ppm=271.0)
+    x = signal.sosfilt(signal.butter(2, [300, 3000], "bandpass", fs=fs, output="sos"), x) * 8000
+    t = np.arange(int(len(x) * (1 - 269e-6))) * (1 + 269e-6)
+    x = np.interp(t, np.arange(len(x)), x) + np.random.default_rng(1).normal(0, 300, len(t))
+    r = chk.analyse(x, fs)
+    assert abs(r["ppm"] + 269) < 10
+    walk = r["walk_600"] / chk.PPM_DEG_S
+    assert (abs(walk - 271) < 30) if trim == 0 else abs(walk) < 10, "\n".join(chk.report(r))

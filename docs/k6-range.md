@@ -166,8 +166,21 @@ flat or mildly pre-emphasised.
 tone-on (same-word REG_71 rewrites, 600/1200 changes at every phase, tone 1 off and on, tone 2
 (REG_72) against tone 1), timed on TIM17. `tools/k6_tonewr.py report REC` reads a recording
 (IC-7100 48 kHz, or the UV-380's rxrec log) and says for each kind of write whether the phase runs
-on through it or is set at it, and whether a tone runs on while it's off. The sender's fix
-follows from that.
+on through it or is set at it, and whether a tone runs on while it's off.
+
+**K9 (2026-11-13 17:37Z, tonewr, PA off), the IC-7100's 48 kHz recording:**
+- A REG_71 change is phase continuous, both ways (jump R 1.00, the phase after it spread out),
+  and rewriting the same word does nothing (0.1 degree rms).
+- Tone 1 runs on while REG_70 has it off: turned on again, it comes back on its own line.
+- The FD6818's tone runs 271 ppm fast against the K6's MCU clock (600.195 Hz in K6 time for
+  600.033 Hz written); the recorder agrees with the tone within 2 ppm, so it's the MCU's clock
+  that's about 270 ppm slow.
+- Tone 2 doesn't sound: REG_72 = 1200 Hz with REG_70 bit 7 gave nothing (level 2 against tone
+  1's 7810). REG_72 read 0x4898 before (the pager's FSK set-up) and was put back.
+
+So K7's failure was the clock: 271 ppm walks the tone about 87 degrees a second off the bit
+edges, through the bad phases within each packet. `tools/k6_rangetx_check.py REC` measures that
+walk on a recording of a burst (both tones' phase at every bit edge against ideal FFSK).
 
 ## The other way: the UV-380 receiving
 
