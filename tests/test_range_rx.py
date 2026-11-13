@@ -125,3 +125,36 @@ def test_the_module_fits():
                        check=True)
         state = int(subprocess.run([os.path.join(d, "sz")], capture_output=True, text=True).stdout)
     assert image + state + 2 * 1024 <= 16384, (image, state)
+
+
+def test_rxrec_log_back_to_audio(burst):
+    """rxrec's "a" lines (as the tool logs them) back to audio the receiver reads"""
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import uv380_i2sprobe as tool
+    x = np.clip(np.round(framed(burst)), -32768, 32767).astype(int)
+    x = x[:len(x) // 64 * 64]
+    log = ["mod say rxrec start ring=1024", "mod say rate hw=48000 ms=3000",
+           "mod say raw 0 " + " ".join(["1234", "1234", "0042", "0042"] * 8)]
+    for i in range(len(x) // 64):
+        log.append(f"a {i} " + " ".join(f"{v & 0xFFFF:04x}" for v in x[64 * i:64 * i + 64]))
+    y, lost, rate, raw = tool.audio_lines(log)
+    assert lost == 0 and y == list(x) and len(raw) == 32
+    rep = tool.audio_report(y, lost, rate, raw)
+    assert "fs 8000.0" in rep[1] and "(2k, 2k+1) 16" in rep[2]
+    assert good(receive(np.array(y, float))) == PL
+    # a lost line comes back as 64 zeros where it was
+    y, lost, _, _ = tool.audio_lines(log[:10] + log[11:])
+    assert lost == 1 and len(y) == len(x) and y[64 * 7:64 * 8] == [0] * 64
+    shown = []
+    q = tool.quiet(shown.append)
+    for ln in log:
+        q(ln)
+    assert shown == log[:3] + [f"({n} audio lines)" for n in range(1000, len(x) // 64 + 1, 1000)]
+
+
+@pytest.mark.skipif(not (shutil.which("clang") and shutil.which("ld.lld")), reason="needs clang and ld.lld")
+def test_rxrec_builds():
+    from modem import uv380mod
+    src = os.path.join(ROOT, "firmware", "uv380-openrtx", "mod", "rxrec.c")
+    code, entry = uv380mod.build(src)
+    assert entry == 0 and uv380mod.source_table(src) == "openrtx" and len(code) < 4096
