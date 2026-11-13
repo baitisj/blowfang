@@ -28,7 +28,10 @@ def lines_for(k, x):
 
 def test_the_mic_setting_stands_out(tmp_path, capsys):
     rng = np.random.default_rng(1)
-    ref = mp.bandpass(rng.standard_normal(48000 * 20 // 6) * 3000)    # 20 s at 8 kHz, voice band
+    n = 48000 * 20 // 6                     # 20 s at 8 kHz: voice-band noise in syllables
+    syl = np.repeat(rng.random(n // 1600 + 1) ** 2, 1600)[:n]
+    syl = np.convolve(syl, np.ones(400) / 400, "same")
+    ref = mp.bandpass(rng.standard_normal(n) * 3000 * syl)
     ref48 = np.interp(np.arange(0, len(ref), 1 / 6), np.arange(len(ref)), ref)
     with wave.open(str(tmp_path / "ref.wav"), "wb") as w:
         w.setnchannels(1)
@@ -48,7 +51,9 @@ def test_the_mic_setting_stands_out(tmp_path, capsys):
                     "--wav-dir", str(tmp_path / "w")]) == 0
     rows = [ln.split() for ln in capsys.readouterr().out.splitlines() if ln[:3].strip().isdigit()]
     corr = {int(r[0]): float(r[3]) for r in rows}
+    env = {int(r[0]): float(r[4]) for r in rows}
     assert corr[2] > 0.5 and all(corr[k] < 0.1 for k in (0, 1, 3)), corr
+    assert env[2] > 0.8 and all(env[k] < env[2] - 0.15 for k in (0, 1, 3)), env
     assert sorted(os.listdir(tmp_path / "w")) == [f"set0{k}.wav" for k in range(4)]
 
 
@@ -57,6 +62,7 @@ def test_micprobe_and_micadc_fit():
     from modem import uv380mod
     for name, most in (
         ("micprobe.c", 3072),
+        ("micprobe2.c", 3072),
         ("micadc.c", 2048),
     ):
         path = os.path.join(ROOT, "firmware", "uv380-openrtx", "mod", name)

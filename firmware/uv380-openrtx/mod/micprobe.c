@@ -13,6 +13,9 @@
      2  26=fd PD9 low,  mic on
      3  26 as found, PD9 low,  mic on
      4  26 as found, PD9 high, mic on
+     micprobe2 (MP_ROUND2, MP_BASE 7d) instead: the two hits (26=7d, bd) with the mic preamp on
+     and off, their neighbours, then whole codec sets (OpenGD77's DMR, OpenRTX's FM mic and M17
+     line in), then the sweeps below on 26=7d.
      then on setting 2: each bit of E0, E2, E4, E5 flipped (the codec block; E1 is the known gain,
      E3 partly status), then each bit of register 26 flipped. Never B9 (c6sweep: it sleeps).
    After each flip the register is written back and register 00 must still read its start value,
@@ -33,6 +36,9 @@
 
 #ifndef MP_MS
 #define MP_MS 1200u
+#endif
+#ifndef MP_BASE
+#define MP_BASE 0xFDu               /* register 26 under the codec sweeps (micprobe2: 7d) */
 #endif
 #define RING 1024u
 #define BLK 64u
@@ -194,23 +200,47 @@ int uv_main(const ortx_api_t *api) {
     api->say(line);
 
     int ok = 1;
+#ifndef MP_ROUND2
     one(api, &m, line, m.r26, m.rs.mux, 2u, 0, 0);     /* 0: as found (mic pin untouched) */
     one(api, &m, line, 0xFD, 1u, 1u, 0, 0);
     one(api, &m, line, 0xFD, 0u, 1u, 0, 0);
     one(api, &m, line, m.r26, 0u, 1u, 0, 0);
     one(api, &m, line, m.r26, 1u, 1u, 0, 0);
+#else
+    one(api, &m, line, m.r26, 0u, 1u, 0, 0);           /* 0: silence (26 as found) */
+    one(api, &m, line, 0x7D, 0u, 1u, 0, 0);            /* 1, 2: the micprobe hits */
+    one(api, &m, line, 0xBD, 0u, 1u, 0, 0);
+    one(api, &m, line, 0x7D, 0u, 0u, 0, 0);            /* 3, 4: the same, mic preamp off */
+    one(api, &m, line, 0xBD, 0u, 0u, 0, 0);
+    one(api, &m, line, 0x3D, 0u, 1u, 0, 0);            /* 5-7: both bits, and bits 1:0 */
+    one(api, &m, line, 0x7C, 0u, 1u, 0, 0);
+    one(api, &m, line, 0x7E, 0u, 1u, 0, 0);
+    one(api, &m, line, 0x7D, 1u, 1u, 0, 0);            /* 8: PD9 high */
+    /* 9-12: whole sets on 26=7d. OpenGD77's DMR codec (E0 8b, E2 06, E4 4a: mic stage 2
+       +30 dB), then OpenRTX's FM mic (E0 c1) and M17 line in (E0 83), each with E4 4a */
+    api->c6000_write(0xE2, 0x06);
+    api->c6000_write(0xE4, 0x4A);
+    one(api, &m, line, 0x7D, 0u, 1u, 0xE0, 0x8B);
+    api->c6000_write(0xE2, m.e[2]);
+    one(api, &m, line, 0x7D, 0u, 1u, 0xE0, 0xC1);
+    one(api, &m, line, 0x7D, 0u, 1u, 0xE0, 0x83);
+    api->c6000_write(0xE0, m.e[0]);
+    one(api, &m, line, 0x7D, 0u, 1u, 0xE4, 0x4A);
+    api->c6000_write(0xE4, m.e[4]);
+    ok = alive(api, &m, line, 0xE0);
+#endif
     for (unsigned r = 0; ok && r < sizeof CODEC && !api->stop(); r++) {
         uint8_t was = m.e[CODEC[r] - 0xE0u];
         for (unsigned b = 0; ok && b < 8u && !api->stop(); b++) {
-            one(api, &m, line, 0xFD, 0u, 1u, CODEC[r], (uint8_t)(was ^ (1u << b)));
+            one(api, &m, line, MP_BASE, 0u, 1u, CODEC[r], (uint8_t)(was ^ (1u << b)));
             api->c6000_write(CODEC[r], was);
             api->sleep_ms(5);
             ok = alive(api, &m, line, CODEC[r]);
         }
     }
     for (unsigned b = 0; ok && b < 8u && !api->stop(); b++) {
-        one(api, &m, line, (uint8_t)(0xFDu ^ (1u << b)), 0u, 1u, 0, 0);
-        api->c6000_write(0x26, 0xFD);
+        one(api, &m, line, (uint8_t)(MP_BASE ^ (1u << b)), 0u, 1u, 0, 0);
+        api->c6000_write(0x26, MP_BASE);
         api->sleep_ms(5);
         ok = alive(api, &m, line, 0x26);
     }

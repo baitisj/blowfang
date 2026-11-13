@@ -2,8 +2,9 @@
 """micprobe's log (firmware/uv380-openrtx/mod/micprobe.c) setting by setting: level, the share of
 power in the voice band (300-3000 Hz), and, given a recording of what was played into the mic
 (a wav at any rate, e.g. the IC-7100's USB audio taken at the same time), the best normalised
-correlation of the setting's audio with any stretch of it. Noise against a minute of reference
-peaks at about 0.05; sound picked up by the mic should stand well clear of that.
+correlation of the setting's audio with any stretch of it (corr), and of its voice-band envelope
+(env, which the room's echoes don't smear). Noise against a minute of reference peaks at about
+0.05-0.09 on corr; sound picked up by the mic should stand well clear of that on both.
 
   python3 tools/uv380_micprobe.py LOG [--ref REF.wav] [--wav-dir DIR]
 
@@ -92,6 +93,31 @@ def best_corr(seg, ref):
     return float(r[i]), i
 
 
+def envelope(x, rate=100):
+    """the voice band's envelope at `rate` Hz (rectified, 8 Hz low-pass), mean removed"""
+    e = np.abs(bandpass(x, 300.0, 3400.0))
+    E = np.fft.rfft(e)
+    E[np.fft.rfftfreq(len(e), 1 / FS) > 8] = 0
+    e = np.fft.irfft(E, len(e))[::FS // rate]
+    return e - e.mean()
+
+
+def env_corr(seg, ref_env):
+    """the best correlation of seg's envelope with any stretch of the reference's: robust to the
+    room's echoes, which smear the waveform but not the speech's rhythm"""
+    s = envelope(seg)
+    if len(s) < 50 or len(ref_env) < len(s):
+        return 0.0
+    s /= np.linalg.norm(s) or 1.0
+    best = 0.0
+    for i in range(len(ref_env) - len(s) + 1):
+        r = ref_env[i:i + len(s)] - ref_env[i:i + len(s)].mean()
+        n = np.linalg.norm(r)
+        if n > 0:
+            best = max(best, float(np.dot(r, s) / n))
+    return best
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("log")
@@ -100,16 +126,18 @@ def main(argv=None):
     a = ap.parse_args(argv)
     lines = open(a.log, errors="replace").read().splitlines()
     sets = settings(lines)
-    ref = None
+    ref = ref_env = None
     if a.ref:
-        ref = bandpass(read_wav(a.ref))
+        raw = read_wav(a.ref)
+        ref, ref_env = bandpass(raw), envelope(raw)
     for ln in lines:
         if any(w in ln for w in ("micprobe", "micadc", "rate n=", "STOP")):
             print(ln[ln.index("mod say") + 8:] if "mod say" in ln else ln)
-    print(f"{'k':>3} {'rms':>7} {'voice':>6} {'corr':>6}  setting / device line")
+    print(f"{'k':>3} {'rms':>7} {'voice':>6} {'corr':>6} {'env':>6}  setting / device line")
     for k, lab, x, got in sets:
         rms = float(np.sqrt(np.mean((x - x.mean()) ** 2))) if len(x) else 0.0
-        c = f"{best_corr(x, ref)[0]:6.3f}" if ref is not None else "     -"
+        c = (f"{best_corr(x, ref)[0]:6.3f} {env_corr(x, ref_env):6.3f}" if ref is not None
+             else "     -      -")
         print(f"{k:3d} {rms:7.0f} {voice_share(x):6.2f} {c}  {lab[len(f'set {k} '):]}  [{got}]")
         if a.wav_dir and len(x):
             os.makedirs(a.wav_dir, exist_ok=True)
