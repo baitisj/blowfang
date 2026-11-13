@@ -180,5 +180,13 @@ bursts doesn't swallow the next packet.
 
 tests/test_range_rx.py: every packet at -2 dB audio SNR (the whole 4 kHz band), with the clock off
 200 ppm, with de-emphasis, behind a 300 Hz high-pass, upside down, and with seconds of noise around
-bursts. The module (firmware/uv380-openrtx/mod/rangerx.c) is 3.2 KB, its state 10.9 KB with the
-Viterbi's survivors, and a 2 KB DMA ring: 0.3 KB under the 16 KB arena.
+bursts. The module (firmware/uv380-openrtx/mod/rangerx.c) is 3.7 KB, its state 9.6 KB with the
+Viterbi's survivors (soft values kept 4 bits each), and a 2 KB DMA ring: 0.8 KB under the 16 KB
+arena.
+
+On the radio (11-13): the first live runs read nothing although rxrec's recording of the same
+audio decoded 42 of 42 on the host, and rrinject (the receiver on the MCU fed that recording over
+USB) matched the host bit for bit. rangetap, which copies the receiver's input to USB, showed why:
+the I2S slave had started out of step with the codec's frames, so every halfword was a sample's
+last bit or two and fill. rxrec had started in step by chance. rxaudio.h now enables the slave on a
+WS edge and checks the samples (each comes twice, a halfword apart), trying again until they do.

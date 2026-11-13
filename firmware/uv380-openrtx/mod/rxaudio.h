@@ -2,8 +2,9 @@
    tone run): HR_C6000 register 26 at fd and RX_AUDIO_MUX (PD9) high route the FM receiver's
    audio to the codec, whose I2S port SPI3 takes as a slave with 32-bit channels (P32). DMA1
    stream 0 fills a ring of halfwords, circular; each sample comes twice a halfword apart, so
-   every other halfword is the audio. rx_start puts the route and the DMA on and keeps what it
-   found, rx_stop puts it all back. For modules that #include it (static functions, no state).
+   every other halfword is the audio, once the slave is in step with the codec's frames: rx_start
+   enables it on a WS edge and checks the samples, trying again until they look right. It puts
+   the route and the DMA on and keeps what it found; rx_stop puts it all back. For modules that #include it (static functions, no state).
    SPDX-License-Identifier: MIT */
 #ifndef RXAUDIO_H
 #define RXAUDIO_H
@@ -61,8 +62,42 @@ static void rxa_dma_off(void) {
     RXA_REG(RXA_DMA1_LIFCR) = 0x3Du;
 }
 
-/* ring: n halfwords (a power of 2) in DMA-capable RAM (the module's scratch) */
-static void rx_start(const ortx_api_t *api, rxa_state *s, volatile int16_t *ring, unsigned n) {
+/* SPI3 reset and set up as the I2S slave receiver (I2SMOD, slave rx, CHLEN 32, RXDMAEN), then
+   enabled just after WS (PA15) comes to `level`: started at any other moment, the slave takes
+   its 32-bit slots across the codec's frames (11-13 15:41Z: every halfword a sample's last bit
+   or two, then fill) */
+static void rxa_i2s_on(unsigned level) {
+    RXA_REG(RXA_SPI3 + RXA_SPI_I2SCFGR) = 0;
+    RXA_REG(RXA_RCC_APB1RSTR) |= 1u << 15;
+    RXA_REG(RXA_RCC_APB1RSTR) &= ~(1u << 15);
+    RXA_REG(RXA_SPI3 + RXA_SPI_I2SPR) = 2u;
+    RXA_REG(RXA_SPI3 + RXA_SPI_I2SCFGR) = (1u << 11) | (1u << 8) | 1u;
+    RXA_REG(RXA_SPI3 + RXA_SPI_CR2) = 1u;
+    unsigned t = 0;
+    while (((RXA_REG(RXA_GPIOA + 0x10u) >> 15) & 1u) == level && ++t < 100000u) {
+    }
+    while (((RXA_REG(RXA_GPIOA + 0x10u) >> 15) & 1u) != level && ++t < 200000u) {
+    }
+    RXA_REG(RXA_SPI3 + RXA_SPI_I2SCFGR) |= 1u << 10;
+}
+
+/* the last 64 halfwords look like the codec's audio: each sample comes twice, a halfword apart
+   (28 of 32 pairs at least, either way round), and few are the fill a slipped slot gives */
+static int rxa_aligned(const rxa_state *s, unsigned wr) {
+    unsigned eq0 = 0, eq1 = 0, fill = 0, m = s->ring - 1u;
+    for (unsigned i = 0; i < 64u; i++) {
+        unsigned a = (uint16_t)s->buf[(wr - 66u + i) & m], b = (uint16_t)s->buf[(wr - 65u + i) & m];
+        if (a == b)
+            *(i & 1u ? &eq1 : &eq0) += 1u;
+        a = (a + 1u) & 0x3FFFu;          /* 0000 3fff 4000 7fff 8000 bfff c000 ffff -> 0 or 1 */
+        fill += a < 2u;
+    }
+    return (eq0 >= 28u || eq1 >= 28u) && fill < 16u;
+}
+
+/* ring: n halfwords (a power of 2) in DMA-capable RAM (the module's scratch). Returns the tries
+   it took to start in step with the codec's frames (1 to 16), or 0 if none looked right */
+static unsigned rx_start(const ortx_api_t *api, rxa_state *s, volatile int16_t *ring, unsigned n) {
     s->ring = n, s->buf = ring;
     s->r26 = api->c6000_read(0x26);
     s->mux = (RXA_REG(RXA_GPIOD + 0x14u) >> RXA_MUX_PIN) & 1u;      /* ODR */
@@ -73,8 +108,6 @@ static void rx_start(const ortx_api_t *api, rxa_state *s, volatile int16_t *ring
         s->dma[i] = RXA_REG(RXA_S0 + 4u * i);
     rxa_dma_off();
     RXA_REG(RXA_RCC_APB1ENR) |= 1u << 15;
-    RXA_REG(RXA_RCC_APB1RSTR) |= 1u << 15;
-    RXA_REG(RXA_RCC_APB1RSTR) &= ~(1u << 15);
     rxa_pin_af(RXA_GPIOA, 15, 6, &s->ws);
     rxa_pin_af(RXA_GPIOC, 10, 6, &s->ck);
     rxa_pin_af(RXA_GPIOC, 12, 6, &s->sd);
@@ -85,10 +118,14 @@ static void rx_start(const ortx_api_t *api, rxa_state *s, volatile int16_t *ring
     /* CHSEL 0, PL high, 16-bit memory and peripheral, MINC, CIRC, then EN */
     RXA_REG(RXA_S0) = (2u << 16) | (1u << 13) | (1u << 11) | (1u << 10) | (1u << 8);
     RXA_REG(RXA_S0) |= 1u;
-    RXA_REG(RXA_SPI3 + RXA_SPI_I2SPR) = 2u;
-    RXA_REG(RXA_SPI3 + RXA_SPI_I2SCFGR) = (1u << 11) | (1u << 8) | 1u;   /* I2SMOD, slave rx, CHLEN 32 */
-    RXA_REG(RXA_SPI3 + RXA_SPI_CR2) = 1u;                                /* RXDMAEN */
-    RXA_REG(RXA_SPI3 + RXA_SPI_I2SCFGR) |= 1u << 10;                     /* I2SE */
+    /* WS high first (Philips: the slave should be enabled with WS high), then low, in turn */
+    for (unsigned k = 0; k < 16u; k++) {
+        rxa_i2s_on((k & 1u) ^ 1u);
+        api->sleep_ms(15);              /* 240 halfwords */
+        if (rxa_aligned(s, (s->ring - RXA_REG(RXA_S0 + 4u)) & (s->ring - 1u)))
+            return k + 1u;
+    }
+    return 0;
 }
 
 /* the DMA's write position in the ring (halfwords) */

@@ -6,7 +6,9 @@
    pager CRC.
 
    Lines:
-     range start fs=8000 ring=1024 state=NNNN free=NNN
+     range start fs=8000 ring=1024 state=NNNN free=NNN align=1
+                    align: the tries it took to start the capture in step with the codec's
+                    frames (rxaudio.h; 0: none looked right, expect nothing)
                     (the codec's frame rate is 8000 to rxrec's count: 48000 halfwords in 3 s)
      r 3 t=12345 c=-118 y=31 e=41 ok=1 s=2 r=-84
                     a packet: its number, ms at its end, the sync's correlation (128 from clean
@@ -64,10 +66,10 @@ int uv_main(const ortx_api_t *api) {
     rr_state *r = (rr_state *)mem;
     volatile int16_t *ring = (volatile int16_t *)(mem + sizeof(rr_state));
     rxa_state rs;
-    rx_start(api, &rs, ring, RING);
+    unsigned align = rx_start(api, &rs, ring, RING);
     rr_init(r, FS);
-    api->fmt(line, sizeof line, "range start fs=%u ring=%u state=%u free=%lu", FS, RING,
-             (unsigned)sizeof(rr_state), (unsigned long)(bytes - need));
+    api->fmt(line, sizeof line, "range start fs=%u ring=%u state=%u free=%lu align=%u", FS, RING,
+             (unsigned)sizeof(rr_state), (unsigned long)(bytes - need), align);
     api->say(line);
 
     unsigned rd = rx_wr(&rs) & ~1u, npk = 0, nok = 0, ov = 0;
