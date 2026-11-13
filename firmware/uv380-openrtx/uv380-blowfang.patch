@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index fc5581d..6f4dd5f 100644
+index 6bb1ade..d711997 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,18 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,20 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -18,10 +18,12 @@ index fc5581d..6f4dd5f 100644
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
 +               'openrtx/src/blowfang/sotto8k_fx_dec.c',
 +               'openrtx/src/blowfang/sotto8k_fx_lr.c',
++               'openrtx/src/blowfang/sotto8k_fx_enc.c',
++               'openrtx/src/blowfang/sotto8k_fx_lr_enc.c',
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +81,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +83,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -170,10 +172,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..331a468
+index 0000000..d31d5ba
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,639 @@
+@@ -0,0 +1,884 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -249,6 +251,41 @@ index 0000000..331a468
 +static cw_tx   cw;
 +static char    ident[12];
 +
++// The message PTT sends and # plays: the stored one (blowfang_message.h), or
++// the last recording a RAM module made with the radio's sotto 1200 encoder
++// (ortx_mod.h level 2), kept until the next one or a power-off. .bss: CCM on
++// the radio, which is fine (no DMA reads it).
++static constexpr unsigned REC_MAX   = 750;      // superframes: 30 s
++static uint8_t         recMsg[REC_MAX * PT_FRAME_BYTES];
++static unsigned        recFrames  = 0;
++static volatile bool   recValid   = false;
++static volatile bool   msgChanged = false;  // update() makes a new msg_id
++static bool            sendIdentOnly = false;   // send(): the Morse ident alone
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++static constexpr freq_t SEND_HZ   = 440850000;  // tx_request sends only here
++static volatile bool   txRequest  = false;  // a module asked for a send
++static volatile unsigned micTxMs  = 0;      // a module asked for the keyed mic test
++#endif
++#if defined(PLATFORM_MDUV3x0)
++// radio_UV3x0.cpp (blowfang): 1 W whatever the channel says, and the mic in
++// place of the line in
++extern "C" volatile bool blowfang_txLow;
++extern "C" volatile bool blowfang_txMic;
++#else
++__attribute__((unused)) static volatile bool blowfang_txLow = false;
++__attribute__((unused)) static volatile bool blowfang_txMic = false;
++#endif
++
++static const uint8_t *msgBytes()
++{
++    return recValid ? recMsg : blowfang_message;
++}
++
++static unsigned msgFrames()
++{
++    return recValid ? recFrames : BLOWFANG_MESSAGE_FRAMES;
++}
++
 +void pager_requestPreview()
 +{
 +    pvRequest = true;
@@ -258,9 +295,9 @@ index 0000000..331a468
 + * decoder has given all of it (its last superframes come from the flush). */
 +static bool pvNext(struct sotto_lr_dec *dec, unsigned &frame, stream_sample_t *out)
 +{
-+    if(frame < BLOWFANG_MESSAGE_FRAMES)
++    if(frame < msgFrames())
 +    {
-+        sotto_lr_decode(dec, blowfang_message + frame * PT_FRAME_BYTES, 1, out);
++        sotto_lr_decode(dec, msgBytes() + frame * PT_FRAME_BYTES, 1, out);
 +        frame++;
 +        return true;
 +    }
@@ -531,9 +568,173 @@ index 0000000..331a468
 +    return (i2sp_command(&pbOps, line) < 0) ? -1 : 0;
 +}
 +
++// Level 2: the fixed-point sotto 1200 encoder (8 kHz). It runs in a thread of
++// its own, whose stack it needs (its deepest calls take about 8 KB, more than
++// the module's); enc_push hands it 320 samples at a time in two buffers and
++// waits while it is still on the other one.
++static constexpr size_t ENC_STACK = 16384;
++static struct sotto_lr_enc *enc = NULL;
++static int16_t        encIn[2][SOTTO_LR_SAMPLES_PER_FRAME];
++static unsigned       encCur  = 0;
++static unsigned       encFill = 0;
++static volatile int   encReady = -1;    // the buffer handed over, -1: none
++static volatile bool  encQuit  = false;
++static pthread_t      encThread;
++
++static void encAppend(const uint8_t *f)
++{
++    if(recFrames < REC_MAX)
++    {
++        memcpy(recMsg + recFrames * PT_FRAME_BYTES, f, PT_FRAME_BYTES);
++        recFrames++;
++    }
++}
++
++static void *encFunc(void *arg)
++{
++    (void) arg;
++    uint8_t out[SOTTO_BYTES_PER_FRAME];
++    for(;;)
++    {
++        int b = encReady;
++        if(b >= 0)
++        {
++            if(sotto_lr_encode(enc, encIn[b], out))
++                encAppend(out);
++            encReady = -1;
++            continue;
++        }
++        if(encQuit)
++            break;
++        sleepFor(0, 1);
++    }
++    // the last part (whole 10 ms blocks of it), then the flush
++    if(encFill >= 80)
++        sotto_lr_encode_part(enc, encIn[encCur], (int) (encFill / 80));
++    while(sotto_lr_enc_flush(enc, out))
++        encAppend(out);
++    return NULL;
++}
++
++static int omEncEnd()
++{
++    if(enc == NULL)
++        return -1;
++    for(unsigned t = 0; (encReady >= 0) && (t < 2000); t++)
++        sleepFor(0, 1);
++    encQuit = true;
++    pthread_join(encThread, NULL);
++    sotto_lr_enc_destroy(enc);
++    enc        = NULL;
++    recValid   = (recFrames > 0);
++    msgChanged = true;
++    return (int) recFrames;
++}
++
++static int omEncBegin()
++{
++    if(enc != NULL)
++        omEncEnd();
++    recValid   = false;
++    msgChanged = true;
++    recFrames  = 0;
++    encCur     = 0;
++    encFill    = 0;
++    encReady   = -1;
++    encQuit    = false;
++    enc = sotto_lr_enc_create();
++    if(enc == NULL)
++        return -1;
++    pthread_attr_t attr;
++    pthread_attr_init(&attr);
++    pthread_attr_setstacksize(&attr, ENC_STACK);
++    int r = pthread_create(&encThread, &attr, encFunc, NULL);
++    pthread_attr_destroy(&attr);
++    if(r != 0)
++    {
++        sotto_lr_enc_destroy(enc);
++        enc = NULL;
++        return -1;
++    }
++    return 0;
++}
++
++static int omEncPush(const int16_t *x, unsigned n)
++{
++    if(enc == NULL)
++        return -1;
++    for(unsigned i = 0; i < n; i++)
++    {
++        if(recFrames >= REC_MAX)
++            return -1;
++        encIn[encCur][encFill++] = x[i];
++        if(encFill < SOTTO_LR_SAMPLES_PER_FRAME)
++            continue;
++        for(unsigned t = 0; (encReady >= 0) && (t < 2000); t++)
++            sleepFor(0, 1);
++        if(encReady >= 0)
++            return -1;          // the encoder thread is stuck
++        encReady = (int) encCur;
++        encCur  ^= 1;
++        encFill  = 0;
++    }
++    return (int) recFrames;
++}
++
++static unsigned omMsg(const uint8_t **bytes)
++{
++    *bytes = msgBytes();
++    return msgFrames();
++}
++
++static void omPreview()
++{
++    pager_requestPreview();
++}
++
++// The keyed mic test (tx_mic): ms of FM carrying the microphone, as FM mode
++// sends it (MIC_PWR on, the C6000's mic input), at 1 W, then the Morse ident.
++// A module captures I2S3 meanwhile, to see whether the mic reaches the MCU
++// while keyed.
++static int omTxMic(unsigned ms)
++{
++    rtxStatus_t st = rtx_getCurrentStatus();
++    if((ms == 0) || (ms > 5000) || (st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++        return -1;
++    micTxMs = ms;
++    return 0;
++}
++
++static void micTest(rtxStatus_t *const status, unsigned ms)
++{
++    pathId path = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
++    if(path < 0)
++        return;
++    blowfang_txMic = true;
++    status->opStatus = TX;
++    platform_ledOn(RED);
++    radio_enableTx();
++    for(unsigned t = 0; (t < ms) && (platform_getPttStatus() == false); t += 10)
++        sleepFor(0, 10);
++    radio_disableRtx();
++    blowfang_txMic = false;
++    audioPath_release(path);
++    platform_ledOff(RED);
++}
++
++static int omTxRequest()
++{
++    rtxStatus_t st = rtx_getCurrentStatus();
++    if((st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++        return -1;
++    txRequest = true;
++    return 0;
++}
++
 +static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
 +                               omSleep, omC6r, omC6w, omAdc, omRssi,
-+                               omProbe};
++                               omProbe, omEncBegin, omEncPush, omEncEnd,
++                               omMsg, omPreview, omTxRequest, omTxMic};
 +#endif
 +
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
@@ -570,7 +771,11 @@ index 0000000..331a468
 +        int r = 0;
 +        if((strncmp(pbCmd, "mod", 3) == 0) &&
 +           ((pbCmd[3] == ' ') || (pbCmd[3] == '\0')))
++        {
 +            om_command(&omHost, pbCmd + 3);
++            if(enc != NULL)     // a module that ended mid-recording: keep what it made
++                omEncEnd();
++        }
 +        else
 +            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
@@ -650,7 +855,7 @@ index 0000000..331a468
 +{
 +    armed = false;      // a PTT held while switching modes doesn't send
 +    pvRequest = false;
-+    msgId = pt_msg_id(blowfang_message, BLOWFANG_MESSAGE_FRAMES);
++    msgId = pt_msg_id(msgBytes(), msgFrames());
 +    startProbe();
 +}
 +
@@ -682,6 +887,48 @@ index 0000000..331a468
 +    }
 +    if((pvRunning == false) && pvJoinable)
 +        joinPreview(false);
++
++    if(msgChanged)
++    {
++        msgChanged = false;
++        msgId = pt_msg_id(msgBytes(), msgFrames());
++    }
++
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++    // a module's tx_request (ortx_mod.h): the message as a PTT press sends it,
++    // once the module has ended, only on SEND_HZ
++    if(txRequest && (pbBusy == false))
++    {
++        txRequest = false;
++        if((ptt == false) && (status->txDisable == 0) &&
++           (status->txFrequency == SEND_HZ))
++        {
++            holdProbe();
++            joinPreview(true);
++            blowfang_txLow = true;
++            send(status);
++            blowfang_txLow = false;
++        }
++    }
++    // tx_mic: keyed while the module runs on (it captures meanwhile), then
++    // the ident
++    if(micTxMs != 0)
++    {
++        unsigned ms = micTxMs;
++        micTxMs = 0;
++        if((ptt == false) && (status->txDisable == 0) &&
++           (status->txFrequency == SEND_HZ))
++        {
++            joinPreview(true);
++            blowfang_txLow = true;
++            micTest(status, ms);
++            sendIdentOnly = true;
++            send(status);
++            sendIdentOnly = false;
++            blowfang_txLow = false;
++        }
++    }
++#endif
 +
 +    if(ptt && armed && (status->txDisable == 0))
 +    {
@@ -730,7 +977,7 @@ index 0000000..331a468
 +void OpMode_Pager::send(rtxStatus_t *const status)
 +{
 +    static const pt_profile prof = PT_PROFILE_XL(PT_MAGIC_1200);
-+    pt_message msg = {&prof, blowfang_message, BLOWFANG_MESSAGE_FRAMES, 1, msgId};
++    pt_message msg = {&prof, msgBytes(), msgFrames(), 1, msgId};
 +    msgId++;            // a new msg_id for each message sent
 +
 +    const char *call = state.settings.callsign;
@@ -764,7 +1011,7 @@ index 0000000..331a468
 +        return;
 +    status->opStatus = TX;
 +    radio_enableTx();
-+    bool inCw = false;
++    bool inCw = sendIdentOnly;
 +    while(fill(txBuf, BLOCK, inCw))
 +        fwrite(txBuf, sizeof(stream_sample_t), BLOCK, f);
 +    fclose(f);
@@ -787,7 +1034,7 @@ index 0000000..331a468
 +                                        STREAM_OUTPUT | BUF_CIRC_DOUBLE);
 +    if(stream >= 0)
 +    {
-+        bool inCw     = false;
++        bool inCw     = sendIdentOnly;
 +        bool released = false;
 +        stream_sample_t *idle = outputStream_getIdleBuffer(stream);
 +        while(audioPath_getStatus(path) == PATH_OPEN)
@@ -920,10 +1167,25 @@ index d71444c..5877479 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a9..d0cb245 100644
+index 64b77a9..99c408c 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
-@@ -95,6 +95,7 @@ void radio_setOpmode(const enum opmode mode)
+@@ -19,6 +19,14 @@
+ 
+ static const rtxStatus_t *config;                // Pointer to data structure with radio configuration
+ 
++// blowfang PAGER mode (OpMode_Pager.cpp): a send a RAM module asked for goes at
++// the lowest power whatever the channel says, and the keyed mic test takes the
++// microphone, as FM mode does, in place of the MCU's line in
++extern "C" {
++volatile bool blowfang_txLow = false;
++volatile bool blowfang_txMic = false;
++}
++
+ static mduv3x0Calib_t calData;                   // Calibration data
+ static Band    currRxBand = BND_NONE;            // Current band for RX
+ static Band    currTxBand = BND_NONE;            // Current band for TX
+@@ -95,6 +103,7 @@ void radio_setOpmode(const enum opmode mode)
      switch(mode)
      {
          case OPMODE_FM:
@@ -931,7 +1193,16 @@ index 64b77a9..d0cb245 100644
              at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
              C6000.fmMode();                         // HR_C6000 in FM mode
              C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
-@@ -207,6 +208,16 @@ void radio_enableTx()
+@@ -188,6 +197,8 @@ void radio_enableTx()
+     // Constrain output power between 1W and 5W.
+     float power  = static_cast < float >(config->txPower) / 1000.0f;
+           power  = std::max(std::min(power, 5.0f), 1.0f);
++    if(blowfang_txLow)
++        power = 1.0f;
+     float pwrHi  = static_cast< float >(txpwr_hi);
+     float pwrLo  = static_cast< float >(txpwr_lo);
+     float apc    = pwrLo + (pwrHi - pwrLo)/4.0f*(power - 1.0f);
+@@ -207,6 +218,17 @@ void radio_enableTx()
              C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
              break;
  
@@ -941,14 +1212,15 @@ index 64b77a9..d0cb245 100644
 +            // path's pre-emphasis (the K6 receiver de-emphasises)
 +            FmConfig cfg = (config->bandwidth == BW_12_5) ? FmConfig::BW_12p5kHz
 +                                                          : FmConfig::BW_25kHz;
-+            C6000.startAnalogTx(TxAudioSource::LINE_IN, cfg | FmConfig::PREEMPH_EN);
++            C6000.startAnalogTx(blowfang_txMic ? TxAudioSource::MIC : TxAudioSource::LINE_IN,
++                                cfg | FmConfig::PREEMPH_EN);
 +        }
 +            break;
 +
          default:
              break;
      }
-@@ -286,7 +297,7 @@ void radio_updateConfiguration()
+@@ -286,7 +308,7 @@ void radio_updateConfiguration()
      freq_t  *txCalPoints = calData.vhfCal.txFreq;
      uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
      uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
@@ -957,7 +1229,7 @@ index 64b77a9..d0cb245 100644
                           ? calData.vhfCal.analogSendQrange
                           : calData.vhfCal.sendQrange;
  
-@@ -296,7 +307,7 @@ void radio_updateConfiguration()
+@@ -296,7 +318,7 @@ void radio_updateConfiguration()
          txCalPoints = calData.uhfCal.txFreq;
          loPwrCal    = calData.uhfCal.txLowPower;
          hiPwrCal    = calData.uhfCal.txHighPower;
@@ -966,7 +1238,7 @@ index 64b77a9..d0cb245 100644
                      ? calData.uhfCal.analogSendQrange
                      : calData.uhfCal.sendQrange;
      }
-@@ -313,7 +324,7 @@ void radio_updateConfiguration()
+@@ -313,7 +335,7 @@ void radio_updateConfiguration()
      C6000.setModAmplitude(0, Q);
  
      // Set bandwidth, only for analog FM mode

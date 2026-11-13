@@ -88,8 +88,61 @@ static int q_probe(const char *line) {
     return 0;
 }
 
+/* level 2 stand-ins: a "superframe" a 320 samples, its 6 bytes the first sample's and the
+   count's; tx_request refuses (no radio here) */
+static uint8_t q_msgbuf[6 * 64];
+static unsigned q_frames, q_fill;
+static int q_on;
+
+static int q_enc_begin(void) {
+    q_frames = q_fill = 0;
+    q_on = 1;
+    return 0;
+}
+
+static int q_enc_push(const int16_t *x, unsigned n) {
+    if (!q_on)
+        return -1;
+    for (unsigned i = 0; i < n; i++) {
+        if (q_fill == 0) {
+            if (q_frames == 64u)
+                return -1;
+            uint8_t *f = q_msgbuf + 6u * q_frames;
+            f[0] = (uint8_t)x[i], f[1] = (uint8_t)((uint16_t)x[i] >> 8), f[2] = (uint8_t)q_frames;
+            f[3] = 0xA5, f[4] = 0x5A, f[5] = 0;
+        }
+        if (++q_fill == 320u)
+            q_fill = 0, q_frames++;
+    }
+    return (int)q_frames;
+}
+
+static int q_enc_end(void) {
+    if (!q_on)
+        return -1;
+    q_on = 0;
+    if (q_fill)
+        q_fill = 0, q_frames++;
+    return (int)q_frames;
+}
+
+static unsigned q_msg(const uint8_t **b) {
+    *b = q_msgbuf;
+    return q_frames;
+}
+
+static void q_preview(void) {
+    q_line("preview");
+}
+
+static int q_tx_request(void) {
+    q_line("tx_request refused");
+    return -1;
+}
+
 static const om_host host = {q_line, q_write, q_read, q_now, q_stop, q_sleep, q_c6r, q_c6w, NULL, q_rssi,
-                             q_probe};
+                             q_probe, q_enc_begin, q_enc_push, q_enc_end, q_msg, q_preview,
+                             q_tx_request, NULL};
 
 int main(void) {
     int n = host_read_file("in.txt", (uint8_t *)in, sizeof in - 1);

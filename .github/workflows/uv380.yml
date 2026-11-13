@@ -56,6 +56,7 @@ jobs:
             tests/test_uv380_i2sprobe.py \
             tests/test_uv380_mod.py \
             tests/test_uv380_ortx_mod.py \
+            tests/test_uv380_micprobe.py \
             tests/test_range_rx.py \
             tests/test_uv380_sweep.py
       - uses: actions/upload-artifact@v4

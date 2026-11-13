@@ -134,6 +134,38 @@ static void *api_memset(void *d, int c, unsigned n) {
     return memset(d, c, n);
 }
 
+static int api_enc_begin(void) {
+    return H->enc_begin ? H->enc_begin() : -1;
+}
+
+static int api_enc_push(const int16_t *x, unsigned n) {
+    return H->enc_push ? H->enc_push(x, n) : -1;
+}
+
+static int api_enc_end(void) {
+    return H->enc_end ? H->enc_end() : -1;
+}
+
+static unsigned api_msg(const uint8_t **bytes) {
+    if (H->msg)
+        return H->msg(bytes);
+    *bytes = NULL;
+    return 0;
+}
+
+static void api_preview(void) {
+    if (H->preview)
+        H->preview();
+}
+
+static int api_tx_request(void) {
+    return H->tx_request ? H->tx_request() : -1;
+}
+
+static int api_tx_mic(unsigned ms) {
+    return H->tx_mic ? H->tx_mic(ms) : -1;
+}
+
 static const ortx_api_t api = {
     .abi = MC_ABI,
     .level = OM_LEVEL,
@@ -152,6 +184,13 @@ static const ortx_api_t api = {
     .memcpy = api_memcpy,
     .memset = api_memset,
     .probe = api_probe,
+    .enc_begin = api_enc_begin,
+    .enc_push = api_enc_push,
+    .enc_end = api_enc_end,
+    .msg = api_msg,
+    .preview = api_preview,
+    .tx_request = api_tx_request,
+    .tx_mic = api_tx_mic,
 };
 
 uint8_t *om_arena(void) {

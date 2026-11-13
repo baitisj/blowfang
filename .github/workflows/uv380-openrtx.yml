@@ -39,6 +39,10 @@ jobs:
         run: BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh mduv3x0p
       - name: build (mduv3x0p, range)
         run: BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh mduv3x0p
+      # both: RAM modules (level 2: the sotto 1200 encoder, the recorded message) and PHY R on
+      # PTT; out/*_i2sprobe_range*
+      - name: build (mduv3x0p, I2S probe and range)
+        run: BLOWFANG_I2SPROBE=1 BLOWFANG_RANGE=1 sh firmware/uv380-openrtx/build.sh mduv3x0p
       - uses: actions/upload-artifact@v4
         with:
           name: uv380-openrtx-image
