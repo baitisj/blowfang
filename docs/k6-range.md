@@ -134,6 +134,11 @@ the emulator, with writes of 180-200 us, the phase stays within 6 degrees of the
 11.5 s burst, and the UV-380's receiver reads 6 of 6 through a model of its receive path, with
 or without de-emphasis on the K6's tone (tests/test_k6_rangetx.py).
 
+For the bench, `rangetx_lo` is the same with the PA off from just after tx_on to the end (Jeff
+asked for low-power K6 sends, 11-13): only the FD6818's leak goes out, about 40 dB under the
+module's low power at bench range (docs/k6-own-fsk.md), still plenty for the UV-380 a few feet
+away. Both say `pa=` on their first line.
+
 What the emulator can't say:
 
 - The FD6818's crystal against the MCU's. The tone follows the first, the bits the second, so a

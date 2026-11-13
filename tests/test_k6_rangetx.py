@@ -120,7 +120,7 @@ def test_builds_level_3_fits():
 def test_sends_the_tone_bits_on_time():
     ret, said, regs, tx, ev = send(write_us=jitter())
     assert ret == 6, said
-    assert said[0] == "rangetx n=6 bits=13848 g=60 rx=440850000"
+    assert said[0] == "rangetx n=6 bits=13848 g=60 pa=1 rx=440850000"
     assert said[-1] == "rangetx sent bits=13848 ms=11540 id=52" or \
         said[-1] == "rangetx sent bits=13848 ms=11541 id=52", said
     w = dict(v.split("=") for v in said[1].split()[1:])
@@ -174,3 +174,15 @@ def test_a_slow_write_stops_before_the_burst():
     assert ret == -8, said
     assert tx["log"][-1][0] == "tx_off" and regs.get(0x70, 0) == 0 and regs.get(0x71, 0) == 0
     assert said[-1].startswith("rangetx w=0 late=0 wr=")
+
+
+@need_clang
+def test_lo_keeps_the_pa_off():
+    """rangetx_lo: the PA off from just after tx_on to the end, the burst and the ID the same"""
+    lo = os.path.join(ROOT, "c", "k6", "mod", "rangetx_lo.c")
+    ret, said, regs, tx, ev = send(write_us=jitter(4), src=lo)
+    assert ret == 6 and said[0] == "rangetx n=6 bits=13848 g=60 pa=0 rx=440850000", said
+    log = tx["log"]
+    assert log[0][0] == "tx_on" and log[1][:2] == ("tx_pa", 0) and log[-1][0] == "tx_off"
+    assert all(a == 0 for n, a, _ in log if n == "tx_pa"), log
+    assert np.max(np.abs(edge_error(ev))) * 360 < 6

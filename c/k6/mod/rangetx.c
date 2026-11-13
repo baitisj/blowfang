@@ -19,11 +19,13 @@
      jitter of where it should be. RT_PPM: the FD6818's crystal against the MCU's, if known;
    - writes REG_71 only where the tone changes, starting each write its own length early (the
      last write's, measured: a register write takes about 100-400 us);
+   - RT_PA 0 (rangetx_lo.c) turns the PA off right after tx_on and keeps it off: the lowest
+     power the K6 has, only the chip's leak, for the bench;
    - after the burst, tone off, then AG7EW in MCW (the 800 Hz tone keyed with REG_70) at 20 wpm,
      and keys down. TIM17 and its clock enable are put back on every way out.
 
    It says
-     K6 MOD say rangetx n=6 bits=13848 g=60 rx=440850000
+     K6 MOD say rangetx n=6 bits=13848 g=60 pa=1 rx=440850000
      K6 MOD say rangetx w=6912 late=0 wr=9000-9100 d=12 a=40
                                  tone changes; writes started late; a write's length (cycles at
                                  96 MHz, min-max); the worst error left at a change and |A| (cycles)
@@ -48,6 +50,10 @@
 #endif
 #ifndef RT_PPM
 #define RT_PPM 0.0          /* the FD6818's crystal against the MCU's, ppm (its tone fast: +) */
+#endif
+#ifndef RT_PA
+#define RT_PA 1             /* 0: the PA off while keyed (rangetx_lo): only the chip's leak goes
+                               out, about 40 dB down at bench range (k6-own-fsk.md) */
 #endif
 #ifndef RT_LEAD_MS
 #define RT_LEAD_MS 300      /* carrier, tone off, before the burst: the PLL settles */
@@ -172,9 +178,10 @@ static int until(const k6_api_t *api, uint32_t t) {
   return 0;
 }
 
-/* still keyed? tx_pa(1) only re-enables the PA that tx_on enabled; -5 once the core keyed down */
+/* still keyed? tx_pa(RT_PA) keeps the PA as it is (1 only re-enables the PA that tx_on enabled);
+   -5 once the core keyed down */
 static int keyed(const k6_api_t *api) {
-  return api->tx_pa(1) < 0 ? -5 : 0;
+  return api->tx_pa(RT_PA) < 0 ? -5 : 0;
 }
 
 /* AG7EW in MCW: the tone keyed with REG_70; the units sent, or a negative error */
@@ -294,6 +301,8 @@ int k6_main(const k6_api_t *api) {
   p = dec(p, RT_NBITS);
   p = put(p, " g=");
   p = dec(p, RT_GAIN);
+  p = put(p, " pa=");
+  p = dec(p, RT_PA);
   p = put(p, " rx=");
   p = dec(p, api->rx_hz());
   *p = 0;
@@ -309,6 +318,7 @@ int k6_main(const k6_api_t *api) {
     }
   }
   if (api->tx_on(TX_MS) != 0) return -3;
+  if (!RT_PA) api->tx_pa(0);
   api->fd_write(0x70, 0);
   clk_on(&c);
   t = api->ms();

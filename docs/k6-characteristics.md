@@ -29,7 +29,8 @@ one of them changes.
 - Audio FSK from the tone oscillator (REG_70/71, continuous phase, about 0.097 Hz a step) reaches
   the carrier with tx_on's REG_30 0xC1FA: FT8 decoded at -14 dB on the IC-7100 (M, k6-ft8-wspr.md).
 - No per-symbol crystal FSK: REG_3B/38 are latched until RX on (M, k6-own-fsk.md).
-- With the PA off it still leaks about -40 dB at bench range: judge keying by edges (M).
+- With the PA off it still leaks about -40 dB at bench range: judge keying by edges (M). A module
+  can stay keyed with the PA off (tx_pa(0)) as its lowest power: rangetx_lo does.
 - tx_on takes about 1.4-1.9 s before RF is up (M).
 - PHY R FFSK from the tone oscillator (rangetx): bits timed on TIM17, tone changes aimed to keep
   the phase on the bit edges; the FD6818's crystal against the MCU's is unmeasured (over about
