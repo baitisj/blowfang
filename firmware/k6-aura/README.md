@@ -120,19 +120,19 @@ MENU again; EXIT leaves the app.)
 | EXIT | stop playback / leave |
 | UP / DOWN | volume, 3 dB steps on top of the automatic level (-9 to +12 dB) |
 | 1 | nothing. It used to switch the PHY between F and D (direct 2-FSK). Images after 2026-11-10 receive and send F only, because one stray press left the radio deaf to every F send from the bench until a power cycle |
-| 2 | frames: L (64-byte packets, 8 frames, the default) or XL (128 bytes, 20 frames; screen `X`). Profile S is gone |
-| 3 | the RF chip's RX invert bit (REG_59<10>), by hand only |
+| 2 | nothing. It used to switch the frames between XL (128-byte packets, 20 frames, the default since 2026-11-09; screen `X`) and L (64 bytes, 8 frames). Images after 2026-11-13 stay at XL unless a control packet changes it (`--set frames=L`), because a stray press left uploads failing. Profile S is gone |
+| 3 | nothing. It used to flip the RF chip's RX invert bit (REG_59<10>) by hand; it stays off since 2026-11-13 |
 | 4 | pre-emphasis on/off (undoes the PWM filter's -10 dB at 3 kHz) |
 | 6 | raw view: the last packet's first 16 bytes in hex, its sync and length, and its bit errors against the test message (below) |
-| 5 | 1800 / 2400 baud (F at 2400: REG_58 0x73E9, FFSK 1200/2400 Hz; untested on air) |
-| 7 | how the packet length goes into REG_5D: bytes - 1 or words - 1. (Images up to 647a60e also had two stream modes, 0xFF00 and 0xFFE0; they never received on air and were compiled out to make room for REG_43 in the control-packet registers.) |
-| 8 | Re-arm delay after each packet: 40, 50, 30, 60, 20, 0, 80 ms after its end, then a per-packet sweep (`CFG rearm=`; -1 = sweep). FIFO reads are always on a timer now |
+| 5 | nothing. It used to switch 1800 / 2400 baud; since 2026-11-13 only a control packet does (`--set baud=2400`), because a stray press leaves the K6 deaf to the bench's 1800 sends |
+| 7 | nothing. It used to set how the packet length goes into REG_5D: bytes - 1 or words - 1. Images after 2026-11-13 always use bytes - 1, because one stray press (2026-11-13 07:38Z) halved the length (`len5d=3f00` instead of `7f00`) and the K6 rejected all 68 chunks of an upload, XL and L alike. (Images up to 647a60e also had two stream modes, 0xFF00 and 0xFFE0; they never received on air and were compiled out to make room for REG_43 in the control-packet registers.) |
+| 8 | nothing. It used to step the re-arm delay after each packet (40, 50, 30, 60, 20, 0, 80 ms, then a sweep); since 2026-11-13 it stays at 40 ms |
 | 9 | auto-play on/off (on by default; MENU still plays) |
-| 0 | The next receive variant (`CFG f2400= reg58= reg2b=`), 11 of them, var=0 to 10: (REG_58 at F/2400, bits ORed into REG_2B) = (3fe1, 0), (3fe9, 0), (3fe9, +0100), (3fe9, +0700), (3ce9, 0), (3de9, 0), (3ee9, 0), (73e9, 0), (3fe1, +0100), (3f09, 0), (3f01, 0). REG_58 per the UV-K5 firmware notes: bits 12:10 RX tone mode (7 = 1200/1800, 4 = 1200/2400, 0 = direct), 9:8 RX gain, 3:1 RX bandwidth (0 = FSK 1.2K, 1 = FFSK 1200/1800, 4 = FSK 2.4K and FFSK 1200/2400). REG_2B: +0100 RX de-emphasis off, +0200 the 3 kHz LPF off, +0400 the 300 Hz HPF off. The REG_58 value applies only at F/2400, so the variants with the 2.4K bandwidth (3fe9 etc., deaf at 1200) can be tried by sending `--set baud=2400 var=N` in one control packet: the revert then lands back at 1200. The REG_2B bits apply to D and F at any baud. Until this image variant 0 was 73e9, which never synced, nor did its relatives (7329, 73e3, 7fe9, 70e9, 63e9) or D/2400; 3fe1 syncs at 2400 with 1200/1800 tones but the bit clock slips |
+| 0 | nothing. It used to step the receive variant (`CFG f2400= reg58= reg2b=`); since 2026-11-13 only a control packet sets it (`--set var=N`, with `baud=2400` for the 2.4K variants), because its REG_2B bits apply at 1800 too and a stray press could leave the K6 deaf. The 11 variants, var=0 to 10: (REG_58 at F/2400, bits ORed into REG_2B) = (3fe1, 0), (3fe9, 0), (3fe9, +0100), (3fe9, +0700), (3ce9, 0), (3de9, 0), (3ee9, 0), (73e9, 0), (3fe1, +0100), (3f09, 0), (3f01, 0). REG_58 per the UV-K5 firmware notes: bits 12:10 RX tone mode (7 = 1200/1800, 4 = 1200/2400, 0 = direct), 9:8 RX gain, 3:1 RX bandwidth (0 = FSK 1.2K, 1 = FFSK 1200/1800, 4 = FSK 2.4K and FFSK 1200/2400). REG_2B: +0100 RX de-emphasis off, +0200 the 3 kHz LPF off, +0400 the 300 Hz HPF off |
 | * | clear the message |
 | side key 1 | run the last RAM module again, without sending it over the air again (images with the SPI library; [docs/k6-modules.md](../../docs/k6-modules.md#what-happens)) |
 | # | type a frequency (kHz, six digits; MENU sets it early, EXIT deletes) |
-| PTT | calibration transmit: test packet 0, twice in F (images up to 2026-11-10 sent it twice in D first), at key 5's baud rate, on the VFO's TX frequency and power |
+| PTT | calibration transmit: test packet 0, twice in F (images up to 2026-11-10 sent it twice in D first), at the baud rate in force (1800 unless a control packet set 2400), on the VFO's TX frequency and power |
 
 The screen:
 
@@ -533,7 +533,7 @@ within 2 s of a good packet). `--dry-run` listens without keying.
 16 bytes of every 64-byte packet arrived with no bit errors at every speed (-1 to +1 %) and
 level (0.2 to 0.7). After them, the FIFO only repeated an old word. Each PKT line's `ev` field
 (`[S@0 F@27+4 ...]` in `listen`) shows when the sync, FIFO-almost-full and RX-done interrupts
-came, and how many words each one read. Keys 7 and 8 try other length settings. All of
+came, and how many words each one read. Keys 7 and 8 tried other length settings (key 7 is gone since 2026-11-13). All of
 this is reported on the serial line, so watch it with `listen`.
 If the playback's DMA doesn't move for 200 ms, the radio stops playback and goes back to
 listening. It also writes `K6 PWM stalled ...` with the DMA and timer registers, so a PWM
@@ -602,7 +602,7 @@ through 40, 50, 30, 60, 20, 0 and 80, then a sweep that moves it 10 ms per packe
 (`rearm=-1` in the CFG line). The PC can't set it: the cable's PC-to-radio wire is PA10, the
 PTT input.
 
-With REG_5D at 0x00FF (key 7 pressed twice), the chip instead streamed everything it
+With REG_5D at 0x00FF (key 7 pressed twice, on images of the time), the chip instead streamed everything it
 demodulated, preamble and sync word included, with a FIFO interrupt every 4 words and no sync
 or RX-done interrupt. One 64-byte packet came through that way with 0 bit errors over 60 bytes.
 That length setting is now a stream mode: the firmware reads 4 words per interrupt, finds the
@@ -616,9 +616,9 @@ only XL works on air so far, see below:
   time if the chip's FFSK receiver follows the baud register. The calibration transmit now
   uses key 5's rate, so a PTT press with F/2400 set, recorded on the IC-7100, shows what the
   chip really sends.
-- **Profile XL** (key 2): 128-byte packets with 20 frames, 120 of 128 bytes speech (L: 48 of
+- **Profile XL** (key 2 until 2026-11-13; now fixed, a control packet can still pick L): 128-byte packets with 20 frames, 120 of 128 bytes speech (L: 48 of
   64). Timed reads and the re-arm rule work for it as for L. Images from 2026-11-09 boot with
-  XL (key 2 switches to L); before that every boot came up at L, and an XL send to a freshly
+  XL (key 2 switched to L until 2026-11-13); before that every boot came up at L, and an XL send to a freshly
   booted radio stored nothing (the James run, 2026-11-09 14:17Z). `modem.k6` defaults to
   `--payload XL` to match, and the bench's reset packet goes as XL, then L.
 - **Stream mode for whole messages** (key 7 pressed twice, or three times for REG_5D 0xFFE0):

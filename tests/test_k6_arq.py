@@ -59,6 +59,72 @@ def test_next_step():
     assert k6_upload.next_step(dict(base, xfer=5), 7, 4)[0] == "stop"
 
 
+def test_switch_size():
+    """only a silence with nothing ever heard at this size changes it"""
+    st = dict(xfer=4, state="partway", missing=[3])
+    assert k6_upload.other_size("XL") == "L" and k6_upload.other_size("L") == "XL"
+    assert k6_upload.switch_size(None, False, True)
+    assert not k6_upload.switch_size(None, True, True)       # it worked before: a lost send
+    assert not k6_upload.switch_size(st, False, True)        # a report: the size works
+    assert not k6_upload.switch_size(None, False, False)     # --no-fallback
+
+
+def fake_upload(monkeypatch, k6_size, argv):
+    """k6_upload.main against a K6 that hears only k6_size chunks and runs the module once it
+    has every chunk of a transfer: the sends it was given, as (payload, serial, chunks)"""
+    sends, got = [], {}
+    monkeypatch.setattr(k6_upload, "rig", lambda a, *v: str(a.freq) if v == ("f",) else "0")
+    monkeypatch.setattr(k6_upload, "key_and_play", lambda *a, **k: None)
+    monkeypatch.setattr(k6_upload, "Recorder", lambda a, d: type("R", (), {
+        "samples": lambda self: 0, "stop": lambda self: None, "path": ""})())
+    monkeypatch.setattr(k6_upload.time, "sleep", lambda s: None)
+
+    def mod_wav(a, path, serial, xfer, only=None, payload=None):
+        sends.append((payload, serial, list(only)))
+        if payload == k6_size:
+            got.setdefault(xfer, set()).update(only)
+        return ""
+
+    def listen(a, rec, since, xfer, seconds):
+        if xfer not in got:
+            return None, "", []
+        count = k6_upload.chunks_of(a, k6_size)
+        missing = sorted(set(range(count)) - got[xfer])
+        state = "ran" if not missing else "partway"
+        return dict(xfer=xfer, state=state, missing=missing, have=count - len(missing), count=count,
+                    r=1, ret=0, ms=5, stack_free=900), "", []
+
+    monkeypatch.setattr(k6_upload, "mod_wav", mod_wav)
+    monkeypatch.setattr(k6_upload, "listen", listen)
+    import modem.k6 as k6
+    import soundfile
+    monkeypatch.setattr(k6, "cw", lambda *a, **k: np.zeros(10))
+    monkeypatch.setattr(soundfile, "write", lambda *a, **k: None)
+    monkeypatch.setattr(sys, "argv", ["k6_upload.py", MOD_SRC, "--key-file", "/dev/null"] + argv)
+    k6_upload.main()
+    return sends
+
+
+MOD_SRC = os.path.join(ROOT, "c", "k6", "mod", "hello.c")
+
+
+@need_host
+def test_upload_falls_back_to_l(monkeypatch, capsys):
+    """a K6 set to L hears no XL chunk: the second send is every chunk at L, a new transfer"""
+    sends = fake_upload(monkeypatch, "L", [])
+    assert [p for p, _, _ in sends] == ["XL", "L"]
+    assert sends[1][1] > sends[0][1]                            # a newer serial
+    assert sends[1][2] == list(range(len(sends[1][2]))) and len(sends[1][2]) > len(sends[0][2])
+    assert "ran: returned 0" in capsys.readouterr().out
+
+
+@need_host
+def test_upload_stays_xl(monkeypatch):
+    """a K6 at XL: one send, no fallback; --no-fallback keeps XL through silence"""
+    assert [p for p, _, _ in fake_upload(monkeypatch, "XL", [])] == ["XL"]
+    assert [p for p, _, _ in fake_upload(monkeypatch, "L", ["--no-fallback", "--rounds", "2"])] == ["XL", "XL"]
+
+
 @need_host
 def test_cli_arq_upload_and_reports(tmp_path):
     key = tmp_path / "k"

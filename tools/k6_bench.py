@@ -562,7 +562,8 @@ def make_wavs(only_id=False):
     if only_id:
         return
     # XL first (images from 2026-11-09 boot with frames=XL), then L for older images and for a
-    # radio someone switched to L with key 2: the K6 resets on the first copy it reads
+    # radio left at L (key 2 on images before 2026-11-13, or a control packet): the K6 resets on
+    # the first copy it reads
     import numpy as np
     parts = []
     for payload in ("XL", "L"):

@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..2bed5d7
+index 0000000..84ca950
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4456 @@
+@@ -0,0 +1,4411 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -324,11 +324,13 @@ index 0000000..2bed5d7
 +//! c/k6/); this file is the radio side: FSK registers, keys, PWM playback, and
 +//! the calibration transmit.
 +//!
-+//! Keys: MENU play (again), EXIT leave (or stop playback), UP/DOWN volume,
-+//! 2 frames XL/L, 3 RX invert, 4 pre-emphasis, 5 1800/2400 baud, 6 raw packet bytes on the screen (hiss image: the hiss band off and
-+//! on, an A/B on the speaker), * clear the message, PTT transmit the calibration packet
-+//! (twice). PHY F (FFSK) only: the old direct-FSK PHY D and its key 1 are gone, because one stray
-+//! press left the radio deaf to the bench's F sends (Jeff, 2026-11-10).
++//! Keys: MENU play (again), EXIT leave (or stop playback), UP/DOWN volume, # frequency,
++//! 4 pre-emphasis, 9 auto-play, 6 raw packet bytes on the screen (hiss image: the hiss band off and on, an A/B on the
++//! speaker), * clear the message, side key 1 run the last module again, PTT transmit the
++//! calibration packet (twice). PHY F (FFSK) only: the old direct-FSK PHY D and its key 1 are
++//! gone, because one stray press left the radio deaf to the bench's F sends (Jeff, 2026-11-10);
++//! the receive settings keys 2, 3, 5, 7, 8 and 0 went the same way after a stray 7 broke an
++//! upload (2026-11-13). Control packets still change frames, baud and variant.
 +//!
 +//! Serial report: every packet, setting change, playback and calibration
 +//! transmit also goes out as one text line on the programming cable (USART1
@@ -1557,7 +1559,8 @@ index 0000000..2bed5d7
 +/// With timed reads, an RX-done sooner than 60% of the payload's air time after the sync
 +/// (67 ticks a byte at 1200 baud) is the last packet's, not this one's
 +const STRAY_DONE_TICKS_PER_BYTE: usize = 40;
-+/// key 8's re-arm delays after a timed packet's end, ms; after them, a sweep
++/// the re-arm delays after a timed packet's end, ms (key 8 stepped them until 2026-11-13; the
++/// first is used); after them, a sweep
 +const REARM_STEPS: [u8; 7] = [40, 50, 30, 60, 20, 0, 80];
 +/// After the earliest re-arm, wait this long more for the chip's RX-done (100 us ticks)
 +const REARM_WAIT_TICKS: u16 = 100;
@@ -1667,18 +1670,19 @@ index 0000000..2bed5d7
 +    pub cb: i8,
 +    /// typing a frequency (#), in kHz like Aura's VFO entry; RAM only, never saved
 +    pub freq_entry: bool,
-+    /// key 2: profile XL (128-byte packets, 20 frames, the power-on default) or L (64 bytes, 8 frames)
++    /// profile XL (128-byte packets, 20 frames, the power-on default) or L (64 bytes, 8 frames);
++    /// only a control packet changes it (key 2 did, until a stray press broke uploads, 2026-11-13)
 +    pub xl: bool,
-+    /// key 5: 2400 baud (FFSK 1200/2400 Hz tones)
++    /// 2400 baud (FFSK 1200/2400 Hz tones); control packets only (key 5 until 2026-11-13)
 +    pub baud_2400: bool,
-+    /// key 0: which of RX2400_VARIANTS applies at 2400 baud
++    /// which of RX2400_VARIANTS applies at 2400 baud; control packets only (key 0 until 2026-11-13)
 +    pub f2400_var: u8,
 +    /// REG_2B as the chip had it (read once, restored at 1200)
 +    pub reg2b_base: Option<u16>,
 +    /// REG_43 as Aura set it for the VFO (read once, written back on every arm, so a
 +    /// control-packet write to it is undone by a revert)
 +    based: [Option<u16>; 6],
-+    /// the chip's RX invert bit (REG_59<10>), key 3 only
++    /// the chip's RX invert bit (REG_59<10>): off (key 3 set it by hand until 2026-11-13)
 +    pub invert: bool,
 +    /// payload bits inverted in software (found from the magic byte / CRC)
 +    pub soft_inv: bool,
@@ -1698,11 +1702,6 @@ index 0000000..2bed5d7
 +    pub ber_n: u16,
 +    /// packets reported on the serial line, so the PC can spot a lost line
 +    pub reported: u16,
-+    /// key 7: how REG_5D gets the packet length (0: bytes - 1, the BK4819 way; 1: words - 1;
-+    /// 2: 0xFF00 and 3: 0xFFE0, stream mode: the chip passes everything it demodulates and the
-+    /// sync is found in software, so packets can come back to back with no preamble between
-+    /// them. 0xFFE0 also sets bits 7:5, which may be the length's high bits, 2048 bytes)
-+    pub len_mode: u8,
 +    /// stream mode's receiver: the last 32 bits off the air, bits seen since the search
 +    /// started, the payload byte being built and its bits, whether a payload is being
 +    /// collected (and inverted), bytes collected, and a whole payload waiting
@@ -1734,7 +1733,7 @@ index 0000000..2bed5d7
 +    st_min_d: u8,
 +    st_pre: u16,
 +    st_head: [u8; 8],
-+    /// key 8, bring-up: an RX-done before the whole packet came doesn't end it;
++    /// old key 8, bring-up: an RX-done before the whole packet came doesn't end it;
 +    /// keep reading on FIFO interrupts until the length or the timeout
 +    pub keep_after_done: bool,
 +    /// an RX-done with no sync while idle leaves the chip hunting instead of re-arming it:
@@ -1750,13 +1749,14 @@ index 0000000..2bed5d7
 +    poke_n: u8,
 +    /// poke_n when ctl_prev was taken: a revert keeps the writes that were confirmed with it
 +    poke_prev: u8,
-+    /// key 8 (with key 7's lengths): read the RX FIFO on a timer after the sync, one word per
++    /// old key 8 (with the old key 7's lengths): read the RX FIFO on a timer after the sync, one word per
 +    /// 13.3 ms (16 bits at 1200 baud), instead of at the chip's 0x1000 interrupt. On air that
 +    /// interrupt follows REG_5D's length (it comes about 14 bytes before the end of the
 +    /// packet), not the FIFO's fill, so a 64-byte packet overflowed the 8-word FIFO first.
 +    pub timed_read: bool,
-+    /// key 8: when to re-arm after a packet read on the timer, as an index into REARM_STEPS
-+    /// (ms after the payload's end); the last index sweeps 0-120 ms, a step per packet
++    /// when to re-arm after a packet read on the timer, as an index into REARM_STEPS (ms after
++    /// the payload's end); the last index sweeps 0-120 ms, a step per packet. Stays 0 (40 ms)
++    /// since key 8 went (2026-11-13)
 +    pub rearm_mode: u8,
 +    rearm_sweep: u8,
 +    /// the delay (ms) of the re-arm after the last timed packet, and of the one before this
@@ -1765,7 +1765,7 @@ index 0000000..2bed5d7
 +    rearm_before: i16,
 +    /// key 9: play a message by itself once it's complete or 3 s after its last packet
 +    pub auto_play: bool,
-+    /// key 0: a SysTick watchdog around each frame's decode that reports where the CPU is
++    /// old key 0: a SysTick watchdog around each frame's decode that reports where the CPU is
 +    /// stuck (`K6 HANG pc=`); off by default until the bootloader's SysTick trampoline
 +    /// (UserVectors[0]) is known to work on this radio
 +    pub watchdog: bool,
@@ -1840,7 +1840,7 @@ index 0000000..2bed5d7
 +}
 +
 +impl PagerState {
-+    /// The re-arm delay after this timed packet (ms after its payload's end): key 8's step,
++    /// The re-arm delay after this timed packet (ms after its payload's end): REARM_STEPS[rearm_mode],
 +    /// or the sweep's next. 40 ms measured best (2026-11-04).
 +    fn rearm_delay_ms(&mut self) -> u8 {
 +        match REARM_STEPS.get(self.rearm_mode as usize) {
@@ -1876,7 +1876,6 @@ index 0000000..2bed5d7
 +            ber_sum: 0,
 +            ber_n: 0,
 +            reported: 0,
-+            len_mode: 0,
 +            st_reg: 0,
 +            st_seen: 0,
 +            st_cur: 0,
@@ -1963,31 +1962,23 @@ index 0000000..2bed5d7
 +        (self.vol as i8 - VOL_0DB as i8) * 3
 +    }
 +
-+    /// REG_5D's packet-length field for `len_mode`
++    /// REG_5D's packet-length field: bytes - 1, the BK4819 way. Key 7 used to pick words - 1
++    /// (and before that two stream-mode values); one stray press halved the length and the K6
++    /// rejected every chunk of an upload (2026-11-13), so the key is gone and this is fixed.
 +    fn len_field(&self) -> u16 {
-+        let len = self.payload_len() as u16;
-+        match self.len_mode {
-+            1 => (len / 2 - 1) << 8,
-+            2 => 0xFF00,
-+            3 => 0xFFE0,
-+            _ => (len - 1) << 8,
-+        }
++        (self.payload_len() as u16 - 1) << 8
 +    }
 +
-+    /// key 0's receive variant at 2400: (REG_58 for F, REG_2B bits)
++    /// the receive variant at 2400: (REG_58 for F, REG_2B bits)
 +    fn rx2400(&self) -> (u16, u16) {
 +        RX2400_VARIANTS[self.f2400_var as usize % RX2400_VARIANTS.len()]
 +    }
 +
-+    /// Stream mode (key 7 settings 2-3) is compiled out: it never received on air (f190a46,
++    /// Stream mode (old key 7 settings 2-3) is compiled out: it never received on air (f190a46,
 +    /// 0/16), and its flash pays for REG_43 in the control-packet registers. The code stays
 +    /// for reference; the compiler drops it.
 +    fn stream(&self) -> bool {
 +        false
-+    }
-+
-+    pub fn stream_restarts(&self) -> u16 {
-+        self.st_restarts
 +    }
 +
 +    fn payload_len(&self) -> usize {
@@ -2047,7 +2038,7 @@ index 0000000..2bed5d7
 +    }
 +
 +    /// The REG_72 bit rate in force: a control-packet write wins over the PHY/baud setting
-+    /// (1800, or 2400 with key 5; `--reg 72=3065` gets F/1200 back).
++    /// (1800, or 2400 by control packet; `--reg 72=3065` gets F/1200 back).
 +    /// The rate is REG_72 / 10.3244; 1800 (0x4898) and 2000 (0x50A9) were written on air
 +    /// (2026-11-05: F/1800 12/12, F/2000 10/12, every decoded packet 0 bit errors)
 +    fn reg72(&self) -> u16 {
@@ -2568,7 +2559,7 @@ index 0000000..2bed5d7
 +    }
 +}
 +
-+// ---- stream mode (key 7's third and fourth lengths) ----
++// ---- stream mode (the old key 7's third and fourth lengths) ----
 +//
 +// With REG_5D at 0xFF00 the FD6818 passed everything it demodulated on air (2026-11-04):
 +// preamble, sync word and payload, with a FIFO interrupt every 4 words (53 ms at 1200 baud)
@@ -3626,7 +3617,6 @@ index 0000000..2bed5d7
 +        return;
 +    }
 +    let p = &mut app.pager;
-+    let mut rearm = false;
 +    match ev.key {
 +        // In the pager-only image there is nothing to go back to
 +        #[cfg(not(feature = "pager-only"))]
@@ -3648,15 +3638,8 @@ index 0000000..2bed5d7
 +        }
 +        KeyId::Up => p.vol = (p.vol + 1).min(VOL_Q8.len() as u8 - 1),
 +        KeyId::Down => p.vol = p.vol.saturating_sub(1),
-+        KeyId::Digit2 => {
-+            p.xl = !p.xl;
-+            rearm = true;
-+        }
-+        KeyId::Digit3 => {
-+            p.invert = !p.invert;
-+            rearm = true;
-+        }
 +        KeyId::Digit4 => p.emphasis = !p.emphasis,
++        KeyId::Digit9 => p.auto_play = !p.auto_play,
 +        #[cfg(feature = "hiss")]
 +        KeyId::Digit6 => {
 +            let on = unsafe { ffi::sp_hiss() } == 0;
@@ -3665,37 +3648,18 @@ index 0000000..2bed5d7
 +        }
 +        #[cfg(not(feature = "hiss"))]
 +        KeyId::Digit6 => p.raw_view = !p.raw_view,
-+        KeyId::Digit7 => {
-+            p.len_mode = (p.len_mode + 1) % 2; // 2-3 were stream mode
-+            p.st_restarts = 0;
-+            rearm = true;
-+        }
-+        KeyId::Digit8 => p.rearm_mode = (p.rearm_mode + 1) % (REARM_STEPS.len() as u8 + 1),
-+        KeyId::Digit9 => p.auto_play = !p.auto_play,
-+        // key 0 was the decode watchdog (unproven, off); now the receive variants (REG_58 at
-+        // F/2400, REG_2B at any PHY and baud)
-+        KeyId::Digit0 => {
-+            p.f2400_var = (p.f2400_var + 1) % RX2400_VARIANTS.len() as u8;
-+            rearm = true;
-+        }
 +        KeyId::Pound => {
 +            p.freq_entry = true;
 +            app.input.clear();
 +        }
-+        KeyId::Digit5 => {
-+            p.baud_2400 = !p.baud_2400;
-+            rearm = true;
-+        }
 +        KeyId::Asterisk => clear_store(app),
 +        #[cfg(feature = "spilib")]
 +        KeyId::Side1 => lib_run(app, syst, AGAIN_SLOT),
-+        _ => {}
-+    }
-+    if rearm {
-+        // a key press is the person's choice: no control-packet revert over it
-+        app.pager.ctl_prev = None;
-+        app.pager.poke_n = 0;
-+        settings_changed(app, syst);
++        // A key with no job here does nothing and reports nothing. The receive settings keys
++        // that can leave the K6 deaf (2 frames, 3 RX invert, 5 baud, 7 REG_5D length, 8 re-arm
++        // delay, 0 receive variant) are gone (Jeff, 2026-11-13): one stray 7 left the K6
++        // rejecting every chunk of an upload. Control packets still set frames, baud and variant.
++        _ => return,
 +    }
 +    if !matches!(ev.key, KeyId::Digit6 | KeyId::Pound) {
 +        report_cfg(app, key_name(ev.key));
@@ -4262,7 +4226,7 @@ index 0000000..2bed5d7
 +
 +/// Keys up on the master side's TX frequency and power (FM, no CTCSS) and
 +/// sends test packet 0 of the spec (profile L) twice in F, at the
-+/// baud rate key 5 set (F at 2400: the FFSK 1200/2400 Hz mode, for checking on the IC-7100
++/// baud rate a control packet set (F at 2400: the FFSK 1200/2400 Hz mode, for checking on the IC-7100
 +/// that the chip really sends it at 2400 baud).
 +/// (Not in the `lean` builds: the codebook install image, flashed once, and the sotto 1200
 +/// fallback with the table in MCU flash.)
@@ -4305,16 +4269,15 @@ index 0000000..2bed5d7
 +        return;
 +    }
 +    delay::ms(syst, 300); // carrier lead-in for the IC-7100's AGC
-+    // REG_5D sets the TX length too: 64 bytes, whatever key 2 and key 7 chose
-+    let saved = (app.pager.xl, app.pager.len_mode);
++    // REG_5D sets the TX length too: 64 bytes, whatever profile a control packet chose
++    let saved = app.pager.xl;
 +    app.pager.xl = false;
-+    app.pager.len_mode = 0;
 +    for _ in 0..2 {
 +        configure(app, syst);
 +        tx_packet(app, syst, &words);
 +        delay::ms(syst, 100);
 +    }
-+    (app.pager.xl, app.pager.len_mode) = saved;
++    app.pager.xl = saved;
 +    disarm(app, syst);
 +    app.radio.enter_rx(syst); // not end_tx: no roger tone after the test
 +    app.sync_watching_to_master(syst);
@@ -4481,10 +4444,9 @@ index 0000000..2bed5d7
 +    crate::hal::txdog::limit(ARQ_TX_MAX_MS);
 +    let t0 = uptime::now();
 +    delay::ms(syst, 300); // carrier lead-in for the IC-7100's AGC and squelch
-+    // REG_5D sets the TX length too: 64 bytes, whatever key 2 and key 7 chose
-+    let saved = (app.pager.xl, app.pager.len_mode);
++    // REG_5D sets the TX length too: 64 bytes, whatever profile a control packet chose
++    let saved = app.pager.xl;
 +    app.pager.xl = false;
-+    app.pager.len_mode = 0;
 +    configure(app, syst);
 +    let mut pk = [0u8; 64];
 +    for _ in 0..2 {
@@ -4499,7 +4461,7 @@ index 0000000..2bed5d7
 +        tx_bytes(app, syst, &pk);
 +        delay::ms(syst, 40);
 +    }
-+    (app.pager.xl, app.pager.len_mode) = saved;
++    app.pager.xl = saved;
 +    disarm(app, syst);
 +    mcw_id(app, syst);
 +    app.radio.enter_rx(syst); // not end_tx: no roger tone
@@ -4562,16 +4524,9 @@ index 0000000..2bed5d7
 +
 +fn key_name(k: KeyId) -> &'static str {
 +    match k {
-+        KeyId::Digit0 => "key0",
-+        KeyId::Digit1 => "key1",
-+        KeyId::Digit2 => "key2",
-+        KeyId::Digit3 => "key3",
 +        KeyId::Digit4 => "key4",
-+        KeyId::Digit5 => "key5",
-+        KeyId::Asterisk => "clear",
-+        KeyId::Digit7 => "key7",
-+        KeyId::Digit8 => "key8",
 +        KeyId::Digit9 => "key9",
++        KeyId::Asterisk => "clear",
 +        KeyId::Menu => "menu",
 +        KeyId::Up | KeyId::Down => "vol",
 +        _ => "key",
@@ -9600,10 +9555,10 @@ index cdfa0f7..831732f 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..281dd2e
+index 0000000..6722e19
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,360 @@
+@@ -0,0 +1,357 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -9758,17 +9713,14 @@ index 0000000..281dd2e
 +    } else if p.cb < 1 {
 +        out!(b, "NO CODEBOOK ({})", p.cb);
 +    } else if p.last_result == i8::MIN {
-+        let how = if p.len_mode >= 2 { "stream" } else { "listening" };
-+        out!(b, "SYNC {} {}", p.last_sync as char, how);
++        out!(b, "SYNC {} listening", p.last_sync as char);
 +    } else {
 +        let crc = match p.last_result {
 +            -1 => "BAD",
 +            -2 => "ok?",
 +            _ => "ok",
 +        };
-+        // stream mode: RS = the stream's re-arms (restarts) instead of FIFO timeouts
-+        let (to, n) = if p.len_mode >= 2 { ("RS", p.stream_restarts()) } else { ("TO", p.timeouts) };
-+        out!(b, "SYNC {} CRC {} {:02X} {} {}", p.last_sync as char, crc, p.last_magic, to, n);
++        out!(b, "SYNC {} CRC {} {:02X} TO {}", p.last_sync as char, crc, p.last_magic, p.timeouts);
 +    }
 +    line(lcd, 39, b.as_str());
 +
