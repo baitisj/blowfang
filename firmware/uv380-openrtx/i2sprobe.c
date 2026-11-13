@@ -145,7 +145,10 @@ static const fmt_t FMTS[] = {
 static const uint8_t E0S[] = {0xC9, 0xCB, 0xC1, 0x83};
 #define NE0S (sizeof E0S / sizeof E0S[0])
 
-static int16_t cap[NCAP], capx[NCAP];
+/* DMA buffers go in .bss2, the 128 KB RAM: .bss is in the 64 KB CCM RAM on this radio
+   (OpenRTX's linker_script_MDx.ld), and no DMA reaches CCM. In .bss, every capture of the first
+   flash (2026-11-13) stopped after one halfword (n=1): the DMA's transfer error. */
+__attribute__((section(".bss2"))) static int16_t cap[NCAP], capx[NCAP];
 static char line[LINE];
 static cen_t census[2][NPINS];  /* [0]: E0 c9, [1]: E0 c8 */
 
@@ -255,14 +258,25 @@ static unsigned dma_index(const DMA_Stream_TypeDef *s)
     return ((uint32_t)s - (uint32_t)DMA1_Stream0) / 0x18u;
 }
 
+static const uint8_t DMA_SH[4] = {0, 6, 16, 22};
+
+/* a stream's flags, as LISR/HISR hold them: bit 0 FEIF, 2 DMEIF, 3 TEIF, 4 HTIF, 5 TCIF */
+static unsigned dma_flags(const DMA_Stream_TypeDef *s)
+{
+    unsigned i = dma_index(s);
+    return i < 4 ? (DMA1->LISR >> DMA_SH[i]) & 0x3Du : (DMA1->HISR >> DMA_SH[i - 4]) & 0x3Du;
+}
+
+static unsigned last_flags;     /* the last capture's DMA flags (ext stream's << 8) */
+static uint16_t last_sr;        /* and its SPI SR before the port was stopped */
+
 static void dma_clear(const DMA_Stream_TypeDef *s)
 {
-    static const uint8_t SH[4] = {0, 6, 16, 22};
     unsigned i = dma_index(s);
     if (i < 4)
-        DMA1->LIFCR = 0x3Du << SH[i];
+        DMA1->LIFCR = 0x3Du << DMA_SH[i];
     else
-        DMA1->HIFCR = 0x3Du << SH[i - 4];
+        DMA1->HIFCR = 0x3Du << DMA_SH[i - 4];
 }
 
 static void dma_off(DMA_Stream_TypeDef *s)
@@ -365,6 +379,8 @@ static unsigned capture(const i2sp_ops *o, const port_t *p, const fmt_t *f, int 
     i = NCAP - p->dma->NDTR;
     if (p->dma_ext)
         *gx = NCAP - p->dma_ext->NDTR;
+    last_flags = dma_flags(p->dma) | (p->dma_ext ? dma_flags(p->dma_ext) << 8 : 0u);
+    last_sr = (uint16_t)p->spi->SR;
     p->spi->CR2 = 0;
     p->spi->I2SCFGR = 0;
     if (p->ext)
@@ -390,7 +406,7 @@ static void report(const fmt_t *f, unsigned fs, unsigned got, unsigned gx, int e
     unsigned ch, nch = f->words;
     size_t len = strlen(line);
     char tag[3] = {'a', '0', 0};
-    snprintf(line + len, LINE - len, " n=%u", got);
+    snprintf(line + len, LINE - len, " n=%u f=%03x sr=%03x", got, last_flags, (unsigned)last_sr);
     for (ch = 0; ch < nch; ch++) {
         tag[1] = (char)('0' + ch);
         i2sp_analyse(cap + ch, got / nch, nch, fs, &s);
@@ -470,11 +486,16 @@ void i2sp_pass(const i2sp_ops *o)
     i2sp_stats s;
     cyc_on();
     snprintf(line, LINE, "i2sprobe start e0=%02x e1=%02x e2=%02x e3=%02x e4=%02x e5=%02x 06=%02x 26=%02x mux=%u "
-             "pll=%u clk=%lu", e0, o->c6000_read(o->ctx, 0xE1), o->c6000_read(o->ctx, 0xE2),
+             "pll=%u clk=%lu cap=%08lx", e0, o->c6000_read(o->ctx, 0xE1), o->c6000_read(o->ctx, 0xE2),
              o->c6000_read(o->ctx, 0xE3), o->c6000_read(o->ctx, 0xE4), o->c6000_read(o->ctx, 0xE5),
              o->c6000_read(o->ctx, 0x06), r26, (unsigned)((MUX_PORT->ODR >> MUX_PIN) & 1u),
-             (unsigned)((RCC->CR & RCC_CR_PLLI2SRDY) != 0), (unsigned long)SystemCoreClock);
+             (unsigned)((RCC->CR & RCC_CR_PLLI2SRDY) != 0), (unsigned long)SystemCoreClock,
+             (unsigned long)(uint32_t)cap);
     say(o);
+    if (((uint32_t)cap >> 24) == 0x10u) {
+        o->say(o->ctx, "i2sprobe end (capture buffer in CCM, which no DMA reaches)");
+        return;
+    }
     o->c6000_write(o->ctx, 0x26, 0xFD);   /* the C6000's FM receive on (OpenRTX: radio_enableAfOutput) */
     do_census(o, 0, 0xC9);
     if (!o->stop(o->ctx))

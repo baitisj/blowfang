@@ -126,13 +126,31 @@ index 393659a..5c31aed 100644
  
  /**
 diff --git a/openrtx/src/core/state.c b/openrtx/src/core/state.c
-index 4e8e063..f65f493 100644
+index 4e8e063..8b1d41f 100644
 --- a/openrtx/src/core/state.c
 +++ b/openrtx/src/core/state.c
-@@ -45,6 +45,18 @@ void state_init()
+@@ -10,6 +10,7 @@
+ #include <stdlib.h>
+ #include "core/event.h"
+ #include "core/state.h"
++#include "blowfang_config.h"  /* blowfang: BLOWFANG_I2SPROBE */
+ #include "core/battery.h"
+ #include "hwconfig.h"
+ #include "interfaces/platform.h"
+@@ -45,6 +46,28 @@ void state_init()
          state.channel = cps_getDefaultChannel();
      }
  
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++    /*
++     * blowfang I2S probe image: boot in PAGER mode on 440.850 MHz, where the
++     * probe runs, so a run needs no menus.
++     */
++    state.channel.mode         = OPMODE_PAGER;
++    state.channel.rx_frequency = 440850000;
++    state.channel.tx_frequency = 440850000;
++#endif
++
 +#ifdef PLATFORM_LINUX
 +    /*
 +     * blowfang test hook: BLOWFANG_PAGER set starts the emulator in PAGER
@@ -150,10 +168,10 @@ index 4e8e063..f65f493 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..c87a6cc
+index 0000000..e0f6501
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,507 @@
+@@ -0,0 +1,520 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -205,8 +223,17 @@ index 0000000..c87a6cc
 +static constexpr size_t   PV_BLOCK  = SOTTO_LR_SAMPLES_PER_FRAME;  // 40 ms at 8 kHz
 +static constexpr size_t   PV_STACK  = 16384;
 +
-+static stream_sample_t txBuf[2 * BLOCK];
-+static stream_sample_t pvBuf[2 * PV_BLOCK];
++// Audio stream buffers are read by DMA, so on the radio they go in .bss2 (the
++// 128 KB RAM): .bss is in the 64 KB CCM RAM (linker_script_MDx.ld), which no
++// DMA reaches. (The I2S probe's buffers in .bss failed this way on the first
++// flash, 2026-11-13; these were never run on the radio before that.)
++#if defined(PLATFORM_MDUV3x0)
++#define DMA_RAM __attribute__((section(".bss2")))
++#else
++#define DMA_RAM
++#endif
++DMA_RAM static stream_sample_t txBuf[2 * BLOCK];
++DMA_RAM static stream_sample_t pvBuf[2 * PV_BLOCK];
 +static volatile bool   pvRequest = false;   // set by the UI (# key)
 +static volatile bool   pvStop    = false;
 +static volatile bool   pvRunning = false;
@@ -349,7 +376,11 @@ index 0000000..c87a6cc
 +static volatile bool pbBusy = false;
 +static bool          pbJoinable = false;
 +static pthread_t     pbThread;
-+static stream_sample_t pbAdcBuf[2048];
++// DMA buffer: .bss is in the 64 KB CCM RAM on this radio (linker_script_MDx.ld),
++// which no DMA can reach, so it goes in .bss2 (the 128 KB RAM). In .bss, the ADC
++// stream never filled it and inputStream_getData() waited forever (first flash,
++// 2026-11-13).
++DMA_RAM static stream_sample_t pbAdcBuf[2048];
 +
 +static void pbSay(void *ctx, const char *s)
 +{

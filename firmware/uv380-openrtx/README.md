@@ -88,7 +88,18 @@ keep power low and check it on the bench before any on-air use.
 (CI builds both images). It asks whether the radio's received audio can reach the MCU with no
 mod, which is the block for K6 to UV-380. In this image, PAGER mode receives while it's idle, and
 `i2sprobe.c` runs a pass every 5 s. Each pass writes its lines to the radio's USB serial port.
-PTT and # still work: the probe stands aside for them.
+PTT and # still work: the probe stands aside for them. On the radio, this image boots straight
+into PAGER mode on 440.850 MHz, so a run needs no menus (PTT there sends the pager message: don't
+press it unless that's the test).
+
+**DMA buffers.** On this radio OpenRTX's linker script puts `.bss` in the 64 KB CCM RAM, which no
+DMA can reach. Every buffer a DMA stream reads or writes (the probe's captures, its PC3 input, and
+the PAGER mode's TX and speaker buffers) is in `.bss2`, the 128 KB RAM. The first flash
+(2026-11-13) had them in `.bss`: every capture stopped after one halfword (`n=1`), and the PC3
+step waited forever for its input stream, which froze the radio. Its census still showed the
+C6000 clocking I2S3 by itself with no mod: PA15 (WS) about 8 kHz, PC10 (CK) toggling fast, data
+on PC12. Each capture line now also has `f=` (the DMA streams' flags: bit 3 transfer error,
+bit 5 complete; the ext stream's << 8) and `sr=` (the SPI's status register).
 
 The idea: on this radio the AT1846S's FM audio goes into the HR_C6000 (PD9 high), and the C6000's
 codec digitises it for the speaker. That codec has an I2S port, and the stock MD-380 firmware
