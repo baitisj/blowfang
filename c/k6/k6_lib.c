@@ -37,16 +37,20 @@ int kl_install(const uint8_t *img, const kl_flash_t *fl) {
 }
 
 int kl_info(int slot, const kl_flash_t *fl, kl_info_t *out) {
-  uint8_t h[KM_HDR];
-  unsigned i, blank = 1;
+  uint8_t h[KM_HDR + 4 + KL_NAME];
+  unsigned i, blank = 1, named;
   if (slot < 0 || slot >= KL_SLOTS) return KL_SLOT;
-  if (fl->read(KL_SLOT_ADDR(slot), h, KM_HDR)) return KL_IO;
+  if (fl->read(KL_SLOT_ADDR(slot), h, sizeof h)) return KL_IO;
   for (i = 0; i < KM_HDR; i++) blank &= h[i] == 0xFF;
   if (blank) return KL_EMPTY;
   if (!hdr_len(h)) return KL_BAD_HDR;
   out->code_len = (uint16_t)u16le(h + 4), out->entry = (uint16_t)u16le(h + 6);
   out->serial = (uint32_t)h[8] | (uint32_t)h[9] << 8 | (uint32_t)h[10] << 16 | (uint32_t)h[11] << 24;
   out->level = h[12], out->flags = h[13];
+  /* the name block: a module's (not a page's or a deck's), whole inside its code */
+  named = !(h[13] & (KM_F_PAGE | KM_F_CARDS)) && out->code_len >= 4 + KL_NAME && h[16] == 'K' &&
+          h[17] == '6' && h[18] == 'N' && h[19] == 'M';
+  for (i = 0; i < KL_NAME; i++) out->name[i] = named ? (char)h[KM_HDR + 4 + i] : 0;
   return 0;
 }
 
@@ -56,7 +60,7 @@ static int load(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap, unsi
   unsigned total;
   int r = kl_info(slot, fl, &inf);
   if (r) return r;
-  if (!(inf.flags & KM_F_PAGE) != !page) return KL_BAD_HDR;
+  if (!(inf.flags & KM_F_PAGE) != !page || (inf.flags & KM_F_CARDS)) return KL_BAD_HDR;
   total = KM_HDR + inf.code_len + KM_TAG;
   if (total > cap) return KL_BAD_HDR;
   if (fl->read(KL_SLOT_ADDR(slot), dst, total)) return KL_IO;

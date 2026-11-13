@@ -30,7 +30,10 @@ LEVEL = 1
 TLM_MAX = 12             # telemetry parts a module may ask for
 LIB_FLAG = 0x01          # header byte 13: keep it in the SPI module library (c/k6/k6_lib.h)
 PAGE_FLAG = 0x02         # with LIB_FLAG: a code page the image loads itself, never run (kl_page)
-LIB_SLOTS = 12           # library slots, slot n at 0x110000 + n * 16 KB
+CARDS_FLAG = 0x04        # with LIB_FLAG: a deck of help cards, never run
+LIB_SLOTS = 32           # library slots, slot n at 0x110000 + n * 16 KB (12 before the release plan)
+NAME_MAGIC = b"K6NM"     # a module's name block (K6_MODULE_NAME, k6_mod.h): first in its code
+NAME_LEN = 12
 LIB_SLOT_BYTES = 0x4000
 TLM_PART = 57
 HDR = 16
@@ -111,6 +114,13 @@ def build(src, cc="clang", ld="ld.lld", objcopy="llvm-objcopy", nm="llvm-nm", cf
     return bins[0], entry
 
 
+def module_name(code):
+    """The name a module's code carries (K6_MODULE_NAME), or None"""
+    if len(code) < 4 + NAME_LEN or code[:4] != NAME_MAGIC:
+        return None
+    return code[4:4 + NAME_LEN].split(b"\0")[0].decode("ascii", "replace")
+
+
 def source_level(src):
     """The API level a module's C source declares (#define K6_MODULE_LEVEL n), or 1."""
     m = re.search(r"^\s*#\s*define\s+K6_MODULE_LEVEL\s+(\d+)", open(src).read(), re.M)
@@ -124,14 +134,15 @@ def source_opt(src):
     return m.group(1) if m else "s"
 
 
-def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, magic=b"K6M"):
+def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, magic=b"K6M", cards=False):
     """Header + code + SipHash tag (k6_mod.h). tlm: text parts of say lines the K6 sends back
     after the module runs, when the upload asks for a reply (packets(..., arq=True)). lib: a
     slot of the K6's SPI module library (c/k6/k6_lib.h, 0..LIB_SLOTS-1): the K6 keeps the
     module there (flag LIB_FLAG) instead of running it, and runs it later on control action lib.
     page (with lib): a code page (PAGE_FLAG, tools/k6_pages.py): kept in the slot, never run as a
     module; the image that it was linked against loads it itself. magic: the radio whose API
-    table the module is for (b"U3M" the UV-380, modem.uv380mod)."""
+    table the module is for (b"U3M" the UV-380, modem.uv380mod). cards (with lib): a deck of
+    help cards (CARDS_FLAG), kept in the slot and never run."""
     code = bytes(code)
     if entry >= len(code) or entry & 1 or len(code) > 0xFFFF:
         raise ValueError("bad entry offset or code length")
@@ -141,9 +152,11 @@ def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, ma
         raise ValueError(f"library slot 0..{LIB_SLOTS - 1}")
     if lib is not None and 16 + len(code) + 8 > LIB_SLOT_BYTES:
         raise ValueError(f"{16 + len(code) + 8} bytes is more than a library slot ({LIB_SLOT_BYTES})")
-    if page and lib is None:
-        raise ValueError("a page goes into a library slot")
-    flags, slot = (0, 0) if lib is None else (LIB_FLAG | (PAGE_FLAG if page else 0), lib)
+    if (page or cards) and lib is None:
+        raise ValueError("a page or a deck goes into a library slot")
+    if page and cards:
+        raise ValueError("a page or a deck, not both")
+    flags, slot = (0, 0) if lib is None else (LIB_FLAG | (PAGE_FLAG if page else 0) | (CARDS_FLAG if cards else 0), lib)
     if len(magic) != 3:
         raise ValueError("the magic is three bytes")
     hdr = bytes(magic) + bytes([ABI]) + struct.pack("<HHIBBBB", len(code), entry, serial & 0xFFFFFFFF, level,

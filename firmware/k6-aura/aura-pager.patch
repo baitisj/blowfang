@@ -312,7 +312,7 @@ new file mode 100644
 index 0000000..84ca950
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4411 @@
+@@ -0,0 +1,4415 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -609,6 +609,7 @@ index 0000000..84ca950
 +        pub serial: u32,
 +        pub level: u8,
 +        pub flags: u8,
++        pub name: [u8; 12],
 +    }
 +    #[repr(C)]
 +    pub struct KmStatus {
@@ -3366,16 +3367,17 @@ index 0000000..84ca950
 +// its 16 KB slot at 0x110000 + slot * 0x4000 instead of being run; control action lib (11)
 +// reads a slot back into the shared block, checks its tag again and runs it as one sent over
 +// the air. The only SPI writes are an install's (its sectors, once), never while keyed, and
-+// only inside 0x110000-0x13FFFF; the message store never goes to SPI.
++// only inside 0x110000-0x18FFFF (32 slots since the release plan); the message store never
++// goes to SPI.
 +
 +#[cfg(feature = "spilib")]
 +const KM_F_LIB: u8 = 1;
 +#[cfg(feature = "spilib")]
 +const KL_LO: u32 = 0x11_0000;
 +#[cfg(feature = "spilib")]
-+const KL_HI: u32 = 0x14_0000;
++const KL_HI: u32 = 0x19_0000;
 +#[cfg(feature = "spilib")]
-+const KL_SLOTS: i32 = 12;
++const KL_SLOTS: i32 = 32;
 +/// writes allowed: set only around kl_install, and only while not transmitting
 +#[cfg(feature = "spilib")]
 +static mut LIB_WRITE: bool = false;
@@ -3431,9 +3433,11 @@ index 0000000..84ca950
 +        let r = unsafe { ffi::kl_info(n, &LIB_FL, &mut i) };
 +        if r != -1 {
 +            used += 1;
++            let nl = i.name.iter().position(|&c| c == 0).unwrap_or(i.name.len());
 +            rl!(
-+                "K6 LIB slot={} r={} code={} serial={} level={}",
-+                n, r, i.code_len, i.serial, i.level
++                "K6 LIB slot={} r={} code={} serial={} level={} flags={} name={}",
++                n, r, i.code_len, i.serial, i.level, i.flags,
++                core::str::from_utf8(&i.name[..nl]).unwrap_or("?")
 +            );
 +        }
 +    }
