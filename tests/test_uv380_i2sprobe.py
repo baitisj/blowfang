@@ -97,3 +97,67 @@ def test_format_and_pass(lib):
     assert any("with any nonzero" in r and r.startswith("3 captures, 3 with") for r in rep), rep
     assert any(r.startswith("captures with the 1000 Hz tone") and r.endswith(": 1") for r in rep), rep
     assert any("mx=1 P16 8000: a0" in r for r in rep) and rep[-1].startswith("PC3 ADC: rms 3"), rep
+
+
+def test_commands_on_the_host(lib):
+    """the command parser runs anywhere: help, auto, address checks; the rest says radio only"""
+    said = []
+    ops = Ops(SAY(lambda ctx, ln: said.append(ln.decode())))
+
+    def cmd(s):
+        said.clear()
+        return lib.i2sp_command(ctypes.byref(ops), s.encode())
+
+    assert cmd("help") == 0 and said[0].startswith("i2sprobe v2 commands") and said[-1] == "ok help"
+    assert cmd("auto 0") == 1 and said == ["ok auto 0"]           # I2SP_AUTO_OFF
+    assert cmd("  auto 1") == 2 and said == ["ok auto 1"]         # I2SP_AUTO_ON
+    assert cmd("") == 0 and said == []
+    assert cmd("bogus 1") == -1 and said[-1].startswith("err bogus")
+    for c in ("pass", "c6r e0", "cap SPI3 s P16 8000", "raw 16", "buf", "pin PA15 in up", "clk on"):
+        assert cmd(c) == -1 and said == [f"err {c.split()[0]}: the radio only"], (c, said)
+    # writes only to the I2S ports and DMA1 streams 0, 2, 3: never GPIO, RCC or flash
+    assert cmd("wr 40003c1c 0") == -1 and said == ["err wr: the radio only"]
+    assert cmd("wr 40020c14 100") == -1 and said[0].startswith("err wr 40020c14")   # GPIOD ODR
+    assert cmd("rd 40020c10 4") == -1 and said == ["err rd: the radio only"]
+    assert cmd("rd 50000000 1") == -1 and said[0].startswith("err rd 50000000")
+    assert cmd("rd 20000000 1025") == -1
+
+
+@pytest.mark.parametrize("addr,ok", [
+    (0x40003C00, 1), (0x40003C1C, 1), (0x40003C20, 1), (0x40003C24, 0),   # SPI3 CR1 .. I2SPR
+    (0x40003800, 1), (0x40003400, 1), (0x40004000, 1), (0x40004020, 1),   # SPI2, I2S2ext, I2S3ext
+    (0x40026008, 1), (0x40026000, 0), (0x4002600C, 0),                    # DMA1 LIFCR only
+    (0x40026010, 1), (0x40026024, 1), (0x40026028, 0),                    # stream 0; not stream 1
+    (0x40026040, 1), (0x40026058, 1), (0x40026070, 0),                    # streams 2, 3; not 4
+    (0x40023830, 0), (0x40023884, 0), (0x40020C14, 0), (0x40020814, 0),   # RCC, GPIOD/C ODR
+    (0x08000000, 0), (0x20000000, 0), (0x40003C02, 0),                    # flash, RAM, unaligned
+])
+def test_write_allow_list(lib, addr, ok):
+    assert lib.i2sp_wr_allowed(ctypes.c_uint32(addr)) == ok
+
+
+def test_cmd_tool_over_a_pty():
+    """the tool's cmd: sends each line, prints until its ok/err, counts the errors"""
+    import os
+    import pty
+    import threading
+    m, s = pty.openpty()
+    got = []
+
+    def radio():
+        buf = b""
+        for _ in range(2):
+            while b"\n" not in buf:
+                buf += os.read(m, 64)
+            ln, buf = buf.split(b"\n", 1)
+            if ln == b"buf":
+                os.write(m, b"auto pass line\r\nok buf cap=20001000 capx=20002000 n=2048\r\n")
+            else:
+                os.write(m, b"err " + ln + b": unknown command\r\n")
+
+    t = threading.Thread(target=radio)
+    t.start()
+    bad = tool.command(os.ttyname(s), ["buf", "nope"], out=got.append, timeout=5)
+    t.join(5)
+    assert bad == 1
+    assert got == ["auto pass line", "ok buf cap=20001000 capx=20002000 n=2048", "err nope: unknown command"]

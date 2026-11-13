@@ -63,6 +63,33 @@ unsigned i2sp_format(char *buf, unsigned size, const char *tag, const i2sp_stats
 /* One whole pass (the radio only; elsewhere it says that it can't run). */
 void i2sp_pass(const i2sp_ops *ops);
 
+/* One command line from USB serial (the probe image reads them between passes), so hamlet can
+ * experiment with the I2S port with no reflash. Each command ends with a line "ok ..." or
+ * "err ...". Commands:
+ *   help                       this list
+ *   pass                       one whole pass now
+ *   auto 0|1                   passes every few seconds off / on (returns I2SP_AUTO_OFF / _ON)
+ *   c6r RR | c6w RR VV         a C6000 configuration register (hex)
+ *   rd ADDR [N]                N 32-bit words (hex, up to 1024, 8 a line) from flash, RAM,
+ *                              peripherals or the core's registers
+ *   wr ADDR VAL                a 32-bit write, only to the I2S ports' registers (SPI2, SPI3,
+ *                              I2S2ext, I2S3ext), DMA1's LIFCR and its streams 0, 2 and 3
+ *                              (i2sp_wr_allowed): nothing that can key the radio
+ *   pin NAME MODE [PULL [AF]]  a probe pin (PA15 PC10 PC11 PC12 PB12-15 PC2 PB10 PC3):
+ *                              MODE in|out|af|an, PULL none|up|down, AF 0-15
+ *   clk on|off                 DMA1, SPI2 and SPI3 clocks and PLLI2S
+ *   cap PORT s|m FMT FS        one capture on SPI3 or SPI2, as slave or master, FMT P16 P32 M32
+ *                              S16, its usual line
+ *   raw [a|b] [N]              the last capture's first N halfwords (SD, or ext SD with b)
+ *   buf                        the capture buffers' addresses (for DMA set up by hand)
+ * Returns 0, or I2SP_AUTO_ON / I2SP_AUTO_OFF for "auto", or -1 for an error. */
+#define I2SP_AUTO_OFF 1
+#define I2SP_AUTO_ON 2
+int i2sp_command(const i2sp_ops *ops, const char *line);
+
+/* may "wr" write the 32-bit word at addr? (host and radio) */
+int i2sp_wr_allowed(uint32_t addr);
+
 #ifdef __cplusplus
 }
 #endif

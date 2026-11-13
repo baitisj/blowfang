@@ -168,10 +168,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..e0f6501
+index 0000000..0edf833
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,520 @@
+@@ -0,0 +1,564 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -464,21 +464,65 @@ index 0000000..e0f6501
 +#endif
 +}
 +
++// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
++// passes, so hamlet can drive the probe with no reflash: "auto 0" stops the
++// passes, "help" lists the rest.
++static bool     pbAuto = true;
++static char     pbCmd[96];
++static unsigned pbCmdLen = 0;
++
++static void pbPoll(const i2sp_ops *ops)
++{
++#ifdef PLATFORM_LINUX
++    (void) ops;
++#else
++    char c;
++    while(vcom_readBlock(&c, 1) == 1)
++    {
++        if((c != '\r') && (c != '\n'))
++        {
++            if(pbCmdLen < sizeof(pbCmd) - 1)
++                pbCmd[pbCmdLen++] = c;
++            continue;
++        }
++        if(pbCmdLen == 0)
++            continue;
++        pbCmd[pbCmdLen] = '\0';
++        pbCmdLen = 0;
++        if(pbStop(NULL))
++        {
++            pbSay(NULL, "err busy (PTT or the speaker preview)");
++            continue;
++        }
++        pbBusy = true;
++        int r = i2sp_command(ops, pbCmd);
++        pbBusy = false;
++        if(r == I2SP_AUTO_ON)
++            pbAuto = true;
++        else if(r == I2SP_AUTO_OFF)
++            pbAuto = false;
++    }
++#endif
++}
++
 +static void *probeFunc(void *arg)
 +{
 +    (void) arg;
 +    const i2sp_ops ops = {pbSay, pbWrite, pbRead, pbSleep, pbStop, pbAdc, NULL};
 +    while(pbRun)
 +    {
-+        if(pbStop(NULL) == false)
++        if(pbAuto && (pbStop(NULL) == false))
 +        {
 +            pbBusy = true;
 +            if(pbStop(NULL) == false)
 +                i2sp_pass(&ops);
 +            pbBusy = false;
 +        }
-+        for(unsigned t = 0; (t < PB_PAUSE_MS) && pbRun; t += 100)
-+            sleepFor(0, 100);
++        for(unsigned t = 0; (t < PB_PAUSE_MS) && pbRun; t += 50)
++        {
++            pbPoll(&ops);
++            sleepFor(0, 50);
++        }
 +    }
 +    return NULL;
 +}

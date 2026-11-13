@@ -101,6 +101,15 @@ C6000 clocking I2S3 by itself with no mod: PA15 (WS) about 8 kHz, PC10 (CK) togg
 on PC12. Each capture line now also has `f=` (the DMA streams' flags: bit 3 transfer error,
 bit 5 complete; the ext stream's << 8) and `sr=` (the SPI's status register).
 
+**Commands over USB serial** (`i2sp_command` in `i2sprobe.h`). Between passes the probe reads
+command lines on the same port, so hamlet can try I2S settings with no reflash, each command ending
+in an `ok ...` or `err ...` line: `help`, `pass`, `auto 0|1` (the passes every few seconds),
+`c6r`/`c6w` (C6000 registers), `rd ADDR [N]` (memory and registers), `wr ADDR VAL` (only the I2S
+ports' registers and DMA1 streams 0, 2 and 3: nothing that can key the radio), `pin` (the probe's
+pins), `clk on|off`, `cap PORT s|m FMT FS` (one capture), `raw [a|b] [N]` (its samples) and `buf`.
+`python3 tools/uv380_i2sprobe.py cmd /dev/ttyACM0 "auto 0" "cap SPI3 s P16 8000" "raw 64"` sends
+them and waits for each answer (stop any listener first).
+
 The idea: on this radio the AT1846S's FM audio goes into the HR_C6000 (PD9 high), and the C6000's
 codec digitises it for the speaker. That codec has an I2S port, and the stock MD-380 firmware
 uses SPI3/I2S3 to its C5000. PA15, PC10, PC11 and PC12 aren't in OpenRTX's pin map for this
