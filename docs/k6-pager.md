@@ -50,7 +50,7 @@ with the receiver firmware. The test vectors in that spec are in `tests/test_k6.
   sotto 1200 clip ("with... frequency tracking"). The radio and the PC twin (`expand_pauses`,
   `k6_pcmhash`) fade alike, so `pcm=` checks still match. All three together on 25 clips: XL
   19.0% fewer packets (2400), 21.5% (1200); L 15.5% / 15.0%.
-- **Profile XL** (`--payload XL`, K6 key 2): 128-byte payload, the same header, 20 frames, no
+- **Profile XL** (`--payload XL`; the K6 boots at XL, key 2 switched it until 2026-11-13, now only a control packet does): 128-byte payload, the same header, 20 frames, no
   reserved bytes; groups of 8 packets carry 160 frames. In packet mode the preamble is 16 bytes
   before the first packet and 24 before the rest: after a 128-byte packet the K6's chip reports
   its end late, and with 16 bytes the K6 false-synced on the next one. On air (2026-11-04, K6
