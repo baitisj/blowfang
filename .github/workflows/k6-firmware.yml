@@ -127,7 +127,6 @@ jobs:
             tests/test_k6_pocsag.py \
             tests/test_k6_range.py \
             tests/test_k6_rangetx.py \
-            tests/test_k6_tonewr.py \
             tests/test_k6_rt.py \
             tests/test_k6_rxmap.py \
             tests/test_k6_scan.py \
@@ -135,6 +134,7 @@ jobs:
             tests/test_k6_stop.py \
             tests/test_k6_surf.py \
             tests/test_k6_sweep.py \
+            tests/test_k6_tonewr.py \
             tests/test_k6_txrules.py \
             tests/test_k6_update.py \
             tests/test_k6_vlr.py \
