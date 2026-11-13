@@ -32,7 +32,8 @@ PERIOD = 400            # samples between modelled DFS edges
 
 def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spare=1024,
         mmio=(), level=2, tx=None, rx_hz=440_850_000, keys=(), cal=None, tune=None, count=200_000_000, code=None, gpiob=None,
-        flash=None, lcd=None, pb_idr=None, led=None, keypad=None, fsk=None, paint=False, clock=None):
+        flash=None, lcd=None, pb_idr=None, led=None, keypad=None, fsk=None, paint=False, clock=None,
+        write_us=0):
     """regs: the chip's registers at the start. GP0 drives PB1 only while REG_33 bit 8 is clear
     (else PB1's pull-up reads 1), following REG_34[3:0]: 13 (DFS) toggles every PERIOD reads of
     PB1 once i2s_en's bit is set, 15 (XTAL/2) on every read, others hold 0. gp0_gate: the image
@@ -42,7 +43,8 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
     value, st)) for more MCU peripherals. level: the API level the table says. tx: a dict
     for the level-3 transmitter: tx["on_ret"] is what tx_on returns (default 0), and every
     tx_on/tx_off/tx_pa call is logged to tx["log"] as (name, arg, us); tx_pa returns -1 from
-    tx["dead_us"] on, and every fd_write to tx["w"] as (reg, value, us). rx_hz: what rx_hz says.
+    tx["dead_us"] on, and every fd_write to tx["w"] as (reg, value, us) and its time in ns (with
+    k6_clock's fraction) to tx["w_ns"]. rx_hz: what rx_hz says.
     keys: (from_us, to_us) spans while key_down and key_poll read 1. cal: a dict for level 4's
     calibration record: cal["flash"] (bytes, default 64 x 0xFF) is what cal_read reads, and each
     cal_write lands there and in cal["writes"] (refused, -1, after the first or while keyed).
@@ -72,6 +74,8 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
     clock: a dict for level 8's core clock: clock["fix"] = (us, utc ms of day, date, w ms) is the
     fix at that emulated time (None or absent: no clock), kept as the core does (the bound growing
     1 ms in 4 s); each clock_set lands in clock["sets"] as (us, ms, date, w) and becomes the fix.
+    write_us: what an fd_write takes (us, or a function of (reg, us) giving it); the write lands
+    (in tx["w"], the registers) at its end.
     Returns (ret, said lines, registers at the end, writes)."""
     unicorn = pytest.importorskip("unicorn")
     from unicorn import arm_const as A
@@ -177,11 +181,13 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
             else:
                 ret = v
         elif name == "fd_write":
+            st["us"] += write_us(r0, st["us"]) if callable(write_us) else write_us
             st["writes"].append((r0, r1))
             if fsk is not None:
                 fsk.write(r0, r1, st["us"])
             if tx is not None:
                 tx.setdefault("w", []).append((r0, r1, st["us"]))
+                tx.setdefault("w_ns", []).append(st["us"] * 1000 + st.get("ns", 0))
             if r0 == 0x33 and gp0_gate and not (regs.get(0x33, 0) ^ r1) & ~0x0101 & 0xFFFF:
                 regs[r0] = r1
             elif r0 in REFUSED:
@@ -527,6 +533,55 @@ def test_raw_records_the_bitstream():
 
 
 DMA_SRC = os.path.join(ROOT, "c", "k6", "mod", "gp0dma.c")
+
+
+def k6_clock(read_ns=500, rcc_apb2=0):
+    """RCC, TIM14 and TIM17 as on the K6, on the run's own time (st["us"]): TIM17 counts 96 MHz
+    cycles while it runs, TIM14 100 us ticks. Each counter read moves time on by read_ns, so a
+    module spinning on them sees time pass. -> (mmio, rcc, tim)"""
+    rcc = {0x14: 0x14, 0x18: rcc_apb2}
+    tim = {}
+
+    def tick(st):
+        st["ns"] = st.get("ns", 0) + read_ns
+        st["us"] += st["ns"] // 1000
+        st["ns"] %= 1000
+
+    def cycles(st):
+        return st["us"] * 96 + st.get("ns", 0) * 96 // 1000
+
+    def rcc_r(uc, off, size, st):
+        return rcc.get(off, 0)
+
+    def rcc_w(uc, off, size, value, st):
+        rcc[off] = value
+
+    def tim_r(uc, off, size, st):
+        if off == 0x24:
+            tick(st)
+            if tim.get(0x00, 0) & 1:
+                return (cycles(st) - tim["c0"]) & 0xFFFF
+            return tim.get("held", 0)
+        return tim.get(off, 0)
+
+    def tim_w(uc, off, size, value, st):
+        assert rcc[0x18] & (1 << 18), "TIM17 written with its clock off"
+        if off == 0x00 and value & 1 and not tim.get(0x00, 0) & 1:
+            tim["c0"] = cycles(st) - tim.get("held", 0)
+        elif off == 0x00 and not value & 1 and tim.get(0x00, 0) & 1:
+            tim["held"] = (cycles(st) - tim["c0"]) & 0xFFFF
+        tim[off] = value
+
+    def t14_r(uc, off, size, st):
+        assert off == 0x24, hex(off)
+        tick(st)
+        return (st["us"] // 100) & 0xFFFF
+
+    def t14_w(uc, off, size, value, st):
+        raise AssertionError("module wrote TIM14")
+    mmio = [(0x40021000, 0x400, rcc_r, rcc_w), (0x40014800, 0x400, tim_r, tim_w),
+            (0x40002000, 0x400, t14_r, t14_w)]
+    return mmio, rcc, tim
 
 
 def dma_bench(f_if=17000.0, dev=4000.0, f_tone=1000.0, rcc_apb2=0, ccr1=0, dma_hz=5.71e6):

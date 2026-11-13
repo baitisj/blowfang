@@ -575,6 +575,19 @@ def dump_report(lines, cands=None):
     return out
 
 
+def txhdr(npk=6):
+    """the C header c/k6/mod/rangetx.c builds in: a burst of test_payloads(npk) as tone bits (1:
+    600 Hz), eight a byte, the first in the top bit"""
+    t = tone_bits(burst_bits(test_payloads(npk)))
+    b = np.packbits(t)
+    rows = ",\n".join("  " + ", ".join(f"0x{v:02x}" for v in b[i:i + 16]) for i in range(0, len(b), 16))
+    return ("/* written by python -m modem.k6r txhdr: a PHY R burst of %d test packets (modem.k6r\n"
+            "   test_payloads) as tone bits for rangetx.c, 1 = 600 Hz, first bit in the top bit.\n"
+            "   SPDX-License-Identifier: MIT */\n"
+            "#define RT_PACKETS %du\n#define RT_NBITS %du\n"
+            "static const uint8_t RT_TONES[%d] = {\n%s};\n" % (npk, npk, len(t), len(b), rows))
+
+
 def main(argv=None):
     import argparse
     import sys
@@ -588,6 +601,9 @@ def main(argv=None):
     q.add_argument("--preemph", choices=["off", "on", "alt"], default="on",
                    help="on (the default since bench run 2: what the UV-380 sends, and what the "
                         "K6 reads with its de-emphasis off), off, or alt (every other burst)")
+    q = sub.add_parser("txhdr", help="the C header of tone bits the K6's sender (rangetx.c) builds in")
+    q.add_argument("out")
+    q.add_argument("--packets", type=int, default=6, help="packets a burst")
     q = sub.add_parser("report", help="a K6 log's range lines, per setting")
     q.add_argument("log")
     q = sub.add_parser("dump", help="rangerx_d's captured words, against the bench's packets")
@@ -598,6 +614,10 @@ def main(argv=None):
         write_wav(a.out, y)
         print(f"{a.out}: {len(y) / FS:.1f} s, {len(times)} bursts of {a.packets} packets "
               f"({burst_seconds(a.packets):.1f} s each)")
+    elif a.cmd == "txhdr":
+        with open(a.out, "w") as f:
+            f.write(txhdr(a.packets))
+        print(f"{a.out}: {len(burst_bits(test_payloads(a.packets)))} bits")
     elif a.cmd == "dump":
         with open(a.log, errors="replace") as f:
             print("\n".join(dump_report(f)))

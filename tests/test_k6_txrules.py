@@ -18,7 +18,8 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from test_k6_i2s import ROOT, START, need_clang, rssi_reg, run  # noqa: E402
+from test_k6_i2s import ROOT, START, k6_clock, need_clang, rssi_reg  # noqa: E402
+from test_k6_i2s import run as run_k6  # noqa: E402
 
 # Modules that key up only when a person keys them (the paddles) run the same rules in their own
 # test, with a modelled operator: morse.c in tests/test_k6_morse.py, GROUNDWAVE's gw.c (and its bot
@@ -36,6 +37,15 @@ MORSE = {"A": ".-", "G": "--.", "7": "--...", "E": ".", "W": ".--", "S": "...", 
          "K": "-.-", "N": "-.", "C": "-.-.", "Q": "--.-", "D": "-..", "I": "..", "R": ".-.", "M": "--"}
 INV = {v: k for k, v in MORSE.items()}
 LIMIT_MS = 120_000                 # the core's module TX cap (MOD_TX_MAX_MS in the Aura patch)
+
+
+def run(*a, **kw):
+    """test_k6_i2s.run with the K6's timers (TIM14, TIM17, RCC) mapped: a module may time
+    itself on TIM17 (rangetx), and must put its clock enable back"""
+    mmio, rcc, tim = k6_clock()
+    out = run_k6(*a, mmio=mmio, **kw)
+    assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1, (rcc, tim)
+    return out
 
 
 def level(src):
