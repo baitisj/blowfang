@@ -340,6 +340,7 @@ dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md
 dogfault       # level 1, bench test of the crash backstop (hal::txdog)
 dogtx          # level 3, bench test of the stuck key-up backstop (hal::txdog)
+edtrial        # level 6, the station editor's key trial: the saved stations, the editor's keys, writes nothing (c/k6/sted.c)
 fdirq          # level 2, fdtime plus interrupt state and the CPU share interrupts take
 fdtime         # level 2, how long the module API's calls take (xdmr's gap between waits)
 fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
