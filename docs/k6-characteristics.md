@@ -35,6 +35,9 @@ one of them changes.
 - The tone oscillator (REG_70/71) is phase continuous across a REG_71 change, a same-word write
   does nothing, and tone 1 runs on while REG_70 has it off (M, tonewr K9 11-13). Tone 2 (REG_72,
   REG_70 bit 7) gives nothing (M).
+- The tone oscillator's audio is flat (no pre-emphasis), so a de-emphasising receiver (the
+  UV-380: 6 dB less at 1200 than 600 Hz) tilts it; senders set the level per tone (rangetx: 1200 Hz
+  at 2.5 times the 600's REG_70 gain) (M, K10 11-13; docs/k6-range.md).
 - The MCU's clock runs 270-380 ppm slow against the FD6818's crystal (and true time), and it
   moves: 355, 377, 271 and 292 ppm on four runs minutes apart (M, K7-K10 11-13), wandering within
   an 11.5 s burst too, like an RC oscillator. Anything that times audio on TIM17/TIM14 against the

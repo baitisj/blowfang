@@ -34,6 +34,11 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
 - K6 PHY R (600/1200 Hz FFSK, 1200 baud, coded) decodes 42 of 42 live (M, 11-13 16:44Z run 7):
   channel errors a packet mean 5, max 16 of 2064, steady through a burst, with the receiver's
   fractional edge timing (before it, run 5: climbing to 50-150; docs/k6-range.md).
+- The receive path de-emphasises: on a flat source (the K6's tone) about +4 dB at 600 Hz, -2 at
+  1200, -5 at 1450 against 1000 Hz; a pre-emphasised one (the IC-7100's FM) comes out flat
+  (+-0.7 dB 350-2300 Hz). Phase, the same for both: a steep high-pass under 450 Hz (-160 deg at
+  400), then rising above 1 kHz (+23 at 1200, +54 at 1400) (M, K10 and U7 11-13,
+  tests/data/uv380/rx-response-20261113.txt). A flat FFSK sender reads 0 of 6; send pre-emphasised.
 - The receiver (range_rx.c) follows a sender whose tones walk against its bits (the K6: 270-380
   ppm, wandering): 6 of 6 in simulation from -400 to +500 ppm (I, 11-13); on air not yet shown.
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit

@@ -34,9 +34,10 @@ def send(write_us=0, src=SRC, **kw):
 
 
 def phase_track(ev, ppm=0.0):
-    """-> (event times, the tone's frequency after each, its phase (cycles) at each, on after
-    each): the tone oscillator, phase continuous, starting at phase 0 when it's turned on (what
-    the chip does there isn't known: the receiver reads any start phase)"""
+    """-> (event times, the tone's frequency after each, its phase (cycles) at each, its level
+    after each (REG_70's gain / 60, 0 off)): the tone oscillator, phase continuous, starting at
+    phase 0 when it's turned on (what the chip does there isn't known: the receiver reads any
+    start phase); a gain change leaves the phase alone"""
     t = np.array([e[0] for e in ev])
     f, on, fs, ons, ph = 0.0, 0, [], [], []
     for i, (_, r, v) in enumerate(ev):
@@ -46,7 +47,7 @@ def phase_track(ev, ppm=0.0):
         else:
             if v & 0x8000 and not on:
                 p = 0.0
-            on = 1 if v & 0x8000 else 0
+            on = ((v >> 8) & 0x7F) / 60 if v & 0x8000 else 0
         fs.append(f)
         ons.append(on)
         ph.append(p)
@@ -98,6 +99,25 @@ def uv380(x, fs=48000, deemph=True, snr_db=None, seed=1):
     return y
 
 
+def uv380_measured(x, fs=48000, snr_db=None, seed=1, n=127):
+    """the UV-380's receive path as measured (tests/data/uv380/rx-response-20261113.txt) for a
+    flat source, at 8 kHz: K10's magnitude (6 dB less at 1200 Hz than at 600: its de-emphasis) to
+    1450 Hz and 6 dB an octave down above, U7's phase (the same as K10's where both are good),
+    as an n-tap FIR"""
+    from scipy import signal
+    f, mag, u7, ph = np.loadtxt(os.path.join(ROOT, "tests", "data", "uv380", "rx-response-20261113.txt")).T
+    mag = np.where(f <= 1450, mag, mag[f == 1450][0] - 20 * np.log10(f / 1450) + u7 - u7[f == 1450][0])
+    mag = np.where(f < 330, u7 + 5, mag)
+    fg = np.fft.rfftfreq(4 * n, 1 / 8000)
+    H = 10 ** (np.interp(fg, f, mag, left=-60, right=-60) / 20) * np.exp(1j * np.interp(fg, f, np.unwrap(np.radians(ph))))
+    h = np.roll(np.fft.irfft(H, 4 * n), n // 2)[:n] * np.hanning(n)
+    y = np.convolve(signal.resample_poly(x, 1, fs // 8000), h, "same")
+    y = y / np.sqrt(np.mean(y[np.abs(y) > 1e-3] ** 2)) * 4000
+    if snr_db is not None:
+        y = y + np.random.default_rng(seed).normal(0, 4000 / 10 ** (snr_db / 20), len(y))
+    return y
+
+
 def jitter(seed=1):
     """a register write's length on the radio, roughly: 180-200 us"""
     rng = np.random.default_rng(seed)
@@ -120,7 +140,7 @@ def test_builds_level_3_fits():
 def test_sends_the_tone_bits_on_time():
     ret, said, regs, tx, ev = send(write_us=jitter())
     assert ret == 6, said
-    assert said[0] == "rangetx n=6 bits=13848 g=60 pa=1 rx=440850000"
+    assert said[0] == "rangetx n=6 bits=13848 g=44/110 pa=1 rx=440850000"
     assert said[-1] == "rangetx sent bits=13848 ms=11540 id=52" or \
         said[-1] == "rangetx sent bits=13848 ms=11541 id=52", said
     w = dict(v.split("=") for v in said[1].split()[1:])
@@ -161,6 +181,28 @@ def test_the_uv380_reads_it(deemph, ppm):
 
 
 @need_clang
+@pytest.mark.skipif(not os.path.exists(RX), reason="needs make -C c/common")
+@pytest.mark.parametrize("g12", [110, 44], ids=["pre-emphasised", "flat"])
+def test_the_uv380_as_measured(g12, tmp_path):
+    """through the UV-380's measured receive path (6 dB less at 1200 Hz than at 600: K7-K10 read
+    0 of 6) with the tone 100 ppm off its bits: the 1200 Hz bits at 2.5 times the 600's gain
+    (RT_GAIN12, the default) read; sent flat, packets go or come back with hundreds of errors"""
+    pytest.importorskip("scipy")
+    import test_range_rx
+    w = tmp_path / "rt.c"
+    w.write_text('#define RT_GAIN12 %d\n#include "%s"\n' % (g12, SRC))
+    ret, said, regs, tx, ev = send(write_us=jitter(2), src=str(w))
+    assert ret == 6
+    x = audio(ev, tx["log"][-1][2] * 1e-6, ppm=100)
+    pk = test_range_rx.receive(uv380_measured(x, snr_db=12, seed=3))
+    e = [e for _, _, e, ok, p in pk if ok and p in test_range_rx.PL]
+    if g12 == 110:
+        assert len(e) == 6 and max(e) < 20, pk
+    else:
+        assert len(e) < 6 or max(e) > 100, pk
+
+
+@need_clang
 def test_rt_ppm_trims_the_chips_crystal(tmp_path):
     """the FD6818's crystal 30 ppm fast against the MCU's: the phase walks a third of a cycle
     over the burst unless RT_PPM says so"""
@@ -185,7 +227,7 @@ def test_lo_keeps_the_pa_off():
     """rangetx_lo: the PA off from just after tx_on to the end, the burst and the ID the same"""
     lo = os.path.join(ROOT, "c", "k6", "mod", "rangetx_lo.c")
     ret, said, regs, tx, ev = send(write_us=jitter(4), src=lo)
-    assert ret == 6 and said[0] == "rangetx n=6 bits=13848 g=60 pa=0 rx=440850000", said
+    assert ret == 6 and said[0] == "rangetx n=6 bits=13848 g=44/110 pa=0 rx=440850000", said
     log = tx["log"]
     assert log[0][0] == "tx_on" and log[1][:2] == ("tx_pa", 0) and log[-1][0] == "tx_off"
     assert all(a == 0 for n, a, _ in log if n == "tx_pa"), log
@@ -214,3 +256,5 @@ def test_check_measures_the_walk(trim, tmp_path):
     assert abs(r["ppm"] + 269) < 10
     walk = r["walk_600"] / chk.PPM_DEG_S
     assert (abs(walk - 271) < 30) if trim == 0 else abs(walk) < 10, "\n".join(chk.report(r))
+    # the 1200 Hz bits at 110 / 44 of the 600s' gain (8 dB), less the band-pass's tilt
+    assert 5 < r["level_db"] < 10, "\n".join(chk.report(r))

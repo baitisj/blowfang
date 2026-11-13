@@ -199,6 +199,26 @@ the same or slightly fewer errors), and the module about 200 B of code and 64 B 
 arrays went: the step before's y comes from the audio again). Gain 1/8 to 1/128 tried: 1/32 and
 1/16 hold everywhere, 1/128 loses packets from 300 ppm.
 
+**The replay, and the second cause (hamlet, 11-13).** Through the follower, the IC-7100's
+recordings of K7, K8 and K10 read 3, 5 and 6 of 6, but the UV-380's taps of the same bursts still
+0 of 6. The UV-380's response to them, measured against the IC-7100's recording (cross-spectrum,
+clock and delay fitted; tests/data/uv380/rx-response-20261113.txt): 6 dB less at 1200 Hz than at
+600 (+4 dB at 600, -2 at 1200, -5 at 1450, from 1000 Hz), its de-emphasis, which the K6's flat
+tone doesn't undo; the phase (a steep 300 Hz high-pass below 450 Hz, then a slow rise above 1
+kHz) is the same as for the IC-7100's own pre-emphasised bursts, which arrive flat and read 42 of
+42. So the tilt is what stops the K6. An equaliser fitted from the two recordings got the UV-380's
+taps to 3-5 of 6 of the bursts.
+
+**Fix: rangetx pre-emphasises.** The 1200 Hz bits go out at RT_GAIN12 (110) and the 600s at
+RT_GAIN (44): 2.5 times, written to REG_70 right after each REG_71 change (the first write-length
+of each bit is at the other tone's level). A model of the UV-380 as measured
+(tests/test_k6_rangetx.py `uv380_measured`) reproduces the bench: sent flat, 14-16 of 18 with
+hundreds of errors in the rest even at 20 dB and no walk; pre-emphasised, with the follower, 281 of
+288 over 0, +-100 and 300 ppm at 8-20 dB (errors at most 13; the losses are early packets locking
+half a bit off now and then). 2.0 times is nearly as good, 1.5 not. Whether REG_70's gain is
+linear isn't measured: `tools/k6_rangetx_check.py` now prints the 1200 Hz bits' level against the
+600s' on the IC-7100's recording (the model: +7 dB for 8 dB sent, through its band-pass).
+
 ## The other way: the UV-380 receiving
 
 The UV-380's receive audio doesn't reach its MCU without a hardware mod (OpenRTX). That is the
