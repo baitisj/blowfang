@@ -65,13 +65,50 @@ pre-emphasised voice path, which is what the K6 reads best (bench run 2). In the
 `tests/test_uv380_openrtx_emu.py` sends with the range build and reads every packet back through
 the K6 model.
 
+## The MD-UV380/390 PLUS (10 W)
+
+Jeff's radio is an MD-UV390 PLUS 10 W (firmware D219.043). The Plus swaps two pins against
+the plain MD-UV380: the LCD backlight is PC6 and the RF PA band select is PD8, not the other way
+round. A plain image on a Plus boots with the screen fully dark (OpenRTX runs: its USB serial
+port comes up) and drives the backlight PWM into the PA band select line, so never flash a plain
+image on a Plus, and never key one. Found on the first flash, 2026-11-13 08:49Z (I2S probe image).
+
+`sh firmware/uv380-openrtx/build.sh mduv3x0p` builds from OpenRTX's `mduv3x0-plus` branch
+(`f969eff`: master `20b4088`, which the patch was written against, plus "Add MD-UV3x0 Plus target",
+OpenRTX PR #300 and issue #275), target `mduv3x0p`, which defines `PLATFORM_MDUV3x0P` on top of
+the MD-UV3x0 target and swaps `PA_SEL_SW` and `LCD_BKLIGHT` in `pinmap.h`. Images:
+`out/openrtx_mduv3x0p*` (with `BLOWFANG_I2SPROBE=1` or `BLOWFANG_RANGE=1` as for the plain
+radio). CI builds all three. OpenRTX issue #275 notes that OpenGD77 also treats the 10 W radio's
+power levels and calibration differently, so TX power on these images may not match its labels:
+keep power low and check it on the bench before any on-air use.
+
 ## The I2S probe image
 
 `BLOWFANG_I2SPROBE=1 sh firmware/uv380-openrtx/build.sh` builds `out/openrtx_mduv3x0_i2sprobe_wrap.bin`
 (CI builds both images). It asks whether the radio's received audio can reach the MCU with no
 mod, which is the block for K6 to UV-380. In this image, PAGER mode receives while it's idle, and
 `i2sprobe.c` runs a pass every 5 s. Each pass writes its lines to the radio's USB serial port.
-PTT and # still work: the probe stands aside for them.
+PTT and # still work: the probe stands aside for them. On the radio, this image boots straight
+into PAGER mode on 440.850 MHz, so a run needs no menus (PTT there sends the pager message: don't
+press it unless that's the test).
+
+**DMA buffers.** On this radio OpenRTX's linker script puts `.bss` in the 64 KB CCM RAM, which no
+DMA can reach. Every buffer a DMA stream reads or writes (the probe's captures, its PC3 input, and
+the PAGER mode's TX and speaker buffers) is in `.bss2`, the 128 KB RAM. The first flash
+(2026-11-13) had them in `.bss`: every capture stopped after one halfword (`n=1`), and the PC3
+step waited forever for its input stream, which froze the radio. Its census still showed the
+C6000 clocking I2S3 by itself with no mod: PA15 (WS) about 8 kHz, PC10 (CK) toggling fast, data
+on PC12. Each capture line now also has `f=` (the DMA streams' flags: bit 3 transfer error,
+bit 5 complete; the ext stream's << 8) and `sr=` (the SPI's status register).
+
+**Commands over USB serial** (`i2sp_command` in `i2sprobe.h`). Between passes the probe reads
+command lines on the same port, so hamlet can try I2S settings with no reflash, each command ending
+in an `ok ...` or `err ...` line: `help`, `pass`, `auto 0|1` (the passes every few seconds),
+`c6r`/`c6w` (C6000 registers), `rd ADDR [N]` (memory and registers), `wr ADDR VAL` (only the I2S
+ports' registers and DMA1 streams 0, 2 and 3: nothing that can key the radio), `pin` (the probe's
+pins), `clk on|off`, `cap PORT s|m FMT FS` (one capture), `raw [a|b] [N]` (its samples) and `buf`.
+`python3 tools/uv380_i2sprobe.py cmd /dev/ttyACM0 "auto 0" "cap SPI3 s P16 8000" "raw 64"` sends
+them and waits for each answer (stop any listener first).
 
 The idea: on this radio the AT1846S's FM audio goes into the HR_C6000 (PD9 high), and the C6000's
 codec digitises it for the speaker. That codec has an I2S port, and the stock MD-380 firmware
