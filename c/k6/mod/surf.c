@@ -58,7 +58,8 @@
      1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz
      *               monitor: audio open on the bar all the time, no sweeping; the chip's own
                      squelch open all the way too (put back on leaving MON and at EXIT)
-     0               hold: no refresh sweeps while a signal plays (default: one every 5 s)
+     0               hold: no refresh sweeps while a signal plays (default: one every 5 s);
+                     the carets stop falling while the scan is paused (hold or monitor)
      MENU            say the bar's frequency and level on the serial port
      EXIT            leave (the module waits for the key's release, so the pager doesn't see it)
 
@@ -764,10 +765,13 @@ static int pm_good(sf_t *s, uint32_t f) {
   return 0;
 }
 
-/* the carets fall one 1/8 px every FALL_MS (time, not sweeps: a sweep takes 0.1 to 2.5 s) */
+/* the carets fall one 1/8 px every FALL_MS (time, not sweeps: a sweep takes 0.1 to 2.5 s); not
+   while the scan is paused (hold on a station that plays, or monitor: no sweeps), and on from
+   where they were after it (Jeff, 2026-11-13) */
 static void pm_fall(sf_t *s) {
   uint32_t n = udiv(s->now - s->t_fall, FALL_MS[s->fall]);
   int k;
+  if (s->parked && (s->hold || s->mon)) n = 0, s->t_fall = s->now;
   if (!n) return;
   s->t_fall += n * FALL_MS[s->fall];
   if (n > 255) n = 255;
@@ -1044,12 +1048,14 @@ static void park_step(sf_t *s) {
   if (!s->tuned) {
     d = read_at(s, C, CHECK_US);
     s->tuned = 1;
-    if (s->mon) audio(s, 1);
     hush(s, 0);
   } else {
     s->api->delay_us(PARK_US);
     d = dbm(s);
   }
+  /* monitor: open here, not only on the retune above: a bar check due when '*' came (one every
+     CHK_MS while sweeping) did the retune, and the speaker stayed shut (Jeff, 2026-11-13) */
+  if (s->mon && !s->audio) audio(s, 1);
   s->sel_dbm = d;
   if (d >= s->sfl + SQ_DB) pm_heard(s);   /* (monitor too: what plays gets a caret) */
   if (d >= s->sfl + SQ_DB - HYST_DB) s->t_open = s->now;

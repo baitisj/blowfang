@@ -55,7 +55,7 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 | 8 | the receiver's own AGC again ("gain auto") |
 | 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz (defaults: 2m and 1.25m 500 kHz, 70cm and MAR/WX 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
 | * | monitor: audio open on the bar all the time, no sweeping (the title shows a speaker). The chip's own squelch opens all the way too, egzumer's squelch 0 (REG_78 RSSI 0, REG_4F noise 127, REG_4D/4E glitch 255): Jeff heard MON cut weak signals on 2026-11-11 though the module never closes the audio in MON. Leaving MON and EXIT put the four registers back as Aura had them. Not yet tried on the radio |
-| 0 | hold: no refresh sweeps while a signal plays (the title shows a pause sign) |
+| 0 | hold: no refresh sweeps while a signal plays (the title shows a pause sign). While the scan is paused (hold on a station that plays, or monitor) the carets stop falling, and fall on from where they were after it (Jeff, 2026-11-13) |
 | MENU | says the bar's frequency and level on the serial port |
 | EXIT | leave; the module waits for the key's release so the pager doesn't see it |
 
