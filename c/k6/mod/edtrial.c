@@ -30,6 +30,8 @@
 #include "../rt.c"
 #include "../sted.c"
 
+K6_MODULE_NAME("EDTRIAL");
+
 #define NST 48                  /* stations kept (the table holds up to 960 slots; a trial needs few) */
 #define LINES 4                 /* rows on screen between the title and the hint */
 
