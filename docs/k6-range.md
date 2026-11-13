@@ -214,3 +214,13 @@ that audio is in; 32-bit only (a module has no 64-bit divide). Simulated 6-packe
 errors per packet, old against new: at 4 dB SNR and 4 ppm 1-7 against 0-2, at 1000 ppm 6-12 against
 0-4; at 2 dB SNR and 1000 ppm 20-32 against 9-16. rangerx grows 220 B to 3910 B (about 570 B under
 the arena).
+
+On run 5's tapped audio the new receiver reads 42 of 42 with the errors mean 5.4, max 58 (one
+packet; the rest at most 13), against 50 and 152 before; on run 2's recording mean 4.4, max 10
+(16.5 and 108 before). RR_HYST 32 with RR_EAVG 64 caps run 5 at 12 but adds a false sync line, so
+the defaults stay.
+
+**UV-380 run 7 (2026-11-13, 16:44-16:45Z, rangetap at 0e13789).** As run 5: the IC-7100 sent 7
+bursts of 6 on 440.850 at RF power 0. 42 of 42 with the CRC right (align=1, no overruns); channel
+errors a packet mean 5.1, max 16, with no climb within a burst. The old receiver on run 7's tapped
+audio gives mean 51, max 136, so the change is all the receiver's.

@@ -31,9 +31,9 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
 
 - Keep a modem's energy between about 300 and 2500 Hz, and its level about 10 dB under the IC-7100's
   normal 0.3 / 30% (it compresses there).
-- K6 PHY R (600/1200 Hz FFSK, 1200 baud, coded) decodes 42 of 42 live (11-13 15:48Z, rangerx);
-  channel errors climb within a burst to 50-150 of 2064, which the clock tracking still has to
-  tighten (docs/k6-range.md).
+- K6 PHY R (600/1200 Hz FFSK, 1200 baud, coded) decodes 42 of 42 live (M, 11-13 16:44Z run 7):
+  channel errors a packet mean 5, max 16 of 2064, steady through a burst, with the receiver's
+  fractional edge timing (before it, run 5: climbing to 50-150; docs/k6-range.md).
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit
   sotto.
 
