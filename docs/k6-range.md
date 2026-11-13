@@ -149,6 +149,26 @@ What the emulator can't say:
   phase, so this only matters for analysis), and whether the K6 pre-emphasises the tone.
 - The deviation at gain 60 against the IC-7100's level; `-DRT_GAIN=` sets it.
 
+### K6 to UV-380 on air: runs K7 and K8 (2026-11-13)
+
+K7 (17:00Z, rangetx, full low power) and K8 (17:13Z, rangetx_lo, PA off, RT_PPM 248): the K6 sent
+the burst both times (`rangetx w=6503 late=0 wr=11223-11232 d=99`: a register write takes
+about 117 us), and the UV-380, unmodified, heard it at -17 and -48 dBm, but read 0 of 6, with
+about 390-430 channel errors a packet from the first. The recording shows why: at every 600 to
+1200 Hz change the tone has a runt half cycle of 0.06-0.2 ms, a phase jump; 1200 to 600 looks
+clean, and the IC-7100's audio has no runts. So the oscillator isn't phase continuous across a
+REG_71 write, or not the way rangetx assumed. (A first fit read the jumps as the tone running
++248 ppm against the bit clock; RT_PPM 248 changed nothing, so that was the fit.) The received
+1200 Hz comes out about 2 dB over 600 Hz after the UV-380's de-emphasis: the K6's tone path is
+flat or mildly pre-emphasised.
+
+`tonewr` (c/k6/mod/tonewr.c, PA off) measures what a write does: 7 s of scheduled writes from
+tone-on (same-word REG_71 rewrites, 600/1200 changes at every phase, tone 1 off and on, tone 2
+(REG_72) against tone 1), timed on TIM17. `tools/k6_tonewr.py report REC` reads a recording
+(IC-7100 48 kHz, or the UV-380's rxrec log) and says for each kind of write whether the phase runs
+on through it or is set at it, and whether a tone runs on while it's off. The sender's fix
+follows from that.
+
 ## The other way: the UV-380 receiving
 
 The UV-380's receive audio doesn't reach its MCU without a hardware mod (OpenRTX). That is the

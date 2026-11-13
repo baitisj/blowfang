@@ -32,9 +32,10 @@ one of them changes.
 - With the PA off it still leaks about -40 dB at bench range: judge keying by edges (M). A module
   can stay keyed with the PA off (tx_pa(0)) as its lowest power: rangetx_lo does.
 - tx_on takes about 1.4-1.9 s before RF is up (M).
-- PHY R FFSK from the tone oscillator (rangetx): bits timed on TIM17, tone changes aimed to keep
-  the phase on the bit edges; the FD6818's crystal against the MCU's is unmeasured (over about
-  20 ppm needs RT_PPM), and so is the deviation at gain 60 (I, emulator, k6-range.md).
+- The tone oscillator is NOT phase continuous across a REG_71 600 -> 1200 Hz write the way the
+  range sender assumed: a runt half cycle at every such change; 1200 -> 600 looks clean (M, K7/K8
+  11-13). tonewr measures it. A register write takes about 117 us keyed (M). PHY R from rangetx
+  read 0 of 6 on the UV-380 for this reason (M, k6-range.md).
 
 ## Memory and code
 
