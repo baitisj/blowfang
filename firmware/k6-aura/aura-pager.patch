@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..2bed5d7
+index 0000000..eadd8bb
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4456 @@
+@@ -0,0 +1,4432 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -325,7 +325,7 @@ index 0000000..2bed5d7
 +//! the calibration transmit.
 +//!
 +//! Keys: MENU play (again), EXIT leave (or stop playback), UP/DOWN volume,
-+//! 2 frames XL/L, 3 RX invert, 4 pre-emphasis, 5 1800/2400 baud, 6 raw packet bytes on the screen (hiss image: the hiss band off and
++//! 3 RX invert, 4 pre-emphasis, 5 1800/2400 baud, 6 raw packet bytes on the screen (hiss image: the hiss band off and
 +//! on, an A/B on the speaker), * clear the message, PTT transmit the calibration packet
 +//! (twice). PHY F (FFSK) only: the old direct-FSK PHY D and its key 1 are gone, because one stray
 +//! press left the radio deaf to the bench's F sends (Jeff, 2026-11-10).
@@ -1667,7 +1667,8 @@ index 0000000..2bed5d7
 +    pub cb: i8,
 +    /// typing a frequency (#), in kHz like Aura's VFO entry; RAM only, never saved
 +    pub freq_entry: bool,
-+    /// key 2: profile XL (128-byte packets, 20 frames, the power-on default) or L (64 bytes, 8 frames)
++    /// profile XL (128-byte packets, 20 frames, the power-on default) or L (64 bytes, 8 frames);
++    /// only a control packet changes it (key 2 did, until a stray press broke uploads, 2026-11-13)
 +    pub xl: bool,
 +    /// key 5: 2400 baud (FFSK 1200/2400 Hz tones)
 +    pub baud_2400: bool,
@@ -1698,11 +1699,6 @@ index 0000000..2bed5d7
 +    pub ber_n: u16,
 +    /// packets reported on the serial line, so the PC can spot a lost line
 +    pub reported: u16,
-+    /// key 7: how REG_5D gets the packet length (0: bytes - 1, the BK4819 way; 1: words - 1;
-+    /// 2: 0xFF00 and 3: 0xFFE0, stream mode: the chip passes everything it demodulates and the
-+    /// sync is found in software, so packets can come back to back with no preamble between
-+    /// them. 0xFFE0 also sets bits 7:5, which may be the length's high bits, 2048 bytes)
-+    pub len_mode: u8,
 +    /// stream mode's receiver: the last 32 bits off the air, bits seen since the search
 +    /// started, the payload byte being built and its bits, whether a payload is being
 +    /// collected (and inverted), bytes collected, and a whole payload waiting
@@ -1750,7 +1746,7 @@ index 0000000..2bed5d7
 +    poke_n: u8,
 +    /// poke_n when ctl_prev was taken: a revert keeps the writes that were confirmed with it
 +    poke_prev: u8,
-+    /// key 8 (with key 7's lengths): read the RX FIFO on a timer after the sync, one word per
++    /// key 8 (with the old key 7's lengths): read the RX FIFO on a timer after the sync, one word per
 +    /// 13.3 ms (16 bits at 1200 baud), instead of at the chip's 0x1000 interrupt. On air that
 +    /// interrupt follows REG_5D's length (it comes about 14 bytes before the end of the
 +    /// packet), not the FIFO's fill, so a 64-byte packet overflowed the 8-word FIFO first.
@@ -1876,7 +1872,6 @@ index 0000000..2bed5d7
 +            ber_sum: 0,
 +            ber_n: 0,
 +            reported: 0,
-+            len_mode: 0,
 +            st_reg: 0,
 +            st_seen: 0,
 +            st_cur: 0,
@@ -1963,15 +1958,11 @@ index 0000000..2bed5d7
 +        (self.vol as i8 - VOL_0DB as i8) * 3
 +    }
 +
-+    /// REG_5D's packet-length field for `len_mode`
++    /// REG_5D's packet-length field: bytes - 1, the BK4819 way. Key 7 used to pick words - 1
++    /// (and before that two stream-mode values); one stray press halved the length and the K6
++    /// rejected every chunk of an upload (2026-11-13), so the key is gone and this is fixed.
 +    fn len_field(&self) -> u16 {
-+        let len = self.payload_len() as u16;
-+        match self.len_mode {
-+            1 => (len / 2 - 1) << 8,
-+            2 => 0xFF00,
-+            3 => 0xFFE0,
-+            _ => (len - 1) << 8,
-+        }
++        (self.payload_len() as u16 - 1) << 8
 +    }
 +
 +    /// key 0's receive variant at 2400: (REG_58 for F, REG_2B bits)
@@ -1979,15 +1970,11 @@ index 0000000..2bed5d7
 +        RX2400_VARIANTS[self.f2400_var as usize % RX2400_VARIANTS.len()]
 +    }
 +
-+    /// Stream mode (key 7 settings 2-3) is compiled out: it never received on air (f190a46,
++    /// Stream mode (old key 7 settings 2-3) is compiled out: it never received on air (f190a46,
 +    /// 0/16), and its flash pays for REG_43 in the control-packet registers. The code stays
 +    /// for reference; the compiler drops it.
 +    fn stream(&self) -> bool {
 +        false
-+    }
-+
-+    pub fn stream_restarts(&self) -> u16 {
-+        self.st_restarts
 +    }
 +
 +    fn payload_len(&self) -> usize {
@@ -2568,7 +2555,7 @@ index 0000000..2bed5d7
 +    }
 +}
 +
-+// ---- stream mode (key 7's third and fourth lengths) ----
++// ---- stream mode (the old key 7's third and fourth lengths) ----
 +//
 +// With REG_5D at 0xFF00 the FD6818 passed everything it demodulated on air (2026-11-04):
 +// preamble, sync word and payload, with a FIFO interrupt every 4 words (53 ms at 1200 baud)
@@ -3648,10 +3635,6 @@ index 0000000..2bed5d7
 +        }
 +        KeyId::Up => p.vol = (p.vol + 1).min(VOL_Q8.len() as u8 - 1),
 +        KeyId::Down => p.vol = p.vol.saturating_sub(1),
-+        KeyId::Digit2 => {
-+            p.xl = !p.xl;
-+            rearm = true;
-+        }
 +        KeyId::Digit3 => {
 +            p.invert = !p.invert;
 +            rearm = true;
@@ -3665,11 +3648,6 @@ index 0000000..2bed5d7
 +        }
 +        #[cfg(not(feature = "hiss"))]
 +        KeyId::Digit6 => p.raw_view = !p.raw_view,
-+        KeyId::Digit7 => {
-+            p.len_mode = (p.len_mode + 1) % 2; // 2-3 were stream mode
-+            p.st_restarts = 0;
-+            rearm = true;
-+        }
 +        KeyId::Digit8 => p.rearm_mode = (p.rearm_mode + 1) % (REARM_STEPS.len() as u8 + 1),
 +        KeyId::Digit9 => p.auto_play = !p.auto_play,
 +        // key 0 was the decode watchdog (unproven, off); now the receive variants (REG_58 at
@@ -3689,7 +3667,9 @@ index 0000000..2bed5d7
 +        KeyId::Asterisk => clear_store(app),
 +        #[cfg(feature = "spilib")]
 +        KeyId::Side1 => lib_run(app, syst, AGAIN_SLOT),
-+        _ => {}
++        // a key with no job here (2 and 7 were the packet size and length: one stray press
++        // left uploads failing, 2026-11-13) does nothing and reports nothing
++        _ => return,
 +    }
 +    if rearm {
 +        // a key press is the person's choice: no control-packet revert over it
@@ -4305,16 +4285,15 @@ index 0000000..2bed5d7
 +        return;
 +    }
 +    delay::ms(syst, 300); // carrier lead-in for the IC-7100's AGC
-+    // REG_5D sets the TX length too: 64 bytes, whatever key 2 and key 7 chose
-+    let saved = (app.pager.xl, app.pager.len_mode);
++    // REG_5D sets the TX length too: 64 bytes, whatever profile a control packet chose
++    let saved = app.pager.xl;
 +    app.pager.xl = false;
-+    app.pager.len_mode = 0;
 +    for _ in 0..2 {
 +        configure(app, syst);
 +        tx_packet(app, syst, &words);
 +        delay::ms(syst, 100);
 +    }
-+    (app.pager.xl, app.pager.len_mode) = saved;
++    app.pager.xl = saved;
 +    disarm(app, syst);
 +    app.radio.enter_rx(syst); // not end_tx: no roger tone after the test
 +    app.sync_watching_to_master(syst);
@@ -4481,10 +4460,9 @@ index 0000000..2bed5d7
 +    crate::hal::txdog::limit(ARQ_TX_MAX_MS);
 +    let t0 = uptime::now();
 +    delay::ms(syst, 300); // carrier lead-in for the IC-7100's AGC and squelch
-+    // REG_5D sets the TX length too: 64 bytes, whatever key 2 and key 7 chose
-+    let saved = (app.pager.xl, app.pager.len_mode);
++    // REG_5D sets the TX length too: 64 bytes, whatever profile a control packet chose
++    let saved = app.pager.xl;
 +    app.pager.xl = false;
-+    app.pager.len_mode = 0;
 +    configure(app, syst);
 +    let mut pk = [0u8; 64];
 +    for _ in 0..2 {
@@ -4499,7 +4477,7 @@ index 0000000..2bed5d7
 +        tx_bytes(app, syst, &pk);
 +        delay::ms(syst, 40);
 +    }
-+    (app.pager.xl, app.pager.len_mode) = saved;
++    app.pager.xl = saved;
 +    disarm(app, syst);
 +    mcw_id(app, syst);
 +    app.radio.enter_rx(syst); // not end_tx: no roger tone
@@ -4564,12 +4542,10 @@ index 0000000..2bed5d7
 +    match k {
 +        KeyId::Digit0 => "key0",
 +        KeyId::Digit1 => "key1",
-+        KeyId::Digit2 => "key2",
 +        KeyId::Digit3 => "key3",
 +        KeyId::Digit4 => "key4",
 +        KeyId::Digit5 => "key5",
 +        KeyId::Asterisk => "clear",
-+        KeyId::Digit7 => "key7",
 +        KeyId::Digit8 => "key8",
 +        KeyId::Digit9 => "key9",
 +        KeyId::Menu => "menu",
@@ -9600,10 +9576,10 @@ index cdfa0f7..831732f 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..281dd2e
+index 0000000..6722e19
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,360 @@
+@@ -0,0 +1,357 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -9758,17 +9734,14 @@ index 0000000..281dd2e
 +    } else if p.cb < 1 {
 +        out!(b, "NO CODEBOOK ({})", p.cb);
 +    } else if p.last_result == i8::MIN {
-+        let how = if p.len_mode >= 2 { "stream" } else { "listening" };
-+        out!(b, "SYNC {} {}", p.last_sync as char, how);
++        out!(b, "SYNC {} listening", p.last_sync as char);
 +    } else {
 +        let crc = match p.last_result {
 +            -1 => "BAD",
 +            -2 => "ok?",
 +            _ => "ok",
 +        };
-+        // stream mode: RS = the stream's re-arms (restarts) instead of FIFO timeouts
-+        let (to, n) = if p.len_mode >= 2 { ("RS", p.stream_restarts()) } else { ("TO", p.timeouts) };
-+        out!(b, "SYNC {} CRC {} {:02X} {} {}", p.last_sync as char, crc, p.last_magic, to, n);
++        out!(b, "SYNC {} CRC {} {:02X} TO {}", p.last_sync as char, crc, p.last_magic, p.timeouts);
 +    }
 +    line(lcd, 39, b.as_str());
 +

@@ -185,7 +185,7 @@ def _tx_opts(p):
                         "the lead within 6 s")
     p.add_argument("--payload", choices=("L", "XL", "S"), default="XL",
                    help="XL (default): 128-byte packets, 20 frames, as the K6 boots since 2026-11-09 "
-                        "(older images boot L); L: 64-byte, 8 frames (K6 key 2); "
+                        "(older images boot L); L: 64-byte, 8 frames (a K6 set by control packet, --set frames=L); "
                         "S: 16-byte (the K6 no longer takes it)")
     p.add_argument("--baud", type=float, default=None,
                    help="bit rate (default: the K6's default for --phy, F 1800 and D 1200; 2400 with "
@@ -193,7 +193,7 @@ def _tx_opts(p):
                         "F/1200 = 72=3065)")
     p.add_argument("--stream", action="store_true",
                    help="packets back to back with only the sync word between them, no per-packet "
-                        "preamble (for the K6's stream mode, key 7; about 20%% less air time)")
+                        "preamble (for the K6's old stream mode, compiled out; about 20%% less air time)")
     p.add_argument("--codec", choices=tuple(pager.CODECS), default="2400",
                    help="what the .sot holds: 2400 = sotto v3.7 (default), 1200 = sotto 1200 "
                         "(sotto_enc -1200; magic 0xA9, L or XL), 600 / 400 = sotto 600 / 400 "
