@@ -2,7 +2,8 @@
    receiver's audio reaches the MCU through the HR_C6000's codec on I2S3 (rxaudio.h: the route,
    SPI3 as an I2S slave in 32-bit channels, DMA1 stream 0 into a ring in scratch RAM, every other
    halfword the audio). The module follows the ring and hands the audio to c/common/range_rx.c:
-   integrate and dump on the bit edges with a 16-phase clock, the sync, PHY G's Viterbi, the
+   integrate and dump on the bit edges with a 16-phase clock, on the audio turned to follow the
+   tones' phase walk (the K6 sender's clocks), the sync, PHY G's Viterbi, the
    pager CRC.
 
    Lines:
@@ -27,6 +28,7 @@
 #include "rxaudio.h"
 
 #define RR_HIST 32               /* 8 kHz: 2 bits are 13.3 samples */
+#define RR_XR 32                 /* 8 kHz: the quadrature filter spans 31 samples */
 #include "../../../c/common/range_rx.c"
 
 #ifndef RG_S

@@ -182,6 +182,23 @@ So K7's failure was the clock: 271 ppm walks the tone about 87 degrees a second 
 edges, through the bad phases within each packet. `tools/k6_rangetx_check.py REC` measures that
 walk on a recording of a burst (both tones' phase at every bit edge against ideal FFSK).
 
+**K10 (2026-11-13, rangetx_lo, PA off, RT_PPM 365): 0 of 6 again** (UV-380 at -49 dBm, channel
+errors 354-409 a packet). rangetx_check on the IC-7100's recording: the tone walks -23 deg/s, so
+the offset was about 292 ppm that time. The offsets measured so far are 355 (K7), 377 (K8), 271
+(K9) and 292 ppm (K10), runs minutes apart, and it wanders within a burst too: the MCU's clock
+behaves like an RC oscillator, so no RT_PPM holds the phase through 11.5 s.
+
+**So the receiver follows it (11-13, range_rx.c RR_TRACK).** The walk turns both tones' phase
+alike, which is a slow rotation of the audio's analytic signal; range_rx now takes each y from the
+audio turned back by an angle it follows (a 31-tap Hilbert filter gives the quadrature;
+decision-directed, 1/32 of the error a bit; the bank's phases use the turned audio too). On the
+emulated K6 burst with RT_PPM 0 and the tone -400 to +500 ppm off, through the UV-380 model
+(de-emphasis or flat, 8 dB SNR): 6 of 6 every time, channel errors at most 8; without the follower
+0 of 6 past 300 ppm and packets lost from 30 ppm. It costs nothing where nothing walks (2-6 dB SNR:
+the same or slightly fewer errors), and the module about 200 B of code and 64 B of state (the y
+arrays went: the step before's y comes from the audio again). Gain 1/8 to 1/128 tried: 1/32 and
+1/16 hold everywhere, 1/128 loses packets from 300 ppm.
+
 ## The other way: the UV-380 receiving
 
 The UV-380's receive audio doesn't reach its MCU without a hardware mod (OpenRTX). That is the

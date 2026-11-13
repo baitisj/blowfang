@@ -34,6 +34,8 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
 - K6 PHY R (600/1200 Hz FFSK, 1200 baud, coded) decodes 42 of 42 live (M, 11-13 16:44Z run 7):
   channel errors a packet mean 5, max 16 of 2064, steady through a burst, with the receiver's
   fractional edge timing (before it, run 5: climbing to 50-150; docs/k6-range.md).
+- The receiver (range_rx.c) follows a sender whose tones walk against its bits (the K6: 270-380
+  ppm, wandering): 6 of 6 in simulation from -400 to +500 ppm (I, 11-13); on air not yet shown.
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit
   sotto.
 

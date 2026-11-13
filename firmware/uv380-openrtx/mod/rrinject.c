@@ -14,6 +14,7 @@
 #include "ortx_mod.h"
 
 #define RR_HIST 32
+#define RR_XR 32
 #include "../../../c/common/range_rx.c"
 
 #ifndef RG_S

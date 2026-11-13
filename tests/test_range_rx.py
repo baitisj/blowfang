@@ -88,6 +88,19 @@ def test_channel(burst, name):
     assert good(receive(x)) == PL
 
 
+@pytest.mark.parametrize("hz", [0.3, -0.3])
+def test_phase_walk(burst, hz):
+    """both tones' phase against the bit edges walking 108 degrees a second (the K6's tones on
+    its radio chip's crystal, its bits on the MCU's clock: 0.3 Hz is about 340 ppm off there), and
+    noise: every packet, the receiver follows the walk"""
+    x = framed(burst)
+    t = np.arange(len(x)) / 8000
+    x = np.real(signal.hilbert(x) * np.exp(2j * np.pi * hz * t))
+    x = x + np.random.default_rng(5).normal(0, np.sqrt(np.mean(burst ** 2)) / 10 ** (3 / 20), len(x))
+    pk = receive(x)
+    assert good(pk) == PL and max(e for _, _, e, _, _ in pk) < 60, pk
+
+
 @pytest.mark.parametrize("snr", [6, 0, -2])
 def test_noise(burst, snr):
     """audio-band SNR (the whole 4 kHz): every packet down to -2 dB"""
@@ -118,10 +131,10 @@ def test_the_module_fits(name):
     code, entry = uv380mod.build(src)
     assert entry == 0 and uv380mod.source_table(src) == "openrtx"
     image = (16 + len(code) + 8 + 7) // 8 * 8
-    # rr_state with RR_HIST 32 (as the module builds it) and the 1024-halfword ring
+    # rr_state with RR_HIST 32 and RR_XR 32 (as the module builds it) and the 1024-halfword ring
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, "sz.c")
-        open(src, "w").write('#include <stdio.h>\n#define RR_HIST 32\n#include "range_rx.h"\n'
+        open(src, "w").write('#include <stdio.h>\n#define RR_HIST 32\n#define RR_XR 32\n#include "range_rx.h"\n'
                              'int main(void) { printf("%zu\\n", sizeof(rr_state)); return 0; }\n')
         subprocess.run(["cc", "-I", os.path.join(ROOT, "c", "common"), src, "-o", os.path.join(d, "sz")],
                        check=True)

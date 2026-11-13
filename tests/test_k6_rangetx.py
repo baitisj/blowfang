@@ -145,12 +145,16 @@ def test_sends_the_tone_bits_on_time():
 
 @need_clang
 @pytest.mark.skipif(not os.path.exists(RX), reason="needs make -C c/common")
-@pytest.mark.parametrize("deemph", [True, False], ids=["deemph", "flat"])
-def test_the_uv380_reads_it(deemph):
+@pytest.mark.parametrize("deemph,ppm", [(True, 0), (False, 0), (True, 340), (False, -340)],
+                         ids=["deemph", "flat", "deemph+340ppm", "flat-340ppm"])
+def test_the_uv380_reads_it(deemph, ppm):
+    """ppm: the radio chip's crystal (the tone) that far off the MCU's clock (the bits) with
+    RT_PPM 0, as the K6 on the bench (270-380 ppm, wandering): the tone's phase walks against the
+    edges about 110 degrees a second, and the UV-380's receiver follows it"""
     pytest.importorskip("scipy")
     import test_range_rx
     ret, said, regs, tx, ev = send(write_us=jitter(2))
-    x = audio(ev, tx["log"][-1][2] * 1e-6)
+    x = audio(ev, tx["log"][-1][2] * 1e-6, ppm=ppm)
     pk = test_range_rx.receive(uv380(x, deemph=deemph, snr_db=8))
     assert len(test_range_rx.good(pk)) == 6, [(e, ok) for _, _, e, ok, _ in pk]
     assert max(e for _, _, e, ok, _ in pk if ok) < 40, pk

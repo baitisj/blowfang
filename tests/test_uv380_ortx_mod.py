@@ -328,7 +328,13 @@ def test_rrinject_decodes_on_the_mcu(elf):
 
 @pytest.mark.skipif(not TOOLS, reason="needs clang and lld")
 def test_rxrec_and_rangerx_fit():
-    for name, most in (("rxrec.c", 2048), ("rangerx.c", 4096), ("rangetap.c", 4096), ("rrinject.c", 3072)):
+    # (range_rx.c's phase follower, 11-13: about 200 bytes more in each range module)
+    for name, most in (
+        ("rxrec.c", 2048),
+        ("rangerx.c", 4352),
+        ("rangetap.c", 4352),
+        ("rrinject.c", 3328),
+    ):
         code, entry = uv380mod.build(os.path.join(MOD, name))
         assert entry == 0 and len(code) < most, (name, len(code))
         assert uv380mod.source_table(os.path.join(MOD, name)) == "openrtx"
