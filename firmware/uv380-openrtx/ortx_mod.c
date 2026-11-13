@@ -60,15 +60,18 @@ static void api_sleep_ms(uint32_t ms) {
     H->sleep_ms(ms);
 }
 
-/* Ctrl-C from USB serial ends the module; any other byte is kept for usb_read */
+/* Ctrl-C from USB serial ends the module; any other byte is kept for usb_read. Takes no more
+   than rx has room for: the rest waits in USB serial's own buffer (a module streaming data in
+   loses none to its stop() checks) */
 static void take_rx(void) {
     uint8_t b[64];
-    unsigned n, i;
-    while ((n = H->read(b, sizeof b)) != 0)
+    unsigned n, i, room;
+    while ((room = (unsigned)sizeof rx - rx_n) != 0 &&
+           (n = H->read(b, room < sizeof b ? room : sizeof b)) != 0)
         for (i = 0; i < n; i++) {
             if (b[i] == 3)
                 cancel = 1;
-            else if (rx_n < sizeof rx)
+            else
                 rx[rx_n++] = b[i];
         }
 }

@@ -11,8 +11,7 @@
 #include "ortx_mod.h"
 
 static char in[64 * 1024];
-static uint8_t usb[256];
-static int usb_n, usb_at;
+static unsigned usb_at;
 static uint32_t now;
 
 static void q_line(const char *s) {
@@ -34,11 +33,13 @@ static void q_write(const void *b, unsigned n) {
     q_line(hex);
 }
 
+/* usb.bin a piece at a time (it can be long: audio for a module to read) */
 static unsigned q_read(void *b, unsigned n) {
-    unsigned k = 0;
-    while (k < n && usb_at < usb_n)
-        ((uint8_t *)b)[k++] = usb[usb_at++];
-    return k;
+    int got = host_read_at("usb.bin", b, usb_at, n);
+    if (got <= 0)
+        return 0;
+    usb_at += (unsigned)got;
+    return (unsigned)got;
 }
 
 static uint32_t q_now(void) {
@@ -92,8 +93,6 @@ static const om_host host = {q_line, q_write, q_read, q_now, q_stop, q_sleep, q_
 
 int main(void) {
     int n = host_read_file("in.txt", (uint8_t *)in, sizeof in - 1);
-    int u = host_read_file("usb.bin", usb, sizeof usb);
-    usb_n = u > 0 ? u : 0;
     if (n < 0)
         host_exit(1);
     in[n] = 0;

@@ -6,16 +6,16 @@
    pager CRC.
 
    Lines:
-     range start fs=8000 hw=64000 ms=4000 ring=1024 state=NNNN free=NNN
-                    fs: the codec's frame rate as measured over the first 4 s (hw halfwords in
-                    ms), which the receiver's clock is set from (8000 if it reads off)
+     range start fs=8000 ring=1024 state=NNNN free=NNN
+                    (the codec's frame rate is 8000 to rxrec's count: 48000 halfwords in 3 s)
      r 3 t=12345 c=-118 y=31 e=41 ok=1 s=2 r=-84
                     a packet: its number, ms at its end, the sync's correlation (128 from clean
                     soft values; its sign: the burst's way up), the mean |soft value| x 10 (40
                     clean), the line bits whose sign the decoded packet's own code disagrees with
                     (of 2064), CRC right, seq (meaningless unless ok=1), RSSI (dBm) at its end
-     range end n=12 ok=11 ov=0 s=600
-                    packets, CRC right, ring overruns (audio lost), seconds listened
+     range end n=12 ok=11 ov=0 worst=9 s=600
+                    packets, CRC right, ring overruns (audio lost), the longest gap between reads
+                    of the ring (ms; 64 or more: it may have gone round unseen), seconds listened
    Listens RG_S seconds (Ctrl-C or PTT end it sooner); receive only: touches no RF register.
    Puts back register 26, PD9, the pins, SPI3 and the DMA stream as it found them.
    Returns the packets that checked, or -8 (scratch too small).
@@ -46,21 +46,21 @@ int uv_main(const ortx_api_t *api) {
     volatile int16_t *ring = (volatile int16_t *)(mem + sizeof(rr_state));
     rxa_state rs;
     rx_start(api, &rs, ring, RING);
-    /* the codec's true frame rate: halfwords in 4 s, two a sample */
-    uint32_t took, hw = rx_count(api, &rs, 4000u, &took);
-    unsigned fs = took ? (unsigned)((hw * 500u + took / 2u) / took) : 0u;
-    if (fs < 6000u || fs > 10000u)
-        fs = FS;
-    rr_init(r, fs);
-    api->fmt(line, sizeof line, "range start fs=%u hw=%lu ms=%lu ring=%u state=%u free=%lu", fs,
-             (unsigned long)hw, (unsigned long)took, RING, (unsigned)sizeof(rr_state),
-             (unsigned long)(bytes - need));
+    rr_init(r, FS);
+    api->fmt(line, sizeof line, "range start fs=%u ring=%u state=%u free=%lu", FS, RING,
+             (unsigned)sizeof(rr_state), (unsigned long)(bytes - need));
     api->say(line);
 
     unsigned rd = rx_wr(&rs) & ~1u, npk = 0, nok = 0, ov = 0;
     int16_t x[64];
+    uint32_t seen = api->ms();
+    unsigned worst = 0;
     while (api->ms() < RG_S * 1000u && !api->stop()) {
         unsigned wr = rx_wr(&rs), avail = (wr - rd + RING) % RING;
+        uint32_t now = api->ms(), gap = now - seen;
+        seen = now;
+        if (gap > worst)
+            worst = gap;                /* 64 ms or more: the ring may have gone round unseen */
         if (avail > RING - 64u) {
             ov++;                       /* the ring went round: skip to what's fresh */
             rd = (wr + RING - 2u) & ~1u & (RING - 1u);
@@ -91,7 +91,7 @@ int uv_main(const ortx_api_t *api) {
     }
 
     rx_stop(api, &rs);
-    api->fmt(line, sizeof line, "range end n=%u ok=%u ov=%u s=%lu", npk, nok, ov,
+    api->fmt(line, sizeof line, "range end n=%u ok=%u ov=%u worst=%u s=%lu", npk, nok, ov, worst,
              (unsigned long)(api->ms() / 1000u));
     api->say(line);
     return (int)nok;

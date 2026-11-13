@@ -116,7 +116,7 @@ static void rx_stop(const ortx_api_t *api, rxa_state *s) {
 
 /* halfwords the DMA wrote in `ms` ms, timed from one ms tick to another (sleeping between
    reads, which come well within the ring's time); *took: the ms it covered */
-static uint32_t rx_count(const ortx_api_t *api, const rxa_state *s, uint32_t ms, uint32_t *took) {
+__attribute__((unused)) static uint32_t rx_count(const ortx_api_t *api, const rxa_state *s, uint32_t ms, uint32_t *took) {
     uint32_t t0 = api->ms(), t;
     while ((t = api->ms()) == t0) {
     }

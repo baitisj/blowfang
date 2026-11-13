@@ -7,6 +7,7 @@ at the test tone (the IC-7100's PSK31 "AG7EW TEST" at 1000 Hz, or PHY R's 600 an
   python3 tools/uv380_i2sprobe.py cmd /dev/ttyACM0 "auto 0" "cap SPI3 s P16 8000" "raw 64" [--log LOG]
   python3 tools/uv380_i2sprobe.py mod /dev/ttyACM0 MODULE.u3r|MODULE.c [--key-file K] [--log LOG]
   python3 tools/uv380_i2sprobe.py audio LOG OUT.raw
+  python3 tools/uv380_i2sprobe.py inject /dev/ttyACM0 AUDIO.raw [--start S] [--seconds N] [--bps 6000]
 
 cmd sends each command line in turn (i2sprobe.h, i2sp_command: "help" lists them), prints what
 comes back and waits for that command's "ok" or "err" line ("pass" may take minutes). Stop any
@@ -21,6 +22,9 @@ this machine gave, kept in ~/.config/sotto/uv380-mod-serial). A module still run
 A module's "a SEQ hhhh ..." audio lines (mod/rxrec.c) go to the log but not to the screen (a count
 every 1000). audio turns them into 16-bit little-endian samples (a lost line: 64 zeros) and says
 what the module's rate and raw lines show.
+
+inject runs mod/rrinject.c (the range receiver as rangerx builds it) and sends it 8 kHz audio
+as hex lines while it runs: does the receiver on the MCU read what the host reads?
 
 A capture "hears" the radio when a channel's strongest tone is the test tone (within one bin,
 fs / 64) and holds a good share of its power, and the same channel with no signal does not.
@@ -136,10 +140,12 @@ def long_command(c):
     return c.split()[:1] == ["pass"] or c.split()[:2] in (["mod", "run"], ["mod", "begin"])
 
 
-def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, stop_on_err=False):
+def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, stop_on_err=False,
+            feed=b"", feed_bps=6000):
     """send each command, print its lines; -> the number of commands that ended in "err" or
     timed out. "pass" and "mod run" wait pass_timeout; a "mod run" still going then gets a Ctrl-C
-    and 5 s more. stop_on_err: send nothing after the first error."""
+    and 5 s more. stop_on_err: send nothing after the first error. feed: bytes sent after
+    "mod run", feed_bps a second, for the module to read (rrinject)."""
     import os
     import termios
     import tty
@@ -161,14 +167,21 @@ def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, st
             os.write(fd, c.encode() + b"\n")
             t0, wait, done = time.time(), pass_timeout if long_command(c) else timeout, None
             ctrl_c = c.split()[:2] == ["mod", "run"]
+            fed, t_feed = 0, time.time()
             while done is None:
+                if ctrl_c and fed < len(feed):
+                    k = min(len(feed), int((time.time() - t_feed) * feed_bps)) - fed
+                    if k > 0:
+                        os.write(fd, feed[fed:fed + k])
+                        fed += k
+                        t0 = time.time()        # the run's timeout counts from the feed's end
                 if time.time() - t0 >= wait:
                     if not ctrl_c:
                         break
                     out(f"ctrl-c: {c} still running after {wait:.0f} s")
                     os.write(fd, b"\x03")
                     t0, wait, ctrl_c = time.time(), 5.0, False
-                b = os.read(fd, 512)
+                b = os.read(fd, 512) if not (ctrl_c and fed < len(feed)) else _read_now(fd)
                 if g and b:
                     g.write(b)
                     g.flush()
@@ -188,6 +201,24 @@ def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, st
                 if stop_on_err:
                     break
     return bad
+
+
+def _read_now(fd):
+    """what's there, waiting at most 10 ms (a feed going out must not stall 0.2 s a read)"""
+    import select
+    import os
+    return os.read(fd, 512) if select.select([fd], [], [], 0.01)[0] else b""
+
+
+def feed_lines(raw, start=0.0, seconds=None, fs=8000):
+    """16-bit audio -> rrinject's input: "a N hhhh ..." lines of 64 samples, then "q" """
+    import array
+    x = array.array("h")
+    x.frombytes(raw[:len(raw) // 2 * 2])
+    x = x[int(start * fs):] if seconds is None else x[int(start * fs):int((start + seconds) * fs)]
+    out = [f"a {i} " + " ".join(f"{v & 0xFFFF:04x}" for v in x[j:j + 64]) + "\r\n"
+           for i, j in enumerate(range(0, len(x), 64))]
+    return ("".join(out) + "q\r\n").encode()
 
 
 SERIAL_FILE = "~/.config/sotto/uv380-mod-serial"
@@ -304,6 +335,15 @@ def main(argv=None):
     q.add_argument("--key-file", default="~/.config/sotto/k6-mod.key")
     q.add_argument("--log")
     q.add_argument("--run-timeout", type=float, default=60.0)
+    q = sub.add_parser("inject", help="rrinject on the radio, fed 16-bit 8 kHz audio over USB")
+    q.add_argument("dev")
+    q.add_argument("raw")
+    q.add_argument("--module", default=None, help="default firmware/uv380-openrtx/mod/rrinject.c")
+    q.add_argument("--start", type=float, default=0.0, help="seconds into the audio")
+    q.add_argument("--seconds", type=float, default=None)
+    q.add_argument("--bps", type=int, default=6000, help="bytes a second to the radio")
+    q.add_argument("--key-file", default="~/.config/sotto/k6-mod.key")
+    q.add_argument("--log")
     q = sub.add_parser("audio")
     q.add_argument("log")
     q.add_argument("out")
@@ -317,6 +357,16 @@ def main(argv=None):
         img = module_image(a.module, a.key_file)
         return 1 if command(a.dev, mod_lines(img), a.log, pass_timeout=a.run_timeout,
                             out=quiet(), stop_on_err=True) else 0
+    elif a.cmd == "inject":
+        import os
+        mod = a.module or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                       "firmware", "uv380-openrtx", "mod", "rrinject.c")
+        with open(a.raw, "rb") as f:
+            feed = feed_lines(f.read(), a.start, a.seconds)
+        print(f"{len(feed)} bytes to send, {len(feed) / a.bps:.0f} s")
+        img = module_image(mod, a.key_file)
+        return 1 if command(a.dev, mod_lines(img), a.log, pass_timeout=30.0, stop_on_err=True,
+                            feed=feed, feed_bps=a.bps) else 0
     elif a.cmd == "audio":
         import array
         with open(a.log, errors="replace") as f:
