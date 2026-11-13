@@ -1044,12 +1044,14 @@ static void park_step(sf_t *s) {
   if (!s->tuned) {
     d = read_at(s, C, CHECK_US);
     s->tuned = 1;
-    if (s->mon) audio(s, 1);
     hush(s, 0);
   } else {
     s->api->delay_us(PARK_US);
     d = dbm(s);
   }
+  /* monitor: open here, not only on the retune above: a bar check due when '*' came (one every
+     CHK_MS while sweeping) did the retune, and the speaker stayed shut (Jeff, 2026-11-13) */
+  if (s->mon && !s->audio) audio(s, 1);
   s->sel_dbm = d;
   if (d >= s->sfl + SQ_DB) pm_heard(s);   /* (monitor too: what plays gets a caret) */
   if (d >= s->sfl + SQ_DB - HYST_DB) s->t_open = s->now;

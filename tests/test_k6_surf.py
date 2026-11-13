@@ -868,3 +868,20 @@ def test_bench_build_presses_the_new_keys_and_says_each_result():
     assert ks[-1][5:] == ["70cm", "25k"]
     assert said[-1].startswith("end sw=")
     assert all(regs[r] == v for r, v in AURA.items()) and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_monitor_opens_the_audio_whenever_it_is_pressed_during_a_sweep():
+    # Jeff 2026-11-13: '*' was hit-or-miss during a band scan: the icon showed but the speaker
+    # never opened. A bar check due on the next pass (every CHK_MS while sweeping) took the
+    # retune park_step needs to open the audio. Presses at many points of the sweep, each on
+    # then off, must each open the speaker at once
+    ons = [1_000_000 + i * 700_000 + i * 13_000 for i in range(12)]
+    keys = []
+    for t in ons:
+        keys += taps("*", t) + taps("*", t + 400_000)
+    keys.append((ons[-1] + 900_000, ons[-1] + 1_200_000, "X"))
+    ret, said, regs, writes, lcd = go([], keys)
+    spk = lcd["st"]["spk"]
+    late = [t for t in ons if not any(v and t < u < t + 250_000 for u, v in spk)]
+    assert not late, late
