@@ -237,6 +237,15 @@ RR_HYST 16 and the follower at 1/16, the model reads 140 of 144 over K11's walk 
 0 and 300 ppm, flat or through the UV-380's response (6 of 18 before); no cost in noise (2-6 dB:
 fewer errors than before) and the receiver's tests unchanged.
 
+**K12 (2026-11-13 18:46Z, f6a50ce, rangetx_lo, RT_PPM 400, pre-emphasised): 6 of 6, every packet
+with no channel errors**, live on the unmodified UV-380 at -49/-50 dBm (c 134-142; range_rx_host
+on the tap gives the same lines). The IC-7100's copy: 6 of 6, no errors. The tone ran about 540
+ppm against the bit clock (400 + 140; still rising over the session: 271 at K9, 487 at K11) and
+wandered +-100 degrees within the burst; the receiver rode it. Replayed through f6a50ce: K11's tap
+6 of 6 (1 before), every IC-7100 copy of K7, K8, K10 and K11 6 of 6 (3, 5, 6, 0 before); K7, K8
+and K10's UV-380 taps still 0 of 6, as expected: they were sent flat. The UV-380 module's scratch
+now has 52 bytes free (rangetap).
+
 ## The other way: the UV-380 receiving
 
 The UV-380's receive audio doesn't reach its MCU without a hardware mod (OpenRTX). That is the

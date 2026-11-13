@@ -40,7 +40,9 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
   400), then rising above 1 kHz (+23 at 1200, +54 at 1400) (M, K10 and U7 11-13,
   tests/data/uv380/rx-response-20261113.txt). A flat FFSK sender reads 0 of 6; send pre-emphasised.
 - The receiver (range_rx.c) follows a sender whose tones walk against its bits (the K6: 270-380
-  ppm, wandering): 6 of 6 in simulation from -400 to +500 ppm (I, 11-13); on air not yet shown.
+  ppm, wandering): 6 of 6 in simulation from -400 to +500 ppm (I), and on air from the K6 at
+  about 540 ppm wandering +-100 degrees, every packet with no errors (M, K12 11-13 18:46Z).
+- rangetap's scratch has 52 bytes free (M, K12): the range modules are at the 16 KB arena's edge.
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit
   sotto.
 
