@@ -12,6 +12,14 @@ the K6's 0xAF reports (modem/k6mod.py):
   refused   bad header, wrong key, no key, or an old serial: no point resending
   nothing   no report heard: everything goes again (a K6 that ran it already answers a repeat)
 
+Chunk size: XL (128-byte packets) unless --payload L. A K6 hears only the packet size it is set
+to, and a wrong-size chunk fails its CRC, so a K6 set to the other size answers nothing at all.
+When a send of every chunk brings no report and no report has come yet, the next send uses the
+other size, as a new transfer (new serial: the chunks are numbered differently). Before
+2026-11-13 a stray key 2 or 7 in VOICE MSG changed the K6's size and every XL chunk was rejected;
+those keys are gone, but a control packet or an older image can still leave it at L.
+--no-fallback keeps the one size.
+
 The K6 waits 2 s after the last packet and for a clear channel, keys up on 440.850 only (its
 tx_on takes about 1.4 s), sends the report twice, then its own CW ID. The tool sends the PC's CW
 ID at the end. Before the first key-up the K6 needs an image from 2026-11-06 on (API level 4).
@@ -56,6 +64,19 @@ def next_step(st, count, xfer):
     return "send", st["missing"]
 
 
+def other_size(payload):
+    """the chunk size to try when the K6 heard none of this one"""
+    return "L" if payload == "XL" else "XL"
+
+
+def switch_size(st, heard, fallback):
+    """after a send: whether the next one should change chunk size. st: the report heard for
+    it (None: none); heard: whether any report for this size came earlier in the run. Only a
+    silence with nothing ever heard at this size means the K6 may be set to the other one: a
+    report (even partway) shows the size works, and a silence after one is a lost channel."""
+    return fallback and st is None and not heard
+
+
 def rig(a, *args):
     cmd = ["rigctl", "-m", "2", "-r", a.rigctld] + [str(v) for v in args]
     if a.dry_run:
@@ -70,10 +91,10 @@ def key_and_play(a, path, kind="data", text=bench.ID_TEXT):
                        f"{TOOL} {os.path.basename(path)}", text)
 
 
-def mod_wav(a, path, serial, xfer, only=None):
+def mod_wav(a, path, serial, xfer, only=None, payload=None):
     cmd = [sys.executable, "-m", "modem.k6", "mod", path, a.source, "--key-file", a.key_file,
            "--serial", str(serial), "--xfer", str(xfer), "--phy", a.phy, "--baud", str(a.baud),
-           "--payload", a.payload, "--level", str(a.level), "--arq", "--telemetry", str(a.telemetry)]
+           "--payload", payload or a.payload, "--level", str(a.level), "--arq", "--telemetry", str(a.telemetry)]
     if a.api_level:
         cmd += ["--api-level", str(a.api_level)]
     if only is not None:
@@ -83,14 +104,14 @@ def mod_wav(a, path, serial, xfer, only=None):
     return r.stderr.strip()
 
 
-def chunks_of(a):
-    """the image's chunk count, from the same build `modem.k6 mod` makes"""
+def chunks_of(a, payload=None):
+    """the image's chunk count at this payload size, from the same build `modem.k6 mod` makes"""
     if a.source.endswith(".bin"):
         code = open(a.source, "rb").read()
     else:
         code, _ = k6mod.build(a.source)
     n = k6mod.HDR + len(code) + k6mod.TAG
-    dl = k6mod.data_bytes(128 if a.payload == "XL" else 64)
+    dl = k6mod.data_bytes(128 if (payload or a.payload) == "XL" else 64)
     return -(-n // dl)
 
 
@@ -159,7 +180,10 @@ def main():
     ap.add_argument("--key-file", required=True)
     ap.add_argument("--api-level", type=int)
     ap.add_argument("--telemetry", type=int, default=4, help="say-line parts to send back (0-12, default 4)")
-    ap.add_argument("--payload", choices=("L", "XL"), default="XL")
+    ap.add_argument("--payload", choices=("L", "XL"), default="XL",
+                    help="chunk size to start with (default XL); see --no-fallback")
+    ap.add_argument("--no-fallback", dest="fallback", action="store_false",
+                    help="keep --payload's size even when a whole send brings no report")
     ap.add_argument("--phy", choices="DF", default="F")
     ap.add_argument("--baud", type=float, default=1800)
     ap.add_argument("--level", type=float, default=0.3)
@@ -182,15 +206,18 @@ def main():
     rig(a, "M", "PKTFM", 12000)      # the wide FM-D filter: passband 0 picks the 6 kHz one, half the deviation
     serial = int(time.time())
     xfer = serial & 0xFF
-    count = chunks_of(a)
+    payload = a.payload
+    count = chunks_of(a, payload)
     todo = list(range(count))
+    heard = False                    # a report has come for this chunk size
     with tempfile.TemporaryDirectory() as d:
         rec = Recorder(a, d)
         try:
             for rnd in range(1, a.rounds + 1):
                 w = os.path.join(d, f"up{rnd}.wav")
-                print(f"{time.strftime('%H:%M:%S')} send {rnd}: {len(todo)} of {count} chunks "
-                      f"(serial {serial}, xfer {xfer}); {mod_wav(a, w, serial, xfer, todo)}", flush=True)
+                print(f"{time.strftime('%H:%M:%S')} send {rnd}: {len(todo)} of {count} {payload} chunks "
+                      f"(serial {serial}, xfer {xfer}); {mod_wav(a, w, serial, xfer, todo, payload)}",
+                      flush=True)
                 key_and_play(a, w)
                 since = rec.samples()
                 print(f"{time.strftime('%H:%M:%S')} listening for the K6's report", flush=True)
@@ -201,6 +228,15 @@ def main():
                           f"chunks, r={st['r']} ({k6mod.RESULTS.get(st['r'], '?')})", flush=True)
                 else:
                     print(f"{time.strftime('%H:%M:%S')} no report heard", flush=True)
+                if step == "send" and switch_size(st, heard, a.fallback):
+                    payload = other_size(payload)
+                    serial = max(int(time.time()), serial + 1)   # a new transfer: the K6 takes a newer serial
+                    xfer = serial & 0xFF
+                    count = chunks_of(a, payload)
+                    arg = list(range(count))
+                    print(f"{time.strftime('%H:%M:%S')} no report after a whole send: the K6 may be "
+                          f"set to {payload} packets, so the next send is {count} {payload} chunks", flush=True)
+                heard = heard or st is not None
                 if step == "send":
                     todo = arg
                     continue
