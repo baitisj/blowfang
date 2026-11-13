@@ -45,6 +45,12 @@ static int correlate(const rr_state *r) {
     return c;
 }
 
+/* the packet's soft value i (4 bits a value, two a byte) */
+static int soft_at(const rr_state *r, unsigned i) {
+    unsigned v = (r->soft[i >> 1] >> ((i & 1u) * 4u)) & 15u;
+    return (int)v - (int)((v & 8u) << 1);
+}
+
 /* one soft value into the bit layer: 1 when a packet's last one came */
 #ifdef RR_TRACE
 void rr_trace(const rr_state *r, int q);
@@ -69,7 +75,10 @@ static int bit_in(rr_state *r, int8_t q) {
             r->start = r->bits;
             return 0;
         }
-        r->soft[r->got++] = (int8_t)(r->sgn * q);
+        unsigned sh = (r->got & 1u) * 4u;
+        r->soft[r->got >> 1] = (uint8_t)((r->soft[r->got >> 1] & ~(15u << sh)) |
+                                         (((unsigned)(r->sgn * q) & 15u) << sh));
+        r->got++;
         if (r->got < RR_CODED)
             return 0;
         r->collecting = 0;
@@ -182,7 +191,7 @@ void rr_decode(rr_state *r) {
     for (s = 0; s < 64; s++)
         pm[0][s] = s ? -100000 : 0;
     for (t = 0; t < RR_STEPS; t++) {
-        int s0 = r->soft[line_of(2 * t)], s1 = r->soft[line_of(2 * t + 1)];
+        int s0 = soft_at(r, line_of(2 * t)), s1 = soft_at(r, line_of(2 * t + 1));
         uint32_t w0 = 0, w1 = 0;
         for (unsigned ns = 0; ns < 64; ns++) {
             int32_t m[2];
@@ -221,7 +230,7 @@ void rr_decode(rr_state *r) {
         reg = ((reg << 1) | bit) & 127u;
         for (unsigned k = 0; k < 2; k++) {
             unsigned c = parity(reg & (k ? 0171u : 0133u));
-            int v = r->soft[line_of(2 * t + k)];
+            int v = soft_at(r, line_of(2 * t + k));
             err += (v > 0 && c) || (v < 0 && !c) || v == 0;
             sum += (unsigned)(v < 0 ? -v : v);
         }

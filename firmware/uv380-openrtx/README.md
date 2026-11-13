@@ -172,8 +172,10 @@ audio to the C6000 as the probe's pass does, register 26 fd and PD9 high, and ca
 90 s at two gains, for a tone run: on 11-13 at 14:52Z it heard the IC-7100's 1000 Hz tone cleanly
 in P32 frames, so the UV-380 receives with no hardware mod), `rangerx` (PHY R, the range mode,
 received from that audio: SPI3 slave P32 by DMA into a ring (mod/rxaudio.h), c/common/range_rx.c
-on every other halfword, its clock set from the codec's frame rate as measured over the first 4 s,
-a line a packet; on air 11-13 15:08Z with the rate taken as 8000 it read none of 72 packets),
-`rxrec` (that audio to the USB serial as hex lines, with the measured rate and 64 raw halfwords;
-`tools/uv380_i2sprobe.py audio LOG OUT.raw` turns the log back into audio for range_rx_host). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
+on every other halfword at 8 kHz, a line a packet; on air 11-13 15:08Z and 15:19Z it read none of
+72 packets), `rxrec` (that audio to the USB serial as hex lines, with the DMA's measured rate and 64
+raw halfwords; `tools/uv380_i2sprobe.py audio LOG OUT.raw` turns the log back into audio: at 15:23Z
+it was exactly 8000 a second and range_rx_host read 42 of 42 packets from it), `rrinject` (the
+receiver as rangerx builds it, fed audio over USB by `tools/uv380_i2sprobe.py inject`: the
+receiver on the MCU against the same audio the host reads). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
 (`make -C radios/uv380 omqemu`).

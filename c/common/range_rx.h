@@ -21,7 +21,7 @@
  * on bytes 0-125 against 126-127).
  *
  * No malloc, no OS, no floating point, no writable statics and no tables of pointers: a RAM
- * module (-fropi) can #include range_rx.c and keep the rr_state (about 11 KB, most of it the
+ * module (-fropi) can #include range_rx.c and keep the rr_state (about 10 KB, most of it the
  * Viterbi's survivors) in its scratch RAM.
  *
  * SPDX-License-Identifier: MIT */
@@ -65,7 +65,8 @@ typedef struct {
     uint32_t got;               /* soft values of the packet so far */
     uint32_t bits;              /* soft values said, all told */
     uint32_t start;             /* `bits` at the packet's sync */
-    int8_t soft[RR_CODED];      /* the packet's soft values, line order, > 0: bit 0 */
+    uint8_t soft[RR_CODED / 2]; /* the packet's soft values, line order, > 0: bit 0; two a byte
+                                   (-7..7 in 4 bits, value i in the low half when i is even) */
     /* the packet just decoded (rr_push returned 1) */
     uint8_t payload[RR_PAYLOAD];    /* as sent: whitened */
     int ok;                     /* its CRC checks */

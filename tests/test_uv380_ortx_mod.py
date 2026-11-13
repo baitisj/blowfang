@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import pytest
 
@@ -204,6 +205,45 @@ def test_tool_sends_a_module_over_a_pty():
                         "ok mod run ret=92 ms=1500 (Ctrl-C)"]
 
 
+def test_tool_feeds_a_running_module_over_a_pty():
+    """inject's feed goes out after "mod run", paced, and the run's end is still waited for"""
+    import pty
+    import threading
+    m, s = pty.openpty()
+    got, fed = [], []
+    feed = b"".join(b"a %d 0001 ffff\r\n" % i for i in range(200)) + b"q\r\n"
+
+    def radio():
+        buf = b""
+        while True:
+            while b"\n" not in buf:
+                b = os.read(m, 512)
+                if not b:
+                    return
+                buf += b
+            ln, buf = buf.split(b"\n", 1)
+            ln = ln.decode()
+            if ln.startswith("mod hex"):
+                os.write(m, f"ok mod hex {ln.split()[2]} 0\r\n".encode())
+            elif ln.startswith("mod begin"):
+                os.write(m, f"ok {ln}\r\n".encode())
+            elif ln == "mod run":
+                while not buf.endswith(b"q\r\n"):
+                    buf += os.read(m, 512)
+                fed.append(buf)
+                os.write(m, b"mod say inject end\r\nok mod run ret=0 ms=900\r\n")
+                return
+
+    t = threading.Thread(target=radio)
+    t.start()
+    t0 = time.time()
+    bad = tool.command(os.ttyname(s), tool.mod_lines(bytes(100)), out=got.append, timeout=5,
+                       pass_timeout=5.0, stop_on_err=True, feed=feed, feed_bps=len(feed) * 2)
+    t.join(10)
+    assert bad == 0 and fed == [feed] and got[-1] == "ok mod run ret=0 ms=900"
+    assert 0.4 < time.time() - t0 < 4
+
+
 @emu
 def test_c6sweep_drives_the_probe(elf):
     """each bit of each register flipped, a capture after each, the register put back"""
@@ -250,3 +290,45 @@ def test_c6listen_builds_for_the_openrtx_table():
     code, entry = uv380mod.build(os.path.join(MOD, "c6listen.c"))
     assert entry == 0 and len(code) < 2048
     assert uv380mod.source_table(os.path.join(MOD, "c6listen.c")) == "openrtx"
+
+
+@emu
+def test_rrinject_decodes_on_the_mcu(elf):
+    """the range receiver as rangerx builds it (RR_HIST 32, -fropi, -Os), on the emulated F405, fed
+    five packets of 8 kHz audio as the tool's inject sends them (rxrec's "a" lines, past line 1000:
+    a 4-digit SEQ is no sample), reads all five; a Ctrl-C byte in the feed ends it there"""
+    signal = pytest.importorskip("scipy.signal")
+    import numpy as np
+    from modem import k6r
+    tx = os.path.join(ROOT, "c", "common", "range_tx_host")
+    if not os.path.exists(tx):
+        pytest.skip("needs make -C c/common")
+    pl = k6r.test_payloads(5)
+    with tempfile.TemporaryDirectory() as d:
+        open(os.path.join(d, "in.bin"), "wb").write(b"".join(pl))
+        subprocess.run([tx, "audio", os.path.join(d, "in.bin"), os.path.join(d, "a.raw"), "--fs", "48000",
+                        "--level", "12000"], check=True)
+        a = np.fromfile(os.path.join(d, "a.raw"), "<i2").astype(float)
+    x = signal.resample_poly(a, 1, 6)
+    x = np.clip(np.round(np.concatenate([np.zeros(2000), x, np.zeros(2000)])), -32768, 32767)
+    feed = tool.feed_lines(x.astype("<i2").tobytes())
+    assert feed.endswith(b"q\r\n") and feed.count(b"\r\n") == (len(x) + 63) // 64 + 1 > 1001
+    m = uv380mod.build(os.path.join(MOD, "rrinject.c"))
+    out = run(elf, tool.mod_lines(img(m)), usb=feed)
+    pk = [ln for ln in out if ln.startswith("mod say r ")]
+    assert len(pk) == 5 and all(" ok=1 " in ln and " e=0 " in ln for ln in pk), out
+    assert [int(re.search(r" s=(\d+)", ln).group(1)) for ln in pk] == [0, 1, 2, 3, 4]
+    assert f"mod say inject end samples={len(x)} n=5 ok=5" in out
+    assert "ok mod run ret=5" in " ".join(out)
+    # Ctrl-C half way: it ends with what it had
+    cut = len(feed) * 2 // 5
+    out = run(elf, tool.mod_lines(img(m, serial=2)), usb=feed[:cut] + b"\x03" + feed[cut:])
+    assert any(ln.startswith("mod say inject end") and " n=1 " in ln for ln in out), out
+
+
+@pytest.mark.skipif(not TOOLS, reason="needs clang and lld")
+def test_rxrec_and_rangerx_fit():
+    for name, most in (("rxrec.c", 2048), ("rangerx.c", 4096), ("rangetap.c", 4096), ("rrinject.c", 3072)):
+        code, entry = uv380mod.build(os.path.join(MOD, name))
+        assert entry == 0 and len(code) < most, (name, len(code))
+        assert uv380mod.source_table(os.path.join(MOD, name)) == "openrtx"

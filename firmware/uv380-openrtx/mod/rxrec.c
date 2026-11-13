@@ -1,6 +1,6 @@
 /* rxrec: the UV-380's receive audio to the USB serial, to see what a receiver on it (rangerx)
    gets. The same route and I2S capture as rangerx (rxaudio.h). Lines:
-     rxrec start ring=1024
+     rxrec start ring=1024 align=1      tries to start in step with the codec's frames (0: none)
      mod say rate hw=NNNNN ms=3000      halfwords the DMA wrote in 3 s (2 a sample if the audio
                                         comes twice, so fs = hw / 2 / 3)
      mod say raw 0 h0 h1 ... h31        64 halfwords in a row as the DMA wrote them (two lines)
@@ -32,9 +32,9 @@ int uv_main(const ortx_api_t *api) {
         return -8;
     volatile int16_t *ring = (volatile int16_t *)mem;
     rxa_state s;
-    api->fmt(line, sizeof line, "rxrec start ring=%u", RING);
+    unsigned align = rx_start(api, &s, ring, RING);
+    api->fmt(line, sizeof line, "rxrec start ring=%u align=%u", RING, align);
     api->say(line);
-    rx_start(api, &s, ring, RING);
 
     uint32_t took, hw = rx_count(api, &s, 3000u, &took);
     api->fmt(line, sizeof line, "rate hw=%lu ms=%lu", (unsigned long)hw, (unsigned long)took);
