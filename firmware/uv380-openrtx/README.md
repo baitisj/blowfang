@@ -169,5 +169,11 @@ rescaled the idle waveform, and B9 bit 2 put the C6000 to sleep until a power cy
 every flip, and the first samples of each capture; on the radio, E1 turned out to be a gain on
 what I2S3 carries, x2 to x32, and E3 partly a status register), `c6listen` (routes the receive
 audio to the C6000 as the probe's pass does, register 26 fd and PD9 high, and captures in rounds for
-90 s at two gains, for a tone run). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
+90 s at two gains, for a tone run: on 11-13 at 14:52Z it heard the IC-7100's 1000 Hz tone cleanly
+in P32 frames, so the UV-380 receives with no hardware mod), `rangerx` (PHY R, the range mode,
+received from that audio: SPI3 slave P32 by DMA into a ring (mod/rxaudio.h), c/common/range_rx.c
+on every other halfword, its clock set from the codec's frame rate as measured over the first 4 s,
+a line a packet; on air 11-13 15:08Z with the rate taken as 8000 it read none of 72 packets),
+`rxrec` (that audio to the USB serial as hex lines, with the measured rate and 64 raw halfwords;
+`tools/uv380_i2sprobe.py audio LOG OUT.raw` turns the log back into audio for range_rx_host). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
 (`make -C radios/uv380 omqemu`).

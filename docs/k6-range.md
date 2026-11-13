@@ -163,3 +163,22 @@ setting, packets, those right, channel errors and RSSI.
 Files: modem/k6r.py, sim/k6if/range.py, c/k6/mod/rangerx.c, c/k6/mod/rangerx_b.c,
 c/k6/mod/rangerx_d.c, c/common/range_tx.c, tests/test_k6_range.py, tests/data/k6/k6r_run2_c*.txt.
 MIT licence.
+
+## The UV-380's receiver (c/common/range_rx.c)
+
+The UV-380 hears PHY R with no hardware mod (2026-11-13): with the HR_C6000's register 26 at fd
+and RX_AUDIO_MUX (PD9) high, the FM receiver's audio comes off the codec's I2S port, SPI3 as a
+slave in 32-bit channels at 8 kHz. It has the audio itself, not a chip's signs, so the receiver is
+an integrate and dump on the bit edges: y = (the audio over the half bit before an edge) - (over
+the half bit after it), the same soft value the K6 gets from its four signs. The clock is a bank
+of 16 phases a bit apart, each with a running mean of |y|; the best phase is where the edges are
+(half a bit off, 600 Hz bits give 0), and moving round the bank follows a drifting clock (a wrap
+adds or drops a soft value). Soft values are scaled to the best phase's mean as 4, so the sync
+(threshold 96), the de-interleaver and PHY G's Viterbi are the K6's. A sync of 112 or more that
+beats the packet's own restarts the packet anywhere in it, so a false sync in the noise between
+bursts doesn't swallow the next packet.
+
+tests/test_range_rx.py: every packet at -2 dB audio SNR (the whole 4 kHz band), with the clock off
+200 ppm, with de-emphasis, behind a 300 Hz high-pass, upside down, and with seconds of noise around
+bursts. The module (firmware/uv380-openrtx/mod/rangerx.c) is 3.2 KB, its state 10.9 KB with the
+Viterbi's survivors, and a 2 KB DMA ring: 0.3 KB under the 16 KB arena.

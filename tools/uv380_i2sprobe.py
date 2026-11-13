@@ -6,6 +6,7 @@ at the test tone (the IC-7100's PSK31 "AG7EW TEST" at 1000 Hz, or PHY R's 600 an
   python3 tools/uv380_i2sprobe.py listen /dev/ttyACM0 LOG [--seconds 120]
   python3 tools/uv380_i2sprobe.py cmd /dev/ttyACM0 "auto 0" "cap SPI3 s P16 8000" "raw 64" [--log LOG]
   python3 tools/uv380_i2sprobe.py mod /dev/ttyACM0 MODULE.u3r|MODULE.c [--key-file K] [--log LOG]
+  python3 tools/uv380_i2sprobe.py audio LOG OUT.raw
 
 cmd sends each command line in turn (i2sprobe.h, i2sp_command: "help" lists them), prints what
 comes back and waits for that command's "ok" or "err" line ("pass" may take minutes). Stop any
@@ -16,6 +17,10 @@ and "mod run", and prints what it says. A .c source is built and signed first (m
 key ~/.config/sotto/k6-mod.key by default, serial the time in seconds, or one more than the last
 this machine gave, kept in ~/.config/sotto/uv380-mod-serial). A module still running after
 --run-timeout seconds gets a Ctrl-C byte, which ends it at its next stop() check.
+
+A module's "a SEQ hhhh ..." audio lines (mod/rxrec.c) go to the log but not to the screen (a count
+every 1000). audio turns them into 16-bit little-endian samples (a lost line: 64 zeros) and says
+what the module's rate and raw lines show.
 
 A capture "hears" the radio when a channel's strongest tone is the test tone (within one bin,
 fs / 64) and holds a good share of its power, and the same channel with no signal does not.
@@ -221,6 +226,62 @@ def module_image(path, key_file, serial_file=SERIAL_FILE):
                           uv380mod.source_level(path), table)
 
 
+def audio_lines(lines):
+    """rxrec's log -> (samples [int], lines lost, the rate line, the raw halfwords [int])"""
+    out, lost, rate, raw, nxt = [], 0, None, [], None
+    for ln in lines:
+        w = ln.split()
+        if len(w) > 2 and w[0] == "a" and w[1].isdigit():
+            seq = int(w[1])
+            try:
+                v = [int(h, 16) for h in w[2:]]
+            except ValueError:
+                continue
+            if nxt is not None and seq > nxt:
+                lost += seq - nxt
+                out += [0] * 64 * (seq - nxt)
+            nxt = seq + 1
+            out += [x - 65536 if x >= 32768 else x for x in v]
+        elif "rate hw=" in ln:
+            rate = ln[ln.index("rate"):].strip()
+        elif "say raw " in ln:
+            raw += [int(h, 16) for h in ln.split()[4:]]
+    return out, lost, rate, raw
+
+
+def audio_report(samples, lost, rate, raw):
+    import math
+    r = [f"{len(samples)} samples ({len(samples) / 8000:.1f} s at 8 kHz), {lost} lines lost"]
+    if rate:
+        m = re.search(r"hw=(\d+) ms=(\d+)", rate)
+        if m and int(m.group(2)):
+            hw, ms = int(m.group(1)), int(m.group(2))
+            r.append(f"{rate}: {hw * 1000 / ms:.1f} halfwords a second, fs {hw * 500 / ms:.1f} "
+                     "if two a sample")
+    if len(raw) >= 4:
+        odd = sum(raw[i] == raw[i + 1] for i in range(1, len(raw) - 1, 2))
+        even = sum(raw[i] == raw[i + 1] for i in range(0, len(raw) - 1, 2))
+        r.append(f"raw: {len(raw)} halfwords; pairs equal (2k-1, 2k) {odd}, (2k, 2k+1) {even}")
+    if samples:
+        rms = math.sqrt(sum(x * x for x in samples) / len(samples))
+        r.append(f"rms {rms:.0f}, peak {max(abs(x) for x in samples)}")
+    return r
+
+
+def quiet(out=print):
+    """out, but "a ..." audio lines only counted"""
+    n = [0]
+
+    def f(ln):
+        if ln.startswith("a ") and ln[2:3].isdigit():
+            n[0] += 1
+            if n[0] % 1000 == 0:
+                out(f"({n[0]} audio lines)")
+            return
+        out(ln)
+    return f
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -243,6 +304,9 @@ def main(argv=None):
     q.add_argument("--key-file", default="~/.config/sotto/k6-mod.key")
     q.add_argument("--log")
     q.add_argument("--run-timeout", type=float, default=60.0)
+    q = sub.add_parser("audio")
+    q.add_argument("log")
+    q.add_argument("out")
     a = ap.parse_args(argv)
     if a.cmd == "report":
         with open(a.log, errors="replace") as f:
@@ -252,7 +316,14 @@ def main(argv=None):
     elif a.cmd == "mod":
         img = module_image(a.module, a.key_file)
         return 1 if command(a.dev, mod_lines(img), a.log, pass_timeout=a.run_timeout,
-                            stop_on_err=True) else 0
+                            out=quiet(), stop_on_err=True) else 0
+    elif a.cmd == "audio":
+        import array
+        with open(a.log, errors="replace") as f:
+            x, lost, rate, raw = audio_lines(f)
+        with open(a.out, "wb") as g:
+            array.array("h", x).tofile(g)
+        print("\n".join(audio_report(x, lost, rate, raw)))
     else:
         listen(a.dev, a.log, a.seconds)
     return 0
