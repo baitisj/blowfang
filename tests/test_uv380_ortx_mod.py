@@ -243,3 +243,10 @@ def test_serials_always_grow(tmp_path):
     assert tool.next_serial(f, now=1000) == 1001
     assert tool.next_serial(f, now=999) == 1002
     assert tool.next_serial(f, now=5000) == 5000
+
+
+def test_c6listen_builds_for_the_openrtx_table():
+    """it pokes GPIOD, so it can't run on the emulator's fake; it must build position-independent"""
+    code, entry = uv380mod.build(os.path.join(MOD, "c6listen.c"))
+    assert entry == 0 and len(code) < 2048
+    assert uv380mod.source_table(os.path.join(MOD, "c6listen.c")) == "openrtx"

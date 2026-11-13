@@ -55,7 +55,9 @@ int uv_main(const ortx_api_t *api) {
             api->sleep_ms(5);
             uint8_t back = api->c6000_read(REGS[r]), alive = api->c6000_read(0x00);
             done++;
-            if (back != was || alive != id) {
+            /* E3 reads back other bits than it was written (status: 52, then 30 after a boot,
+               0f after a write), so only the chip-alive check counts for it */
+            if ((back != was && REGS[r] != 0xE3) || alive != id) {
                 api->fmt(line, sizeof line, "STOP %02x reads %02x (want %02x), reg00 %02x", REGS[r],
                          back, was, alive);
                 api->say(line);
