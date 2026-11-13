@@ -46,6 +46,22 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit
   sotto.
 
+## Microphone to the MCU (no mod): not found yet
+
+Tested 11-13 with modules micprobe, micprobe2, micadc and micspk (firmware/uv380-openrtx/mod/,
+scored by tools/uv380_micprobe.py against a recording of what was played):
+
+| | | |
+| --- | --- | --- |
+| As found | C6000 26=fe, E0-E5 = c9 0f 02 30 23 1a; MIC_PWR (PA13) an output, low; PD9 high | M |
+| PA3 (OpenRTX's AIN_MIC, ADC2 ch 3) | sits at 0 V with MIC_PWR on: only the preamp's switch-on transient (about 850 counts, gone in 5 s), nothing from the room. OpenRTX's mic route isn't wired on this Plus | M, micadc 19:53Z |
+| C6000 codec input on I2S3 | open with register 26 bit 6 or 7 cleared (7d, bd, 7c, 3d; also fd and fe without PD9's receive audio): carries about 100-240 rms of the IC-7100's demodulated audio through the bench's shared USB ground, mic preamp on or off, IC-7100 speaker silent; nothing acoustic | M, micprobe2 19:57-20:01Z |
+| Codec sets for the mic | OpenGD77's DMR (26 7d, E0 8b, E2 06, E4 4a), OpenRTX's FM mic (E0 c1) and M17 line in (E0 83), and every single bit of E0, E2, E4, E5 and 26: no mic in receive | M |
+| Own speaker as the source | no rise with the speaker on (but the speaker may have been silent at 26=7d: unconfirmed) | M, micspk 20:05Z |
+| Left to try | someone talking into it (no source wired to the bench); the mic may be powered only while keyed | I |
+
+A source wired to the bench PC can't test the mic: its audio reaches the codec input electrically.
+
 ## RAM modules
 
 - Signed modules load over USB serial (`tools/uv380_i2sprobe.py mod`), no reflash (M, 11-13). The
