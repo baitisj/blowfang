@@ -116,6 +116,13 @@ static int32_t api_rssi(void) {
     return H->rssi ? H->rssi() : -999;
 }
 
+static int api_probe(const char *line) {
+    if (H->probe)
+        return H->probe(line);
+    outf("err probe %.40s: not here", line);
+    return -1;
+}
+
 static void *api_memcpy(void *d, const void *s, unsigned n) {
     return memcpy(d, s, n);
 }
@@ -141,6 +148,7 @@ static const ortx_api_t api = {
     .rssi = api_rssi,
     .memcpy = api_memcpy,
     .memset = api_memset,
+    .probe = api_probe,
 };
 
 uint8_t *om_arena(void) {

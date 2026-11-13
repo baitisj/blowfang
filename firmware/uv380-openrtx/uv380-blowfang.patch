@@ -170,10 +170,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..9273e7e
+index 0000000..331a468
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,629 @@
+@@ -0,0 +1,639 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -468,6 +468,9 @@ index 0000000..9273e7e
 +#endif
 +}
 +
++static const i2sp_ops pbOps = {pbSay, pbWrite, pbRead, pbSleep, pbStop, pbAdc,
++                               NULL};
++
 +// RAM modules (ortx_mod.h): "mod ..." lines load signed code over USB serial
 +// and run it on this thread, so hamlet can try new code with no reflash.
 +#ifndef PLATFORM_LINUX
@@ -522,8 +525,15 @@ index 0000000..9273e7e
 +    return (int32_t) rtx_getRssi();   // the RTX thread's last reading
 +}
 +
++// a probe command line from a module ("cap ...", "c6w ...")
++static int omProbe(const char *line)
++{
++    return (i2sp_command(&pbOps, line) < 0) ? -1 : 0;
++}
++
 +static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
-+                               omSleep, omC6r, omC6w, omAdc, omRssi};
++                               omSleep, omC6r, omC6w, omAdc, omRssi,
++                               omProbe};
 +#endif
 +
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
@@ -575,7 +585,7 @@ index 0000000..9273e7e
 +static void *probeFunc(void *arg)
 +{
 +    (void) arg;
-+    const i2sp_ops ops = {pbSay, pbWrite, pbRead, pbSleep, pbStop, pbAdc, NULL};
++    const i2sp_ops &ops = pbOps;
 +    while(pbRun)
 +    {
 +        if(pbAuto && (pbStop(NULL) == false))

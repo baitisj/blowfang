@@ -75,7 +75,20 @@ void *_sbrk(int incr) {
     return heap + used - incr;
 }
 
-static const om_host host = {q_line, q_write, q_read, q_now, q_stop, q_sleep, q_c6r, q_c6w, NULL, q_rssi};
+/* the probe's commands: echoed, "ok" unless the line says "bad" */
+static int q_probe(const char *line) {
+    host_log("probe ");
+    q_line(line);
+    if (strstr(line, "bad")) {
+        q_line("err probe bad");
+        return -1;
+    }
+    q_line("ok probe");
+    return 0;
+}
+
+static const om_host host = {q_line, q_write, q_read, q_now, q_stop, q_sleep, q_c6r, q_c6w, NULL, q_rssi,
+                             q_probe};
 
 int main(void) {
     int n = host_read_file("in.txt", (uint8_t *)in, sizeof in - 1);

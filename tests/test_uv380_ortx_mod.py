@@ -202,3 +202,18 @@ def test_tool_sends_a_module_over_a_pty():
     assert sent == tool.mod_lines(data)
     assert got[-3:] == ["mod say spinning", "ctrl-c: mod run still running after 1 s",
                         "ok mod run ret=92 ms=1500 (Ctrl-C)"]
+
+
+@emu
+def test_c6sweep_drives_the_probe(elf):
+    """each bit of each register flipped, a capture after each, the register put back"""
+    out = run(elf, tool.mod_lines(img(uv380mod.build(os.path.join(MOD, "c6sweep.c")))))
+    probe = [ln[6:] for ln in out if ln.startswith("probe ")]
+    sweeps = [ln for ln in out if ln.startswith("mod say sweep ")]
+    assert len(sweeps) == 13 * 8 and any(re.fullmatch(r"ok mod run ret=104 ms=\d+", ln) for ln in out), out
+    assert probe[0] == probe[-1] == "cap SPI3 s S16 8000"
+    assert len(probe) == 2 + 2 * 13 * 8
+    # register 26 reads 26 ^ 5a = 7c on the fake: bit 0 flipped first
+    assert "mod say sweep 26 7c->7d" in out
+    i = probe.index("c6w 26 7d")
+    assert probe[i + 1] == "cap SPI3 s S16 8000"

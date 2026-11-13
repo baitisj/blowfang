@@ -143,7 +143,8 @@ position-independent Thumb-2 for the M4F, signed with the same key as K6 modules
 (`~/.config/sotto/k6-mod.key`), with its own header magic `U3R` (the bare-metal port's table is
 `U3M`), and it runs once in the probe's thread against the table in `ortx_mod.h`: say lines,
 snprintf, ms, sleep, stop, scratch RAM (DMA-capable), the C6000's registers, raw USB serial in and
-out, PC3 captures and the RSSI.
+out, PC3 captures, the RSSI, and the probe's own command lines (`api->probe("cap SPI3 s S16 8000")`),
+so a module can sweep codec settings and capture after each.
 
     python3 tools/uv380_i2sprobe.py mod /dev/ttyACM0 firmware/uv380-openrtx/mod/c6dump.c
 
@@ -161,5 +162,6 @@ The wrapped file is scrambled, so the key can't be written into a `_wrap.bin`. A
 key refuses every module (`err mod run refused r=-5`).
 
 Modules so far (`mod/`): `hello` (the loader's own check), `c6dump` (all 256 C6000 configuration
-registers). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
+registers), `c6sweep` (flips each bit of the FM-mode and codec registers in turn and captures I2S3
+after each: does any one bit put receiver audio there?). `tests/test_uv380_ortx_mod.py` runs the loader on QEMU's STM32F405
 (`make -C radios/uv380 omqemu`).

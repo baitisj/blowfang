@@ -68,6 +68,10 @@ typedef struct ortx_api {
     int32_t (*rssi)(void);              /* dBm, from the AT1846S */
     void *(*memcpy)(void *d, const void *s, unsigned n);
     void *(*memset)(void *d, int c, unsigned n);
+    /* one I2S probe command line (i2sprobe.h: "c6w E0 c8", "cap SPI3 s S16 8000", "raw a 64",
+       ...), its lines to USB serial as if hamlet had sent it: 0, or -1 after an "err" line.
+       A module can sweep codec settings and capture after each with no reflash. */
+    int (*probe)(const char *line);
 } ortx_api_t;
 
 /* the image's side: what the loader needs from OpenRTX (all of it, or NULL where noted) */
@@ -82,6 +86,7 @@ typedef struct {
     void (*c6000_write)(uint8_t reg, uint8_t val);  /* NULL: does nothing */
     unsigned (*adc_capture)(int16_t *buf, unsigned n, unsigned fs);     /* NULL: 0 samples */
     int32_t (*rssi)(void);                      /* NULL: -999 */
+    int (*probe)(const char *line);             /* NULL: says "err probe: not here", -1 */
 } om_host;
 
 /* One "mod ..." command; args is what follows "mod". Returns 0, or -1 after an "err" line. */
