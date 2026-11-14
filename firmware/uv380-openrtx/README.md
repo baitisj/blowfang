@@ -204,7 +204,8 @@ and starts again after them. With the cable in it prints `heard pkt seq=.. id=..
 30 s: a write with no host busy-waits). `listen 0|1` turns it off or on, `listen` says its state
 and the preview's. The LED is green while something is coming in: a packet after a strong sync,
 or a message part way there (off once it plays or is dropped). Receive only: no RF register.
-PHY F (FSK) isn't received.
+PHY F (FSK) packets are taken from the same audio by `c/common/fsk_rx.c` (lines say `heard fsk ...`
+and `heard whole fsk ...`), so a message sent either way plays.
 
 The first image (8b87511) froze hard after playing a message it heard with the cable out
 (11-14 15:44Z, a battery pull). Suspect: the speaker preview stuck in the DAC driver's sync,

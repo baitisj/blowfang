@@ -2,7 +2,8 @@
    the HT"). While the radio sits in receive, the FM receiver's audio comes off the C6000's codec
    on I2S3 at 8 kHz (mod/rxaudio.h's rx_start: register 26 and PD9 route it there, no hardware
    mod), PHY R packets are taken out of it (c/common/range_rx.c, as the rangerx module, 42/42 on
-   air 11-13) and the message is put back together from them (c/common/pager_rx.c). A sotto 1200
+   air 11-13), and PHY F (FSK) packets too (c/common/fsk_rx.c; Jeff 11-14: "As well as receiving
+   FSK"), and the message is put back together from them (c/common/pager_rx.c). A sotto 1200
    message that is whole, or three quarters there and quiet for PL_GAP_MS, is handed over for
    the speaker. Receive only: it touches no RF register. On anything but the MD-UV3x0 it does
    nothing. SPDX-License-Identifier: MIT */

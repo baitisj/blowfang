@@ -22,13 +22,13 @@ void fr_init(fr_state *r) {
         r->next[p] = FR_T / FR_NPH * p + FR_T;
 }
 
-static unsigned popcount32(uint32_t v) {
+static unsigned fr_popcount(uint32_t v) {
     v = v - ((v >> 1) & 0x55555555u);
     v = (v & 0x33333333u) + ((v >> 2) & 0x33333333u);
     return (((v + (v >> 4)) & 0x0F0F0F0Fu) * 0x01010101u) >> 24;
 }
 
-static int crc_ok(const uint8_t *b, unsigned n) {
+static int fr_crc_ok(const uint8_t *b, unsigned n) {
     uint8_t p[FR_MAX];
     memcpy(p, b, n);
     pt_whiten(p, n);
@@ -36,7 +36,7 @@ static int crc_ok(const uint8_t *b, unsigned n) {
 }
 
 /* the packet ends: 1 */
-static int done(fr_state *r, unsigned len, int ok) {
+static int fr_done(fr_state *r, unsigned len, int ok) {
     memcpy(r->payload, r->buf, len);
     r->len = len;
     r->ok = ok;
@@ -47,14 +47,14 @@ static int done(fr_state *r, unsigned len, int ok) {
 }
 
 /* phase p's next soft value (positive: mark, bit 1): 1 when a packet ended */
-static int bit_in(fr_state *r, unsigned p, int32_t soft) {
+static int fr_bit_in(fr_state *r, unsigned p, int32_t soft) {
     int32_t a = soft < 0 ? -soft : soft;
     r->e[p] += (a - r->e[p]) >> 4;
     uint32_t pos = r->k[p] * FR_NPH + p;
     r->k[p]++;
     unsigned b = soft > 0;
     r->reg[p] = r->reg[p] << 1 | b;
-    unsigned err = popcount32(r->reg[p] ^ FR_SYNC);
+    unsigned err = fr_popcount(r->reg[p] ^ FR_SYNC);
     if (err <= FR_SYNC_ERR) {
         /* a sync: a new packet; the same sync at a better phase within a bit; or a perfect one
            where the packet being taken began on a sync with errors (noise makes false ones) */
@@ -81,10 +81,10 @@ static int bit_in(fr_state *r, unsigned p, int32_t soft) {
     else
         r->buf[r->got >> 3] &= (uint8_t)~(0x80u >> (r->got & 7u));
     r->got++;
-    if (r->got == 512u && crc_ok(r->buf, 64u))
-        return done(r, 64u, 1);
+    if (r->got == 512u && fr_crc_ok(r->buf, 64u))
+        return fr_done(r, 64u, 1);
     if (r->got == 1024u)
-        return done(r, 128u, crc_ok(r->buf, 128u));
+        return fr_done(r, 128u, fr_crc_ok(r->buf, 128u));
     /* follow the clock: the edge between this bit and the last, read by the phase half a bit
        off, against the change */
     int32_t prev = r->last[p], mid = r->last[(p + FR_NPH / 2u) % FR_NPH];
@@ -132,7 +132,7 @@ int fr_push(fr_state *r, const int16_t *x, unsigned n, unsigned *used) {
             uint32_t e = r->next[p] >> 16, b = (r->next[p] - FR_T) >> 16;
             r->next[p] += FR_T;
             int32_t soft = (int32_t)(r->cum[e & (FR_HIST - 1u)] - r->cum[b & (FR_HIST - 1u)]);
-            int pkt = bit_in(r, p, soft);
+            int pkt = fr_bit_in(r, p, soft);
             r->last[p] = soft;
             if (pkt) {
                 *used = i + 1u;
