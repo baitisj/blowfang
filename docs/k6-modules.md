@@ -274,6 +274,11 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   loading anything. A module without one still works; its entry is simply 0 instead of 16.
   `modem.k6mod.module_name(code)` reads it on the PC; the `libls` module (level 5) lists the
   slots with their names on any image.
+- **The module list** (MENU, the explore images, the release plan): MENU in EXPLORE or the
+  arena lists EXPLORE, ARENA, then every library slot that holds a module (not a page or a
+  deck), by its name or `SLOT n`. MENU or # runs the row: a module through the same path as
+  `--action lib` (`K6 MENU run row=N`, then `K6 LIB run slot=N`), from the arena. EXIT closes
+  the list. Serial: `K6 MENU open modules=N` when it opens.
 - **Install:** `python -m modem.k6 mod OUT.wav SRC.c --key-file KEY --install N` sets header
   flag `KM_F_LIB` (byte 13) and the slot in byte 15. The K6 checks it as any module (tag,
   serial), then, instead of running it, erases the sectors it needs, programs it a page at a
