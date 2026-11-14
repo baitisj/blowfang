@@ -11,14 +11,19 @@
    of 6), the selected row inverted:
 
      STATIONS 12            the saved table by frequency
+     103.5 W7ABC            the selected station's tones and call (5x7)
      442.025 +5.0 LYNDEN HILL   UP/DOWN pick, 8 edit, 0 new station, EXIT (or MENU) leave
      ...
      8EDIT 0NEW EXIT
 
      EDIT 442.025 #7 *      the editor (sted.h): UP/DOWN field, # open, 5 save, EXIT back
-     NAM  LYNDEN HILL
+     NAM  LYNDEN HILL_      the selected field in the 5x7, as it is typed
+     NAM  LYNDEN HILL       (the small rows)
      ...
      #EDIT 5SAVE EXIT
+
+   Line 1 is filled because the rows can't start higher: the module screen's waterfall area
+   begins at y = 21. The core's editor draws its own screen and has no such gap.
 
    Serial (K6 MOD say ...): "ed n=12" at the start, "ed k=5 f=4 o=1" after every key (the key,
    the field, open, the field's row), two lines for each trial Save ("ed save id=7 rx=442025000
@@ -198,7 +203,23 @@ static void draw_list(ed_t *s) {
   line(s, 0, num(p, (uint32_t)s->n));
   if (s->sel < s->top) s->top = s->sel;
   if (s->sel >= s->top + LINES) s->top = s->sel - LINES + 1;
-  line(s, 1, s->ln);
+  /* line 1, between the title and the rows (the waterfall area starts at y = 21 on this API, so
+     it would stand empty; Jeff 2026-11-14): the selected station's tones and call */
+  p = s->ln;
+  if (s->sel < s->n) {
+    const rt_rec_t *r = &s->st[s->sel];
+    int j;
+    if (r->rx_tone || r->tx_tone) {
+      p = sted_tone(p, r->rx_tone);
+      if (r->tx_tone != r->rx_tone) {
+        *p++ = '/';
+        p = sted_tone(p, r->tx_tone);
+      }
+      *p++ = ' ';
+    }
+    for (j = 0; j < 10 && r->call[j]; j++) *p++ = r->call[j];
+  }
+  line(s, 1, p);
   for (i = 0; i < LINES; i++) {
     int k = s->top + i;
     p = s->ln;
@@ -245,7 +266,8 @@ static void draw_edit(ed_t *s) {
   }
   if (sted_changed(&s->e)) p = put(p, " *");
   line(s, 0, p);
-  line(s, 1, s->ln);
+  /* line 1: the selected field in the big font, what is being typed easy to read */
+  line(s, 1, s->ln + sted_row(&s->e, s->e.f, s->ln));
   for (i = 0; i < LINES; i++) {
     int f = top + i;
     small(s, i, s->ln, sted_row(&s->e, f, s->ln), f == s->e.f);

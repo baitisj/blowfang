@@ -445,6 +445,9 @@ def test_trial_edits_a_saved_station_and_writes_nothing(lib):
     assert first[0].startswith("STATIONS 2") and first[5].startswith("8EDIT 0NEW EXIT")
     # the rows in the small font (Jeff 2026-11-14), the selected one inverted
     assert rows(frames[0])[:3] == [">146.940   S  K7XYZ", " 442.025 +5.0 LYNDEN", " "]
+    assert first[1].startswith("K7XYZ ")        # line 1: the selected station's tones and call
+    assert any(f["text"][1].startswith("103.5 W7ABC ") for f in frames)
+    assert any(f["text"][1].startswith("NAM  LYNDEB_") for f in frames)     # the field, big
     assert any(f["text"][5].startswith("TRIAL: NOT WRITTEN") for f in frames)
     assert any(f["text"][0].startswith("EDIT 442.025 #1 *") for f in frames)
     assert any(rows(f)[2] == ">NAM  LYNDEB_" for f in frames)
