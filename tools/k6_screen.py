@@ -3,15 +3,17 @@
 The emulator harness (tests/test_k6_i2s.py run(..., lcd={})) records one frame a lcd_flush:
 six text lines, a bar a line and the waterfall rows. render() lays them out the way the
 firmware's draw_mod_screen does (firmware/k6-aura/aura-pager.patch, ui/pager.rs): an inverted
-title bar 11 px tall, FONT_6X10 text at x = 1 and baselines y = 9 + 10 * line, the bar after a
+title bar 11 px tall, text at x = 1 and baselines y = 9 + 10 * line, the bar after a
 line's text, and the waterfall rows from y = 21 over lines 2-4. png() saves frames side by side,
 one square a pixel, for docs and bench reports.
 
-FONT_6X10 is embedded-graphics 0.8's (MIT/Apache-2.0, from the X11 misc-fixed fonts), dumped
-from the crate Aura links (project file k6-fonts/fonts.txt): 10 rows a glyph, bit 7 leftmost.
-Since 2026-11-10 the radio draws this text in the stock 5x7 font from its SPI flash
-(docs/k6-stock-firmware.md), in the same 6-pixel cells with the caps on the same rows; that font
-isn't in this repository, so these renders stay in FONT_6X10.
+The title is FONT_6X10, the lines 1-5 a 5x7 (Jeff 2026-11-14: "keep the font in the title but
+move everything else to 5x7 and make that the default"). FONT_6X10 and FONT_5X7 are
+embedded-graphics 0.8's (MIT/Apache-2.0, from the X11 misc-fixed fonts), dumped from the crate
+Aura links (project file k6-fonts/fonts.txt), bit 7 leftmost. The radio draws the title in that
+FONT_6X10 and the lines in the stock 5x7 from its SPI flash (docs/k6-stock-firmware.md: caps 7
+rows tall, bottom row on the baseline, in 6-pixel cells). The stock font isn't in this repository,
+so the renders stand in embedded-graphics' FONT_5X7 (caps 6 rows, bottom row on the baseline).
 SPDX-License-Identifier: MIT"""
 W, H, WF_TOP = 128, 64, 21
 FONT = {
@@ -112,6 +114,116 @@ FONT = {
     126: "0048a890000000000000",
 }
 
+FONT5 = {
+    32: "00000000000000",
+    33: "20202020002000",
+    34: "50505000000000",
+    35: "0050f850f85000",
+    36: "0070a070287000",
+    37: "80902040901000",
+    38: "0040a040a05000",
+    39: "20202000000000",
+    40: "20404040402000",
+    41: "40202020204000",
+    42: "00502070205000",
+    43: "002020f8202000",
+    44: "00000000302040",
+    45: "000000f0000000",
+    46: "00000000606000",
+    47: "00102040800000",
+    48: "20505050502000",
+    49: "20602020207000",
+    50: "6090102040f000",
+    51: "f0106010906000",
+    52: "2060a0f0202000",
+    53: "f080e010906000",
+    54: "6080e090906000",
+    55: "f0102020404000",
+    56: "60906090906000",
+    57: "60909070106000",
+    58: "00606000606000",
+    59: "00606000604080",
+    60: "00102040201000",
+    61: "0000f000f00000",
+    62: "00402010204000",
+    63: "20501020002000",
+    64: "6090b0b0806000",
+    65: "609090f0909000",
+    66: "e090e09090e000",
+    67: "60908080906000",
+    68: "e090909090e000",
+    69: "f080e08080f000",
+    70: "f080e080808000",
+    71: "609080b0907000",
+    72: "9090f090909000",
+    73: "70202020207000",
+    74: "10101010906000",
+    75: "90a0c0c0a09000",
+    76: "8080808080f000",
+    77: "90f0f090909000",
+    78: "90d0d0b0b09000",
+    79: "60909090906000",
+    80: "e09090e0808000",
+    81: "60909090d06010",
+    82: "e09090e0a09000",
+    83: "60904020906000",
+    84: "70202020202000",
+    85: "90909090906000",
+    86: "90909090606000",
+    87: "909090f0f09000",
+    88: "90906060909000",
+    89: "50505020202000",
+    90: "f010204080f000",
+    91: "70404040407000",
+    92: "00804020100000",
+    93: "70101010107000",
+    94: "20500000000000",
+    95: "0000000000f000",
+    96: "40200000000000",
+    97: "00007090b05000",
+    98: "8080e09090e000",
+    99: "00006080806000",
+    100: "10107090907000",
+    101: "000060b0c06000",
+    102: "205040e0404000",
+    103: "00007090608070",
+    104: "8080e090909000",
+    105: "20006020207000",
+    106: "10001010105020",
+    107: "8080a0c0a09000",
+    108: "60202020207000",
+    109: "0000a0f0909000",
+    110: "0000e090909000",
+    111: "00006090906000",
+    112: "0000e09090e080",
+    113: "00007090907010",
+    114: "0000e090808000",
+    115: "000070c030e000",
+    116: "4040e040403000",
+    117: "00009090907000",
+    118: "00005050502000",
+    119: "00009090f0f000",
+    120: "00009060609000",
+    121: "00009090502040",
+    122: "0000f02040f000",
+    123: "10206020201000",
+    124: "20202020202000",
+    125: "40203020204000",
+    126: "50a00000000000",
+}
+
+def _text5(fb, s, x, y, ink):
+    """a 5x7 line in 6-pixel cells, the caps' bottom row on the baseline y"""
+    for i, ch in enumerate(s):
+        if ord(ch) >= 0x80:
+            continue
+        g = bytes.fromhex(FONT5.get(ord(ch), FONT5[ord("?")]))
+        for r in range(7):
+            for c in range(6):
+                px, py = x + 6 * i + c, y - 5 + r
+                if 0 <= px < W and 0 <= py < H and g[r] & (0x80 >> c):
+                    fb[py][px] = ink
+
 
 def _text(fb, s, x, y, ink):
     for i, ch in enumerate(s):
@@ -157,7 +269,7 @@ def render(frame):
         t = frame["text"][i][:21]
         y = 9 + 10 * i
         ink = 0 if i == 0 else 1
-        _text(fb, t, 1, y, ink)
+        (_text if i == 0 else _text5)(fb, t, 1, y, ink)
         _glyphs(fb, t, y, ink, frame.get("glyphs") or [])
         num, den = frame.get("bar", [(0, 0)] * 6)[i]
         x0 = 1 + 6 * len(t) + (3 if t else 0)
