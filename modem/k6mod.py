@@ -114,6 +114,13 @@ def build(src, cc="clang", ld="ld.lld", objcopy="llvm-objcopy", nm="llvm-nm", cf
     return bins[0], entry
 
 
+def bin_entry(code):
+    """a built module .bin's entry offset: module.ld puts k6_main first, after the name block when
+    the module has one (K6_MODULE_NAME). A .bin carries no symbols, so this is how to find it:
+    taking 0 for a named module jumps into its name (the K6 hung that way on 2026-11-14)."""
+    return 4 + NAME_LEN if code[:4] == NAME_MAGIC else 0
+
+
 def module_name(code):
     """The name a module's code carries (K6_MODULE_NAME), or None"""
     if len(code) < 4 + NAME_LEN or code[:4] != NAME_MAGIC:

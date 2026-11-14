@@ -536,7 +536,8 @@ def main(argv=None):
     if a.cmd == "mod":
         from . import k6mod
         if a.source.endswith(".bin"):
-            code, entry = open(a.source, "rb").read(), 0     # module.ld puts k6_main first
+            code = open(a.source, "rb").read()
+            entry = k6mod.bin_entry(code)                   # k6_main first, after any name block
             level = a.api_level or k6mod.LEVEL
         else:
             code, entry = k6mod.build(a.source)

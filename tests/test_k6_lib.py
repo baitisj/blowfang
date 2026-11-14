@@ -235,10 +235,15 @@ def test_module_name_macro_lands_first(tmp_path):
                    "int k6_main(const k6_api_t *api) { return api->level; }\n")
     c, entry = k6mod.build(str(src))
     assert k6mod.module_name(c) == "SPECTRUM" and entry == 16
+    assert k6mod.bin_entry(c) == 16             # a .bin upload finds it too (it took 0: the K6 hung)
     plain = tmp_path / "plain.c"
     plain.write_text('#include "k6_mod.h"\nint k6_main(const k6_api_t *api) { return api->level; }\n')
     c, entry = k6mod.build(str(plain))
     assert k6mod.module_name(c) is None and entry == 0       # modules without a name: as before
+    assert k6mod.bin_entry(c) == 0
+    for m in ("edtrial", "libls"):              # the named modules in the tree
+        c, entry = k6mod.build(os.path.join(ROOT, "c", "k6", "mod", m + ".c"))
+        assert entry == k6mod.bin_entry(c) == 16, m
 
 
 def test_libls_lists_names_on_an_emulated_m0():
