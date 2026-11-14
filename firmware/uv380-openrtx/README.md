@@ -160,7 +160,7 @@ the decoder, and PAGER mode keeps a recorded message (up to 30 s, in CCM) that P
 plays in place of the stored one until the next recording or a power-off. A module records with
 `enc_begin`, `enc_push` (8 kHz audio, from anywhere: USB serial, the codec, later the mic) and
 `enc_end`; the encoder runs in a thread of its own (16 KB stack: its deepest calls take about
-8 KB, more than a module's), handed 320 samples at a time. `msg` gives the message back,
+8 KB, more than a module's), handed 320 samples at a time. Its state (about 24 KB) comes from a static arena in CCM (`sotto8k/sotto8k_enc_arena.h`), not the heap: on 11-14 the heap's 40 KB left after the module arena couldn't take both it and the thread's stack, and the radio reset as usbenc started. `msg` gives the message back,
 `preview` presses #, and `tx_request` sends it as a PTT press would, once the module has ended
 and only on 440.850 MHz. `mod/usbenc.c` records audio sent over USB
 (`tools/uv380_i2sprobe.py inject /dev/ttyACM0 SPEECH.raw --module
