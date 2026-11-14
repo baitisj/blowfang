@@ -46,7 +46,27 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit
   sotto.
 
-## Microphone to the MCU (no mod): works through the codec with the USB cable out
+## Where audio enters the MCU (application note)
+
+Every input the project has recorded from, what it carries, and how a module captures it. Read this
+before choosing where to record: on 11-13 and 11-14 the mic was hunted on the wrong input for a day.
+
+| Input | Hardware | What it carries | How to capture | Use it for |
+| --- | --- | --- | --- | --- |
+| C6000 codec ADC on I2S3 | HR_C6000 codec, SPI3 as an I2S slave, DMA; register 26 and RX_AUDIO_MUX (PD9) route it | In receive: the FM receiver's demodulated audio. It keeps carrying the receiver with 26 and PD9 set "off" (11-14 03:12Z micrec: a station's data and its CW ident, not the mic). With the cable in, also the IC-7100's audio through the shared USB ground. While keyed (tx_mic): only a keying step and the CW ident's tone | rxaudio.h (rx_start, rx_start_as_is); i2sprobe "cap SPI3" | Receive audio, no mod: range RX, rxrec, rangerx. NOT the mic |
+| ADC2 channel 3, PA3 (AIN_MIC) | The MCU's own ADC; the mic preamp is powered by MIC_PWR (PA13) | The internal mic. This is what OpenRTX's M17 transmit records (platform/drivers/audio/audio_MDx.cpp: SOURCE_MIC; Jeff 11-14 03:27Z: M17 records his voice) | micadc.c and micrec_adc.c: TIM2 update at 8 kHz triggers ADC2, DMA2 stream 2 channel 1 into a circular ring in scratch, no interrupt | The mic. Read 0 V on 11-13, but with the cable in (void); retest with it out (micrec_adc) |
+| ADC2 channel 13, PC3 (AIN_RTX) | The MCU's own ADC | OpenRTX's receive baseband input (SOURCE_RTX), only with the hardware mod that wires the C6000 to PC3 (D) | api->adc_capture (OpenRTX's input stream) | Nothing on the stock radio |
+
+Things that decide whether a recording means anything:
+- THE CABLE: the TYT USB cable in the side accessory jack switches the internal mic out. Record
+  the mic with the cable unplugged; the module can't talk over USB meanwhile (api->stop() turns 1
+  when it comes out, and lines written then are lost), so it reports after the replug.
+- The receiver is always on in receive and leaks into the codec input; a "mic" recording made there
+  in receive is the receiver. Listen for data bursts and the 800 Hz CW ident.
+- A source wired to the bench PC reaches the codec input electrically, so it can't test the mic.
+- i2sprobe `auto 1` starves the UI; keep `auto 0`.
+
+## Microphone to the MCU (no mod): the ADC on PA3, as M17 reads it, with the USB cable out
 
 Tested 11-13 with modules micprobe, micprobe2, micadc and micspk (firmware/uv380-openrtx/mod/,
 scored by tools/uv380_micprobe.py against a recording of what was played):
@@ -54,15 +74,15 @@ scored by tools/uv380_micprobe.py against a recording of what was played):
 | | | |
 | --- | --- | --- |
 | As found | C6000 26=fe, E0-E5 = c9 0f 02 30 23 1a; MIC_PWR (PA13) an output, low; PD9 high | M |
-| PA3 (OpenRTX's AIN_MIC, ADC2 ch 3) | sits at 0 V with MIC_PWR on: only the preamp's switch-on transient (about 850 counts, gone in 5 s), nothing from the room. OpenRTX's mic route isn't wired on this Plus | M, micadc 19:53Z |
+| PA3 (OpenRTX's AIN_MIC, ADC2 ch 3) | sits at 0 V with MIC_PWR on: only the preamp's switch-on transient (about 850 counts, gone in 5 s), nothing from the room. Run with the USB cable in, which switches the mic out, so this says nothing about PA3: retest with it out (micrec_adc) | M, micadc 19:53Z |
 | C6000 codec input on I2S3 | open with register 26 bit 6 or 7 cleared (7d, bd, 7c, 3d; also fd and fe without PD9's receive audio): carries about 100-240 rms of the IC-7100's demodulated audio through the bench's shared USB ground, mic preamp on or off, IC-7100 speaker silent; nothing acoustic | M, micprobe2 19:57-20:01Z |
 | Codec sets for the mic | OpenGD77's DMR (26 7d, E0 8b, E2 06, E4 4a), OpenRTX's FM mic (E0 c1) and M17 line in (E0 83), and every single bit of E0, E2, E4, E5 and 26: no mic in receive | M |
 | Own speaker as the source | no rise with the speaker on (but the speaker may have been silent at 26=7d: unconfirmed) | M, micspk 20:05Z |
 | Keyed (OpenRTX FM mic transmit: E0 c1, pre-emphasis) | 3 s at 1 W on 440.850 (module mictx, 11-14 01:37Z): the IC-7100 heard a fully quieting but silent carrier, 300-3400 Hz at about -47 dB below the open-squelch noise, no room ambience. I2S3 while keyed: only a keying step below 300 Hz, nothing in the voice band. The CW ident's 800 Hz tone came through clean on air and on I2S3, so the transmit audio chain works | M, mictx 01:37Z |
 | Keyed with someone talking | 5 s at 1 W (mictx, 11-14 02:43:04-02:43:09Z, Jeff talking into it): 300-3400 Hz at 30.6 rms, the same as the silent carrier, flat envelope (no syllables). The mic doesn't reach the modulator on this path | M, mictx5 02:43Z |
 | THE CABLE | The TYT USB cable in the side accessory jack switches the internal mic out. FM PTT with the cable in: a silent carrier (02:46Z); with it unplugged Jeff's voice went out (02:47Z). Every result above ran with the cable in | M, Jeff 11-14 02:47Z |
-| Cable out, codec input (micrec) | 11-14 03:12:59-03:13:51Z, Jeff talking, 3 s a setting: 26=7d mic on rms 665 pk 6252; 26=bd 400; OpenGD77 DMR set (E0 8b E2 06 E4 4a, +30 dB) 4405, pk 32768 (clips); OpenRTX FM mic (E0 c1) 840 pk 4788, clean; 26 as found 352. The "mic off" control read rms 1401 (not silent). 15 s recorded on the DMR set and encoded on the radio: 375 frames, no ring overruns (the encoder keeps up in real time), speech audible after the clipped start | M, micrec 03:12Z |
-| Next | micrec picks the loudest setting that doesn't clip | I |
+| Cable out, codec input (micrec) | 11-14 03:12:59-03:13:51Z, Jeff talking, 3 s a setting: 26=7d mic on rms 665 pk 6252; 26=bd 400; OpenGD77 DMR set (E0 8b E2 06 E4 4a, +30 dB) 4405, pk 32768 (clips); OpenRTX FM mic (E0 c1) 840 pk 4788, clean; 26 as found 352. The "mic off" control read rms 1401 (not silent). 15 s recorded on the DMR set and encoded on the radio: 375 frames, no ring overruns (the encoder keeps up in real time). It was NOT the mic: Jeff heard a data stream and distorted CW (03:24Z), and the audio holds an 800 Hz keyed ident from 7.5 to 11 s: the receiver (the K6 upload on 440.850) leaking into the codec input whatever 26 and PD9 say | M, micrec 03:12Z |
+| Next | micrec_adc (6bcb2e4): PA3 via ADC2 with MIC_PWR on, cable out, preamp off and on levels with the ADC mean, then 15 s into the encoder | I |
 
 A source wired to the bench PC can't test the mic: its audio reaches the codec input electrically.
 
@@ -87,8 +107,8 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
 
 ## Transmit and other limits
 
-- Mic and RF to the MCU need hardware mods per OpenRTX (D); the no-mod receive path above is the
-  exception found here. No-mod transmit paths: MCU PWM into the C6000's line input, C6000 DAC (D).
+- RF to the MCU needs a hardware mod per OpenRTX (D); the no-mod receive path above is the
+  exception found here. The mic needs no mod: OpenRTX's M17 reads it on PA3 (see the table above). No-mod transmit paths: MCU PWM into the C6000's line input, C6000 DAC (D).
 - Pager / range transmit: FFSK from the MCU through the C6000 with pre-emphasis (PAGER mode);
   deviation not yet measured (I).
 - Range send of a message the radio encoded itself works on air (M, 11-14 02:29:39-02:30:02Z,
