@@ -8,8 +8,13 @@
    Two levels, so digits can be text. In the field list: UP/DOWN pick a field, # opens it (or
    flips WIDE and DMR), 5 saves, EXIT leaves (asks once if anything changed), MENU the same for
    the module list. Inside a field: digits type (multi-tap in NAME and CALL: 2 ABC .. 9 WXYZ,
-   0 space 0, 1 1 / - .), UP/DOWN step a choice or the last letter, * deletes back (and flips the
-   offset's sign), # closes the field, EXIT closes it and puts it back as it was.
+   0 space 0, 1 1 / - .), UP/DOWN step a choice or the last letter, * deletes back (RX opens
+   with its digits, so * takes them off one at a time and a digit typed first starts over; a
+   tone's typed digits, then the tone), # closes the field, EXIT closes it and puts it back as
+   it was. The offset: UP/DOWN step the common ones (simplex, +-600 kHz, +-1.6, +-5 MHz); *
+   starts a custom one, typed in kHz (600, 5000, 7600), * deleting back and, with nothing
+   typed, flipping its sign. 4 on RXT or TXT (in the list, or first in the open field) copies
+   the other tone into it.
 
    Keys are Aura's KEY_TABLE letters as the modules read them: '0'-'9' '*' '#', 'U' up, 'D'
    down, 'M' menu, 'X' exit ('A' 'B' side keys, 'N' band, 'V' 'W' do nothing here).
@@ -46,9 +51,12 @@ typedef struct {
   uint8_t f;           /* the field the cursor is on (SF_*) */
   uint8_t open;        /* 1 while that field is open */
   uint8_t ask;         /* 'X' or 'M' pressed once with changes: the second press leaves */
-  uint8_t nd;          /* digits typed in RX or a tone */
+  uint8_t nd;          /* digits typed in RX, the offset (kHz) or a tone */
   uint8_t tap_k;       /* the last letter key, 0 none */
   uint8_t tap_i;       /* its letter */
+  uint8_t fresh;       /* RX just opened with its digits: the first digit typed starts over */
+  uint8_t neg;         /* the offset's sign while its kHz are typed */
+  uint8_t cust;        /* * on the offset: its kHz are being typed */
   char dig[10];        /* the digits typed */
 } sted_t;
 

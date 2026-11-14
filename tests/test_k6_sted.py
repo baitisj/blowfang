@@ -1,6 +1,7 @@
 """The K6 station editor's logic (c/k6/sted.c, the release plan's editor, Jeff 2026-11-13) on this
 machine: a new station typed from nothing, the frequency's range, multi-tap text (a call keeps
-only what a call can hold), tones by UP/DOWN and by digits, the offset and its sign, EXIT inside
+only what a call can hold), tones by UP/DOWN and by digits, 4 copying the other tone, * deleting
+the digits of a saved frequency, the offset's steps and a custom one in kHz, EXIT inside
 a field putting it back, the ask before leaving with changes, Save's checks and what sted_commit
 marks. Then its key trial module (c/k6/mod/edtrial.c) on an emulated Cortex-M0 with the real
 keypad matrix and a table the host library wrote: it edits and "saves" a station and writes
@@ -29,7 +30,8 @@ RT_C_FROM_CW, RT_C_TWICE = 0x08, 0x10
 class Sted(ctypes.Structure):
     _fields_ = [("r", Rec), ("was", Rec), ("fwas", Rec), ("tap_ms", ctypes.c_uint32), ("msg", ctypes.c_char_p),
                 ("f", ctypes.c_uint8), ("open", ctypes.c_uint8), ("ask", ctypes.c_uint8), ("nd", ctypes.c_uint8),
-                ("tap_k", ctypes.c_uint8), ("tap_i", ctypes.c_uint8), ("dig", ctypes.c_char * 10)]
+                ("tap_k", ctypes.c_uint8), ("tap_i", ctypes.c_uint8), ("fresh", ctypes.c_uint8), ("neg", ctypes.c_uint8),
+                ("cust", ctypes.c_uint8), ("dig", ctypes.c_char * 10)]
 
 
 @pytest.fixture(scope="module")
@@ -105,7 +107,7 @@ def test_builds_for_the_m0_without_library_calls(tmp_path):
     text, data, bss = map(int, subprocess.run(["llvm-size", o], capture_output=True, text=True,
                                               check=True).stdout.split("\n")[1].split()[:3])
     assert data == bss == 0                     # no writable statics: it can live in a code page
-    assert text < 3700, text                    # 3,630 B (2026-11-13)
+    assert text < 4400, text                    # 4,260 B (2026-11-14: tone copy, custom offset)
 
 
 def test_text_helpers(S):
@@ -204,9 +206,14 @@ def test_tones_by_up_down_and_by_digits(S):
     assert ed.e.r.rx_tone == 0
     ed.keys("D")                                # below none: the last inverted DCS code
     assert ed.e.r.rx_tone == 0xC000 | 0o754 and ed.row() == "RXT  D754I_"
+    assert ed.hint() == "UP/DN 4=TXT *OFF #OK"
     ed.keys("103")                              # digits pick the first CTCSS tone they start
-    assert ed.e.r.rx_tone == 1035 and ed.hint() == "UP/DN DIGITS #OK"
-    ed.keys("*")
+    assert ed.e.r.rx_tone == 1035 and ed.hint() == "DIGITS *DEL #OK"
+    ed.keys("*")                                # a digit off: the first tone "10" starts
+    assert ed.e.r.rx_tone == 1000 and ed.row() == "RXT  100.0_"
+    ed.keys("**")                               # the digits gone, the tone stays
+    assert ed.e.r.rx_tone == 1000 and ed.hint() == "UP/DN 4=TXT *OFF #OK"
+    ed.keys("*")                                # then * takes the tone off
     assert ed.e.r.rx_tone == 0
     ed.keys("3")
     assert ed.e.r.rx_tone == 0 and ed.hint() == "NO SUCH TONE"
@@ -237,16 +244,65 @@ DCS_TEXT = """023 025 026 031 032 036 043 047 051 053 054 065 071 072 073 074 11
 743 754"""
 
 
-def test_offset_steps_and_its_sign(S):
+def test_tone_copy(S):
+    ed = Ed(S)
+    ed.to(SF_RXT)
+    assert ed.hint() == "#EDIT 4=TXT 5SAVE"
+    ed.keys("#U#D")                             # RXT 67.0, then down to TXT
+    assert ed.e.f == SF_TXT and ed.hint() == "#EDIT 4=RXT 5SAVE"
+    ed.keys("4")                                # in the list: RXT copied in
+    assert ed.e.r.tx_tone == 670 and not ed.e.open
+    ed.keys("#U")
+    assert ed.e.r.tx_tone == 693 and ed.hint() == "UP/DN 4=RXT *OFF #OK"
+    ed.keys("4")                                # first in the open field: copied again
+    assert ed.e.r.tx_tone == 670
+    ed.keys("146")                              # after a digit 4 is a digit: 146.2
+    assert ed.e.r.tx_tone == 1462
+    ed.keys("#U4")                              # and back the other way
+    assert ed.e.f == SF_RXT and ed.e.r.rx_tone == 1462
+
+
+def test_star_deletes_a_saved_frequencys_digits(S):
+    ed = Ed(S, lynden())
+    ed.keys("#")                                # RX opens with its digits
+    assert ed.row() == "RX   442.025_" and ed.hint() == "DIGITS *DEL #OK"
+    ed.keys("**")
+    assert ed.row() == "RX   442.0_"
+    ed.keys("3#")
+    assert ed.e.r.rx_hz == 442_030_000
+    ed.keys("#1468#")                           # a digit typed first starts over
+    assert ed.e.r.rx_hz == 146_800_000
+
+
+def test_offset_steps_and_a_custom_one(S):
     ed = Ed(S)
     ed.to(SF_OFF)
     assert ed.row() == "OFS  SIMPLEX"
     ed.keys("#U")
-    assert ed.e.r.tx_off == 600_000 and ed.row() == "OFS  +0.600_" and ed.hint() == "UP/DN *SIGN #OK"
+    assert ed.e.r.tx_off == 600_000 and ed.row() == "OFS  +0.600_" and ed.hint() == "UP/DN *CUSTOM #OK"
+    ed.keys("D")
+    assert ed.e.r.tx_off == 0
+    ed.keys("DD")                               # down past simplex: -5 MHz, then +5
+    assert ed.e.r.tx_off == 5_000_000
+    ed.keys("D#")
+    assert ed.e.r.tx_off == -1_600_000 and ed.row() == "OFS  -1.600"
+    # * starts a custom offset in kHz (Jeff 2026-11-14); it keeps the sign it had
+    ed.keys("#*")
+    assert ed.e.r.tx_off == 0 and ed.row() == "OFS  -_" and ed.hint() == "KHZ *SIGN #OK"
+    ed.keys("*")                                # nothing typed: * flips the sign
+    assert ed.row() == "OFS  +_"
+    ed.keys("7600")
+    assert ed.e.r.tx_off == 7_600_000 and ed.row() == "OFS  +7600_" and ed.hint() == "KHZ *DEL #OK"
     ed.keys("*")
-    assert ed.e.r.tx_off == -600_000
-    ed.keys("UUU#")
-    assert ed.e.r.tx_off == 5_000_000 and ed.row() == "OFS  +5.000"
+    assert ed.e.r.tx_off == 760_000
+    ed.keys("0#")
+    assert ed.e.r.tx_off == 7_600_000 and ed.row() == "OFS  +7.600"
+    ed.keys("#U#")                              # reopened: UP/DOWN steps the common ones again
+    assert ed.e.r.tx_off == 600_000
+    ed.keys("#*12000#")                         # 12 MHz (23 cm)
+    assert ed.e.r.tx_off == 12_000_000
+    ed.keys("#*99999")                          # five digits at most
+    assert ed.keys("9") == NONE and ed.e.r.tx_off == 99_999_000
 
 
 def test_group_wide_and_dmr(S):
@@ -283,7 +339,7 @@ def test_leaving_with_changes_asks_once(S):
     ed.to(SF_OFF)
     ed.keys("#*#")
     assert ed.keys("X") == NONE and ed.hint() == "EXIT AGAIN: DISCARD"
-    assert ed.keys("D") == NONE and ed.hint() == "#EDIT 5SAVE EXIT"     # another key: asks again
+    assert ed.keys("D") == NONE and ed.hint() == "#EDIT 4=TXT 5SAVE"    # another key: asks again
     assert ed.keys("M") == NONE and ed.hint() == "MENU AGAIN: DISCARD"
     assert ed.keys("X") == NONE                 # a different leaving key asks for itself
     assert ed.keys("X") == EXIT
@@ -321,6 +377,38 @@ def taps(keys, t0, gap=250_000, hold=100_000):
     return [(t0 + i * gap, t0 + i * gap + hold, k) for i, k in enumerate(keys)]
 
 
+def _font4():
+    """FONT_4X6 as edtrial.c carries it: {glyph bytes: char}"""
+    import re
+    src = open(TRIAL).read()
+    body = src[src.index("FONT4[95][3] = {"):]
+    body = body[:body.index("};")]
+    gl = re.findall(r"\{(0x[0-9a-f]{2}), (0x[0-9a-f]{2}), (0x[0-9a-f]{2})\}", body)
+    assert len(gl) == 95
+    out = {}
+    for i, g in enumerate(gl):
+        out.setdefault(bytes(int(x, 16) for x in g), chr(32 + i))
+    return out
+
+
+def rows(frame):
+    """the trial's five small rows (lcd_wf) as text, '>' before the inverted (selected) one"""
+    font, wf, out = _font4(), frame["wf"], []
+    assert len(wf) == 30
+    for r in range(5):
+        px = wf[r * 6:r * 6 + 6]
+        nib = [[(px[y][i >> 1] >> (0 if i & 1 else 4)) & 15 for y in range(6)] for i in range(32)]
+        inv = all(n == 15 for n in nib[31])
+        t = ""
+        for cell in nib:
+            if inv:
+                cell = [15 - n for n in cell]
+            g = bytes((cell[0] << 4 | cell[1], cell[2] << 4 | cell[3], cell[4] << 4 | cell[5]))
+            t += font.get(g, "?")
+        out.append((">" if inv else " ") + t.rstrip())
+    return out
+
+
 def trial(lib, keys, stations=()):
     if not (shutil.which("clang") and shutil.which("ld.lld")):
         pytest.skip("needs clang and ld.lld")
@@ -354,18 +442,20 @@ def test_trial_edits_a_saved_station_and_writes_nothing(lib):
     assert said[-1] == "ed end saves=1"
     assert fl["progs"] == fl["erases"] == 0     # a trial: nothing written
     first = frames[0]["text"]
-    assert first[0].startswith("STATIONS 2") and first[1].startswith(">146.940 S K7XYZ")
-    assert first[2].startswith(" 442.025 + LYNDEN") and first[5].startswith("8EDIT 0NEW EXIT")
+    assert first[0].startswith("STATIONS 2") and first[5].startswith("8EDIT 0NEW EXIT")
+    # the rows in the small font (Jeff 2026-11-14), the selected one inverted
+    assert rows(frames[0])[:3] == [">146.940   S  K7XYZ", " 442.025 +5.0 LYNDEN", " "]
     assert any(f["text"][5].startswith("TRIAL: NOT WRITTEN") for f in frames)
     assert any(f["text"][0].startswith("EDIT 442.025 #1 *") for f in frames)
+    assert any(rows(f)[2] == ">NAM  LYNDEB_" for f in frames)
     # the list after the trial save shows the new name
-    assert any(f["text"][2].startswith(">442.025 + LYNDEB") for f in frames)
+    assert any(rows(f)[1] == ">442.025 +5.0 LYNDEB" for f in frames)
 
 
 def test_trial_new_station_and_an_empty_table(lib):
     keys = taps("0146520#5XX", 300_000)
     ret, said, fl, frames = trial(lib, keys)
     assert ret == 1 and said[0] == "ed n=0", said
-    assert frames[0]["text"][1].startswith(" NO SAVED STATIONS")
+    assert rows(frames[0])[0] == " NO SAVED STATIONS"
     assert "ed save id=1 rx=146520000 off=0 t=0/0" in said, said
     assert fl["progs"] == fl["erases"] == 0
