@@ -335,9 +335,11 @@ def test_flash_over_the_cable(bundle, keyfile, monkeypatch):
     radio.shutdown()
 
 
-def test_install_on_a_new_radio(out_dir, keyfile, tmp_path, monkeypatch):
-    """stock firmware: the two codebook installers and the core image, each caught as the owner
-    switches the radio on, the backup at the first boot's FORMAT FLASH?, then the library"""
+@pytest.mark.parametrize("start", ["stock", "fresh"])
+def test_install_on_a_new_radio(start, out_dir, keyfile, tmp_path, monkeypatch):
+    """stock firmware (or blowfang with --fresh): the two codebook installers and the core image,
+    each caught as the owner switches the radio on, the backup at the first boot's FORMAT FLASH?,
+    then the library"""
     d, mods = out_dir
     (d / "aura-pager-cbi.bin").write_bytes(b"CBI-IMAGE" + k6mod.PLACEHOLDER + bytes(2000))
     (d / "aura-pager-vlri.bin").write_bytes(b"VLRI-IMAGE" + k6mod.PLACEHOLDER + bytes(2000))
@@ -347,7 +349,8 @@ def test_install_on_a_new_radio(out_dir, keyfile, tmp_path, monkeypatch):
     monkeypatch.setattr(ki.time, "sleep", lambda t: None)
     monkeypatch.setenv("HOME", str(tmp_path))
     radio = Radio()
-    radio.state = "stock"
+    if start == "stock":
+        radio.state = "stock"
     asked = []
 
     def ask(q):
@@ -363,8 +366,9 @@ def test_install_on_a_new_radio(out_dir, keyfile, tmp_path, monkeypatch):
 
     monkeypatch.setattr(ki, "open_port", lambda a: radio)
     lines = []
-    r = ki.main(["--key-file", str(keyfile), "install", str(b)], log=lambda *x, **k: lines.append(" ".join(map(str, x))),
-                ask=ask)
+    extra = ["--fresh"] if start == "fresh" else []
+    r = ki.main(["--key-file", str(keyfile), "install", str(b)] + extra,
+                log=lambda *x, **k: lines.append(" ".join(map(str, x))), ask=ask)
     log = "\n".join(lines)
     assert r == 0, log
     assert [f[:4] for f in radio.flashes] == [b"CBI-", b"VLRI", b"\0\0\0\0"]
@@ -377,20 +381,27 @@ def test_install_on_a_new_radio(out_dir, keyfile, tmp_path, monkeypatch):
     radio.shutdown()
 
 
-def test_update_needs_no_hands(bundle, keyfile, tmp_path, monkeypatch):
+@pytest.mark.parametrize("why", ["have one", "--no-backup"])
+def test_update_needs_no_hands(why, bundle, keyfile, tmp_path, monkeypatch):
     monkeypatch.setattr(ki.time, "sleep", lambda t: None)
     monkeypatch.setenv("HOME", str(tmp_path))
-    (tmp_path / "blowfang-backups").mkdir()
-    (tmp_path / "blowfang-backups" / "k6-spiflash-20261114T0000Z.bin").write_bytes(b"")
+    if why == "have one":
+        (tmp_path / "blowfang-backups").mkdir()
+        (tmp_path / "blowfang-backups" / "k6-spiflash-20261114T0000Z.bin").write_bytes(b"")
     radio = Radio()
     radio.spi[0x100000] = b"K6CB".ljust(64, b"\0")
     radio.spi[0x108000] = b"K6VL".ljust(64, b"\0")
     asked = []
     monkeypatch.setattr(ki, "open_port", lambda a: radio)
     lines = []
-    r = ki.main(["--key-file", str(keyfile), "install", str(bundle)], log=lambda *x, **k: lines.append(" ".join(map(str, x))),
-                ask=lambda q: asked.append(q) or "")
-    assert r == 0, "\n".join(lines)
+    extra = ["--no-backup"] if why == "--no-backup" else []
+    r = ki.main(["--key-file", str(keyfile), "install", str(bundle)] + extra,
+                log=lambda *x, **k: lines.append(" ".join(map(str, x))), ask=lambda q: asked.append(q) or "")
+    log = "\n".join(lines)
+    assert r == 0, log
+    assert ("No backup (--no-backup)" in log) == (why == "--no-backup")
+    assert ("A backup is there already" in log) == (why == "have one")
+    assert (tmp_path / "blowfang-backups").exists() == (why == "have one")
     assert not asked and len(radio.flashes) == 1 and radio.restarts == 2
     assert slot_info(radio, 10)["r"] == "0"
     radio.shutdown()

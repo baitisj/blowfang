@@ -102,7 +102,7 @@ catches it then. About 120 KB go in, in under a minute; the screen may show `UPD
 meanwhile. The radio restarts by itself when it's done.
 
 On its first start the radio shows **FORMAT FLASH?**. Don't press anything yet. The script now
-reads the whole SPI flash, 2 MB, into a file in `~/blowfang-backups/`. This takes a few minutes.
+reads the whole SPI flash, 2 MB, into a file in `~/blowfang-backups/`. This takes about four minutes.
 **Keep that file**: it holds the factory calibration and everything else that was on the chip.
 
 When the script says so, press **MENU** on the radio. It formats the settings area (not the
@@ -131,7 +131,8 @@ checks that the radio's key is yours, then sends, in this order:
 Each one is checked by the radio before it is written, and read back after. The script prints a
 line for each slot. Then the radio restarts, and you're in **EXPLORE**.
 
-The whole library is about 140 KB and goes in within a minute or two.
+The whole library is about 160 KB (29 images in the first release) and goes in in about 25 seconds,
+or about 40 seconds with `--verify`, which reads every slot back.
 
 ## Using the radio
 
@@ -214,7 +215,12 @@ python3 tools/k6_install.py --port /dev/ttyUSB0 install ~/Downloads/blowfang-k6-
 
 This time the radio answers on the cable, so the script needs no hands: it tells the radio to
 restart, catches the bootloader as it does, flashes the new image and loads the library again.
-It skips the backup when `~/blowfang-backups/` already holds one.
+It skips the backup when `~/blowfang-backups/` already holds one, or when you add `--no-backup`.
+On the first test radio the whole update, flash and library, took 48 seconds.
+
+If the script says the radio lacks a codebook, it runs blowfang but its codebooks never went in.
+Add `--fresh`: the script then installs as on a new radio, with the two codebook installers and
+three power-ons.
 
 To reload only the library (say, after an experiment), use `load`; to look at what the radio
 holds, `status`:

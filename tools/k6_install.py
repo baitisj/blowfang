@@ -647,7 +647,7 @@ def first_boot(port, backup_path, log=print, ask=input, timeout=90.0):
 def cmd_install(a, bundle, port, key, log=print, ask=input):
     serials = Serials()
     log("1. Looking for the radio on the cable (have it on, in EXPLORE or the arena)...")
-    c = open_cable(port, log, wait=6.0)
+    c = None if a.fresh else open_cable(port, log, wait=6.0)
     if c:
         log("   It runs blowfang already: an update, no hands needed.")
         need = codebooks(c)
@@ -655,6 +655,8 @@ def cmd_install(a, bundle, port, key, log=print, ask=input):
             path = a.backup or default_backup_path()
             log(f"2. Backing up the SPI flash to {path} (once per radio is enough)")
             backup(c, path, log)
+        elif a.no_backup:
+            log("2. No backup (--no-backup)")
         else:
             log("2. A backup is there already (~/blowfang-backups): not backing up again")
         if need:
@@ -663,7 +665,10 @@ def cmd_install(a, bundle, port, key, log=print, ask=input):
         log("3. Flashing the core image...")
         flash(port, open(os.path.join(a.bundle, bundle["image"]), "rb").read(), key, "cable", log, ask)
     else:
-        log("   No blowfang cable session: treating it as a new radio (stock, or another firmware).")
+        if a.fresh:
+            log("   --fresh: installing as on a new radio (codebook installers first, three power-ons).")
+        else:
+            log("   No blowfang cable session: treating it as a new radio (stock, or another firmware).")
         imgs = bundle.get("codebook_images", {})
         for k in ("cbi", "vlri"):
             if k not in imgs:
@@ -711,6 +716,8 @@ def main(argv=None, log=None, ask=input):
                                                            "anyway once ~/blowfang-backups holds one)")
     i.add_argument("--verify", action="store_true", help="read every library slot back after writing it")
     i.add_argument("--yes", action="store_true", help="don't ask before replacing the stock firmware")
+    i.add_argument("--fresh", action="store_true", help="install as on a new radio even if it runs blowfang "
+                                                       "(flashes the codebook installers again)")
     b = sub.add_parser("backup", help="the whole 2 MB SPI flash to a file")
     b.add_argument("-o", "--output")
     f = sub.add_parser("flash", help="key an image with your key and flash it")
