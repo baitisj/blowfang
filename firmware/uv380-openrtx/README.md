@@ -191,8 +191,15 @@ switches the internal mic out, so record with it unplugged.
 **Bench knobs (probe image).** Over USB, or a module's `api->probe()`: `lvl N` sets the FFSK
 peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM runs at
 (47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
-turns the line in's pre-emphasis off or on (default on). Each answers `tune lvl=... fs=... emph=...`,
-and `tune` alone only answers. They last until power-off. They're there because the K6 read none of
+turns the line in's pre-emphasis off or on (default on), and `trim N` adds N Hz (-8000 to 8000)
+to the transmit frequency. Each answers `tune lvl=... fs=... emph=... trim=...`, and `tune` alone
+only answers.
+
+**Transmit frequency trim.** Jeff's radio transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
+measured on the IC-7100 in USB). The IC-7100's wide receiver didn't mind, but the K6's chip FSK never
+synced on it, in RNG or FSK. So every image now adds 3580 Hz to the transmit frequency it gives the
+AT1846S (`blowfang_txTrimHz` in `radio_UV3x0.cpp`, in every mode); `trim N` changes it until
+power-off. Receive is left alone. They last until power-off. They're there because the K6 read none of
 the UV-380's first FSK sends (11-14), so hamlet can tune the link on air with no reflash.
 
 **tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
