@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index 6bb1ade..d711997 100644
+index 6bb1adec..74e16c4d 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,20 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,21 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -13,6 +13,7 @@ index 6bb1ade..d711997 100644
 +               'openrtx/src/blowfang/cw_tx.c',
 +               'openrtx/src/blowfang/i2sprobe.c',
 +               'openrtx/src/blowfang/ortx_mod.c',
++               'openrtx/src/blowfang/pager_rec.c',
 +               'openrtx/src/blowfang/mod_core.c',
 +               'openrtx/src/blowfang/sotto8k_fx_math.c',
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
@@ -23,7 +24,7 @@ index 6bb1ade..d711997 100644
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +83,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +84,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -33,7 +34,7 @@ index 6bb1ade..d711997 100644
  ##
  ## OpenRTX UI sources
 diff --git a/openrtx/include/core/threads.h b/openrtx/include/core/threads.h
-index a94ea9e..2d11327 100644
+index a94ea9e6..2d113277 100644
 --- a/openrtx/include/core/threads.h
 +++ b/openrtx/include/core/threads.h
 @@ -13,7 +13,10 @@
@@ -50,7 +51,7 @@ index a94ea9e..2d11327 100644
  
 diff --git a/openrtx/include/rtx/OpMode_Pager.hpp b/openrtx/include/rtx/OpMode_Pager.hpp
 new file mode 100644
-index 0000000..c0f6016
+index 00000000..c0f60161
 --- /dev/null
 +++ b/openrtx/include/rtx/OpMode_Pager.hpp
 @@ -0,0 +1,46 @@
@@ -102,10 +103,10 @@ index 0000000..c0f6016
 +#endif /* OPMODE_PAGER_H */
 diff --git a/openrtx/include/rtx/pager.h b/openrtx/include/rtx/pager.h
 new file mode 100644
-index 0000000..ffd0ad6
+index 00000000..bad9388c
 --- /dev/null
 +++ b/openrtx/include/rtx/pager.h
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,41 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -126,13 +127,29 @@ index 0000000..ffd0ad6
 + */
 +void pager_requestPreview(void);
 +
++/**
++ * blowfang PAGER mode: what PTT sends. 1: FSK, the pager's PHY F (1800 baud
++ * FFSK, which the K6's VOICE MSG plays as it arrives); 0: RNG, PHY R (coded
++ * range packets). The plain build is always FSK; the range build starts in RNG
++ * at power-on and pager_togglePhy() (macro key 4) switches it.
++ */
++int pager_phyFsk(void);
++void pager_togglePhy(void);
++
++/**
++ * blowfang PAGER mode: the UI reports whether FUNC (the side button above PTT)
++ * is held. The range probe build records the mic while it is held and sends
++ * the recording when it is let go (Jeff 11-14).
++ */
++void pager_setFunc(int held);
++
 +#ifdef __cplusplus
 +}
 +#endif
 +
 +#endif /* PAGER_H */
 diff --git a/openrtx/include/rtx/rtx.h b/openrtx/include/rtx/rtx.h
-index 393659a..5c31aed 100644
+index 393659ae..5c31aed8 100644
 --- a/openrtx/include/rtx/rtx.h
 +++ b/openrtx/include/rtx/rtx.h
 @@ -73,7 +73,8 @@ enum opmode
@@ -146,7 +163,7 @@ index 393659a..5c31aed 100644
  
  /**
 diff --git a/openrtx/src/core/state.c b/openrtx/src/core/state.c
-index 4e8e063..8b1d41f 100644
+index 4e8e0630..8b1d41f4 100644
 --- a/openrtx/src/core/state.c
 +++ b/openrtx/src/core/state.c
 @@ -10,6 +10,7 @@
@@ -188,10 +205,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..a6cf236
+index 00000000..e7399048
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,894 @@
+@@ -0,0 +1,1206 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -209,8 +226,9 @@ index 0000000..a6cf236
 +#include "rtx/rtx.h"
 +#include <pthread.h>
 +#include <string.h>
-+#ifdef PLATFORM_LINUX
++#include <math.h>
 +#include <stdio.h>
++#ifdef PLATFORM_LINUX
 +#include <stdlib.h>
 +#endif
 +
@@ -229,6 +247,19 @@ index 0000000..a6cf236
 +static constexpr size_t   BLOCK     = 960;      // samples per half buffer, 20 ms
 +static constexpr int16_t  LEVEL     = 16000;    // FFSK peak (deviation: set on the bench)
 +static constexpr int16_t  CW_LEVEL  = 13107;
++// Bench knobs over USB ("lvl", "fs", "emph": tuneCommand), so hamlet can set
++// the FFSK level, the rate the modulator is told the PWM runs at, and the
++// pre-emphasis on air with no reflash (11-14: the K6 read none of the
++// UV-380's first FSK sends). They last until power-off.
++static volatile int16_t  txLevel   = LEVEL;
++static volatile uint32_t txFs      = FS;
++#if defined(PLATFORM_MDUV3x0)
++extern "C" volatile bool blowfang_txFlat;
++extern "C" volatile int32_t blowfang_txTrimHz;
++#else
++__attribute__((unused)) static volatile bool blowfang_txFlat = false;
++__attribute__((unused)) static volatile int32_t blowfang_txTrimHz = 0;
++#endif
 +static constexpr freq_t   TX_MIN_HZ = 430000000;
 +static constexpr freq_t   TX_MAX_HZ = 450000000;
 +static constexpr unsigned SETTLE_MS = 60;       // silence after keying, before the lead-in
@@ -262,6 +293,7 @@ index 0000000..a6cf236
 +static pt_air  air;
 +#ifdef BLOWFANG_RANGE
 +static rg_air  rair;    // the range build: PHY R (docs/k6-range.md) in place of the pager's PHY F
++static volatile bool phyF = false;  // "phy f": the pager's PHY F instead, until power-off
 +#endif
 +static ffsk_tx ffsk;
 +static cw_tx   cw;
@@ -281,7 +313,11 @@ index 0000000..a6cf236
 +static constexpr freq_t SEND_HZ   = 440850000;  // tx_request sends only here
 +static volatile bool   txRequest  = false;  // a module asked for a send
 +static volatile unsigned micTxMs  = 0;      // a module asked for the keyed mic test
++static volatile unsigned toneTxMs = 0;      // a module asked for the keyed line-in tone
++static volatile unsigned toneHz   = 0;
++static bool            fnArmed    = false;  // FUNC let go since PAGER mode began
 +#endif
++static volatile bool   fnHeld     = false;  // FUNC held (the UI, pager_setFunc)
 +#if defined(PLATFORM_MDUV3x0)
 +// radio_UV3x0.cpp (blowfang): 1 W whatever the channel says, and the mic in
 +// place of the line in
@@ -305,6 +341,27 @@ index 0000000..a6cf236
 +void pager_requestPreview()
 +{
 +    pvRequest = true;
++}
++
++int pager_phyFsk()
++{
++#ifdef BLOWFANG_RANGE
++    return phyF ? 1 : 0;
++#else
++    return 1;
++#endif
++}
++
++void pager_setFunc(int held)
++{
++    fnHeld = (held != 0);
++}
++
++void pager_togglePhy()
++{
++#ifdef BLOWFANG_RANGE
++    phyF = !phyF;
++#endif
 +}
 +
 +/* The next 320 samples of the stored message into out, false once the
@@ -421,8 +478,12 @@ index 0000000..a6cf236
 +#include "drivers/usb_vcom.h"
 +#endif
 +}
++extern "C" {
++#include "pager_rec.h"
++}
 +#if defined(PLATFORM_MDUV3x0)
 +#include "hwconfig.h"
++#include "peripherals/gpio.h"
 +#endif
 +
 +// 6 KB: a RAM module (ortx_mod.h) runs on this stack too
@@ -578,9 +639,76 @@ index 0000000..a6cf236
 +    return (int32_t) rtx_getRssi();   // the RTX thread's last reading
 +}
 +
++// "lvl N" (FFSK peak, 1000-32000; default 16000), "fs N" (the rate the
++// modulator is told the PWM runs at, 47000-49000; default 48000: corrects the
++// tones and the baud rate together), "emph 0|1" (pre-emphasis off or on;
++// default on), "trim N" (Hz added to the transmit frequency, -8000 to 8000;
++// default 3580, this radio's measured error). Each answers with all four;
++// "tune" alone only answers.
++static int tuneCommand(const char *line)
++{
++    unsigned long v = 0;
++    const char *p = NULL;
++    if(strncmp(line, "lvl ", 4) == 0)
++        p = line + 4;
++    else if(strncmp(line, "fs ", 3) == 0)
++        p = line + 3;
++    else if(strncmp(line, "emph ", 5) == 0)
++        p = line + 5;
++    else if(strncmp(line, "trim ", 5) == 0)
++        p = line + 5;
++    else if(strcmp(line, "tune") != 0)
++        return 0;
++    bool num = false;
++    bool neg = (p != NULL) && (*p == '-');
++    if(neg)
++        p++;
++    for(; (p != NULL) && (*p >= '0') && (*p <= '9') && (v < 100000); p++)
++    {
++        v = v * 10 + (unsigned long) (*p - '0');
++        num = true;
++    }
++    if(num && !neg && (line[0] == 'l') && (v >= 1000) && (v <= 32000))
++        txLevel = (int16_t) v;
++    else if(num && !neg && (line[0] == 'f') && (v >= 47000) && (v <= 49000))
++        txFs = (uint32_t) v;
++    else if(num && (line[0] == 'e') && (v <= 1) && (neg == false))
++        blowfang_txFlat = (v == 0);
++    else if(num && (line[0] == 't') && (v <= 8000))
++        blowfang_txTrimHz = neg ? -(int32_t) v : (int32_t) v;
++    char out[64];
++    snprintf(out, sizeof(out), "tune lvl=%d fs=%lu emph=%d trim=%ld", (int) txLevel,
++             (unsigned long) txFs, blowfang_txFlat ? 0 : 1, (long) blowfang_txTrimHz);
++    pbSay(NULL, out);
++    return 1;
++}
++
++// "phy fsk" / "phy rng" (USB or a module's probe line; the first letter is
++// enough): what PTT and tx_request send in the range build, FSK, the pager's
++// PHY F (FFSK 1200/1800 Hz at 1800 baud, which the K6's VOICE MSG plays as it
++// arrives), or RNG, PHY R (the default); macro key 4 switches it too
++static int phyCommand(const char *line)
++{
++#ifdef BLOWFANG_RANGE
++    if(strncmp(line, "phy ", 4) != 0)
++        return 0;
++    if(line[4] == 'f')
++        phyF = true;
++    else if(line[4] == 'r')
++        phyF = false;
++    pbSay(NULL, phyF ? "phy FSK" : "phy RNG");
++    return 1;
++#else
++    (void) line;
++    return 0;
++#endif
++}
++
 +// a probe command line from a module ("cap ...", "c6w ...")
 +static int omProbe(const char *line)
 +{
++    if(phyCommand(line) || tuneCommand(line))
++        return 0;
 +    return (i2sp_command(&pbOps, line) < 0) ? -1 : 0;
 +}
 +
@@ -738,6 +866,155 @@ index 0000000..a6cf236
 +    platform_ledOff(RED);
 +}
 +
++// The keyed line-in tone (tx_tone, level 3): ms of FM carrying a tone from the
++// MCU through the line in (the path every send takes), at 1 W, then the Morse
++// ident. The module runs on meanwhile and may switch the C6000's transmit
++// source (E0) and capture I2S3: can the radio send modem audio and hear the
++// mic at once (Jeff 11-14: stream sotto while PTT is held)?
++static int omTxTone(unsigned ms, unsigned hz)
++{
++    rtxStatus_t st = rtx_getCurrentStatus();
++    if((ms == 0) || (ms > 5000) || (hz < 100) || (hz > 3000) ||
++       (st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++        return -1;
++    toneHz   = hz;
++    toneTxMs = ms;
++    return 0;
++}
++
++static void toneTest(rtxStatus_t *const status, unsigned ms, unsigned hz)
++{
++    pathId path = audioPath_request(SOURCE_MCU, SINK_RTX, PRIO_TX);
++    if(path < 0)
++        return;
++    status->opStatus = TX;
++    platform_ledOn(RED);
++    radio_enableTx();
++    memset(txBuf, 0, sizeof(txBuf));
++    streamId stream = audioStream_start(path, txBuf, 2 * BLOCK, FS,
++                                        STREAM_OUTPUT | BUF_CIRC_DOUBLE);
++    if(stream >= 0)
++    {
++        // y[n] = 2 cos(w) y[n-1] - y[n-2], restarted each block from the
++        // phase so it doesn't drift in amplitude
++        const float w = 6.2831853f * (float) hz / (float) FS;
++        float phase = 0.0f;
++        unsigned blocks = (ms * (FS / 1000) + BLOCK - 1) / BLOCK;
++        stream_sample_t *idle = outputStream_getIdleBuffer(stream);
++        for(unsigned b = 0; (b < blocks) && (platform_getPttStatus() == false); b++)
++        {
++            float c2 = 2.0f * cosf(w), y1 = sinf(phase - w), y2 = sinf(phase - 2.0f * w);
++            for(size_t i = 0; i < BLOCK; i++)
++            {
++                float y = c2 * y1 - y2;
++                y2 = y1;
++                y1 = y;
++                idle[i] = (stream_sample_t) (y * (float) txLevel);
++            }
++            phase += w * (float) BLOCK;
++            while(phase > 6.2831853f)
++                phase -= 6.2831853f;
++            outputStream_sync(stream, true);
++            idle = outputStream_getIdleBuffer(stream);
++        }
++        audioStream_stop(stream);
++    }
++    radio_disableRtx();
++    audioPath_release(path);
++    platform_ledOff(RED);
++}
++
++// The mic preamp (MIC_PWR, PA13) stays on in PAGER mode: it settles over
++// about 6 s after switch-on (11-14 micrec_adc), so a recording that switched
++// it on as it keyed came out silent (11-14 08:46Z). Releasing a mic audio path
++// switches it off: on again after each.
++static void micPreamp(bool on)
++{
++#if defined(PLATFORM_MDUV3x0)
++    if(on)
++        gpio_setPin(MIC_PWR);
++    else
++        gpio_clearPin(MIC_PWR);
++#else
++    (void) on;
++#endif
++}
++
++// FUNC, the black side button above PTT (Jeff 11-14): hold it to record, let
++// go to send. The mic reaches the MCU only while the radio transmits with the
++// mic selected (11-14 08:56Z), so the radio sends FM voice while FUNC is held,
++// LED orange, and the C6000's codec input (I2S3, pager_rec) feeds the sotto
++// 1200 encoder meanwhile, at micsend's gain (16, 11-14 09:05Z: byte-exact on
++// air). When the 30 s store fills, the carrier drops and the LED blinks red
++// until FUNC is let go. Returns the frames recorded, or -1 if nothing keyed.
++static constexpr unsigned REC_GAIN   = 16;
++static constexpr unsigned REC_SKIP   = 150;    // ms of key-up thump not recorded
++static constexpr unsigned REC_HOLDMS = 10000;  // blink at most this long when full
++static int16_t recX[64];
++
++static int recordMic(rtxStatus_t *const status)
++{
++    static const pr_host host = {omC6r, omC6w, omSleep};
++    if(omEncBegin() != 0)
++        return -1;
++    pathId path = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
++    if(path < 0)
++    {
++        omEncEnd();
++        return -1;
++    }
++    pager_rec_start(&host, pbAdcBuf, sizeof(pbAdcBuf) / sizeof(pbAdcBuf[0]));
++    blowfang_txMic = true;
++    status->opStatus = TX;
++    platform_ledOn(GREEN);
++    platform_ledOn(RED);        // green and red: orange
++    radio_enableTx();
++    bool full = false;
++    long long t0 = getTick();
++    while(fnHeld && (platform_getPttStatus() == false))
++    {
++        unsigned g = pager_rec_take(recX, 64);
++        if(g == 0)
++        {
++            sleepFor(0, 2);
++            continue;
++        }
++        if(getTick() - t0 < REC_SKIP)
++            continue;
++        for(unsigned i = 0; i < g; i++)
++        {
++            int32_t v = (int32_t) recX[i] * (int32_t) REC_GAIN;
++            recX[i] = (int16_t) (v > 32767 ? 32767 : (v < -32767 ? -32767 : v));
++        }
++        if(omEncPush(recX, g) < 0)
++        {
++            full = true;
++            break;
++        }
++    }
++    radio_disableRtx();
++    blowfang_txMic = false;
++    pager_rec_stop();
++    audioPath_release(path);
++    micPreamp(true);
++    platform_ledOff(GREEN);
++    int frames = omEncEnd();
++    if(full)
++    {
++        long long t1 = getTick();
++        while(fnHeld && (getTick() - t1 < REC_HOLDMS))
++        {
++            if(((getTick() - t1) / 250) & 1)
++                platform_ledOff(RED);
++            else
++                platform_ledOn(RED);
++            sleepFor(0, 20);
++        }
++    }
++    platform_ledOff(RED);
++    return frames;
++}
++
 +static int omTxRequest()
 +{
 +    rtxStatus_t st = rtx_getCurrentStatus();
@@ -750,7 +1027,8 @@ index 0000000..a6cf236
 +static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
 +                               omSleep, omC6r, omC6w, omAdc, omRssi,
 +                               omProbe, omEncBegin, omEncPush, omEncEnd,
-+                               omMsg, omPreview, omTxRequest, omTxMic};
++                               omMsg, omPreview, omTxRequest, omTxMic,
++                               omTxTone};
 +#endif
 +
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
@@ -792,7 +1070,7 @@ index 0000000..a6cf236
 +            if(enc != NULL)     // a module that ended mid-recording: keep what it made
 +                omEncEnd();
 +        }
-+        else
++        else if((phyCommand(pbCmd) == 0) && (tuneCommand(pbCmd) == 0))
 +            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
 +        if(r == I2SP_AUTO_ON)
@@ -872,6 +1150,10 @@ index 0000000..a6cf236
 +    armed = false;      // a PTT held while switching modes doesn't send
 +    pvRequest = false;
 +    msgId = pt_msg_id(msgBytes(), msgFrames());
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++    fnArmed = false;    // nor does a FUNC held then
++    micPreamp(true);
++#endif
 +    startProbe();
 +}
 +
@@ -882,6 +1164,9 @@ index 0000000..a6cf236
 +    platform_ledOff(GREEN);
 +    platform_ledOff(RED);
 +    radio_disableRtx();
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++    micPreamp(false);
++#endif
 +}
 +
 +void OpMode_Pager::update(rtxStatus_t *const status, const bool newCfg)
@@ -938,10 +1223,48 @@ index 0000000..a6cf236
 +            joinPreview(true);
 +            blowfang_txLow = true;
 +            micTest(status, ms);
++            micPreamp(true);
 +            sendIdentOnly = true;
 +            send(status);
 +            sendIdentOnly = false;
 +            blowfang_txLow = false;
++        }
++    }
++    // tx_tone: the same, with a tone from the MCU through the line in
++    if(toneTxMs != 0)
++    {
++        unsigned ms = toneTxMs;
++        toneTxMs = 0;
++        if((ptt == false) && (status->txDisable == 0) &&
++           (status->txFrequency == SEND_HZ))
++        {
++            joinPreview(true);
++            blowfang_txLow = true;
++            toneTest(status, ms, toneHz);
++            sendIdentOnly = true;
++            send(status);
++            sendIdentOnly = false;
++            blowfang_txLow = false;
++        }
++    }
++    // FUNC held: record the mic until it is let go, then send what was
++    // recorded as PTT does (RNG or FSK), at the channel's power, only on
++    // SEND_HZ; a tap too short to record a frame sends the ident alone
++    if(fnHeld == false)
++        fnArmed = true;
++    else if(fnArmed && (ptt == false) && (status->txDisable == 0) &&
++            (status->txFrequency == SEND_HZ))
++    {
++        fnArmed = false;
++        armed   = false;    // a PTT that cut the recording short doesn't send twice
++        holdProbe();
++        joinPreview(true);
++        int frames = recordMic(status);
++        if(frames >= 0)
++        {
++            sendIdentOnly = (frames == 0);
++            send(status);
++            sendIdentOnly = false;
 +        }
 +    }
 +#endif
@@ -1013,15 +1336,21 @@ index 0000000..a6cf236
 +#ifdef BLOWFANG_RANGE
 +    // The range build (BLOWFANG_RANGE=1 sh build.sh): the same XL packets as
 +    // PHY R, coded FFSK at 600/1200 Hz and 1200 baud for the K6's sensitive
-+    // receiver (c/k6/mod/rangerx.c), through the same pre-emphasised voice path.
-+    (void) air;
-+    rg_air_defaults(&rair, pt_message_source, &msg);
-+    ffsk_init_src(&ffsk, rg_air_next, &rair, FS, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ, LEVEL);
-+#else
-+    pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
-+    ffsk_init(&ffsk, &air, FS, BAUD, 0, 0, LEVEL);
++    // receiver (c/k6/mod/rangerx.c), through the same pre-emphasised voice path;
++    // or, after "phy f", the pager's PHY F as the plain build sends it.
++    if(phyF == false)
++    {
++        rg_air_defaults(&rair, pt_message_source, &msg);
++        ffsk_init_src(&ffsk, rg_air_next, &rair, txFs, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ,
++                      txLevel);
++    }
++    else
 +#endif
-+    cw_init(&cw, ident, FS, 20, 800, CW_LEVEL);
++    {
++        pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
++        ffsk_init(&ffsk, &air, txFs, BAUD, 0, 0, txLevel);
++    }
++    cw_init(&cw, ident, txFs, 20, 800, CW_LEVEL);
 +
 +#ifdef PLATFORM_LINUX
 +    // Emulator: no modulator to drive, so the samples go to a file
@@ -1087,7 +1416,7 @@ index 0000000..a6cf236
 +#endif
 +}
 diff --git a/openrtx/src/rtx/rtx.cpp b/openrtx/src/rtx/rtx.cpp
-index 5470432..1db08a8 100644
+index 54704327..1db08a8b 100644
 --- a/openrtx/src/rtx/rtx.cpp
 +++ b/openrtx/src/rtx/rtx.cpp
 @@ -10,6 +10,7 @@
@@ -1115,7 +1444,7 @@ index 5470432..1db08a8 100644
                  default:   currMode = &noMode;
              }
 diff --git a/openrtx/src/ui/default/ui.c b/openrtx/src/ui/default/ui.c
-index 679be11..f50ee87 100644
+index 679be118..55b86b14 100644
 --- a/openrtx/src/ui/default/ui.c
 +++ b/openrtx/src/ui/default/ui.c
 @@ -53,6 +53,7 @@
@@ -1126,7 +1455,18 @@ index 679be11..f50ee87 100644
  #include "interfaces/platform.h"
  #include "interfaces/display.h"
  #include "interfaces/cps_io.h"
-@@ -997,6 +998,8 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
+@@ -990,6 +991,10 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
+                 *sync_rtx = true;
+                 vp_announceBandwidth(state.channel.bandwidth, queueFlags);
+             }
++            else if(state.channel.mode == OPMODE_PAGER)
++            {
++                pager_togglePhy();      // blowfang: RNG <-> FSK (range build)
++            }
+             break;
+         case 5:
+             // Cycle through radio modes
+@@ -997,6 +1002,8 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
              if(state.channel.mode == OPMODE_FM)
                  state.channel.mode = OPMODE_M17;
              else if(state.channel.mode == OPMODE_M17)
@@ -1135,7 +1475,15 @@ index 679be11..f50ee87 100644
                  state.channel.mode = OPMODE_FM;
              else //catch any invalid states so they don't get locked out
              #endif
-@@ -1575,6 +1578,12 @@ void ui_updateFSM(bool *sync_rtx)
+@@ -1427,6 +1434,7 @@ void ui_updateFSM(bool *sync_rtx)
+     {
+         kbd_msg_t msg;
+         msg.value = event.payload;
++        pager_setFunc((msg.keys & KEY_F1) != 0);    // blowfang: FUNC held = record
+         bool f1Handled = false;
+         enum vpQueueFlags queueFlags = vp_getVoiceLevelQueueFlags();
+         // If we get out of standby, we ignore the kdb event
+@@ -1575,6 +1583,12 @@ void ui_updateFSM(bool *sync_rtx)
                          }
                          else
                          #endif
@@ -1149,18 +1497,19 @@ index 679be11..f50ee87 100644
                              if(!state.tone_enabled)
                              {
 diff --git a/openrtx/src/ui/default/ui_main.c b/openrtx/src/ui/default/ui_main.c
-index eed473a..3250259 100644
+index eed473aa..06389293 100644
 --- a/openrtx/src/ui/default/ui_main.c
 +++ b/openrtx/src/ui/default/ui_main.c
-@@ -14,6 +14,7 @@
+@@ -14,6 +14,8 @@
  #include "ui/ui_strings.h"
  #include "core/utils.h"
  #include "ui/utils.h"
 +#include "blowfang_config.h"
++#include "rtx/pager.h"
  
  void _ui_drawMainBackground()
  {
-@@ -126,6 +127,17 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
+@@ -126,6 +128,13 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
                      color_white, "DMR TG%s", "");
              break;
  
@@ -1168,21 +1517,38 @@ index eed473a..3250259 100644
 +            // blowfang: PTT sends the stored sotto message to a K6, # plays
 +            // it on the speaker
 +            gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
-+#ifdef BLOWFANG_RANGE
-+                    color_white, "K6 RANGE PTT #");
-+#else
-+                    color_white, "K6 PAGER PTT #");
-+#endif
++                    color_white, pager_phyFsk() ? "K6 FSK PTT #" : "K6 RNG PTT #");
 +            break;
 +
          #ifdef CONFIG_M17
          case OPMODE_M17:
          {
 diff --git a/openrtx/src/ui/default/ui_menu.c b/openrtx/src/ui/default/ui_menu.c
-index d71444c..5877479 100644
+index d71444c6..15c6e2b2 100644
 --- a/openrtx/src/ui/default/ui_menu.c
 +++ b/openrtx/src/ui/default/ui_menu.c
-@@ -1292,6 +1292,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+@@ -17,6 +17,7 @@
+ #include "core/memory_profiling.h"
+ #include "ui/ui_strings.h"
+ #include "core/voicePromptUtils.h"
++#include "rtx/pager.h"
+ 
+ #ifdef PLATFORM_TTWRPLUS
+ #include "drivers/baseband/SA8x8.h"
+@@ -1263,6 +1264,12 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+         gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
+                   color_white, bw_str);
+     }
++    else if (last_state.channel.mode == OPMODE_PAGER)
++    {
++        // blowfang: what PTT sends, RNG or FSK
++        gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
++                  color_white, pager_phyFsk() ? "  FSK" : "  RNG");
++    }
+ #ifdef CONFIG_M17
+     else if (last_state.channel.mode == OPMODE_M17)
+     {
+@@ -1292,6 +1299,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
              gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "          M17");
              break;
  #endif
@@ -1193,10 +1559,10 @@ index d71444c..5877479 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a9..99c408c 100644
+index 64b77a94..aca41282 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
-@@ -19,6 +19,14 @@
+@@ -19,6 +19,19 @@
  
  static const rtxStatus_t *config;                // Pointer to data structure with radio configuration
  
@@ -1206,12 +1572,17 @@ index 64b77a9..99c408c 100644
 +extern "C" {
 +volatile bool blowfang_txLow = false;
 +volatile bool blowfang_txMic = false;
++volatile bool blowfang_txFlat = false;  // the line in without pre-emphasis ("emph 0")
++// Added to the transmit frequency given to the AT1846S, in Hz ("trim N"). Jeff's
++// UV-380 (an MD-UV390 Plus) transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
++// IC-7100 in USB): the K6's chip FSK never synced on it. Receive is untouched.
++volatile int32_t blowfang_txTrimHz = 3580;
 +}
 +
  static mduv3x0Calib_t calData;                   // Calibration data
  static Band    currRxBand = BND_NONE;            // Current band for RX
  static Band    currTxBand = BND_NONE;            // Current band for TX
-@@ -95,6 +103,7 @@ void radio_setOpmode(const enum opmode mode)
+@@ -95,6 +108,7 @@ void radio_setOpmode(const enum opmode mode)
      switch(mode)
      {
          case OPMODE_FM:
@@ -1219,7 +1590,13 @@ index 64b77a9..99c408c 100644
              at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
              C6000.fmMode();                         // HR_C6000 in FM mode
              C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
-@@ -188,6 +197,8 @@ void radio_enableTx()
+@@ -183,11 +197,13 @@ void radio_enableTx()
+     gpio_clearPin(RF_APC_SW);
+ 
+     C6000.setModOffset(txModBias);
+-    at1846s.setFrequency(config->txFrequency);
++    at1846s.setFrequency(config->txFrequency + blowfang_txTrimHz);
+ 
      // Constrain output power between 1W and 5W.
      float power  = static_cast < float >(config->txPower) / 1000.0f;
            power  = std::max(std::min(power, 5.0f), 1.0f);
@@ -1228,7 +1605,7 @@ index 64b77a9..99c408c 100644
      float pwrHi  = static_cast< float >(txpwr_hi);
      float pwrLo  = static_cast< float >(txpwr_lo);
      float apc    = pwrLo + (pwrHi - pwrLo)/4.0f*(power - 1.0f);
-@@ -207,6 +218,17 @@ void radio_enableTx()
+@@ -207,6 +223,19 @@ void radio_enableTx()
              C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
              break;
  
@@ -1238,15 +1615,17 @@ index 64b77a9..99c408c 100644
 +            // path's pre-emphasis (the K6 receiver de-emphasises)
 +            FmConfig cfg = (config->bandwidth == BW_12_5) ? FmConfig::BW_12p5kHz
 +                                                          : FmConfig::BW_25kHz;
++            if(blowfang_txMic || (blowfang_txFlat == false))
++                cfg = cfg | FmConfig::PREEMPH_EN;
 +            C6000.startAnalogTx(blowfang_txMic ? TxAudioSource::MIC : TxAudioSource::LINE_IN,
-+                                cfg | FmConfig::PREEMPH_EN);
++                                cfg);
 +        }
 +            break;
 +
          default:
              break;
      }
-@@ -286,7 +308,7 @@ void radio_updateConfiguration()
+@@ -286,7 +315,7 @@ void radio_updateConfiguration()
      freq_t  *txCalPoints = calData.vhfCal.txFreq;
      uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
      uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
@@ -1255,7 +1634,7 @@ index 64b77a9..99c408c 100644
                           ? calData.vhfCal.analogSendQrange
                           : calData.vhfCal.sendQrange;
  
-@@ -296,7 +318,7 @@ void radio_updateConfiguration()
+@@ -296,7 +325,7 @@ void radio_updateConfiguration()
          txCalPoints = calData.uhfCal.txFreq;
          loPwrCal    = calData.uhfCal.txLowPower;
          hiPwrCal    = calData.uhfCal.txHighPower;
@@ -1264,7 +1643,7 @@ index 64b77a9..99c408c 100644
                      ? calData.uhfCal.analogSendQrange
                      : calData.uhfCal.sendQrange;
      }
-@@ -313,7 +335,7 @@ void radio_updateConfiguration()
+@@ -313,7 +342,7 @@ void radio_updateConfiguration()
      C6000.setModAmplitude(0, Q);
  
      // Set bandwidth, only for analog FM mode

@@ -166,6 +166,10 @@ static int api_tx_mic(unsigned ms) {
     return H->tx_mic ? H->tx_mic(ms) : -1;
 }
 
+static int api_tx_tone(unsigned ms, unsigned hz) {
+    return H->tx_tone ? H->tx_tone(ms, hz) : -1;
+}
+
 static const ortx_api_t api = {
     .abi = MC_ABI,
     .level = OM_LEVEL,
@@ -191,6 +195,7 @@ static const ortx_api_t api = {
     .preview = api_preview,
     .tx_request = api_tx_request,
     .tx_mic = api_tx_mic,
+    .tx_tone = api_tx_tone,
 };
 
 uint8_t *om_arena(void) {

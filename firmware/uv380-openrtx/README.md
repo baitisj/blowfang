@@ -60,7 +60,7 @@ Edit the patch by applying it to a clone at `20b4088`, changing the tree, and
 It is the PAGER mode with one change: PTT sends the same XL packets as PHY R, the K6's range mode
 (docs/k6-range.md), instead of the 1800 baud pager FFSK. PHY R is coded FFSK at 600 and 1200 Hz,
 1200 baud, about three times the air time, for the K6 module `rangerx`, which reads it on the
-chip's sensitive receiver. The screen says `K6 RANGE PTT #`. The audio takes the same
+chip's sensitive receiver. The screen says `K6 RNG PTT #` (or `K6 FSK PTT #`, below). The audio takes the same
 pre-emphasised voice path, which is what the K6 reads best (bench run 2). In the emulator,
 `tests/test_uv380_openrtx_emu.py` sends with the range build and reads every packet back through
 the K6 model.
@@ -173,6 +173,39 @@ it (`rx_start_as_is`), to see whether the mic reaches the MCU while keyed. A lev
 level 2 modules (`r=-3`). The image for this
 is both builds at once: `BLOWFANG_I2SPROBE=1 BLOWFANG_RANGE=1 sh build.sh mduv3x0p`
 (`out/openrtx_mduv3x0p_i2sprobe_range*`).
+
+**RNG or FSK.** In the range image PTT and `tx_request` send RNG (PHY R) at power-on. Macro key 4
+(hold MONI, press 4) switches to FSK, the pager's PHY F, the 1800 baud FFSK the K6's VOICE MSG
+decodes and plays as it arrives, and back; the macro menu and the main screen show which. Over USB
+(or a module's `api->probe()`), `phy fsk` and `phy rng` do the same and answer with the one in use.
+The plain build always sends FSK.
+
+**FUNC: hold to record, let go to send (probe image).** In PAGER mode on 440.850 MHz, holding FUNC
+(the black side button above PTT) keys the radio as FM voice with the mic, LED orange, and records
+the mic as sotto 1200 from the C6000's codec input (I2S3, `pager_rec.c`, gain 16 as `micsend`).
+Letting go sends the recording as PTT would (RNG or FSK, then the ident) at the channel's power.
+When the 30 s store fills the carrier drops and the LED blinks red until FUNC is let go. The mic
+preamp stays on in PAGER mode, since it needs about 6 s to settle. The TYT cable in the side jack
+switches the internal mic out, so record with it unplugged.
+
+**Bench knobs (probe image).** Over USB, or a module's `api->probe()`: `lvl N` sets the FFSK
+peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM runs at
+(47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
+turns the line in's pre-emphasis off or on (default on), and `trim N` adds N Hz (-8000 to 8000)
+to the transmit frequency. Each answers `tune lvl=... fs=... emph=... trim=...`, and `tune` alone
+only answers.
+
+**Transmit frequency trim.** Jeff's radio transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
+measured on the IC-7100 in USB). The IC-7100's wide receiver didn't mind, but the K6's chip FSK never
+synced on it, in RNG or FSK. So every image now adds 3580 Hz to the transmit frequency it gives the
+AT1846S (`blowfang_txTrimHz` in `radio_UV3x0.cpp`, in every mode); `trim N` changes it until
+power-off. Receive is left alone. They last until power-off. They're there because the K6 read none of
+the UV-380's first FSK sends (11-14), so hamlet can tune the link on air with no reflash.
+
+**tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
+the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only, then the
+ident), while the module runs on. `mod/micduplex_tone.c` switches the C6000's transmit source
+meanwhile and reads I2S3, to see whether the radio can send modem audio and hear the mic at once.
 
 **The key.** CI builds images without it. Before flashing, write it in on hamlet with
 `python -m modem.k6 keyimage out/openrtx_mduv3x0p_i2sprobe.bin keyed.bin --key-file

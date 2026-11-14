@@ -118,6 +118,19 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   exception found here. The mic needs no mod: OpenRTX's M17 reads it on PA3 (see the table above). No-mod transmit paths: MCU PWM into the C6000's line input, C6000 DAC (D).
 - Pager / range transmit: FFSK from the MCU through the C6000 with pre-emphasis (PAGER mode);
   deviation not yet measured (I).
+- TRANSMIT FREQUENCY ERROR: this radio (MD-UV390 Plus) transmits 3.58 kHz low (M, 11-14 10:38-10:42Z:
+  IC-7100 receive only in USB at 440.848/846/844, a UV-380 RNG send at 1 W on 440.850; carrier line
+  at 440.846409-440.846432 MHz, -8.1 ppm, rising 23-29 Hz over an 18 s send; add the IC-7100's own
+  dial error, about 0.2 kHz). The K6's EXPLORE sweep saw it peak toward 440.8375 too. The IC-7100's
+  wide receiver doesn't mind: it decoded every RNG and FSK send. The K6's chip FSK never synced on
+  one: FSK in the arena printed no PKT line (10:25Z), rangerx saw 0 of 10 RNG packets (10:35Z).
+  8425334 adds `blowfang_txTrimHz` (default +3580) to the transmit frequency, with `trim N` over USB.
+  Receive is probably low by the same amount (same reference), but it works and is left alone.
+- FSK (PHY F) on air (M, 11-14 10:25Z, "phy fsk" + tx_request, 1 W, IC-7100 at 48 kHz): reference
+  decoder 20/20 packets, 200/200 frames. Baud 1799.97 (-14 ppm); tones roughly 1270/1810 Hz by a rough
+  instantaneous-frequency measure (reference wav measured the same way: 1190/1790); 1800/1200 Hz
+  band rms +1.9 dB after the IC-7100's receiver; FSK rms +5.5 dB over the same send's CW ident and
+  +3.2 dB over an RNG send; 0.281 s from key-up to the first sync. Packets 0.640 s apart.
 - Range send of a message the radio encoded itself works on air (M, 11-14 02:29:39-02:30:02Z,
   1a918c4): 8 s of ve9qrp in over USB, sotto 1200 on the radio, tx_request at 1 W on 440.850.
   The 22.4 s burst was 10 PHY R packets (02:29:40.2-02:29:56.9Z) then the CW ident (AG7EW, 20 wpm).

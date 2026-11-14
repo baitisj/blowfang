@@ -46,7 +46,8 @@ extern "C" {
 #endif
 
 #define OM_MAGIC "U3R"
-#define OM_LEVEL 2                      /* 2: sotto 1200 encoder, the message, send (11-13) */
+#define OM_LEVEL 3                      /* 2: sotto 1200 encoder, the message, send (11-13);
+                                           3: tx_tone (11-14) */
 #define OM_ARENA 16384                  /* module image plus scratch (half if the heap is short) */
 #define OM_HEX_MAX 128                  /* image bytes in one "mod hex" line */
 #define OM_LINE 320                     /* the longest command line the image reads */
@@ -91,6 +92,11 @@ typedef struct ortx_api {
        capture I2S3 meanwhile (rxaudio.h's rx_start_as_is: register 26 and PD9 left alone):
        0, or -1 (refused) */
     int (*tx_mic)(unsigned ms);
+    /* level 3: the keyed line-in tone: ms (at most 5000) of FM carrying an hz (100-3000) tone
+       from the MCU through the line in, as every send's audio goes, at 1 W, then the Morse ident;
+       only on 440.850 MHz. Starts within about 30 ms while the module runs on, which may switch
+       the C6000's transmit source (E0) and capture I2S3 meanwhile: 0, or -1 (refused) */
+    int (*tx_tone)(unsigned ms, unsigned hz);
 } ortx_api_t;
 
 /* the image's side: what the loader needs from OpenRTX (all of it, or NULL where noted) */
@@ -114,6 +120,8 @@ typedef struct {
     void (*preview)(void);
     int (*tx_request)(void);
     int (*tx_mic)(unsigned ms);
+    /* level 3 (NULL: returns -1) */
+    int (*tx_tone)(unsigned ms, unsigned hz);
 } om_host;
 
 /* One "mod ..." command; args is what follows "mod". Returns 0, or -1 after an "err" line. */
