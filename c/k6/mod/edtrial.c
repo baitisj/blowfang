@@ -5,19 +5,26 @@
    "TRIAL: NOT WRITTEN", keeps the change in RAM for this run and says the record on the serial
    report.
 
-   Screens: the module text screen's six lines in the stock 5x7, the title bar on top, the
-   keys at the bottom, four rows between with '>' on the selected one (Jeff 2026-11-14: this
-   font for the whole editor, not the 4x6; keys written "#-EDIT"):
+   Screens: the title bar and the hint line in the module text screen's 5x7, the rows in the
+   small 4x6 font 7 pixel rows apart (Jeff 2026-11-14, layout D of the mock-ups: the title not
+   in the 4x6), drawn by the module into the screen's waterfall area (level 6's lcd_wf: 30
+   pixel rows from y = 21, so four rows here; the core's screen has six), the selected row
+   inverted:
 
      STATIONS 12            the saved table by frequency
-     >442.025 +5.0 LYNDEN   UP/DOWN pick, 8 edit, 0 new station, EXIT (or MENU) leave
+     103.5 W7ABC            the selected station's tones and call (5x7)
+     442.025 +5.0 LYNDEN HILL   UP/DOWN pick, 8 edit, 0 new station, EXIT (or MENU) leave
      ...
      8-EDIT 0-NEW EXIT
 
      EDIT 442.025 #7 *      the editor (sted.h): UP/DOWN field, # open, 5 save, EXIT back
-     >NAM  LYNDEN HILL_
+     NAM  LYNDEN HILL_      the selected field in the 5x7, as it is typed
+     NAM  LYNDEN HILL       (the small rows)
      ...
      #-EDIT 5-SAVE EXIT
+
+   Line 1 is filled because the rows can't start higher: the module screen's waterfall area
+   begins at y = 21. The core's editor draws its own screen and has no such gap.
 
    Serial (K6 MOD say ...): "ed n=12" at the start, "ed k=5 f=4 o=1" after every key (the key,
    the field, open, the field's row), two lines for each trial Save ("ed save id=7 rx=442025000
@@ -34,7 +41,9 @@
 K6_MODULE_NAME("EDTRIAL");
 
 #define NST 48                  /* stations kept (the table holds up to 960 slots; a trial needs few) */
-#define LINES 4                 /* rows on screen between the title and the hint (text lines 1-4) */
+#define LINES 4                 /* small rows on screen between the title and the hint */
+#define PITCH 7                 /* pixel rows a small row takes: the 4x6 and a gap (Jeff's pick D) */
+#define SMALL_COLS 32           /* 4x6 characters a row */
 
 #define GPIOB 0x48000400u
 #define GPIOC 0x48000800u
@@ -49,6 +58,23 @@ static const char KEYS[24] = {0,   'A', 0,   'B', '7', '8', '#', '9', '4', '5', 
                               '1', '2', '*', '3', 'M', 'U', 'X', 'D', 'V', 'W', 0,   'N'};
 static const uint8_t ROWPIN[6] = {0xFF, 0, 4, 10, 11, 9};
 
+/* embedded-graphics' FONT_4X6 (Aura's small font, as EXPLORE draws it), ' ' to '~': six rows of
+   4 pixels, two rows a byte, the high nibble first, bit 3 of a row leftmost */
+static const uint8_t FONT4[95][3] = {
+    {0x00, 0x00, 0x00}, {0x44, 0x40, 0x40}, {0xaa, 0x00, 0x00}, {0xaf, 0xaf, 0xa0}, {0x4e, 0xc2, 0xe4}, {0x82, 0x48, 0x20}, {0x4a, 0x4a, 0x50}, {0x44, 0x00, 0x00},
+    {0x24, 0x44, 0x42}, {0x84, 0x44, 0x48}, {0xa4, 0xe4, 0xa0}, {0x44, 0xe4, 0x40}, {0x00, 0x00, 0x48}, {0x00, 0xe0, 0x00}, {0x00, 0x00, 0x40}, {0x22, 0x48, 0x80},
+    {0x4a, 0xea, 0x40}, {0x4c, 0x44, 0xe0}, {0x4a, 0x24, 0xe0}, {0xe2, 0x42, 0xc0}, {0xaa, 0xe2, 0x20}, {0xe8, 0xc2, 0xc0}, {0x68, 0xca, 0x40}, {0xe2, 0x48, 0x80},
+    {0x6a, 0x4a, 0xc0}, {0x4a, 0x62, 0xc0}, {0x04, 0x00, 0x40}, {0x04, 0x00, 0x48}, {0x24, 0x84, 0x20}, {0x0e, 0x0e, 0x00}, {0x84, 0x24, 0x80}, {0xc2, 0x40, 0x40},
+    {0x6a, 0xa8, 0x60}, {0x4a, 0xea, 0xa0}, {0xca, 0xca, 0xc0}, {0x4a, 0x8a, 0x40}, {0xca, 0xaa, 0xc0}, {0xe8, 0xc8, 0xe0}, {0xe8, 0xc8, 0x80}, {0x68, 0xaa, 0x60},
+    {0xaa, 0xea, 0xa0}, {0xe4, 0x44, 0xe0}, {0x22, 0x2a, 0x40}, {0xaa, 0xca, 0xa0}, {0x88, 0x88, 0xe0}, {0xae, 0xea, 0xa0}, {0x2a, 0xea, 0x80}, {0x4a, 0xaa, 0x40},
+    {0xca, 0xc8, 0x80}, {0x4a, 0xaa, 0x42}, {0xca, 0xca, 0xa0}, {0x68, 0x42, 0xc0}, {0xe4, 0x44, 0x40}, {0xaa, 0xaa, 0xe0}, {0xaa, 0xae, 0x40}, {0xaa, 0xee, 0xa0},
+    {0xaa, 0x4a, 0xa0}, {0xaa, 0x44, 0x40}, {0xe2, 0x48, 0xe0}, {0x64, 0x44, 0x60}, {0x88, 0x42, 0x20}, {0xc4, 0x44, 0xc0}, {0x4a, 0x00, 0x00}, {0x00, 0x00, 0x0e},
+    {0x42, 0x00, 0x00}, {0x06, 0xaa, 0x60}, {0x8c, 0xaa, 0xc0}, {0x06, 0x88, 0x60}, {0x26, 0xaa, 0x60}, {0x04, 0xac, 0x60}, {0x24, 0xe4, 0x40}, {0x06, 0xa6, 0x2c},
+    {0x8c, 0xaa, 0xa0}, {0x40, 0xc4, 0xe0}, {0x20, 0x22, 0x2c}, {0x8a, 0xca, 0xa0}, {0xc4, 0x44, 0xe0}, {0x0a, 0xea, 0xa0}, {0x0c, 0xaa, 0xa0}, {0x04, 0xaa, 0x40},
+    {0x0c, 0xac, 0x88}, {0x06, 0xaa, 0x62}, {0x0a, 0xc8, 0x80}, {0x06, 0xc2, 0xc0}, {0x4e, 0x44, 0x20}, {0x0a, 0xaa, 0x60}, {0x0a, 0xaa, 0x40}, {0x0a, 0xae, 0xa0},
+    {0x0a, 0x44, 0xa0}, {0x0a, 0xa6, 0x2c}, {0x0e, 0x24, 0xe0}, {0x24, 0xc4, 0x42}, {0x44, 0x44, 0x40}, {0x84, 0x64, 0x48}, {0x5a, 0x00, 0x00},
+};
+
 typedef struct {
   const k6_api_t *api;
   sted_t e;
@@ -57,6 +83,7 @@ typedef struct {
   int n, sel, top, edit, saves, ed_slot;
   uint8_t raw, key;
   char ln[STED_ROW + 40];
+  uint8_t wf[LINES * PITCH * 16];   /* the small rows, 128 pixels a pixel row (lcd_wf) */
 } ed_t;
 
 static uint32_t kp_rd(uint32_t a) { return *(volatile uint32_t *)a; }
@@ -148,6 +175,22 @@ static void load(ed_t *s) {
 }
 
 /* small row r: n characters of t in 4x6, inverted when selected */
+static void small(ed_t *s, int r, const char *t, int n, int inv) {
+  uint8_t *b = s->wf + r * PITCH * 16;
+  int i, y;
+  for (i = 0; i < PITCH * 16; i++) b[i] = 0;
+  for (i = 0; i < n && i < SMALL_COLS; i++) {
+    int c = (uint8_t)t[i];
+    const uint8_t *g = FONT4[(c < ' ' || c > '~' ? '?' : c) - ' '];
+    for (y = 0; y < 6; y++) {
+      uint8_t row = (uint8_t)((y & 1) ? g[y >> 1] & 15 : g[y >> 1] >> 4);
+      b[(y + 1) * 16 + (i >> 1)] |= (uint8_t)((i & 1) ? row : row << 4);
+    }
+  }
+  if (inv)
+    for (i = 0; i < PITCH * 16; i++) b[i] = (uint8_t)~b[i];
+}
+
 static void line(ed_t *s, int i, char *end) {
   while (end < s->ln + 21) *end++ = ' ';
   s->ln[21] = 0;
@@ -162,34 +205,50 @@ static void draw_list(ed_t *s) {
   line(s, 0, num(p, (uint32_t)s->n));
   if (s->sel < s->top) s->top = s->sel;
   if (s->sel >= s->top + LINES) s->top = s->sel - LINES + 1;
+  /* line 1, between the title and the rows (the waterfall area starts at y = 21 on this API, so
+     it would stand empty; Jeff 2026-11-14): the selected station's tones and call */
+  p = s->ln;
+  if (s->sel < s->n) {
+    const rt_rec_t *r = &s->st[s->sel];
+    int j;
+    if (r->rx_tone || r->tx_tone) {
+      p = sted_tone(p, r->rx_tone);
+      if (r->tx_tone != r->rx_tone) {
+        *p++ = '/';
+        p = sted_tone(p, r->tx_tone);
+      }
+      *p++ = ' ';
+    }
+    for (j = 0; j < 10 && r->call[j]; j++) *p++ = r->call[j];
+  }
+  line(s, 1, p);
   for (i = 0; i < LINES; i++) {
     int k = s->top + i;
     p = s->ln;
     if (k < s->n) {
       const rt_rec_t *r = &s->st[k];
-      int j;
-      *p++ = k == s->sel ? '>' : ' ';
       p = sted_mhz(p, r->rx_hz, 3);
       *p++ = ' ';
       if (!r->tx_off) {
-        p = put(p, " S  ");
+        p = put(p, "  S ");
       } else {
         *p++ = r->tx_off < 0 ? '-' : '+';
         p = sted_mhz(p, (uint32_t)(r->tx_off < 0 ? -r->tx_off : r->tx_off), 1);
       }
       *p++ = ' ';
       if (r->name[0]) {
-        for (j = 0; j < 16 && r->name[j] && p < s->ln + 21; j++) *p++ = r->name[j];
+        int j;
+        for (j = 0; j < 16 && r->name[j]; j++) *p++ = r->name[j];
       } else if (r->call[0]) {
-        for (j = 0; j < 10 && r->call[j] && p < s->ln + 21; j++) *p++ = r->call[j];
-      } else if (r->rx_tone && p < s->ln + 14) {
+        int j;
+        for (j = 0; j < 10 && r->call[j]; j++) *p++ = r->call[j];
+      } else if (r->rx_tone) {
         p = sted_tone(p, r->rx_tone);
       }
-      if (p > s->ln + 21) p = s->ln + 21;
     } else if (k == 0) {
-      p = put(p, " NO SAVED STATIONS");
+      p = put(p, "NO SAVED STATIONS");
     }
-    line(s, 1 + i, p);
+    small(s, i, s->ln, (int)(p - s->ln), k < s->n && k == s->sel);
   }
   line(s, 5, put(s->ln, "8-EDIT 0-NEW EXIT"));
   api->lcd_flush();
@@ -209,10 +268,11 @@ static void draw_edit(ed_t *s) {
   }
   if (sted_changed(&s->e)) p = put(p, " *");
   line(s, 0, p);
+  /* line 1: the selected field in the big font, what is being typed easy to read */
+  line(s, 1, s->ln + sted_row(&s->e, s->e.f, s->ln));
   for (i = 0; i < LINES; i++) {
     int f = top + i;
-    s->ln[0] = f == s->e.f ? '>' : ' ';
-    line(s, 1 + i, s->ln + 1 + sted_row(&s->e, f, s->ln + 1));
+    small(s, i, s->ln, sted_row(&s->e, f, s->ln), f == s->e.f);
   }
   line(s, 5, s->ln + sted_hint(&s->e, s->ln));
   s->api->lcd_flush();
@@ -275,6 +335,7 @@ int k6_main(const k6_api_t *api) {
   p = put(s->ln, "ed n=");
   say(s, num(p, (uint32_t)s->n));
   s->now = api->ms();
+  api->lcd_wf(s->wf, LINES * PITCH, 0);   /* the small rows, drawn into s->wf from here on */
   draw_list(s);
   for (;;) {
     api->delay_us(2000);
