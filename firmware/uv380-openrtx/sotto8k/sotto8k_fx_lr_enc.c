@@ -4,4 +4,6 @@
  * sotto/c (the submodule) into openrtx/src/blowfang/sotto.
  * SPDX-License-Identifier: MIT */
 #include "sotto8k.h"
+#define SOTTO8K_ENC_ARENA_IMPL 1
+#include "sotto8k_enc_arena.h"    /* calloc, free: a static arena (CCM on the radio) */
 #include "sotto/fixed/sotto_fx_lr_enc.c"
