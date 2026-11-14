@@ -85,7 +85,13 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
 - Mic and RF to the MCU need hardware mods per OpenRTX (D); the no-mod receive path above is the
   exception found here. No-mod transmit paths: MCU PWM into the C6000's line input, C6000 DAC (D).
 - Pager / range transmit: FFSK from the MCU through the C6000 with pre-emphasis (PAGER mode);
-  deviation not yet checked on air (I).
+  deviation not yet measured (I).
+- Range send of a message the radio encoded itself works on air (M, 11-14 02:29:39-02:30:02Z,
+  1a918c4): 8 s of ve9qrp in over USB, sotto 1200 on the radio, tx_request at 1 W on 440.850.
+  The 22.4 s burst was 10 PHY R packets (02:29:40.2-02:29:56.9Z) then the CW ident (AG7EW, 20 wpm).
+  The IC-7100 at RF power 0 on the same bench received 10/10 CRC ok with 0 channel errors, and all
+  200 superframes matched the PC encoder byte for byte. A 1200 message costs about 1.7 s of air
+  per second of speech this way.
 - Only Plus images (`mduv3x0p`) on Jeff's radio; a plain `mduv3x0` image is wrong for it (M).
 - Calibration isn't dumpable; the stock firmware isn't readable (M, 11-13 backup).
 
