@@ -205,7 +205,8 @@ def k6_bench(sig, regs, fdma=5.71e6, step=128):
     return mmio, rcc, tim, dma, sim
 
 
-def emulate(src, regs, sig, level=2, cal=None, count=2_000_000_000, lcd=None):
+def emulate(src, regs, sig, level=2, cal=None, count=2_000_000_000, lcd=None, spare=400,
+            max_code=4096):
     """run module src on an emulated M0. level: the API level the table says; cal: what level 4's
     cal_read reads (the calibration record's bytes; default a blank sector); lcd: a dict that
     gets level 6's screen, one entry in lcd["frames"] a flush (us, text: six lines, wf: rows top
@@ -223,9 +224,13 @@ def emulate(src, regs, sig, level=2, cal=None, count=2_000_000_000, lcd=None):
     mu.mem_map(ram, 1 << 20)
     base, api, stubs, stop, sp0 = ram + 0x1000, ram + 0x8000, ram + 0x9000, ram + 0x9F00, ram + 0x7F00
     code, entry = k6mod.build(src)
-    assert len(code) + 24 <= 4096, len(code)
+    assert len(code) + 24 <= max_code, len(code)
     mu.mem_write(base, code)
-    mu.mem_write(ram + 0x3000, b"\xa5" * (sp0 - ram - 0x3000))
+    # the stack's paint: from 0x3000 (the small modules' scratch inside it, unused), or past the
+    # code and the scratch for a big module
+    lo = ram + 0x3000 if spare <= 400 else (ram + 0x6000 + spare + 3) & ~3
+    assert base + len(code) <= min(lo, ram + 0x6000)
+    mu.mem_write(lo, b"\xa5" * (sp0 - lo))
     for i in range(len(NAMES)):
         mu.mem_write(stubs + 16 * i, b"\x70\x47")
     mu.mem_write(stop, b"\x00\xbf" * 8)
@@ -262,7 +267,7 @@ def emulate(src, regs, sig, level=2, cal=None, count=2_000_000_000, lcd=None):
             sim.setdefault("tunes", []).append((r0, r1, regs.get(0x73, 0)))
         elif name == "scratch":
             ret = ram + 0x6000
-            uc.mem_write(r0, (400).to_bytes(4, "little"))
+            uc.mem_write(r0, spare.to_bytes(4, "little"))
         elif name == "cal_read":
             assert level >= 4 and r1 <= 64, (level, r1)
             uc.mem_write(r0, ((cal or b"") + b"\xff" * 64)[:r1])
@@ -287,7 +292,7 @@ def emulate(src, regs, sig, level=2, cal=None, count=2_000_000_000, lcd=None):
     mu.reg_write(A.UC_ARM_REG_LR, stop | 1)
     mu.emu_start(base + entry | 1, stop, count=count)
     r = mu.reg_read(A.UC_ARM_REG_R0)
-    mem = bytes(mu.mem_read(ram + 0x3000, sp0 - ram - 0x3000))
+    mem = bytes(mu.mem_read(lo, sp0 - lo))
     used = len(mem) - next(i for i, v in enumerate(mem) if v != 0xa5)
     return ((r - (1 << 32) if r & 0x80000000 else r), st["said"], regs, st["writes"], used,
             (rcc, tim, dma, sim))
@@ -300,11 +305,12 @@ TONE = gp0.FIF + 1520 + 25.0                    # 4 bins above the window's cent
 
 @need_clang
 def test_ft8rx_builds():
-    """the whole receiver on the K6: position-independent and linked, but over today's 4 KB
-    store (docs/k6-ft8-wspr.md: it waits for a bigger module arena)"""
+    """the whole receiver on the K6, with its screen: position-independent and linked, and small
+    enough that the library's 11,752 B leave its scratch (the DMA ring, the receiver, its scores,
+    the LDPC's work and the screen's state: about 2.25 KB)"""
     from modem import k6mod
     code, entry = k6mod.build(os.path.join(MOD, "ft8rx.c"))
-    assert 6000 < len(code) < 8192, len(code)
+    assert 6000 < len(code) and len(code) + 2250 <= 11752, len(code)
 
 
 def ft8wf_short(tmp_path, seconds=3):
@@ -441,6 +447,49 @@ def test_ft8wf_whole_chain_decodes(tmp_path):
     res = k6_ft8.decode(start, rows)
     assert [d["text"] for d in res] == ["CQ AG7EW CN87"], said[:3]
     assert abs(res[0]["f"] - 1512.0) <= 6.25, res
+
+
+@need_clang
+def test_ft8rx_screen_tunes_and_shows_decodes(tmp_path):
+    """the release's FT8 RX with the module screen (level 6+): straight to 2 m (144.174 MHz),
+    the window's bar graph and status on the screen, and the decode on line 1 with its SNR;
+    the room it asks for is what the library leaves it (11,752 B less the code)"""
+    pytest.importorskip("unicorn")
+    from modem import k6mod
+    _, tones = ft8ref.encode("CQ AG7EW CN87")
+    fa = 12000
+    ph, env = ft8ref.gfsk_phase(tones, fa, 1512.0)
+    tt = np.arange(len(ph)) / fa
+    rng = np.random.default_rng(9)
+    t0 = 1.0
+
+    def sig(t, regs):
+        u = t - t0
+        on = (u >= 0) & (u < tt[-1])
+        p = np.interp(u, tt, ph) + 2 * np.pi * gp0.FIF * t
+        return 0.5 + 0.15 * on * np.interp(u, tt, env) * np.cos(p) + rng.normal(0, 0.05, len(t))
+    src = tmp_path / "ft8rx_ui.c"
+    src.write_text('#define K6_MODULE_OPT z\n#define FT8_UI_ROWS (16 * 25)\n#include "%s"\n'
+                   % os.path.join(MOD, "ft8rx.c"))
+    code, _ = k6mod.build(str(src))
+    lcd = {}
+    ret, said, regs, writes, stack, (rcc, tim, dma, sim) = emulate(
+        str(src), START, sig, level=6, lcd=lcd, spare=11752 - len(code), max_code=11776)
+    assert sim["tunes"][0][0] == 144_174_000, sim["tunes"]
+    frames = lcd["frames"]
+    assert frames[1]["text"][:2] == ["FT8 2M 144.174", "TUNING"], frames[:2]
+    assert any(f["text"][1] == "LISTENING" for f in frames)
+    assert ret == 1 and any(ln.startswith("ft8 CQ AG7EW CN87 f=15") for ln in said), said
+    last = frames[-1]["text"]
+    assert last[1] == "LISTENING" and last[2].startswith("CQ AG7EW CN87 -"), last
+    assert last[5] == "15S 1500HZ D1 SCAN", last
+    if os.environ.get("K6_SCREENS"):                # renders for a bench report or the docs
+        import json
+        with open(os.path.join(os.environ["K6_SCREENS"], "ft8rx.json"), "w") as fo:
+            json.dump([frames[1], frames[-1]], fo)
+    assert any("|" in f["text"][3] for f in frames), [f["text"][3] for f in frames]
+    print("ft8rx ui stack", stack, "code", len(code))
+    assert stack < 2850, stack                     # (the old ft8rx: 2,732; the module call gets ~3.5 KB)
 
 
 @pytest.mark.parametrize("mirrored", [0, 1])

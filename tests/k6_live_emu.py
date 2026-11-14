@@ -82,7 +82,8 @@ def stream(mode, cn0, f_off=0.0, steps=10, seg_s=6.0, lead_s=1.5, seed=1, pre_s=
 
 class Emu:
     def __init__(self, code, entry, ib, on_at, fdma, cpi=1.5, max_s=None, key_us=60, stall=None,
-                 wobble=None, flash_cpi=None, level=4, stack_win=3504, scratch=4096, fd_us=20):
+                 wobble=None, flash_cpi=None, level=4, stack_win=3504, scratch=4096, fd_us=20,
+                 screen=None):
         import unicorn
         from unicorn import arm_const as A
         self.U, self.A = unicorn, A
@@ -103,6 +104,9 @@ class Emu:
         self.said_cyc = []                           # the clock at each say (its call)
         self.led = []                                # level 7: (ms, on) for each api->led call
         self.lcd = {}                                # level 6: the text on each LCD line
+        # screen: a list for an image with a display: each lcd_flush works (0, 30 ms, as a
+        # whole frame on the radio) and appends {"ms", "text": six lines}; None: no display (-1)
+        self.screen = screen
         # level 8: each clock_set as (ms, utc_ms, date, w_ms, result), and the clock the core
         # keeps (pager.rs mod_clock_set): (ms at the fix, utc_ms, date, w_ms), or clock= at start
         self.clock_sets, self.clock = [], None
@@ -256,6 +260,9 @@ class Emu:
             self.keys += 1
             if self.stall and self.keys % self.stall[0] == 0:
                 us = self.stall[1]
+        elif name == "lcd_flush" and self.screen is not None:
+            self.screen.append({"ms": int(self.cyc / 96000), "text": [self.lcd.get(i, "") for i in range(6)]})
+            us = 30000
         elif name in ("tx_on", "tx_pa", "cal_read", "cal_write", "fl_read", "fl_prog", "fl_erase",
                       "lcd_flush"):
             ret = -1                                 # refused: receive-only tests

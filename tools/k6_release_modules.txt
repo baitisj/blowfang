@@ -35,5 +35,3 @@
 28 wsprbcn
 29 rangetx
 30 cwkey
-# lists the library itself
-31 libls
