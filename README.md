@@ -10,6 +10,9 @@ them.
 git clone --recurse-submodules https://github.com/baitisj/blowfang
 ```
 
+**Have a UV-K6 and want to run this?** Read [`docs/manual/install.md`](docs/manual/install.md):
+one script and the programming cable, no second radio.
+
 ## Where things are
 
 - `c/k6/`: the K6 C library (pager reassembly and playback, IF receiver, module loader) and its host builds
@@ -20,7 +23,9 @@ git clone --recurse-submodules https://github.com/baitisj/blowfang
 - `tools/k6_*`: bench tools (`k6_update.py` flashes, `k6_bench.py` owns the PTT lock and CW ID keeper)
 - `tests/`: host and emulated Cortex-M0 tests; `tests/data/k6/air/` holds on-air logs replayed in CI
 - `docs/k6-*.md`: design notes and bench results, one per subsystem
-- `docs/manual/`: quick manuals for using things on the radio (`midi-player.md`: the MIDI player)
+- `docs/manual/`: manuals for using things on the radio: `install.md`, the instruction book for
+  putting blowfang on your own K6 over the programming cable (`tools/k6_install.py` does it);
+  `midi-player.md`, the MIDI player
 - `c/common/`: portable C shared by radios (K6 pager packets and FFSK, transmit side)
 - `radios/uv380/`: the TYT MD-UV380 port (STM32F405), built for the radio and for QEMU; `docs/uv380-port.md` is the study and plan
 

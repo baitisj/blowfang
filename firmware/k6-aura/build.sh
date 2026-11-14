@@ -353,6 +353,7 @@ fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
 fesw           # level 2, the receive front end's band switch as an attenuator: how much the wrong path loses (receive only, docs/k6-fesw.md)
 fesw_vhf       # level 2, fesw on fifteen frequencies of the VHF path, 136 to 174 MHz: is the 2 m floor the same everywhere (receive only, docs/k6-fesw.md)
 fskaprs        # level 2, the chip's FSK modem on AX.25 packets (docs/k6-aprs-clock.md)
+ft8rx          # level 2, the whole FT8 decoder on the K6, from the IF (docs/k6-ft8-wspr.md); in the release set
 ft8tx          # level 3
 ft8wf
 ft8wf_inv

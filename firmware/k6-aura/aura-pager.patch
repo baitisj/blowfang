@@ -192,7 +192,7 @@ index 55f04b6..b5a34d0 100644
      }
  }
 diff --git a/src/app/mod.rs b/src/app/mod.rs
-index 5f006e4..00686dd 100644
+index 5f006e4..0e2c0f5 100644
 --- a/src/app/mod.rs
 +++ b/src/app/mod.rs
 @@ -9,6 +9,7 @@ mod input;
@@ -229,7 +229,7 @@ index 5f006e4..00686dd 100644
          }
      }
  
-@@ -1436,6 +1442,77 @@ impl App {
+@@ -1436,6 +1442,88 @@ impl App {
      pub fn poll_spectrum(&mut self, syst: &mut SYST) {
          spectrum::poll(self, syst);
      }
@@ -282,6 +282,17 @@ index 5f006e4..00686dd 100644
 +    pub fn handle_pager_ptt(&mut self, syst: &mut SYST) {
 +        pager::handle_ptt(self, syst);
 +    }
++    /// The cable session (cps::run_cable_session) starts: no module transfer partway
++    #[cfg(feature = "spilib")]
++    pub fn cable_begin(&mut self) {
++        pager::cable_begin();
++    }
++    /// The cable session: one module chunk (a whitened L packet) into the loader; (km_packet's
++    /// result, chunks held, chunks expected, the install's result or 0)
++    #[cfg(feature = "spilib")]
++    pub fn cable_chunk(&mut self, pkt: &[u8]) -> (i8, u8, u8, i32) {
++        pager::cable_chunk(self, pkt)
++    }
 +    /// The pager's frequency entry: digits typed so far (kHz), or None when not typing
 +    pub fn pager_freq_digits(&self) -> Option<&[u8]> {
 +        if self.pager.freq_entry {
@@ -309,10 +320,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..61f499c
+index 0000000..113c2ea
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4707 @@
+@@ -0,0 +1,4734 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -3446,6 +3457,33 @@ index 0000000..61f499c
 +    unsafe { LIB_WRITE = false };
 +    rl!("K6 LIB put slot={} r={}", slot, r);
 +    r
++}
++
++/// The cable session (cps::run_cable_session) starts: drop any transfer partway (its chunks
++/// were in the block the session now uses)
++#[cfg(feature = "spilib")]
++pub(super) fn cable_begin() {
++    unsafe { ffi::km_reset() };
++}
++
++/// The cable session: one module chunk, a whitened 64-byte packet as it would come over the
++/// air, into km_packet (the same checks: CRC, header, the tag under this radio's key, the
++/// serial). An image for the library (KM_F_LIB) goes into its slot through lib_install, as
++/// over the air; any other image only checks (r=3 shows the PC its key is right) and is
++/// dropped, never run. Nothing here transmits. (r, have, count, the install's result or 0)
++#[cfg(feature = "spilib")]
++#[inline(never)]
++pub(super) fn cable_chunk(app: &mut App, pkt: &[u8]) -> (i8, u8, u8, i32) {
++    let r = unsafe { ffi::km_packet(pkt.as_ptr(), pkt.len() as i32, arena::base(), arena::ARENA_BYTES as u32) };
++    let mut put = 0;
++    if r == KM_READY {
++        if unsafe { *arena::base().add(13) } & KM_F_LIB != 0 {
++            put = lib_install(app);
++        }
++        unsafe { ffi::km_reset() }; // never armed to run
++    }
++    let st = unsafe { &*ffi::km_status() };
++    (r as i8, st.have, st.count, put)
 +}
 +
 +/// The used slots, one `K6 LIB slot=` line each, then `K6 LIB used=N`
@@ -7442,7 +7480,7 @@ index 8e35e53..c8a473f 100644
  /// Selectable scan step sizes, Hz
  const SCAN_STEPS_HZ: [u32; 15] = [
 diff --git a/src/cps/mod.rs b/src/cps/mod.rs
-index d3e7fc9..04f1b5f 100644
+index d3e7fc9..c4bcd0f 100644
 --- a/src/cps/mod.rs
 +++ b/src/cps/mod.rs
 @@ -1,7 +1,7 @@
@@ -7454,7 +7492,45 @@ index d3e7fc9..04f1b5f 100644
  use display_interface::WriteOnlyDataCommand;
  
  use crate::app::App;
-@@ -49,7 +49,7 @@ impl HandshakeDetector {
+@@ -23,25 +23,33 @@ const SAT_CPS_BASE: u32 = 0xD000;
+ 
+ pub struct HandshakeDetector {
+     matched: usize,
++    key: &'static [u8],
+ }
+ 
+ impl HandshakeDetector {
+     pub const fn new() -> Self {
+-        HandshakeDetector { matched: 0 }
++        HandshakeDetector { matched: 0, key: HANDSHAKE }
++    }
++
++    /// The cable session's detector (`run_cable_session`): blowfang's own string, so CHIRP's
++    /// Aura driver never opens it and the installer never opens Aura's session
++    #[cfg(feature = "spilib")]
++    pub const fn cable() -> Self {
++        HandshakeDetector { matched: 0, key: CABLE_HANDSHAKE }
+     }
+ 
+     /// Drains every byte currently buffered from USART1 looking for the
+     /// handshake string. Returns `true` the instant it completes.
+     pub fn poll(&mut self) -> bool {
+         while let Some(byte) = uart::take_byte() {
+-            if byte == HANDSHAKE[self.matched] {
++            if byte == self.key[self.matched] {
+                 self.matched += 1;
+-                if self.matched == HANDSHAKE.len() {
++                if self.matched == self.key.len() {
+                     self.matched = 0;
+                     return true;
+                 }
+             } else {
+-                self.matched = usize::from(byte == HANDSHAKE[0]);
++                self.matched = usize::from(byte == self.key[0]);
+             }
+         }
+         false
+@@ -49,7 +57,7 @@ impl HandshakeDetector {
  }
  
  /// Takes over the MCU for a CPS write session. Never returns: the session
@@ -7463,7 +7539,7 @@ index d3e7fc9..04f1b5f 100644
  /// after 2s of silence, so the rest of `main()` never needs to unwind
  /// whatever partial state a session left behind.
  pub fn run_session<DI: WriteOnlyDataCommand>(
-@@ -78,7 +78,7 @@ pub fn run_session<DI: WriteOnlyDataCommand>(
+@@ -78,7 +86,7 @@ pub fn run_session<DI: WriteOnlyDataCommand>(
          if syst.has_wrapped() {
              idle_ms += 1;
              if idle_ms >= IDLE_TIMEOUT_MS {
@@ -7472,7 +7548,7 @@ index d3e7fc9..04f1b5f 100644
              }
          }
  
-@@ -112,7 +112,7 @@ pub fn run_session<DI: WriteOnlyDataCommand>(
+@@ -112,7 +120,7 @@ pub fn run_session<DI: WriteOnlyDataCommand>(
              frame::CMD_END => {
                  send_response(dbg, frame::CMD_END, frame.addr, &[]);
                  delay::ms(syst, 5); // let the ACK bytes drain out before reset
@@ -7481,6 +7557,142 @@ index d3e7fc9..04f1b5f 100644
              }
              _ => send_error(dbg, frame.addr, frame::ERR_BAD_LEN),
          }
+@@ -464,3 +472,135 @@ fn handle_sstv_write(app: &mut App, dbg: &mut DebugUart, wire_addr: u16, data: &
+     app.storage_mut().write_sstv_chunk(offset, data);
+     send_response(dbg, frame::CMD_SSTV_WRITE, wire_addr, &[]);
+ }
++
++// ---- blowfang's cable session (docs/manual/install.md, tools/k6_install.py) ----
++//
++// The whole library load over the programming cable alone, for a K6 owner with no second
++// radio: EXPLORE's code pages, the modules and the help decks go into the SPI module library
++// (c/k6/k6_lib.h) as they do over the air, signed with the radio's key and checked by the same
++// loader (km_packet: the tag, the serial), then written by the same kl_install (its sectors
++// inside 0x110000-0x18FFFF only, read back). The cable adds no new trust and no new SPI write:
++// it is one more way for the same signed chunks to reach km_packet.
++//
++// The PC opens it with CABLE_HANDSHAKE while the radio is in EXPLORE or the arena (main's
++// pager-only loop polls for it, never while keyed). The radio answers ACK and takes over the
++// MCU: receiver off, nothing transmits, and the PTT line (PA10, the cable's PC->radio wire,
++// which the serial data pulls low) is never read, so the data can't key the radio. The 16
++// handshake bytes take 1.4 ms, far shorter than the 5 samples ~10 ms apart PTT's debouncer
++// wants. Frames are Aura's CPS frames (frame.rs: A6 cmd addr len data CRC-16/XMODEM), one at a
++// time, each answered:
++//
++//   'V' info: "BLWF", protocol 1, library slots, the shared block's size (u16 LE), then the
++//       image's 8-byte build ID (the voice + EXPLORE image; zeros in the others), which its
++//       code pages must end with
++//   'M' one module chunk: data = a whitened 64-byte L packet (modem/k6mod.py packets, magic
++//       0xAB). Answer: r (km_packet's, i8), have, count, 0, then the install's result (i32 LE:
++//       the image's length or k6_lib.h KL_*; 0 until the last chunk). An image without
++//       KM_F_LIB checks (r=3: the key is right) and is dropped, never run
++//   'D' 64 bytes of the SPI flash at addr * 64 (as Aura's CMD_READ_FLASH_RAW): read only, for
++//       a backup and to verify the slots
++//   'E' end: answered, then the radio restarts (the stock bootloader's UPDATE window follows
++//       every reset, so tools/k6_install.py can flash an image next)
++//
++// No frame for CABLE_IDLE_MS also restarts it. Every session ends in a restart, so nothing it
++// left in the shared block (EXPLORE's state, a page in the pool) is ever used again.
++
++#[cfg(feature = "spilib")]
++pub const CABLE_HANDSHAKE: &[u8] = b"PROGRAMBF-K6BLWF";
++#[cfg(feature = "spilib")]
++const CABLE_IDLE_MS: u32 = 5000;
++#[cfg(feature = "spilib")]
++const CMD_CABLE_INFO: u8 = 0x56; // 'V'
++#[cfg(feature = "spilib")]
++const CMD_CABLE_CHUNK: u8 = 0x4D; // 'M'
++
++/// One frame to the PC through the report's queue (hal::uart), so a report line the loader
++/// prints (K6 LIB put) never splits it; the PC skips the text between frames (no 0xA6 in it)
++#[cfg(feature = "spilib")]
++fn cable_send(cmd: u8, addr: u16, data: &[u8]) {
++    let mut out = [0u8; 8 + FLASH_RAW_CHUNK as usize];
++    let n = frame::encode(&mut out, cmd, addr, data);
++    for &b in &out[..n] {
++        uart::send_byte(b);
++    }
++}
++
++#[cfg(feature = "spilib")]
++pub fn run_cable_session<DI: WriteOnlyDataCommand>(
++    app: &mut App,
++    syst: &mut SYST,
++    display: &mut Display<'_, DI>,
++) -> ! {
++    app.radio_mut().rf_off(syst);
++    app.cable_begin();
++    rl!("K6 CABLE on");
++    uart::flush();
++    uart::send_byte(ACK);
++    crate::screen!(display, |lcd| ui::cps::draw_lines(lcd, "BLOWFANG", "CABLE LOAD..."));
++
++    syst.set_clock_source(SystClkSource::Core);
++    syst.set_reload(SYSCLK_HZ / 1000 - 1);
++    syst.clear_current();
++    syst.enable_counter();
++
++    let mut reader = frame::FrameReader::new();
++    let mut idle_ms: u32 = 0;
++    loop {
++        if syst.has_wrapped() {
++            idle_ms += 1;
++            if idle_ms >= CABLE_IDLE_MS {
++                rl!("K6 CABLE idle");
++                uart::flush();
++                crate::hal::txdog::reset();
++            }
++        }
++        let Some(byte) = uart::take_byte() else {
++            continue;
++        };
++        idle_ms = 0;
++        let f = match reader.feed(byte) {
++            frame::FeedResult::Pending => continue,
++            frame::FeedResult::CrcError { addr } => {
++                cable_send(frame::CMD_ERROR, addr, &[frame::ERR_BAD_CRC]);
++                continue;
++            }
++            frame::FeedResult::Frame(f) => f,
++        };
++        match f.cmd {
++            CMD_CABLE_INFO => {
++                let mut d = [0u8; 16];
++                d[..4].copy_from_slice(b"BLWF");
++                d[4] = 1;
++                d[5] = 32;
++                d[6..8].copy_from_slice(&(crate::hal::arena::ARENA_BYTES as u16).to_le_bytes());
++                #[cfg(feature = "voice-explore")]
++                {
++                    extern "C" {
++                        static k6_build_id: [u8; 8];
++                    }
++                    d[8..].copy_from_slice(unsafe { &*core::ptr::addr_of!(k6_build_id) });
++                }
++                cable_send(CMD_CABLE_INFO, f.addr, &d);
++            }
++            CMD_CABLE_CHUNK if f.len == 64 => {
++                let (r, have, count, put) = app.cable_chunk(&f.data[..64]);
++                let mut d = [r as u8, have, count, 0, 0, 0, 0, 0];
++                d[4..].copy_from_slice(&put.to_le_bytes());
++                cable_send(CMD_CABLE_CHUNK, f.addr, &d);
++            }
++            frame::CMD_READ_FLASH_RAW if (f.addr as u32) < FLASH_CHIP_SIZE / FLASH_RAW_CHUNK => {
++                let mut buf = [0u8; FLASH_RAW_CHUNK as usize];
++                app.storage_mut().read_raw(f.addr as u32 * FLASH_RAW_CHUNK, &mut buf);
++                cable_send(frame::CMD_READ_FLASH_RAW, f.addr, &buf);
++            }
++            frame::CMD_END => {
++                cable_send(frame::CMD_END, f.addr, &[]);
++                rl!("K6 CABLE end");
++                uart::flush();
++                delay::ms(syst, 5);
++                crate::hal::txdog::reset();
++            }
++            _ => cable_send(frame::CMD_ERROR, f.addr, &[frame::ERR_BAD_LEN]),
++        }
++    }
++}
 diff --git a/src/device/display.rs b/src/device/display.rs
 index 6fd14b9..8428580 100644
 --- a/src/device/display.rs
@@ -8673,7 +8885,7 @@ index 131f932..f57cbf0 100644
      #[cfg(debug_assertions)]
      fn write_str(&mut self, s: &str) -> core::fmt::Result {
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..99c1c5f 100644
+index 9d2b0c0..52bd706 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -1,6 +1,8 @@
@@ -8921,7 +9133,7 @@ index 9d2b0c0..99c1c5f 100644
          radio,
          chip_id,
          keypad,
-@@ -253,53 +324,116 @@ fn main() -> ! {
+@@ -253,53 +324,124 @@ fn main() -> ! {
          &mut cp.SYST,
      );
  
@@ -9018,10 +9230,18 @@ index 9d2b0c0..99c1c5f 100644
 +        #[cfg(feature = "explore")]
 +        app.explore_boot();
 +        let mut scheduler = scheduler::Scheduler::new();
++        // blowfang's cable session (cps::run_cable_session): the PC's handshake on the cable,
++        // in EXPLORE or the arena, never while keyed
++        #[cfg(feature = "spilib")]
++        let mut cable = cps::HandshakeDetector::cable();
 +        loop {
 +            let due = scheduler.tick();
 +            #[cfg(not(feature = "lean"))]
 +            hal::txdog::poll(); // TIM14's wraps while the backstop is at rest
++            #[cfg(feature = "spilib")]
++            if cable.poll() && !app.is_transmitting() {
++                cps::run_cable_session(&mut app, &mut cp.SYST, &mut display);
++            }
 +            // EXPLORE (app/pager/explore.rs): its sweep a block at a time, the keys between, the
 +            // screen when it asks; the pager's receiver is off meanwhile
 +            if app.exploring() {
@@ -9073,7 +9293,7 @@ index 9d2b0c0..99c1c5f 100644
  
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
-@@ -309,6 +443,8 @@ fn main() -> ! {
+@@ -309,6 +451,8 @@ fn main() -> ! {
  
      loop {
          let due = scheduler.tick();
@@ -9082,7 +9302,7 @@ index 9d2b0c0..99c1c5f 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,9 +465,22 @@ fn main() -> ! {
+@@ -329,9 +473,22 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -9106,7 +9326,7 @@ index 9d2b0c0..99c1c5f 100644
              app.radio_mut().rf_off(&mut cp.SYST);
              app.save_channel_state();
              power.shutdown(&mut cp.SYST);
-@@ -340,7 +489,7 @@ fn main() -> ! {
+@@ -340,7 +497,7 @@ fn main() -> ! {
          // battery
          if due.every_500ms {
              app.poll_battery();
@@ -9115,7 +9335,7 @@ index 9d2b0c0..99c1c5f 100644
          }
  
          // Wall clock tick + Doppler update
-@@ -381,7 +530,7 @@ fn main() -> ! {
+@@ -381,7 +538,7 @@ fn main() -> ! {
                          wide,
                      ) {
                          app.set_transmitting_for_tracking();
@@ -9124,7 +9344,7 @@ index 9d2b0c0..99c1c5f 100644
                      }
                  } else if !pressed && tracking_tx {
                      let ui = app.satellite_ui();
-@@ -396,11 +545,13 @@ fn main() -> ! {
+@@ -396,11 +553,13 @@ fn main() -> ! {
                          wide,
                      );
                      app.clear_transmitting_for_tracking();
@@ -9139,7 +9359,7 @@ index 9d2b0c0..99c1c5f 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -409,9 +560,9 @@ fn main() -> ! {
+@@ -409,9 +568,9 @@ fn main() -> ! {
          } else if let Some(level) = app.radio_mut().poll_ptt() {
              app.set_ptt(&mut cp.SYST, !level);
              if app.is_transmitting() {
@@ -9151,7 +9371,7 @@ index 9d2b0c0..99c1c5f 100644
              }
          }
  
-@@ -465,9 +616,13 @@ fn main() -> ! {
+@@ -465,9 +624,13 @@ fn main() -> ! {
              }
          }
  
@@ -9168,7 +9388,7 @@ index 9d2b0c0..99c1c5f 100644
              if !app.power_save_is_asleep() {
                  app.poll_squelch(&mut cp.SYST, 3);
                  app.poll_dual_standby(&mut cp.SYST, app.rssi_open());
-@@ -484,7 +639,7 @@ fn main() -> ! {
+@@ -484,7 +647,7 @@ fn main() -> ! {
              if !app.is_transmitting() && !app.power_save_is_asleep() {
                  let rssi = app.radio_mut().rssi(&mut cp.SYST);
                  app.set_rssi_raw(rssi as u8);
@@ -9177,7 +9397,7 @@ index 9d2b0c0..99c1c5f 100644
                      dbg,
                      "RSSI: {} audio_open={} freq={} ch_mode={} ch_num={}",
                      rssi,
-@@ -492,8 +647,7 @@ fn main() -> ! {
+@@ -492,8 +655,7 @@ fn main() -> ! {
                      app.watching_freq_hz(),
                      app.watching_is_channel_mode(),
                      app.watching_channel_num()
@@ -9663,10 +9883,10 @@ index 5f5226a..69cb2ec 100644
  where
      D: DrawTarget<Color = BinaryColor>,
 diff --git a/src/ui/cps.rs b/src/ui/cps.rs
-index 8dd4ad1..3916854 100644
+index 8dd4ad1..d52ff85 100644
 --- a/src/ui/cps.rs
 +++ b/src/ui/cps.rs
-@@ -3,26 +3,34 @@
+@@ -3,26 +3,43 @@
  //! drawn once on entry and never redrawn).
  
  use embedded_graphics::draw_target::DrawTarget;
@@ -9698,10 +9918,7 @@ index 8dd4ad1..3916854 100644
 -        .ok();
 +    // the pager-only images: the stock 5x7 font from the SPI flash (ui::glyph), in 6x10's cells
 +    #[cfg(feature = "pager-only")]
-+    {
-+        super::glyph::text(target, 20, 26 - 6, "AURA CPS", false, true);
-+        super::glyph::text(target, 8, 40 - 6, "PROGRAMMING...", false, true);
-+    }
++    draw_lines(target, "AURA CPS", "PROGRAMMING...");
 +    #[cfg(not(feature = "pager-only"))]
 +    {
 +        let style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
@@ -9712,6 +9929,18 @@ index 8dd4ad1..3916854 100644
 +            .draw(target)
 +            .ok();
 +    }
++}
++
++/// Two lines on a blank screen in the stock 5x7 font (ui::glyph): the CPS dump session's
++/// screen, and the cable session's (cps::run_cable_session, `BLOWFANG` / `CABLE LOAD...`)
++#[cfg(feature = "pager-only")]
++pub fn draw_lines<D>(target: &mut D, a: &str, b: &str)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    target.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 64)), BinaryColor::Off).ok();
++    super::glyph::text(target, 20, 26 - 6, a, false, true);
++    super::glyph::text(target, 8, 40 - 6, b, false, true);
  }
 diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
 new file mode 100644
