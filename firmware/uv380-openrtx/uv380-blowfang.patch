@@ -756,7 +756,7 @@ index 0000000..a6cf236
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
 +// passes, so hamlet can drive the probe with no reflash: "auto 0" stops the
 +// passes, "help" lists the rest, "mod ..." goes to the module loader.
-+static bool     pbAuto = true;
++static bool     pbAuto = false;    // auto passes starve the UI (11-14): "auto 1" to start
 +static char     pbCmd[OM_LINE];
 +static unsigned pbCmdLen = 0;
 +
