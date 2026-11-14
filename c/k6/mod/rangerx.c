@@ -54,6 +54,10 @@
 #define K6_MODULE_OPT z
 #endif
 #include "../k6_mod.h"
+#if !defined(RG_LADDER) && !defined(RG_DUMP)
+#define RG_UI 1           /* the release's module: its screen (the bench's variants have none) */
+#include "k6ui.h"
+#endif
 #ifndef K6_NAME
 #define K6_NAME "RANGE RX"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
@@ -188,6 +192,9 @@ typedef struct {
   uint32_t dn, nd, dt;
 #endif
   char ln[64];
+#ifdef RG_UI
+  ui_t u;                       /* the screen (k6ui.h) */
+#endif
 } st_t;
 
 static char *put(char *p, const char *s) {
@@ -356,6 +363,14 @@ static void pkt_line(const k6_api_t *api, st_t *s) {
   p = kv(p, " r=-", (uint32_t)-KM_RSSI_DBM(s->lrssi));
   p = kv(p, " k=", s->lk);
   say(api, s, p);
+#ifdef RG_UI
+  /* the screen: "12 OK E3 -98DBM" (the packet's number, CRC, channel errors, RSSI) */
+  p = ui_dec(s->ln, s->np, 1);
+  p = ui_dec(ui_put(p, okc ? " OK E" : " BAD E"), err, 1);
+  p = ui_sdec(ui_put(p, " "), KM_RSSI_DBM(s->lrssi));
+  ui_put(p, "DBM");
+  ui_log(&s->u, s->ln);
+#endif
 }
 
 /* ---- the slicer and the hunt ---- */
@@ -691,6 +706,10 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " sm=", SYNC_MIN);
   p = kv(p, " s=", RG_S);
   say(api, s, p);
+#ifdef RG_UI
+  ui_mhz(ui_put(s->ln, "RANGE RX "), api->rx_hz());
+  ui_begin(&s->u, api, s->ln, "LISTENING  KEY: STOP");
+#endif
   while (api->ms() < WAIT_MS && !key) {
     api->delay_us(50000);
     key = api->level >= 4 ? api->key_poll() : api->key_down();
@@ -724,6 +743,16 @@ int k6_main(const k6_api_t *api) {
     }
 #else
     if (!cap && (int32_t)(now - tend) >= 0 && !s->inpk && !s->dpend) break;
+#endif
+#ifdef RG_UI
+    if (s->u.on && !cap && !s->inpk && !s->dpend && now - s->u.t_fl >= 1000) {
+      /* the screen's status between packets (a flush is 20-40 ms of not reading) */
+      p = ui_mmss(s->ln, ui_udiv(now, 1000));
+      p = ui_dec(ui_put(p, "  PKT "), s->np, 1);
+      p = ui_dec(ui_put(p, " OK "), s->nok, 1);
+      ui_text(&s->u, 5, s->ln);
+      ui_now(&s->u);
+    }
 #endif
     if (!cap) {
       uint32_t v;
@@ -787,5 +816,8 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " x=", s->resync);
   p = kv(p, " m=-", (uint32_t)-KM_RSSI_DBM(s->rmin));
   say(api, s, p);
+#ifdef RG_UI
+  ui_end(&s->u, key ? "STOPPED" : "DONE", key);
+#endif
   return (int)s->nok;
 }

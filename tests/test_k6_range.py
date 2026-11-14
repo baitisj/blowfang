@@ -169,13 +169,13 @@ def test_c_sender_audio_decodes():
     assert [p for p, c in got if c] == pls
 
 
-def run_module(smp, rate, total, scratch=4096):
+def run_module(smp, rate, total, scratch=4096, screen=None):
     import k6_live_emu as le
     from test_k6_pocsag import plain_chip
-    code, entry = le.build("x", [("RG_S", f"{int(total) + 1}u")], SRC)
+    code, entry = le.build("x", [("RG_S", f"{int(total) + 1}u"), ("UI_HOLD_MS", "500u")], SRC)
     Chip = plain_chip(le, [(0.3, rate, smp)])
-    e = Chip(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total + 4, level=8,
-             scratch=scratch)
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total + 4,
+             level=8 if screen is None else 9, scratch=scratch, screen=screen)
     res = e.run()
     assert res is not None, e.said[-5:]
     return e, res, code
@@ -192,7 +192,7 @@ def test_rangerx_on_the_model(rate, lock):
     pls = k6r.test_payloads(4, seed=10)
     smp, _ = rg.link(pls, None, rate=rate, tx="flat", lock=lock)
     e, (ret, stack), code = run_module(smp, rate, 0.3 + len(smp) / rate + 1)
-    assert len(code) < 5000, len(code)
+    assert len(code) < 6500, len(code)             # (with its screen, k6ui.h)
     assert stack < 600, stack
     assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
     _, pk, ends = k6r.parse_log(["K6 MOD say " + s for s in e.said])
@@ -203,6 +203,27 @@ def test_rangerx_on_the_model(rate, lock):
     assert 0x0100 in e.writes[0x2B]
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x2B, 0x3F):
         assert e.writes[reg][-1] == 0, hex(reg)
+
+
+@need_clang
+def test_rangerx_screen():
+    """the release's RANGE RX with the screen: the channel on the title bar, each packet in the
+    log (number, CRC, channel errors, RSSI), the counts on line 5, and every packet still read"""
+    pytest.importorskip("unicorn")
+    from sim.k6if import range as rg
+    pls = k6r.test_payloads(4, seed=10)
+    smp, _ = rg.link(pls, None, rate=4800.0, tx="flat")
+    screen = []
+    e, (ret, stack), code = run_module(smp, 4800.0, 0.3 + len(smp) / 4800.0 + 2, screen=screen)
+    assert ret == 4, e.said
+    assert screen[0]["text"][:2] == ["RANGE RX 0.000", "LISTENING  KEY: STOP"], screen[0]  # (rx_hz 0 here)
+    last = screen[-1]["text"]
+    assert last[1] == "DONE" and last[2:5] == ["2 OK E0 -60DBM", "3 OK E0 -60DBM", "4 OK E0 -60DBM"], last
+    assert any(f["text"][5].endswith("PKT 4 OK 4") for f in screen), [f["text"][5] for f in screen]
+    if os.environ.get("K6_SCREENS"):
+        import json
+        with open(os.path.join(os.environ["K6_SCREENS"], "rangerx.json"), "w") as fo:
+            json.dump([screen[-2]], fo)
 
 
 @need_clang

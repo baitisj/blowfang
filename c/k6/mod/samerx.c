@@ -291,6 +291,7 @@ int k6_main(const k6_api_t *api) {
   say(api, s, p);
   ui_mhz(ui_put(s->ln, "SAME "), SAME_HZ);
   ui_begin(&s->u, api, s->ln, "WAITING  KEY: STOP");
+  s->u.lt = 3; /* the log: the newest header, two lines */
   while (api->ms() < WAIT_MS && !key) {
     api->delay_us(50000);
     key = api->level >= 4 ? api->key_poll() : api->key_down();
@@ -396,7 +397,8 @@ int k6_main(const k6_api_t *api) {
             s->ln[j] = 0;
             ui_log(&s->u, s->ln);
           }
-          ui_text(&s->u, 1, "HEARD A HEADER");
+          p = ui_dec(ui_put(s->ln, "HEADERS HEARD: "), total + nh, 1);
+          ui_text(&s->u, 1, s->ln);
         }
       }
       prev = seek(api, r);

@@ -410,14 +410,12 @@ MAIN_COLD int k6_main(const k6_api_t *api) {
        core's own RAM (2026-11-08: the report after it keyed the transmitter and hung) */
     uint32_t n = 0;
     uint8_t *sc = (uint8_t *)api->scratch(&n);
-    if (n < DS_FRING + sizeof(dx_t) + RSZ) {
-      char line[40];
-      say(api, line, kv(kv(line, "dmr scratch ", (int)n), " need ", (int)(DS_FRING + sizeof(dx_t) + RSZ)));
-      return -6;
-    }
+    if (n < DS_FRING + sizeof(dx_t) + RSZ) return -6; /* (no line: the release's library room
+                                                          is a few bytes over what it needs) */
     s->d.f = (int8_t *)sc;
     s->x = (dx_t *)(sc + DS_FRING);
     zero(s->x, sizeof(dx_t));
+    s->x->lcd_dirty = 1; /* the screen at once: "LISTENING" until a call's LC */
     s->ring = sc + DS_FRING + sizeof(dx_t);
     return go(api, s);
   }

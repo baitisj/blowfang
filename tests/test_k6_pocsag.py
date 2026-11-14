@@ -485,7 +485,8 @@ def test_samerx_screen_shows_the_header():
     assert ret == 2, e.said[-4:]
     assert screen[0]["text"][:2] == ["SAME 162.550", "WAITING  KEY: STOP"], screen[0]
     last = screen[-1]["text"]
-    assert last[1] == "DONE" and "WXR RWT 053033+0015 3" in last[2:5], last
+    assert last[1] == "DONE" and last[3:5] == ["WXR RWT 053033+0015 3", "151802 KSEW/NWS "], last
+    assert any(f["text"][1] == "HEADERS HEARD: 2" for f in screen)
     assert any("DBM H2" in f["text"][5] for f in screen), [f["text"][5] for f in screen]
     if os.environ.get("K6_SCREENS"):
         import json
