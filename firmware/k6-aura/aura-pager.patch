@@ -309,7 +309,7 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..84ca950
+index 0000000..0927341
 --- /dev/null
 +++ b/src/app/pager.rs
 @@ -0,0 +1,4577 @@
@@ -4892,10 +4892,10 @@ index 0000000..84ca950
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..62c92d1
+index 0000000..419089a
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2159 @@
+@@ -0,0 +1,2353 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -4975,9 +4975,10 @@ index 0000000..62c92d1
 +    pub const SWEEP: u8 = 1;
 +    pub const LISTEN: u8 = 2;
 +    pub const TABLE: u8 = 3;
++    pub const EDIT: u8 = 4;
 +    /// the library slot and the number of functions of each page (kp.h)
-+    const SLOT: [i32; 4] = [0, 10, 11, 9];
-+    const FNS: [u32; 4] = [0, 12, 14, 8];
++    const SLOT: [i32; 5] = [0, 10, 11, 9, 12];
++    const FNS: [u32; 5] = [0, 12, 14, 8, 7];
 +    const KM_HDR: usize = 16;
 +    const ID_BYTES: usize = 8;
 +    /// the page in the pool now (0: none, or the pool was lent out)
@@ -5273,8 +5274,38 @@ index 0000000..62c92d1
 +        6 fn rt_cw_apply(t: *mut Rt, rx_hz: u32, tol: u32, call: *const u8, call_flags: u8, tone_hz: i32, wpm: i32, confirmed: i32, out: *mut RtRec) -> i32;
 +        7 fn rt_heard_apply(t: *mut Rt, rx_hz: u32, tol: u32, tone: u16, dmr: i32, out: *mut RtRec) -> i32;
 +    }
++    /// c/k6/sted.h sted_t: the station editor's state, the image's own (the page only code)
++    #[repr(C)]
++    pub struct Sted {
++        pub r: RtRec,
++        pub was: RtRec,
++        pub fwas: RtRec,
++        pub tap_ms: u32,
++        pub msg: *const u8,
++        pub f: u8,
++        pub open: u8,
++        pub ask: u8,
++        pub nd: u8,
++        pub tap_k: u8,
++        pub tap_i: u8,
++        pub fresh: u8,
++        pub neg: u8,
++        pub cust: u8,
++        pub dig: [u8; 10],
++    }
++    // the station editor (c/k6/sted.c; the release plan, Jeff 2026-11-13: the editor in the core)
++    paged! {
++        EDIT:
++        0 fn sted_open(e: *mut Sted, r: *const RtRec);
++        1 fn sted_key(e: *mut Sted, key: i32, ms: u32) -> i32;
++        2 fn sted_changed(e: *const Sted) -> i32;
++        3 fn sted_commit(e: *mut Sted);
++        4 fn sted_saved(e: *mut Sted, written: *const RtRec);
++        5 fn sted_row(e: *const Sted, f: i32, out: *mut u8) -> i32;
++        6 fn sted_hint(e: *const Sted, out: *mut u8) -> i32;
++    }
 +}
-+use ffi::{Cand, Ex, Rt, RtFlash, RtRec, Seg, XsHead, XsInfo, XlInfo};
++use ffi::{Cand, Ex, Rt, RtFlash, RtRec, Seg, Sted, XsHead, XsInfo, XlInfo};
 +
 +const CAP: usize = 64;
 +const RT_BASE: u32 = 0x0F_0000;
@@ -5401,6 +5432,8 @@ index 0000000..62c92d1
 +    Try,
 +    Listen,
 +    Ask,
++    /// the station editor (key 8 on a row; c/k6/sted.c in its code page)
++    Edit,
 +}
 +
 +struct State {
@@ -5467,6 +5500,8 @@ index 0000000..62c92d1
 +    xd: *mut u8,
 +    cps8: u32,
 +    dmr_now: bool,
++    /// the station editor's state (sted_t), while View::Edit
++    ed: Sted,
 +}
 +
 +static mut S: State = State {
@@ -5519,6 +5554,28 @@ index 0000000..62c92d1
 +    xd: null_mut(),
 +    cps8: 0,
 +    dmr_now: false,
++    ed: Sted {
++        r: RT_REC0,
++        was: RT_REC0,
++        fwas: RT_REC0,
++        tap_ms: 0,
++        msg: core::ptr::null(),
++        f: 0,
++        open: 0,
++        ask: 0,
++        nd: 0,
++        tap_k: 0,
++        tap_i: 0,
++        fresh: 0,
++        neg: 0,
++        cust: 0,
++        dig: [0; 10],
++    },
++};
++
++const RT_REC0: RtRec = RtRec {
++    state: 0, seq: 0, rx_hz: 0, tx_off: 0, rx_tone: 0, tx_tone: 0, flags: 0, best_rssi: 0, score: 0,
++    last_heard: 0, name: [0; 16], call: [0; 10], call_flags: 0, cw: 0, group: 0, spare0: 0, id: 0, wseq: 0, crc: 0,
 +};
 +
 +/// the C side's ms (module API time), kept by mod_tick
@@ -5892,7 +5949,7 @@ index 0000000..62c92d1
 +                t.level = rssi_dbm(app, syst);
 +            }
 +        }
-+        View::Ask => {}
++        View::Ask | View::Edit => {}
 +    }
 +    if t.msg_len != 0 && uptime::now().wrapping_sub(t.msg_t) > 25_000 {
 +        t.msg_len = 0;
@@ -5934,6 +5991,10 @@ index 0000000..62c92d1
 +        return;
 +    }
 +    let t = st();
++    // the editor takes a held arrow, not a held digit (multi-tap counts presses)
++    if t.view == View::Edit && ev.kind == KeyEventKind::Repeat && !matches!(ev.key, KeyId::Up | KeyId::Down) {
++        return;
++    }
 +    t.dirty = true;
 +    if ev.key != KeyId::Exit {
 +        t.leave_armed = false;
@@ -5976,6 +6037,7 @@ index 0000000..62c92d1
 +            }
 +            _ => {}
 +        },
++        View::Edit => edit_key(app, syst, ev.key),
 +        View::Try => match ev.key {
 +            KeyId::Side1 | KeyId::Exit => {
 +                monitor_off(app, syst);
@@ -6013,6 +6075,7 @@ index 0000000..62c92d1
 +            }
 +            KeyId::Digit3 => delete(app, syst),
 +            KeyId::Digit6 => delete_auto(app, syst),
++            KeyId::Digit8 => edit_start(app, syst),
 +            KeyId::Digit9 => {
 +                t.auto_spk = !t.auto_spk;
 +                note(if t.auto_spk { "AUTO ID SPEAKER ON" } else { "AUTO ID SPEAKER OFF" });
@@ -6028,6 +6091,103 @@ index 0000000..62c92d1
 +            _ => {}
 +        },
 +    }
++}
++
++// ---- the station editor (the release plan, Jeff 2026-11-13; c/k6/sted.c in code page 12) ----
++
++/// sted.h's results
++const STED_SAVE: i32 = 1;
++const STED_EXIT: i32 = 2;
++const STED_MENU: i32 = 3;
++/// the editor's rows on screen (Jeff's layout D, 2026-11-14: the 4x6 7 pixel rows apart under
++/// the 5x7 title, the keys in the 4x6 at the foot) and the fields it has (sted.h SF_N)
++const ED_ROWS: i32 = 6;
++const ED_FIELDS: i32 = 9;
++const ED_TOP: i32 = 12;
++const ED_PITCH: i32 = 7;
++
++/// Key 8 on a row: its saved entry into the editor, or a new station from what the sweep found
++/// there (frequency, offset, tone, call). The sweep waits, as for Try.
++fn edit_start(app: &mut App, syst: &mut SYST) {
++    let t = st();
++    if t.rt_res < 0 {
++        note("NO TABLE");
++        return;
++    }
++    #[cfg(feature = "voice-explore")]
++    if page::check(page::EDIT) != 0 {
++        note("NO EDITOR PAGE (12)");
++        return;
++    }
++    let Some(c) = shown(t.sel as u32) else { return };
++    let mut r: RtRec = RT_REC0;
++    ctx_on(app, syst);
++    let saved = c.flags & EX_F_KNOWN != 0 && unsafe { ffi::rt_find(&mut t.rt, 0, c.hz, RT_TOL_HZ, &mut r) } >= 0;
++    ctx_off();
++    if !saved {
++        r = RT_REC0;
++        unsafe { ffi::ex_to_rt(c, &mut r) };
++        r.id = 0;
++    }
++    pause_sweep(app, syst);
++    unsafe { ffi::sted_open(&mut t.ed, &r) };
++    rl!("K6 EX edit {} id={}", r.rx_hz, r.id);
++    t.view = View::Edit;
++}
++
++fn edit_key(app: &mut App, syst: &mut SYST, key: KeyId) {
++    let k = match key {
++        KeyId::Digit0 => b'0',
++        KeyId::Digit1 => b'1',
++        KeyId::Digit2 => b'2',
++        KeyId::Digit3 => b'3',
++        KeyId::Digit4 => b'4',
++        KeyId::Digit5 => b'5',
++        KeyId::Digit6 => b'6',
++        KeyId::Digit7 => b'7',
++        KeyId::Digit8 => b'8',
++        KeyId::Digit9 => b'9',
++        KeyId::Asterisk => b'*',
++        KeyId::Pound => b'#',
++        KeyId::Up => b'U',
++        KeyId::Down => b'D',
++        KeyId::Exit => b'X',
++        _ => return,
++    };
++    let t = st();
++    match unsafe { ffi::sted_key(&mut t.ed, k as i32, now_ms()) } {
++        STED_SAVE => edit_save(app, syst),
++        STED_EXIT | STED_MENU => {
++            rl!("K6 EX edit end");
++            t.view = View::List;
++        }
++        _ => {}
++    }
++}
++
++/// Save in the editor: the record through rt_put (the table page in for it, the editor's back
++/// for the next key), the list's known mark moved with a new frequency
++fn edit_save(app: &mut App, syst: &mut SYST) {
++    let t = st();
++    unsafe { ffi::sted_commit(&mut t.ed) };
++    let mut r = t.ed.r;
++    let was_hz = t.ed.was.rx_hz;
++    ctx_on(app, syst);
++    let slot = unsafe { ffi::rt_put(&mut t.rt, &mut r) };
++    ctx_off();
++    rl!("K6 EX edit save {} id={} slot={} live={}", r.rx_hz, r.id, slot, t.rt.live);
++    let mut b: TextBuf<21> = TextBuf::new();
++    if slot >= 0 {
++        if was_hz != 0 && was_hz != r.rx_hz {
++            unsafe { ffi::ex_unknow(&mut t.ex, was_hz) };
++        }
++        unsafe { ffi::ex_know(&mut t.ex, r.rx_hz) };
++        unsafe { ffi::sted_saved(&mut t.ed, &r) };
++        out!(b, "SAVED #{}", r.id);
++    } else {
++        out!(b, "SAVE FAILED {}", slot);
++    }
++    note(b.as_str());
 +}
 +
 +/// stop the sweep for a while: every over that's up ends now, so its H line is honest
@@ -7052,6 +7212,40 @@ index 0000000..62c92d1
 +            line(lcd, 2, b.as_str());
 +            line(lcd, 4, "5 write new call");
 +            line(lcd, FOOT, "EXIT keep saved");
++        }
++        View::Edit => {
++            // Jeff's layout D (2026-11-14): the title in the 5x7, six fields in the 4x6 7 pixel
++            // rows apart (the selected one inverted), the keys in the 4x6 at the foot
++            let e = &t.ed;
++            if !msg {
++                out!(b, "EDIT ");
++                if e.r.rx_hz != 0 {
++                    mhz(&mut b, e.r.rx_hz);
++                } else {
++                    out!(b, "NEW");
++                }
++                if e.r.id != 0 {
++                    out!(b, " #{}", e.r.id);
++                }
++                if unsafe { ffi::sted_changed(e) } != 0 {
++                    out!(b, " *");
++                }
++            }
++            line(lcd, 0, b.as_str());
++            let top = (e.f as i32 - 2).clamp(0, ED_FIELDS - ED_ROWS);
++            let mut buf = [0u8; 22];
++            for i in 0..ED_ROWS {
++                let f = top + i;
++                let n = unsafe { ffi::sted_row(e, f, buf.as_mut_ptr()) }.clamp(0, 21) as usize;
++                let y = ED_TOP + ED_PITCH * i;
++                let sel = f == e.f as i32;
++                if sel {
++                    fill(lcd, y - 1, ED_PITCH as u32, BinaryColor::On);
++                }
++                glyph::text(lcd, 1, y, core::str::from_utf8(&buf[..n]).unwrap_or(""), true, !sel);
++            }
++            let n = unsafe { ffi::sted_hint(e, buf.as_mut_ptr()) }.clamp(0, 21) as usize;
++            line(lcd, FOOT, core::str::from_utf8(&buf[..n]).unwrap_or(""));
 +        }
 +    }
 +}
@@ -9515,7 +9709,7 @@ index 0000000..c8b254e
 +    }
 +}
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
-index cdfa0f7..831732f 100644
+index cdfa0f7..0b63d61 100644
 --- a/src/ui/mod.rs
 +++ b/src/ui/mod.rs
 @@ -3,9 +3,11 @@ mod chanmgr;
@@ -9753,7 +9947,7 @@ index cdfa0f7..831732f 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..6722e19
+index 0000000..e3a4f5c
 --- /dev/null
 +++ b/src/ui/pager.rs
 @@ -0,0 +1,438 @@

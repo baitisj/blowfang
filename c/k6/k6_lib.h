@@ -11,7 +11,8 @@
    Slots by use (a plan for the tools, the library itself takes any image in any slot):
      0-8    modules
      9-11   EXPLORE's code pages (KM_F_PAGE, docs/k6-voice-explore.md)
-     12-15  help card decks (KM_F_CARDS, the release plan's help cards)
+     12     the station editor's code page (KM_F_PAGE)
+     13-15  help card decks (KM_F_CARDS, the release plan's help cards)
      16-31  modules
 
    A module may carry its name (K6_MODULE_NAME in k6_mod.h): a 16-byte block, 'K' '6' 'N' 'M'

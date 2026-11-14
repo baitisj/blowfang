@@ -1,5 +1,5 @@
 """EXPLORE's code pages (c/k6/kp.h, tools/k6_pages.py) on an emulated M0: the sweep (xscan.c),
-Listen for ID (xlisten.c, xdmr.c) and the repeater table (rt.c), each linked against a stand-in
+Listen for ID (xlisten.c, xdmr.c), the repeater table (rt.c) and the station editor (sted.c), each linked against a stand-in
 image (k6_arena, the functions the pages call, a build ID), fit the decoder pool, carry a good
 table and the image's build ID; called through their tables from the pool's address, they return
 the sizes the image expects and their calls into the image land on the image's functions.
@@ -41,6 +41,7 @@ PAGES = {
     "sweep": ["xscan.c"],
     "listen": ["xlisten.c", "xdmr.c"],
     "table": ["rt.c"],
+    "edit": ["sted.c"],
 }
 
 
@@ -167,7 +168,7 @@ def test_pages_fit_and_carry_table_and_id(built):
     elf, _, syms, pages = built
     bid = k6_pages.build_id(elf)
     org = syms["k6_arena"] + DEC_OFF + 16
-    for pid, (name, n) in enumerate([("sweep", 12), ("listen", 14), ("table", 8)], 1):
+    for pid, (name, n) in enumerate([("sweep", 12), ("listen", 14), ("table", 8), ("edit", 7)], 1):
         p = pages[name]
         assert 16 + len(p) + 8 <= 11776 - DEC_OFF, name
         assert struct.unpack_from("<II", p) == (0x504B | pid << 16 | n << 24, org), name
@@ -184,3 +185,21 @@ def test_pages_run_from_the_pool(built):
     x = 0x20004000
     m.call(1, x, m.api, 440_850_000, 30)            # xl_start: into the image's cw_* and the API
     assert m.hits("cw_init") == 1 and m.hits("cw_utoa") >= 1 and m.hits("api") >= 2
+
+
+def test_edit_page_runs_the_editor_from_the_pool(built):
+    """the station editor's page (the release plan, Jeff 2026-11-13): its state is the image's
+    (a sted_t anywhere in RAM), the page only code and constants: open a new station, type RX"""
+    _, image, syms, pages = built
+    m = M0(image, syms, pages["edit"])
+    e, out = 0x20004000, 0x20004800
+    m.mu.mem_write(e, b"\x55" * 512)
+    m.call(0, e, 0)                                 # sted_open(e, NULL): a new station
+    n = m.call(5, e, 0, out)                        # sted_row(e, SF_RX, out)
+    assert bytes(m.mu.mem_read(out, n)) == b"RX   ---"
+    for k in b"#446":
+        m.call(1, e, k, 1000)                       # sted_key
+    n = m.call(5, e, 0, out)
+    assert bytes(m.mu.mem_read(out, n)) == b"RX   446_"
+    n = m.call(6, e, out)                           # sted_hint
+    assert bytes(m.mu.mem_read(out, n)) == b"DIGITS *-DEL #-OK"

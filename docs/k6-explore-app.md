@@ -225,7 +225,33 @@ s 146.520   S  ======
 | 3 twice | delete the saved row's table entry (`3 AGAIN: DELETE`) |
 | 6 twice | delete every entry the explorer saved on its own for DMR (`6 AGAIN: DEL AUTO DMR`) |
 | 9 | the automatic listen's speaker on or off |
+| 8 | the station editor on the row: its saved entry, or a new station from what the sweep found there (below) |
 | EXIT twice | the RAM arena, VOICE MSG (the list is in RAM and goes when you leave or power off); EXPLORE again after 1 quiet minute |
+
+### The station editor (key 8)
+
+The release plan's editor (Jeff 2026-11-13: in the core image; its keys tried as the `edtrial`
+RAM module first). Key 8 on a row opens the row's saved entry, or a new station from what the
+sweep found there: frequency, offset, tone and call. The sweep waits while it is open, as for Try.
+
+Jeff's layout D (2026-11-14): the title in the 5x7 (`EDIT 442.025 #7 *`, the `*` once something
+changed), six fields in the 4x6 seven pixel rows apart with the selected one inverted, and the
+keys in the 4x6 at the foot (`#-EDIT 5-SAVE EXIT`).
+
+| Key | In the field list | In an open field |
+|-----|-------------------|------------------|
+| UP/DOWN | pick a field | step a choice (tone, offset, group) or the last letter |
+| # | open the field (WIDE and DMR flip) | close it, keeping it (RX checks 18-630 MHz) |
+| 0-9 | 4 on RXT/TXT copies the other tone; 5 saves | digits; multi-tap letters in NAME and CALL (2 ABC .. 9 WXYZ, 0 space, 1 1 / - .) |
+| * | | deletes back: RX's digits (it opens with them), a tone's digits then the tone; on OFS, * starts a custom offset in kHz (600, 5000, 7600), * then deletes its digits or, with none typed, flips its sign |
+| EXIT | leave (asks once if anything changed) | close the field and put it back as it was |
+
+Save writes the entry through the repeater table (`rt_put`, the saved-repeater exception to the
+no-SPI-writes rule) and marks what was typed (`RT_F_NAME_USER`, `RT_F_CALL_USER`,
+`RT_F_TONE_USER`); an entry the explorer saved on its own becomes the user's. The editor's code
+(c/k6/sted.c) is a code page in library slot 12 in the 8 kHz voice + EXPLORE image
+(docs/k6-voice-explore.md); with the page missing, key 8 says `NO EDITOR PAGE (12)`.
+Serial: `K6 EX edit <hz> id=<n>`, `K6 EX edit save <hz> id=<n> slot=<s> live=<n>`, `K6 EX edit end`.
 
 On the Listen screen: `ID? 440.850 1:23` (or `AUTO`), the tone detector's state, the last text
 decoded and the call so far. On a changed call: `NEW CALL`, the heard and saved calls, 5

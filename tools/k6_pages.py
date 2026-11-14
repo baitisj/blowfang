@@ -12,7 +12,7 @@
       image's symbols (ld.lld --just-symbols), then its table checked, then the image's build ID
       appended. PAGE.bin goes into the K6's SPI library with
       `python3 -m modem.k6 mod PAGE.bin --install SLOT --page ...` (sweep: slot 10, listen: 11,
-      table: 9).
+      table: 9, edit: 12).
 
 SPDX-License-Identifier: MIT"""
 import argparse
@@ -35,7 +35,7 @@ import k6_frames  # noqa: E402
 KM_HDR = 16
 KM_TAG = 8
 KP_ID_BYTES = 8
-PAGES = {"sweep": 1, "listen": 2, "table": 3}
+PAGES = {"sweep": 1, "listen": 2, "table": 3, "edit": 4}
 # hal::arena: the decoder pool starts after the store (4,096) and the 8 kHz PWM ring (1,280)
 DEC_OFF = 4096 + 1280
 
