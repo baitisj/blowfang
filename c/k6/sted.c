@@ -466,10 +466,10 @@ int sted_hint(const sted_t *e, char *out) {
   } else if (e->ask) {
     p = put(p, e->ask == 'X' ? "EXIT AGAIN: DISCARD" : "MENU AGAIN: DISCARD");
   } else if (!e->open) {
-    p = put(p, (e->f == SF_WIDE || e->f == SF_DMR) ? "#FLIP 5SAVE EXIT"
-               : e->f == SF_RXT ? "#EDIT 4=TXT 5SAVE"
-               : e->f == SF_TXT ? "#EDIT 4=RXT 5SAVE"
-                                : "#EDIT 5SAVE EXIT");
+    p = put(p, (e->f == SF_WIDE || e->f == SF_DMR) ? "#-FLIP 5-SAVE EXIT"
+               : e->f == SF_RXT ? "#-EDIT 4-COPY 5-SAVE"
+               : e->f == SF_TXT ? "#-EDIT 4-COPY 5-SAVE"
+                                : "#-EDIT 5-SAVE EXIT");
   } else if (e->f == SF_NAME || e->f == SF_CALL) {
     if (e->tap_k) {
       const char *L = TAP[e->tap_k - '0'];
@@ -481,15 +481,15 @@ int sted_hint(const sted_t *e, char *out) {
       }
       *p++ = ' ';
     }
-    p = put(p, "*DEL #OK");
+    p = put(p, "*-DEL #-OK");
   } else if (e->f == SF_RX) {
-    p = put(p, "DIGITS *DEL #OK");
+    p = put(p, "DIGITS *-DEL #-OK");
   } else if (e->f == SF_RXT || e->f == SF_TXT) {
-    p = put(p, e->nd ? "DIGITS *DEL #OK" : e->f == SF_RXT ? "UP/DN 4=TXT *OFF #OK" : "UP/DN 4=RXT *OFF #OK");
+    p = put(p, e->nd ? "DIGITS *-DEL #-OK" : "4-COPY *-OFF #-OK");
   } else if (e->f == SF_OFF) {
-    p = put(p, !e->cust ? "UP/DN *CUSTOM #OK" : e->nd ? "KHZ *DEL #OK" : "KHZ *SIGN #OK");
+    p = put(p, !e->cust ? "UP/DN *-CUSTOM #-OK" : e->nd ? "KHZ *-DEL #-OK" : "KHZ *-SIGN #-OK");
   } else {
-    p = put(p, "UP/DN #OK");
+    p = put(p, "UP/DN #-OK");
   }
   while (p - out > STED_ROW - 1) p--;
   *p = 0;

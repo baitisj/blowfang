@@ -6,8 +6,9 @@ so the target is one image that does both. He picked the 8 kHz voice (v3.7, sott
 
 `firmware/k6-aura/build.sh` builds it as `aura-voice-explore` (Aura feature `voice-explore`:
 EXPLORE with the voice library, the voice images' 11,776-byte shared block, EXPLORE's code
-pages and banded drawing, below), then links its three pages for it: `out/aura-voice-explore.bin`
-and `out/page-sweep.bin`, `page-listen.bin`, `page-table.bin` (the last lines of
+pages and banded drawing, below), then links its four pages for it: `out/aura-voice-explore.bin`
+and `out/page-sweep.bin`, `page-listen.bin`, `page-table.bin`, `page-edit.bin` (the station
+editor, docs/k6-explore-app.md; the last lines of
 `out/size-aura-voice-explore.txt`). On CI (Arm Toolchain for Embedded) an image that outgrows the
 flash fails the build; a plain clang build is about 1.5 KB bigger and is a size report only.
 
@@ -103,6 +104,7 @@ another image is refused):
 python3 -m modem.k6 mod out/page-sweep.bin --page --install 10 --key-file ~/.config/sotto/k6-mod.key ...
 python3 -m modem.k6 mod out/page-listen.bin --page --install 11 --key-file ~/.config/sotto/k6-mod.key ...
 python3 -m modem.k6 mod out/page-table.bin --page --install 9 --key-file ~/.config/sotto/k6-mod.key ...
+python3 -m modem.k6 mod out/page-edit.bin --page --install 12 --key-file ~/.config/sotto/k6-mod.key ...
 ```
 
 Each is about 6 KB over the air, as a module upload; the K6 writes it to its slot once (never

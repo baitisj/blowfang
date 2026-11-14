@@ -213,7 +213,8 @@ if [ "${VLR:-1}" = 1 ]; then
   # image that outgrows the flash fails the build as the others do; a plain clang build is about
   # 1.5 KB bigger, so there it is a size report only. EXPLORE's sweep, Listen for ID and repeater table code
   # are code pages in SPI flash (c/k6/kp.h): the image keeps what they call (K6_PAGE_IMPORTS),
-  # then each page is linked for it, out/page-sweep.bin, page-listen.bin, page-table.bin
+  # then each page is linked for it, out/page-sweep.bin, page-listen.bin, page-table.bin,
+  # page-edit.bin (the station editor)
   PB="$ROOT/c/k6/build-vlr-cbs"
   python3 "$ROOT/tools/k6_pages.py" imports \
     "$PB/kp_sweep.o" \
@@ -223,6 +224,8 @@ if [ "${VLR:-1}" = 1 ]; then
     "$PB/xdmr.o" \
     "$PB/kp_table.o" \
     "$PB/k6_rt.o" \
+    "$PB/kp_edit.o" \
+    "$PB/sted.o" \
     -o "$OUT/page-imports.x"
   export K6_PAGE_IMPORTS="$OUT/page-imports.x"
   if [ -n "${K6_ATFE:-}" ]; then
@@ -243,7 +246,10 @@ if [ "${VLR:-1}" = 1 ]; then
   python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page table -o "$OUT/page-table.bin" \
     "$PB/kp_table.o" \
     "$PB/k6_rt.o" >> "$OUT/size-aura-voice-explore.txt"
-  tail -3 "$OUT/size-aura-voice-explore.txt"
+  python3 "$ROOT/tools/k6_pages.py" link --elf "$ELF" --page edit -o "$OUT/page-edit.bin" \
+    "$PB/kp_edit.o" \
+    "$PB/sted.o" >> "$OUT/size-aura-voice-explore.txt"
+  tail -4 "$OUT/size-aura-voice-explore.txt"
   K6_CODEC=vlr K6_CB=install sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbi
   # it holds sotto 600 / 400's 21 KB of codebooks: lean, as the other install image

@@ -1,8 +1,8 @@
 /* kp: EXPLORE's code pages in the 8 kHz voice + EXPLORE image (docs/k6-voice-explore.md).
 
    That image has no room in MCU flash for EXPLORE's sweep (xscan.c) and Listen for ID
-   (xlisten.c, xdmr.c), nor for its repeater table code (rt.c). They are kept in SPI flash
-   instead, as three pages in the SPI module
+   (xlisten.c, xdmr.c), nor for its repeater table code (rt.c) and station editor (sted.c).
+   They are kept in SPI flash instead, as four pages in the SPI module
    library (k6_lib.h, header flag KM_F_PAGE), and run from RAM: the decoder pool of the shared
    block (hal::arena), which no voice message uses while EXPLORE runs. One page is in RAM at a
    time; the image loads the one a call needs (app::pager::explore, `page`).
@@ -23,10 +23,12 @@
 #define KP_SWEEP 1
 #define KP_LISTEN 2
 #define KP_TABLE 3
+#define KP_EDIT 4
 /* the library slots (k6 mod PAGE.bin --install SLOT --page) */
 #define KP_SWEEP_SLOT 10
 #define KP_LISTEN_SLOT 11
 #define KP_TABLE_SLOT 9
+#define KP_EDIT_SLOT 12
 /* word 0 of a page: 'K' 'P', the page's id, its number of functions */
 #define KP_MAGIC(id, n) (0x504Bu | (unsigned)(id) << 16 | (unsigned)(n) << 24)
 /* the image's build ID at the page's end */
@@ -74,5 +76,16 @@
   X(rt_cw_check)        \
   X(rt_cw_apply)        \
   X(rt_heard_apply)
+
+/* the station editor page: sted.c (the release plan, Jeff 2026-11-13: the editor in the core;
+   its state, a sted_t, is the image's, so only the code comes and goes) */
+#define KP_EDIT_FNS(X) \
+  X(sted_open)         \
+  X(sted_key)          \
+  X(sted_changed)      \
+  X(sted_commit)       \
+  X(sted_saved)        \
+  X(sted_row)          \
+  X(sted_hint)
 
 #endif

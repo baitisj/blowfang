@@ -266,8 +266,9 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   codebooks (0x100000-0x10D320) and the calibration sector (0x10F000). A slot holds the image
   exactly as it arrived (header, code, tag) and 0xFF after it. 0x190000 up stays unused.
 - **Slots by use** (the release plan, Jeff 2026-11-13; the library itself takes anything
-  anywhere): 0-8 modules, 9-11 EXPLORE's code pages (`KM_F_PAGE`), 12-15 help card decks
-  (`KM_F_CARDS`, flag 0x04: kept, never run or paged), 16-31 modules.
+  anywhere): 0-8 modules, 9-11 EXPLORE's code pages (`KM_F_PAGE`), 12 the station editor's
+  code page, 13-15 help card decks (`KM_F_CARDS`, flag 0x04: kept, never run or paged), 16-31
+  modules.
 - **Names:** `K6_MODULE_NAME("SURF")` in a module's source (`c/k6/k6_mod.h`, up to 12
   characters) puts a 16-byte block, `K6NM` and the name, first in its code (`module.ld`), so it
   sits at slot + 16 and the module list reads it with the header (`kl_info`'s `name`) without
