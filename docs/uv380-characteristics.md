@@ -46,7 +46,7 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit
   sotto.
 
-## Microphone to the MCU (no mod): the USB cable switches it out
+## Microphone to the MCU (no mod): works through the codec with the USB cable out
 
 Tested 11-13 with modules micprobe, micprobe2, micadc and micspk (firmware/uv380-openrtx/mod/,
 scored by tools/uv380_micprobe.py against a recording of what was played):
@@ -61,7 +61,8 @@ scored by tools/uv380_micprobe.py against a recording of what was played):
 | Keyed (OpenRTX FM mic transmit: E0 c1, pre-emphasis) | 3 s at 1 W on 440.850 (module mictx, 11-14 01:37Z): the IC-7100 heard a fully quieting but silent carrier, 300-3400 Hz at about -47 dB below the open-squelch noise, no room ambience. I2S3 while keyed: only a keying step below 300 Hz, nothing in the voice band. The CW ident's 800 Hz tone came through clean on air and on I2S3, so the transmit audio chain works | M, mictx 01:37Z |
 | Keyed with someone talking | 5 s at 1 W (mictx, 11-14 02:43:04-02:43:09Z, Jeff talking into it): 300-3400 Hz at 30.6 rms, the same as the silent carrier, flat envelope (no syllables). The mic doesn't reach the modulator on this path | M, mictx5 02:43Z |
 | THE CABLE | The TYT USB cable in the side accessory jack switches the internal mic out. FM PTT with the cable in: a silent carrier (02:46Z); with it unplugged Jeff's voice went out (02:47Z). Every result above ran with the cable in | M, Jeff 11-14 02:47Z |
-| Next | micrec (module): loaded with the cable in, records the mic through the codec into the encoder with it out, reports when it's back | I |
+| Cable out, codec input (micrec) | 11-14 03:12:59-03:13:51Z, Jeff talking, 3 s a setting: 26=7d mic on rms 665 pk 6252; 26=bd 400; OpenGD77 DMR set (E0 8b E2 06 E4 4a, +30 dB) 4405, pk 32768 (clips); OpenRTX FM mic (E0 c1) 840 pk 4788, clean; 26 as found 352. The "mic off" control read rms 1401 (not silent). 15 s recorded on the DMR set and encoded on the radio: 375 frames, no ring overruns (the encoder keeps up in real time), speech audible after the clipped start | M, micrec 03:12Z |
+| Next | micrec picks the loudest setting that doesn't clip | I |
 
 A source wired to the bench PC can't test the mic: its audio reaches the codec input electrically.
 
