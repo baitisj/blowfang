@@ -7,8 +7,9 @@
         sees the cable come out (api->stop() turns 1), and the green LED stays on: talk until it
         goes out (about 35 s), then plug the cable back in.
      2. Each input setting below for MR_SET ms (the first 150 ms dropped): its level and peak.
-     3. The loudest setting (if it beats the mic-off control by 2x, else setting 1), with a gain
-        that brings it to about rms 3000, into enc_begin/enc_push/enc_end for MR_S s: the
+     3. The loudest setting that doesn't clip (peak under 20000; 11-14 03:13Z the loudest was the
+        +30 dB DMR stage, clipping), else setting 4, or MR_FORCE if defined; with a gain toward
+        rms 3000 that keeps the peak under 28000, into enc_begin/enc_push/enc_end for MR_S s: the
         recording becomes the message (PTT sends it, # plays it).
      4. The codec put back. It waits up to MR_BACK s for any byte from USB (the cable back in and
         the host saying hello), then reports, so nothing is written while the cable is out.
@@ -181,12 +182,19 @@ int uv_main(const ortx_api_t *api) {
     for (unsigned k = 0; k < NSET; k++) {
         codec(api, &m, k);
         level(api, &m, MR_SET, &rms[k], &pk[k], &cnt[k]);
-        if (k && rms[k] > rms[best])
-            best = k;
     }
-    if (rms[best] < 2u * rms[0])
-        best = 1;
+    best = 0;
+    for (unsigned k = 1; k < NSET; k++)
+        if (pk[k] < 20000u && (!best || rms[k] > rms[best]))
+            best = k;
+    if (!best)
+        best = 4;
+#ifdef MR_FORCE
+    best = MR_FORCE;
+#endif
     unsigned r = rms[best] ? rms[best] : 1u, gain = 3000u / r;
+    if (pk[best] && gain * pk[best] > 28000u)
+        gain = 28000u / pk[best];
     gain = gain < 1u ? 1u : gain > 64u ? 64u : gain;
 
     int frames = -1;
