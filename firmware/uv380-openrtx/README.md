@@ -180,6 +180,14 @@ decodes and plays as it arrives, and back; the macro menu and the main screen sh
 (or a module's `api->probe()`), `phy fsk` and `phy rng` do the same and answer with the one in use.
 The plain build always sends FSK.
 
+**FUNC: hold to record, let go to send (probe image).** In PAGER mode on 440.850 MHz, holding FUNC
+(the black side button above PTT) keys the radio as FM voice with the mic, LED orange, and records
+the mic as sotto 1200 from the C6000's codec input (I2S3, `pager_rec.c`, gain 16 as `micsend`).
+Letting go sends the recording as PTT would (RNG or FSK, then the ident) at the channel's power.
+When the 30 s store fills the carrier drops and the LED blinks red until FUNC is let go. The mic
+preamp stays on in PAGER mode, since it needs about 6 s to settle. The TYT cable in the side jack
+switches the internal mic out, so record with it unplugged.
+
 **tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
 the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only, then the
 ident), while the module runs on. `mod/micduplex_tone.c` switches the C6000's transmit source

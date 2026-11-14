@@ -83,6 +83,9 @@ i2sprobe.c
 i2sprobe.h
 ortx_mod.c
 ortx_mod.h
+pager_rec.c
+pager_rec.h
+mod/rxaudio.h
 EOF
 SUFFIX=
 {
