@@ -52,6 +52,7 @@
    (or CI's mod-wsprtx.bin; mod-wsprbcn.bin is the beacon build). SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 3
 #include "../k6_mod.h"
+#include "k6ui.h"
 #include "wsprtx_msg.h"   /* WSPR_TEXT, WSPR_TONES[162] */
 #include "k6_stop.h"      /* the PC's stop signal */
 #ifndef K6_NAME
@@ -179,7 +180,7 @@ typedef struct {
   uint16_t k;       /* UI_TX: symbols sent */
   uint8_t phase, sent, synced;
   k6stop_t stop;    /* the PC's stop signal, fed while waiting */
-} ui_t;
+} wui_t;
 
 static char *mss(char *p, uint32_t s) {     /* "7:58", no divide */
   uint32_t m = 0, t = 0;
@@ -197,7 +198,7 @@ static char *mss(char *p, uint32_t s) {     /* "7:58", no divide */
   return p;
 }
 
-static void ui(const k6_api_t *api, const ui_t *u) {
+static void ui(const k6_api_t *api, const wui_t *u) {
   char l[24], *p;
   uint32_t left;
   if (api->level < 6) return;
@@ -225,12 +226,12 @@ static void ui(const k6_api_t *api, const ui_t *u) {
 }
 
 /* the RSSI to the stop signal; -8 when it is complete */
-static int heard_stop(const k6_api_t *api, ui_t *u) {
+static int heard_stop(const k6_api_t *api, wui_t *u) {
   return k6stop_feed(&u->stop, api->ms(), KM_RSSI_DBM(api->fd_read(0x67))) ? -8 : 0;
 }
 
 /* until() with the screen's countdown redrawn every second and the stop signal fed every 100 ms */
-static int wait_ui(const k6_api_t *api, uint32_t t, ui_t *u) {
+static int wait_ui(const k6_api_t *api, uint32_t t, wui_t *u) {
   int r;
   uint32_t now, shown = api->ms() - 1000u;
   while ((int32_t)(t - (now = api->ms())) > 0) {
@@ -288,7 +289,7 @@ static int mcw(const k6_api_t *api) {
 /* the sync mark: a carrier held for at least half a second, then dropped. *td = the first ms()
    it read clear (polled every 5 ms); 0, -4 on a key, -7 if none came in WSPR_SYNC_WAIT_MS.
    The stop signal's first carrier passes for a mark; wait_ui hears the second one */
-static int sync(const k6_api_t *api, uint32_t *td, ui_t *u) {
+static int sync(const k6_api_t *api, uint32_t *td, wui_t *u) {
   uint32_t t0 = api->ms(), up = 0, now, shown = t0 - 1000u;
   u->until = t0 + WSPR_SYNC_WAIT_MS;
   while ((now = api->ms()) - t0 < WSPR_SYNC_WAIT_MS) {
@@ -315,7 +316,7 @@ static int sync(const k6_api_t *api, uint32_t *td, ui_t *u) {
 
 /* one frame, its tones from t0 (or the lead after tx_on if that is later), and its ID, keyed;
    the symbols sent and *id the ID's units, or a negative error */
-static int frame(const k6_api_t *api, int *id, uint32_t t0, ui_t *u) {
+static int frame(const k6_api_t *api, int *id, uint32_t t0, wui_t *u) {
   uint32_t k = 0, j, t3;
   int r = 0;
   if (api->tx_on(TX_MS) != 0) return -3;
@@ -350,11 +351,12 @@ static int frame(const k6_api_t *api, int *id, uint32_t t0, ui_t *u) {
   return r ? r : (int)k;
 }
 
-int k6_main(const k6_api_t *api) {
+static int tx_main(const k6_api_t *api, ui_t *ku) {
+  (void)ku;
   char line[64], *p;
   uint32_t next = 0;
   int sent = 0, n, r, id = 0, sym;
-  ui_t u = {0, 0, UI_WAIT, 0, 0};
+  wui_t u = {0, 0, UI_WAIT, 0, 0};
   if (api->level < 3) return -1;
   p = put(line, "wspr " WSPR_TEXT " f=");
   p = dec(p, WSPR_AUDIO);
@@ -423,5 +425,18 @@ out:
     put(p, " sent")[0] = 0;
     api->say(line);
   }
+  return r;
+}
+
+/* the screen: what it sends, then how it went (k6ui.h; images before level 6 skip it) */
+int k6_main(const k6_api_t *api) {
+  ui_t u;
+  int r;
+  ui_begin(&u, api, WSPR_REPEAT > 1 ? "WSPR BEACON 440.850" : "WSPR TX 440.850", "WAITING FOR QUIET");
+  ui_text(&u, 2, WSPR_TEXT " DBM");
+  ui_text(&u, 5, "ANY KEY: STOP");
+  ui_now(&u);
+  r = tx_main(api, &u);
+  ui_tx_end(&u, r == -8 ? -4 : r, WSPR_HZ, "ALL FRAMES SENT");
   return r;
 }

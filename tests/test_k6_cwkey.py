@@ -36,7 +36,7 @@ def test_builds_level_3_small():
     from modem import k6mod
     code, entry = k6mod.build(SRC)
     assert k6mod.source_level(SRC) == 3 and entry == 16   # after its name
-    assert 24 + len(code) <= 1500, len(code)
+    assert 24 + len(code) <= 2600, len(code)   # 1.2 KB of it the screen (k6ui.h)
 
 
 @need_clang
@@ -115,3 +115,23 @@ def test_time_up_stops_keying():
     ret, said, *_ = run(START, src=SRC, level=3, tx=tx)
     assert ret == -5 and tx["log"][-1][0] == "tx_off"
     assert all(us < 3_100_000 for _, _, us in tx["log"])
+
+
+@need_clang
+def test_screen_says_why_it_will_not_key_up():
+    """run from MENU on another frequency it used to end at once with a blank screen: now it says
+    where it transmits and where the radio is, and holds that until a key; on 440.850 it shows the
+    text, then ON THE AIR, then that it sent"""
+    lcd = {}
+    ret, said, *_ = run(START, src=SRC, level=6, tx={}, rx_hz=146_520_000, lcd=lcd)
+    assert ret == -2
+    end = lcd["frames"][-1]["text"]
+    assert end[:4] == ["CW KEY 440.850", "TX ONLY ON 440.850", "NOW ON 146.520", "TUNE THERE, RUN AGAIN"]
+    assert end[5] == "ANY KEY: BACK"
+    lcd = {}
+    ret, said, *_ = run(START, src=SRC, level=6, tx={}, lcd=lcd)
+    assert ret > 0, said
+    texts = [f["text"] for f in lcd["frames"]]
+    assert texts[1][1:3] == ["WAITING FOR QUIET", "AG7EW"] and texts[1][5] == "ANY KEY: STOP"
+    assert texts[2][1] == "ON THE AIR"
+    assert texts[-1][1] == "SENT AG7EW IN CW" and texts[-1][5] == "ANY KEY: BACK"

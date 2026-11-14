@@ -254,4 +254,32 @@ UI_FN const char *ui_sv(char *buf, const char *s, int32_t v) {
   return buf;
 }
 
+/* ---- the transmit modules (FT8 TX, WSPR TX, RANGE TX, CW KEY) ----
+   They key up only on the frequency the radio was on when the module started (the core's guard)
+   and only on want_hz (440.850, the bench's), so a run from another frequency used to end at
+   once with nothing on the screen. ui_tx_end says how it went from the module's return code
+   (the codes they share: -2 not on want_hz, -3 the radio refused, -4 a key, -5 the core's time
+   limit, -7 the channel stayed busy; anything else as a number) and holds that screen. */
+UI_FN void ui_tx_end(ui_t *u, int r, uint32_t want_hz, const char *done) {
+  char l[32];
+  if (r == -2) {
+    ui_mhz(ui_put(l, "TX ONLY ON "), want_hz);
+    ui_text(u, 1, l);
+    ui_mhz(ui_put(l, "NOW ON "), u->api->rx_hz());
+    ui_text(u, 2, l);
+    ui_text(u, 3, "TUNE THERE, RUN AGAIN");
+    ui_text(u, 4, "");
+    ui_end(u, 0, 0);
+    return;
+  }
+  ui_end(u, r >= 0   ? done
+           : r == -3 ? "THE RADIO REFUSED TX"
+           : r == -4 ? "STOPPED"
+           : r == -5 ? "TIME UP: KEYED DOWN"
+           : r == -7 ? "CHANNEL BUSY, NO TX"
+                     : ui_sv(l, "ERROR ", r),
+         r == -4);
+}
+
+
 #endif

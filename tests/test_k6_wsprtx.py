@@ -103,7 +103,7 @@ def test_builds_level_3_small():
     from modem import k6mod
     code, entry = k6mod.build(SRC)
     assert k6mod.source_level(SRC) == 3 and entry == 16   # after its name (K6_MODULE_NAME)
-    assert 24 + len(code) <= 3072, len(code)
+    assert 24 + len(code) <= 4500, len(code)   # with the end screen (k6ui.h)
 
 
 @need_clang
@@ -203,6 +203,10 @@ def test_beacon_screen_on_a_level_6_image(tmp_path):
     ret, said, regs, _ = run({**START, 0x67: rssi}, src=str(src), level=6, tx=tx, lcd=lcd)
     assert ret == 2, said
     fr = lcd["frames"]
+    assert fr[0]["text"][:2] == ["WSPR BEACON 440.850", "WAITING FOR QUIET"]   # k6ui.h's start
+    assert fr[1]["text"][2] == "AG7EW CN87 10 DBM" and fr[1]["text"][5] == "ANY KEY: STOP"
+    assert fr[-1]["text"][1] == "ALL FRAMES SENT" and fr[-1]["text"][5] == "ANY KEY: BACK"
+    fr = fr[2:-1]
     assert all(f["text"][0] == "WSPR BEACON  440.850" and f["text"][1] == "AG7EW CN87 10 dBm"
                and f["text"][5] == "key or PC: stop" for f in fr)
     sync = [f for f in fr if f["text"][2] == "waiting for sync"]

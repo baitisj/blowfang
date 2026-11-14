@@ -51,6 +51,8 @@ K6_MODULE_NAME(K6_NAME);
 #define FT8_RMS_HI 140
 #endif
 #include "gp0rx.h"
+#define UI_UDIV fk_udiv
+#include "k6ui.h"
 
 #define WQ_N 15    /* samples a line: 30 bytes, 40 base64 characters, a 53-character line */
 #define WQ_STAT 375 /* rows (40 ms) between status lines */
@@ -144,9 +146,21 @@ int k6_main(const k6_api_t *api) {
   uint8_t sp;
   uint8_t wf[WQ_WF * 16];
   uint32_t pw[32];
-  int wh = 0, nacc = 0, ui = api->level >= 6;
+  int wh = 0, nacc = 0, ui;
+  ui_t u;
+  /* a screen at once: the set-up and the gain take a few seconds (k6ui.h; off without one) */
+  ui_begin(&u, api, "WSPR IQ", "SETTING THE GAIN");
+  ui_text(&u, 2, "IT STREAMS TO A PC");
+  ui_text(&u, 3, "ON THE CABLE, WHICH");
+  ui_text(&u, 4, "DECODES (K6_WSPR.PY)");
+  ui_text(&u, 5, "ANY KEY: STOP");
+  ui_now(&u);
+  ui = u.on;
   ret = rx_setup(api, &sv, &r, (uint8_t *)ring);
-  if (ret) return ret;
+  if (ret) {
+    ui_end(&u, ui_sv(line, "RX SET-UP ERROR ", ret), 0);
+    return ret;
+  }
   p = put(line, "wspriq start f=" WQ_STR(WSPR_AUDIO) " inv=" WQ_STR(WSPR_INV) " n=" WQ_STR(WQ_N));
   p = sdec(put(p, " cal="), r.cal);
   say0(api, line, p);
@@ -159,6 +173,9 @@ int k6_main(const k6_api_t *api) {
     p = sdec(put(line, WQ_STR(WSPR_AUDIO) "Hz +-99  cal "), (r.cal * 41) >> 12); /* 0.01 Hz to Hz, no divide */
     *p = 0;
     api->lcd_text(1, line);
+    api->lcd_text(2, "");
+    api->lcd_text(3, "");
+    api->lcd_text(4, "");
     for (n = 0; n < WQ_WF * 16; n++) wf[n] = 0; /* blank rows until the first 15 s are in */
     for (n = 0; n < 32; n++) pw[n] = 0;
     n = 0;
@@ -208,12 +225,16 @@ int k6_main(const k6_api_t *api) {
       r.idle = 0;
       say0(api, line, p);
     }
-    if (api->key_down()) break; /* once a row, as ft8wf: never in the drain loop */
+    if (api->key_down()) { /* once a row, as ft8wf: never in the drain loop */
+      ret = -4;
+      break;
+    }
     resync(&r);
   }
   teardown(api, &sv);
   p = kv(line, "wspriq done n=", sent);
   p = kv(p, " lost=", r.lost);
   say0(api, line, p);
+  ui_end(&u, ret ? 0 : "TIME UP", ret != 0);
   return (int)sent;
 }
