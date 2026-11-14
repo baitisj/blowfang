@@ -253,10 +253,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..f57e8aad
+index 00000000..f867ad6c
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1406 @@
+@@ -0,0 +1,1414 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -1567,6 +1567,14 @@ index 00000000..f57e8aad
 +void OpMode_Pager::send(rtxStatus_t *const status)
 +{
 +    static const pt_profile prof = PT_PROFILE_XL(PT_MAGIC_1200);
++    // a message recorded (FUNC) or heard just now: its own msg_id, not the
++    // one before it (on air 11-14 two FUNC sends both went as 0x0e, the id
++    // of the test message heard before each)
++    if(msgChanged)
++    {
++        msgChanged = false;
++        msgId = pt_msg_id(msgBytes(), msgFrames());
++    }
 +    pt_message msg = {&prof, msgBytes(), msgFrames(), 1, msgId};
 +    msgId++;            // a new msg_id for each message sent
 +
