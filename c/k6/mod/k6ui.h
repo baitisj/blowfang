@@ -173,8 +173,8 @@ static const char UI_KEYS[24] = {0,   'A', 0,   'B', '7', '8', '#', '9', '4', '5
                                  '1', '2', '*', '3', 'M', 'U', 'X', 'D', 'V', 'W', 0,   'N'};
 static const uint8_t UI_ROWPIN[6] = {0xFF, 0, 4, 10, 11, 9};
 
-UI_FN uint32_t ui_rd(uint32_t a) { return *(volatile uint32_t *)a; }
-UI_FN void ui_wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
+UI_FN uint32_t ui_rd(uint32_t a) { return *(volatile uint32_t *)(uintptr_t)a; }
+UI_FN void ui_wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)(uintptr_t)a = v; }
 
 /* the key held now (0: none); only on an image with the screen (key_poll: level 4) */
 UI_FN int ui_scan(ui_t *u) {
@@ -281,5 +281,19 @@ UI_FN void ui_tx_end(ui_t *u, int r, uint32_t want_hz, const char *done) {
          r == -4);
 }
 
+
+/* the end for a module that draws its own screen (AIS, APRS): `end` on line 5 ("TIME UP  ANY
+   KEY"), and the screen stays until a key or UI_HOLD_MS, so a run that ends by itself leaves its
+   results to read instead of going straight back to the menu. No key is held when time runs out,
+   so no wait for one to be let go (that is ui_end's). Images before level 6, and a test bench's
+   with no display (lcd_flush -1), skip it. Small: the AIS modules have bytes to spare, not
+   hundreds. */
+UI_FN void ui_hold(const k6_api_t *api, const char *end) {
+  int i;
+  if (api->level < 6) return;
+  if (end) api->lcd_text(5, end);
+  if (api->lcd_flush() < 0) return;
+  for (i = 0; i < (int)(UI_HOLD_MS / 20) && !api->key_poll(); i++) api->delay_us(20000);
+}
 
 #endif

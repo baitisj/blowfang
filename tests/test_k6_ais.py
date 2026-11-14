@@ -173,10 +173,11 @@ TLM = 696                       # its telemetry text at the end (arena::TLM_BYTE
 
 
 def clk_scratch():
-    """the scratch the radio gives aisclk: the arena past its header, code and tag, less the
-    telemetry text (from the radio's build: the emulator's, AISCAP_EMU, is bigger)"""
+    """the scratch the radio gives aisclk: the arena past its header, code and tag (no telemetry
+    text: --telemetry 0, or a library slot; from the radio's build: the emulator's, AISCAP_EMU,
+    is bigger)"""
     code, _ = k6mod.build(CLK)
-    return (ARENA - 16 - len(code) - 8 - TLM) & ~3
+    return (ARENA - 16 - len(code) - 8) & ~3
 
 
 def rx_lib(*defs):
@@ -325,10 +326,11 @@ def test_m0_receiver_model():
 
 @need_clang
 def test_clock_module_fits():
-    """code + header + tag + the ring, the phases and three frames in the voice images' arena, with
-    the telemetry text kept at its end (the first bench run got -8 without room for it)"""
+    """code + header + tag + the ring, the phases and three frames in the arena (a library slot's
+    run, or an upload without the telemetry text: since its end screen, aisclk is uploaded with
+    --telemetry 0 as aisships is), with 96 B to spare for other clangs' builds"""
     code, _ = k6mod.build(CLK)
-    assert len(code) + 24 + TLM + 2960 + 2 * ((2576 + 256) // 3 + 2) + 3 * 48 <= ARENA, len(code)
+    assert len(code) + 24 + 2960 + 2 * ((2576 + 256) // 3 + 2) + 3 * 48 + 96 <= ARENA, len(code)
 
 
 @need_clang
