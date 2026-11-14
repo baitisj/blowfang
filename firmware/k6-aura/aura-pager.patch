@@ -312,7 +312,7 @@ new file mode 100644
 index 0000000..84ca950
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4415 @@
+@@ -0,0 +1,4577 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -368,6 +368,31 @@ index 0000000..84ca950
 +
 +pub fn build_short() -> &'static str {
 +    BUILD.get(..7).unwrap_or(BUILD)
++}
++
++/// The arena screen's third line (the release plan, Jeff 2026-11-13), only while it's busy
++#[cfg(feature = "explore")]
++pub enum Busy {
++    Idle,
++    /// a module coming in: chunks held, of
++    Module(u8, u8),
++    Playing,
++    /// EXPLORE's code pages aren't installed (after a flash): the arena holds
++    PagesMissing,
++}
++
++#[cfg(feature = "explore")]
++pub fn arena_busy(app: &App) -> Busy {
++    let st = unsafe { &*ffi::km_status() };
++    if st.active != 0 {
++        Busy::Module(st.have, st.count)
++    } else if stream_on() || app.pager.play_pending {
++        Busy::Playing
++    } else if explore::pages_missing() {
++        Busy::PagesMissing
++    } else {
++        Busy::Idle
++    }
 +}
 +
 +/// EXPLORE, the signal explorer's list of likely repeaters (pager/explore.rs): the explore
@@ -3444,6 +3469,138 @@ index 0000000..84ca950
 +    rl!("K6 LIB used={}", used);
 +}
 +
++// ---- the module list (MENU, the release plan, Jeff 2026-11-13) ----
++//
++// MENU in EXPLORE or the arena opens it: EXPLORE and ARENA, then the library's modules by
++// the names they carry (K6_MODULE_NAME; `SLOT n` without one), code pages and help decks left
++// out. UP/DOWN pick (wrapping), MENU or # runs the row, EXIT closes it. A module runs from the
++// arena, as side key 1's re-run does, so EXPLORE is left first.
++
++#[cfg(all(feature = "explore", feature = "spilib"))]
++const MENU_CORE: u8 = 2;
++#[cfg(all(feature = "explore", feature = "spilib"))]
++struct Menu {
++    on: bool,
++    sel: u8,
++    n: u8,
++    /// the modules' slots, in slot order
++    slots: [u8; KL_SLOTS as usize],
++}
++#[cfg(all(feature = "explore", feature = "spilib"))]
++static mut MENU: Menu = Menu { on: false, sel: 0, n: 0, slots: [0; KL_SLOTS as usize] };
++
++#[cfg(all(feature = "explore", feature = "spilib"))]
++fn menu() -> &'static mut Menu {
++    unsafe { &mut *addr_of_mut!(MENU) }
++}
++
++/// (open, the selected row, rows) for the screen
++#[cfg(all(feature = "explore", feature = "spilib"))]
++pub fn menu_state() -> (bool, u8, u8) {
++    let m = menu();
++    (m.on, m.sel, MENU_CORE + m.n)
++}
++
++/// Row i's text into out: its length
++#[cfg(all(feature = "explore", feature = "spilib"))]
++pub fn menu_row(i: u8, out: &mut [u8; 12]) -> usize {
++    let m = menu();
++    let core: &[u8] = match i {
++        0 => b"EXPLORE",
++        1 => b"ARENA",
++        _ => b"",
++    };
++    if !core.is_empty() {
++        out[..core.len()].copy_from_slice(core);
++        return core.len();
++    }
++    let slot = m.slots[(i - MENU_CORE) as usize];
++    let mut inf = ffi::KlInfo::default();
++    if unsafe { ffi::kl_info(slot as i32, &LIB_FL, &mut inf) } == 0 && inf.name[0] != 0 {
++        let n = inf.name.iter().position(|&c| c == 0).unwrap_or(inf.name.len());
++        out[..n].copy_from_slice(&inf.name[..n]);
++        return n;
++    }
++    out[..5].copy_from_slice(b"SLOT ");
++    if slot >= 10 {
++        out[5] = b'0' + slot / 10;
++        out[6] = b'0' + slot % 10;
++        7
++    } else {
++        out[5] = b'0' + slot;
++        6
++    }
++}
++
++#[cfg(all(feature = "explore", feature = "spilib"))]
++#[inline(never)]
++fn menu_open() {
++    let m = menu();
++    m.n = 0;
++    for n in 0..KL_SLOTS {
++        let mut i = ffi::KlInfo::default();
++        // modules only: not a code page (2) or a help deck (4)
++        if unsafe { ffi::kl_info(n, &LIB_FL, &mut i) } == 0 && i.flags & 0x06 == 0 {
++            m.slots[m.n as usize] = n as u8;
++            m.n += 1;
++        }
++    }
++    m.sel = if explore::on() { 0 } else { 1 };
++    m.on = true;
++    rl!("K6 MENU open modules={}", m.n);
++}
++
++/// A key while the list is open, or MENU opening it: true when the list took the key
++#[cfg(all(feature = "explore", feature = "spilib"))]
++#[inline(never)]
++fn menu_key(app: &mut App, syst: &mut SYST, ev: KeyEvent) -> bool {
++    let m = menu();
++    if !m.on {
++        // MENU opens it; not while a message streams (MENU stops that) or a frequency is typed
++        if ev.key != KeyId::Menu || !matches!(ev.kind, KeyEventKind::Single) || stream_on() || app.pager.freq_entry {
++            return false;
++        }
++        menu_open();
++    } else if matches!(ev.kind, KeyEventKind::Single | KeyEventKind::Repeat) {
++        let rows = MENU_CORE + m.n;
++        match ev.key {
++            KeyId::Up => m.sel = if m.sel == 0 { rows - 1 } else { m.sel - 1 },
++            KeyId::Down => m.sel = if m.sel + 1 >= rows { 0 } else { m.sel + 1 },
++            KeyId::Exit if matches!(ev.kind, KeyEventKind::Single) => m.on = false,
++            KeyId::Menu | KeyId::Pound if matches!(ev.kind, KeyEventKind::Single) => {
++                m.on = false;
++                let sel = m.sel;
++                rl!("K6 MENU run row={}", sel);
++                match sel {
++                    0 => {
++                        if !explore::on() {
++                            explore::enter(app, syst);
++                        }
++                    }
++                    1 => {
++                        if explore::on() {
++                            explore::leave(app, syst);
++                        }
++                    }
++                    _ => {
++                        if explore::on() {
++                            explore::leave(app, syst);
++                        }
++                        lib_run(app, syst, m.slots[(sel - MENU_CORE) as usize]);
++                    }
++                }
++            }
++            _ => {}
++        }
++    }
++    if explore::on() {
++        explore::touch();
++    } else {
++        explore::voice_key(); // a key in the arena: its quiet minute starts again
++    }
++    true
++}
++
 +/// Control action lib: run slot n (or 255: list the slots). Not while a message plays: the
 +/// slot is read into the shared block, over the store, as a module sent over the air.
 +/// AGAIN_SLOT (side key 1): the last module again, the image still in the block if it checks
@@ -3593,6 +3750,10 @@ index 0000000..84ca950
 +
 +#[inline(never)] // its locals only while it runs, not in main's frame for good
 +pub(super) fn dispatch(app: &mut App, syst: &mut SYST, ev: KeyEvent) {
++    #[cfg(all(feature = "explore", feature = "spilib"))]
++    if menu_key(app, syst, ev) {
++        return;
++    }
 +    #[cfg(feature = "explore")]
 +    if explore::on() {
 +        explore::dispatch(app, syst, ev);
@@ -3614,7 +3775,7 @@ index 0000000..84ca950
 +        match ev.key {
 +            KeyId::Up => p.vol = (p.vol + 1).min(VOL_Q8.len() as u8 - 1),
 +            KeyId::Down => p.vol = p.vol.saturating_sub(1),
-+            KeyId::Menu | KeyId::Exit => s.aborted = true,
++            KeyId::Menu | KeyId::Exit | KeyId::Digit5 => s.aborted = true,
 +            _ => {}
 +        }
 +        s.g = ((s.auto * VOL_Q8[p.vol as usize]) >> 8).min(32767);
@@ -3635,7 +3796,8 @@ index 0000000..84ca950
 +            explore::enter(app, syst);
 +            return;
 +        }
-+        KeyId::Menu => {
++        // play on 5 (the release plan, Jeff 2026-11-13: MENU is the module list)
++        KeyId::Digit5 => {
 +            if p.status.have != 0 {
 +                p.play_pending = true;
 +            }
@@ -4531,7 +4693,7 @@ index 0000000..84ca950
 +        KeyId::Digit4 => "key4",
 +        KeyId::Digit9 => "key9",
 +        KeyId::Asterisk => "clear",
-+        KeyId::Menu => "menu",
++        KeyId::Digit5 => "play",
 +        KeyId::Up | KeyId::Down => "vol",
 +        _ => "key",
 +    }
@@ -4733,7 +4895,7 @@ new file mode 100644
 index 0000000..62c92d1
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2143 @@
+@@ -0,0 +1,2159 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5194,20 +5356,28 @@ index 0000000..62c92d1
 +/// keys the tone detector took 48 of 55 listens on 2026-11-08 17:52-18:34Z (443.525).
 +const WATCH_GAP_MS: u32 = 20_000;
 +
-+/// The explore image starts in VOICE MSG, so a power-up or an OTA reset always leaves hamlet a
-+/// window to flash it (EXPLORE ignores OTA), and goes into EXPLORE by itself after VOICE_IDLE_MS
-+/// with no packet and no key press; leaving EXPLORE by hand (EXIT twice) gets the same. While
-+/// sweeping, a carrier on the bench frequency stronger than BEACON_DBM, read twice BEACON_EVERY_MS
-+/// apart, sends it back to VOICE MSG for BEACON_HOLD_MS: hamlet keys up (with its ID), waits for
-+/// `K6 EX beacon`, then sends the OTA reset (Jeff OK'd it, 2026-11-08 17:37). A listen going on
-+/// finishes first (2 minutes at most).
-+const VOICE_IDLE_MS: u32 = 120_000;
++/// The explore image boots straight into EXPLORE (the release plan, Jeff 2026-11-13; a 120 s
++/// VOICE MSG window before that). VOICE MSG is the RAM arena: it takes modules, messages and
++/// control packets (the OTA reset among them), and goes back into EXPLORE by itself after
++/// VOICE_IDLE_MS with no packet and no key press. The ways into the arena: EXIT twice in EXPLORE,
++/// and the CW wake: while sweeping, a carrier on the bench frequency stronger than BEACON_DBM,
++/// read twice BEACON_EVERY_MS apart, sends it to VOICE MSG for BEACON_HOLD_MS: hamlet keys up
++/// (with its ID), waits for `K6 EX beacon`, then uploads or sends the OTA reset (Jeff OK'd it,
++/// 2026-11-08 17:37). A listen going on finishes first (2 minutes at most). EXPLORE's code
++/// pages missing (after a flash, before hamlet installs them) hold the arena until they're in.
++const VOICE_IDLE_MS: u32 = 60_000;
 +const BEACON_HZ: u32 = 440_850_000;
 +const BEACON_DBM: i32 = -45;
 +const BEACON_EVERY_MS: u32 = 1000;
 +const BEACON_HOLD_MS: u32 = 60_000;
 +/// VOICE MSG since (ms), and how long it waits for quiet before EXPLORE
 +static mut VOICE: (u32, u32) = (0, VOICE_IDLE_MS);
++/// EXPLORE's code pages weren't there at the last try (the arena says PAGES MISSING)
++static mut PAGES_MISSING: bool = false;
++
++pub fn pages_missing() -> bool {
++    unsafe { *addr_of!(PAGES_MISSING) }
++}
 +const WATCH_BACKOFF: u8 = 5;
 +
 +/// how long a watched station waits after its last listen, with `misses` listens there done
@@ -5369,15 +5539,20 @@ index 0000000..62c92d1
 +    unsafe { (*addr_of!(S)).on }
 +}
 +
++/// The module list changed over EXPLORE's screen: draw it at the next turn
++pub fn touch() {
++    st().dirty = true;
++}
++
 +/// VOICE MSG waits `ms` of quiet (no packet, no key) from now before EXPLORE
 +fn voice_wait(ms: u32) {
 +    unsafe { *addr_of_mut!(VOICE) = (now_ms(), ms) };
 +}
 +
-+/// The image has booted into VOICE MSG
++/// The image has booted (into VOICE MSG's first entry, for its boot lines): EXPLORE at once
 +pub fn boot() {
-+    voice_wait(VOICE_IDLE_MS);
-+    rl!("K6 EX in {} s with no packets or keys", VOICE_IDLE_MS / 1000);
++    voice_wait(0);
++    rl!("K6 EX at boot (arena: EXIT twice, or the CW wake)");
 +}
 +
 +/// A key press in VOICE MSG: the wait starts again
@@ -5520,8 +5695,10 @@ index 0000000..62c92d1
 +                w, l, r
 +            );
 +            voice_wait(VOICE_IDLE_MS);
++            unsafe { *addr_of_mut!(PAGES_MISSING) = true };
 +            return;
 +        }
++        unsafe { *addr_of_mut!(PAGES_MISSING) = false };
 +    }
 +    disarm(app, syst);
 +    app.radio.set_speaker(false);
@@ -5597,7 +5774,7 @@ index 0000000..62c92d1
 +    t.dirty = true;
 +}
 +
-+fn leave(app: &mut App, syst: &mut SYST) {
++pub(super) fn leave(app: &mut App, syst: &mut SYST) {
 +    let t = st();
 +    ctx_on(app, syst);
 +    unsafe {
@@ -5789,7 +5966,7 @@ index 0000000..62c92d1
 +            t.view = View::List;
 +        }
 +        View::Ask => match ev.key {
-+            KeyId::Menu => {
++            KeyId::Digit5 => {
 +                ask_write(app, syst);
 +                t.view = View::List;
 +            }
@@ -5800,7 +5977,7 @@ index 0000000..62c92d1
 +            _ => {}
 +        },
 +        View::Try => match ev.key {
-+            KeyId::Menu | KeyId::Exit => {
++            KeyId::Side1 | KeyId::Exit => {
 +                monitor_off(app, syst);
 +                t.view = View::List;
 +            }
@@ -5810,7 +5987,8 @@ index 0000000..62c92d1
 +        },
 +        View::List => match ev.key {
 +            KeyId::Up | KeyId::Down => step_sel(t, ev.key == KeyId::Up),
-+            KeyId::Menu => try_start(app, syst),
++            // Try on side key 1 (the release plan, Jeff 2026-11-13: MENU is the module list)
++            KeyId::Side1 => try_start(app, syst),
 +            KeyId::Digit0 => listen_start(app, syst),
 +            KeyId::Digit5 => save(app, syst),
 +            KeyId::Asterisk => {
@@ -6825,7 +7003,7 @@ index 0000000..62c92d1
 +                }
 +                i += 1;
 +            }
-+            line(lcd, FOOT, "MENU back 0 ID 5 save");
++            line(lcd, FOOT, "EXIT back 0 ID 5 save");
 +        }
 +        View::Listen => {
 +            let mut info: XlInfo = unsafe { core::mem::zeroed() };
@@ -6872,7 +7050,7 @@ index 0000000..62c92d1
 +            let mut b: TextBuf<24> = TextBuf::new();
 +            out!(b, "saved {}", cstr(&t.ask.call));
 +            line(lcd, 2, b.as_str());
-+            line(lcd, 4, "MENU write new call");
++            line(lcd, 4, "5 write new call");
 +            line(lcd, FOOT, "EXIT keep saved");
 +        }
 +    }
@@ -9369,7 +9547,7 @@ index cdfa0f7..831732f 100644
  
  // TextBuf
  pub struct TextBuf<const N: usize> {
-@@ -51,13 +56,176 @@ impl<const N: usize> TextBuf<N> {
+@@ -51,13 +56,192 @@ impl<const N: usize> TextBuf<N> {
      }
  }
  
@@ -9436,14 +9614,30 @@ index cdfa0f7..831732f 100644
 +    #[cfg(banded)]
 +    {
 +        let explore = app.exploring();
++        #[cfg(all(feature = "explore", feature = "spilib"))]
++        let menu = app::pager::menu_state().0;
++        #[cfg(not(all(feature = "explore", feature = "spilib")))]
++        let menu = false;
 +        display.draw_pages(|page, buf| {
 +            let band = &mut Band { buf, y0: 8 * page as i32 };
++            #[cfg(all(feature = "explore", feature = "spilib"))]
++            if menu {
++                pager::draw_menu(band);
++                return;
++            }
++            let _ = menu;
 +            if explore {
 +                app::pager::explore_draw(band, app);
 +            } else {
 +                draw_pager(band, app);
 +            }
 +        });
++        return;
++    }
++    #[cfg(all(not(banded), feature = "explore", feature = "spilib"))]
++    if app::pager::menu_state().0 {
++        pager::draw_menu(display.as_draw_target());
++        display.flush();
 +        return;
 +    }
 +    #[cfg(not(banded))]
@@ -9549,7 +9743,7 @@ index cdfa0f7..831732f 100644
          Ok(())
      }
  }
-@@ -77,6 +245,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
+@@ -77,6 +261,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
              draw_satellite(display.as_draw_target(), app);
          }
          app::Mode::Sstv => draw_sstv(display.as_draw_target(), app),
@@ -9562,7 +9756,7 @@ new file mode 100644
 index 0000000..6722e19
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,357 @@
+@@ -0,0 +1,438 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -9606,12 +9800,93 @@ index 0000000..6722e19
 +    super::glyph::text(lcd, 1, y - 6, t, false, true);
 +}
 +
++/// The module list (MENU, app/pager.rs): a title bar, four rows (the selected one inverted),
++/// the keys
++///
++/// ```text
++/// MODULES 2/9
++///  EXPLORE
++///  ARENA
++///  SURF
++///  EDTRIAL
++/// MENU RUN  EXIT BACK
++/// ```
++#[cfg(all(feature = "explore", feature = "spilib"))]
++pub fn draw_menu<D>(lcd: &mut D)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    let (_, sel, rows) = app::pager::menu_state();
++    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 64)), BinaryColor::Off).ok();
++    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 11)), BinaryColor::On).ok();
++    let mut b: TextBuf<24> = TextBuf::new();
++    out!(b, "MODULES {}/{}", sel + 1, rows);
++    super::glyph::text(lcd, 1, 2, b.as_str(), false, false);
++    let top = if sel < 3 { 0 } else { (sel - 2).min(rows.saturating_sub(4)) };
++    for k in 0..4u8 {
++        let i = top + k;
++        if i >= rows {
++            break;
++        }
++        let y = 19 + 10 * k as i32;
++        let mut name = [0u8; 12];
++        let n = app::pager::menu_row(i, &mut name);
++        let t = core::str::from_utf8(&name[..n]).unwrap_or("?");
++        if i == sel {
++            lcd.fill_solid(&Rectangle::new(Point::new(0, y - 8), Size::new(128, 10)), BinaryColor::On).ok();
++            super::glyph::text(lcd, 7, y - 6, t, false, false);
++        } else {
++            super::glyph::text(lcd, 7, y - 6, t, false, true);
++        }
++    }
++    line(lcd, 60, "MENU RUN  EXIT BACK");
++}
++
++/// The explore images' VOICE MSG: the RAM arena (the release plan, Jeff 2026-11-13), two lines
++/// and a third only while it's busy. The serial report keeps the link details.
++///
++/// ```text
++///   BLOWFANG RAM ARENA
++///   EXIT TO EXPLORER
++///
++///   MOD 12/48            (or PLAYING  EXIT STOP, or PAGES MISSING)
++/// ```
++#[cfg(feature = "explore")]
++fn draw_arena<D>(lcd: &mut D, app: &app::App)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    use app::pager::Busy;
++    line(lcd, 19, "  BLOWFANG RAM ARENA");
++    line(lcd, 29, "  EXIT TO EXPLORER");
++    let mut b: TextBuf<24> = TextBuf::new();
++    match app::pager::arena_busy(app) {
++        Busy::Module(have, n) => {
++            out!(b, "  MOD {}/{}", have, n);
++        }
++        Busy::Playing => {
++            out!(b, "  PLAYING  EXIT STOP");
++        }
++        Busy::PagesMissing => {
++            out!(b, "  PAGES MISSING");
++        }
++        Busy::Idle => {}
++    }
++    line(lcd, 49, b.as_str());
++}
++
 +pub fn draw_pager<D>(lcd: &mut D, app: &app::App)
 +where
 +    D: DrawTarget<Color = BinaryColor>,
 +{
 +    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 64)), BinaryColor::Off).ok();
 +    let p = app.pager();
++    // the arena, unless a key asked for the details: # (a frequency), 6 (the raw view)
++    #[cfg(feature = "explore")]
++    if !p.freq_entry && !p.raw_view && !p.cal_pending {
++        draw_arena(lcd, app);
++        return;
++    }
 +    let st = &p.status;
 +
 +    let mut b: TextBuf<24> = TextBuf::new();
@@ -9763,7 +10038,7 @@ index 0000000..6722e19
 +    } else if p.cal_result == b'X' {
 +        "TX not allowed here"
 +    } else {
-+        "MENU play  PTT test"
++        "5 play  PTT test"
 +    };
 +    line(lcd, 60, footer);
 +}

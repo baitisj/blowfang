@@ -18,7 +18,7 @@ static const uint16_t DCS[] = {
 #define NDCS ((int)(sizeof DCS / sizeof DCS[0]))
 /* a tone's place in the UP/DOWN cycle: none, the CTCSS tones, DCS normal, DCS inverted */
 #define NTONE (1 + NCT + 2 * NDCS)
-/* the offsets UP/DOWN steps through (Hz); * flips the sign of any */
+/* the offsets UP/DOWN steps through (Hz); * starts a custom one, typed in kHz */
 static const int32_t OFFS[] = {0, 600000, -600000, 1600000, -1600000, 5000000, -5000000};
 #define NOFF ((int)(sizeof OFFS / sizeof OFFS[0]))
 /* multi-tap letters, key 0-9 (phone keypad) */
@@ -187,6 +187,15 @@ static void tone_typed(sted_t *e, uint16_t *tone) {
   e->msg = "NO SUCH TONE";
 }
 
+/* 4 on a tone: the other tone into it (Jeff 2026-11-14: TXT copies RXT and back). No CTCSS
+   tone starts with a 4, so 4 as the first digit is free. */
+static void tone_copy(sted_t *e) {
+  rt_rec_t *r = &e->r;
+  if (e->f == SF_TXT) r->tx_tone = r->rx_tone;
+  else r->rx_tone = r->tx_tone;
+  e->nd = 0;
+}
+
 static void open_field(sted_t *e) {
   if (e->f == SF_WIDE) {
     e->r.flags ^= RT_F_WIDE;
@@ -200,6 +209,19 @@ static void open_field(sted_t *e) {
   e->open = 1;
   e->nd = 0;
   e->tap_k = 0;
+  e->fresh = 0;
+  e->neg = e->r.tx_off < 0;
+  e->cust = 0;
+  if (e->f == SF_RX && e->r.rx_hz) {
+    /* its digits, so * takes them off (Jeff 2026-11-14: * didn't delete): 442.025 MHz is
+       "442025", the trailing zeros of its 9 digits (Hz) dropped down to 3 */
+    char t[12], *x = digits(t, e->r.rx_hz, 9);
+    int n = (int)(x - t), i;
+    while (n > 3 && t[n - 1] == '0') n--;
+    for (i = 0; i < n && i < (int)sizeof e->dig; i++) e->dig[i] = t[i];
+    e->nd = (uint8_t)i;
+    e->fresh = 1;
+  }
 }
 
 /* # in an open field: keep it (RX checks its range first) */
@@ -268,17 +290,32 @@ static void field_key(sted_t *e, int k, uint32_t ms) {
   int i;
   switch (e->f) {
   case SF_RX:
+    if (k >= '0' && k <= '9' && e->fresh) e->nd = 0;   /* the first digit typed starts over */
     if (k >= '0' && k <= '9' && e->nd < 9) e->dig[e->nd++] = (char)k;
     else if (k == '*' && e->nd) e->nd--;
+    e->fresh = 0;
     break;
   case SF_OFF:
-    if (k == 'U' || k == 'D') {
+    if ((k == 'U' || k == 'D') && !e->cust) {
       for (i = 0; i < NOFF && OFFS[i] != r->tx_off; i++) {
       }
       if (i == NOFF) i = 0;
       r->tx_off = OFFS[step(i, k == 'U' ? 1 : -1, NOFF)];
-    } else if (k == '*') {
-      r->tx_off = -r->tx_off;
+      e->neg = r->tx_off < 0;
+    } else if (k == '*' && !e->cust) {
+      /* a custom offset (Jeff 2026-11-14: * starts it), typed in kHz: 600, 5000, 7600 */
+      e->cust = 1;
+      e->nd = 0;
+      r->tx_off = 0;
+    } else if (e->cust && ((k >= '0' && k <= '9' && e->nd < 5) || (k == '*' && e->nd))) {
+      int32_t khz = 0;
+      if (k == '*') e->nd--;
+      else e->dig[e->nd++] = (char)k;
+      for (i = 0; i < e->nd; i++) khz = khz * 10 + (e->dig[i] - '0');
+      r->tx_off = (e->neg ? -khz : khz) * 1000;
+    } else if (e->cust && (k == '*' || k == 'U' || k == 'D')) {
+      /* nothing typed yet: * (or UP/DOWN) picks the sign */
+      e->neg = !e->neg;
     }
     break;
   case SF_RXT:
@@ -287,12 +324,16 @@ static void field_key(sted_t *e, int k, uint32_t ms) {
     if (k == 'U' || k == 'D') {
       *t = tone_at(step(tone_index(*t), k == 'U' ? 1 : -1, NTONE));
       e->nd = 0;
+    } else if (k == '4' && !e->nd) {
+      tone_copy(e);
     } else if (k >= '0' && k <= '9' && e->nd < 4) {
       e->dig[e->nd++] = (char)k;
       tone_typed(e, t);
+    } else if (k == '*' && e->nd) {
+      /* the last digit typed off; the tone the rest pick */
+      if (--e->nd) tone_typed(e, t);
     } else if (k == '*') {
       *t = 0;
-      e->nd = 0;
     }
     break;
   }
@@ -335,6 +376,9 @@ list:
   case '#':
     open_field(e);
     break;
+  case '4':
+    if (e->f == SF_RXT || e->f == SF_TXT) tone_copy(e);
+    break;
   case '5':
     if (!e->r.rx_hz) e->msg = "SET RX FIRST";
     else if (!sted_changed(e) && e->r.id) e->msg = "NO CHANGES";
@@ -371,7 +415,11 @@ int sted_row(const sted_t *e, int f, char *out) {
     }
     break;
   case SF_OFF:
-    if (!r->tx_off) {
+    if (open && e->cust) {
+      int i;
+      *p++ = e->neg ? '-' : '+';
+      for (i = 0; i < e->nd; i++) *p++ = e->dig[i];
+    } else if (!r->tx_off) {
       p = put(p, "SIMPLEX");
     } else {
       *p++ = r->tx_off < 0 ? '-' : '+';
@@ -418,7 +466,10 @@ int sted_hint(const sted_t *e, char *out) {
   } else if (e->ask) {
     p = put(p, e->ask == 'X' ? "EXIT AGAIN: DISCARD" : "MENU AGAIN: DISCARD");
   } else if (!e->open) {
-    p = put(p, (e->f == SF_WIDE || e->f == SF_DMR) ? "#FLIP 5SAVE EXIT" : "#EDIT 5SAVE EXIT");
+    p = put(p, (e->f == SF_WIDE || e->f == SF_DMR) ? "#FLIP 5SAVE EXIT"
+               : e->f == SF_RXT ? "#EDIT 4=TXT 5SAVE"
+               : e->f == SF_TXT ? "#EDIT 4=RXT 5SAVE"
+                                : "#EDIT 5SAVE EXIT");
   } else if (e->f == SF_NAME || e->f == SF_CALL) {
     if (e->tap_k) {
       const char *L = TAP[e->tap_k - '0'];
@@ -434,9 +485,9 @@ int sted_hint(const sted_t *e, char *out) {
   } else if (e->f == SF_RX) {
     p = put(p, "DIGITS *DEL #OK");
   } else if (e->f == SF_RXT || e->f == SF_TXT) {
-    p = put(p, "UP/DN DIGITS #OK");
+    p = put(p, e->nd ? "DIGITS *DEL #OK" : e->f == SF_RXT ? "UP/DN 4=TXT *OFF #OK" : "UP/DN 4=RXT *OFF #OK");
   } else if (e->f == SF_OFF) {
-    p = put(p, "UP/DN *SIGN #OK");
+    p = put(p, !e->cust ? "UP/DN *CUSTOM #OK" : e->nd ? "KHZ *DEL #OK" : "KHZ *SIGN #OK");
   } else {
     p = put(p, "UP/DN #OK");
   }

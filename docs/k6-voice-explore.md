@@ -86,8 +86,9 @@ How it works (c/k6/kp.h):
 - A page is never run as a module: kl_load refuses KM_F_PAGE, and kl_page refuses a module.
 - EXPLORE starts only when all three slots hold this image's pages (`page::check`: the header
   and the build ID read from SPI, the pool untouched). Otherwise VOICE MSG stays, with the
-  serial line `K6 EX pages missing: sweep r= listen r= table r=`, and tries again 2 minutes
-  later. A load that fails later (the SPI flash itself) restarts the radio rather than run what
+  serial line `K6 EX pages missing: sweep r= listen r= table r=` and `PAGES MISSING` on the
+  arena screen, and tries again 1 minute later (2 minutes before the release plan). A load
+  that fails later (the SPI flash itself) restarts the radio rather than run what
   the pool holds.
 - Loads: two when EXPLORE starts, then the sweep's in the list view, Listen for ID's in a
   listen, the table's for a look-up or a write: three or four a listen. The table is looked up

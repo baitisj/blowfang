@@ -18,7 +18,7 @@ EXPLORE has an image of its own:
 |---|---|---|
 | flash | 97,632 of 122,880 B (25.2 KB free) | 105,680 B (17.2 KB free) |
 | static RAM | 9,668 B (8.0 KB of stack) | 10,580 B (7.1 KB) |
-| starts in | VOICE MSG, then EXPLORE after 2 quiet minutes | VOICE MSG |
+| starts in | EXPLORE (VOICE MSG, the RAM arena, on EXIT twice or the CW wake) | VOICE MSG |
 | voice | none (the decoder is left out) | sotto 1200 |
 | RAM modules | yes, API level 5 | yes, API level 5 |
 
@@ -27,10 +27,13 @@ voice decoder (`K6_VOICE=0 sh tools/k6_build.sh`; `c/k6/sp_novoice.c` stands in 
 VOICE MSG still receives packets, runs RAM modules and takes control packets, but plays no
 voice. EXIT from VOICE MSG goes back to EXPLORE. To play voice again, flash a pager image.
 
-**Unattended flashing** (2026-11-08, Jeff OK'd it): EXPLORE ignores OTA, so the image starts in
-VOICE MSG (`K6 EX in 120 s with no packets or keys`) and goes into EXPLORE by itself after 2
-minutes with no packet and no key press (`K6 EX quiet 120 s: EXPLORE`). Leaving EXPLORE with EXIT
-twice gets the same 2 minutes. While it sweeps, it reads 440.850 once a second; a carrier there
+**Unattended flashing** (2026-11-08, Jeff OK'd it; boot changed by the release plan, Jeff
+2026-11-13): EXPLORE ignores OTA. The image boots straight into EXPLORE (`K6 EX at boot`).
+VOICE MSG is the RAM arena: its screen says `BLOWFANG RAM ARENA` / `EXIT TO EXPLORER`, with a
+third line only while it's busy (`MOD 12/48`, `PLAYING`, `PAGES MISSING`; # and 6 still show the
+link details). It goes back into EXPLORE by itself after 1 minute with no packet and no key
+press (`K6 EX quiet 60 s: EXPLORE`), and EXIT goes there at once. EXIT twice in EXPLORE opens
+the arena. Missing code pages (after a flash) hold the arena until they're installed. While it sweeps, it reads 440.850 once a second; a carrier there
 stronger than -45 dBm on two reads in a row (the bench IC-7100 reads -18 to -24 dBm) sends it to
 VOICE MSG for 1 minute (`K6 EX beacon -22 dBm: VOICE MSG for 60 s`). So hamlet flashes it without
 Jeff: key up on 440.850 with the CW ID (`k6_bench.py id`), wait for `K6 EX beacon` (a listen going
@@ -157,7 +160,7 @@ and the 4FSK session borrow the same memory. Leaving EXPLORE clears the store fo
   2). If later listens clear the DMR mark, the entry stays, without `RT_F_DMR`.
 - **The table** (`c/k6/rt.c`): Save writes one 64-byte record in SPI flash at 0x0F0000-0x0FFFFF,
   through the same checks as module API level 5. A confirmed CW ID follows Jeff's rule: a saved
-  entry with no call takes it at once, and a different saved call waits for MENU. With no saved
+  entry with no call takes it at once, and a different saved call waits for key 5. With no saved
   entry, the frequency is saved with its call as a new entry (Jeff 2026-11-07 22:46), so it
   goes under the rule. Key 3 twice on a saved row deletes its entry (`rt_delete`, `ex_unknow`)
   and the row is new again. A listen's CTCSS tone and DMR update a saved entry as above, and a
@@ -211,7 +214,8 @@ s 146.520   S  ======
 | Key | In the list |
 |---|---|
 | UP / DOWN | pick a row; past the last row it wraps to the first and back. During an automatic listen the arrows scroll the list and the listen goes on (a redraw at most every 150 ms, so the CW decoder keeps its polls); any other key stops it |
-| MENU | Try: the sweep stops, the radio parks on the row with the speaker open (squelch open, so you hear the noise between overs). MENU or EXIT goes back |
+| MENU | the module list (here and in the arena): EXPLORE, ARENA, then the library's modules by name. UP/DOWN pick, MENU or # runs the row (a module runs from the arena, so EXPLORE is left first), EXIT closes the list |
+| side key 1 | Try: the sweep stops, the radio parks on the row with the speaker open (squelch open, so you hear the noise between overs). Side key 1 or EXIT goes back (MENU until the release plan, Jeff 2026-11-13: MENU is the module list) |
 | 0 | Listen for ID on the row: speaker open, up to 25 minutes, any key stops |
 | 5 | Save the row to the table (`SAVED #3 (3 in table)`) |
 | * | ignore or unignore the row (`x` grade, ranked last) |
@@ -221,11 +225,11 @@ s 146.520   S  ======
 | 3 twice | delete the saved row's table entry (`3 AGAIN: DELETE`) |
 | 6 twice | delete every entry the explorer saved on its own for DMR (`6 AGAIN: DEL AUTO DMR`) |
 | 9 | the automatic listen's speaker on or off |
-| EXIT twice | VOICE MSG (the list is in RAM and goes when you leave or power off); EXPLORE again after 2 quiet minutes |
+| EXIT twice | the RAM arena, VOICE MSG (the list is in RAM and goes when you leave or power off); EXPLORE again after 1 quiet minute |
 
 On the Listen screen: `ID? 440.850 1:23` (or `AUTO`), the tone detector's state, the last text
-decoded and the call so far. On a changed call: `NEW CALL`, the heard and saved calls, MENU
-writes the new one and EXIT keeps the saved one.
+decoded and the call so far. On a changed call: `NEW CALL`, the heard and saved calls, 5
+writes the new one (MENU until the release plan) and EXIT keeps the saved one.
 
 ## Serial report
 
@@ -268,12 +272,11 @@ with repeaters in range, then count how many of the area's listed repeaters it g
 (recall) and how many of its R entries are real (precision).
 
 1. **Flash** `aura-explore.bin` (the hamlet session does it with `k6_update.py`, the module key
-   written by `python -m modem.k6 keyimage`). The K6 boots into VOICE MSG and goes into EXPLORE
-   after 2 minutes (EXIT goes there at once).
+   written by `python -m modem.k6 keyimage`). The K6 boots into EXPLORE.
 2. **Take it out.** A drive, a walk, or the house away from the bench PC (the bench floors are
    15-30 dB high from the PC's noise). Leave it on ALL, or press # for one band. The longer the
    better: a quiet repeater may key only every 10 minutes for its ID.
-3. **Look and listen** whenever you like: MENU on a row to hear it, 0 to wait for its ID, 5 to
+3. **Look and listen** whenever you like: side key 1 on a row to hear it, 0 to wait for its ID, 5 to
    save it. Saving is the only way a find outlives a power-off.
 4. **Bring it back without turning it off**, plug in the cable with the logger running
    (`python -m modem.k6_harness listen --k6 PORT --log FILE`), and press 7.
