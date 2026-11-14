@@ -60,6 +60,9 @@
 #ifndef MR_TXMS
 #define MR_TXMS 5000u
 #endif
+#ifndef MR_TXGAIN
+#define MR_TXGAIN 16u               /* keyed: 08:56Z speech at gain 64 was rms ~11000 */
+#endif
 #ifndef MR_TXWAIT
 #define MR_TXWAIT 25000u            /* ms after the unplug: its PTT send (about 11.4 s) is over */
 #endif
@@ -248,6 +251,11 @@ int uv_main(const ortx_api_t *api) {
     if (pk[best] && gain * pk[best] > 28000u)
         gain = 28000u / pk[best];
     gain = gain < 1u ? 1u : gain > 64u ? 64u : gain;
+#ifdef MR_TX
+    /* keyed, "set 0" falls before anyone speaks (11-14 08:56Z: rms 0, so gain 64, and the speech
+       that followed came out at rms ~11000, 2.4% clipped): a fixed gain toward rms ~3000 */
+    gain = MR_TXGAIN;
+#endif
 
     int frames = -1;
     unsigned pushed = 0;
