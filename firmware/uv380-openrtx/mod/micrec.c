@@ -231,7 +231,19 @@ int uv_main(const ortx_api_t *api) {
        no transmit */
     int txr = out ? api->tx_mic(MR_TXMS) : -2;
     api->sleep_ms(250);             /* + level()'s 150 */
+#ifdef MR_DUPLEX
+    /* can the radio send the MCU's line in and still hear the mic? E0 picks the C6000's transmit
+       source (startAnalogTx: 0x81 base, 0x40 mic, 0x02 line in); the MCU's line in is silent here,
+       so on air only the mic setting carries voice. Each window: E0, 150 ms, 650 ms of I2S3 */
+    static const uint8_t dupE0[5] = {0xC1, 0x83, 0xC3, 0x81, 0xC1};
+    for (unsigned k = 0; k < 5u; k++) {
+        api->c6000_write(0xE0, dupE0[k]);
+        level(api, &m, 650u, &rms[k], &pk[k], &cnt[k]);
+    }
+    api->c6000_write(0xE0, 0xC1);
+#else
     level(api, &m, 500u, &rms[0], &pk[0], &cnt[0]);
+#endif
     best = 0;
 #else
     (void)out;
@@ -259,10 +271,18 @@ int uv_main(const ortx_api_t *api) {
     gain = MR_TXGAIN;
 #endif
 
+#ifdef MR_DUPLEX
+    int frames = 0;
+#else
     int frames = -1;
+#endif
     unsigned pushed = 0;
     uint32_t t0 = api->ms();
+#ifdef MR_DUPLEX
+    if (0) {                        /* the carrier is used up by the windows: nothing recorded */
+#else
     if (api->enc_begin() == 0) {
+#endif
 #ifdef MR_TX
         uint32_t end = api->ms() + MR_TXMS - 2200u;
 #else
