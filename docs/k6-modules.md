@@ -257,14 +257,23 @@ glyphs, and `tools/k6_screen.py` draws them.
 ## The SPI module library
 
 Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).
-`c/k6/k6_lib.c` keeps up to 12 module images in the radio's SPI flash, so a module that runs
+`c/k6/k6_lib.c` keeps up to 32 module images (12 before the release plan of 2026-11-13) in the radio's SPI flash, so a module that runs
 often (an EXPLORE page, a decoder) goes over the air once and then runs from the radio's own
 flash on a control packet. The SPI flash isn't memory-mapped, so a run still copies the image
 into the shared block first, as an upload does; reading 11.7 KB takes about 16 ms.
 
-- **Where:** slot n at `0x110000 + n * 0x4000` (16 KB each, 0x110000-0x13FFFF), above sotto's
+- **Where:** slot n at `0x110000 + n * 0x4000` (16 KB each, 0x110000-0x18FFFF), above sotto's
   codebooks (0x100000-0x10D320) and the calibration sector (0x10F000). A slot holds the image
-  exactly as it arrived (header, code, tag) and 0xFF after it.
+  exactly as it arrived (header, code, tag) and 0xFF after it. 0x190000 up stays unused.
+- **Slots by use** (the release plan, Jeff 2026-11-13; the library itself takes anything
+  anywhere): 0-8 modules, 9-11 EXPLORE's code pages (`KM_F_PAGE`), 12-15 help card decks
+  (`KM_F_CARDS`, flag 0x04: kept, never run or paged), 16-31 modules.
+- **Names:** `K6_MODULE_NAME("SURF")` in a module's source (`c/k6/k6_mod.h`, up to 12
+  characters) puts a 16-byte block, `K6NM` and the name, first in its code (`module.ld`), so it
+  sits at slot + 16 and the module list reads it with the header (`kl_info`'s `name`) without
+  loading anything. A module without one still works; its entry is simply 0 instead of 16.
+  `modem.k6mod.module_name(code)` reads it on the PC; the `libls` module (level 5) lists the
+  slots with their names on any image.
 - **Install:** `python -m modem.k6 mod OUT.wav SRC.c --key-file KEY --install N` sets header
   flag `KM_F_LIB` (byte 13) and the slot in byte 15. The K6 checks it as any module (tag,
   serial), then, instead of running it, erases the sectors it needs, programs it a page at a
@@ -277,8 +286,9 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   it through the same path as an upload (`K6 LIB run slot=N r=CODE_LEN`, then the usual
   `K6 MOD run` / `K6 MOD ret` lines). Refused while a message plays (`r=-9`); the stored message is
   dropped, as by an upload. `--slot 255` only prints the slots, as the boot does:
-  `K6 LIB slot=N r=0 code= serial= level=` for each used one, then `K6 LIB used=N`.
-- **Rules:** the only SPI writes are an install's, inside 0x110000-0x13FFFF, page and sector
+  `K6 LIB slot=N r=0 code= serial= level= flags= name=` for each used one, then `K6 LIB used=N`
+  (`flags=` and `name=` since the release plan).
+- **Rules:** the only SPI writes are an install's, inside 0x110000-0x18FFFF, page and sector
   aligned, never while the radio transmits (the core's flash calls refuse them). Nothing else of
   the radio's state goes there: never the message store. A worn or overwritten slot fails its
   tag (`r=-3`) and doesn't run.

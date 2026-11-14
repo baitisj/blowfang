@@ -378,6 +378,7 @@ iflive_h1500
 iflive_h1600
 iflive_k6t
 iflive_tsweep
+libls          # level 5, the SPI module library's slots with the modules' names (reads only, docs/k6-modules.md)
 loram          # level 1, does anything write 0x20000000-0x20000FFF (hal::txdog)
 midi           # level 2 (screen at 6, LED at 7), songs patched by tools/k6_midi.py, docs/k6-midi.md
 morse          # level 6, docs/k6-morse.md

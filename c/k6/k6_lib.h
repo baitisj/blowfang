@@ -1,11 +1,22 @@
 /* k6_lib: the K6's SPI module library (Jeff approved it, 2026-11-08; docs/k6-modules.md).
 
    A RAM module (k6_mod.h) can be kept in the radio's SPI flash and run again later without
-   sending it over the air each time. The library is 12 slots of 16 KB from 0x110000 to
-   0x13FFFF, above sotto's codebooks (0x100000-0x10D320) and the calibration sector (0x10F000):
+   sending it over the air each time. The library is 32 slots of 16 KB from 0x110000 to
+   0x18FFFF, above sotto's codebooks (0x100000-0x10D320) and the calibration sector (0x10F000);
+   12 slots until the release plan (Jeff 2026-11-13) gave it 20 more. 0x190000 up stays unused.
 
      slot n at KL_BASE + n * KL_SLOT_BYTES: the module image exactly as it arrived, header,
      code and SipHash tag (k6_mod.h), and 0xFF after it
+
+   Slots by use (a plan for the tools, the library itself takes any image in any slot):
+     0-8    modules
+     9-11   EXPLORE's code pages (KM_F_PAGE, docs/k6-voice-explore.md)
+     12-15  help card decks (KM_F_CARDS, the release plan's help cards)
+     16-31  modules
+
+   A module may carry its name (K6_MODULE_NAME in k6_mod.h): a 16-byte block, 'K' '6' 'N' 'M'
+   and 12 characters (NUL padded), as the first bytes of its code. kl_info reads it with the
+   header, so the module list can show names without loading anything.
 
    Install: a module sent with header flag KM_F_LIB (byte 13) and its slot in byte 15 is checked
    as any module is (km_packet: the tag under the radio's key, the serial), and then written to
@@ -30,8 +41,8 @@ extern "C" {
 
 #define KL_BASE 0x110000u
 #define KL_SLOT_BYTES 0x4000u
-#define KL_SLOTS 12
-#define KL_END (KL_BASE + KL_SLOTS * KL_SLOT_BYTES)   /* 0x140000 */
+#define KL_SLOTS 32
+#define KL_END (KL_BASE + KL_SLOTS * KL_SLOT_BYTES)   /* 0x190000 */
 #define KL_SECTOR 4096u
 #define KL_PAGE 256u
 
@@ -40,6 +51,11 @@ extern "C" {
 /* header byte 13 (flags), with KM_F_LIB: a code page (kl_page), never run as a module: code
    linked at a fixed RAM address against one image, which calls into it (docs/k6-voice-explore.md) */
 #define KM_F_PAGE 0x02
+/* header byte 13 (flags), with KM_F_LIB: a deck of help cards (the release plan), never run:
+   kl_load and kl_page refuse it */
+#define KM_F_CARDS 0x04
+/* the module name block (K6_MODULE_NAME): magic, then KL_NAME characters */
+#define KL_NAME 12
 
 /* The SPI flash, as the core gives it: read anywhere in the library, program up to KL_PAGE
    bytes inside one page, erase one KL_SECTOR sector. 0, or -1 (refused: keyed, out of range). */
@@ -71,11 +87,13 @@ int kl_load(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap);
    km_run: the code length (its code at dst + KM_HDR), or KL_* (KL_BAD_HDR: not a page). The
    caller checks that the page was linked against it (the page's last bytes). */
 int kl_page(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap);
-/* What slot n holds, from its header alone (no tag check): */
+/* What slot n holds, from its header and the name block alone (no tag check). name: the
+   module's name (NUL padded; all NUL when it has none, or is a page or a deck) */
 typedef struct {
   uint16_t code_len, entry;
   uint32_t serial;
   uint8_t level, flags;
+  char name[KL_NAME];
 } kl_info_t;
 int kl_info(int slot, const kl_flash_t *fl, kl_info_t *out);   /* 0, or KL_* */
 

@@ -169,6 +169,17 @@ typedef struct k6_api {
 #define KM_CAL_ADDR 0x10F000u
 #define KM_CAL_BYTES 64u
 
+/* A module's name, for the module list (the release plan, Jeff 2026-11-13; k6_lib.h kl_info):
+   K6_MODULE_NAME("SURF") once in the source, up to 12 characters (the list shows A-Z, 0-9,
+   space and - / .). module.ld puts the block first in the code, so the name sits at a fixed
+   place in a library slot (slot + 16) and nothing has to be loaded to read it. */
+typedef struct {
+  char magic[4];                    /* 'K' '6' 'N' 'M' */
+  char name[12];                    /* NUL padded */
+} km_name_t;
+#define K6_MODULE_NAME(s) \
+  __attribute__((used, section(".k6name"))) const km_name_t k6_module_name = {{'K', '6', 'N', 'M'}, s}
+
 /* REG 0x67 bits 8:1 = RSSI in dB above -174 dBm (as Aura's get_rssi) */
 #define KM_RSSI_DBM(reg67) ((int)(((reg67) & 0x1FF) >> 1) - 174)
 

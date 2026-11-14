@@ -5,7 +5,7 @@
                     and asks for the library (KM_F_LIB), kl_install writes it to its slot
      load N         kl_load slot N into the block (armed: whether km_run would run it now)
      page N         kl_page slot N into the block (never armed; code: its first word, little-endian)
-     info N         kl_info slot N
+     info N         kl_info slot N (name= the module's name in hex, empty without one)
      flip ADDR      flip the low bit of one SPI flash byte (a worn or overwritten slot)
      keyed 0|1      while keyed the flash calls refuse to program or erase (as the radio's do)
    stdout: one line a command (pkt: r= armed=, and install= for an install; load: r= armed= code_len=; page: r= armed=
@@ -76,8 +76,13 @@ int main(void) {
       kl_info_t i;
       int r = kl_info((int)v, &FL, &i);
       if (r) printf("r=%d\n", r);
-      else printf("r=0 code_len=%u entry=%u serial=%u level=%u flags=%u\n", i.code_len, i.entry,
-                  (unsigned)i.serial, i.level, i.flags);
+      else {
+        unsigned k;
+        printf("r=0 code_len=%u entry=%u serial=%u level=%u flags=%u name=", i.code_len, i.entry,
+               (unsigned)i.serial, i.level, i.flags);
+        for (k = 0; k < KL_NAME && i.name[k]; k++) printf("%02x", (unsigned char)i.name[k]);
+        printf("\n");
+      }
     } else if (sscanf(line, "flip %x", &v) == 1) {
       nor[v % NOR_BYTES] ^= 1;
       printf("flipped %06x\n", v);
