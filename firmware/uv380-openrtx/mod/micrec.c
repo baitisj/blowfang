@@ -370,6 +370,11 @@ int uv_main(const ortx_api_t *api) {
 #ifdef MR_SEND
     /* the goal (Jeff 11-13): live sotto from the mic as PHY R range packets. Once the module
        ends, the firmware sends the recording as a PTT press would (440.850 only, then the ident) */
+#ifdef MR_PHYF
+    /* the K6's own pager modem (PHY F, 1800 baud), which its VOICE MSG plays as it arrives;
+       needs an image with the "phy" command (else the line is refused and PHY R goes out) */
+    api->say(api->probe("phy f") == 0 ? "micrec phy f" : "micrec phy f refused");
+#endif
     api->say(api->tx_request() == 0 ? "micrec send requested" : "micrec send refused");
 #endif
     return frames;

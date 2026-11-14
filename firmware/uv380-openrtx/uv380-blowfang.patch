@@ -1,5 +1,5 @@
 diff --git a/meson.build b/meson.build
-index 6bb1ade..d711997 100644
+index 6bb1adec..d711997b 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -59,6 +59,20 @@ openrtx_src = ['openrtx/src/core/state.c',
@@ -33,7 +33,7 @@ index 6bb1ade..d711997 100644
  ##
  ## OpenRTX UI sources
 diff --git a/openrtx/include/core/threads.h b/openrtx/include/core/threads.h
-index a94ea9e..2d11327 100644
+index a94ea9e6..2d113277 100644
 --- a/openrtx/include/core/threads.h
 +++ b/openrtx/include/core/threads.h
 @@ -13,7 +13,10 @@
@@ -50,7 +50,7 @@ index a94ea9e..2d11327 100644
  
 diff --git a/openrtx/include/rtx/OpMode_Pager.hpp b/openrtx/include/rtx/OpMode_Pager.hpp
 new file mode 100644
-index 0000000..c0f6016
+index 00000000..c0f60161
 --- /dev/null
 +++ b/openrtx/include/rtx/OpMode_Pager.hpp
 @@ -0,0 +1,46 @@
@@ -102,7 +102,7 @@ index 0000000..c0f6016
 +#endif /* OPMODE_PAGER_H */
 diff --git a/openrtx/include/rtx/pager.h b/openrtx/include/rtx/pager.h
 new file mode 100644
-index 0000000..ffd0ad6
+index 00000000..ffd0ad6f
 --- /dev/null
 +++ b/openrtx/include/rtx/pager.h
 @@ -0,0 +1,25 @@
@@ -132,7 +132,7 @@ index 0000000..ffd0ad6
 +
 +#endif /* PAGER_H */
 diff --git a/openrtx/include/rtx/rtx.h b/openrtx/include/rtx/rtx.h
-index 393659a..5c31aed 100644
+index 393659ae..5c31aed8 100644
 --- a/openrtx/include/rtx/rtx.h
 +++ b/openrtx/include/rtx/rtx.h
 @@ -73,7 +73,8 @@ enum opmode
@@ -146,7 +146,7 @@ index 393659a..5c31aed 100644
  
  /**
 diff --git a/openrtx/src/core/state.c b/openrtx/src/core/state.c
-index 4e8e063..8b1d41f 100644
+index 4e8e0630..8b1d41f4 100644
 --- a/openrtx/src/core/state.c
 +++ b/openrtx/src/core/state.c
 @@ -10,6 +10,7 @@
@@ -188,10 +188,10 @@ index 4e8e063..8b1d41f 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 0000000..a6cf236
+index 00000000..5acd2e9f
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,894 @@
+@@ -0,0 +1,922 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -262,6 +262,7 @@ index 0000000..a6cf236
 +static pt_air  air;
 +#ifdef BLOWFANG_RANGE
 +static rg_air  rair;    // the range build: PHY R (docs/k6-range.md) in place of the pager's PHY F
++static volatile bool phyF = false;  // "phy f": the pager's PHY F instead, until power-off
 +#endif
 +static ffsk_tx ffsk;
 +static cw_tx   cw;
@@ -578,9 +579,31 @@ index 0000000..a6cf236
 +    return (int32_t) rtx_getRssi();   // the RTX thread's last reading
 +}
 +
++// "phy f" / "phy r" (USB or a module's probe line): what PTT and tx_request
++// send in the range build, the pager's PHY F (FFSK 1200/1800 Hz at 1800 baud,
++// which the K6's VOICE MSG plays as it arrives) or PHY R (the default)
++static int phyCommand(const char *line)
++{
++#ifdef BLOWFANG_RANGE
++    if(strncmp(line, "phy ", 4) != 0)
++        return 0;
++    if(line[4] == 'f')
++        phyF = true;
++    else if(line[4] == 'r')
++        phyF = false;
++    pbSay(NULL, phyF ? "phy F" : "phy R");
++    return 1;
++#else
++    (void) line;
++    return 0;
++#endif
++}
++
 +// a probe command line from a module ("cap ...", "c6w ...")
 +static int omProbe(const char *line)
 +{
++    if(phyCommand(line))
++        return 0;
 +    return (i2sp_command(&pbOps, line) < 0) ? -1 : 0;
 +}
 +
@@ -792,7 +815,7 @@ index 0000000..a6cf236
 +            if(enc != NULL)     // a module that ended mid-recording: keep what it made
 +                omEncEnd();
 +        }
-+        else
++        else if(phyCommand(pbCmd) == 0)
 +            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
 +        if(r == I2SP_AUTO_ON)
@@ -1013,14 +1036,19 @@ index 0000000..a6cf236
 +#ifdef BLOWFANG_RANGE
 +    // The range build (BLOWFANG_RANGE=1 sh build.sh): the same XL packets as
 +    // PHY R, coded FFSK at 600/1200 Hz and 1200 baud for the K6's sensitive
-+    // receiver (c/k6/mod/rangerx.c), through the same pre-emphasised voice path.
-+    (void) air;
-+    rg_air_defaults(&rair, pt_message_source, &msg);
-+    ffsk_init_src(&ffsk, rg_air_next, &rair, FS, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ, LEVEL);
-+#else
-+    pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
-+    ffsk_init(&ffsk, &air, FS, BAUD, 0, 0, LEVEL);
++    // receiver (c/k6/mod/rangerx.c), through the same pre-emphasised voice path;
++    // or, after "phy f", the pager's PHY F as the plain build sends it.
++    if(phyF == false)
++    {
++        rg_air_defaults(&rair, pt_message_source, &msg);
++        ffsk_init_src(&ffsk, rg_air_next, &rair, FS, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ, LEVEL);
++    }
++    else
 +#endif
++    {
++        pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
++        ffsk_init(&ffsk, &air, FS, BAUD, 0, 0, LEVEL);
++    }
 +    cw_init(&cw, ident, FS, 20, 800, CW_LEVEL);
 +
 +#ifdef PLATFORM_LINUX
@@ -1087,7 +1115,7 @@ index 0000000..a6cf236
 +#endif
 +}
 diff --git a/openrtx/src/rtx/rtx.cpp b/openrtx/src/rtx/rtx.cpp
-index 5470432..1db08a8 100644
+index 54704327..1db08a8b 100644
 --- a/openrtx/src/rtx/rtx.cpp
 +++ b/openrtx/src/rtx/rtx.cpp
 @@ -10,6 +10,7 @@
@@ -1115,7 +1143,7 @@ index 5470432..1db08a8 100644
                  default:   currMode = &noMode;
              }
 diff --git a/openrtx/src/ui/default/ui.c b/openrtx/src/ui/default/ui.c
-index 679be11..f50ee87 100644
+index 679be118..f50ee87b 100644
 --- a/openrtx/src/ui/default/ui.c
 +++ b/openrtx/src/ui/default/ui.c
 @@ -53,6 +53,7 @@
@@ -1149,7 +1177,7 @@ index 679be11..f50ee87 100644
                              if(!state.tone_enabled)
                              {
 diff --git a/openrtx/src/ui/default/ui_main.c b/openrtx/src/ui/default/ui_main.c
-index eed473a..3250259 100644
+index eed473aa..32502593 100644
 --- a/openrtx/src/ui/default/ui_main.c
 +++ b/openrtx/src/ui/default/ui_main.c
 @@ -14,6 +14,7 @@
@@ -1179,7 +1207,7 @@ index eed473a..3250259 100644
          case OPMODE_M17:
          {
 diff --git a/openrtx/src/ui/default/ui_menu.c b/openrtx/src/ui/default/ui_menu.c
-index d71444c..5877479 100644
+index d71444c6..58774799 100644
 --- a/openrtx/src/ui/default/ui_menu.c
 +++ b/openrtx/src/ui/default/ui_menu.c
 @@ -1292,6 +1292,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
@@ -1193,7 +1221,7 @@ index d71444c..5877479 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a9..99c408c 100644
+index 64b77a94..99c408c1 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
 @@ -19,6 +19,14 @@

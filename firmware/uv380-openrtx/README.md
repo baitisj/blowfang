@@ -174,6 +174,11 @@ level 2 modules (`r=-3`). The image for this
 is both builds at once: `BLOWFANG_I2SPROBE=1 BLOWFANG_RANGE=1 sh build.sh mduv3x0p`
 (`out/openrtx_mduv3x0p_i2sprobe_range*`).
 
+**PHY F or PHY R.** In that image the USB command `phy f` (or a module's `api->probe("phy f")`)
+makes PTT and `tx_request` send the pager's PHY F instead, the 1800 baud FFSK the K6's VOICE MSG
+decodes and plays as it arrives; `phy r` goes back to PHY R, the default at every power-on. Either
+answers with the PHY now in use.
+
 **The key.** CI builds images without it. Before flashing, write it in on hamlet with
 `python -m modem.k6 keyimage out/openrtx_mduv3x0p_i2sprobe.bin keyed.bin --key-file
 ~/.config/sotto/k6-mod.key`, then wrap `keyed.bin` for TYT's bootloader with radio_tool, as
