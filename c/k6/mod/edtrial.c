@@ -5,11 +5,12 @@
    "TRIAL: NOT WRITTEN", keeps the change in RAM for this run and says the record on the serial
    report.
 
-   Screens: the title bar and the hint line in the module text screen's 5x7, the rows in the
-   small 4x6 font 7 pixel rows apart (Jeff 2026-11-14, layout D of the mock-ups: the title not
-   in the 4x6), drawn by the module into the screen's waterfall area (level 6's lcd_wf: 30
-   pixel rows from y = 21, so four rows here; the core's screen has six), the selected row
-   inverted:
+   Screens (Jeff 2026-11-14, layout D of the font mock-ups): the title bar in the module text
+   screen's 5x7; the rows and the keys line in the small 4x6, 7 pixel rows apart, the selected
+   row inverted, keys written "#-EDIT". The module draws the 4x6 into the screen's waterfall
+   area (level 6's lcd_wf: 30 pixel rows from y = 21), which holds three rows and the keys; the
+   5x7 line between the title and that area shows the selected station's tones and call, or
+   the field being typed. The core's editor draws its own screen: six rows, no such limits.
 
      STATIONS 12            the saved table by frequency
      103.5 W7ABC            the selected station's tones and call (5x7)
@@ -22,9 +23,6 @@
      NAM  LYNDEN HILL       (the small rows)
      ...
      #-EDIT 5-SAVE EXIT
-
-   Line 1 is filled because the rows can't start higher: the module screen's waterfall area
-   begins at y = 21. The core's editor draws its own screen and has no such gap.
 
    Serial (K6 MOD say ...): "ed n=12" at the start, "ed k=5 f=4 o=1" after every key (the key,
    the field, open, the field's row), two lines for each trial Save ("ed save id=7 rx=442025000
@@ -41,7 +39,8 @@
 K6_MODULE_NAME("EDTRIAL");
 
 #define NST 48                  /* stations kept (the table holds up to 960 slots; a trial needs few) */
-#define LINES 4                 /* small rows on screen between the title and the hint */
+#define LINES 3                 /* small rows on screen between the title and the keys */
+#define WF_ROWS 4               /* the small rows and the keys under them, in the 4x6 (Jeff 2026-11-14) */
 #define PITCH 7                 /* pixel rows a small row takes: the 4x6 and a gap (Jeff's pick D) */
 #define SMALL_COLS 32           /* 4x6 characters a row */
 
@@ -83,7 +82,7 @@ typedef struct {
   int n, sel, top, edit, saves, ed_slot;
   uint8_t raw, key;
   char ln[STED_ROW + 40];
-  uint8_t wf[LINES * PITCH * 16];   /* the small rows, 128 pixels a pixel row (lcd_wf) */
+  uint8_t wf[WF_ROWS * PITCH * 16];   /* the small rows, 128 pixels a pixel row (lcd_wf) */
 } ed_t;
 
 static uint32_t kp_rd(uint32_t a) { return *(volatile uint32_t *)a; }
@@ -250,7 +249,9 @@ static void draw_list(ed_t *s) {
     }
     small(s, i, s->ln, (int)(p - s->ln), k < s->n && k == s->sel);
   }
-  line(s, 5, put(s->ln, "8-EDIT 0-NEW EXIT"));
+  p = put(s->ln, "8-EDIT 0-NEW EXIT");
+  small(s, LINES, s->ln, (int)(p - s->ln), 0);
+  line(s, 5, s->ln);
   api->lcd_flush();
 }
 
@@ -274,7 +275,8 @@ static void draw_edit(ed_t *s) {
     int f = top + i;
     small(s, i, s->ln, sted_row(&s->e, f, s->ln), f == s->e.f);
   }
-  line(s, 5, s->ln + sted_hint(&s->e, s->ln));
+  small(s, LINES, s->ln, sted_hint(&s->e, s->ln), 0);
+  line(s, 5, s->ln);
   s->api->lcd_flush();
 }
 
@@ -335,7 +337,7 @@ int k6_main(const k6_api_t *api) {
   p = put(s->ln, "ed n=");
   say(s, num(p, (uint32_t)s->n));
   s->now = api->ms();
-  api->lcd_wf(s->wf, LINES * PITCH, 0);   /* the small rows, drawn into s->wf from here on */
+  api->lcd_wf(s->wf, WF_ROWS * PITCH, 0);   /* the small rows, drawn into s->wf from here on */
   draw_list(s);
   for (;;) {
     api->delay_us(2000);

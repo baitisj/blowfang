@@ -392,8 +392,8 @@ def _font4():
 
 
 def rows(frame):
-    """the trial's four small rows (lcd_wf, 7 pixel rows each, the 4x6 under a gap row) as text,
-    '>' before the inverted (selected) one"""
+    """the trial's three small rows and its keys line (lcd_wf, 7 pixel rows each, the 4x6 under a
+    gap row) as text, '>' before the inverted (selected) one"""
     font, wf, out = _font4(), frame["wf"], []
     assert len(wf) == 28
     for r in range(4):
@@ -443,15 +443,17 @@ def test_trial_edits_a_saved_station_and_writes_nothing(lib):
     assert said[-1] == "ed end saves=1"
     assert fl["progs"] == fl["erases"] == 0     # a trial: nothing written
     first = frames[0]["text"]
-    assert first[0].startswith("STATIONS 2") and first[5].startswith("8-EDIT 0-NEW EXIT")
-    # the rows in the small font 7 rows apart (Jeff's pick D, 2026-11-14), the selected one inverted
-    assert rows(frames[0])[:3] == [">146.940   S  K7XYZ", " 442.025 +5.0 LYNDEN", " "]
+    assert first[0].startswith("STATIONS 2") and not first[5].strip()
+    # the rows and the keys in the small font 7 rows apart (Jeff's pick D, 2026-11-14), the
+    # selected row inverted
+    assert rows(frames[0]) == [">146.940   S  K7XYZ", " 442.025 +5.0 LYNDEN", " ", " 8-EDIT 0-NEW EXIT"]
     assert first[1].startswith("K7XYZ ")        # line 1: the selected station's tones and call
     assert any(f["text"][1].startswith("103.5 W7ABC ") for f in frames)
     assert any(f["text"][1].startswith("NAM  LYNDEB_") for f in frames)     # the field, big
-    assert any(f["text"][5].startswith("TRIAL: NOT WRITTEN") for f in frames)
+    assert any(rows(f)[3] == " TRIAL: NOT WRITTEN" for f in frames)
     assert any(f["text"][0].startswith("EDIT 442.025 #1 *") for f in frames)
     assert any(">NAM  LYNDEB_" in rows(f) for f in frames)
+    assert any(rows(f)[3] == " *-DEL #-OK" for f in frames)
     # the list after the trial save shows the new name
     assert any(rows(f)[1] == ">442.025 +5.0 LYNDEB" for f in frames)
 
