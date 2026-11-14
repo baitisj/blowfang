@@ -68,6 +68,7 @@ def test_micprobe_and_micadc_fit():
         ("mictx.c", 2048),
         ("micrec.c", 3072),
         ("micrec_tx.c", 3072),
+        ("micsend.c", 3072),
         ("micrec_adc.c", 3072),
         ("micscan.c", 6144),
     ):

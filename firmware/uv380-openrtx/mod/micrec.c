@@ -37,6 +37,8 @@
    the gain's measure); the LED goes out after the ident. The unplug's own PTT send comes first:
    the LED stays off MR_TXWAIT ms after the unplug, then goes on (talk) and the radio keys. The
    mic preamp goes on at the unplug, so it has settled by the time the radio keys.
+   MR_SEND: after the report, asks for the recording to be sent (tx_request: PHY R range packets
+   and the ident, 1 W, 440.850 only) once the module ends: mic to air as sotto 1200.
    Without MR_TX: receive only, touches no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3
    and the DMA stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
    SPDX-License-Identifier: MIT */
@@ -345,5 +347,10 @@ int uv_main(const ortx_api_t *api) {
         line[k] = 0;
         api->say(line);
     }
+#ifdef MR_SEND
+    /* the goal (Jeff 11-13): live sotto from the mic as PHY R range packets. Once the module
+       ends, the firmware sends the recording as a PTT press would (440.850 only, then the ident) */
+    api->say(api->tx_request() == 0 ? "micrec send requested" : "micrec send refused");
+#endif
     return frames;
 }
