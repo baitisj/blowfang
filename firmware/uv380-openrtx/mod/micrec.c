@@ -29,7 +29,13 @@
      mod say m IDX hhhhhhhhhhhh ...                the message, as usbenc prints it
    api->stop() only marks the cable coming out: pulling it makes stop() 1 (11-14 03:04Z: every
    phase ended at once and nothing was recorded), so no loop ends on it. The LED is PE0 (OpenRTX's
-   GREEN_LED on the MD-UV3x0, the Plus too); it's put back as found. Receive only: touches no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3 and the DMA
+   GREEN_LED on the MD-UV3x0, the Plus too); it's put back as found.
+   MR_TX (11-14 03:24Z: in receive every setting carried the receiver, the K6's upload and its CW
+   ident, not the mic): after the cable comes out it asks for MR_TXMS of FM from the mic instead
+   (tx_mic: 1 W, 440.850 only, then the ident), leaves the codec as the firmware sets it for that,
+   and records from 400 ms after the request to 1300 ms before its end ("set 0" is 500 ms of it,
+   the gain's measure); the LED goes out after the ident. Without MR_TX: receive only, touches
+   no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3 and the DMA
    stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
@@ -48,6 +54,9 @@
 #endif
 #ifndef MR_BACK
 #define MR_BACK 900u
+#endif
+#ifndef MR_TXMS
+#define MR_TXMS 5000u
 #endif
 #define RING 4096u                  /* halfwords: 2048 samples, 256 ms */
 #define NSET 6u
@@ -91,7 +100,7 @@ static void led(unsigned on) {
     RXA_REG(GPIOE + 0x18u) = on ? 1u << LED_PIN : 1u << (LED_PIN + 16);
 }
 
-static void codec(const ortx_api_t *api, const mr_t *m, unsigned k) {
+__attribute__((unused)) static void codec(const ortx_api_t *api, const mr_t *m, unsigned k) {
     api->c6000_write(0xE0, k == 3u ? 0x8B : k == 4u ? 0xC1 : m->e0);
     api->c6000_write(0xE2, k == 3u ? 0x06 : m->e2);
     api->c6000_write(0xE4, k == 3u ? 0x4A : m->e4);
@@ -163,7 +172,11 @@ int uv_main(const ortx_api_t *api) {
     m.pa_moder = RXA_REG(RXA_GPIOA), m.pa_odr = RXA_REG(RXA_GPIOA + 0x14u);
     unsigned align = rx_start_as_is(api, &m.rs, (volatile int16_t *)mem, RING);
     uint32_t pd9 = (RXA_REG(RXA_GPIOD + 0x14u) >> RXA_MUX_PIN) & 1u;
+#ifndef MR_TX
     RXA_REG(RXA_GPIOD + 0x18u) = 1u << (RXA_MUX_PIN + 16);          /* PD9 low */
+#else
+    (void)pd9;
+#endif
     uint32_t e_moder = RXA_REG(GPIOE), e_odr = RXA_REG(GPIOE + 0x14u);
     RXA_REG(GPIOE) = (e_moder & ~(3u << (2 * LED_PIN))) | (1u << (2 * LED_PIN));
     api->fmt(line, sizeof line, "micrec ready align=%u: unplug the cable when the green LED blinks",
@@ -179,6 +192,15 @@ int uv_main(const ortx_api_t *api) {
     led(1);                         /* talk */
 
     unsigned rms[NSET], pk[NSET], cnt[NSET], best = 1;
+#ifdef MR_TX
+    api->memset(rms, 0, sizeof rms);
+    api->memset(pk, 0, sizeof pk);
+    api->memset(cnt, 0, sizeof cnt);
+    int txr = api->tx_mic(MR_TXMS);
+    api->sleep_ms(250);             /* + level()'s 150 */
+    level(api, &m, 500u, &rms[0], &pk[0], &cnt[0]);
+    best = 0;
+#else
     for (unsigned k = 0; k < NSET; k++) {
         codec(api, &m, k);
         level(api, &m, MR_SET, &rms[k], &pk[k], &cnt[k]);
@@ -192,6 +214,7 @@ int uv_main(const ortx_api_t *api) {
 #ifdef MR_FORCE
     best = MR_FORCE;
 #endif
+#endif
     unsigned r = rms[best] ? rms[best] : 1u, gain = 3000u / r;
     if (pk[best] && gain * pk[best] > 28000u)
         gain = 28000u / pk[best];
@@ -201,11 +224,15 @@ int uv_main(const ortx_api_t *api) {
     unsigned pushed = 0;
     uint32_t t0 = api->ms();
     if (api->enc_begin() == 0) {
+#ifdef MR_TX
+        uint32_t end = api->ms() + MR_TXMS - 2200u;
+#else
         codec(api, &m, best);
         api->sleep_ms(150);
+        uint32_t end = api->ms() + 1000u * MR_S;
+#endif
         m.rd = rx_wr(&m.rs) & ~1u;
         int16_t x[64];
-        uint32_t end = api->ms() + 1000u * MR_S;
         while ((int32_t)(api->ms() - end) < 0) {
             unsigned g = take(&m, x, 64u);
             if (!g) {
@@ -223,10 +250,14 @@ int uv_main(const ortx_api_t *api) {
         frames = api->enc_end();
     }
     uint32_t took = api->ms() - t0;
+#ifdef MR_TX
+    api->sleep_ms(6000);            /* the rest of the carrier and the ident */
+#endif
     RXA_REG(GPIOE + 0x18u) = (e_odr >> LED_PIN) & 1u ? 1u << LED_PIN : 1u << (LED_PIN + 16);
     RXA_REG(GPIOE) = e_moder;       /* the LED as found: done, plug the cable back in */
 
     rx_stop(api, &m.rs);
+#ifndef MR_TX
     api->c6000_write(0x26, m.r26);
     api->c6000_write(0xE0, m.e0);
     api->c6000_write(0xE2, m.e2);
@@ -234,6 +265,7 @@ int uv_main(const ortx_api_t *api) {
     RXA_REG(RXA_GPIOA + 0x18u) = (m.pa_odr >> MIC_PIN) & 1u ? 1u << MIC_PIN : 1u << (MIC_PIN + 16);
     RXA_REG(RXA_GPIOA) = m.pa_moder;
     RXA_REG(RXA_GPIOD + 0x18u) = pd9 ? 1u << RXA_MUX_PIN : 1u << (RXA_MUX_PIN + 16);
+#endif
 
     /* the cable back in: wait for the host's hello before writing anything */
     uint8_t b[16];
@@ -246,6 +278,10 @@ int uv_main(const ortx_api_t *api) {
         api->fmt(line, sizeof line, "micrec set %u rms=%u pk=%u n=%u", k, rms[k], pk[k], cnt[k]);
         api->say(line);
     }
+#ifdef MR_TX
+    api->fmt(line, sizeof line, "micrec tx_mic=%d", txr);
+    api->say(line);
+#endif
     api->fmt(line, sizeof line, "micrec use %u gain=%u", best, gain);
     api->say(line);
     api->fmt(line, sizeof line, "micrec enc frames=%d ov=%u pushed=%u ms=%lu", frames, m.ov,
