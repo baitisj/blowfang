@@ -220,6 +220,7 @@ s 146.520   S  ======
 | Key | In the list |
 |---|---|
 | UP / DOWN | pick a row; past the last row it wraps to the first and back. During an automatic listen the arrows scroll the list and the listen goes on (a redraw at most every 150 ms, so the CW decoder keeps its polls); any other key stops it |
+| MENU held | the help card for the screen (EXPLORE, TRY, LISTEN, NEWCALL, EDIT; ARENA and MENU too), UP/DOWN its pages, any other key back (docs/k6-modules.md, help cards) |
 | MENU | the module list (here and in the arena): EXPLORE, ARENA, then the library's modules by name. UP/DOWN pick, MENU or # runs the row (a module runs from the arena, so EXPLORE is left first), EXIT closes the list |
 | side key 1 | Try: the sweep stops, the radio parks on the row with the speaker open (squelch open, so you hear the noise between overs). Side key 1 or EXIT goes back (MENU until the release plan, Jeff 2026-11-13: MENU is the module list) |
 | 0 | Listen for ID on the row: speaker open, up to 25 minutes, any key stops |

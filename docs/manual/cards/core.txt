@@ -1,0 +1,98 @@
+# The core deck: a card for each of the release image's own screens (tools/k6_cards.py).
+# Install: library slot 13. Held MENU shows the screen's card, UP/DOWN turn pages.
+
+= EXPLORE 1
+EXPLORE  KEYS  1/2
+[UP][DN] pick a row
+[SIDE1] try: park on the row
+[0] listen for its CW ID
+[5] save   [8] edit the station
+[*] ignore the row
+[#] next band set
+[MENU] modules  [EXIT][EXIT] arena
+hold [MENU] help   [DN] next page
+
+= EXPLORE 2
+EXPLORE  ROWS  2/2
+R repeater  r maybe  ? not yet
+s simplex  x ignored
+check: call heard  gull: birdie
+bar: level  dots: score
+new above the rule, saved below
+[1] auto ID on/off  [9] speaker
+[3][3] delete saved  [7] dump
+[6][6] delete auto-saved DMR
+
+= TRY 1
+TRY
+the sweep waits, the radio
+parks on the row, squelch open
+line 2: the level now
+lines 3-5: grade, score, call,
+the tone if heard
+[0] listen for its CW ID
+[5] save the station
+[SIDE1] or [EXIT] back to the list
+
+= LISTEN 1
+LISTEN FOR ID
+the speaker opens and the CW
+decoder listens for the
+repeater's ID (up to 25 min)
+the watch empties as time runs
+tone: the detector now
+then the text and call heard
+DMR in the title: DMR, muted
+any key stops
+
+= NEWCALL 1
+NEW CALL
+the CW ID heard differs from
+the call you saved
+heard: what the decoder read
+saved: what the table holds
+[5] write the new call
+[EXIT] keep the saved one
+
+= EDIT 1
+STATION EDITOR  1/2
+[UP][DN] pick a field
+[#] open it  (WIDE, DMR flip)
+[5] save the station
+[4] on a tone row: copy the other
+[EXIT] leave (asks if changed)
+* in the title: not saved yet
+---
+hold [MENU] help   [DN] next page
+
+= EDIT 2
+IN AN OPEN FIELD  2/2
+digits type; NAME and CALL
+multi-tap 2 ABC .. 9 WXYZ
+[*] deletes back
+[UP][DN] step tone or offset
+offset: [*] custom kHz, then
+[*] deletes, none typed: sign
+[#] keep it  [EXIT] put it back
+
+= ARENA 1
+RAM ARENA
+the radio listens on 440.850
+for modules and voice messages
+from the station that woke it
+back to EXPLORE after a quiet
+minute, or now with [EXIT]
+[5] play the message
+[SIDE1] run the last module again
+[MENU] modules
+
+= MENU 1
+MODULES
+EXPLORE, ARENA, then the
+modules kept in the radio
+[UP][DN] pick
+[MENU] or [#] run it
+[EXIT] back
+a module run from EXPLORE
+clears its unsaved list
+(saved stations stay)

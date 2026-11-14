@@ -449,3 +449,6 @@ for m in $K6_MODULES; do
   # 16-byte header, the code and an 8-byte tag; the scratch a module asks for comes after them
   [ "$(wc -c < "$OUT/mod-$m.bin")" -le 11752 ] || { echo "mod-$m.bin: over the 11,776-byte module block"; exit 1; }
 done
+# the help card decks (tools/k6_cards.py, docs/manual/cards/): out/cards-core.bin goes into
+# library slot 13 with `python -m modem.k6 mod OUT.wav out/cards-core.bin --cards --install 13`
+python3 "$ROOT/tools/k6_cards.py" deck "$ROOT/docs/manual/cards/core.txt" -o "$OUT/cards-core.bin"

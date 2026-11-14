@@ -382,6 +382,9 @@ def main(argv=None):
                    help="with --install: SOURCE is a code page (out/page-*.bin from build.sh, made "
                         "for one image): kept in the slot, never run; that image loads it itself "
                         "(docs/k6-voice-explore.md). Install the pages again after each new image")
+    m.add_argument("--cards", action="store_true",
+                   help="with --install: SOURCE is a deck of help cards (tools/k6_cards.py deck, "
+                        "slots 13-15): kept in the slot, never run; a held MENU shows its cards")
     rp = sub.add_parser("reports", help="a recording of the K6 (the IC-7100's receive audio) -> the "
                                         "K6's 0xAF reports after an --arq upload")
     rp.add_argument("input")
@@ -547,8 +550,10 @@ def main(argv=None):
             sys.exit("--telemetry comes back with the reply: add --arq")
         if a.page and a.install is None:
             sys.exit("--page goes into a library slot: add --install SLOT")
+        if a.cards and (a.install is None or not a.source.endswith(".bin")):
+            sys.exit("--cards: a deck .bin (tools/k6_cards.py deck) into a library slot: add --install SLOT")
         img = k6mod.image(code, entry, serial, k6mod.read_key(a.key_file), level, tlm=a.telemetry,
-                          lib=a.install, page=a.page)
+                          lib=a.install, page=a.page, cards=a.cards)
         pk = k6mod.packets(img, a.xfer if a.xfer is not None else serial & 0xFF,
                            pager.PROFILES[a.payload].payload, arq=a.arq)
         n = len(pk)

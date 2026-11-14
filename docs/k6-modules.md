@@ -284,6 +284,16 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   deck), by its name or `SLOT n`. MENU or # runs the row: a module through the same path as
   `--action lib` (`K6 MENU run row=N`, then `K6 LIB run slot=N`), from the arena. EXIT closes
   the list. Serial: `K6 MENU open modules=N` when it opens.
+- **Help cards** (the release plan, Jeff 2026-11-13): a held MENU shows the card for the screen
+  (EXPLORE, TRY, LISTEN, NEWCALL, EDIT, ARENA, MENU), UP/DOWN turn its pages (4 at most), any
+  other key goes back; `NO HELP CARD (13)` in EXPLORE when no deck has one. Cards are 128x64
+  pictures made on the PC by `tools/k6_cards.py` from `docs/manual/cards/*.txt` (the title on a
+  lit bar in the 5x7, 9 lines in the 4x6, `[X]` a key cap), 1,024 B each in the display's page
+  format. A deck ('K6HC', an index by screen name and page, the cards; 11 cards to an upload) is
+  installed like a module with `--cards --install 13` (slots 13-15, `KM_F_CARDS`); CI builds
+  `out/cards-core.bin`. The 8 kHz voice + EXPLORE image reads a card from SPI a page at a time
+  into the band it draws through (no buffer); the other images ignore a held MENU. Serial:
+  `K6 HELP <screen> pages=<n>`.
 - **Install:** `python -m modem.k6 mod OUT.wav SRC.c --key-file KEY --install N` sets header
   flag `KM_F_LIB` (byte 13) and the slot in byte 15. The K6 checks it as any module (tag,
   serial), then, instead of running it, erases the sectors it needs, programs it a page at a
