@@ -2,7 +2,8 @@
    the HT"). While the radio sits in receive, the FM receiver's audio comes off the C6000's codec
    on I2S3 at 8 kHz (mod/rxaudio.h's rx_start: register 26 and PD9 route it there, no hardware
    mod), PHY R packets are taken out of it (c/common/range_rx.c, as the rangerx module, 42/42 on
-   air 11-13) and the message is put back together from them (c/common/pager_rx.c). A sotto 1200
+   air 11-13), and PHY F (FSK) packets too (c/common/fsk_rx.c; Jeff 11-14: "As well as receiving
+   FSK"), and the message is put back together from them (c/common/pager_rx.c). A sotto 1200
    message that is whole, or three quarters there and quiet for PL_GAP_MS, is handed over for
    the speaker. Receive only: it touches no RF register. On anything but the MD-UV3x0 it does
    nothing. SPDX-License-Identifier: MIT */
@@ -31,6 +32,10 @@ int pager_listen_poll(uint32_t now, char *line, unsigned len);
    (max frames x 6 bytes). Returns the frames. */
 unsigned pager_listen_take(uint8_t *out, unsigned max);
 void pager_listen_stop(void);
+/* 1 while something is coming in: a packet after a strong sync (RR_SYNC_STRONG, so noise seldom
+   lights it), or a message part way there; 0 otherwise (Jeff 11-14: the light turns green while
+   the modem is receiving). */
+int pager_listen_busy(void);
 
 #ifdef __cplusplus
 }

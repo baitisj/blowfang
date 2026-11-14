@@ -202,7 +202,10 @@ isn't played again for 60 s. It stops for PTT, FUNC, the speaker preview and eve
 and starts again after them. With the cable in it prints `heard pkt seq=.. id=.. frames=G/T`,
 `heard whole|part ...` and `heard dropped ...` lines (only while the host has written in the last
 30 s: a write with no host busy-waits). `listen 0|1` turns it off or on, `listen` says its state
-and the preview's. Receive only: no RF register. PHY F (FSK) isn't received.
+and the preview's. The LED is green while something is coming in: a packet after a strong sync,
+or a message part way there (off once it plays or is dropped). Receive only: no RF register.
+PHY F (FSK) packets are taken from the same audio by `c/common/fsk_rx.c` (lines say `heard fsk ...`
+and `heard whole fsk ...`), so a message sent either way plays.
 
 The first image (8b87511) froze hard after playing a message it heard with the cable out
 (11-14 15:44Z, a battery pull). Suspect: the speaker preview stuck in the DAC driver's sync,
@@ -214,8 +217,14 @@ peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM 
 (47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
 turns the line in's pre-emphasis off or on (default on), and `trim N` adds N Hz (-8000 to 8000)
 to the transmit frequency; `mark N` and `space N` set PHY F's tones (800-2600 Hz, 0: 1200 and
-1800). Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=...`, and `tune` alone
+1800), and `zero 1|2` how power 0 transmits (below). Each answers `tune lvl=... fs=... emph=...
+trim=... mark=... space=... zero=... pwr=...` (pwr: the channel's power in mW), and `tune` alone
 only answers.
+
+**Zero power (all images).** Macro key 6 now cycles the channel's power 1, 2.5, 5, 0 W. At 0 W
+(Jeff 11-14: "an effectively zero power transmit option") the APC is at 0 and the PA stays off,
+so only the AT1846S's own output leaks out, for the bench a few feet from the IC-7100 (`zero 2`:
+the PA on with its APC at 0 instead, if that is too little). Nothing is measured yet.
 
 **Transmit frequency trim.** Jeff's radio transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
 measured on the IC-7100 in USB). The IC-7100's wide receiver didn't mind, but the K6's chip FSK never

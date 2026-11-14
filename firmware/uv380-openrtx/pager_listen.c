@@ -13,6 +13,7 @@
 #define RR_HIST 32               /* 8 kHz: 2 bits are 13.3 samples */
 #define RR_XR 32                 /* 8 kHz: the quadrature filter spans 31 samples */
 #include "range_rx.c"
+#include "fsk_rx.c"                 /* PHY F (Jeff 11-14: "As well as receiving FSK") */
 
 /* The receiver's 14.5 KB come from the sotto 1200 encoder's static arena (sotto8k_enc_arena.h,
    25.6 KB in CCM), which is idle whenever the receiver runs (it stops for FUNC and every
@@ -29,6 +30,7 @@ void sotto8k_enc_free(void *p);
 static ortx_api_t plApi;
 static rxa_state plRx;
 static rr_state *plRr;
+static fr_state *plFr;
 static uint8_t *plFrames, *plHave;
 static prx_state plMsg;
 static unsigned plRd, plOn, plReady;
@@ -42,17 +44,21 @@ int pager_listen_start(const pr_host *h, int16_t *ring, unsigned n, unsigned max
     if (plOn)
         pager_listen_stop();
     plRr = (rr_state *)sotto8k_enc_calloc(1, sizeof(rr_state));
+    plFr = (fr_state *)sotto8k_enc_calloc(1, sizeof(fr_state));
     plFrames = (uint8_t *)sotto8k_enc_calloc(1, max * PT_FRAME_BYTES + max / 8u + 1u);
-    if (!plRr || !plFrames) {
+    if (!plRr || !plFr || !plFrames) {
         sotto8k_enc_free(plRr);
+        sotto8k_enc_free(plFr);
         sotto8k_enc_free(plFrames);
         plRr = 0;
+        plFr = 0;
         plFrames = 0;
         return -1;
     }
     plHave = plFrames + max * PT_FRAME_BYTES;
     prx_init(&plMsg, plFrames, plHave, max);
     rr_init(plRr, PL_FS);
+    fr_init(plFr);
     plApi.c6000_read = h->c6r;
     plApi.c6000_write = h->c6w;
     plApi.sleep_ms = h->sleep_ms;
@@ -94,26 +100,49 @@ int pager_listen_poll(uint32_t now, char *line, unsigned len) {
             plRd = (plRd + 2u) & m;
             avail -= 2u;
         }
-        unsigned off = 0, used;
-        while (off < got) {
-            int pk = rr_push(plRr, x + off, got - off, &used);
-            off += used;
-            if (!pk || !plRr->ok)
-                continue;
-            int r = prx_packet(&plMsg, plRr->payload, RR_PAYLOAD);
-            if (r == PRX_BAD)
-                continue;
-            if (plDoneValid && plMsg.msg_id == plDoneId && now - plDoneMs < PL_SAME_MS) {
-                prx_reset(&plMsg);                      /* a repeat of what was played */
-                continue;
+        /* the same audio to both receivers: PHY R (range) and PHY F (FSK) */
+        for (unsigned phy = 0; phy < 2u; phy++) {
+            unsigned off = 0, used;
+            while (off < got) {
+                const uint8_t *pl;
+                unsigned n;
+                if (phy == 0) {
+                    int pk = rr_push(plRr, x + off, got - off, &used);
+                    off += used;
+                    if (!pk || !plRr->ok)
+                        continue;
+                    pl = plRr->payload;
+                    n = RR_PAYLOAD;
+                } else {
+                    int pk = fr_push(plFr, x + off, got - off, &used);
+                    off += used;
+                    if (!pk || !plFr->ok)
+                        continue;
+                    pl = plFr->payload;
+                    n = plFr->len;
+                }
+                if (plReady)
+                    continue;                           /* one message at a time */
+                int r = prx_packet(&plMsg, pl, n);
+                if (r == PRX_BAD)
+                    continue;
+                if (plDoneValid && plMsg.msg_id == plDoneId && now - plDoneMs < PL_SAME_MS) {
+                    prx_reset(&plMsg);                  /* a repeat of what was played */
+                    continue;
+                }
+                plLast = now;
+                if (r == PRX_DONE && plMsg.magic == PT_MAGIC_1200) {
+                    ready(now, line, len, phy ? "whole fsk" : "whole");
+                    ret = PL_READY;
+                    continue;
+                }
+                snprintf(line, len, "heard %s seq=%u id=%u frames=%u/%u", phy ? "fsk" : "pkt",
+                         rr_seq(pl), plMsg.msg_id, plMsg.got, plMsg.total);
+                ret = PL_PACKET;
             }
-            plLast = now;
-            if (r == PRX_DONE && plMsg.magic == PT_MAGIC_1200)
-                return ready(now, line, len, "whole");
-            snprintf(line, len, "heard pkt seq=%u id=%u frames=%u/%u", rr_seq(plRr->payload),
-                     plMsg.msg_id, plMsg.got, plMsg.total);
-            ret = PL_PACKET;
         }
+        if (ret == PL_READY)
+            return PL_READY;
     }
     if (ret == PL_NONE && plMsg.active && now - plLast > PL_GAP_MS) {
         if (plMsg.magic == PT_MAGIC_1200 && 4u * plMsg.got >= 3u * plMsg.total)
@@ -137,13 +166,22 @@ unsigned pager_listen_take(uint8_t *out, unsigned max) {
     return n;
 }
 
+int pager_listen_busy(void) {
+    if (!plOn || plReady)
+        return 0;
+    return (plRr->collecting && plRr->best >= RR_SYNC_STRONG) ||
+           (plFr->collecting && plFr->serr == 0) || plMsg.active;
+}
+
 void pager_listen_stop(void) {
     if (!plOn)
         return;
     rx_stop(&plApi, &plRx);
     sotto8k_enc_free(plFrames);
+    sotto8k_enc_free(plFr);
     sotto8k_enc_free(plRr);
     plRr = 0;
+    plFr = 0;
     plFrames = 0;
     plOn = 0;
 }
@@ -172,6 +210,10 @@ unsigned pager_listen_take(uint8_t *out, unsigned max) {
 }
 
 void pager_listen_stop(void) {
+}
+
+int pager_listen_busy(void) {
+    return 0;
 }
 
 #endif
