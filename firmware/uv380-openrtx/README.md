@@ -181,12 +181,15 @@ decodes and plays as it arrives, and back; the macro menu and the main screen sh
 The plain build always sends FSK.
 
 **FUNC: hold to record, let go to send (probe image).** In PAGER mode on 440.850 MHz, holding FUNC
-(the black side button above PTT) keys the radio as FM voice with the mic, LED orange, and records
-the mic as sotto 1200 from the C6000's codec input (I2S3, `pager_rec.c`, gain 16 as `micsend`).
-Letting go sends the recording as PTT would (RNG or FSK, then the ident) at the channel's power.
-When the 30 s store fills the carrier drops and the LED blinks red until FUNC is let go. The mic
-preamp stays on in PAGER mode, since it needs about 6 s to settle. The TYT cable in the side jack
-switches the internal mic out, so record with it unplugged.
+(the black side button above PTT) records the mic as sotto 1200 from the C6000's codec input
+(I2S3, `pager_rec.c`, gain 5), LED orange, WITHOUT transmitting: only the C6000 runs its analog
+transmit with the mic selected (E0 c1 ... 60 80, the half of OpenRTX's startAnalogTx that leaves
+the AT1846S in receive and the PA off; `micsilent`, 11-14 15:31Z). Letting go sends the
+recording as PTT would (RNG or FSK, then the ident) at the channel's power. Recording stops
+after 31 s, or after 1 s with no samples, whatever FUNC does; when the 30 s store fills the LED
+blinks red until FUNC is let go. The mic preamp stays on in PAGER mode, since it needs about 6 s
+to settle. The TYT cable in the side jack switches the internal mic out, so record with it
+unplugged.
 
 **It plays what it hears (probe image).** While PAGER mode sits idle in receive, the FM
 receiver's audio comes off the C6000's codec (I2S3 at 8 kHz, `mod/rxaudio.h`'s route) into the

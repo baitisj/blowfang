@@ -151,10 +151,16 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   message, 48 packets CRC ok, all e=0 except one corrected (e=92); three complete (10/10), the rest
   cut short by a second PTT press. Packets 1.86 s apart; the FFSK's polarity varies from send to
   send (the receiver takes either).
+- MIC WITHOUT TRANSMITTING (M, 11-14 15:31:24-15:32:57Z, micsilent, cable out, Jeff talking, 3 s a
+  setting): as found rms 16; E0 c1 in receive 16; the C6000's analog transmit with the mic (E0 c1,
+  C2 00, E5 1A, 25 0E, A1 80, 34 30, 3E 08, 60 80) with the AT1846S in receive and PD9 low: rms 597
+  pk 5764; the same with E0 c3: 882 pk 3831; preamp off (control): 57. The IC-7100's S meter stayed
+  at the noise (-52 to -54) throughout. 6 s recorded at gain 4-5 decoded as clean speech, none
+  clipped. FUNC now records this way.
 - STUCK CARRIER (M, 11-14 15:19:47-15:30:11Z): the IC-7100 read a full-scale carrier on 440.850
   for over 10 minutes while the TYT cable was being plugged in; it stopped the moment the cable
-  seated and USB came up. Most likely the half-seated plug held the side jack's PTT line (the
-  jack's PTT contact is what makes an unplug count as a PTT press). OpenRTX's FM mode had no
+  seated and USB came up. The radio was in PAGER mode (Jeff), where only FUNC recording held a
+  carrier with no time limit (until the store filled, or PTT, which the cable seating gives). OpenRTX's FM mode had no
   transmit time limit: the patch now drops the carrier after 3 minutes until PTT is let go, and a
   PAGER send stops after 120 s whatever happens.
 - Only Plus images (`mduv3x0p`) on Jeff's radio; a plain `mduv3x0` image is wrong for it (M).

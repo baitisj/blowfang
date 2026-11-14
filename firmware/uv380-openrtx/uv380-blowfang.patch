@@ -253,10 +253,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..81ad6678
+index 00000000..394760b3
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1311 @@
+@@ -0,0 +1,1332 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -1005,45 +1005,62 @@ index 00000000..81ad6678
 +}
 +
 +// FUNC, the black side button above PTT (Jeff 11-14): hold it to record, let
-+// go to send. The mic reaches the MCU only while the radio transmits with the
-+// mic selected (11-14 08:56Z), so the radio sends FM voice while FUNC is held,
-+// LED orange, and the C6000's codec input (I2S3, pager_rec) feeds the sotto
-+// 1200 encoder meanwhile, at micsend's gain (16, 11-14 09:05Z: byte-exact on
-+// air). When the 30 s store fills, the carrier drops and the LED blinks red
-+// until FUNC is let go. Returns the frames recorded, or -1 if nothing keyed.
-+static constexpr unsigned REC_GAIN   = 16;
-+static constexpr unsigned REC_SKIP   = 150;    // ms of key-up thump not recorded
++// go to send. The radio does NOT transmit while FUNC is held (Jeff 11-14
++// 15:06Z): the mic reaches the C6000's codec input (I2S3, pager_rec) once the
++// C6000 alone runs its analog transmit with the mic selected, the half of
++// OpenRTX's startAnalogTx that touches neither the AT1846S nor the PA
++// (micsilent, 11-14 15:31Z: rms 597 against 57 with the preamp off, the
++// IC-7100 saw no carrier). Before that, FUNC keyed FM voice, and once (15:19:47
++// to 15:30:11Z) kept a carrier up for 10 minutes. LED orange while recording,
++// at most REC_MAX_MS; when the 30 s store fills the LED blinks red until FUNC
++// is let go. Returns the frames recorded, or -1 if the encoder didn't start.
++static constexpr unsigned REC_GAIN   = 5;      // micsilent: 3000 / rms 597, peaks kept under 28000
++static constexpr unsigned REC_SKIP   = 150;    // ms of switch-on thump not recorded
 +static constexpr unsigned REC_HOLDMS = 10000;  // blink at most this long when full
++static constexpr long long REC_MAX_MS = 31000; // a stuck FUNC can't hold the codec past this
++static constexpr long long REC_DRY_MS = 1000;  // no samples this long: the capture failed
 +static int16_t recX[64];
++static const uint8_t recRegs[8] = {0xE0, 0xE5, 0x25, 0xA1, 0xC2, 0x34, 0x3E, 0x60};
 +
 +static int recordMic(rtxStatus_t *const status)
 +{
++    (void) status;
 +    static const pr_host host = {omC6r, omC6w, omSleep};
 +    if(omEncBegin() != 0)
 +        return -1;
-+    pathId path = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
-+    if(path < 0)
-+    {
-+        omEncEnd();
-+        return -1;
-+    }
++    uint8_t was[8];
++    for(unsigned i = 0; i < 8; i++)
++        was[i] = omC6r(recRegs[i]);
++#if defined(PLATFORM_MDUV3x0)
++    bool mux = ((GPIOD->ODR >> 9) & 1u) != 0;
++    gpio_clearPin(RX_AUDIO_MUX);    // in receive I2S3 carries the receiver
++#endif
++    micPreamp(true);
++    omC6w(0xE0, 0xC1);              // the mic (OpenRTX's FM mic setting)
++    omC6w(0xC2, 0x00);
++    omC6w(0xE5, 0x1A);
++    omC6w(0x25, 0x0E);
++    omC6w(0xA1, 0x80);
++    omC6w(0x34, 0x30);
++    omC6w(0x3E, 0x08);
++    omC6w(0x60, 0x80);              // the C6000's analog transmit: no RF
 +    pager_rec_start(&host, pbAdcBuf, sizeof(pbAdcBuf) / sizeof(pbAdcBuf[0]));
-+    blowfang_txMic = true;
-+    status->opStatus = TX;
 +    platform_ledOn(GREEN);
-+    platform_ledOn(RED);        // green and red: orange
-+    radio_enableTx();
++    platform_ledOn(RED);            // green and red: orange
 +    bool full = false;
-+    long long t0 = getTick();
-+    while(fnHeld && (platform_getPttStatus() == false))
++    long long t0 = getTick(), seen = t0;
++    while(fnHeld && (platform_getPttStatus() == false) && (getTick() - t0 < REC_MAX_MS))
 +    {
 +        unsigned g = pager_rec_take(recX, 64);
 +        if(g == 0)
 +        {
++            if(getTick() - seen > REC_DRY_MS)
++                break;
 +            sleepFor(0, 2);
 +            continue;
 +        }
-+        if(getTick() - t0 < REC_SKIP)
++        seen = getTick();
++        if(seen - t0 < REC_SKIP)
 +            continue;
 +        for(unsigned i = 0; i < g; i++)
 +        {
@@ -1056,11 +1073,15 @@ index 00000000..81ad6678
 +            break;
 +        }
 +    }
-+    radio_disableRtx();
-+    blowfang_txMic = false;
 +    pager_rec_stop();
-+    audioPath_release(path);
-+    micPreamp(true);
++    for(unsigned i = 8; i-- > 0;)
++        omC6w(recRegs[i], was[i]);
++#if defined(PLATFORM_MDUV3x0)
++    if(mux)
++        gpio_setPin(RX_AUDIO_MUX);
++    else
++        gpio_clearPin(RX_AUDIO_MUX);
++#endif
 +    platform_ledOff(GREEN);
 +    int frames = omEncEnd();
 +    if(full)
