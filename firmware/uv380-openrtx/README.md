@@ -188,11 +188,23 @@ When the 30 s store fills the carrier drops and the LED blinks red until FUNC is
 preamp stays on in PAGER mode, since it needs about 6 s to settle. The TYT cable in the side jack
 switches the internal mic out, so record with it unplugged.
 
+**It plays what it hears (probe image).** While PAGER mode sits idle in receive, the FM
+receiver's audio comes off the C6000's codec (I2S3 at 8 kHz, `mod/rxaudio.h`'s route) into the
+PHY R receiver (`c/common/range_rx.c`, as the `rangerx` module), and `c/common/pager_rx.c` puts
+the message back together from the packets, in any order. A sotto 1200 message that is whole, or
+three quarters there and then quiet for 4 s (the gaps filled from neighbouring frames), becomes
+the message (# plays it again, PTT sends it) and plays on the speaker at once; the same message
+isn't played again for 60 s. It stops for PTT, FUNC, the speaker preview and every USB command,
+and starts again after them. With the cable in it prints `heard pkt seq=.. id=.. frames=G/T`,
+`heard whole|part ...` and `heard dropped ...` lines. Receive only: no RF register. PHY F (FSK)
+isn't received.
+
 **Bench knobs (probe image).** Over USB, or a module's `api->probe()`: `lvl N` sets the FFSK
 peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM runs at
 (47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
 turns the line in's pre-emphasis off or on (default on), and `trim N` adds N Hz (-8000 to 8000)
-to the transmit frequency. Each answers `tune lvl=... fs=... emph=... trim=...`, and `tune` alone
+to the transmit frequency; `mark N` and `space N` set PHY F's tones (800-2600 Hz, 0: 1200 and
+1800). Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=...`, and `tune` alone
 only answers.
 
 **Transmit frequency trim.** Jeff's radio transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,

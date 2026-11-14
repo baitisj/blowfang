@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index 6bb1adec..74e16c4d 100644
+index 6bb1adec..ecb6f812 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,21 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,23 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -14,6 +14,8 @@ index 6bb1adec..74e16c4d 100644
 +               'openrtx/src/blowfang/i2sprobe.c',
 +               'openrtx/src/blowfang/ortx_mod.c',
 +               'openrtx/src/blowfang/pager_rec.c',
++               'openrtx/src/blowfang/pager_listen.c',
++               'openrtx/src/blowfang/pager_rx.c',
 +               'openrtx/src/blowfang/mod_core.c',
 +               'openrtx/src/blowfang/sotto8k_fx_math.c',
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
@@ -24,7 +26,7 @@ index 6bb1adec..74e16c4d 100644
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +84,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +86,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -205,10 +207,10 @@ index 4e8e0630..8b1d41f4 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..e7399048
+index 00000000..89bfa874
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1206 @@
+@@ -0,0 +1,1305 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -253,6 +255,11 @@ index 00000000..e7399048
 +// UV-380's first FSK sends). They last until power-off.
 +static volatile int16_t  txLevel   = LEVEL;
 +static volatile uint32_t txFs      = FS;
++// PHY F's tones ("mark N", "space N"; 0: ffsk_tx's 1200/1800 Hz). The UV-380's
++// audio path pulls them about 6 % together on air (11-14 15:2xZ), which the
++// K6's chip FSK may not take: these let hamlet pre-distort them, no reflash.
++static volatile uint32_t txMark    = 0;
++static volatile uint32_t txSpace   = 0;
 +#if defined(PLATFORM_MDUV3x0)
 +extern "C" volatile bool blowfang_txFlat;
 +extern "C" volatile int32_t blowfang_txTrimHz;
@@ -480,6 +487,7 @@ index 00000000..e7399048
 +}
 +extern "C" {
 +#include "pager_rec.h"
++#include "pager_listen.h"
 +}
 +#if defined(PLATFORM_MDUV3x0)
 +#include "hwconfig.h"
@@ -657,6 +665,10 @@ index 00000000..e7399048
 +        p = line + 5;
 +    else if(strncmp(line, "trim ", 5) == 0)
 +        p = line + 5;
++    else if(strncmp(line, "mark ", 5) == 0)
++        p = line + 5;
++    else if(strncmp(line, "space ", 6) == 0)
++        p = line + 6;
 +    else if(strcmp(line, "tune") != 0)
 +        return 0;
 +    bool num = false;
@@ -676,9 +688,14 @@ index 00000000..e7399048
 +        blowfang_txFlat = (v == 0);
 +    else if(num && (line[0] == 't') && (v <= 8000))
 +        blowfang_txTrimHz = neg ? -(int32_t) v : (int32_t) v;
-+    char out[64];
-+    snprintf(out, sizeof(out), "tune lvl=%d fs=%lu emph=%d trim=%ld", (int) txLevel,
-+             (unsigned long) txFs, blowfang_txFlat ? 0 : 1, (long) blowfang_txTrimHz);
++    else if(num && !neg && (line[0] == 'm') && ((v == 0) || ((v >= 800) && (v <= 2600))))
++        txMark = (uint32_t) v;
++    else if(num && !neg && (line[0] == 's') && ((v == 0) || ((v >= 800) && (v <= 2600))))
++        txSpace = (uint32_t) v;
++    char out[96];
++    snprintf(out, sizeof(out), "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu",
++             (int) txLevel, (unsigned long) txFs, blowfang_txFlat ? 0 : 1,
++             (long) blowfang_txTrimHz, (unsigned long) txMark, (unsigned long) txSpace);
 +    pbSay(NULL, out);
 +    return 1;
 +}
@@ -1031,6 +1048,83 @@ index 00000000..e7399048
 +                               omTxTone};
 +#endif
 +
++// The receiver (pager_listen.h, Jeff 11-14: "get the synthesizer ported to
++// the HT"): while PAGER mode sits idle in receive, PHY R packets heard on the
++// air are put back together into a message, which then becomes the message
++// (as a recording does: # plays it again, PTT sends it) and plays on the
++// speaker at once. It keeps pbBusy while it runs, so holdProbe() (PTT, FUNC,
++// #) stops it within a poll; it stops for every USB command and module too.
++#ifndef PLATFORM_LINUX
++static constexpr uint32_t OTG_DSTS = 0x50000808u;  // bit 0: USB suspended (no cable)
++static bool lsOn   = false;
++static bool lsFail = false;    // no heap for it: not tried again until PAGER mode restarts
++static char lsLine[64];
++
++static void lsSay(const char *s)
++{
++    // a write with no host waits 500 ms: none with the cable out (11-14)
++    if(((*(volatile uint32_t *) OTG_DSTS) & 1u) == 0)
++        pbSay(NULL, s);
++}
++
++static void listenOff()
++{
++    if(lsOn == false)
++        return;
++    pager_listen_stop();
++    lsOn   = false;
++    pbBusy = false;
++}
++
++static void listenStep()
++{
++    static const pr_host host = {omC6r, omC6w, omSleep};
++    bool want = (pbStop(NULL) == false) && (fnHeld == false) && (txRequest == false) &&
++                (micTxMs == 0) && (toneTxMs == 0) && (lsFail == false);
++    if(want == false)
++    {
++        listenOff();
++        return;
++    }
++    if(lsOn == false)
++    {
++        pbBusy = true;
++        if(pbStop(NULL))
++        {
++            pbBusy = false;
++            return;
++        }
++        if(pager_listen_start(&host, pbAdcBuf, sizeof(pbAdcBuf) / sizeof(pbAdcBuf[0]),
++                              REC_MAX) != 0)
++        {
++            pbBusy = false;
++            lsFail = true;
++            lsSay("heard err no memory");
++            return;
++        }
++        lsOn = true;
++    }
++    int r = pager_listen_poll((uint32_t) getTick(), lsLine, sizeof(lsLine));
++    if(r == PL_NONE)
++        return;
++    lsSay(lsLine);
++    if(r != PL_READY)
++        return;
++    recValid  = false;
++    recFrames = pager_listen_take(recMsg, REC_MAX);
++    recValid  = (recFrames > 0);
++    msgChanged = true;
++    listenOff();
++    if(recValid)
++        pager_requestPreview();
++}
++#else
++static bool lsOn   = false;
++static bool lsFail = false;
++static void listenOff() { }
++static void listenStep() { }
++#endif
++
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
 +// passes, so hamlet can drive the probe with no reflash: "auto 0" stops the
 +// passes, "help" lists the rest, "mod ..." goes to the module loader.
@@ -1056,6 +1150,7 @@ index 00000000..e7399048
 +            continue;
 +        pbCmd[pbCmdLen] = '\0';
 +        pbCmdLen = 0;
++        listenOff();
 +        if(pbStop(NULL))
 +        {
 +            pbSay(NULL, "err busy (PTT or the speaker preview)");
@@ -1089,17 +1184,22 @@ index 00000000..e7399048
 +    {
 +        if(pbAuto && (pbStop(NULL) == false))
 +        {
++            listenOff();
 +            pbBusy = true;
 +            if(pbStop(NULL) == false)
 +                i2sp_pass(&ops);
 +            pbBusy = false;
 +        }
-+        for(unsigned t = 0; (t < PB_PAUSE_MS) && pbRun; t += 50)
++        for(unsigned t = 0; (t < PB_PAUSE_MS) && pbRun; )
 +        {
 +            pbPoll(&ops);
-+            sleepFor(0, 50);
++            listenStep();
++            unsigned ms = lsOn ? 10 : 50;   // the ring holds 128 ms
++            sleepFor(0, ms);
++            t += ms;
 +        }
 +    }
++    listenOff();
 +    return NULL;
 +}
 +
@@ -1109,6 +1209,7 @@ index 00000000..e7399048
 +        return;
 +    pbRun  = true;
 +    pbHold = false;
++    lsFail = false;
 +    pthread_attr_t attr;
 +    pthread_attr_init(&attr);
 +    pthread_attr_setstacksize(&attr, PB_STACK);
@@ -1348,7 +1449,7 @@ index 00000000..e7399048
 +#endif
 +    {
 +        pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
-+        ffsk_init(&ffsk, &air, txFs, BAUD, 0, 0, txLevel);
++        ffsk_init(&ffsk, &air, txFs, BAUD, txMark, txSpace, txLevel);
 +    }
 +    cw_init(&cw, ident, txFs, 20, 800, CW_LEVEL);
 +

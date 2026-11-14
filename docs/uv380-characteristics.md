@@ -131,6 +131,16 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   instantaneous-frequency measure (reference wav measured the same way: 1190/1790); 1800/1200 Hz
   band rms +1.9 dB after the IC-7100's receiver; FSK rms +5.5 dB over the same send's CW ident and
   +3.2 dB over an RNG send; 0.281 s from key-up to the first sync. Packets 0.640 s apart.
+- FSK waveform against the IC-7100's (M, 11-14 15:16-15:2xZ, hamlet wavecmp.py, Hilbert
+  instantaneous frequency in runs of 3+ bits): the UV-380's burst as the IC-7100 heard it has its
+  tones pulled together, low 1209 against 1186 Hz, high 1804 against 1822 (separation 595 against
+  636 Hz, -6.4 %), +1.9 dB tilt toward 1800 Hz (the reference: -0.2), and softer bit edges (edge-
+  grid coherence 0.83-0.86 against 0.95). Baud (-5 ppm), preambles and packet spacing match.
+  pager_tx's own render equals modem.k6's wav in all of these, so the difference is analog (the
+  radio's audio and modulator, part possibly the IC-7100's receiver). The K6 then failed both the
+  live burst and the IC-7100 replaying it, while the IC-7100's own modem.k6 wav decoded 10/10 in
+  the same run, so the K6's chip FSK rejects this waveform. `mark N` / `space N` over USB set
+  PHY F's tones (0: 1200/1800) to pre-distort them.
 - Range send of a message the radio encoded itself works on air (M, 11-14 02:29:39-02:30:02Z,
   1a918c4): 8 s of ve9qrp in over USB, sotto 1200 on the radio, tx_request at 1 W on 440.850.
   The 22.4 s burst was 10 PHY R packets (02:29:40.2-02:29:56.9Z) then the CW ident (AG7EW, 20 wpm).
