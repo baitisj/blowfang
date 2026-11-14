@@ -31,6 +31,10 @@ int pager_listen_poll(uint32_t now, char *line, unsigned len);
    (max frames x 6 bytes). Returns the frames. */
 unsigned pager_listen_take(uint8_t *out, unsigned max);
 void pager_listen_stop(void);
+/* 1 while something is coming in: a packet after a strong sync (RR_SYNC_STRONG, so noise seldom
+   lights it), or a message part way there; 0 otherwise (Jeff 11-14: the light turns green while
+   the modem is receiving). */
+int pager_listen_busy(void);
 
 #ifdef __cplusplus
 }

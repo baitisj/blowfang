@@ -253,10 +253,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..675d7214
+index 00000000..f57e8aad
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1388 @@
+@@ -0,0 +1,1406 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -1159,10 +1159,27 @@ index 00000000..675d7214
 +        pbSay(NULL, s);
 +}
 +
++// Green while something is coming in (Jeff 11-14: "the light turned green
++// when the modem is receiving something"); touched only when that changes, so
++// FUNC's orange and TX's red are left alone
++static bool lsLed = false;
++
++static void listenLed(bool on)
++{
++    if(on == lsLed)
++        return;
++    lsLed = on;
++    if(on)
++        platform_ledOn(GREEN);
++    else
++        platform_ledOff(GREEN);
++}
++
 +static void listenOff()
 +{
 +    if(lsOn == false)
 +        return;
++    listenLed(false);
 +    pager_listen_stop();
 +    lsOn   = false;
 +    pbBusy = false;
@@ -1201,6 +1218,7 @@ index 00000000..675d7214
 +        lsOn = true;
 +    }
 +    int r = pager_listen_poll((uint32_t) getTick(), lsLine, sizeof(lsLine));
++    listenLed(pager_listen_busy() != 0);
 +    if(r == PL_NONE)
 +        return;
 +    lsSay(lsLine);

@@ -137,6 +137,12 @@ unsigned pager_listen_take(uint8_t *out, unsigned max) {
     return n;
 }
 
+int pager_listen_busy(void) {
+    if (!plOn || plReady)
+        return 0;
+    return (plRr->collecting && plRr->best >= RR_SYNC_STRONG) || plMsg.active;
+}
+
 void pager_listen_stop(void) {
     if (!plOn)
         return;
@@ -172,6 +178,10 @@ unsigned pager_listen_take(uint8_t *out, unsigned max) {
 }
 
 void pager_listen_stop(void) {
+}
+
+int pager_listen_busy(void) {
+    return 0;
 }
 
 #endif
