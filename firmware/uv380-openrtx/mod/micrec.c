@@ -54,7 +54,7 @@
 #define MR_S 15u
 #endif
 #ifndef MR_BACK
-#define MR_BACK 900u
+#define MR_BACK 3600u               /* s: 11-14 06:32Z a report was lost after 900 s */
 #endif
 #ifndef MR_TXMS
 #define MR_TXMS 5000u
