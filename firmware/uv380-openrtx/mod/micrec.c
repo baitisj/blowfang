@@ -4,7 +4,7 @@
    ran deaf. The module is loaded with the cable in, then works with it out:
 
      1. "micrec ready", and the green LED blinks: unplug the cable (within MR_WAIT s). The module
-        sees the cable come out (api->stop() turns 1), and the green LED stays on: talk until it
+        sees the cable come out (stop() turns 1, or USB suspends); the green LED stays on: talk until it
         goes out (about 35 s), then plug the cable back in.
      2. Each input setting below for MR_SET ms (the first 150 ms dropped): its level and peak.
      3. The loudest setting that doesn't clip (peak under 20000; 11-14 03:13Z the loudest was the
@@ -34,9 +34,13 @@
    ident, not the mic): after the cable comes out it asks for MR_TXMS of FM from the mic instead
    (tx_mic: 1 W, 440.850 only, then the ident), leaves the codec as the firmware sets it for that,
    and records from 400 ms after the request to 1300 ms before its end ("set 0" is 500 ms of it,
-   the gain's measure); the LED goes out after the ident. Without MR_TX: receive only, touches
-   no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3 and the DMA
-   stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
+   the gain's measure); the LED goes out after the ident. The unplug's own PTT send comes first:
+   the LED stays off MR_TXWAIT ms after the unplug, then goes on (talk) and the radio keys. The
+   mic preamp goes on at the unplug, so it has settled by the time the radio keys.
+   MR_SEND: after the report, asks for the recording to be sent (tx_request: PHY R range packets
+   and the ident, 1 W, 440.850 only) once the module ends: mic to air as sotto 1200.
+   Without MR_TX: receive only, touches no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3
+   and the DMA stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
 #include "rxaudio.h"
@@ -53,16 +57,23 @@
 #define MR_S 15u
 #endif
 #ifndef MR_BACK
-#define MR_BACK 900u
+#define MR_BACK 3600u               /* s: 11-14 06:32Z a report was lost after 900 s */
 #endif
 #ifndef MR_TXMS
 #define MR_TXMS 5000u
+#endif
+#ifndef MR_TXGAIN
+#define MR_TXGAIN 16u               /* keyed: 08:56Z speech at gain 64 was rms ~11000 */
+#endif
+#ifndef MR_TXWAIT
+#define MR_TXWAIT 25000u            /* ms after the unplug: its PTT send (about 11.4 s) is over */
 #endif
 #define RING 4096u                  /* halfwords: 2048 samples, 256 ms */
 #define NSET 6u
 #define MIC_PIN 13u                 /* MIC_PWR, GPIOA 13 */
 #define GPIOE 0x40021000u
 #define LED_PIN 0u                  /* GREEN_LED, GPIOE 0 */
+#define OTG_DSTS 0x50000808u        /* USB OTG FS device status: bit 0 SUSPSTS */
 
 typedef struct {
     rxa_state rs;
@@ -94,6 +105,12 @@ static unsigned isqrt(uint32_t v) {
 static void mic(unsigned on) {
     RXA_REG(RXA_GPIOA) = (RXA_REG(RXA_GPIOA) & ~(3u << (2 * MIC_PIN))) | (1u << (2 * MIC_PIN));
     RXA_REG(RXA_GPIOA + 0x18u) = on ? 1u << MIC_PIN : 1u << (MIC_PIN + 16);
+}
+
+/* the cable out: stop() turned 1 (11-14 03:04Z), or the USB core sees the bus idle (suspend);
+   11-14 03:34Z stop() never turned at the unplug */
+static int unplugged(const ortx_api_t *api) {
+    return api->stop() || (RXA_REG(OTG_DSTS) & 1u);
 }
 
 static void led(unsigned on) {
@@ -182,12 +199,26 @@ int uv_main(const ortx_api_t *api) {
     api->fmt(line, sizeof line, "micrec ready align=%u: unplug the cable when the green LED blinks",
              align);
     api->say(line);
-    /* blink until the cable comes out (stop() turns 1) or MR_WAIT s */
-    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_WAIT && !api->stop();) {
+    /* blink until the cable comes out or MR_WAIT s */
+    int out = 0;
+    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_WAIT && !(out = unplugged(api));) {
         led(((api->ms() - t) / 250u) & 1u);
         api->sleep_ms(20);
     }
     led(0);
+#ifdef MR_TX
+    /* the unplug registers as a PTT press, and PAGER mode sends the message for it (11-14 06:30Z
+       and 08:38Z: 4 packets and the ident, 11.4 s); 05:02Z tx_mic went in on top of that send.
+       LED off until it's over */
+    /* the mic preamp on now (MIC_PWR, as FM mode's mic path sets it): micrec_adc saw it settle
+       over about 6 s after switch-on, and tx_mic turned it on only as it keyed, so the whole 5 s
+       carrier fell inside the settling (11-14 08:46Z: silent carrier). tx_mic's own path turns it
+       off at the end */
+    if (out) {
+        mic(1);
+        api->sleep_ms(MR_TXWAIT);
+    }
+#endif
     api->sleep_ms(1000);
     led(1);                         /* talk */
 
@@ -196,11 +227,26 @@ int uv_main(const ortx_api_t *api) {
     api->memset(rms, 0, sizeof rms);
     api->memset(pk, 0, sizeof pk);
     api->memset(cnt, 0, sizeof cnt);
-    int txr = api->tx_mic(MR_TXMS);
+    /* with the cable in the mic is switched out (11-14 04:57Z keyed a silent carrier): no unplug,
+       no transmit */
+    int txr = out ? api->tx_mic(MR_TXMS) : -2;
     api->sleep_ms(250);             /* + level()'s 150 */
+#ifdef MR_DUPLEX
+    /* can the radio send the MCU's line in and still hear the mic? E0 picks the C6000's transmit
+       source (startAnalogTx: 0x81 base, 0x40 mic, 0x02 line in); the MCU's line in is silent here,
+       so on air only the mic setting carries voice. Each window: E0, 150 ms, 650 ms of I2S3 */
+    static const uint8_t dupE0[5] = {0xC1, 0x83, 0xC3, 0x81, 0xC1};
+    for (unsigned k = 0; k < 5u; k++) {
+        api->c6000_write(0xE0, dupE0[k]);
+        level(api, &m, 650u, &rms[k], &pk[k], &cnt[k]);
+    }
+    api->c6000_write(0xE0, 0xC1);
+#else
     level(api, &m, 500u, &rms[0], &pk[0], &cnt[0]);
+#endif
     best = 0;
 #else
+    (void)out;
     for (unsigned k = 0; k < NSET; k++) {
         codec(api, &m, k);
         level(api, &m, MR_SET, &rms[k], &pk[k], &cnt[k]);
@@ -219,11 +265,24 @@ int uv_main(const ortx_api_t *api) {
     if (pk[best] && gain * pk[best] > 28000u)
         gain = 28000u / pk[best];
     gain = gain < 1u ? 1u : gain > 64u ? 64u : gain;
+#ifdef MR_TX
+    /* keyed, "set 0" falls before anyone speaks (11-14 08:56Z: rms 0, so gain 64, and the speech
+       that followed came out at rms ~11000, 2.4% clipped): a fixed gain toward rms ~3000 */
+    gain = MR_TXGAIN;
+#endif
 
+#ifdef MR_DUPLEX
+    int frames = 0;
+#else
     int frames = -1;
+#endif
     unsigned pushed = 0;
     uint32_t t0 = api->ms();
+#ifdef MR_DUPLEX
+    if (0) {                        /* the carrier is used up by the windows: nothing recorded */
+#else
     if (api->enc_begin() == 0) {
+#endif
 #ifdef MR_TX
         uint32_t end = api->ms() + MR_TXMS - 2200u;
 #else
@@ -279,7 +338,8 @@ int uv_main(const ortx_api_t *api) {
         api->say(line);
     }
 #ifdef MR_TX
-    api->fmt(line, sizeof line, "micrec tx_mic=%d", txr);
+    api->fmt(line, sizeof line, "micrec tx_mic=%d%s", txr,
+             txr == -2 ? " (no unplug seen: not keyed)" : "");
     api->say(line);
 #endif
     api->fmt(line, sizeof line, "micrec use %u gain=%u", best, gain);
@@ -307,5 +367,10 @@ int uv_main(const ortx_api_t *api) {
         line[k] = 0;
         api->say(line);
     }
+#ifdef MR_SEND
+    /* the goal (Jeff 11-13): live sotto from the mic as PHY R range packets. Once the module
+       ends, the firmware sends the recording as a PTT press would (440.850 only, then the ident) */
+    api->say(api->tx_request() == 0 ? "micrec send requested" : "micrec send refused");
+#endif
     return frames;
 }
