@@ -55,6 +55,18 @@ one of them changes.
   (project rule; tables-as-ROM and the listed exceptions are OK).
 - Every flashed image is a keyed build; every module is signed (project rule).
 
+## Programming cable (cable session, measured 2026-11-14 on build 3794970)
+
+- The cable session (tools/k6_install.py) answers in under a second from EXPLORE or the arena,
+  even mid-listen (M).
+- Library load: 29 images, 161,644 B, in 24 s; with read-back verify, 42 s (M). No resends needed.
+- Full update with no hands (cable END, bootloader window, 113 packages flashed, library reloaded):
+  48 s (M).
+- SPI read over the cable: the whole 2 MB chip in 239 s, about 8.8 KB/s (M).
+- The OTA reset from the IC-7100 flashed first try once the K6 left EXPLORE; the EXPLORE CW-ID wake
+  needs the 440.850 carrier above -45 dBm at the K6, and the IC-7100 on its stub antenna at power 0
+  read only -50 to -55 dBm (M).
+
 ## Bench notes
 
 - A module runs the instant its upload ends, while the IC-7100 may still be keyed: a TX module waits
