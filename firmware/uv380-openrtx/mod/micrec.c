@@ -4,7 +4,7 @@
    ran deaf. The module is loaded with the cable in, then works with it out:
 
      1. "micrec ready", and the green LED blinks: unplug the cable (within MR_WAIT s). The module
-        sees the cable come out (api->stop() turns 1), and the green LED stays on: talk until it
+        sees the cable come out (stop() turns 1, or USB suspends); the green LED stays on: talk until it
         goes out (about 35 s), then plug the cable back in.
      2. Each input setting below for MR_SET ms (the first 150 ms dropped): its level and peak.
      3. The loudest setting that doesn't clip (peak under 20000; 11-14 03:13Z the loudest was the
@@ -63,6 +63,7 @@
 #define MIC_PIN 13u                 /* MIC_PWR, GPIOA 13 */
 #define GPIOE 0x40021000u
 #define LED_PIN 0u                  /* GREEN_LED, GPIOE 0 */
+#define OTG_DSTS 0x50000808u        /* USB OTG FS device status: bit 0 SUSPSTS */
 
 typedef struct {
     rxa_state rs;
@@ -94,6 +95,12 @@ static unsigned isqrt(uint32_t v) {
 static void mic(unsigned on) {
     RXA_REG(RXA_GPIOA) = (RXA_REG(RXA_GPIOA) & ~(3u << (2 * MIC_PIN))) | (1u << (2 * MIC_PIN));
     RXA_REG(RXA_GPIOA + 0x18u) = on ? 1u << MIC_PIN : 1u << (MIC_PIN + 16);
+}
+
+/* the cable out: stop() turned 1 (11-14 03:04Z), or the USB core sees the bus idle (suspend);
+   11-14 03:34Z stop() never turned at the unplug */
+static int unplugged(const ortx_api_t *api) {
+    return api->stop() || (RXA_REG(OTG_DSTS) & 1u);
 }
 
 static void led(unsigned on) {
@@ -182,8 +189,9 @@ int uv_main(const ortx_api_t *api) {
     api->fmt(line, sizeof line, "micrec ready align=%u: unplug the cable when the green LED blinks",
              align);
     api->say(line);
-    /* blink until the cable comes out (stop() turns 1) or MR_WAIT s */
-    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_WAIT && !api->stop();) {
+    /* blink until the cable comes out or MR_WAIT s */
+    int out = 0;
+    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_WAIT && !(out = unplugged(api));) {
         led(((api->ms() - t) / 250u) & 1u);
         api->sleep_ms(20);
     }
@@ -196,11 +204,14 @@ int uv_main(const ortx_api_t *api) {
     api->memset(rms, 0, sizeof rms);
     api->memset(pk, 0, sizeof pk);
     api->memset(cnt, 0, sizeof cnt);
-    int txr = api->tx_mic(MR_TXMS);
+    /* with the cable in the mic is switched out (11-14 04:57Z keyed a silent carrier): no unplug,
+       no transmit */
+    int txr = out ? api->tx_mic(MR_TXMS) : -2;
     api->sleep_ms(250);             /* + level()'s 150 */
     level(api, &m, 500u, &rms[0], &pk[0], &cnt[0]);
     best = 0;
 #else
+    (void)out;
     for (unsigned k = 0; k < NSET; k++) {
         codec(api, &m, k);
         level(api, &m, MR_SET, &rms[k], &pk[k], &cnt[k]);
@@ -279,7 +290,8 @@ int uv_main(const ortx_api_t *api) {
         api->say(line);
     }
 #ifdef MR_TX
-    api->fmt(line, sizeof line, "micrec tx_mic=%d", txr);
+    api->fmt(line, sizeof line, "micrec tx_mic=%d%s", txr,
+             txr == -2 ? " (no unplug seen: not keyed)" : "");
     api->say(line);
 #endif
     api->fmt(line, sizeof line, "micrec use %u gain=%u", best, gain);
