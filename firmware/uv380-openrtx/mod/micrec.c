@@ -35,7 +35,8 @@
    (tx_mic: 1 W, 440.850 only, then the ident), leaves the codec as the firmware sets it for that,
    and records from 400 ms after the request to 1300 ms before its end ("set 0" is 500 ms of it,
    the gain's measure); the LED goes out after the ident. The unplug's own PTT send comes first:
-   the LED stays off MR_TXWAIT ms after the unplug, then goes on (talk) and the radio keys.
+   the LED stays off MR_TXWAIT ms after the unplug, then goes on (talk) and the radio keys. The
+   mic preamp goes on at the unplug, so it has settled by the time the radio keys.
    Without MR_TX: receive only, touches no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3
    and the DMA stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
    SPDX-License-Identifier: MIT */
@@ -204,8 +205,14 @@ int uv_main(const ortx_api_t *api) {
     /* the unplug registers as a PTT press, and PAGER mode sends the message for it (11-14 06:30Z
        and 08:38Z: 4 packets and the ident, 11.4 s); 05:02Z tx_mic went in on top of that send.
        LED off until it's over */
-    if (out)
+    /* the mic preamp on now (MIC_PWR, as FM mode's mic path sets it): micrec_adc saw it settle
+       over about 6 s after switch-on, and tx_mic turned it on only as it keyed, so the whole 5 s
+       carrier fell inside the settling (11-14 08:46Z: silent carrier). tx_mic's own path turns it
+       off at the end */
+    if (out) {
+        mic(1);
         api->sleep_ms(MR_TXWAIT);
+    }
 #endif
     api->sleep_ms(1000);
     led(1);                         /* talk */
