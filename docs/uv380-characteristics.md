@@ -58,7 +58,8 @@ scored by tools/uv380_micprobe.py against a recording of what was played):
 | C6000 codec input on I2S3 | open with register 26 bit 6 or 7 cleared (7d, bd, 7c, 3d; also fd and fe without PD9's receive audio): carries about 100-240 rms of the IC-7100's demodulated audio through the bench's shared USB ground, mic preamp on or off, IC-7100 speaker silent; nothing acoustic | M, micprobe2 19:57-20:01Z |
 | Codec sets for the mic | OpenGD77's DMR (26 7d, E0 8b, E2 06, E4 4a), OpenRTX's FM mic (E0 c1) and M17 line in (E0 83), and every single bit of E0, E2, E4, E5 and 26: no mic in receive | M |
 | Own speaker as the source | no rise with the speaker on (but the speaker may have been silent at 26=7d: unconfirmed) | M, micspk 20:05Z |
-| Left to try | someone talking into it (no source wired to the bench); the mic may be powered only while keyed | I |
+| Keyed (OpenRTX FM mic transmit: E0 c1, pre-emphasis) | 3 s at 1 W on 440.850 (module mictx, 11-14 01:37Z): the IC-7100 heard a fully quieting but silent carrier, 300-3400 Hz at about -47 dB below the open-squelch noise, no room ambience. I2S3 while keyed: only a keying step below 300 Hz, nothing in the voice band. The CW ident's 800 Hz tone came through clean on air and on I2S3, so the transmit audio chain works | M, mictx 01:37Z |
+| Left to try | someone talking into it during a keyed run (the room was quiet, so a live but very insensitive mic isn't fully ruled out) | I |
 
 A source wired to the bench PC can't test the mic: its audio reaches the codec input electrically.
 
@@ -66,6 +67,11 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
 
 - Signed modules load over USB serial (`tools/uv380_i2sprobe.py mod`), no reflash (M, 11-13). The
   arena is 16 KB from the heap (128 KB SRAM, DMA-able); .bss/.data are CCM (not DMA-able, no code).
+- Heap (Plus, probe and range image): 72,192 B from _end 0x2000e600 to 0x20020000; Miosix thread
+  stacks come from it too. About 16 KB goes at boot and 16 KB to the module arena, leaving about
+  40 KB. The sotto 1200 encoder (24.4 KB state plus a 16 KB thread stack) didn't fit: the radio
+  reset at the encoder's start (M, 11-14 01:27Z), so its state now comes from a 25 KB arena in CCM
+  .bss (PR #101; CCM has about 37 KB free).
 - Modules: -fropi thumbv7em, no writable statics, no pointer tables, no 64-bit divide, no libc.
 - The loader flashed on 11-13 drops USB bytes past 256 while a module calls stop() (fixed in source,
   next flash): a module that reads data over USB reads the Ctrl-C byte itself (rrinject).
