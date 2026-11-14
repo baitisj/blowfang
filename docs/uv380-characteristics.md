@@ -59,7 +59,8 @@ scored by tools/uv380_micprobe.py against a recording of what was played):
 | Codec sets for the mic | OpenGD77's DMR (26 7d, E0 8b, E2 06, E4 4a), OpenRTX's FM mic (E0 c1) and M17 line in (E0 83), and every single bit of E0, E2, E4, E5 and 26: no mic in receive | M |
 | Own speaker as the source | no rise with the speaker on (but the speaker may have been silent at 26=7d: unconfirmed) | M, micspk 20:05Z |
 | Keyed (OpenRTX FM mic transmit: E0 c1, pre-emphasis) | 3 s at 1 W on 440.850 (module mictx, 11-14 01:37Z): the IC-7100 heard a fully quieting but silent carrier, 300-3400 Hz at about -47 dB below the open-squelch noise, no room ambience. I2S3 while keyed: only a keying step below 300 Hz, nothing in the voice band. The CW ident's 800 Hz tone came through clean on air and on I2S3, so the transmit audio chain works | M, mictx 01:37Z |
-| Left to try | someone talking into it during a keyed run (the room was quiet, so a live but very insensitive mic isn't fully ruled out) | I |
+| Keyed with someone talking | 5 s at 1 W (mictx, 11-14 02:43:04-02:43:09Z, Jeff talking into it): 300-3400 Hz at 30.6 rms, the same as the silent carrier, flat envelope (no syllables). The mic doesn't reach the modulator on this path | M, mictx5 02:43Z |
+| Left to try | OpenRTX's own FM transmit (FM mode, PTT) on this Plus; the Plus may route or power the mic differently from OpenRTX's MD-UV3x0 pinmap (MIC_PWR PA13, AIN_MIC PA3) | I |
 
 A source wired to the bench PC can't test the mic: its audio reaches the codec input electrically.
 
@@ -78,6 +79,8 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
 - Modules: -fropi thumbv7em, no writable statics, no pointer tables, no 64-bit divide, no libc.
 - The loader flashed on 11-13 drops USB bytes past 256 while a module calls stop() (fixed in source,
   next flash): a module that reads data over USB reads the Ctrl-C byte itself (rrinject).
+- The I2S probe's auto mode (`auto 1`: a pass every 5 s that takes 8 s) starves the UI thread: the
+  screen and keys freeze while USB keeps working (M, 11-14 02:30-02:43Z). Leave it at `auto 0`.
 - Never run c6sweep again: register B9 bit 2 puts the C6000 to sleep until a power cycle (M).
 
 ## Transmit and other limits
