@@ -205,12 +205,58 @@ index 4e8e0630..8b1d41f4 100644
  /*
       * Initialise remaining fields
       */
+diff --git a/openrtx/src/rtx/OpMode_FM.cpp b/openrtx/src/rtx/OpMode_FM.cpp
+index 9d4901c1..f4245aca 100644
+--- a/openrtx/src/rtx/OpMode_FM.cpp
++++ b/openrtx/src/rtx/OpMode_FM.cpp
+@@ -37,6 +37,14 @@ void _setVolume()
+ }
+ #endif
+ 
++// blowfang: a transmit time limit. OpenRTX's FM mode keeps the carrier up for as long as PTT
++// reads pressed; on 11-14 (15:19:47-15:30:11Z) a cable half in the UV-380's side jack held
++// the PTT line for over 10 minutes. After TOT_MS the carrier drops, and PTT must be let go
++// before it keys again.
++static constexpr long long TOT_MS = 180000;
++static long long totStart = 0;
++static bool      totLock  = false;
++
+ OpMode_FM::OpMode_FM() : rfSqlOpen(false), sqlOpen(false), enterRx(true)
+ {
+ }
+@@ -115,9 +123,13 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
+     }
+ 
+     // TX logic
+-    if(platform_getPttStatus() && (status->opStatus != TX) &&
+-                                  (status->txDisable == 0))
++    bool ptt = platform_getPttStatus();
++    if(ptt == false)
++        totLock = false;
++    if(ptt && (status->opStatus != TX) && (status->txDisable == 0) &&
++       (totLock == false))
+     {
++        totStart = getTick();
+         audioPath_release(rxAudioPath);
+         radio_disableRtx();
+ 
+@@ -127,8 +139,9 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
+         status->opStatus = TX;
+     }
+ 
+-    if(!platform_getPttStatus() && (status->opStatus == TX))
++    if((status->opStatus == TX) && ((ptt == false) || (getTick() - totStart > TOT_MS)))
+     {
++        totLock = ptt;
+         audioPath_release(txAudioPath);
+         radio_disableRtx();
+ 
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..89bfa874
+index 00000000..81ad6678
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1305 @@
+@@ -0,0 +1,1311 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -311,6 +357,7 @@ index 00000000..89bfa874
 +// (ortx_mod.h level 2), kept until the next one or a power-off. .bss: CCM on
 +// the radio, which is fine (no DMA reads it).
 +static constexpr unsigned REC_MAX   = 750;      // superframes: 30 s
++static constexpr long long SEND_MAX_MS = 120000;
 +static uint8_t         recMsg[REC_MAX * PT_FRAME_BYTES];
 +static unsigned        recFrames  = 0;
 +static volatile bool   recValid   = false;
@@ -1490,9 +1537,14 @@ index 00000000..89bfa874
 +    {
 +        bool inCw     = sendIdentOnly;
 +        bool released = false;
++        long long t0  = getTick();
 +        stream_sample_t *idle = outputStream_getIdleBuffer(stream);
 +        while(audioPath_getStatus(path) == PATH_OPEN)
 +        {
++            // never longer than SEND_MAX_MS, whatever happens (the longest
++            // message, 30 s as PHY R, takes about 75 s with its ident)
++            if(getTick() - t0 > SEND_MAX_MS)
++                break;
 +            // One press sends the whole message; a second press cuts it
 +            // short, but the Morse ident still goes out (every
 +            // transmission carries it: on air 11-14 a cut send had none)

@@ -151,6 +151,12 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   message, 48 packets CRC ok, all e=0 except one corrected (e=92); three complete (10/10), the rest
   cut short by a second PTT press. Packets 1.86 s apart; the FFSK's polarity varies from send to
   send (the receiver takes either).
+- STUCK CARRIER (M, 11-14 15:19:47-15:30:11Z): the IC-7100 read a full-scale carrier on 440.850
+  for over 10 minutes while the TYT cable was being plugged in; it stopped the moment the cable
+  seated and USB came up. Most likely the half-seated plug held the side jack's PTT line (the
+  jack's PTT contact is what makes an unplug count as a PTT press). OpenRTX's FM mode had no
+  transmit time limit: the patch now drops the carrier after 3 minutes until PTT is let go, and a
+  PAGER send stops after 120 s whatever happens.
 - Only Plus images (`mduv3x0p`) on Jeff's radio; a plain `mduv3x0` image is wrong for it (M).
 - Calibration isn't dumpable; the stock firmware isn't readable (M, 11-13 backup).
 
