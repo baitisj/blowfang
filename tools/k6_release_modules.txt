@@ -1,0 +1,39 @@
+# The release's module set (Jeff 2026-11-14: "add all of the modules that we've developed"):
+# every module that is an app or a tool for the radio itself, not a bench probe. One per line:
+# library slot, then the source under c/k6/mod/. Slots 0-8 and 16-31 hold modules; 9-12 are
+# the EXPLORE and editor code pages and 13-15 the help decks (c/k6/k6_lib.h). Each source
+# carries its MENU name (K6_MODULE_NAME); tests/test_k6_release_modules.py checks the list.
+#
+# Install all of them, signed, telemetry 0 (a run from the library never sends a report):
+#   python -m modem.k6 mod OUT.wav c/k6/mod/SRC.c --key-file KEY --install SLOT
+# the API level comes from the source (K6_MODULE_LEVEL).
+#
+# with a screen
+0 surf
+1 aisships
+2 aisclk
+3 aprsclk
+4 alarm
+5 midi
+6 morse
+7 gw
+8 stockfont
+# serial report only (a cable, or hamlet's logger), receive only
+16 cwlisten
+17 pocsag
+18 dmrrx
+19 samerx
+20 ft8rx
+21 rangerx
+22 rxmap
+23 wspriq
+24 rtls
+25 clkget
+# transmit on 440.850 with an MCW ID, only when run
+26 ft8tx
+27 wsprtx
+28 wsprbcn
+29 rangetx
+30 cwkey
+# lists the library itself
+31 libls

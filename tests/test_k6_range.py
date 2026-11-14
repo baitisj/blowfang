@@ -242,7 +242,7 @@ def test_rangerx_b_ladder(start):
     smp, _ = rg.link(pls, None, tx="flat")
     code, entry = le.build("x", [("WAIT_MS", "0u"), ("LADDER_S", "1u"), ("SLOT_SCALE", "400u")],
                            os.path.join(ROOT, "c", "k6", "mod", "rangerx_b.c"))
-    assert len(code) < 5800, len(code)
+    assert len(code) < 5816, len(code)   # (16 B of it rangerx.c's name)
     Chip = plain_chip(le, [(0.3, 4800.0, smp)])
 
     class Board(Chip):

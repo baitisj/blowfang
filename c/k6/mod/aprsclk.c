@@ -56,6 +56,10 @@
 #define K6_MODULE_OPT s
 #endif
 #include "../k6_mod.h"
+#ifndef K6_NAME
+#define K6_NAME "APRS CLOCK"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef APRS_HZ
 #define APRS_HZ 144390000u

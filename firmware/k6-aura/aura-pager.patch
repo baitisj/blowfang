@@ -309,10 +309,10 @@ index 5f006e4..00686dd 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..0927341
+index 0000000..61f499c
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4577 @@
+@@ -0,0 +1,4707 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -3494,6 +3494,132 @@ index 0000000..0927341
 +    unsafe { &mut *addr_of_mut!(MENU) }
 +}
 +
++// ---- help cards (the release plan, Jeff 2026-11-13; tools/k6_cards.py) ----
++//
++// A held MENU shows the help card for the screen: a 128x64 picture made on the PC, in the
++// display's page format, kept in a deck in library slots 13-15. The screen reads it from SPI a
++// page (128 B) at a time straight into the band it draws through, so the viewer holds no buffer
++// and no text. UP/DOWN turn the screen's pages, any other key goes back. Only the 8 kHz voice +
++// EXPLORE image (`banded`) draws them.
++
++/// the library slots that hold decks (c/k6/k6_lib.h)
++#[cfg(banded)]
++const HELP_SLOTS: core::ops::Range<i32> = 13..16;
++/// pages a screen's help may have
++#[cfg(banded)]
++const HELP_PAGES: usize = 4;
++
++#[cfg(banded)]
++struct Help {
++    on: bool,
++    page: u8,
++    n: u8,
++    /// each page's card: its SPI address
++    addr: [u32; HELP_PAGES],
++}
++
++#[cfg(banded)]
++static mut HELP: Help = Help { on: false, page: 0, n: 0, addr: [0; HELP_PAGES] };
++
++#[cfg(banded)]
++fn help() -> &'static mut Help {
++    unsafe { &mut *addr_of_mut!(HELP) }
++}
++
++/// Is a card up
++#[cfg(banded)]
++pub fn help_on() -> bool {
++    help().on
++}
++
++/// The card's page p (8 pixel rows, bit 0 the top one) into buf, from SPI
++#[cfg(banded)]
++pub fn help_band(p: u8, buf: &mut [u8; 128]) {
++    let h = help();
++    let a = h.addr[h.page as usize] + 128 * p as u32;
++    if unsafe { lib_fl_read(a, buf.as_mut_ptr(), 128) } != 0 {
++        buf.iter_mut().for_each(|b| *b = 0);
++    }
++}
++
++/// Find screen `name`'s cards in the decks and show the first: true if it has any.
++/// A deck (k6_cards.py): 'K6HC', count, version 1; 16 B entries (name 8 B, page, 3 zero bytes,
++/// the card's offset u32); the cards. The slot was checked (its tag) when it was installed;
++/// here every offset is checked against the image's length.
++#[cfg(banded)]
++#[inline(never)]
++fn help_open(name: &[u8]) -> bool {
++    let h = help();
++    h.n = 0;
++    for slot in HELP_SLOTS {
++        let mut i = ffi::KlInfo::default();
++        if unsafe { ffi::kl_info(slot, &LIB_FL, &mut i) } != 0 || i.flags & 0x05 != 0x05 {
++            continue; // not a deck: KM_F_LIB | KM_F_CARDS
++        }
++        let deck = KL_LO + slot as u32 * 0x4000 + 16; // after the module header
++        let len = i.code_len as u32;
++        let mut e = [0u8; 16];
++        if unsafe { lib_fl_read(deck, e.as_mut_ptr(), 16) } != 0 || &e[..4] != b"K6HC" || e[5] != 1 {
++            continue;
++        }
++        let count = (e[4] as u32).min(11);
++        for k in 0..count {
++            if unsafe { lib_fl_read(deck + 16 + 16 * k, e.as_mut_ptr(), 16) } != 0 {
++                break;
++            }
++            let n = e[..8].iter().position(|&c| c == 0).unwrap_or(8);
++            let off = u32::from_le_bytes([e[12], e[13], e[14], e[15]]);
++            let page = e[8] as usize;
++            if &e[..n] == name && page < HELP_PAGES && off >= 16 && off + 1024 <= len {
++                h.addr[page] = deck + off;
++                h.n = h.n.max(page as u8 + 1);
++            }
++        }
++        if h.n > 0 {
++            break;
++        }
++    }
++    h.page = 0;
++    h.on = h.n > 0;
++    rl!("K6 HELP {} pages={}", core::str::from_utf8(name).unwrap_or("?"), h.n);
++    h.on
++}
++
++/// A key while a card is up, or MENU held to show one: true when help took the key
++#[cfg(banded)]
++#[inline(never)]
++fn help_key(app: &mut App, ev: KeyEvent) -> bool {
++    let h = help();
++    if !h.on {
++        if ev.key != KeyId::Menu || ev.kind != KeyEventKind::Long || stream_on() || app.pager.freq_entry {
++            return false;
++        }
++        let name: &[u8] = if menu().on {
++            b"MENU"
++        } else if explore::on() {
++            explore::help_name()
++        } else {
++            b"ARENA"
++        };
++        if !help_open(name) {
++            explore::help_missing();
++        }
++    } else {
++        match (ev.key, ev.kind) {
++            (KeyId::Up, KeyEventKind::Single | KeyEventKind::Repeat) => h.page = h.page.saturating_sub(1),
++            (KeyId::Down, KeyEventKind::Single | KeyEventKind::Repeat) => h.page = (h.page + 1).min(h.n - 1),
++            (_, KeyEventKind::Single | KeyEventKind::Long) => h.on = false,
++            _ => {}
++        }
++    }
++    if explore::on() {
++        explore::touch();
++    } else {
++        explore::voice_key();
++    }
++    true
++}
++
 +/// (open, the selected row, rows) for the screen
 +#[cfg(all(feature = "explore", feature = "spilib"))]
 +pub fn menu_state() -> (bool, u8, u8) {
@@ -3750,6 +3876,10 @@ index 0000000..0927341
 +
 +#[inline(never)] // its locals only while it runs, not in main's frame for good
 +pub(super) fn dispatch(app: &mut App, syst: &mut SYST, ev: KeyEvent) {
++    #[cfg(banded)]
++    if help_key(app, ev) {
++        return;
++    }
 +    #[cfg(all(feature = "explore", feature = "spilib"))]
 +    if menu_key(app, syst, ev) {
 +        return;
@@ -4892,10 +5022,10 @@ index 0000000..0927341
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..419089a
+index 0000000..98bfeb9
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2353 @@
+@@ -0,0 +1,2377 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5599,6 +5729,26 @@ index 0000000..419089a
 +/// The module list changed over EXPLORE's screen: draw it at the next turn
 +pub fn touch() {
 +    st().dirty = true;
++}
++
++/// The help card's screen name for the view (tools/k6_cards.py, docs/manual/cards/core.txt)
++#[cfg(banded)]
++pub fn help_name() -> &'static [u8] {
++    match st().view {
++        View::List => b"EXPLORE",
++        View::Try => b"TRY",
++        View::Listen => b"LISTEN",
++        View::Ask => b"NEWCALL",
++        View::Edit => b"EDIT",
++    }
++}
++
++/// A held MENU found no card for the screen (no deck installed in slots 13-15)
++#[cfg(banded)]
++pub fn help_missing() {
++    if on() {
++        note("NO HELP CARD (13)");
++    }
 +}
 +
 +/// VOICE MSG waits `ms` of quiet (no packet, no key) from now before EXPLORE
@@ -6982,6 +7132,8 @@ index 0000000..419089a
 +            glyph::text(lcd, x, y, "DMR", true, !sel);
 +        }
 +    }
++    // the scroll bar (Jeff 2026-11-14): rows 11 .. 55, the list's with the rule's 2 px
++    glyph::scroll_bar(lcd, 11, 45, top, ROWS as u32, unsafe { ffi::ex_view_n(&t.ex) });
 +    if sel_p.is_null() {
 +        None
 +    } else {
@@ -7244,6 +7396,8 @@ index 0000000..419089a
 +                }
 +                glyph::text(lcd, 1, y, core::str::from_utf8(&buf[..n]).unwrap_or(""), true, !sel);
 +            }
++            let (rows, n) = (ED_ROWS as u32, ED_FIELDS as u32);
++            glyph::scroll_bar(lcd, ED_TOP - 1, rows * ED_PITCH as u32, top as u32, rows, n);
 +            let n = unsafe { ffi::sted_hint(e, buf.as_mut_ptr()) }.clamp(0, 21) as usize;
 +            line(lcd, FOOT, core::str::from_utf8(&buf[..n]).unwrap_or(""));
 +        }
@@ -7493,6 +7647,19 @@ index 6fd14b9..8428580 100644
  }
  
  pub struct Backlight {
+diff --git a/src/device/keypad.rs b/src/device/keypad.rs
+index b36719a..3ca84a6 100644
+--- a/src/device/keypad.rs
++++ b/src/device/keypad.rs
+@@ -50,6 +50,8 @@ impl KeyId {
+                 | KeyId::Exit
+                 | KeyId::Side1
+                 | KeyId::Side2
++                // a held MENU: the help card (blowfang's K6 release, 2026-11-14)
++                | KeyId::Menu
+         )
+     }
+ 
 diff --git a/src/device/power.rs b/src/device/power.rs
 index 6c0189a..de52eed 100644
 --- a/src/device/power.rs
@@ -9548,10 +9715,10 @@ index 8dd4ad1..3916854 100644
  }
 diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
 new file mode 100644
-index 0000000..c8b254e
+index 0000000..f95a056
 --- /dev/null
 +++ b/src/ui/glyph.rs
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,175 @@
 +//! Text without embedded-graphics' text code or its 6x10 font (Jeff 2026-11-10: "switching over
 +//! to the stock fonts -- save some space!"). The SC5260 has no character ROM, so Baofeng's own
 +//! firmware kept its fonts in the K6's SPI flash, and Aura's first-boot format leaves them there
@@ -9708,8 +9875,27 @@ index 0000000..c8b254e
 +        x += w;
 +    }
 +}
++
++/// A list's scroll bar (Jeff 2026-11-14): 2 px wide at the right edge, rows y0 .. y0 + h, when
++/// the list (n rows) is longer than the screen (vis rows from row top): the lit part is the rows
++/// on screen, its length and place their share of the list and where they are in it. The two
++/// columns are cleared first, so a selected row's inverted bar stops short of it (text ends by
++/// x = 124 in EXPLORE, the editor and the module list).
++pub fn scroll_bar<D>(lcd: &mut D, y0: i32, h: u32, top: u32, vis: u32, n: u32)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    use embedded_graphics::primitives::Rectangle;
++    if n <= vis {
++        return;
++    }
++    let th = (h * vis / n).max(3);
++    let y = y0 + ((h - th) * top.min(n - vis) / (n - vis)) as i32;
++    lcd.fill_solid(&Rectangle::new(Point::new(126, y0), Size::new(2, h)), BinaryColor::Off).ok();
++    lcd.fill_solid(&Rectangle::new(Point::new(126, y), Size::new(2, th)), BinaryColor::On).ok();
++}
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
-index cdfa0f7..0b63d61 100644
+index cdfa0f7..429f08b 100644
 --- a/src/ui/mod.rs
 +++ b/src/ui/mod.rs
 @@ -3,9 +3,11 @@ mod chanmgr;
@@ -9741,7 +9927,7 @@ index cdfa0f7..0b63d61 100644
  
  // TextBuf
  pub struct TextBuf<const N: usize> {
-@@ -51,13 +56,192 @@ impl<const N: usize> TextBuf<N> {
+@@ -51,13 +56,198 @@ impl<const N: usize> TextBuf<N> {
      }
  }
  
@@ -9812,7 +9998,13 @@ index cdfa0f7..0b63d61 100644
 +        let menu = app::pager::menu_state().0;
 +        #[cfg(not(all(feature = "explore", feature = "spilib")))]
 +        let menu = false;
++        // a help card: straight from SPI, a page at a time (app::pager help_band)
++        let help = app::pager::help_on();
 +        display.draw_pages(|page, buf| {
++            if help {
++                app::pager::help_band(page, buf);
++                return;
++            }
 +            let band = &mut Band { buf, y0: 8 * page as i32 };
 +            #[cfg(all(feature = "explore", feature = "spilib"))]
 +            if menu {
@@ -9937,7 +10129,7 @@ index cdfa0f7..0b63d61 100644
          Ok(())
      }
  }
-@@ -77,6 +261,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
+@@ -77,6 +267,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
              draw_satellite(display.as_draw_target(), app);
          }
          app::Mode::Sstv => draw_sstv(display.as_draw_target(), app),
@@ -9947,10 +10139,10 @@ index cdfa0f7..0b63d61 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..e3a4f5c
+index 0000000..8d5b433
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,438 @@
+@@ -0,0 +1,444 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -9994,16 +10186,18 @@ index 0000000..e3a4f5c
 +    super::glyph::text(lcd, 1, y - 6, t, false, true);
 +}
 +
-+/// The module list (MENU, app/pager.rs): a title bar, four rows (the selected one inverted),
-+/// the keys
++/// The module list (MENU, app/pager.rs): EXPLORE's title bar in the 5x7, six rows in the 4x6
++/// (the selected one inverted), the keys in the 4x6, as the editor (Jeff's layout D)
 +///
 +/// ```text
-+/// MODULES 2/9
-+///  EXPLORE
-+///  ARENA
-+///  SURF
-+///  EDTRIAL
-+/// MENU RUN  EXIT BACK
++/// MODULES 3/27
++/// EXPLORE
++/// ARENA
++/// SURF
++/// AIS SHIPS
++/// AIS CLOCK
++/// APRS CLOCK
++/// MENU-RUN EXIT-BACK
 +/// ```
 +#[cfg(all(feature = "explore", feature = "spilib"))]
 +pub fn draw_menu<D>(lcd: &mut D)
@@ -10012,29 +10206,33 @@ index 0000000..e3a4f5c
 +{
 +    let (_, sel, rows) = app::pager::menu_state();
 +    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 64)), BinaryColor::Off).ok();
-+    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 11)), BinaryColor::On).ok();
++    // EXPLORE's title bar (the 5x7 in a 10-row bar), then the rows as the editor draws them
++    // (Jeff's layout D, 2026-11-14): the 4x6, 7 rows apart, the selected one inverted
++    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 10)), BinaryColor::On).ok();
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    out!(b, "MODULES {}/{}", sel + 1, rows);
-+    super::glyph::text(lcd, 1, 2, b.as_str(), false, false);
-+    let top = if sel < 3 { 0 } else { (sel - 2).min(rows.saturating_sub(4)) };
-+    for k in 0..4u8 {
++    super::glyph::text(lcd, 1, 1, b.as_str(), false, false);
++    let top = if sel < 3 { 0 } else { (sel - 2).min(rows.saturating_sub(MENU_ROWS)) };
++    for k in 0..MENU_ROWS {
 +        let i = top + k;
 +        if i >= rows {
 +            break;
 +        }
-+        let y = 19 + 10 * k as i32;
++        let y = 12 + 7 * k as i32;
 +        let mut name = [0u8; 12];
 +        let n = app::pager::menu_row(i, &mut name);
 +        let t = core::str::from_utf8(&name[..n]).unwrap_or("?");
 +        if i == sel {
-+            lcd.fill_solid(&Rectangle::new(Point::new(0, y - 8), Size::new(128, 10)), BinaryColor::On).ok();
-+            super::glyph::text(lcd, 7, y - 6, t, false, false);
-+        } else {
-+            super::glyph::text(lcd, 7, y - 6, t, false, true);
++            lcd.fill_solid(&Rectangle::new(Point::new(0, y - 1), Size::new(128, 7)), BinaryColor::On).ok();
 +        }
++        super::glyph::text(lcd, 1, y, t, true, i != sel);
 +    }
-+    line(lcd, 60, "MENU RUN  EXIT BACK");
++    super::glyph::scroll_bar(lcd, 11, 7 * MENU_ROWS as u32, top as u32, MENU_ROWS as u32, rows as u32);
++    super::glyph::text(lcd, 1, 58, "MENU-RUN EXIT-BACK", true, true);
 +}
++
++/// the module list's rows on screen
++const MENU_ROWS: u8 = 6;
 +
 +/// The explore images' VOICE MSG: the RAM arena (the release plan, Jeff 2026-11-13), two lines
 +/// and a third only while it's busy. The serial report keeps the link details.

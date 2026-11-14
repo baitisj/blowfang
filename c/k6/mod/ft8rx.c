@@ -31,6 +31,10 @@
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "../ft8/ft8k.c"
+#ifndef K6_NAME
+#define K6_NAME "FT8 RX"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef FT8_NB
 #define FT8_NB 24

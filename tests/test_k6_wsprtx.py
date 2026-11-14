@@ -102,7 +102,7 @@ def audio(steps, t_end, fs=12000):
 def test_builds_level_3_small():
     from modem import k6mod
     code, entry = k6mod.build(SRC)
-    assert k6mod.source_level(SRC) == 3 and entry == 0
+    assert k6mod.source_level(SRC) == 3 and entry == 16   # after its name (K6_MODULE_NAME)
     assert 24 + len(code) <= 3072, len(code)
 
 

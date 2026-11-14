@@ -35,7 +35,7 @@ def decode(spans):
 def test_builds_level_3_small():
     from modem import k6mod
     code, entry = k6mod.build(SRC)
-    assert k6mod.source_level(SRC) == 3 and entry == 0
+    assert k6mod.source_level(SRC) == 3 and entry == 16   # after its name
     assert 24 + len(code) <= 1500, len(code)
 
 

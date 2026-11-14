@@ -54,6 +54,10 @@
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "../aisrx.h"
+#ifndef K6_NAME
+#define K6_NAME "AIS CLOCK"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef CH_A_HZ
 #define CH_A_HZ 161975000u

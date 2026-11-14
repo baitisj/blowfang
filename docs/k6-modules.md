@@ -269,6 +269,10 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   anywhere): 0-8 modules, 9-11 EXPLORE's code pages (`KM_F_PAGE`), 12 the station editor's
   code page, 13-15 help card decks (`KM_F_CARDS`, flag 0x04: kept, never run or paged), 16-31
   modules.
+- **The release's set** (Jeff 2026-11-14: every module we've built that is an app or a
+  tool for the radio, not a bench probe): `tools/k6_release_modules.txt`, one slot and source a
+  line, 25 modules in slots 0-8 and 16-31, each named. `tests/test_k6_release_modules.py` checks
+  that every one builds, carries its name and fits an upload.
 - **Names:** `K6_MODULE_NAME("SURF")` in a module's source (`c/k6/k6_mod.h`, up to 12
   characters) puts a 16-byte block, `K6NM` and the name, first in its code (`module.ld`), so it
   sits at slot + 16 and the module list reads it with the header (`kl_info`'s `name`) without
@@ -280,6 +284,16 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   deck), by its name or `SLOT n`. MENU or # runs the row: a module through the same path as
   `--action lib` (`K6 MENU run row=N`, then `K6 LIB run slot=N`), from the arena. EXIT closes
   the list. Serial: `K6 MENU open modules=N` when it opens.
+- **Help cards** (the release plan, Jeff 2026-11-13): a held MENU shows the card for the screen
+  (EXPLORE, TRY, LISTEN, NEWCALL, EDIT, ARENA, MENU), UP/DOWN turn its pages (4 at most), any
+  other key goes back; `NO HELP CARD (13)` in EXPLORE when no deck has one. Cards are 128x64
+  pictures made on the PC by `tools/k6_cards.py` from `docs/manual/cards/*.txt` (the title on a
+  lit bar in the 5x7, 9 lines in the 4x6, `[X]` a key cap), 1,024 B each in the display's page
+  format. A deck ('K6HC', an index by screen name and page, the cards; 11 cards to an upload) is
+  installed like a module with `--cards --install 13` (slots 13-15, `KM_F_CARDS`); CI builds
+  `out/cards-core.bin`. The 8 kHz voice + EXPLORE image reads a card from SPI a page at a time
+  into the band it draws through (no buffer); the other images ignore a held MENU. Serial:
+  `K6 HELP <screen> pages=<n>`.
 - **Install:** `python -m modem.k6 mod OUT.wav SRC.c --key-file KEY --install N` sets header
   flag `KM_F_LIB` (byte 13) and the slot in byte 15. The K6 checks it as any module (tag,
   serial), then, instead of running it, erases the sectors it needs, programs it a page at a

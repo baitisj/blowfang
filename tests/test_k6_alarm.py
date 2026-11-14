@@ -40,7 +40,7 @@ def fix(utc_ms, w=400):
 def test_builds_at_level_8_and_fits(built):
     from modem import k6mod
     code, entry = built
-    assert k6mod.source_level(SRC) == 8 and entry == 0
+    assert k6mod.source_level(SRC) == 8 and entry == 16   # after its name (K6_MODULE_NAME)
     assert code.count(k6_midi.ALARM_TAG) == 1
     assert 24 + len(code) + 512 <= 11_776                      # the SPI voice images' block
 
