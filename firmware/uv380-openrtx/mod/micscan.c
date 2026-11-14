@@ -54,7 +54,7 @@
 #define MS_SETTLE 4000u
 #endif
 #ifndef MS_BACK
-#define MS_BACK 900u
+#define MS_BACK 3600u               /* s: 11-14 06:32Z the report was lost after 900 s */
 #endif
 #define NWIN 10u
 #define SUB 160u                    /* samples: 20 ms */
