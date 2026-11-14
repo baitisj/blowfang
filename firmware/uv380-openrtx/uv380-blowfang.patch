@@ -253,10 +253,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..cbdc94b5
+index 00000000..675d7214
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1380 @@
+@@ -0,0 +1,1388 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -1136,7 +1136,7 @@ index 00000000..cbdc94b5
 +// (as a recording does: # plays it again, PTT sends it) and plays on the
 +// speaker at once. It keeps pbBusy while it runs, so holdProbe() (PTT, FUNC,
 +// #) stops it within a poll; it stops for every USB command and module too.
-+static constexpr uint32_t HOST_MS = 30000;
++static constexpr uint32_t HOST_MS = 2000;   // hamlet's readers send a newline every second
 +static volatile uint32_t pbHostMs = 0;  // ms at the host's last byte (0: none yet)
 +#ifndef PLATFORM_LINUX
 +static constexpr uint32_t OTG_DSTS = 0x50000808u;  // bit 0: USB suspended (no cable)
@@ -1146,12 +1146,14 @@ index 00000000..cbdc94b5
 +static constexpr uint32_t LS_RETRY_MS = 5000;
 +static bool lsEnable = true;   // "listen 0|1"
 +static char lsLine[64];
++static unsigned lsPk = 0, lsMsgs = 0, lsLast = 0;   // packets, messages played, last one's frames
 +
 +static void lsSay(const char *s)
 +{
-+    // A write with no host busy-waits 500 ms (usb_vcom.c): only while the
-+    // cable is in (not suspended) and the host has written in the last
-+    // HOST_MS (hamlet's readers send a newline now and then)
++    // A write with no host busy-waits 500 ms (usb_vcom.c), long enough for
++    // the receiver's 128 ms ring to overrun and lose the packet: only while
++    // the cable is in (not suspended) and the host has written in the last
++    // HOST_MS. "listen" gives the counts at any time.
 +    if((((*(volatile uint32_t *) OTG_DSTS) & 1u) == 0) && (pbHostMs != 0) &&
 +       ((uint32_t) getTick() - pbHostMs < HOST_MS))
 +        pbSay(NULL, s);
@@ -1202,11 +1204,15 @@ index 00000000..cbdc94b5
 +    if(r == PL_NONE)
 +        return;
 +    lsSay(lsLine);
++    if(r == PL_PACKET)
++        lsPk++;
 +    if(r != PL_READY)
 +        return;
++    lsMsgs++;
 +    recValid  = false;
 +    recFrames = pager_listen_take(recMsg, REC_MAX);
 +    recValid  = (recFrames > 0);
++    lsLast    = recFrames;
 +    msgChanged = true;
 +    listenOff();
 +    if(recValid)
@@ -1216,6 +1222,7 @@ index 00000000..cbdc94b5
 +static bool lsOn   = false;
 +static bool lsFail = false;
 +static bool lsEnable = true;
++static unsigned lsPk = 0, lsMsgs = 0, lsLast = 0;
 +static void listenOff() { }
 +static void listenStep() { }
 +#endif
@@ -1230,8 +1237,9 @@ index 00000000..cbdc94b5
 +    else if(line[6] != '\0')
 +        return 0;
 +    char out[64];
-+    snprintf(out, sizeof(out), "listen on=%d running=%d fail=%d pv=%d/%u", lsEnable ? 1 : 0,
-+             lsOn ? 1 : 0, lsFail ? 1 : 0, pvRunning ? 1 : 0, pvFrame);
++    snprintf(out, sizeof(out), "listen on=%d running=%d fail=%d pk=%u msgs=%u last=%u pv=%d/%u",
++             lsEnable ? 1 : 0, lsOn ? 1 : 0, lsFail ? 1 : 0, lsPk, lsMsgs, lsLast,
++             pvRunning ? 1 : 0, pvFrame);
 +    pbSay(NULL, out);
 +    return 1;
 +}
