@@ -188,6 +188,13 @@ When the 30 s store fills the carrier drops and the LED blinks red until FUNC is
 preamp stays on in PAGER mode, since it needs about 6 s to settle. The TYT cable in the side jack
 switches the internal mic out, so record with it unplugged.
 
+**Bench knobs (probe image).** Over USB, or a module's `api->probe()`: `lvl N` sets the FFSK
+peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM runs at
+(47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
+turns the line in's pre-emphasis off or on (default on). Each answers `tune lvl=... fs=... emph=...`,
+and `tune` alone only answers. They last until power-off. They're there because the K6 read none of
+the UV-380's first FSK sends (11-14), so hamlet can tune the link on air with no reflash.
+
 **tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
 the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only, then the
 ident), while the module runs on. `mod/micduplex_tone.c` switches the C6000's transmit source

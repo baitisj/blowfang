@@ -205,10 +205,10 @@ index 4e8e0630..8b1d41f4 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..b5ae16c3
+index 00000000..e2f0fcd6
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1148 @@
+@@ -0,0 +1,1195 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -227,8 +227,8 @@ index 00000000..b5ae16c3
 +#include <pthread.h>
 +#include <string.h>
 +#include <math.h>
-+#ifdef PLATFORM_LINUX
 +#include <stdio.h>
++#ifdef PLATFORM_LINUX
 +#include <stdlib.h>
 +#endif
 +
@@ -247,6 +247,17 @@ index 00000000..b5ae16c3
 +static constexpr size_t   BLOCK     = 960;      // samples per half buffer, 20 ms
 +static constexpr int16_t  LEVEL     = 16000;    // FFSK peak (deviation: set on the bench)
 +static constexpr int16_t  CW_LEVEL  = 13107;
++// Bench knobs over USB ("lvl", "fs", "emph": tuneCommand), so hamlet can set
++// the FFSK level, the rate the modulator is told the PWM runs at, and the
++// pre-emphasis on air with no reflash (11-14: the K6 read none of the
++// UV-380's first FSK sends). They last until power-off.
++static volatile int16_t  txLevel   = LEVEL;
++static volatile uint32_t txFs      = FS;
++#if defined(PLATFORM_MDUV3x0)
++extern "C" volatile bool blowfang_txFlat;
++#else
++__attribute__((unused)) static volatile bool blowfang_txFlat = false;
++#endif
 +static constexpr freq_t   TX_MIN_HZ = 430000000;
 +static constexpr freq_t   TX_MAX_HZ = 450000000;
 +static constexpr unsigned SETTLE_MS = 60;       // silence after keying, before the lead-in
@@ -626,6 +637,41 @@ index 00000000..b5ae16c3
 +    return (int32_t) rtx_getRssi();   // the RTX thread's last reading
 +}
 +
++// "lvl N" (FFSK peak, 1000-32000; default 16000), "fs N" (the rate the
++// modulator is told the PWM runs at, 47000-49000; default 48000: corrects the
++// tones and the baud rate together), "emph 0|1" (pre-emphasis off or on;
++// default on). Each answers with all three; "tune" alone only answers.
++static int tuneCommand(const char *line)
++{
++    unsigned long v = 0;
++    const char *p = NULL;
++    if(strncmp(line, "lvl ", 4) == 0)
++        p = line + 4;
++    else if(strncmp(line, "fs ", 3) == 0)
++        p = line + 3;
++    else if(strncmp(line, "emph ", 5) == 0)
++        p = line + 5;
++    else if(strcmp(line, "tune") != 0)
++        return 0;
++    bool num = false;
++    for(; (p != NULL) && (*p >= '0') && (*p <= '9') && (v < 100000); p++)
++    {
++        v = v * 10 + (unsigned long) (*p - '0');
++        num = true;
++    }
++    if(num && (line[0] == 'l') && (v >= 1000) && (v <= 32000))
++        txLevel = (int16_t) v;
++    else if(num && (line[0] == 'f') && (v >= 47000) && (v <= 49000))
++        txFs = (uint32_t) v;
++    else if(num && (line[0] == 'e') && (v <= 1))
++        blowfang_txFlat = (v == 0);
++    char out[48];
++    snprintf(out, sizeof(out), "tune lvl=%d fs=%lu emph=%d", (int) txLevel,
++             (unsigned long) txFs, blowfang_txFlat ? 0 : 1);
++    pbSay(NULL, out);
++    return 1;
++}
++
 +// "phy fsk" / "phy rng" (USB or a module's probe line; the first letter is
 +// enough): what PTT and tx_request send in the range build, FSK, the pager's
 +// PHY F (FFSK 1200/1800 Hz at 1800 baud, which the K6's VOICE MSG plays as it
@@ -650,7 +696,7 @@ index 00000000..b5ae16c3
 +// a probe command line from a module ("cap ...", "c6w ...")
 +static int omProbe(const char *line)
 +{
-+    if(phyCommand(line))
++    if(phyCommand(line) || tuneCommand(line))
 +        return 0;
 +    return (i2sp_command(&pbOps, line) < 0) ? -1 : 0;
 +}
@@ -852,7 +898,7 @@ index 00000000..b5ae16c3
 +                float y = c2 * y1 - y2;
 +                y2 = y1;
 +                y1 = y;
-+                idle[i] = (stream_sample_t) (y * (float) LEVEL);
++                idle[i] = (stream_sample_t) (y * (float) txLevel);
 +            }
 +            phase += w * (float) BLOCK;
 +            while(phase > 6.2831853f)
@@ -1013,7 +1059,7 @@ index 00000000..b5ae16c3
 +            if(enc != NULL)     // a module that ended mid-recording: keep what it made
 +                omEncEnd();
 +        }
-+        else if(phyCommand(pbCmd) == 0)
++        else if((phyCommand(pbCmd) == 0) && (tuneCommand(pbCmd) == 0))
 +            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
 +        if(r == I2SP_AUTO_ON)
@@ -1284,15 +1330,16 @@ index 00000000..b5ae16c3
 +    if(phyF == false)
 +    {
 +        rg_air_defaults(&rair, pt_message_source, &msg);
-+        ffsk_init_src(&ffsk, rg_air_next, &rair, FS, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ, LEVEL);
++        ffsk_init_src(&ffsk, rg_air_next, &rair, txFs, RG_BAUD, RG_MARK_HZ, RG_SPACE_HZ,
++                      txLevel);
 +    }
 +    else
 +#endif
 +    {
 +        pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
-+        ffsk_init(&ffsk, &air, FS, BAUD, 0, 0, LEVEL);
++        ffsk_init(&ffsk, &air, txFs, BAUD, 0, 0, txLevel);
 +    }
-+    cw_init(&cw, ident, FS, 20, 800, CW_LEVEL);
++    cw_init(&cw, ident, txFs, 20, 800, CW_LEVEL);
 +
 +#ifdef PLATFORM_LINUX
 +    // Emulator: no modulator to drive, so the samples go to a file
@@ -1501,10 +1548,10 @@ index d71444c6..15c6e2b2 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a94..99c408c1 100644
+index 64b77a94..7bb59ddd 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
-@@ -19,6 +19,14 @@
+@@ -19,6 +19,15 @@
  
  static const rtxStatus_t *config;                // Pointer to data structure with radio configuration
  
@@ -1514,12 +1561,13 @@ index 64b77a94..99c408c1 100644
 +extern "C" {
 +volatile bool blowfang_txLow = false;
 +volatile bool blowfang_txMic = false;
++volatile bool blowfang_txFlat = false;  // the line in without pre-emphasis ("emph 0")
 +}
 +
  static mduv3x0Calib_t calData;                   // Calibration data
  static Band    currRxBand = BND_NONE;            // Current band for RX
  static Band    currTxBand = BND_NONE;            // Current band for TX
-@@ -95,6 +103,7 @@ void radio_setOpmode(const enum opmode mode)
+@@ -95,6 +104,7 @@ void radio_setOpmode(const enum opmode mode)
      switch(mode)
      {
          case OPMODE_FM:
@@ -1527,7 +1575,7 @@ index 64b77a94..99c408c1 100644
              at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
              C6000.fmMode();                         // HR_C6000 in FM mode
              C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
-@@ -188,6 +197,8 @@ void radio_enableTx()
+@@ -188,6 +198,8 @@ void radio_enableTx()
      // Constrain output power between 1W and 5W.
      float power  = static_cast < float >(config->txPower) / 1000.0f;
            power  = std::max(std::min(power, 5.0f), 1.0f);
@@ -1536,7 +1584,7 @@ index 64b77a94..99c408c1 100644
      float pwrHi  = static_cast< float >(txpwr_hi);
      float pwrLo  = static_cast< float >(txpwr_lo);
      float apc    = pwrLo + (pwrHi - pwrLo)/4.0f*(power - 1.0f);
-@@ -207,6 +218,17 @@ void radio_enableTx()
+@@ -207,6 +219,19 @@ void radio_enableTx()
              C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
              break;
  
@@ -1546,15 +1594,17 @@ index 64b77a94..99c408c1 100644
 +            // path's pre-emphasis (the K6 receiver de-emphasises)
 +            FmConfig cfg = (config->bandwidth == BW_12_5) ? FmConfig::BW_12p5kHz
 +                                                          : FmConfig::BW_25kHz;
++            if(blowfang_txMic || (blowfang_txFlat == false))
++                cfg = cfg | FmConfig::PREEMPH_EN;
 +            C6000.startAnalogTx(blowfang_txMic ? TxAudioSource::MIC : TxAudioSource::LINE_IN,
-+                                cfg | FmConfig::PREEMPH_EN);
++                                cfg);
 +        }
 +            break;
 +
          default:
              break;
      }
-@@ -286,7 +308,7 @@ void radio_updateConfiguration()
+@@ -286,7 +311,7 @@ void radio_updateConfiguration()
      freq_t  *txCalPoints = calData.vhfCal.txFreq;
      uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
      uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
@@ -1563,7 +1613,7 @@ index 64b77a94..99c408c1 100644
                           ? calData.vhfCal.analogSendQrange
                           : calData.vhfCal.sendQrange;
  
-@@ -296,7 +318,7 @@ void radio_updateConfiguration()
+@@ -296,7 +321,7 @@ void radio_updateConfiguration()
          txCalPoints = calData.uhfCal.txFreq;
          loPwrCal    = calData.uhfCal.txLowPower;
          hiPwrCal    = calData.uhfCal.txHighPower;
@@ -1572,7 +1622,7 @@ index 64b77a94..99c408c1 100644
                      ? calData.uhfCal.analogSendQrange
                      : calData.uhfCal.sendQrange;
      }
-@@ -313,7 +335,7 @@ void radio_updateConfiguration()
+@@ -313,7 +338,7 @@ void radio_updateConfiguration()
      C6000.setModAmplitude(0, Q);
  
      // Set bandwidth, only for analog FM mode
