@@ -102,10 +102,10 @@ index 00000000..c0f60161
 +#endif /* OPMODE_PAGER_H */
 diff --git a/openrtx/include/rtx/pager.h b/openrtx/include/rtx/pager.h
 new file mode 100644
-index 00000000..ffd0ad6f
+index 00000000..cc056dc3
 --- /dev/null
 +++ b/openrtx/include/rtx/pager.h
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,34 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -125,6 +125,15 @@ index 00000000..ffd0ad6f
 + * playback on its next update, and does nothing in other modes.
 + */
 +void pager_requestPreview(void);
++
++/**
++ * blowfang PAGER mode: what PTT sends. 1: FSK, the pager's PHY F (1800 baud
++ * FFSK, which the K6's VOICE MSG plays as it arrives); 0: RNG, PHY R (coded
++ * range packets). The plain build is always FSK; the range build starts in RNG
++ * at power-on and pager_togglePhy() (macro key 4) switches it.
++ */
++int pager_phyFsk(void);
++void pager_togglePhy(void);
 +
 +#ifdef __cplusplus
 +}
@@ -188,10 +197,10 @@ index 4e8e0630..8b1d41f4 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..8f5dc31a
+index 00000000..8c67d8d0
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1001 @@
+@@ -0,0 +1,1018 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -309,6 +318,22 @@ index 00000000..8f5dc31a
 +void pager_requestPreview()
 +{
 +    pvRequest = true;
++}
++
++int pager_phyFsk()
++{
++#ifdef BLOWFANG_RANGE
++    return phyF ? 1 : 0;
++#else
++    return 1;
++#endif
++}
++
++void pager_togglePhy()
++{
++#ifdef BLOWFANG_RANGE
++    phyF = !phyF;
++#endif
 +}
 +
 +/* The next 320 samples of the stored message into out, false once the
@@ -582,9 +607,10 @@ index 00000000..8f5dc31a
 +    return (int32_t) rtx_getRssi();   // the RTX thread's last reading
 +}
 +
-+// "phy f" / "phy r" (USB or a module's probe line): what PTT and tx_request
-+// send in the range build, the pager's PHY F (FFSK 1200/1800 Hz at 1800 baud,
-+// which the K6's VOICE MSG plays as it arrives) or PHY R (the default)
++// "phy fsk" / "phy rng" (USB or a module's probe line; the first letter is
++// enough): what PTT and tx_request send in the range build, FSK, the pager's
++// PHY F (FFSK 1200/1800 Hz at 1800 baud, which the K6's VOICE MSG plays as it
++// arrives), or RNG, PHY R (the default); macro key 4 switches it too
 +static int phyCommand(const char *line)
 +{
 +#ifdef BLOWFANG_RANGE
@@ -594,7 +620,7 @@ index 00000000..8f5dc31a
 +        phyF = true;
 +    else if(line[4] == 'r')
 +        phyF = false;
-+    pbSay(NULL, phyF ? "phy F" : "phy R");
++    pbSay(NULL, phyF ? "phy FSK" : "phy RNG");
 +    return 1;
 +#else
 +    (void) line;
@@ -1222,7 +1248,7 @@ index 54704327..1db08a8b 100644
                  default:   currMode = &noMode;
              }
 diff --git a/openrtx/src/ui/default/ui.c b/openrtx/src/ui/default/ui.c
-index 679be118..f50ee87b 100644
+index 679be118..709a000b 100644
 --- a/openrtx/src/ui/default/ui.c
 +++ b/openrtx/src/ui/default/ui.c
 @@ -53,6 +53,7 @@
@@ -1233,7 +1259,18 @@ index 679be118..f50ee87b 100644
  #include "interfaces/platform.h"
  #include "interfaces/display.h"
  #include "interfaces/cps_io.h"
-@@ -997,6 +998,8 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
+@@ -990,6 +991,10 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
+                 *sync_rtx = true;
+                 vp_announceBandwidth(state.channel.bandwidth, queueFlags);
+             }
++            else if(state.channel.mode == OPMODE_PAGER)
++            {
++                pager_togglePhy();      // blowfang: RNG <-> FSK (range build)
++            }
+             break;
+         case 5:
+             // Cycle through radio modes
+@@ -997,6 +1002,8 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
              if(state.channel.mode == OPMODE_FM)
                  state.channel.mode = OPMODE_M17;
              else if(state.channel.mode == OPMODE_M17)
@@ -1242,7 +1279,7 @@ index 679be118..f50ee87b 100644
                  state.channel.mode = OPMODE_FM;
              else //catch any invalid states so they don't get locked out
              #endif
-@@ -1575,6 +1578,12 @@ void ui_updateFSM(bool *sync_rtx)
+@@ -1575,6 +1582,12 @@ void ui_updateFSM(bool *sync_rtx)
                          }
                          else
                          #endif
@@ -1256,18 +1293,19 @@ index 679be118..f50ee87b 100644
                              if(!state.tone_enabled)
                              {
 diff --git a/openrtx/src/ui/default/ui_main.c b/openrtx/src/ui/default/ui_main.c
-index eed473aa..32502593 100644
+index eed473aa..06389293 100644
 --- a/openrtx/src/ui/default/ui_main.c
 +++ b/openrtx/src/ui/default/ui_main.c
-@@ -14,6 +14,7 @@
+@@ -14,6 +14,8 @@
  #include "ui/ui_strings.h"
  #include "core/utils.h"
  #include "ui/utils.h"
 +#include "blowfang_config.h"
++#include "rtx/pager.h"
  
  void _ui_drawMainBackground()
  {
-@@ -126,6 +127,17 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
+@@ -126,6 +128,13 @@ void _ui_drawModeInfo(ui_state_t* ui_state)
                      color_white, "DMR TG%s", "");
              break;
  
@@ -1275,21 +1313,38 @@ index eed473aa..32502593 100644
 +            // blowfang: PTT sends the stored sotto message to a K6, # plays
 +            // it on the speaker
 +            gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
-+#ifdef BLOWFANG_RANGE
-+                    color_white, "K6 RANGE PTT #");
-+#else
-+                    color_white, "K6 PAGER PTT #");
-+#endif
++                    color_white, pager_phyFsk() ? "K6 FSK PTT #" : "K6 RNG PTT #");
 +            break;
 +
          #ifdef CONFIG_M17
          case OPMODE_M17:
          {
 diff --git a/openrtx/src/ui/default/ui_menu.c b/openrtx/src/ui/default/ui_menu.c
-index d71444c6..58774799 100644
+index d71444c6..15c6e2b2 100644
 --- a/openrtx/src/ui/default/ui_menu.c
 +++ b/openrtx/src/ui/default/ui_menu.c
-@@ -1292,6 +1292,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+@@ -17,6 +17,7 @@
+ #include "core/memory_profiling.h"
+ #include "ui/ui_strings.h"
+ #include "core/voicePromptUtils.h"
++#include "rtx/pager.h"
+ 
+ #ifdef PLATFORM_TTWRPLUS
+ #include "drivers/baseband/SA8x8.h"
+@@ -1263,6 +1264,12 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+         gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
+                   color_white, bw_str);
+     }
++    else if (last_state.channel.mode == OPMODE_PAGER)
++    {
++        // blowfang: what PTT sends, RNG or FSK
++        gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
++                  color_white, pager_phyFsk() ? "  FSK" : "  RNG");
++    }
+ #ifdef CONFIG_M17
+     else if (last_state.channel.mode == OPMODE_M17)
+     {
+@@ -1292,6 +1299,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
              gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "          M17");
              break;
  #endif

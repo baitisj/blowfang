@@ -60,7 +60,7 @@ Edit the patch by applying it to a clone at `20b4088`, changing the tree, and
 It is the PAGER mode with one change: PTT sends the same XL packets as PHY R, the K6's range mode
 (docs/k6-range.md), instead of the 1800 baud pager FFSK. PHY R is coded FFSK at 600 and 1200 Hz,
 1200 baud, about three times the air time, for the K6 module `rangerx`, which reads it on the
-chip's sensitive receiver. The screen says `K6 RANGE PTT #`. The audio takes the same
+chip's sensitive receiver. The screen says `K6 RNG PTT #` (or `K6 FSK PTT #`, below). The audio takes the same
 pre-emphasised voice path, which is what the K6 reads best (bench run 2). In the emulator,
 `tests/test_uv380_openrtx_emu.py` sends with the range build and reads every packet back through
 the K6 model.
@@ -174,10 +174,11 @@ level 2 modules (`r=-3`). The image for this
 is both builds at once: `BLOWFANG_I2SPROBE=1 BLOWFANG_RANGE=1 sh build.sh mduv3x0p`
 (`out/openrtx_mduv3x0p_i2sprobe_range*`).
 
-**PHY F or PHY R.** In that image the USB command `phy f` (or a module's `api->probe("phy f")`)
-makes PTT and `tx_request` send the pager's PHY F instead, the 1800 baud FFSK the K6's VOICE MSG
-decodes and plays as it arrives; `phy r` goes back to PHY R, the default at every power-on. Either
-answers with the PHY now in use.
+**RNG or FSK.** In the range image PTT and `tx_request` send RNG (PHY R) at power-on. Macro key 4
+(hold MONI, press 4) switches to FSK, the pager's PHY F, the 1800 baud FFSK the K6's VOICE MSG
+decodes and plays as it arrives, and back; the macro menu and the main screen show which. Over USB
+(or a module's `api->probe()`), `phy fsk` and `phy rng` do the same and answer with the one in use.
+The plain build always sends FSK.
 
 **tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
 the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only, then the
