@@ -72,6 +72,7 @@ def test_micprobe_and_micadc_fit():
         ("micsend_k6.c", 3072),
         ("micduplex.c", 3072),
         ("micduplex_tone.c", 3072),
+        ("micsilent.c", 3072),
         ("micrec_adc.c", 3072),
         ("micscan.c", 6144),
     ):

@@ -28,8 +28,8 @@
 #
 # Steps: a fresh clone of OpenRTX at the commit the patch was written against (into
 # firmware/uv380-openrtx/build/openrtx, which this script owns and deletes), git apply
-# uv380-blowfang.patch, copy blowfang's portable transmitter (c/common: pager_tx, ffsk_tx,
-# range_tx, cw_tx), the module checker (c/common/mod_core), blowfang_message.h, the probe and the
+# uv380-blowfang.patch, copy blowfang's portable transmitter and receiver (c/common: pager_tx, ffsk_tx,
+# range_tx, cw_tx, range_rx, pager_rx), the module checker (c/common/mod_core), blowfang_message.h, the probe and the
 # module loader (i2sprobe, ortx_mod) and the fixed-point sotto 1200 decoder (the sotto
 # submodule, with the wrappers in sotto8k/) into openrtx/src/blowfang, then meson.
 #
@@ -70,6 +70,10 @@ ffsk_tx.c
 ffsk_tx.h
 range_tx.c
 range_tx.h
+range_rx.c
+range_rx.h
+pager_rx.c
+pager_rx.h
 cw_tx.c
 cw_tx.h
 mod_core.c
@@ -85,6 +89,8 @@ ortx_mod.c
 ortx_mod.h
 pager_rec.c
 pager_rec.h
+pager_listen.c
+pager_listen.h
 mod/rxaudio.h
 EOF
 SUFFIX=

@@ -131,6 +131,16 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   instantaneous-frequency measure (reference wav measured the same way: 1190/1790); 1800/1200 Hz
   band rms +1.9 dB after the IC-7100's receiver; FSK rms +5.5 dB over the same send's CW ident and
   +3.2 dB over an RNG send; 0.281 s from key-up to the first sync. Packets 0.640 s apart.
+- FSK waveform against the IC-7100's (M, 11-14 15:16-15:2xZ, hamlet wavecmp.py, Hilbert
+  instantaneous frequency in runs of 3+ bits): the UV-380's burst as the IC-7100 heard it has its
+  tones pulled together, low 1209 against 1186 Hz, high 1804 against 1822 (separation 595 against
+  636 Hz, -6.4 %), +1.9 dB tilt toward 1800 Hz (the reference: -0.2), and softer bit edges (edge-
+  grid coherence 0.83-0.86 against 0.95). Baud (-5 ppm), preambles and packet spacing match.
+  pager_tx's own render equals modem.k6's wav in all of these, so the difference is analog (the
+  radio's audio and modulator, part possibly the IC-7100's receiver). The K6 then failed both the
+  live burst and the IC-7100 replaying it, while the IC-7100's own modem.k6 wav decoded 10/10 in
+  the same run, so the K6's chip FSK rejects this waveform. `mark N` / `space N` over USB set
+  PHY F's tones (0: 1200/1800) to pre-distort them.
 - Range send of a message the radio encoded itself works on air (M, 11-14 02:29:39-02:30:02Z,
   1a918c4): 8 s of ve9qrp in over USB, sotto 1200 on the radio, tx_request at 1 W on 440.850.
   The 22.4 s burst was 10 PHY R packets (02:29:40.2-02:29:56.9Z) then the CW ident (AG7EW, 20 wpm).
@@ -141,6 +151,18 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   message, 48 packets CRC ok, all e=0 except one corrected (e=92); three complete (10/10), the rest
   cut short by a second PTT press. Packets 1.86 s apart; the FFSK's polarity varies from send to
   send (the receiver takes either).
+- MIC WITHOUT TRANSMITTING (M, 11-14 15:31:24-15:32:57Z, micsilent, cable out, Jeff talking, 3 s a
+  setting): as found rms 16; E0 c1 in receive 16; the C6000's analog transmit with the mic (E0 c1,
+  C2 00, E5 1A, 25 0E, A1 80, 34 30, 3E 08, 60 80) with the AT1846S in receive and PD9 low: rms 597
+  pk 5764; the same with E0 c3: 882 pk 3831; preamp off (control): 57. The IC-7100's S meter stayed
+  at the noise (-52 to -54) throughout. 6 s recorded at gain 4-5 decoded as clean speech, none
+  clipped. FUNC now records this way.
+- STUCK CARRIER (M, 11-14 15:19:47-15:30:11Z): the IC-7100 read a full-scale carrier on 440.850
+  for over 10 minutes while the TYT cable was being plugged in; it stopped the moment the cable
+  seated and USB came up. The radio was in PAGER mode (Jeff), where only FUNC recording held a
+  carrier with no time limit (until the store filled, or PTT, which the cable seating gives). OpenRTX's FM mode had no
+  transmit time limit: the patch now drops the carrier after 3 minutes until PTT is let go, and a
+  PAGER send stops after 120 s whatever happens.
 - Only Plus images (`mduv3x0p`) on Jeff's radio; a plain `mduv3x0` image is wrong for it (M).
 - Calibration isn't dumpable; the stock firmware isn't readable (M, 11-13 backup).
 

@@ -1,8 +1,8 @@
 diff --git a/meson.build b/meson.build
-index 6bb1adec..74e16c4d 100644
+index 6bb1adec..ecb6f812 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,21 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,23 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -14,6 +14,8 @@ index 6bb1adec..74e16c4d 100644
 +               'openrtx/src/blowfang/i2sprobe.c',
 +               'openrtx/src/blowfang/ortx_mod.c',
 +               'openrtx/src/blowfang/pager_rec.c',
++               'openrtx/src/blowfang/pager_listen.c',
++               'openrtx/src/blowfang/pager_rx.c',
 +               'openrtx/src/blowfang/mod_core.c',
 +               'openrtx/src/blowfang/sotto8k_fx_math.c',
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
@@ -24,7 +26,7 @@ index 6bb1adec..74e16c4d 100644
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +84,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +86,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -203,12 +205,58 @@ index 4e8e0630..8b1d41f4 100644
  /*
       * Initialise remaining fields
       */
+diff --git a/openrtx/src/rtx/OpMode_FM.cpp b/openrtx/src/rtx/OpMode_FM.cpp
+index 9d4901c1..f4245aca 100644
+--- a/openrtx/src/rtx/OpMode_FM.cpp
++++ b/openrtx/src/rtx/OpMode_FM.cpp
+@@ -37,6 +37,14 @@ void _setVolume()
+ }
+ #endif
+ 
++// blowfang: a transmit time limit. OpenRTX's FM mode keeps the carrier up for as long as PTT
++// reads pressed; on 11-14 (15:19:47-15:30:11Z) a cable half in the UV-380's side jack held
++// the PTT line for over 10 minutes. After TOT_MS the carrier drops, and PTT must be let go
++// before it keys again.
++static constexpr long long TOT_MS = 180000;
++static long long totStart = 0;
++static bool      totLock  = false;
++
+ OpMode_FM::OpMode_FM() : rfSqlOpen(false), sqlOpen(false), enterRx(true)
+ {
+ }
+@@ -115,9 +123,13 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
+     }
+ 
+     // TX logic
+-    if(platform_getPttStatus() && (status->opStatus != TX) &&
+-                                  (status->txDisable == 0))
++    bool ptt = platform_getPttStatus();
++    if(ptt == false)
++        totLock = false;
++    if(ptt && (status->opStatus != TX) && (status->txDisable == 0) &&
++       (totLock == false))
+     {
++        totStart = getTick();
+         audioPath_release(rxAudioPath);
+         radio_disableRtx();
+ 
+@@ -127,8 +139,9 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
+         status->opStatus = TX;
+     }
+ 
+-    if(!platform_getPttStatus() && (status->opStatus == TX))
++    if((status->opStatus == TX) && ((ptt == false) || (getTick() - totStart > TOT_MS)))
+     {
++        totLock = ptt;
+         audioPath_release(txAudioPath);
+         radio_disableRtx();
+ 
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..e7399048
+index 00000000..675d7214
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1206 @@
+@@ -0,0 +1,1388 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -253,6 +301,11 @@ index 00000000..e7399048
 +// UV-380's first FSK sends). They last until power-off.
 +static volatile int16_t  txLevel   = LEVEL;
 +static volatile uint32_t txFs      = FS;
++// PHY F's tones ("mark N", "space N"; 0: ffsk_tx's 1200/1800 Hz). The UV-380's
++// audio path pulls them about 6 % together on air (11-14 15:2xZ), which the
++// K6's chip FSK may not take: these let hamlet pre-distort them, no reflash.
++static volatile uint32_t txMark    = 0;
++static volatile uint32_t txSpace   = 0;
 +#if defined(PLATFORM_MDUV3x0)
 +extern "C" volatile bool blowfang_txFlat;
 +extern "C" volatile int32_t blowfang_txTrimHz;
@@ -288,6 +341,7 @@ index 00000000..e7399048
 +static volatile bool   pvRequest = false;   // set by the UI (# key)
 +static volatile bool   pvStop    = false;
 +static volatile bool   pvRunning = false;
++static volatile unsigned pvFrame  = 0;      // the frame the preview is on (for "err busy")
 +static bool            pvJoinable = false;
 +static pthread_t       pvThread;
 +static pt_air  air;
@@ -304,6 +358,7 @@ index 00000000..e7399048
 +// (ortx_mod.h level 2), kept until the next one or a power-off. .bss: CCM on
 +// the radio, which is fine (no DMA reads it).
 +static constexpr unsigned REC_MAX   = 750;      // superframes: 30 s
++static constexpr long long SEND_MAX_MS = 120000;
 +static uint8_t         recMsg[REC_MAX * PT_FRAME_BYTES];
 +static unsigned        recFrames  = 0;
 +static volatile bool   recValid   = false;
@@ -372,6 +427,7 @@ index 00000000..e7399048
 +    {
 +        sotto_lr_decode(dec, msgBytes() + frame * PT_FRAME_BYTES, 1, out);
 +        frame++;
++        pvFrame = frame;
 +        return true;
 +    }
 +    return sotto_lr_dec_flush(dec, out) != 0;
@@ -439,13 +495,22 @@ index 00000000..e7399048
 +    return NULL;
 +}
 +
-+/* Waits for the preview thread to end, asking it to stop first if stop. */
++/* Waits for the preview thread to end, asking it to stop first if stop. It
++ * waits at most PV_JOIN_MS: a preview stuck in the speaker stream (the DAC
++ * driver's sync waits without a timeout) must not hang the RTX thread with
++ * it, which froze the radio (11-14 15:44Z, a battery pull). A stuck preview
++ * stays unjoined, and no other starts. */
++static constexpr unsigned PV_JOIN_MS = 3000;
 +static void joinPreview(bool stop)
 +{
 +    if(pvJoinable == false)
 +        return;
 +    if(stop)
 +        pvStop = true;
++    for(unsigned t = 0; pvRunning && (t < PV_JOIN_MS); t += 10)
++        sleepFor(0, 10);
++    if(pvRunning)
++        return;
 +    pthread_join(pvThread, NULL);
 +    pvJoinable = false;
 +}
@@ -453,6 +518,9 @@ index 00000000..e7399048
 +static void startPreview()
 +{
 +    joinPreview(false);         // only a finished one can be left here
++    if(pvJoinable)
++        return;                 // a stuck one: never two
++    pvFrame   = 0;
 +    pvStop    = false;
 +    pvRunning = true;
 +    pthread_attr_t attr;
@@ -480,6 +548,7 @@ index 00000000..e7399048
 +}
 +extern "C" {
 +#include "pager_rec.h"
++#include "pager_listen.h"
 +}
 +#if defined(PLATFORM_MDUV3x0)
 +#include "hwconfig.h"
@@ -657,6 +726,10 @@ index 00000000..e7399048
 +        p = line + 5;
 +    else if(strncmp(line, "trim ", 5) == 0)
 +        p = line + 5;
++    else if(strncmp(line, "mark ", 5) == 0)
++        p = line + 5;
++    else if(strncmp(line, "space ", 6) == 0)
++        p = line + 6;
 +    else if(strcmp(line, "tune") != 0)
 +        return 0;
 +    bool num = false;
@@ -676,9 +749,14 @@ index 00000000..e7399048
 +        blowfang_txFlat = (v == 0);
 +    else if(num && (line[0] == 't') && (v <= 8000))
 +        blowfang_txTrimHz = neg ? -(int32_t) v : (int32_t) v;
-+    char out[64];
-+    snprintf(out, sizeof(out), "tune lvl=%d fs=%lu emph=%d trim=%ld", (int) txLevel,
-+             (unsigned long) txFs, blowfang_txFlat ? 0 : 1, (long) blowfang_txTrimHz);
++    else if(num && !neg && (line[0] == 'm') && ((v == 0) || ((v >= 800) && (v <= 2600))))
++        txMark = (uint32_t) v;
++    else if(num && !neg && (line[0] == 's') && ((v == 0) || ((v >= 800) && (v <= 2600))))
++        txSpace = (uint32_t) v;
++    char out[96];
++    snprintf(out, sizeof(out), "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu",
++             (int) txLevel, (unsigned long) txFs, blowfang_txFlat ? 0 : 1,
++             (long) blowfang_txTrimHz, (unsigned long) txMark, (unsigned long) txSpace);
 +    pbSay(NULL, out);
 +    return 1;
 +}
@@ -941,45 +1019,62 @@ index 00000000..e7399048
 +}
 +
 +// FUNC, the black side button above PTT (Jeff 11-14): hold it to record, let
-+// go to send. The mic reaches the MCU only while the radio transmits with the
-+// mic selected (11-14 08:56Z), so the radio sends FM voice while FUNC is held,
-+// LED orange, and the C6000's codec input (I2S3, pager_rec) feeds the sotto
-+// 1200 encoder meanwhile, at micsend's gain (16, 11-14 09:05Z: byte-exact on
-+// air). When the 30 s store fills, the carrier drops and the LED blinks red
-+// until FUNC is let go. Returns the frames recorded, or -1 if nothing keyed.
-+static constexpr unsigned REC_GAIN   = 16;
-+static constexpr unsigned REC_SKIP   = 150;    // ms of key-up thump not recorded
++// go to send. The radio does NOT transmit while FUNC is held (Jeff 11-14
++// 15:06Z): the mic reaches the C6000's codec input (I2S3, pager_rec) once the
++// C6000 alone runs its analog transmit with the mic selected, the half of
++// OpenRTX's startAnalogTx that touches neither the AT1846S nor the PA
++// (micsilent, 11-14 15:31Z: rms 597 against 57 with the preamp off, the
++// IC-7100 saw no carrier). Before that, FUNC keyed FM voice, and once (15:19:47
++// to 15:30:11Z) kept a carrier up for 10 minutes. LED orange while recording,
++// at most REC_MAX_MS; when the 30 s store fills the LED blinks red until FUNC
++// is let go. Returns the frames recorded, or -1 if the encoder didn't start.
++static constexpr unsigned REC_GAIN   = 5;      // micsilent: 3000 / rms 597, peaks kept under 28000
++static constexpr unsigned REC_SKIP   = 150;    // ms of switch-on thump not recorded
 +static constexpr unsigned REC_HOLDMS = 10000;  // blink at most this long when full
++static constexpr long long REC_MAX_MS = 31000; // a stuck FUNC can't hold the codec past this
++static constexpr long long REC_DRY_MS = 1000;  // no samples this long: the capture failed
 +static int16_t recX[64];
++static const uint8_t recRegs[8] = {0xE0, 0xE5, 0x25, 0xA1, 0xC2, 0x34, 0x3E, 0x60};
 +
 +static int recordMic(rtxStatus_t *const status)
 +{
++    (void) status;
 +    static const pr_host host = {omC6r, omC6w, omSleep};
 +    if(omEncBegin() != 0)
 +        return -1;
-+    pathId path = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
-+    if(path < 0)
-+    {
-+        omEncEnd();
-+        return -1;
-+    }
++    uint8_t was[8];
++    for(unsigned i = 0; i < 8; i++)
++        was[i] = omC6r(recRegs[i]);
++#if defined(PLATFORM_MDUV3x0)
++    bool mux = ((GPIOD->ODR >> 9) & 1u) != 0;
++    gpio_clearPin(RX_AUDIO_MUX);    // in receive I2S3 carries the receiver
++#endif
++    micPreamp(true);
++    omC6w(0xE0, 0xC1);              // the mic (OpenRTX's FM mic setting)
++    omC6w(0xC2, 0x00);
++    omC6w(0xE5, 0x1A);
++    omC6w(0x25, 0x0E);
++    omC6w(0xA1, 0x80);
++    omC6w(0x34, 0x30);
++    omC6w(0x3E, 0x08);
++    omC6w(0x60, 0x80);              // the C6000's analog transmit: no RF
 +    pager_rec_start(&host, pbAdcBuf, sizeof(pbAdcBuf) / sizeof(pbAdcBuf[0]));
-+    blowfang_txMic = true;
-+    status->opStatus = TX;
 +    platform_ledOn(GREEN);
-+    platform_ledOn(RED);        // green and red: orange
-+    radio_enableTx();
++    platform_ledOn(RED);            // green and red: orange
 +    bool full = false;
-+    long long t0 = getTick();
-+    while(fnHeld && (platform_getPttStatus() == false))
++    long long t0 = getTick(), seen = t0;
++    while(fnHeld && (platform_getPttStatus() == false) && (getTick() - t0 < REC_MAX_MS))
 +    {
 +        unsigned g = pager_rec_take(recX, 64);
 +        if(g == 0)
 +        {
++            if(getTick() - seen > REC_DRY_MS)
++                break;
 +            sleepFor(0, 2);
 +            continue;
 +        }
-+        if(getTick() - t0 < REC_SKIP)
++        seen = getTick();
++        if(seen - t0 < REC_SKIP)
 +            continue;
 +        for(unsigned i = 0; i < g; i++)
 +        {
@@ -992,11 +1087,15 @@ index 00000000..e7399048
 +            break;
 +        }
 +    }
-+    radio_disableRtx();
-+    blowfang_txMic = false;
 +    pager_rec_stop();
-+    audioPath_release(path);
-+    micPreamp(true);
++    for(unsigned i = 8; i-- > 0;)
++        omC6w(recRegs[i], was[i]);
++#if defined(PLATFORM_MDUV3x0)
++    if(mux)
++        gpio_setPin(RX_AUDIO_MUX);
++    else
++        gpio_clearPin(RX_AUDIO_MUX);
++#endif
 +    platform_ledOff(GREEN);
 +    int frames = omEncEnd();
 +    if(full)
@@ -1031,6 +1130,120 @@ index 00000000..e7399048
 +                               omTxTone};
 +#endif
 +
++// The receiver (pager_listen.h, Jeff 11-14: "get the synthesizer ported to
++// the HT"): while PAGER mode sits idle in receive, PHY R packets heard on the
++// air are put back together into a message, which then becomes the message
++// (as a recording does: # plays it again, PTT sends it) and plays on the
++// speaker at once. It keeps pbBusy while it runs, so holdProbe() (PTT, FUNC,
++// #) stops it within a poll; it stops for every USB command and module too.
++static constexpr uint32_t HOST_MS = 2000;   // hamlet's readers send a newline every second
++static volatile uint32_t pbHostMs = 0;  // ms at the host's last byte (0: none yet)
++#ifndef PLATFORM_LINUX
++static constexpr uint32_t OTG_DSTS = 0x50000808u;  // bit 0: USB suspended (no cable)
++static bool lsOn   = false;
++static bool lsFail = false;    // the arena was taken: tried again LS_RETRY_MS later
++static uint32_t lsFailMs = 0;
++static constexpr uint32_t LS_RETRY_MS = 5000;
++static bool lsEnable = true;   // "listen 0|1"
++static char lsLine[64];
++static unsigned lsPk = 0, lsMsgs = 0, lsLast = 0;   // packets, messages played, last one's frames
++
++static void lsSay(const char *s)
++{
++    // A write with no host busy-waits 500 ms (usb_vcom.c), long enough for
++    // the receiver's 128 ms ring to overrun and lose the packet: only while
++    // the cable is in (not suspended) and the host has written in the last
++    // HOST_MS. "listen" gives the counts at any time.
++    if((((*(volatile uint32_t *) OTG_DSTS) & 1u) == 0) && (pbHostMs != 0) &&
++       ((uint32_t) getTick() - pbHostMs < HOST_MS))
++        pbSay(NULL, s);
++}
++
++static void listenOff()
++{
++    if(lsOn == false)
++        return;
++    pager_listen_stop();
++    lsOn   = false;
++    pbBusy = false;
++}
++
++static void listenStep()
++{
++    static const pr_host host = {omC6r, omC6w, omSleep};
++    if(lsFail && ((uint32_t) getTick() - lsFailMs > LS_RETRY_MS))
++        lsFail = false;
++    bool want = (pbStop(NULL) == false) && (fnHeld == false) && (txRequest == false) &&
++                (micTxMs == 0) && (toneTxMs == 0) && (lsFail == false) && lsEnable &&
++                (enc == NULL);
++    if(want == false)
++    {
++        listenOff();
++        return;
++    }
++    if(lsOn == false)
++    {
++        pbBusy = true;
++        if(pbStop(NULL))
++        {
++            pbBusy = false;
++            return;
++        }
++        if(pager_listen_start(&host, pbAdcBuf, sizeof(pbAdcBuf) / sizeof(pbAdcBuf[0]),
++                              REC_MAX) != 0)
++        {
++            pbBusy   = false;
++            lsFail   = true;
++            lsFailMs = (uint32_t) getTick();
++            lsSay("heard err arena taken");
++            return;
++        }
++        lsOn = true;
++    }
++    int r = pager_listen_poll((uint32_t) getTick(), lsLine, sizeof(lsLine));
++    if(r == PL_NONE)
++        return;
++    lsSay(lsLine);
++    if(r == PL_PACKET)
++        lsPk++;
++    if(r != PL_READY)
++        return;
++    lsMsgs++;
++    recValid  = false;
++    recFrames = pager_listen_take(recMsg, REC_MAX);
++    recValid  = (recFrames > 0);
++    lsLast    = recFrames;
++    msgChanged = true;
++    listenOff();
++    if(recValid)
++        pager_requestPreview();
++}
++#else
++static bool lsOn   = false;
++static bool lsFail = false;
++static bool lsEnable = true;
++static unsigned lsPk = 0, lsMsgs = 0, lsLast = 0;
++static void listenOff() { }
++static void listenStep() { }
++#endif
++
++// "listen 0|1": the receiver off or on (default on); "listen" alone says
++static int listenCommand(const char *line)
++{
++    if(strncmp(line, "listen", 6) != 0)
++        return 0;
++    if(line[6] == ' ')
++        lsEnable = (line[7] != '0');
++    else if(line[6] != '\0')
++        return 0;
++    char out[64];
++    snprintf(out, sizeof(out), "listen on=%d running=%d fail=%d pk=%u msgs=%u last=%u pv=%d/%u",
++             lsEnable ? 1 : 0, lsOn ? 1 : 0, lsFail ? 1 : 0, lsPk, lsMsgs, lsLast,
++             pvRunning ? 1 : 0, pvFrame);
++    pbSay(NULL, out);
++    return 1;
++}
++
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
 +// passes, so hamlet can drive the probe with no reflash: "auto 0" stops the
 +// passes, "help" lists the rest, "mod ..." goes to the module loader.
@@ -1046,6 +1259,7 @@ index 00000000..e7399048
 +    char c;
 +    while(vcom_readBlock(&c, 1) == 1)
 +    {
++        pbHostMs = (uint32_t) getTick() | 1u;
 +        if((c != '\r') && (c != '\n'))
 +        {
 +            if(pbCmdLen < sizeof(pbCmd) - 1)
@@ -1056,9 +1270,13 @@ index 00000000..e7399048
 +            continue;
 +        pbCmd[pbCmdLen] = '\0';
 +        pbCmdLen = 0;
++        listenOff();
 +        if(pbStop(NULL))
 +        {
-+            pbSay(NULL, "err busy (PTT or the speaker preview)");
++            char e[64];
++            snprintf(e, sizeof(e), "err busy (ptt=%d preview=%d frame %u/%u)",
++                     platform_getPttStatus() ? 1 : 0, pvRunning ? 1 : 0, pvFrame, msgFrames());
++            pbSay(NULL, e);
 +            continue;
 +        }
 +        pbBusy = true;
@@ -1070,7 +1288,8 @@ index 00000000..e7399048
 +            if(enc != NULL)     // a module that ended mid-recording: keep what it made
 +                omEncEnd();
 +        }
-+        else if((phyCommand(pbCmd) == 0) && (tuneCommand(pbCmd) == 0))
++        else if((phyCommand(pbCmd) == 0) && (tuneCommand(pbCmd) == 0) &&
++                (listenCommand(pbCmd) == 0))
 +            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
 +        if(r == I2SP_AUTO_ON)
@@ -1089,17 +1308,22 @@ index 00000000..e7399048
 +    {
 +        if(pbAuto && (pbStop(NULL) == false))
 +        {
++            listenOff();
 +            pbBusy = true;
 +            if(pbStop(NULL) == false)
 +                i2sp_pass(&ops);
 +            pbBusy = false;
 +        }
-+        for(unsigned t = 0; (t < PB_PAUSE_MS) && pbRun; t += 50)
++        for(unsigned t = 0; (t < PB_PAUSE_MS) && pbRun; )
 +        {
 +            pbPoll(&ops);
-+            sleepFor(0, 50);
++            listenStep();
++            unsigned ms = lsOn ? 10 : 50;   // the ring holds 128 ms
++            sleepFor(0, ms);
++            t += ms;
 +        }
 +    }
++    listenOff();
 +    return NULL;
 +}
 +
@@ -1109,6 +1333,7 @@ index 00000000..e7399048
 +        return;
 +    pbRun  = true;
 +    pbHold = false;
++    lsFail = false;
 +    pthread_attr_t attr;
 +    pthread_attr_init(&attr);
 +    pthread_attr_setstacksize(&attr, PB_STACK);
@@ -1348,7 +1573,7 @@ index 00000000..e7399048
 +#endif
 +    {
 +        pt_air_defaults(&air, prof.payload, BAUD, pt_message_source, &msg);
-+        ffsk_init(&ffsk, &air, txFs, BAUD, 0, 0, txLevel);
++        ffsk_init(&ffsk, &air, txFs, BAUD, txMark, txSpace, txLevel);
 +    }
 +    cw_init(&cw, ident, txFs, 20, 800, CW_LEVEL);
 +
@@ -1389,9 +1614,14 @@ index 00000000..e7399048
 +    {
 +        bool inCw     = sendIdentOnly;
 +        bool released = false;
++        long long t0  = getTick();
 +        stream_sample_t *idle = outputStream_getIdleBuffer(stream);
 +        while(audioPath_getStatus(path) == PATH_OPEN)
 +        {
++            // never longer than SEND_MAX_MS, whatever happens (the longest
++            // message, 30 s as PHY R, takes about 75 s with its ident)
++            if(getTick() - t0 > SEND_MAX_MS)
++                break;
 +            // One press sends the whole message; a second press cuts it
 +            // short, but the Morse ident still goes out (every
 +            // transmission carries it: on air 11-14 a cut send had none)

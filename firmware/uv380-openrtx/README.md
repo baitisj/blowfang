@@ -181,18 +181,40 @@ decodes and plays as it arrives, and back; the macro menu and the main screen sh
 The plain build always sends FSK.
 
 **FUNC: hold to record, let go to send (probe image).** In PAGER mode on 440.850 MHz, holding FUNC
-(the black side button above PTT) keys the radio as FM voice with the mic, LED orange, and records
-the mic as sotto 1200 from the C6000's codec input (I2S3, `pager_rec.c`, gain 16 as `micsend`).
-Letting go sends the recording as PTT would (RNG or FSK, then the ident) at the channel's power.
-When the 30 s store fills the carrier drops and the LED blinks red until FUNC is let go. The mic
-preamp stays on in PAGER mode, since it needs about 6 s to settle. The TYT cable in the side jack
-switches the internal mic out, so record with it unplugged.
+(the black side button above PTT) records the mic as sotto 1200 from the C6000's codec input
+(I2S3, `pager_rec.c`, gain 5), LED orange, WITHOUT transmitting: only the C6000 runs its analog
+transmit with the mic selected (E0 c1 ... 60 80, the half of OpenRTX's startAnalogTx that leaves
+the AT1846S in receive and the PA off; `micsilent`, 11-14 15:31Z). Letting go sends the
+recording as PTT would (RNG or FSK, then the ident) at the channel's power. Recording stops
+after 31 s, or after 1 s with no samples, whatever FUNC does; when the 30 s store fills the LED
+blinks red until FUNC is let go. The mic preamp stays on in PAGER mode, since it needs about 6 s
+to settle. The TYT cable in the side jack switches the internal mic out, so record with it
+unplugged.
+
+**It plays what it hears (probe image).** While PAGER mode sits idle in receive, the FM
+receiver's audio comes off the C6000's codec (I2S3 at 8 kHz, `mod/rxaudio.h`'s route) into the
+PHY R receiver (`c/common/range_rx.c`, as the `rangerx` module), and `c/common/pager_rx.c` puts
+the message back together from the packets, in any order (its 14.5 KB in the encoder's idle arena,
+not the heap). A sotto 1200 message that is whole, or
+three quarters there and then quiet for 4 s (the gaps filled from neighbouring frames), becomes
+the message (# plays it again, PTT sends it) and plays on the speaker at once; the same message
+isn't played again for 60 s. It stops for PTT, FUNC, the speaker preview and every USB command,
+and starts again after them. With the cable in it prints `heard pkt seq=.. id=.. frames=G/T`,
+`heard whole|part ...` and `heard dropped ...` lines (only while the host has written in the last
+30 s: a write with no host busy-waits). `listen 0|1` turns it off or on, `listen` says its state
+and the preview's. Receive only: no RF register. PHY F (FSK) isn't received.
+
+The first image (8b87511) froze hard after playing a message it heard with the cable out
+(11-14 15:44Z, a battery pull). Suspect: the speaker preview stuck in the DAC driver's sync,
+which waits with no timeout, and the RTX thread waiting on it at the next PTT. Now the RTX thread
+waits at most 3 s for the preview, and `err busy` says which frame the preview is on.
 
 **Bench knobs (probe image).** Over USB, or a module's `api->probe()`: `lvl N` sets the FFSK
 peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM runs at
 (47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
 turns the line in's pre-emphasis off or on (default on), and `trim N` adds N Hz (-8000 to 8000)
-to the transmit frequency. Each answers `tune lvl=... fs=... emph=... trim=...`, and `tune` alone
+to the transmit frequency; `mark N` and `space N` set PHY F's tones (800-2600 Hz, 0: 1200 and
+1800). Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=...`, and `tune` alone
 only answers.
 
 **Transmit frequency trim.** Jeff's radio transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
