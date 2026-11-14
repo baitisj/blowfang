@@ -360,6 +360,65 @@ static void alarm_screen(run_t *r, uint32_t now_ms, uint32_t at_min, uint32_t le
   r->api->lcd_flush();
 }
 
+#include "k6ui.h"
+
+/* no time in the module (CI's build): ask for one on the screen (Jeff 2026-11-14: a module that
+   ends at once looks broken). Four digits, UTC hhmm; * takes one back, MENU sets it, EXIT
+   leaves. -> UTC minutes of the day, or -2 (EXIT), -1 (no screen, or a minute with no key) */
+__attribute__((noinline)) static int alarm_set(run_t *r) {
+  ui_t u;
+  char l[24], *p;
+  uint8_t d[4];
+  int n = 0, k = 1, i;
+  uint32_t ms, shown = 0xFFFFFFFFu, t0 = r->api->ms();
+  ui_begin(&u, r->api, " BLOWFANG ALARM", "WAKE ME AT (UTC):");
+  if (!u.on) return -1;
+  ui_release(&u);
+  ui_text(&u, 5, "MENU SET  EXIT QUIT");
+  for (;;) {
+    if (r->api->clock_get(&ms, 0, 0) == 0 && udiv(ms, 1000) != shown) {
+      shown = udiv(ms, 1000);
+      p = hms(put(l, "  NOW "), shown);
+      *p = 0;
+      ui_text(&u, 4, l);
+      k = 1;
+    }
+    if (k) {
+      p = put(l, "    ");
+      for (i = 0; i < 4; i++) {
+        if (i == 2) *p++ = ':';
+        *p++ = i < n ? (char)('0' + d[i]) : '_';
+      }
+      *p = 0;
+      ui_text(&u, 2, l);
+      ui_now(&u);
+    }
+    k = ui_key(&u);
+    if (k) t0 = r->api->ms();
+    else if (r->api->ms() - t0 > 60000u) return -1;
+    if (k == 'X') return -2;
+    if (k >= '0' && k <= '9' && n < 4) d[n++] = (uint8_t)(k - '0');
+    else if (k == '*' && n) n--;
+    else if ((k == 'M' || k == '#') && n == 4) {
+      int h = d[0] * 10 + d[1], m = d[2] * 10 + d[3];
+      if (h < 24 && m < 60) return h * 60 + m;
+      ui_text(&u, 1, "NOT A TIME. AGAIN:");
+      n = 0;
+    } else {
+      k = 0;
+    }
+    r->api->delay_us(20000);
+  }
+}
+
+/* a message that stays on the screen until a key (or 15 s) */
+__attribute__((noinline)) static void alarm_msg(run_t *r, const char *a, const char *b) {
+  ui_t u;
+  ui_begin(&u, r->api, " BLOWFANG ALARM", a);
+  ui_text(&u, 2, b);
+  ui_end(&u, 0, 0);
+}
+
 /* wait for the alarm: 0 at its time, -2 a held key, -6 no clock (or it was lost), -7 no time
    set, -8 an image before level 8 */
 static int alarm_wait(run_t *r) {
@@ -371,12 +430,18 @@ static int alarm_wait(run_t *r) {
   at_min = a[8] | (uint32_t)a[9] << 8;
   if (r->level < 8) return -8;
   if (at_min >= 1440) {
-    api->say("alarm: no time set (k6_midi.py alarm)");
-    return -7;
+    int k = alarm_set(r);
+    if (k == -2) return -2;
+    if (k < 0) {
+      api->say("alarm: no time set (k6_midi.py alarm)");
+      return -7;
+    }
+    at_min = (uint32_t)k;
   }
   for (;;) {
     if (api->clock_get(&ms, 0, &w) < 0) {
       api->say("alarm: no clock (run aisclk or aprsclk first)");
+      alarm_msg(r, "NO CLOCK YET: RUN", "AIS OR APRS CLOCK");
       return -6;
     }
     t = at_min * 60000u;

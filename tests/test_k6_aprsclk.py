@@ -391,6 +391,25 @@ def test_clkget_says_the_core_clock():
     assert e.run()[0] == 0xFFFFFFFD and e.said == []
 
 
+def test_clkget_screen_runs_until_a_key():
+    """the release's CLOCK with the screen: the time running each second, the date, the bound,
+    until a key"""
+    pytest.importorskip("unicorn")
+    from test_k6_i2s import START, run
+    lcd = {}
+    clock = {"fix": (0, 4 * 3600000 + 52 * 60000 + 10123, 9 | 11 << 8 | 2026 << 16, 14)}
+    ret, said, _, _ = run(START, src=os.path.join(K6, "mod", "clkget.c"), level=9, lcd=lcd, clock=clock,
+                          keys=[(3_000_000, 4_000_000)])
+    assert ret == 14 and said == ["core clk 04:52:10.123 w=14 d=09/11/2026"], said
+    texts = [f["text"] for f in lcd["frames"]]
+    assert texts[-1][:6] == ["CLOCK  UTC", "", "    04:52:13", "    09/11/2026", "WITHIN 14 MS", "ANY KEY: BACK"], texts[-1]
+    assert ["CLOCK  UTC", "", "    04:52:11", "    09/11/2026", "WITHIN 14 MS", "ANY KEY: BACK"] in texts
+    if os.environ.get("K6_SCREENS"):
+        import json
+        with open(os.path.join(os.environ["K6_SCREENS"], "clkget.json"), "w") as fo:
+            json.dump([lcd["frames"][-1] | {"wf": [], "glyphs": []}], fo)
+
+
 def test_float_decoder_takes_preemphasised_audio():
     """a receiver's audio of a pre-emphasised mobile: decode_any tries de-emphasis too"""
     from scipy.signal import lfilter

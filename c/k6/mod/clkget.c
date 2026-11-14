@@ -14,6 +14,9 @@
 #define K6_NAME "CLOCK"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
 K6_MODULE_NAME(K6_NAME);
+#define UI_UDIV udiv
+static uint32_t udiv(uint32_t n, uint32_t d);
+#include "k6ui.h"
 
 static char *put(char *p, const char *s) {
   while (*s) *p++ = *s++;
@@ -44,6 +47,46 @@ static char *dec(char *p, uint32_t v, int w) {
   return p;
 }
 
+/* the screen: the time running, the date and how sure, until a key (10 minutes at most) */
+__attribute__((noinline)) static void live(const k6_api_t *api) {
+  ui_t u;
+  char l[24], *p;
+  uint32_t ms, date, w, s, m, h, t0, last = 0xFFFFFFFFu;
+  ui_begin(&u, api, "CLOCK  UTC", "");
+  if (!u.on) return;
+  ui_release(&u);
+  ui_text(&u, 5, "ANY KEY: BACK");
+  t0 = api->ms();
+  while (!api->key_poll() && api->ms() - t0 < 600000u) {
+    if (api->clock_get(&ms, &date, &w) < 0) {
+      ui_text(&u, 2, "  NO TIME YET");
+      ui_text(&u, 3, "RUN AIS CLOCK OR");
+      ui_text(&u, 4, "APRS CLOCK FIRST");
+    } else if ((s = udiv(ms, 1000)) != last) {
+      last = s, m = udiv(s, 60), h = udiv(m, 60);
+      p = ui_put(l, "    ");
+      p = dec(p, h, 2), *p++ = ':', p = dec(p, m - 60 * h, 2), *p++ = ':', p = dec(p, s - 60 * m, 2);
+      *p = 0;
+      ui_text(&u, 2, l);
+      p = ui_put(l, "    ");
+      if (date & 0xFF) {
+        p = dec(p, date & 0xFF, 2), *p++ = '/', p = dec(p, date >> 8 & 0xFF, 2), *p++ = '/';
+        p = dec(p, date >> 16, 4);
+        *p = 0;
+      } else {
+        ui_put(p, "NO DATE");
+      }
+      ui_text(&u, 3, l);
+      p = ui_put(l, "WITHIN ");
+      if (w < 1000) p = ui_put(dec(p, w, 1), " MS");
+      else p = ui_put(dec(p, udiv(w, 1000), 1), " S");
+      ui_text(&u, 4, l);
+    }
+    ui_flush(&u, 200);
+    api->delay_us(50000);
+  }
+}
+
 int k6_main(const k6_api_t *api) {
   char line[64], *p;
   uint32_t ms, date, w, h, m, s;
@@ -65,8 +108,6 @@ int k6_main(const k6_api_t *api) {
   }
   *p = 0;
   api->say(line);
-  api->lcd_text(0, "CLOCK");
-  api->lcd_text(2, line + 5);
-  api->lcd_flush();
+  live(api);
   return w > 0x7FFFFFFFu ? -1 : (int)w;
 }

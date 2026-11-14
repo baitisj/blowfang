@@ -338,7 +338,7 @@ def test_rtls_module_lists_the_table_on_an_emulated_m0(lib):
     from test_k6_i2s import START, run
     src = os.path.join(K6, "mod", "rtls.c")
     code, entry = k6mod.build(src)
-    assert k6mod.source_level(src) == 5 and 16 + len(code) + 8 <= 4096, len(code)
+    assert k6mod.source_level(src) == 5 and 16 + len(code) + 8 <= 11776, len(code)
     # an empty (erased) region: an empty table, nothing written
     fl = {}
     ret, said, _, _ = run(START, src=src, level=5, flash=fl, code=(code, entry), spare=4072 - len(code))
@@ -356,6 +356,14 @@ def test_rtls_module_lists_the_table_on_an_emulated_m0(lib):
     assert ret == 2 and said[0].startswith("RT live=2 dead=0") and said[0].endswith("r=2"), said
     assert said[1:] == ["RT 1 146940000 0 T0 W7ABC/R - -200 Lynden", "RT 2 443100000 0 T0 - - -200"], said
     assert fl["progs"] == fl["erases"] == 0
+    # the release's image (the screen): the list on it until EXIT
+    lcd = {}
+    ret, said, _, _ = run(START, src=src, level=9, flash={"mem": bytearray(mem)}, code=(code, entry),
+                          spare=11752 - len(code), lcd=lcd, keys=[(400_000, 500_000)],
+                          keypad=[(400_000, 500_000, "X")], pb_idr=lambda st: 0x4010)
+    assert ret == 2
+    fr = lcd["frames"][-1]["text"]
+    assert fr[:3] == ["STATIONS 2", "146.940 W7ABC/R -200", "443.100 - -200"] and fr[5] == "EXIT BACK", fr
     # an image below level 5 is refused before any flash call
     ret, said, _, _ = run(START, src=src, level=4, flash={}, code=(code, entry))
     assert ret == -3 and said == []
