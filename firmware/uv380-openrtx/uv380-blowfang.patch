@@ -191,7 +191,7 @@ new file mode 100644
 index 0000000..a6cf236
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,886 @@
+@@ -0,0 +1,894 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -952,7 +952,15 @@ index 0000000..a6cf236
 +        holdProbe();            // the probe never runs during TX
 +        joinPreview(true);      // the speaker preview never runs during TX
 +        if((status->txFrequency >= TX_MIN_HZ) && (status->txFrequency <= TX_MAX_HZ))
++        {
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++            blowfang_txLow = true;  // the bench image: 1 W, as every send it makes (11-14:
++#endif                              // pulling the USB cable presses PTT)
 +            send(status);
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++            blowfang_txLow = false;
++#endif
++        }
 +    }
 +
 +#ifdef BLOWFANG_I2SPROBE
