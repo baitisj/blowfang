@@ -55,5 +55,6 @@ radios/uv380/build/
 c/common/cw_tx_host
 c/common/range_tx_host
 c/common/range_rx_host
+c/common/pager_rx_host
 firmware/uv380-openrtx/build/
 firmware/uv380-openrtx/out/
