@@ -188,10 +188,10 @@ index 4e8e0630..8b1d41f4 100644
       */
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..5acd2e9f
+index 00000000..8f5dc31a
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,922 @@
+@@ -0,0 +1,1001 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -209,6 +209,7 @@ index 00000000..5acd2e9f
 +#include "rtx/rtx.h"
 +#include <pthread.h>
 +#include <string.h>
++#include <math.h>
 +#ifdef PLATFORM_LINUX
 +#include <stdio.h>
 +#include <stdlib.h>
@@ -282,6 +283,8 @@ index 00000000..5acd2e9f
 +static constexpr freq_t SEND_HZ   = 440850000;  // tx_request sends only here
 +static volatile bool   txRequest  = false;  // a module asked for a send
 +static volatile unsigned micTxMs  = 0;      // a module asked for the keyed mic test
++static volatile unsigned toneTxMs = 0;      // a module asked for the keyed line-in tone
++static volatile unsigned toneHz   = 0;
 +#endif
 +#if defined(PLATFORM_MDUV3x0)
 +// radio_UV3x0.cpp (blowfang): 1 W whatever the channel says, and the mic in
@@ -761,6 +764,64 @@ index 00000000..5acd2e9f
 +    platform_ledOff(RED);
 +}
 +
++// The keyed line-in tone (tx_tone, level 3): ms of FM carrying a tone from the
++// MCU through the line in (the path every send takes), at 1 W, then the Morse
++// ident. The module runs on meanwhile and may switch the C6000's transmit
++// source (E0) and capture I2S3: can the radio send modem audio and hear the
++// mic at once (Jeff 11-14: stream sotto while PTT is held)?
++static int omTxTone(unsigned ms, unsigned hz)
++{
++    rtxStatus_t st = rtx_getCurrentStatus();
++    if((ms == 0) || (ms > 5000) || (hz < 100) || (hz > 3000) ||
++       (st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++        return -1;
++    toneHz   = hz;
++    toneTxMs = ms;
++    return 0;
++}
++
++static void toneTest(rtxStatus_t *const status, unsigned ms, unsigned hz)
++{
++    pathId path = audioPath_request(SOURCE_MCU, SINK_RTX, PRIO_TX);
++    if(path < 0)
++        return;
++    status->opStatus = TX;
++    platform_ledOn(RED);
++    radio_enableTx();
++    memset(txBuf, 0, sizeof(txBuf));
++    streamId stream = audioStream_start(path, txBuf, 2 * BLOCK, FS,
++                                        STREAM_OUTPUT | BUF_CIRC_DOUBLE);
++    if(stream >= 0)
++    {
++        // y[n] = 2 cos(w) y[n-1] - y[n-2], restarted each block from the
++        // phase so it doesn't drift in amplitude
++        const float w = 6.2831853f * (float) hz / (float) FS;
++        float phase = 0.0f;
++        unsigned blocks = (ms * (FS / 1000) + BLOCK - 1) / BLOCK;
++        stream_sample_t *idle = outputStream_getIdleBuffer(stream);
++        for(unsigned b = 0; (b < blocks) && (platform_getPttStatus() == false); b++)
++        {
++            float c2 = 2.0f * cosf(w), y1 = sinf(phase - w), y2 = sinf(phase - 2.0f * w);
++            for(size_t i = 0; i < BLOCK; i++)
++            {
++                float y = c2 * y1 - y2;
++                y2 = y1;
++                y1 = y;
++                idle[i] = (stream_sample_t) (y * (float) LEVEL);
++            }
++            phase += w * (float) BLOCK;
++            while(phase > 6.2831853f)
++                phase -= 6.2831853f;
++            outputStream_sync(stream, true);
++            idle = outputStream_getIdleBuffer(stream);
++        }
++        audioStream_stop(stream);
++    }
++    radio_disableRtx();
++    audioPath_release(path);
++    platform_ledOff(RED);
++}
++
 +static int omTxRequest()
 +{
 +    rtxStatus_t st = rtx_getCurrentStatus();
@@ -773,7 +834,8 @@ index 00000000..5acd2e9f
 +static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
 +                               omSleep, omC6r, omC6w, omAdc, omRssi,
 +                               omProbe, omEncBegin, omEncPush, omEncEnd,
-+                               omMsg, omPreview, omTxRequest, omTxMic};
++                               omMsg, omPreview, omTxRequest, omTxMic,
++                               omTxTone};
 +#endif
 +
 +// Command lines from USB serial (i2sprobe.h, i2sp_command), read between
@@ -961,6 +1023,23 @@ index 00000000..5acd2e9f
 +            joinPreview(true);
 +            blowfang_txLow = true;
 +            micTest(status, ms);
++            sendIdentOnly = true;
++            send(status);
++            sendIdentOnly = false;
++            blowfang_txLow = false;
++        }
++    }
++    // tx_tone: the same, with a tone from the MCU through the line in
++    if(toneTxMs != 0)
++    {
++        unsigned ms = toneTxMs;
++        toneTxMs = 0;
++        if((ptt == false) && (status->txDisable == 0) &&
++           (status->txFrequency == SEND_HZ))
++        {
++            joinPreview(true);
++            blowfang_txLow = true;
++            toneTest(status, ms, toneHz);
 +            sendIdentOnly = true;
 +            send(status);
 +            sendIdentOnly = false;

@@ -179,6 +179,11 @@ makes PTT and `tx_request` send the pager's PHY F instead, the 1800 baud FFSK th
 decodes and plays as it arrives; `phy r` goes back to PHY R, the default at every power-on. Either
 answers with the PHY now in use.
 
+**tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
+the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only, then the
+ident), while the module runs on. `mod/micduplex_tone.c` switches the C6000's transmit source
+meanwhile and reads I2S3, to see whether the radio can send modem audio and hear the mic at once.
+
 **The key.** CI builds images without it. Before flashing, write it in on hamlet with
 `python -m modem.k6 keyimage out/openrtx_mduv3x0p_i2sprobe.bin keyed.bin --key-file
 ~/.config/sotto/k6-mod.key`, then wrap `keyed.bin` for TYT's bootloader with radio_tool, as

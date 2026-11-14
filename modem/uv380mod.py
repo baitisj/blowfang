@@ -28,7 +28,7 @@ ARENA = 16384            # UVM_ARENA
 # table -> (magic, its newest API level, arena bytes)
 TABLES = {
     "uv380": (MAGIC, LEVEL, ARENA),
-    "openrtx": (b"U3R", 2, 16384),      # firmware/uv380-openrtx/ortx_mod.h: OM_MAGIC, OM_LEVEL, OM_ARENA
+    "openrtx": (b"U3R", 3, 16384),      # firmware/uv380-openrtx/ortx_mod.h: OM_MAGIC, OM_LEVEL, OM_ARENA
 }
 ENTRY = "uv_main"
 ROOT = k6mod.ROOT

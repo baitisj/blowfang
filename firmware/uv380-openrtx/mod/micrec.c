@@ -45,7 +45,9 @@
 #include "ortx_mod.h"
 #include "rxaudio.h"
 
+#ifndef UV_MODULE_LEVEL
 #define UV_MODULE_LEVEL 2
+#endif
 
 #ifndef MR_WAIT
 #define MR_WAIT 120u
@@ -80,6 +82,7 @@ typedef struct {
     uint8_t r26, e0, e2, e4;
     uint32_t pa_moder, pa_odr;
     unsigned rd, ov;
+    unsigned tone;                  /* level(): the 1 kHz amplitude (Goertzel), 16-bit scale */
 } mr_t;
 
 static char hexd(unsigned v) {
@@ -149,6 +152,9 @@ static void level(const ortx_api_t *api, mr_t *m, uint32_t ms, unsigned *rms, un
     int32_t sum = 0;
     uint32_t sq = 0, n = 0, end;
     unsigned p = 0;
+#ifdef MR_DUPLEX
+    float g1 = 0.0f, g2 = 0.0f;     /* Goertzel at 1 kHz, 8 kHz samples: 2 cos(pi/4) */
+#endif
     api->sleep_ms(150);
     m->rd = rx_wr(&m->rs) & ~1u;
     end = api->ms() + ms;
@@ -162,6 +168,11 @@ static void level(const ortx_api_t *api, mr_t *m, uint32_t ms, unsigned *rms, un
             int v = x[i];
             unsigned a = (unsigned)(v < 0 ? -v : v);
             p = a > p ? a : p;
+#ifdef MR_DUPLEX
+            float g = (float)v + 1.4142136f * g1 - g2;
+            g2 = g1;
+            g1 = g;
+#endif
             if (n < 65536u) {
                 sum += v;
                 sq += (uint32_t)(v * v) >> 8;
@@ -172,6 +183,10 @@ static void level(const ortx_api_t *api, mr_t *m, uint32_t ms, unsigned *rms, un
     int32_t mean = n ? sum / (int32_t)n : 0;
     uint32_t var = n ? sq / n : 0, mm = (uint32_t)(mean * mean) >> 8;
     *rms = isqrt((var > mm ? var - mm : 0u) << 8);
+#ifdef MR_DUPLEX
+    float pw = g1 * g1 + g2 * g2 - 1.4142136f * g1 * g2;  /* |X(1 kHz)|^2 */
+    m->tone = n ? isqrt((uint32_t)(4.0f * pw / ((float)n * (float)n))) : 0u;
+#endif
     *pk = p;
     *cnt = n;
 }
@@ -229,18 +244,34 @@ int uv_main(const ortx_api_t *api) {
     api->memset(cnt, 0, sizeof cnt);
     /* with the cable in the mic is switched out (11-14 04:57Z keyed a silent carrier): no unplug,
        no transmit */
+#ifdef MR_TONE
+    /* the radio sends a 1 kHz tone from the MCU through the line in (what a sotto stream would
+       take) while the module switches E0 and listens for the mic on I2S3 */
+    int txr = out ? api->tx_tone(MR_TXMS, 1000u) : -2;
+#else
     int txr = out ? api->tx_mic(MR_TXMS) : -2;
+#endif
     api->sleep_ms(250);             /* + level()'s 150 */
 #ifdef MR_DUPLEX
     /* can the radio send the MCU's line in and still hear the mic? E0 picks the C6000's transmit
        source (startAnalogTx: 0x81 base, 0x40 mic, 0x02 line in); the MCU's line in is silent here,
        so on air only the mic setting carries voice. Each window: E0, 150 ms, 650 ms of I2S3 */
+#ifdef MR_TONE
+    static const uint8_t dupE0[5] = {0x83, 0xC3, 0xC1, 0x81, 0x83};
+#else
     static const uint8_t dupE0[5] = {0xC1, 0x83, 0xC3, 0x81, 0xC1};
+#endif
+    unsigned tn[5];
     for (unsigned k = 0; k < 5u; k++) {
         api->c6000_write(0xE0, dupE0[k]);
         level(api, &m, 650u, &rms[k], &pk[k], &cnt[k]);
+        tn[k] = m.tone;
     }
+#ifdef MR_TONE
+    api->c6000_write(0xE0, 0x83);   /* as tx_tone set it */
+#else
     api->c6000_write(0xE0, 0xC1);
+#endif
 #else
     level(api, &m, 500u, &rms[0], &pk[0], &cnt[0]);
 #endif
@@ -337,6 +368,12 @@ int uv_main(const ortx_api_t *api) {
         api->fmt(line, sizeof line, "micrec set %u rms=%u pk=%u n=%u", k, rms[k], pk[k], cnt[k]);
         api->say(line);
     }
+#ifdef MR_DUPLEX
+    for (unsigned k = 0; k < 5u; k++) {
+        api->fmt(line, sizeof line, "micrec set %u tone1k=%u", k, tn[k]);
+        api->say(line);
+    }
+#endif
 #ifdef MR_TX
     api->fmt(line, sizeof line, "micrec tx_mic=%d%s", txr,
              txr == -2 ? " (no unplug seen: not keyed)" : "");
