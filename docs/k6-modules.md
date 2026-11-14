@@ -200,6 +200,32 @@ screen only when it is 6 or more; its `K6_MODULE_LEVEL` stays what its other cal
 on a level 6 image. The emulators (`tests/test_k6_i2s.py` `run(lcd=...)`, `tests/test_k6_ft8.py`
 `emulate(lcd=...)`) record each flushed frame, and fail a screen call below level 6.
 
+**Every release module draws (`c/k6/mod/k6ui.h`, 2026-11-14).** Jeff: "you load up a module
+and nothing changes, so it looks like something is broken". The MENU starts a module and its
+screen shows only after the module's first `lcd_flush`, so a module with no screen calls left
+the module list frozen, and one that ended at once (an alarm with no time, a TX module off
+440.850, no AIS heard) went back with nothing said. The 25 library modules
+(`tools/k6_release_modules.txt`) now all show what they are doing, using one header:
+
+- `ui_begin(u, api, title, status)` clears the screen and draws the title and line 1 at once
+  (before a slow set-up); off below level 6 or with no display (`lcd_flush` -1), so the same
+  build runs on older images and in the level 2 tests as before;
+- `ui_text`, `ui_flush(u, gap)` (a minimum gap, since a flush costs 20-40 ms: a receive loop
+  flushes a few times a second at most, and never inside a symbol's timing), `ui_now`;
+- `ui_log` scrolls results up through lines 2-4; `ui_dec`, `ui_mhz`, `ui_mmss` format without
+  division;
+- `ui_key` scans the keypad matrix itself (the API's `key_poll` only says "a key"):
+  debounced, UP and DOWN repeat. FT8 RX uses it for its band keys, ALARM for the wake time;
+- `ui_end(u, how, stopped)`: a run that ends by itself (time up, done, refused) keeps its last
+  screen until a key or 15 s with "ANY KEY: BACK"; a run stopped with a key goes straight back.
+  `ui_tx_end` turns the TX modules' return codes into words ("TX ONLY ON 440.850 / NOW ON
+  146.520 / TUNE THERE, RUN AGAIN"); `ui_hold` is the few-byte end hold for the AIS and APRS
+  clocks, which draw their own screens.
+
+The cost is about 1.2 KB of code in a module that uses most of it (FT8 RX fit by trading its
+waterfall for a one-line bar graph). aisclk with its end hold no longer fits beside the upload's
+telemetry text: upload it with `--telemetry 0`, as aisships.
+
 ## API level 7: the green RX LED
 
 Added 2026-11-08 (Jeff: "indicate modem receive activity by blinking the green LED in the front

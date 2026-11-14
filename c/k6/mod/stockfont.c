@@ -241,6 +241,9 @@ int k6_main(const k6_api_t *api) {
   s->wf = (uint8_t *)api->scratch(&n);
   if (n < ROWS * 16 + CHUNK) return -3;
   s->buf = s->wf + ROWS * 16;
+  api->lcd_text(0, "STOCK FONT");             /* the reads below take a few seconds */
+  api->lcd_text(1, "READING THE FLASH");
+  api->lcd_flush();
 
   cr1 = R16(SPI1 + SPI_CR1);
   p = put(s->ln, "spi1 cr1=");
