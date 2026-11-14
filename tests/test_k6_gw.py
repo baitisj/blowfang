@@ -363,7 +363,7 @@ def test_hits_end_rounds_and_pay():
 def test_builds_and_fits(name):
     from modem import k6mod
     code, entry = build(name)
-    assert k6mod.source_level(os.path.join(MOD, name + ".c")) == 6 and entry == 0
+    assert k6mod.source_level(os.path.join(MOD, name + ".c")) == 6 and entry == 16   # after its name
     assert len(code) <= BLOCK, len(code)         # (build.sh's limit too)
 
 

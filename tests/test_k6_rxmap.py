@@ -76,7 +76,7 @@ def go(blk, model, keys=(), level=4):
 def test_builds_small_with_one_block_and_room():
     from modem import k6mod
     code, entry = k6mod.build(SRC)
-    assert k6mod.source_level(SRC) == 2 and entry == 0
+    assert k6mod.source_level(SRC) == 2 and entry == 16   # after its name (K6_MODULE_NAME)
     assert code.count(rx.MAGIC) == 1 and len(code) < 3000
     assert 4072 - len(code) >= 3 * 340            # the most bins pack() allows fit the scratch RAM
     blk = rx.seg_block("A")

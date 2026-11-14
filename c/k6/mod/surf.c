@@ -103,6 +103,10 @@
 #define K6_MODULE_OPT z
 #endif
 #include "../k6_mod.h"
+#ifndef K6_NAME
+#define K6_NAME "SURF"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #define NB 64                   /* bins in the arrays */
 #define NV 63                   /* bins on screen: the middle one and 31 each side */

@@ -194,6 +194,12 @@ station". A row with a confirmed call shows a check mark in place of the grade (
 (Jeff's "4 revised", 2026-11-07) is 2 px of loudest level, 5 dB a pixel from -120 dBm (21 px
 full), over a dotted line for the score (10 points full).
 
+A scroll bar (Jeff, 2026-11-14), 2 px wide at the right edge from the header to the footer,
+shows which part of the list is on screen when the list is longer than the 7 rows: the lit
+part's length is the rows on screen as a share of the list, its place where they are in it.
+The editor's field list and the MENU module list have the same bar. Mock-up:
+/mnt/project-files/k6-release/explore-scrollbar.png.
+
 The header (Jeff, 2026-11-07) has an icon pair. While sweeping, it shows half-lidded eyes that
 look the other way each time a sweep of the band set ends, so how fast they glance shows how fast
 the scan is going (Jeff 22:38), followed by the band set and how many candidates

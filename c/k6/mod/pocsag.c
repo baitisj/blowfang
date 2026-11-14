@@ -67,6 +67,10 @@
 #define K6_MODULE_OPT z
 #endif
 #include "../k6_mod.h"
+#ifndef K6_NAME
+#define K6_NAME "POCSAG"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef POC_HZ
 #define POC_HZ 439987500u /* DAPNET, the amateur paging network, 1200 baud */

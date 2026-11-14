@@ -4892,10 +4892,10 @@ index 0000000..0927341
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..419089a
+index 0000000..6cf2059
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2353 @@
+@@ -0,0 +1,2357 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -6982,6 +6982,8 @@ index 0000000..419089a
 +            glyph::text(lcd, x, y, "DMR", true, !sel);
 +        }
 +    }
++    // the scroll bar (Jeff 2026-11-14): rows 11 .. 55, the list's with the rule's 2 px
++    glyph::scroll_bar(lcd, 11, 45, top, ROWS as u32, unsafe { ffi::ex_view_n(&t.ex) });
 +    if sel_p.is_null() {
 +        None
 +    } else {
@@ -7244,6 +7246,8 @@ index 0000000..419089a
 +                }
 +                glyph::text(lcd, 1, y, core::str::from_utf8(&buf[..n]).unwrap_or(""), true, !sel);
 +            }
++            let (rows, n) = (ED_ROWS as u32, ED_FIELDS as u32);
++            glyph::scroll_bar(lcd, ED_TOP - 1, rows * ED_PITCH as u32, top as u32, rows, n);
 +            let n = unsafe { ffi::sted_hint(e, buf.as_mut_ptr()) }.clamp(0, 21) as usize;
 +            line(lcd, FOOT, core::str::from_utf8(&buf[..n]).unwrap_or(""));
 +        }
@@ -9548,10 +9552,10 @@ index 8dd4ad1..3916854 100644
  }
 diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
 new file mode 100644
-index 0000000..c8b254e
+index 0000000..f95a056
 --- /dev/null
 +++ b/src/ui/glyph.rs
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,175 @@
 +//! Text without embedded-graphics' text code or its 6x10 font (Jeff 2026-11-10: "switching over
 +//! to the stock fonts -- save some space!"). The SC5260 has no character ROM, so Baofeng's own
 +//! firmware kept its fonts in the K6's SPI flash, and Aura's first-boot format leaves them there
@@ -9707,6 +9711,25 @@ index 0000000..c8b254e
 +        }
 +        x += w;
 +    }
++}
++
++/// A list's scroll bar (Jeff 2026-11-14): 2 px wide at the right edge, rows y0 .. y0 + h, when
++/// the list (n rows) is longer than the screen (vis rows from row top): the lit part is the rows
++/// on screen, its length and place their share of the list and where they are in it. The two
++/// columns are cleared first, so a selected row's inverted bar stops short of it (text ends by
++/// x = 124 in EXPLORE, the editor and the module list).
++pub fn scroll_bar<D>(lcd: &mut D, y0: i32, h: u32, top: u32, vis: u32, n: u32)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    use embedded_graphics::primitives::Rectangle;
++    if n <= vis {
++        return;
++    }
++    let th = (h * vis / n).max(3);
++    let y = y0 + ((h - th) * top.min(n - vis) / (n - vis)) as i32;
++    lcd.fill_solid(&Rectangle::new(Point::new(126, y0), Size::new(2, h)), BinaryColor::Off).ok();
++    lcd.fill_solid(&Rectangle::new(Point::new(126, y), Size::new(2, th)), BinaryColor::On).ok();
 +}
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
 index cdfa0f7..0b63d61 100644
@@ -9947,10 +9970,10 @@ index cdfa0f7..0b63d61 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..e3a4f5c
+index 0000000..8d5b433
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,438 @@
+@@ -0,0 +1,444 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -9994,16 +10017,18 @@ index 0000000..e3a4f5c
 +    super::glyph::text(lcd, 1, y - 6, t, false, true);
 +}
 +
-+/// The module list (MENU, app/pager.rs): a title bar, four rows (the selected one inverted),
-+/// the keys
++/// The module list (MENU, app/pager.rs): EXPLORE's title bar in the 5x7, six rows in the 4x6
++/// (the selected one inverted), the keys in the 4x6, as the editor (Jeff's layout D)
 +///
 +/// ```text
-+/// MODULES 2/9
-+///  EXPLORE
-+///  ARENA
-+///  SURF
-+///  EDTRIAL
-+/// MENU RUN  EXIT BACK
++/// MODULES 3/27
++/// EXPLORE
++/// ARENA
++/// SURF
++/// AIS SHIPS
++/// AIS CLOCK
++/// APRS CLOCK
++/// MENU-RUN EXIT-BACK
 +/// ```
 +#[cfg(all(feature = "explore", feature = "spilib"))]
 +pub fn draw_menu<D>(lcd: &mut D)
@@ -10012,29 +10037,33 @@ index 0000000..e3a4f5c
 +{
 +    let (_, sel, rows) = app::pager::menu_state();
 +    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 64)), BinaryColor::Off).ok();
-+    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 11)), BinaryColor::On).ok();
++    // EXPLORE's title bar (the 5x7 in a 10-row bar), then the rows as the editor draws them
++    // (Jeff's layout D, 2026-11-14): the 4x6, 7 rows apart, the selected one inverted
++    lcd.fill_solid(&Rectangle::new(Point::new(0, 0), Size::new(128, 10)), BinaryColor::On).ok();
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    out!(b, "MODULES {}/{}", sel + 1, rows);
-+    super::glyph::text(lcd, 1, 2, b.as_str(), false, false);
-+    let top = if sel < 3 { 0 } else { (sel - 2).min(rows.saturating_sub(4)) };
-+    for k in 0..4u8 {
++    super::glyph::text(lcd, 1, 1, b.as_str(), false, false);
++    let top = if sel < 3 { 0 } else { (sel - 2).min(rows.saturating_sub(MENU_ROWS)) };
++    for k in 0..MENU_ROWS {
 +        let i = top + k;
 +        if i >= rows {
 +            break;
 +        }
-+        let y = 19 + 10 * k as i32;
++        let y = 12 + 7 * k as i32;
 +        let mut name = [0u8; 12];
 +        let n = app::pager::menu_row(i, &mut name);
 +        let t = core::str::from_utf8(&name[..n]).unwrap_or("?");
 +        if i == sel {
-+            lcd.fill_solid(&Rectangle::new(Point::new(0, y - 8), Size::new(128, 10)), BinaryColor::On).ok();
-+            super::glyph::text(lcd, 7, y - 6, t, false, false);
-+        } else {
-+            super::glyph::text(lcd, 7, y - 6, t, false, true);
++            lcd.fill_solid(&Rectangle::new(Point::new(0, y - 1), Size::new(128, 7)), BinaryColor::On).ok();
 +        }
++        super::glyph::text(lcd, 1, y, t, true, i != sel);
 +    }
-+    line(lcd, 60, "MENU RUN  EXIT BACK");
++    super::glyph::scroll_bar(lcd, 11, 7 * MENU_ROWS as u32, top as u32, MENU_ROWS as u32, rows as u32);
++    super::glyph::text(lcd, 1, 58, "MENU-RUN EXIT-BACK", true, true);
 +}
++
++/// the module list's rows on screen
++const MENU_ROWS: u8 = 6;
 +
 +/// The explore images' VOICE MSG: the RAM arena (the release plan, Jeff 2026-11-13), two lines
 +/// and a third only while it's busy. The serial report keeps the link details.

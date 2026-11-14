@@ -210,7 +210,7 @@ def units(spans, u):
 def test_builds_level_6_and_fits():
     from modem import k6mod
     code, entry = k6mod.build(SRC)
-    assert k6mod.source_level(SRC) == 6 and entry == 0
+    assert k6mod.source_level(SRC) == 6 and entry == 16   # after its name (K6_MODULE_NAME)
     assert 16 + len(code) + 8 <= MODULE_MAX, len(code)
     assert 16 + len(code) + 8 + 1024 <= 9760    # and its tapes and state in the scratch after it
 

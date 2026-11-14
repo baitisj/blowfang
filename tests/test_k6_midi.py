@@ -99,7 +99,7 @@ def with_songs(built, blob):
 def test_builds_small_with_the_table_last(built):
     from modem import k6mod
     code, entry = built
-    assert k6mod.source_level(SRC) == 2 and entry == 0
+    assert k6mod.source_level(SRC) == 2 and entry == 16   # after its name (K6_MODULE_NAME)
     blob = k6_midi.default_table()
     assert code.endswith(blob)
     # the EXPLORE image's block: header, code, tag, the wavetable and a telemetry upload's 696 B

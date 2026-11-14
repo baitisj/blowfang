@@ -404,7 +404,7 @@ def tone_reg(edges, idx, lag_on=10.0, lag_off=20.0, junk=()):
 @need_clang
 def test_listener_builds_fits_level_2():
     code, entry = k6mod.build(LISTEN)
-    assert entry == 0 and k6mod.source_level(LISTEN) == 2
+    assert entry == 16 and k6mod.source_level(LISTEN) == 2   # after its name
     assert 16 + len(code) + 8 <= 4096, len(code)
 
 

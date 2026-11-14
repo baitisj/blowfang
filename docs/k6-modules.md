@@ -269,6 +269,10 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
   anywhere): 0-8 modules, 9-11 EXPLORE's code pages (`KM_F_PAGE`), 12 the station editor's
   code page, 13-15 help card decks (`KM_F_CARDS`, flag 0x04: kept, never run or paged), 16-31
   modules.
+- **The release's set** (Jeff 2026-11-14: every module we've built that is an app or a
+  tool for the radio, not a bench probe): `tools/k6_release_modules.txt`, one slot and source a
+  line, 25 modules in slots 0-8 and 16-31, each named. `tests/test_k6_release_modules.py` checks
+  that every one builds, carries its name and fits an upload.
 - **Names:** `K6_MODULE_NAME("SURF")` in a module's source (`c/k6/k6_mod.h`, up to 12
   characters) puts a 16-byte block, `K6NM` and the name, first in its code (`module.ld`), so it
   sits at slot + 16 and the module list reads it with the header (`kl_info`'s `name`) without

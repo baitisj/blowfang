@@ -14,4 +14,5 @@
 #define K6_MODULE_LEVEL 8
 #define K6_MODULE_OPT z
 #define MIDI_ALARM 1
+#define K6_NAME "ALARM"   /* the module list's name, not midi's */
 #include "midi.c"

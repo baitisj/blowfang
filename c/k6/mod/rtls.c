@@ -14,6 +14,10 @@
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "../rt.c"
+#ifndef K6_NAME
+#define K6_NAME "STATION LIST"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 static int fr(void *c, uint32_t a, void *b, uint32_t n) { return ((const k6_api_t *)c)->fl_read(a, b, n); }
 static int fw(void *c, uint32_t a, const void *b, uint32_t n) { return ((const k6_api_t *)c)->fl_prog(a, b, n); }

@@ -28,3 +28,7 @@
                                    then (emulated 50-52 dB-Hz: the same lines as with 1 KB) */
 #endif
 #include "dmrdet.c"
+#ifndef K6_NAME
+#define K6_NAME "DMR RX"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);

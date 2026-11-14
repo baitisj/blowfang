@@ -25,6 +25,10 @@
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 6
 #include "../k6_mod.h"
+#ifndef K6_NAME
+#define K6_NAME "STOCK FONT"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #define SPI1 0x40013000u
 #define SPI_CR1 0x00u

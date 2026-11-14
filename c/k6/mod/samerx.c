@@ -35,6 +35,10 @@
 #define K6_MODULE_OPT z
 #endif
 #include "../k6_mod.h"
+#ifndef K6_NAME
+#define K6_NAME "SAME RX"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef SAME_HZ
 #define SAME_HZ 162550000u

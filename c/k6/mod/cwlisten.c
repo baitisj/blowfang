@@ -29,6 +29,10 @@
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "../cwid.c"
+#ifndef K6_NAME
+#define K6_NAME "CW LISTEN"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef LISTEN_S
 #define LISTEN_S 1500        /* listen this long at most: two IDs, 10 minutes apart, and some */

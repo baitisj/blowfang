@@ -23,6 +23,10 @@
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 3
 #include "../k6_mod.h"
+#ifndef K6_NAME
+#define K6_NAME "CW KEY"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef CW_TEXT
 #define CW_TEXT "AG7EW"

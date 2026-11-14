@@ -54,6 +54,10 @@
 #define K6_MODULE_OPT z
 #endif
 #include "../k6_mod.h"
+#ifndef K6_NAME
+#define K6_NAME "RANGE RX"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef RG_S
 #define RG_S 600u        /* s the module listens */

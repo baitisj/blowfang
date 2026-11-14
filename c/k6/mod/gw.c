@@ -52,6 +52,10 @@
 #endif
 #include "../k6_mod.h"
 #include "gw_game.h"
+#ifndef K6_NAME
+#define K6_NAME "GROUNDWAVE"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef GW_ROUNDS
 #define GW_ROUNDS 3             /* a game: best of 3 */
@@ -989,7 +993,7 @@ static int swap_shops(gc_t *c) {
   for (i = 0; i < GW_NI; i++) c->tx[13 + i] = p->inv[i];
   c->tx[27] = (uint8_t)p->money;
   c->tx[28] = (uint8_t)(p->money >> 8);
-  if (!rf_reliable(c) || !rf_await(c, T_SHOP, "the other is shopping")) return 0;
+  if (!rf_reliable(c) || !rf_await(c, T_SHOP, "other is shopping")) return 0;
   p = &c->g.p[c->me ^ 1];
   p->sh = b[12] < GW_NI ? b[12] : 0;
   for (i = 0; i < GW_NI; i++) p->inv[i] = b[13 + i];
@@ -1053,7 +1057,7 @@ static int game(gc_t *c, uint32_t seed) {
         }
         fly(c, pl->ang, pl->pow, pl->wpn);
       } else {
-        if (!rf_await(c, T_MOVE, "the other is aiming")) return -1;
+        if (!rf_await(c, T_MOVE, "other is aiming")) return -1;
         if (get32(b + 8) && get32(b + 8) != gw_hash(g)) {
           c->desync = 1;
           say(c, put(c->ln, "gw desync"));

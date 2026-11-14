@@ -5,4 +5,6 @@
 #define WSPR_REPEAT 6
 #define WSPR_EVERY 5
 #define WSPR_SYNC_MS 10000
+#define K6_MODULE_LEVEL 3   /* wsprtx.c's, here too so the tools read it from this file */
+#define K6_NAME "WSPR BEACON"   /* the module list's name, not wsprtx's */
 #include "wsprtx.c"

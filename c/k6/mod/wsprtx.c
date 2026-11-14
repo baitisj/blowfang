@@ -54,6 +54,10 @@
 #include "../k6_mod.h"
 #include "wsprtx_msg.h"   /* WSPR_TEXT, WSPR_TONES[162] */
 #include "k6_stop.h"      /* the PC's stop signal */
+#ifndef K6_NAME
+#define K6_NAME "WSPR TX"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef WSPR_HZ
 #define WSPR_HZ 440850000u

@@ -36,6 +36,10 @@
 #define K6_MODULE_LEVEL 3
 #include "../k6_mod.h"
 #include "ft8tx_msg.h"   /* FT8_TEXT, FT8_TONES[79] */
+#ifndef K6_NAME
+#define K6_NAME "FT8 TX"   /* its name in the MENU list (a file that includes this one may set its own) */
+#endif
+K6_MODULE_NAME(K6_NAME);
 
 #ifndef FT8_HZ
 #define FT8_HZ 440850000u
