@@ -20,11 +20,13 @@
      5  26 as found, mic on
 
    Lines (after the cable is back):
-     mod say micrec set K rms=N pk=N               per setting (16-bit scale, mean removed)
+     mod say micrec set K rms=N pk=N n=N           per setting (16-bit scale, mean removed; n: samples)
      mod say micrec use K gain=G                   the setting recorded, its gain
      mod say micrec enc frames=N ov=N pushed=N ms=N  ov: ring overruns (the encoder fell behind)
      mod say m IDX hhhhhhhhhhhh ...                the message, as usbenc prints it
-   Receive only: touches no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3 and the DMA
+   It never checks api->stop(): pulling the cable out makes it 1 (11-14 03:04Z: every phase ended
+   at once and nothing was recorded), so it runs its fixed course, about MR_WAIT + 19 + MR_S s,
+   then waits for the hello. Receive only: touches no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3 and the DMA
    stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
@@ -106,7 +108,8 @@ static unsigned take(mr_t *m, int16_t *x, unsigned n) {
 }
 
 /* ms of audio: rms with the mean removed, peak */
-static void level(const ortx_api_t *api, mr_t *m, uint32_t ms, unsigned *rms, unsigned *pk) {
+static void level(const ortx_api_t *api, mr_t *m, uint32_t ms, unsigned *rms, unsigned *pk,
+                  unsigned *cnt) {
     int16_t x[64];
     int32_t sum = 0;
     uint32_t sq = 0, n = 0, end;
@@ -114,7 +117,7 @@ static void level(const ortx_api_t *api, mr_t *m, uint32_t ms, unsigned *rms, un
     api->sleep_ms(150);
     m->rd = rx_wr(&m->rs) & ~1u;
     end = api->ms() + ms;
-    while ((int32_t)(api->ms() - end) < 0 && !api->stop()) {
+    while ((int32_t)(api->ms() - end) < 0) {
         unsigned g = take(m, x, 64u);
         if (!g) {
             api->sleep_ms(4);
@@ -135,6 +138,7 @@ static void level(const ortx_api_t *api, mr_t *m, uint32_t ms, unsigned *rms, un
     uint32_t var = n ? sq / n : 0, mm = (uint32_t)(mean * mean) >> 8;
     *rms = isqrt((var > mm ? var - mm : 0u) << 8);
     *pk = p;
+    *cnt = n;
 }
 
 int uv_main(const ortx_api_t *api) {
@@ -154,13 +158,13 @@ int uv_main(const ortx_api_t *api) {
     api->fmt(line, sizeof line, "micrec ready align=%u: unplug the cable within %u s and talk",
              align, MR_WAIT);
     api->say(line);
-    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_WAIT && !api->stop();)
+    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_WAIT;)
         api->sleep_ms(50);
 
-    unsigned rms[NSET], pk[NSET], best = 1;
+    unsigned rms[NSET], pk[NSET], cnt[NSET], best = 1;
     for (unsigned k = 0; k < NSET; k++) {
         codec(api, &m, k);
-        level(api, &m, MR_SET, &rms[k], &pk[k]);
+        level(api, &m, MR_SET, &rms[k], &pk[k], &cnt[k]);
         if (k && rms[k] > rms[best])
             best = k;
     }
@@ -178,7 +182,7 @@ int uv_main(const ortx_api_t *api) {
         m.rd = rx_wr(&m.rs) & ~1u;
         int16_t x[64];
         uint32_t end = api->ms() + 1000u * MR_S;
-        while ((int32_t)(api->ms() - end) < 0 && !api->stop()) {
+        while ((int32_t)(api->ms() - end) < 0) {
             unsigned g = take(&m, x, 64u);
             if (!g) {
                 api->sleep_ms(2);
@@ -207,13 +211,13 @@ int uv_main(const ortx_api_t *api) {
 
     /* the cable back in: wait for the host's hello before writing anything */
     uint8_t b[16];
-    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_BACK && !api->stop();) {
+    for (uint32_t t = api->ms(); api->ms() - t < 1000u * MR_BACK;) {
         if (api->usb_read(b, sizeof b))
             break;
         api->sleep_ms(100);
     }
     for (unsigned k = 0; k < NSET; k++) {
-        api->fmt(line, sizeof line, "micrec set %u rms=%u pk=%u", k, rms[k], pk[k]);
+        api->fmt(line, sizeof line, "micrec set %u rms=%u pk=%u n=%u", k, rms[k], pk[k], cnt[k]);
         api->say(line);
     }
     api->fmt(line, sizeof line, "micrec use %u gain=%u", best, gain);
@@ -225,6 +229,8 @@ int uv_main(const ortx_api_t *api) {
         api->say("micrec enc failed: no memory for the encoder");
         return -1;
     }
+    if (frames == 0)
+        return 0;                   /* msg() would be the built-in message */
     const uint8_t *msg;
     unsigned nf = api->msg(&msg);
     for (unsigned f = 0; msg && f < nf; f += 12u) {
