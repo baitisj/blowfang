@@ -46,7 +46,7 @@ an I2S slave) by DMA. Touches no RF register. Code: firmware/uv380-openrtx/mod/r
 - sotto's 8 / 16 kHz is only its synthesizer's output rate, so this 8 kHz receive path doesn't limit
   sotto.
 
-## Microphone to the MCU (no mod): not found yet
+## Microphone to the MCU (no mod): the USB cable switches it out
 
 Tested 11-13 with modules micprobe, micprobe2, micadc and micspk (firmware/uv380-openrtx/mod/,
 scored by tools/uv380_micprobe.py against a recording of what was played):
@@ -60,7 +60,8 @@ scored by tools/uv380_micprobe.py against a recording of what was played):
 | Own speaker as the source | no rise with the speaker on (but the speaker may have been silent at 26=7d: unconfirmed) | M, micspk 20:05Z |
 | Keyed (OpenRTX FM mic transmit: E0 c1, pre-emphasis) | 3 s at 1 W on 440.850 (module mictx, 11-14 01:37Z): the IC-7100 heard a fully quieting but silent carrier, 300-3400 Hz at about -47 dB below the open-squelch noise, no room ambience. I2S3 while keyed: only a keying step below 300 Hz, nothing in the voice band. The CW ident's 800 Hz tone came through clean on air and on I2S3, so the transmit audio chain works | M, mictx 01:37Z |
 | Keyed with someone talking | 5 s at 1 W (mictx, 11-14 02:43:04-02:43:09Z, Jeff talking into it): 300-3400 Hz at 30.6 rms, the same as the silent carrier, flat envelope (no syllables). The mic doesn't reach the modulator on this path | M, mictx5 02:43Z |
-| Left to try | OpenRTX's own FM transmit (FM mode, PTT) on this Plus; the Plus may route or power the mic differently from OpenRTX's MD-UV3x0 pinmap (MIC_PWR PA13, AIN_MIC PA3) | I |
+| THE CABLE | The TYT USB cable in the side accessory jack switches the internal mic out. FM PTT with the cable in: a silent carrier (02:46Z); with it unplugged Jeff's voice went out (02:47Z). Every result above ran with the cable in | M, Jeff 11-14 02:47Z |
+| Next | micrec (module): loaded with the cable in, records the mic through the codec into the encoder with it out, reports when it's back | I |
 
 A source wired to the bench PC can't test the mic: its audio reaches the codec input electrically.
 
@@ -95,6 +96,10 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   The IC-7100 at RF power 0 on the same bench received 10/10 CRC ok with 0 channel errors, and all
   200 superframes matched the PC encoder byte for byte. A 1200 message costs about 1.7 s of air
   per second of speech this way.
+- Its own PTT in range mode (PAGER, cable out; 11-14 02:48:40-02:51:42Z): 9 sends of the built-in
+  message, 48 packets CRC ok, all e=0 except one corrected (e=92); three complete (10/10), the rest
+  cut short by a second PTT press. Packets 1.86 s apart; the FFSK's polarity varies from send to
+  send (the receiver takes either).
 - Only Plus images (`mduv3x0p`) on Jeff's radio; a plain `mduv3x0` image is wrong for it (M).
 - Calibration isn't dumpable; the stock firmware isn't readable (M, 11-13 backup).
 
