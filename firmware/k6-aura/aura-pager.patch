@@ -9715,10 +9715,10 @@ index 8dd4ad1..3916854 100644
  }
 diff --git a/src/ui/glyph.rs b/src/ui/glyph.rs
 new file mode 100644
-index 0000000..f95a056
+index 0000000..325b106
 --- /dev/null
 +++ b/src/ui/glyph.rs
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,247 @@
 +//! Text without embedded-graphics' text code or its 6x10 font (Jeff 2026-11-10: "switching over
 +//! to the stock fonts -- save some space!"). The SC5260 has no character ROM, so Baofeng's own
 +//! firmware kept its fonts in the K6's SPI flash, and Aura's first-boot format leaves them there
@@ -9730,6 +9730,9 @@ index 0000000..f95a056
 +//!   the glyph's top one row below a FONT_6X10 cell's top, the caps land on the rows 6x10's took.
 +//! - The 32-column lines keep embedded-graphics' FONT_4X6 bitmap (288 bytes; the stock firmware
 +//!   has no 4x6), drawn here too.
++//! - A module screen's title bar keeps embedded-graphics' FONT_6X10 (720 bytes of bitmap; Jeff
++//!   2026-11-14: "keep the font in the title but move everything else to 5x7 and make that the
++//!   default"), drawn here too, so no text code comes back with it.
 +//!
 +//! At power-on main checks the 5x7 font's CRC, and VOICE MSG's first entry reports it on the
 +//! serial cable (`K6 FONT 5x7 crc=07acb73c ok=1`); a radio whose SPI flash lacks the font draws
@@ -9738,7 +9741,7 @@ index 0000000..f95a056
 +
 +use crate::drivers::norflash::NorFlash;
 +use embedded_graphics::image::GetPixel;
-+use embedded_graphics::mono_font::ascii::FONT_4X6;
++use embedded_graphics::mono_font::ascii::{FONT_4X6, FONT_6X10};
 +use embedded_graphics::pixelcolor::BinaryColor;
 +use embedded_graphics::prelude::*;
 +
@@ -9873,6 +9876,75 @@ index 0000000..f95a056
 +            *p = if on { *p | m } else { *p & !m };
 +        }
 +        x += w;
++    }
++}
++
++/// FONT_6X10's glyph for c: 6 columns of 10 rows, bit 0 the cell's top row (the baseline is row
++/// 7). Bytes outside 0x20-0x7E show '?'
++fn glyph_6x10(c: u8, cols: &mut [u16; 6]) {
++    let i = if (0x20..0x7F).contains(&c) { c - 0x20 } else { b'?' - 0x20 };
++    // 16 glyphs a row of its bitmap, each 6 x 10
++    let (gx, gy) = ((i % 16) as i32 * 6, (i / 16) as i32 * 10);
++    for (x, m) in cols.iter_mut().enumerate() {
++        *m = 0;
++        for y in 0..10 {
++            if FONT_6X10.image.pixel(Point::new(gx + x as i32, gy + y)) == Some(BinaryColor::On) {
++                *m |= 1 << y;
++            }
++        }
++    }
++}
++
++/// A module screen's title in FONT_6X10, its cell's top row at `top` (baseline less 7), lit or
++/// dark; 0x80 and up (the module's own glyphs) leave their 6-pixel cell empty
++pub fn title<D>(lcd: &mut D, x: i32, top: i32, t: &[u8], on: bool)
++where
++    D: DrawTarget<Color = BinaryColor>,
++{
++    let ink = if on { BinaryColor::On } else { BinaryColor::Off };
++    let mut x = x;
++    for &c in t {
++        if x >= 128 {
++            break;
++        }
++        if c < 0x80 {
++            let mut cols = [0u16; 6];
++            glyph_6x10(c, &mut cols);
++            let x0 = x;
++            let px = cols.into_iter().enumerate().flat_map(move |(i, m)| {
++                (0..10).filter(move |&r| m >> r & 1 != 0).map(move |r| Pixel(Point::new(x0 + i as i32, top + r), ink))
++            });
++            lcd.draw_iter(px).ok();
++        }
++        x += 6;
++    }
++}
++
++/// title's line straight into one controller page (pixel rows y0 .. y0 + 7 in `buf`)
++pub fn title_page(buf: &mut [u8; 128], y0: i32, x: i32, top: i32, t: &[u8], on: bool) {
++    let s = top - y0;
++    if s <= -10 || s >= 8 {
++        return;
++    }
++    let mut x = x;
++    for &c in t {
++        if x >= 128 {
++            break;
++        }
++        if c < 0x80 {
++            let mut cols = [0u16; 6];
++            glyph_6x10(c, &mut cols);
++            for (i, &m) in cols.iter().enumerate() {
++                let xi = x + i as i32;
++                if !(0..128).contains(&xi) {
++                    continue;
++                }
++                let m = if s >= 0 { (m as u32) << s } else { (m as u32) >> -s } as u8;
++                let p = &mut buf[xi as usize];
++                *p = if on { *p | m } else { *p & !m };
++            }
++        }
++        x += 6;
 +    }
 +}
 +
@@ -10139,10 +10211,10 @@ index cdfa0f7..429f08b 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..8d5b433
+index 0000000..4984c46
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,444 @@
+@@ -0,0 +1,453 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -10458,7 +10530,12 @@ index 0000000..8d5b433
 +        }
 +        let y = 9 + 10 * i as i32;
 +        let ink = if i != 0 { BinaryColor::On } else { BinaryColor::Off };
-+        super::glyph::text_b(lcd, 1, y - 6, &t[..n], false, i != 0);
++        // the title in FONT_6X10, the lines in the stock 5x7 (Jeff 2026-11-14)
++        if i == 0 {
++            super::glyph::title(lcd, 1, y - 7, &t[..n], false);
++        } else {
++            super::glyph::text_b(lcd, 1, y - 6, &t[..n], false, true);
++        }
 +        // the module's glyphs (level 9): 0x80 + k, 6 columns from the cell's x - 1, rows y - 8 ..
 +        for (k, &b) in t[..n].iter().enumerate() {
 +            let g = b.wrapping_sub(0x80) as i32;
@@ -10542,7 +10619,11 @@ index 0000000..8d5b433
 +        while n < MOD_COLS && t[n] != 0 {
 +            n += 1; // mod_lcd_text keeps only 0x20-0x7E
 +        }
-+        super::glyph::text_page(buf, y0, 1, y - 6, &t[..n], on);
++        if i == 0 {
++            super::glyph::title_page(buf, y0, 1, y - 7, &t[..n], false); // FONT_6X10 (Jeff 2026-11-14)
++        } else {
++            super::glyph::text_page(buf, y0, 1, y - 6, &t[..n], on);
++        }
 +        // the module's glyphs (level 9): 0x80 + k, 6 columns from the cell's x - 1, rows y - 8 ..
 +        let sh = y - 8 - y0; // the glyph's bit 0 lands on page bit sh (-9 .. 7 here)
 +        for (k, &b) in t[..n].iter().enumerate() {

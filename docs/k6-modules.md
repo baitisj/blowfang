@@ -179,8 +179,11 @@ flash calls (`docs/k6-explore-app.md`). Until then a module could only talk over
 report; the screen was Aura's. The firmware keeps the state and owns the font and the display;
 a module sends only text and pixel rows (`c/k6/k6_mod.h`):
 
-- `lcd_text(line, s)`: six lines of 21 characters in FONT_6X10 at baselines y = 9, 19 .. 59
-  (the explorer screen's layout), line 0 drawn as an inverted title bar;
+- `lcd_text(line, s)`: six lines of 21 characters at baselines y = 9, 19 .. 59 (the explorer
+  screen's layout), line 0 drawn as an inverted title bar. Since 2026-11-14 (Jeff: "keep the
+  font in the title but move everything else to 5x7 and make that the default") the title is
+  FONT_6X10 and lines 1-5 the stock 5x7 from the SPI flash (it had been 5x7 for all six since
+  2026-11-10); the title's 6x10 bitmap costs the image about 1.5 KB;
 - `lcd_bar(line, num, den)`: a progress bar after that line's text;
 - `lcd_wf(ring, rows, head)`: up to 30 rows of 128 pixels (16 bytes each, MSB leftmost) from
   y = 21 down, in place of lines 2-4, `ring[head]` on top. The rows stay in the module's
