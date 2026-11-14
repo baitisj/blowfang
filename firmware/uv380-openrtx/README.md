@@ -194,7 +194,8 @@ unplugged.
 **It plays what it hears (probe image).** While PAGER mode sits idle in receive, the FM
 receiver's audio comes off the C6000's codec (I2S3 at 8 kHz, `mod/rxaudio.h`'s route) into the
 PHY R receiver (`c/common/range_rx.c`, as the `rangerx` module), and `c/common/pager_rx.c` puts
-the message back together from the packets, in any order. A sotto 1200 message that is whole, or
+the message back together from the packets, in any order (its 14.5 KB in the encoder's idle arena,
+not the heap). A sotto 1200 message that is whole, or
 three quarters there and then quiet for 4 s (the gaps filled from neighbouring frames), becomes
 the message (# plays it again, PTT sends it) and plays on the speaker at once; the same message
 isn't played again for 60 s. It stops for PTT, FUNC, the speaker preview and every USB command,

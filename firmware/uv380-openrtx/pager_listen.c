@@ -2,8 +2,8 @@
 #include "pager_listen.h"
 
 #if defined(PLATFORM_MDUV3x0)
+#include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "ortx_mod.h"
@@ -13,6 +13,14 @@
 #define RR_HIST 32               /* 8 kHz: 2 bits are 13.3 samples */
 #define RR_XR 32                 /* 8 kHz: the quadrature filter spans 31 samples */
 #include "range_rx.c"
+
+/* The receiver's 14.5 KB come from the sotto 1200 encoder's static arena (sotto8k_enc_arena.h,
+   25.6 KB in CCM), which is idle whenever the receiver runs (it stops for FUNC and every
+   module), not from the heap: after a recording (the encoder thread's 16 KB stack) and a preview
+   the heap was too broken up for it, and the first image (8b87511) stopped listening for good
+   (11-14 15:45-15:52Z: three echoes on air, none played). */
+void *sotto8k_enc_calloc(size_t n, size_t size);
+void sotto8k_enc_free(void *p);
 
 #define PL_FS 8000u
 #define PL_GAP_MS 4000u          /* quiet this long after a packet: play what came, if enough */
@@ -33,11 +41,11 @@ static uint32_t plDoneMs;
 int pager_listen_start(const pr_host *h, int16_t *ring, unsigned n, unsigned max) {
     if (plOn)
         pager_listen_stop();
-    plRr = (rr_state *)malloc(sizeof(rr_state));
-    plFrames = (uint8_t *)malloc(max * PT_FRAME_BYTES + max / 8u + 1u);
+    plRr = (rr_state *)sotto8k_enc_calloc(1, sizeof(rr_state));
+    plFrames = (uint8_t *)sotto8k_enc_calloc(1, max * PT_FRAME_BYTES + max / 8u + 1u);
     if (!plRr || !plFrames) {
-        free(plRr);
-        free(plFrames);
+        sotto8k_enc_free(plRr);
+        sotto8k_enc_free(plFrames);
         plRr = 0;
         plFrames = 0;
         return -1;
@@ -133,8 +141,8 @@ void pager_listen_stop(void) {
     if (!plOn)
         return;
     rx_stop(&plApi, &plRx);
-    free(plRr);
-    free(plFrames);
+    sotto8k_enc_free(plFrames);
+    sotto8k_enc_free(plRr);
     plRr = 0;
     plFrames = 0;
     plOn = 0;

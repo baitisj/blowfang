@@ -253,10 +253,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..012901c1
+index 00000000..cbdc94b5
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1374 @@
+@@ -0,0 +1,1380 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -1141,7 +1141,9 @@ index 00000000..012901c1
 +#ifndef PLATFORM_LINUX
 +static constexpr uint32_t OTG_DSTS = 0x50000808u;  // bit 0: USB suspended (no cable)
 +static bool lsOn   = false;
-+static bool lsFail = false;    // no heap for it: not tried again until PAGER mode restarts
++static bool lsFail = false;    // the arena was taken: tried again LS_RETRY_MS later
++static uint32_t lsFailMs = 0;
++static constexpr uint32_t LS_RETRY_MS = 5000;
 +static bool lsEnable = true;   // "listen 0|1"
 +static char lsLine[64];
 +
@@ -1167,8 +1169,11 @@ index 00000000..012901c1
 +static void listenStep()
 +{
 +    static const pr_host host = {omC6r, omC6w, omSleep};
++    if(lsFail && ((uint32_t) getTick() - lsFailMs > LS_RETRY_MS))
++        lsFail = false;
 +    bool want = (pbStop(NULL) == false) && (fnHeld == false) && (txRequest == false) &&
-+                (micTxMs == 0) && (toneTxMs == 0) && (lsFail == false) && lsEnable;
++                (micTxMs == 0) && (toneTxMs == 0) && (lsFail == false) && lsEnable &&
++                (enc == NULL);
 +    if(want == false)
 +    {
 +        listenOff();
@@ -1185,9 +1190,10 @@ index 00000000..012901c1
 +        if(pager_listen_start(&host, pbAdcBuf, sizeof(pbAdcBuf) / sizeof(pbAdcBuf[0]),
 +                              REC_MAX) != 0)
 +        {
-+            pbBusy = false;
-+            lsFail = true;
-+            lsSay("heard err no memory");
++            pbBusy   = false;
++            lsFail   = true;
++            lsFailMs = (uint32_t) getTick();
++            lsSay("heard err arena taken");
 +            return;
 +        }
 +        lsOn = true;

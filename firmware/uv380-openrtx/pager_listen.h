@@ -21,7 +21,8 @@ extern "C" {
 #define PL_READY 2      /* a message to play: pager_listen_take */
 
 /* ring: n halfwords (a power of 2) in DMA-capable RAM; max: the most frames a message may have.
-   Takes about 15 KB of heap until pager_listen_stop. 0, or -1 (no memory). */
+   Takes 14.5 KB of the encoder's arena until pager_listen_stop: never while the encoder runs.
+   0, or -1 (the arena is taken). */
 int pager_listen_start(const pr_host *h, int16_t *ring, unsigned n, unsigned max);
 /* Takes in what the ring holds. now: ms. line (len bytes) gets a report when it returns
    PL_PACKET or PL_READY. */
