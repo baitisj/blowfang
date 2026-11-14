@@ -35,6 +35,7 @@
 #define K6_MODULE_OPT z
 #endif
 #include "../k6_mod.h"
+#include "k6ui.h"
 #ifndef K6_NAME
 #define K6_NAME "SAME RX"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
@@ -113,6 +114,7 @@ typedef struct {
   uint16_t tl;
   char txt[TXTN + 1];
   char ln[64];
+  ui_t u;                       /* the screen (k6ui.h) */
 } st_t;
 
 static char *put(char *p, const char *s) {
@@ -287,6 +289,9 @@ int k6_main(const k6_api_t *api) {
   p = kv(s->ln, "samerx start hz=", SAME_HZ);
   p = kv(p, " n=", NV);
   say(api, s, p);
+  ui_mhz(ui_put(s->ln, "SAME "), SAME_HZ);
+  ui_begin(&s->u, api, s->ln, "WAITING  KEY: STOP");
+  s->u.lt = 3; /* the log: the newest header, two lines */
   while (api->ms() < WAIT_MS && !key) {
     api->delay_us(50000);
     key = api->level >= 4 ? api->key_poll() : api->key_down();
@@ -302,6 +307,14 @@ int k6_main(const k6_api_t *api) {
       if (v > rpk) rpk = v;
       key = api->level >= 4 ? api->key_poll() : api->key_down();
       if (key) break;
+    }
+    if (s->u.on && !cap && now - s->u.t_fl >= 1000) {
+      /* the screen's status between bursts (a flush is 20-40 ms of not reading) */
+      p = ui_mmss(s->ln, ui_udiv(now, 1000));
+      p = ui_sdec(ui_put(p, "  "), KM_RSSI_DBM(api->fd_read(0x67)));
+      p = ui_dec(ui_put(p, "DBM H"), total + nh, 1);
+      ui_text(&s->u, 5, s->ln);
+      ui_now(&s->u);
     }
     if (!cap && now - tset >= FE_S * SLOT_SCALE) {
       p = kv(s->ln, "v ", (uint32_t)cur);
@@ -371,6 +384,22 @@ int k6_main(const k6_api_t *api) {
           for (k = i; k < s->nt && k < i + 56; k++) *p++ = s->txt[k];
           say(api, s, p);
         }
+        if (s->u.on) {
+          /* the screen: the header in two lines, its fields apart ("WXR RWT 053033+0015 ..."),
+             ZCZC left out */
+          k = (s->nt > 5 && s->txt[0] == 'Z') ? 5 : 0;
+          for (i = 0; i < 2 && k < s->nt; i++) {
+            uint32_t j = 0;
+            while (j < UI_COLS && k < s->nt) {
+              char c = s->txt[k++];
+              s->ln[j++] = c == '-' ? ' ' : c;
+            }
+            s->ln[j] = 0;
+            ui_log(&s->u, s->ln);
+          }
+          p = ui_dec(ui_put(s->ln, "HEADERS HEARD: "), total + nh, 1);
+          ui_text(&s->u, 1, s->ln);
+        }
       }
       prev = seek(api, r);
     }
@@ -382,5 +411,6 @@ int k6_main(const k6_api_t *api) {
   p = kv(s->ln, "samerx end n=", total);
   p = kv(p, " z=", tz);
   say(api, s, p);
+  ui_end(&s->u, key ? "STOPPED" : "DONE", key);
   return (int)total;
 }

@@ -56,6 +56,7 @@
 #define K6_MODULE_OPT s
 #endif
 #include "../k6_mod.h"
+#include "k6ui.h"
 #ifndef K6_NAME
 #define K6_NAME "APRS CLOCK"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
@@ -861,6 +862,8 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " lost=", s->lost);
   p = kv(p, " pre=", s->pre);
   say(api, s, p);
+  if (s->now_ms >= RUN_MS) /* time up (not a key): the results stay */
+    ui_hold(api, "TIME UP  ANY KEY");
   if (!s->ok && s->now_ms < RUN_MS) return -2;
   return s->votes;
 }

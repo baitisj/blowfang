@@ -438,9 +438,9 @@ __attribute__((unused)) DX_COLD static int dx_lcd(const k6_api_t *api, dx_t *x) 
   char t[24], *p;
   if (api->level < 6 || !x->lcd_dirty) return 0;
   x->lcd_dirty = 0;
-  p = kv(kv(put(t, "DMR CC"), "", x->lcc), " TS", x->lslot);
+  p = x->tg_ok ? kv(kv(put(t, "DMR CC"), "", x->lcc), " TS", x->lslot) : put(t, "DMR RX");
   *p = 0, api->lcd_text(0, t);
-  p = kv(put(t, x->flco == 3 ? "to " : "TG "), "", (int)x->tg);
+  p = x->tg_ok ? kv(put(t, x->flco == 3 ? "to " : "TG "), "", (int)x->tg) : put(t, "LISTENING");
   *p = 0, api->lcd_text(1, t);
   p = kv(put(t, "ID "), "", (int)x->src);
   *p = 0, api->lcd_text(2, t);

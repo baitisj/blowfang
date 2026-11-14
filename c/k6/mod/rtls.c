@@ -18,6 +18,7 @@
 #define K6_NAME "STATION LIST"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
 K6_MODULE_NAME(K6_NAME);
+#include "k6ui.h"
 
 static int fr(void *c, uint32_t a, void *b, uint32_t n) { return ((const k6_api_t *)c)->fl_read(a, b, n); }
 static int fw(void *c, uint32_t a, const void *b, uint32_t n) { return ((const k6_api_t *)c)->fl_prog(a, b, n); }
@@ -47,6 +48,47 @@ static char *field(char *p, const char *s, int n) {
   int i;
   for (i = 0; i < n && s[i]; i++) *p++ = s[i];
   return p;
+}
+
+/* the screen (an image with one): the stations, four at a time, "146.940 W7ABC/R -79"; UP and
+   DOWN scroll, EXIT (or MENU) goes back */
+__attribute__((noinline)) static void show(const k6_api_t *api, rt_t *t, int n) {
+  ui_t u;
+  rt_rec_t r;
+  char l[64], *p;
+  int top = 0, k = 1, i, slot;
+  p = dec(put(l, "STATIONS "), n);
+  *p = 0;
+  ui_begin(&u, api, l, "");
+  if (!u.on) return;
+  ui_release(&u);
+  for (;;) {
+    if (k) {
+      for (i = 0, slot = rt_next(t, -1, &r); i < top + 5; i++, slot = rt_next(t, slot, &r)) {
+        if (i < top) continue;
+        p = l;
+        if (slot >= 0) {
+          p = ui_mhz(l, r.rx_hz);
+          *p++ = ' ';
+          p = r.call[0] ? field(p, r.call, 10) : r.name[0] ? field(p, r.name, 8) : put(p, "-");
+          *p++ = ' ';
+          p = dec(p, (int32_t)r.best_rssi - 200);
+        }
+        *p = 0;
+        l[UI_COLS] = 0;
+        ui_text(&u, 1 + i - top, l);
+      }
+      ui_text(&u, 5, n > 4 ? "UP/DN MORE  EXIT BACK" : "EXIT BACK");
+      if (n > 4) api->lcd_bar(5, (uint32_t)(top + 4), (uint32_t)n);
+      ui_now(&u);
+    }
+    k = ui_key(&u);
+    if (k == 'X' || k == 'M') break;
+    if (k == 'U' && top > 0) top--;
+    else if (k == 'D' && top + 4 < n) top++;
+    else k = 0;
+    api->delay_us(20000);
+  }
 }
 
 int k6_main(const k6_api_t *api) {
@@ -79,5 +121,6 @@ int k6_main(const k6_api_t *api) {
     *p = 0;
     api->say(line);
   }
+  if (n > 0) show(api, &t, n);
   return n;
 }

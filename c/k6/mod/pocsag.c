@@ -67,6 +67,7 @@
 #define K6_MODULE_OPT z
 #endif
 #include "../k6_mod.h"
+#include "k6ui.h"
 #ifndef K6_NAME
 #define K6_NAME "POCSAG"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
@@ -175,6 +176,7 @@ typedef struct {
   uint8_t txt[TXTN];
 #endif
   char ln[64];
+  ui_t u;                         /* the screen (k6ui.h) */
 #ifdef POC_DUMP
   /* the sampler's words of a transmission, for the host */
   uint16_t dn, nd;
@@ -573,11 +575,27 @@ static void tx_say(const k6_api_t *api, st_t *s) {
   p = kv(p, " c=", s->ncap);
   p = kv(p, " m=", s->nm);
   say(api, s, p);
+  if (!s->nm) {
+    /* the screen: a transmission with no message of its own (idle codewords, a time beacon) */
+    p = ui_dec(ui_put(s->ln, "TX "), BAUD[s->bi], 1);
+    p = ui_dec(ui_put(p, "BD "), s->w, 1);
+    ui_put(p, " WORDS");
+    ui_log(&s->u, s->ln);
+  }
 #ifdef POC_TEXT
   {
     uint32_t i = 0;
     while (i + 5 <= s->tn) {
       uint32_t ric = (uint32_t)s->txt[i] << 16 | (uint32_t)s->txt[i + 1] << 8 | s->txt[i + 2];
+      {
+        /* the screen: "RIC:text" */
+        uint32_t j = i + 5;
+        char *q = ui_dec(s->ln, ric, 1);
+        *q++ = ':';
+        while (j < s->tn && s->txt[j] && q < s->ln + UI_COLS) *q++ = (char)s->txt[j++];
+        *q = 0;
+        ui_log(&s->u, s->ln);
+      }
       p = kv(s->ln, "m ", ric);
       p = kv(p, " ", s->txt[i + 3]);
       p = kv(p, " e", s->txt[i + 4]);
@@ -672,6 +690,8 @@ int k6_main(const k6_api_t *api) {
   p = put(p, " text=0");
 #endif
   say(api, s, p);
+  p = ui_mhz(ui_put(s->ln, "POCSAG "), POC_HZ);
+  ui_begin(&s->u, api, s->ln, "LISTENING  KEY: STOP");
   while (api->ms() < WAIT_MS && !key) {
     api->delay_us(50000);
     key = api->level >= 4 ? api->key_poll() : api->key_down();
@@ -686,6 +706,14 @@ int k6_main(const k6_api_t *api) {
       if (cap && r > s->rpk) s->rpk = r;
       key = api->level >= 4 ? api->key_poll() : api->key_down();
       if (key) break;
+    }
+    if (s->u.on && !cap && !follow && now - s->u.t_fl >= 1000) {
+      /* the screen's status, between transmissions (a flush is 20-40 ms of not reading) */
+      p = ui_mmss(s->ln, ui_udiv(now, 1000));
+      p = ui_dec(ui_put(p, "  TX "), s->ntx, 1);
+      p = ui_dec(ui_put(p, " MSG "), s->nmsg, 1);
+      ui_text(&s->u, 5, s->ln);
+      ui_now(&s->u);
     }
     if (!cap && !follow && now - tset >= FE_S * SLOT_SCALE) { /* a setting's end */
       p = kv(s->ln, "v ", s->cur);
@@ -773,5 +801,6 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " m=", s->nmsg);
   p = kv(p, " z=", s->nfake);
   say(api, s, p);
+  ui_end(&s->u, key ? "STOPPED" : "DONE", key);
   return (int)s->nmsg;
 }

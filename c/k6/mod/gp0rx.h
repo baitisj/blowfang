@@ -125,7 +125,14 @@ typedef struct {
   uint32_t tp, idle, was_idle;   /* the last poll's time; cycles spent waiting for the DMA */
   uint32_t kmix;                 /* the mixer's step a 96 MHz cycle: KMIX plus the calibration */
   int32_t cal;                   /* the IF offset applied, 0.01 Hz (0: no record) */
+  uint32_t hz;                   /* where GP0RX_HZ says to listen, for a module that picks it */
 } rx_t;
+
+/* the frequency rx_setup tunes to (and the calibration is for): the pager's, unless the module
+   defines GP0RX_HZ (ft8rx's band list: r->hz) */
+#ifndef GP0RX_HZ
+#define GP0RX_HZ(api, r) ((api)->rx_hz())
+#endif
 
 /* ft8k's first CIC for counts of LCNT samples: 1024 / LCNT, and the shift that keeps its output
    at the scale of 64-sample counts into 16 */
@@ -280,7 +287,7 @@ static void rx_cal(const k6_api_t *api, rx_t *r) {
     k6_cal_t c;
     int32_t off;
     if (k6cal_get(api, &c)) return;
-    off = k6cal_off_chz(&c, api->rx_hz());
+    off = k6cal_off_chz(&c, GP0RX_HZ(api, r));
     r->kmix = KMIX + (uint32_t)k6cal_kmix(off), r->cal = off;
   }
 #else
@@ -322,7 +329,7 @@ static int rx_setup(const k6_api_t *api, saved_t *sv, rx_t *r, uint8_t *ring) {
      with the bit set but no RXON (run 2) FT8 still left the window within seconds. The chip
      latches REG_38/3B the same way (xtalstep). Same frequency and filter (REG_43 = Aura's wide
      0x3028 or narrow 0x4048) */
-  api->tune(api->rx_hz(), api->fd_read(0x43) == 0x3028);
+  api->tune(GP0RX_HZ(api, r), api->fd_read(0x43) == 0x3028);
   wr(RCC_APB2ENR, sv->apb2 | TIM17EN);
   /* TIM17 free-running at 96 MHz with its update request on (the DMA runs flat out anyway) */
   wr(TIM17 + 0x00, 0);

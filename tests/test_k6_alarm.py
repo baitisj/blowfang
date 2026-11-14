@@ -79,10 +79,38 @@ def test_refusals(built):
     code = armed(built, 7 * 60)
     ret, said, *_ = emulate(code, level=8, clock={})
     assert ret == -6 and said[-1] == "alarm: no clock (run aisclk or aprsclk first)"
-    ret, said, *_ = emulate(built, level=8, clock=fix(H))
+    ret, said, writes, log = emulate(built, level=8, clock=fix(H))  # (a minute on the time screen)
     assert ret == -7 and said[-1] == "alarm: no time set (k6_midi.py alarm)"
+    frames = log["lcd"]["frames"]
+    assert frames[-1]["text"][1:3] == ["WAKE ME AT (UTC):", "    __:__"], frames[-1]
+    assert frames[-1]["text"][4] == "  NOW 01:01:00", frames[-1]   # the clock running meanwhile
     ret, said, *_ = emulate(code, level=7)
     assert ret == -8
+
+
+@need_clang
+def test_time_set_on_the_keypad(built):
+    """CI's build has no time: the screen asks for one, 0 7 3 0 MENU sets 07:30, and the countdown
+    runs (then a held key cancels it)"""
+    from test_k6_i2s import START, run
+    from test_k6_midi import TIM1, RCC, GPIOA
+    regs = {}
+    mmio = [(b, 0x400, lambda uc, off, size, st, b=b: regs.get((b, off), 0),
+             lambda uc, off, size, v, st, b=b: regs.__setitem__((b, off), v)) for b in (TIM1, RCC, GPIOA)]
+    code = k6_midi.patch(built[0], songs_table(TEST_TXT))
+    seq = "0730M"
+    pad = [(1_000_000 + 300_000 * i, 1_150_000 + 300_000 * i, k) for i, k in enumerate(seq)]
+    hold = (4_000_000, 6_500_000)
+    keys = [(a, b) for a, b, _ in pad] + [hold]
+    lcd = {}
+    ret, said, _, _ = run({**START, 0x47: 0x6140}, code=(code, built[1]), level=9, lcd=lcd, clock=fix(7 * H),
+                          keys=keys, keypad=pad + [(hold[0], hold[1], "5")],
+                          spare=1024, count=2_000_000_000, mmio=mmio)
+    assert ret == -2, said
+    texts = [f["text"] for f in lcd["frames"]]
+    assert any(t[2] == "    07:3_" for t in texts), [t[2] for t in texts]
+    assert said[0] == "alarm at 07:30 utc now 07:00:02 w=400", said
+    assert any(t[2] == "alarm 07:30 UTC" for t in texts)
 
 
 def test_set_alarm_and_the_tool(tmp_path):

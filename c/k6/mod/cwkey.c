@@ -23,6 +23,7 @@
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 3
 #include "../k6_mod.h"
+#include "k6ui.h"
 #ifndef K6_NAME
 #define K6_NAME "CW KEY"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
@@ -89,7 +90,7 @@ static int hold(const k6_api_t *api, int on, int n) {
   return 0;
 }
 
-int k6_main(const k6_api_t *api) {
+static int tx_main(const k6_api_t *api, ui_t *ku) {
   const char *s;
   char line[64], *p;
   int units = 0, need = 0, r = 0;
@@ -121,6 +122,8 @@ int k6_main(const k6_api_t *api) {
     }
   }
   /* the core's limit: the lead-in, the text and a second's margin */
+  ui_text(ku, 1, "ON THE AIR");
+  ui_now(ku);
   if (api->tx_on(CW_LEAD_MS + (uint32_t)need * (UNIT_US / 1000u) + 1000u) != 0) return -3;
   t0 = api->ms();
   if (api->tx_pa(0) < 0) r = -5;
@@ -151,4 +154,17 @@ int k6_main(const k6_api_t *api) {
   *p = 0;
   api->say(line);
   return units;
+}
+
+/* the screen: what it sends, then how it went (k6ui.h; images before level 6 skip it) */
+int k6_main(const k6_api_t *api) {
+  ui_t u;
+  int r;
+  ui_begin(&u, api, "CW KEY 440.850", "WAITING FOR QUIET");
+  ui_text(&u, 2, CW_TEXT);
+  ui_text(&u, 5, "ANY KEY: STOP");
+  ui_now(&u);
+  r = tx_main(api, &u);
+  ui_tx_end(&u, r, CW_HZ, "SENT " CW_TEXT " IN CW");
+  return r;
 }

@@ -64,12 +64,12 @@ class Receiver:
         return 0 if self.level(us) > -95 else 0x2A
 
 
-def go(blk, model, keys=(), level=4):
+def go(blk, model, keys=(), level=4, lcd=None):
     from modem import k6mod
     code, entry = k6mod.build(SRC)
     regs = {**START, 0x67: model.rssi, 0x63: model.noise}
     return run(regs, code=(rx.patch(code, blk), entry), tune=model.tune, level=level, keys=keys,
-               spare=4072 - len(code), count=2_000_000_000)
+               spare=11752 - len(code), count=2_000_000_000, lcd=lcd)
 
 
 @need_clang
@@ -77,8 +77,9 @@ def test_builds_small_with_one_block_and_room():
     from modem import k6mod
     code, entry = k6mod.build(SRC)
     assert k6mod.source_level(SRC) == 2 and entry == 16   # after its name (K6_MODULE_NAME)
-    assert code.count(rx.MAGIC) == 1 and len(code) < 3000
-    assert 4072 - len(code) >= 3 * 340            # the most bins pack() allows fit the scratch RAM
+    assert code.count(rx.MAGIC) == 1 and len(code) < 5000
+    # the most bins pack() allows, the screen's chart and its state fit the library's scratch
+    assert 11752 - len(code) >= 3 * 340 + 480 + 120
     blk = rx.seg_block("A")
     assert len(blk) == 100 and rx.unpack(blk)["nsteps"] == 80
     assert rx.patch(code, blk).find(blk) == code.find(rx.MAGIC)
@@ -123,6 +124,35 @@ def test_map_finds_the_signals_and_the_summary_fits():
     rep = rx.report(runs)
     assert "162.550 MHz   -75" in rep or "162.550 MHz   -76" in rep
     assert "NOAA weather" in rep
+
+
+@need_clang
+def test_map_screen():
+    """the release's RX MAP with the screen: the span on the title bar, the sweep's place and a
+    progress bar on line 1, a bar a bin (its peak up from -140 dBm, its floor a gap) over lines
+    2-4, the strongest on line 5, and the end screen"""
+    m = Receiver([(162_550_000, -75, 0, 10**12), (176_400_000, -60, 0, 10**12)])
+    blk = rx.pack(150_000_000, 1_000_000, 30, 25_000)
+    lcd = {}
+    ret, said, _, writes = go(blk, m, level=9, lcd=lcd)
+    assert ret == 2
+    fr = lcd["frames"]
+    assert fr[0]["text"][:2] == ["RX MAP 150.000+30M", "SWEEPING  KEY: STOP"], fr[0]
+    last = fr[-1]
+    assert last["text"][1] == "TOP 162.550 -75DBM" and last["text"][5] == "ANY KEY: BACK", last["text"]
+    assert last["bar"][1] == (0, 0)
+    assert any(f["text"][1].startswith("AT 1") and f["bar"][1][1] == 30 for f in fr)
+    wf = last["wf"]
+    col = lambda x: sum(1 for r in wf if r[x >> 3] & (0x80 >> (x & 7)))
+    x162 = 4 + 12 * 120 // 30                       # bin 12: 162-163 MHz
+    assert col(x162) > col(4) + 8, (col(x162), col(4))
+    if os.environ.get("K6_SCREENS"):
+        import json
+        f = dict(last)
+        f["wf"] = [r.hex() for r in f["wf"]]
+        f["text"] = list(f["text"])
+        with open(os.path.join(os.environ["K6_SCREENS"], "rxmap.json"), "w") as fo:
+            json.dump([f], fo)
 
 
 @need_clang

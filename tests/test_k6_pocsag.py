@@ -241,11 +241,12 @@ def test_pocsag_440_on_the_model():
         assert e.writes[reg][-1] == 0, hex(reg)                       # put back as read
 
 
-def run_plain(src, defs, segs, total, smp=None):
+def run_plain(src, defs, segs, total, smp=None, screen=None, level=8):
     import k6_live_emu as le
     code, entry = le.build("x", defs, src)
     Chip = plain_chip(le, segs, smp=smp)
-    e = Chip(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total, level=8, scratch=4096)
+    e = Chip(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total, level=level, scratch=4096,
+             screen=screen)
     res = e.run()
     assert res is not None, e.said[-5:]
     return e, res[0]
@@ -278,6 +279,33 @@ def test_outside_the_amateur_band_counts_only():
     assert len(caps) == 3 and all(c["q"] == "4" and c["m"] == "3" for c in caps), caps
     assert not msgs and not any("AG7EW" in ln or ln.startswith(("m ", "+ ")) for ln in e.said), e.said
     assert ret == 9
+
+
+@need_clang
+def test_pocsag_screen_shows_the_pages():
+    """the release's POCSAG on an image with the screen: DAPNET's frequency on the title bar, the
+    pages as "RIC:text" in the log as each transmission ends, the counts on line 5 between
+    transmissions, and the decoding as good as without the screen (flushes only between them)"""
+    pytest.importorskip("unicorn")
+    src = os.path.join(K6, "mod", "pocsag.c")
+    segs, t = [], 0.4
+    for r in range(1, 4):
+        bits = pocsag.transmission_bits(pocsag.bench_messages(r, 1200))
+        segs.append((t, 1200.0, bits))
+        t += len(bits) / 1200 + 2.5
+    screen = []
+    e, ret = run_plain(src, [("FE_S", "14u"), ("UI_HOLD_MS", "1000u")], segs, t + 20, screen=screen,
+                       level=9)
+    assert ret == 9, e.said[-4:]
+    assert screen[0]["text"][:2] == ["POCSAG 439.9875", "LISTENING  KEY: STOP"], screen[0]
+    log = [ln for f in screen for ln in f["text"][2:5]]
+    assert any(ln.startswith("4711:AG7EW POCSAG") for ln in log), log
+    assert screen[-1]["text"][1] == "DONE" and screen[-1]["text"][5] == "ANY KEY: BACK", screen[-1]
+    assert any(f["text"][5].endswith("TX 3 MSG 9") for f in screen), [f["text"][5] for f in screen]
+    if os.environ.get("K6_SCREENS"):
+        import json
+        with open(os.path.join(os.environ["K6_SCREENS"], "pocsag.json"), "w") as fo:
+            json.dump([f for f in screen if f["text"][2]][-2:], fo)
 
 
 # ---- NOAA SAME: the probe (whether the chip reads SAME at all is the bench's question) ----
@@ -437,6 +465,33 @@ def test_samerx_440_on_the_model():
         want = [x for a, b_, x in sent if t0 < a and b_ < t1]
         got = [h[2] for h in heads if h[0] == k]
         assert len(want) >= 2 and all(w in got for w in want), (k, want, got)
+
+
+@need_clang
+def test_samerx_screen_shows_the_header():
+    """the release's SAME RX with the screen: 162.550 on the title bar, each header in the log
+    as its fields (ZCZC left out, '-' as spaces), the time, RSSI and headers on line 5"""
+    pytest.importorskip("unicorn")
+    from modem import same
+    segs, t = [], 1.0
+    for r in (1, 2):
+        text = f"ZCZC-WXR-RWT-053033+0015-31518{r:02d}-KSEW/NWS-"
+        b = same.burst_bits(text)
+        segs.append((t, 6347.6, same.df_samples(b, phase=0.5, rate=6347.6 / same.DF_RATE, noise=0.05, seed=r)))
+        t += len(b) / same.BAUD + 2.0
+    screen = []
+    e, ret = run_plain(os.path.join(K6, "mod", "samerx.c"),
+                       [("FE_S", f"{int(t) + 2}u"), ("UI_HOLD_MS", "500u")], segs, t + 10, screen=screen, level=9)
+    assert ret == 2, e.said[-4:]
+    assert screen[0]["text"][:2] == ["SAME 162.550", "WAITING  KEY: STOP"], screen[0]
+    last = screen[-1]["text"]
+    assert last[1] == "DONE" and last[3:5] == ["WXR RWT 053033+0015 3", "151802 KSEW/NWS "], last
+    assert any(f["text"][1] == "HEADERS HEARD: 2" for f in screen)
+    assert any("DBM H2" in f["text"][5] for f in screen), [f["text"][5] for f in screen]
+    if os.environ.get("K6_SCREENS"):
+        import json
+        with open(os.path.join(os.environ["K6_SCREENS"], "samerx.json"), "w") as fo:
+            json.dump([screen[-2]], fo)
 
 
 @need_clang

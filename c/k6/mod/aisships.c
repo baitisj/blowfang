@@ -287,6 +287,8 @@ static void screen(const k6_api_t *api, tab_t *t) {
         if (s->brg < 10) *p++ = '0';
         p = dec(p, s->brg);
       }
+    } else if (line == 1 && !shown) {
+      p = put(p, "LISTENING");   /* (not a blank screen while it waits) */
     }
     *p = 0;
     api->lcd_text((int)line, t->ln);

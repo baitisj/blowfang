@@ -29,6 +29,7 @@
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "../cwid.c"
+#include "k6ui.h"
 #ifndef K6_NAME
 #define K6_NAME "CW LISTEN"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
@@ -91,6 +92,8 @@ typedef struct {
   uint8_t seen;             /* how many transmissions in a row gave it */
   uint8_t fl;               /* its flags (CW_CALL_*) */
   uint8_t tone, q;          /* this transmission's tone index, and % of key-down polls on it */
+  uint32_t tk;              /* ms of the last key-down poll (the screen flushes in the gaps) */
+  ui_t u;                   /* the screen (k6ui.h) */
 } work_t;
 
 static char *line_start(char *p) { return put(p, "CWID "); }
@@ -117,6 +120,7 @@ NOINLINE static int report(const k6_api_t *api, work_t *w) {
   if (c->why) p = put(p, c->why == CW_LONG ? " long" : " full");
   *p = 0; api->say(line);
   p = put(line_start(line), "text "); p = put(p, c->text); *p = 0; api->say(line);
+  ui_log(&w->u, c->text);
   if (n) {
     for (i = 0; call[i] == w->last[i] && call[i]; i++) {}
     if (call[i] == w->last[i] && fl == w->fl) { if (w->seen < 255) w->seen++; }
@@ -124,6 +128,8 @@ NOINLINE static int report(const k6_api_t *api, work_t *w) {
     p = put(line_start(line), "call="); p = put(p, call);
     p = put(p, " fl="); p = cw_utoa(p, fl); p = put(p, " seen="); p = cw_utoa(p, w->seen);
     *p = 0; api->say(line);
+    p = put(line, w->seen >= 2 ? "CONFIRMED " : "CALL "); p = put(p, call);
+    *p = 0; ui_text(&w->u, 1, line);
     if (w->seen == 2) {
       p = put(line_start(line), "ok "); p = put(p, call);
       p = put(p, " fl="); p = cw_utoa(p, fl);
@@ -182,6 +188,12 @@ NOINLINE static int run(const k6_api_t *api, work_t *w) {
   api->fd_write(0x47, 0x6040 | (1 << 8));   /* Aura's AF_OUT_BASE | RX audio (AF_STATE 1) */
 #endif
   say_start(api);
+  {
+    char l[24];
+    ui_mhz(ui_put(l, "CW ID "), api->rx_hz());
+    ui_begin(&w->u, api, l, "LISTENING  KEY: STOP");
+  }
+  w->tk = 0;
 
   start = api->ms();
   while (!stop) {
@@ -192,6 +204,14 @@ NOINLINE static int run(const k6_api_t *api, work_t *w) {
     if (api->key_down()) stop = 2;
     b = api->fd_read(0x0B);
     keyed = (b >> 12) & 1;
+    if (keyed) w->tk = t;
+    if (w->u.on && t - w->tk >= 500 && api->ms() - w->u.t_fl >= 1000) {
+      /* the screen's status, only in a gap (a flush is 20-40 ms the detector isn't read) */
+      char l[24], *q = ui_mmss(l, ui_udiv(t, 1000));
+      q = ui_dec(ui_put(q, "  IDS "), (uint32_t)msgs, 1);
+      ui_text(&w->u, 5, l);
+      ui_now(&w->u);
+    }
     if (keyed && w->hist[(b >> 8) & 15] < 0xFFFF) w->hist[(b >> 8) & 15]++;
     if (api->fd_read(0x0C) & 1) { api->fd_write(0x02, 0); (void)api->fd_read(0x02); }
     if (stop ? cw_flush(&w->cw, t) : cw_feed(&w->cw, t, keyed)) {
@@ -208,6 +228,7 @@ NOINLINE static int run(const k6_api_t *api, work_t *w) {
     }
   }
   say_end(api, stop, msgs, junk);
+  ui_end(&w->u, stop == 3 ? 0 : stop == 2 ? "STOPPED" : "TIME UP", stop == 2);
   return ok;
 }
 

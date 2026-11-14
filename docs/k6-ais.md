@@ -350,7 +350,8 @@ Jeff asked how to make AIS (and ACARS) hear further. The findings:
   the base station's; on the model about 2 dB; no false frames on noise or random GMSK
   (`test_m0_rescue_*`). It costs ~590 B of code, so aisships now fits only without the upload's
   telemetry text (`--telemetry 0`, the no-ARQ send's default; with it the module returns -8).
-  aisclk (2 B spare) stays without it.
+  aisclk has no rescue, but since its end screen (2026-11-14: the result stays until a key or
+  15 s, where it used to drop back to the menu) it too is uploaded with `--telemetry 0`.
 - **Outside the radio:** tonight's switching noise near 162 MHz cost ~2.5 dB; antenna height or
   an inline 162 MHz preamp would add more (no change to the K6).
 - **ACARS** (2400 baud MSK, 1200/2400 Hz tones on AM) is the chip modem's mode 4 format; whether

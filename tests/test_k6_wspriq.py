@@ -42,7 +42,7 @@ def test_wspriq_builds_small():
     sys.path.insert(0, ROOT)
     from modem import k6mod
     code, entry = k6mod.build(os.path.join(MOD, "wspriq.c"))
-    assert len(code) + 24 <= 4096, len(code)
+    assert len(code) + 24 <= 6144, len(code)   # with the start and end screens (k6ui.h)
 
 
 @need_clang
@@ -54,7 +54,7 @@ def test_wspriq_streams_a_tone(tmp_path):
 
     def sig(t, regs):
         return 0.5 + 0.3 * np.cos(2 * np.pi * tone * t)
-    ret, said, regs, writes, stack, (rcc, tim, dma, sim) = emulate(short(tmp_path), START, sig)
+    ret, said, regs, writes, stack, (rcc, tim, dma, sim) = emulate(short(tmp_path), START, sig, max_code=6144)
     assert said[0] == "wspriq start f=1500 inv=0 n=15 cal=0", said[0]
     assert said[1].startswith("wspriq gain rms=") and " r2=" in said[1], said[1]
     q = [s for s in said if s.startswith("q ")]
@@ -83,7 +83,7 @@ def test_wspriq_follows_the_calibration(tmp_path):
 
     def sig(t, regs):
         return 0.5 + 0.3 * np.cos(2 * np.pi * tone * t)
-    ret, said, *_ = emulate(short(tmp_path, 2), START, sig, level=4, cal=cal_record(off))
+    ret, said, *_ = emulate(short(tmp_path, 2), START, sig, level=4, cal=cal_record(off), max_code=6144)
     assert abs(int(said[0].split("cal=")[1]) - off) <= 30, said[0]
     z, rate, _ = k6_wspr.baseband(*k6_wspr.parse(log_of(said)))
     zz = z[60:]
@@ -102,10 +102,15 @@ def test_wspriq_screen_on_a_level_6_image(tmp_path):
     def sig(t, regs):
         return 0.5 + 0.3 * np.cos(2 * np.pi * tone * t) + 0.02 * np.cos(2 * np.pi * (tone - 70) * t)
     lcd = {}
-    ret, said, regs, writes, stack, _ = emulate(short(tmp_path, 4), START, sig, level=6, lcd=lcd)
+    ret, said, regs, writes, stack, _ = emulate(short(tmp_path, 4), START, sig, level=6, lcd=lcd, max_code=6144)
     fr = lcd["frames"]
-    assert len(fr) >= 2, said
+    assert len(fr) >= 3, said
+    assert fr[0]["text"][:2] == ["WSPR IQ", "SETTING THE GAIN"]    # at once, before the set-up
+    assert fr[1]["text"][2] == "IT STREAMS TO A PC" and fr[1]["text"][5] == "ANY KEY: STOP"
+    assert fr[-1]["text"][1] == "TIME UP" and fr[-1]["text"][5] == "ANY KEY: BACK"   # held
+    fr = fr[:-1]
     assert fr[-1]["text"][0] == "WSPR RX  440850 kHz" and fr[-1]["text"][1] == "1500Hz +-99  cal 0"
+    assert fr[-1]["text"][2:5] == ["", "", ""]
     assert fr[-1]["text"][5].startswith("t ") and fr[-1]["text"][5].endswith(" of 4 s  lost 0")
     wf = np.array([[(b >> (7 - j)) & 1 for b in row for j in range(8)] for row in fr[-1]["wf"]])
     assert wf.shape == (24, 128)
@@ -199,7 +204,7 @@ def test_wspriq_whole_chain_decodes(tmp_path):
         on = (u >= 0) & (u < 162 * SYM)
         ph = 2 * np.pi * (gp0.FIF + 1503 + tones[k] * DF) * t
         return 0.5 + 0.15 * on * np.cos(ph) + rng.normal(0, 0.05, len(t))
-    ret, said, *_ = emulate(short(tmp_path, 116), START, sig, count=4_000_000_000)
+    ret, said, *_ = emulate(short(tmp_path, 116), START, sig, count=4_000_000_000, max_code=6144)
     assert said[-1].startswith("wspriq done") and ret > 1000, said[-1]   # not the count cap
     z, rate, _ = k6_wspr.baseband(*k6_wspr.parse(log_of(said)))
     res = k6_wspr.decode(z, rate)

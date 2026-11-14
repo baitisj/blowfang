@@ -42,6 +42,7 @@
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 3
 #include "../k6_mod.h"
+#include "k6ui.h"
 #include "rangetx_bits.h"   /* RT_PACKETS, RT_NBITS, RT_TONES */
 #ifndef K6_NAME
 #define K6_NAME "RANGE TX"   /* its name in the MENU list (a file that includes this one may set its own) */
@@ -306,7 +307,7 @@ static int burst(const k6_api_t *api, clk_t *c, stat_t *s) {
   return 0;
 }
 
-int k6_main(const k6_api_t *api) {
+static int tx_main(const k6_api_t *api, ui_t *ku) {
   char line[64], *p;
   clk_t c;
   stat_t s;
@@ -338,6 +339,8 @@ int k6_main(const k6_api_t *api) {
       api->delay_us(10000);
     }
   }
+  ui_text(ku, 1, "ON THE AIR");
+  ui_now(ku);
   if (api->tx_on(TX_MS) != 0) return -3;
   if (!RT_PA) api->tx_pa(0);
   api->fd_write(0x70, 0);
@@ -381,4 +384,16 @@ int k6_main(const k6_api_t *api) {
   *p = 0;
   api->say(line);
   return (int)RT_PACKETS;
+}
+
+/* the screen: what it sends, then how it went (k6ui.h; images before level 6 skip it) */
+int k6_main(const k6_api_t *api) {
+  ui_t u;
+  int r;
+  ui_begin(&u, api, "RANGE TX 440.850", "WAITING FOR QUIET");
+  ui_text(&u, 5, "ANY KEY: STOP");
+  ui_now(&u);
+  r = tx_main(api, &u);
+  ui_tx_end(&u, r, RT_HZ, "PACKETS SENT + CW ID");
+  return r;
 }

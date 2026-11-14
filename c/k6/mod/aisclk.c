@@ -100,6 +100,7 @@ K6_MODULE_NAME(K6_NAME);
 #define NCAP (PRE + 2576u)
 #endif
 #include "aispoll.h"
+#include "k6ui.h"
 
 #define DAY100 864000000u
 #define MIN100 600000u
@@ -442,5 +443,6 @@ int k6_main(const k6_api_t *api) {
   if (k.set) p = put(p, " utc="), p = hms(p, mod_day((int32_t)(k.off + ap_now(api, &ck))));
   *p = 0;
   api->say(line);
+  if (quit != 1) ui_hold(api, "TIME UP  ANY KEY");
   return (int)k.nfine;
 }

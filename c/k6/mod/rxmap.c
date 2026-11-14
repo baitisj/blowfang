@@ -34,6 +34,7 @@
 #define K6_MODULE_LEVEL 2
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
+#include "k6ui.h"
 #ifndef K6_NAME
 #define K6_NAME "RX MAP"   /* its name in the MENU list (a file that includes this one may set its own) */
 #endif
@@ -177,12 +178,33 @@ static int clear(const k6_api_t *api, const par_t *q) {
   return 0;
 }
 
-static int map(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room) {
+/* the screen's chart: a bin's peak as a bar, -140 dBm (none) to -50 (all 30 rows), its floor as
+   a gap at that height: lcd_wf's rows in the scratch after the bins */
+static void bar(ui_t *u, uint8_t *wf, const par_t *q, uint32_t b, int pk, int fl) {
+  uint32_t x0 = 4 + ui_udiv(b * 120u, q->nbins), x1 = 4 + ui_udiv((b + 1) * 120u, q->nbins), x, r;
+  int h = pk + 140, f = fl + 140;
+  h = h < 0 ? 0 : h > 89 ? 30 : (int)ui_udiv((uint32_t)h, 3);
+  f = f < 0 ? 0 : f > 89 ? 30 : (int)ui_udiv((uint32_t)f, 3);
+  if (x1 > x0 + 1) x1--; /* a pixel between bars */
+  for (r = 0; r < KM_WF_ROWS; r++) {
+    int lit = (int)r >= KM_WF_ROWS - h && (int)r != KM_WF_ROWS - 1 - f;
+    for (x = x0; x < x1; x++) {
+      uint8_t m = (uint8_t)(0x80 >> (x & 7));
+      if (lit) wf[16 * r + (x >> 3)] |= m;
+      else wf[16 * r + (x >> 3)] &= (uint8_t)~m;
+    }
+  }
+  if (u->on) u->api->lcd_wf(wf, KM_WF_ROWS, 0);
+}
+
+static int map(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room, ui_t *u) {
   uint8_t *fl = mem, *pk = mem + q->nbins, *at = mem + 2 * q->nbins;
+  uint8_t *wf = mem + ((3u * q->nbins + 3) & ~3u);
   uint32_t b, s, f0 = q->lo_hz, t0 = api->ms();
   int sig = 0;
   char line[64], *p;
-  if (3u * q->nbins > room) return -8;
+  if (((3u * q->nbins + 3) & ~3u) + 16u * KM_WF_ROWS > room) return -8;
+  for (b = 0; b < 16u * KM_WF_ROWS; b++) wf[b] = 0;
   for (b = 0; b < q->nbins; b++, f0 += q->bin_hz) {
     int hi = -999, lo = 999, ihi = 0, ilo = 0, r, z;
     uint32_t f = f0;
@@ -209,8 +231,17 @@ static int map(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room)
     p = mhz(p, f0 + (uint32_t)ihi * q->step_hz);
     p = put(p, " z");
     say0(api, line, hex4(p, (uint32_t)z));
+    /* the screen: the bar, where the sweep is */
+    bar(u, wf, q, b, dbm8(pk[b]), dbm8(fl[b]));
+    p = ui_mhz(ui_put(line, "AT "), f0);
+    ui_text(u, 1, line);
+    if (u->on) api->lcd_bar(1, b + 1, q->nbins);
+    u->dirty = 1;
+    ui_flush(u, 400);
   }
   /* the summary, newest last: what the telemetry keeps */
+  ui_text(u, 1, "NO SIGNALS FOUND");
+  if (u->on) api->lcd_bar(1, 0, 0);
   {
     int n = 0, k;
     p = put(line, "T");
@@ -222,6 +253,13 @@ static int map(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room)
       }
       if (best < 0) break;
       at[best] |= 0x80; /* listed (nsteps < 128) */
+      if (!n && !k) {
+        /* the screen's line 1: the strongest */
+        char *e = ui_mhz(ui_put(line + 32, "TOP "), q->lo_hz + (uint32_t)best * q->bin_hz +
+                                                      (uint32_t)(at[best] & 0x7F) * q->step_hz);
+        ui_put(ui_sdec(ui_put(e, " "), dbm8(pk[best])), "DBM");
+        ui_text(u, 1, line + 32);
+      }
       if (n == 4) say0(api, line, p), p = put(line, "T"), n = 0;
       *p++ = ' ';
       p = mhz(p, q->lo_hz + (uint32_t)best * q->bin_hz + (uint32_t)(at[best] & 0x7F) * q->step_hz);
@@ -260,7 +298,7 @@ typedef struct {
   uint32_t zsum;
 } pt_t;
 
-static int cal(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room) {
+static int cal(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room, ui_t *u) {
   pt_t *pt = (pt_t *)mem;
   uint32_t i, k, t0 = api->ms(), last = 0;
   int ev = 0, seen = 0;
@@ -311,6 +349,8 @@ static int cal(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room)
         p = kv(p, " n", x->n);
         p = kv(p, " z", udiv(x->zsum + x->n / 2, x->n));
         say0(api, line, p);
+        ui_log(u, line + 2);
+        ui_now(u);
         x->n = 0, x->sum = 0, x->zsum = 0, x->max = 0;
         ev++;
       }
@@ -323,6 +363,7 @@ static int cal(const k6_api_t *api, const par_t *q, uint8_t *mem, uint32_t room)
 }
 
 int k6_main(const k6_api_t *api) {
+  ui_t *u;
   par_t q;
   uint8_t *mem, *d = (uint8_t *)&q;
   const volatile uint8_t *src = (const volatile uint8_t *)&PAR;
@@ -333,7 +374,17 @@ int k6_main(const k6_api_t *api) {
   if (q.mode > 1 || q.full_us < 1000 || (q.mode == 0 && (!q.nbins || !q.nsteps || q.nsteps > 127)))
     return -11;
   mem = (uint8_t *)api->scratch(&room);
+  /* the screen's state goes first in the scratch */
+  if (room < sizeof(ui_t) + 4) return -8;
+  u = (ui_t *)(((uint32_t)mem + 3) & ~3u);
+  room -= sizeof(ui_t) + 4, mem = (uint8_t *)(u + 1);
+  {
+    char t[24], *p = ui_mhz(ui_put(t, q.mode ? "RX CAL " : "RX MAP "), q.mode ? q.cal_hz[0] : q.lo_hz);
+    if (!q.mode) ui_put(ui_dec(ui_put(p, "+"), ui_udiv(q.nbins * q.bin_hz, 1000000u), 1), "M");
+    ui_begin(u, api, t, q.mode ? "WAITING FOR CARRIERS" : "SWEEPING  KEY: STOP");
+  }
   r = clear(api, &q);
-  if (r) return r;
-  return q.mode ? cal(api, &q, mem, room) : map(api, &q, mem, room);
+  if (!r) r = q.mode ? cal(api, &q, mem, room, u) : map(api, &q, mem, room, u);
+  ui_end(u, r == -2 ? "STOPPED" : r < 0 ? "NO RESULT" : q.mode ? "DONE" : 0, r == -2);
+  return r;
 }

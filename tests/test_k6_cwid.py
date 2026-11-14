@@ -254,10 +254,11 @@ def test_probe_builds_fits_level_2():
     assert 16 + len(code) + 8 <= 4096, len(code)          # the K6's 4 KB message store
 
 
-def run_m0(code, entry, fd_read, key_at_ms, spare, max_ms=None):
+def run_m0(code, entry, fd_read, key_at_ms, spare, max_ms=None, screen=None):
     """Run a module on an emulated Cortex-M0 with an API level 2 table: fd_read(reg, ms) models
-    the FD6818, a key goes down at key_at_ms, spare bytes of scratch RAM. Returns
-    (ret, said, writes, stack bytes, scratch address)."""
+    the FD6818, a key goes down at key_at_ms, spare bytes of scratch RAM. screen: a list for a
+    level 9 table with the module screen: each lcd_flush (30 ms) appends {"ms", "text"}.
+    Returns (ret, said, writes, stack bytes, scratch address)."""
     unicorn = pytest.importorskip("unicorn")
     from unicorn import arm_const as A
     st = {"us": 0, "said": [], "writes": {}}
@@ -268,10 +269,17 @@ def run_m0(code, entry, fd_read, key_at_ms, spare, max_ms=None):
     base, api, stubs, stop, sp0 = ram + 0x1000, ram + 0x8000, ram + 0x9000, ram + 0x9F00, ram + 0x7F00
     mu.mem_write(base, code)
     names = ["say", "ticks", "fd_read", "fd_write", "delay_us", "tune", "rx_hz", "ms", "key_down", "scratch"]
+    level = 2
+    if screen is not None:
+        level = 9
+        names += ["tx_on", "tx_off", "tx_pa", "key_poll", "cal_read", "cal_write", "fl_read", "fl_prog",
+                  "fl_erase", "lcd_text", "lcd_bar", "lcd_wf", "lcd_flush", "led", "clock_set", "clock_get",
+                  "lcd_glyphs"]
+    text = [""] * 6
     for i in range(len(names)):
         mu.mem_write(stubs + 16 * i, b"\x70\x47")
     mu.mem_write(stop, b"\x00\xbf" * 8)
-    mu.mem_write(api, (1).to_bytes(2, "little") + (2).to_bytes(2, "little")
+    mu.mem_write(api, (1).to_bytes(2, "little") + level.to_bytes(2, "little")
                  + b"".join((stubs + 16 * i | 1).to_bytes(4, "little") for i in range(len(names))))
     low = [sp0]
 
@@ -298,11 +306,18 @@ def run_m0(code, entry, fd_read, key_at_ms, spare, max_ms=None):
             ret = 440_850_000
         elif name == "ms":
             ret = st["us"] // 1000
-        elif name == "key_down":
+        elif name in ("key_down", "key_poll"):
             ret = 1 if st["us"] >= key_at_ms * 1000 else 0
         elif name == "scratch":
             ret = ram + 0x6000
             uc.mem_write(r0, spare.to_bytes(4, "little"))
+        elif name == "lcd_text" and 0 <= r0 < 6:
+            text[r0] = bytes(uc.mem_read(r1, 21)).split(b"\0")[0].decode("latin-1")
+        elif name == "lcd_flush":
+            screen.append({"ms": st["us"] // 1000, "text": list(text)})
+            st["us"] += 30000
+        elif name not in names[:10] and name not in ("lcd_bar", "lcd_wf", "lcd_glyphs", "led"):
+            raise AssertionError(name + " called")
         uc.reg_write(A.UC_ARM_REG_R0, ret & 0xFFFFFFFF)
     mu.hook_add(unicorn.UC_HOOK_CODE, on_stub, begin=stubs, end=stubs + 16 * len(names))
     mu.reg_write(A.UC_ARM_REG_R0, api)
@@ -405,7 +420,7 @@ def tone_reg(edges, idx, lag_on=10.0, lag_off=20.0, junk=()):
 def test_listener_builds_fits_level_2():
     code, entry = k6mod.build(LISTEN)
     assert entry == 16 and k6mod.source_level(LISTEN) == 2   # after its name
-    assert 16 + len(code) + 8 <= 4096, len(code)
+    assert 16 + len(code) + 8 <= 11776, len(code)            # the voice images' module block
 
 
 @need_clang
@@ -435,7 +450,32 @@ def test_listener_confirms_call_on_m0(wpm, idx, scratch):
     assert all(len(s) <= 60 for s in said)
     assert writes[0x24] & 0x10 == 0 and writes[0x3F] == 0x0800
     print(f"cwlisten stack {stack} B, code {len(code)} B")
-    assert stack < (400 if scratch else 600), stack
+    assert stack < (400 if scratch else 720), stack   # (no scratch: work_t and its screen state on the stack)
+
+
+@need_clang
+def test_listener_screen():
+    """the release's CW LISTEN with the screen: the channel on the title bar, each ID's text in
+    the log, CALL then CONFIRMED on line 1, the count on line 5 (flushed only in the gaps), and
+    the confirmed call stays on the screen at the end"""
+    code, entry = k6mod.build(LISTEN)
+    rnd = random.Random(3)
+    text = "AG7EW SOTTO TEST"
+    n = 129 * 1200 / 20
+    edges = edges_of([(3000.0, text, 20), (3000.0 + n + 4000, text, 20)], rnd)
+    screen = []
+    ret, said, writes, stack, _ = run_m0(code, entry, tone_reg(edges, 4), 60_000, 1024, screen=screen)
+    assert ret == 1 and said[-1] == "CWID end ok msgs=2 short=0", said[-3:]
+    assert screen[0]["text"][:2] == ["CW ID 440.850", "LISTENING  KEY: STOP"], screen[0]
+    assert any(f["text"][1] == "CALL AG7EW" for f in screen), [f["text"][1] for f in screen]
+    last = screen[-1]["text"]
+    assert last[1] == "CONFIRMED AG7EW" and last[4] == text and last[3] == text, last
+    assert last[5] == "ANY KEY: BACK"
+    assert any(f["text"][5].endswith("IDS 1") for f in screen), [f["text"][5] for f in screen]
+    if os.environ.get("K6_SCREENS"):
+        import json
+        with open(os.path.join(os.environ["K6_SCREENS"], "cwlisten.json"), "w") as fo:
+            json.dump([screen[-1]], fo)
 
 
 @need_clang

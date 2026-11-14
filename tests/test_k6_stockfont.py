@@ -123,7 +123,8 @@ def test_crcs_map_and_glyphs():
     assert said[2] == f"crc gb16 {crc['gb16']:08x} gb12 {crc['gb12']:08x}"
     assert said[3] == "map " + "#########...#################..."
     assert said[-1] == "drawn: done"
-    frames = lcd["frames"]
+    assert lcd["frames"][0]["text"][:2] == ["STOCK FONT", "READING THE FLASH"]   # at once
+    frames = lcd["frames"][1:]
     assert len(frames) == 4 and frames[0]["text"][0] == "STOCK FONTS 1/2"
     assert frames[1]["text"][0] == "STOCK FONTS 2/2"
     wf = frames[0]["wf"]
@@ -142,7 +143,7 @@ def test_blank_fonts_and_key_out():
     ret, said, lcd, fl = emulate(flash_image(blank_ascii=True), keys=((0, 10**12),))
     assert ret == 1, said
     assert "FF" in said[1] and said[-1] == "drawn, key: done"
-    assert len(lcd["frames"]) == 1 and lcd["frames"][0]["text"][5].startswith("ASCII BLANK")
+    assert len(lcd["frames"]) == 2 and lcd["frames"][1]["text"][5].startswith("ASCII BLANK")
 
 
 @need_clang
@@ -157,4 +158,4 @@ if __name__ == "__main__":
     import k6_screen
     _, said, lcd, _ = emulate(flash_image())
     print("\n".join(said))
-    k6_screen.png(lcd["frames"][:2], sys.argv[1] if len(sys.argv) > 1 else "stockfont.png")
+    k6_screen.png(lcd["frames"][1:3], sys.argv[1] if len(sys.argv) > 1 else "stockfont.png")
