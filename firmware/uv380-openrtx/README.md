@@ -199,8 +199,14 @@ three quarters there and then quiet for 4 s (the gaps filled from neighbouring f
 the message (# plays it again, PTT sends it) and plays on the speaker at once; the same message
 isn't played again for 60 s. It stops for PTT, FUNC, the speaker preview and every USB command,
 and starts again after them. With the cable in it prints `heard pkt seq=.. id=.. frames=G/T`,
-`heard whole|part ...` and `heard dropped ...` lines. Receive only: no RF register. PHY F (FSK)
-isn't received.
+`heard whole|part ...` and `heard dropped ...` lines (only while the host has written in the last
+30 s: a write with no host busy-waits). `listen 0|1` turns it off or on, `listen` says its state
+and the preview's. Receive only: no RF register. PHY F (FSK) isn't received.
+
+The first image (8b87511) froze hard after playing a message it heard with the cable out
+(11-14 15:44Z, a battery pull). Suspect: the speaker preview stuck in the DAC driver's sync,
+which waits with no timeout, and the RTX thread waiting on it at the next PTT. Now the RTX thread
+waits at most 3 s for the preview, and `err busy` says which frame the preview is on.
 
 **Bench knobs (probe image).** Over USB, or a module's `api->probe()`: `lvl N` sets the FFSK
 peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM runs at
