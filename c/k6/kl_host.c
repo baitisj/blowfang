@@ -8,9 +8,11 @@
      info N         kl_info slot N (name= the module's name in hex, empty without one)
      flip ADDR      flip the low bit of one SPI flash byte (a worn or overwritten slot)
      keyed 0|1      while keyed the flash calls refuse to program or erase (as the radio's do)
+     dump ADDR      the 64 bytes of the emulated SPI flash at ADDR (hex), as hex (the cable
+                    session's read, tests/test_k6_install.py)
    stdout: one line a command (pkt: r= armed=, and install= for an install; load: r= armed= code_len=; page: r= armed=
    code=; info: r=
-   code_len= entry= serial= level= flags=), and at the end "erases= progs=" and every write that
+   code_len= entry= serial= level= flags=; dump: hex), and at the end "erases= progs=" and every write that
    broke a rule ("RULE ..."): outside the library, a program across a page, an erase off a sector.
    SPDX-License-Identifier: MIT */
 #include <stdio.h>
@@ -54,6 +56,7 @@ int main(void) {
   char line[1024];
   uint8_t p[256], *a = (uint8_t *)arena;
   memset(nor, 0xFF, sizeof nor);
+  setvbuf(stdout, NULL, _IOLBF, 0);   /* a line per command, so a test can drive it a command at a time */
   while (fgets(line, sizeof line, stdin)) {
     unsigned n = 0, v = 0;
     if (!strncmp(line, "pkt ", 4)) {
@@ -86,6 +89,10 @@ int main(void) {
     } else if (sscanf(line, "flip %x", &v) == 1) {
       nor[v % NOR_BYTES] ^= 1;
       printf("flipped %06x\n", v);
+    } else if (sscanf(line, "dump %x", &v) == 1) {
+      unsigned k;
+      for (k = 0; k < 64; k++) printf("%02x", nor[(v + k) % NOR_BYTES]);
+      printf("\n");
     } else if (sscanf(line, "keyed %u", &v) == 1) {
       keyed = (int)v;
       printf("keyed=%d\n", keyed);

@@ -6,6 +6,8 @@
 #
 # Install all of them, signed, telemetry 0 (a run from the library never sends a report):
 #   python -m modem.k6 mod OUT.wav c/k6/mod/SRC.c --key-file KEY --install SLOT
+# or over the cable with the pages and the help deck: tools/k6_install.py load BUNDLE (the
+# release folder `k6_install.py bundle` makes from build.sh's out/, with this list)
 # the API level comes from the source (K6_MODULE_LEVEL).
 #
 # with a screen

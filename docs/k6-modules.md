@@ -351,6 +351,76 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
 - **Tests:** `tests/test_k6_lib.py` runs the library and the loader on this machine against an
   emulated NOR flash (`c/k6/kl_host`), checking every write against the rules above.
 
+## The cable session
+
+Added 2026-11-14 (Jeff: "a human understandable instruction book and some sort of installation
+script for someone else who has a k6 ... Ideally there would be a way of doing this load all
+through serial"). An owner without a second radio can't send modules over the air, so every
+image with the SPI library (`spilib`: pager-only, lr, vlr, vlrh, explore, voice-explore) also
+takes them over the programming cable. `tools/k6_install.py` drives it and
+[`docs/manual/install.md`](manual/install.md) is the owner's book.
+
+**Same chunks, same loader, same writes.** The session hands each chunk to `km_packet` exactly
+as the receiver does (a whitened 64-byte L packet, magic `0xAB`), so the tag under the radio's
+key and the serial are checked as for an upload, and an install image goes into its slot through
+the same `lib_install` / `kl_install` (the slot's sectors in 0x110000-0x18FFFF, a page at a time,
+read back). The cable adds no new trust and no new kind of SPI write. An image without
+`KM_F_LIB` is checked and dropped, never run: the PC uses that to check its key before it writes
+anything (a two-byte `bx lr` image: `r=3` the key is right, `r=-4` another key, `r=-5` none).
+
+**Opening it.** The PC sends `PROGRAMBF-K6BLWF` (16 bytes; Aura's CPS uses `PROGRAMBF-K6AURA`,
+so CHIRP's Aura driver never opens this one). Main's pager-only loop polls for it in EXPLORE and
+in the arena, never while keyed (`cps::HandshakeDetector::cable`). The radio prints `K6 CABLE
+on`, answers ACK (0x06), turns the receiver off, shows `BLOWFANG` / `CABLE LOAD...` and takes
+over the MCU (`cps::run_cable_session`) until it restarts.
+
+**The PTT line.** The cable's PC->radio wire is PA10, USART1's RX and the PTT input (low =
+pressed), so data on it pulls PTT low. That is why the bench rule is never to write to the K6
+cable. Outside a session the PC sends only the handshake: 16 bytes are 1.4 ms, and Aura's PTT
+debouncer wants 5 equal samples about 10 ms apart (one each pass of the main loop), so a
+handshake can't key VOICE MSG's calibration send; the installer leaves 0.5 s between tries.
+Inside the session nothing reads PTT and nothing transmits; it ends in a restart.
+
+**Frames** are Aura's CPS frames (`src/cps/frame.rs`): `A6`, command, address (u16 BE), length
+(u16 BE, 96 at most), data, CRC-16/XMODEM of command..data (BE). One answer per frame, in order;
+the PC may keep a few in flight (the radio's receive ring holds 320 bytes). Report lines the
+radio prints between frames (`K6 LIB put ...`) are plain text, never an 0xA6 byte, and the PC
+skips them.
+
+| cmd | data | answer |
+| --- | --- | --- |
+| `V` 0x56 info | none | `BLWF`, protocol 1, library slots (32), the shared block's size (u16 LE), the image's 8-byte build ID (voice + EXPLORE; zeros in the others: the pages must end with it) |
+| `M` 0x4D chunk | a whitened 64-byte L packet | `r` (km_packet, i8), have, count, 0, the install's result (i32 LE: the image's length, or `KL_*`; 0 until the last chunk) |
+| `D` 0x44 read | none; addr = 64-byte block | 64 bytes of the SPI flash at addr x 64 (as Aura's `CMD_READ_FLASH_RAW`): the backup, and reading slots back |
+| `E` 0x45 end | none | empty; then the radio restarts |
+| anything else | | `EE` frame, error 3; a bad CRC: `EE`, error 1 |
+
+Five seconds without a frame also restarts the radio (`K6 CABLE idle`). Every session ends in
+a restart, so nothing it left in the shared block (a half transfer, EXPLORE's state, a page in
+the pool) is ever used again, and the stock bootloader's 200 ms UPDATE window follows: the
+installer flashes a new image right after `E` with no hands (the same trick as control action 7,
+`tools/k6_update.py`).
+
+**Speed.** L chunks carry 58 bytes of image; the installer keeps three frames in flight and
+sends each image's last chunk alone (its install erases and programs while the radio isn't
+reading the ring). The release library (about 140 KB) is about 2,400 frames: at 115,200 baud
+that is about 20 s of line time plus the SPI erases, where over the air it took about 23 minutes.
+Not yet measured on a radio.
+
+**Cost** (local clang build of the voice + EXPLORE image): 1,084 B of flash, no static RAM;
+the session's deepest call (main, the session, lib_install, kl_install) stays under the
+image's deepest chain, which grew 8 B. The session reuses Aura's CPS frame reader, encoder and
+SPI read, which the first-boot backup already links.
+
+**Tests:** `tests/test_k6_install.py` runs the installer against an emulated radio: the
+session's frames answered by the real loader and library (`c/k6/kl_host`, an emulated SPI
+flash), and the stock bootloader's UPDATE protocol. It checks the slots and flags each bundle
+entry lands in, that a wrong key writes nothing, that pages for another build are skipped, that
+lost and damaged answers are sent again (and a lost answer to the last chunk is settled by
+reading the slot back), that every flashed image carries the owner's key and no placeholder, the
+whole new-radio flow (three power-ons, the backup at FORMAT FLASH?, MENU) and an update with no
+hands.
+
 ## Security
 
 - **Signed.** A module runs only if its SipHash tag checks under the key the image was built
@@ -359,6 +429,14 @@ into the shared block first, as an upload does; reading 11.7 KB takes about 16 m
 - **No key, no modules.** An image built without `K6_MOD_KEY_FILE` (CI's) holds a placeholder
   and refuses every module (`r=-5`) until `modem.k6 keyimage` writes your key over it. A keyed
   image holds the key: don't publish it, or the key file.
+- **Every owner has their own key.** SipHash is a shared-secret MAC, so a "release key" that
+  signed modules for everyone would have to ship inside every image, where anyone could read it
+  and sign code for every radio running the release. Instead a release carries unkeyed images
+  and unsigned module code, and `tools/k6_install.py` makes each owner's key on their machine
+  (`~/.config/blowfang/k6-mod.key`), keys each image with it just before flashing and signs
+  every library image with it as it sends it. Nobody's key ships; Jeff's
+  (`~/.config/sotto/k6-mod.key`) stays on hamlet. `k6_install.py bundle` refuses an image
+  without the placeholder, so a keyed build never goes into a release.
 - **Replays.** The K6 refuses a serial that isn't newer than the last module it ran since
   power-on (`r=-6`). After a reboot a recorded transmission of an old module of yours would
   run again; that's the gap a boot nonce would close later.

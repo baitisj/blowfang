@@ -67,6 +67,12 @@ below.
 
 ## Flashing and backup
 
+**Installing the release on a radio: use [`docs/manual/install.md`](../../docs/manual/install.md)
+and `tools/k6_install.py`**, which do all of this over the cable: the backup, the codebook
+installers, the voice + EXPLORE image keyed with your key, and its library through the image's
+cable session (docs/k6-modules.md, "The cable session"). The steps below are the manual way,
+with Aura's own tools.
+
 You need a Quansheng-K5-style USB-to-TTL programming cable (the Kenwood 2-pin plug), Python 3 with
 `pyserial`, and Aura's `tools/` folder. After `build.sh` that folder is at `build/aura/tools/`, or you
 can clone Aura.

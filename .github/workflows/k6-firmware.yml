@@ -117,6 +117,7 @@ jobs:
             tests/test_k6_ifpager.py \
             tests/test_k6_ifrx.py \
             tests/test_k6_insights.py \
+            tests/test_k6_install.py \
             tests/test_k6_lib.py \
             tests/test_k6_live.py \
             tests/test_k6_midi.py \
@@ -197,6 +198,17 @@ jobs:
         run: |
           head -3 firmware/k6-aura/out/size-*.txt || true
           cat firmware/k6-aura/out/build-id.txt firmware/k6-aura/out/*.sha256 || true
+      # the release folder an outside K6 owner installs from with tools/k6_install.py
+      # (docs/manual/install.md): the unkeyed images, EXPLORE's pages, the help deck and the
+      # release's modules, with a manifest of their checksums
+      - name: release bundle
+        run: |
+          pip install numpy
+          python3 tools/k6_install.py bundle firmware/k6-aura/out -o firmware/k6-aura/out/blowfang-k6-${{ steps.bid.outputs.short }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blowfang-k6-${{ steps.bid.outputs.short }}
+          path: firmware/k6-aura/out/blowfang-k6-${{ steps.bid.outputs.short }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
