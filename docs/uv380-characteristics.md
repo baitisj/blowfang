@@ -72,6 +72,9 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   40 KB. The sotto 1200 encoder (24.4 KB state plus a 16 KB thread stack) didn't fit: the radio
   reset at the encoder's start (M, 11-14 01:27Z), so its state now comes from a 25 KB arena in CCM
   .bss (PR #101; CCM has about 37 KB free).
+- OpenRTX's RTX thread has a 512 B stack, and the pager's send runs on it. The CW ident fits;
+  the range send's packet coder needs about 460 B more, and the radio reset half a second after
+  key-up, at the end of the lead (M, 11-14 01:59Z). The patch raises it to 2 KB (PR #101).
 - Modules: -fropi thumbv7em, no writable statics, no pointer tables, no 64-bit divide, no libc.
 - The loader flashed on 11-13 drops USB bytes past 256 while a module calls stop() (fixed in source,
   next flash): a module that reads data over USB reads the Ctrl-C byte itself (rrinject).

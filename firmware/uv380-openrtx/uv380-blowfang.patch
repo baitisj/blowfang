@@ -32,6 +32,22 @@ index 6bb1ade..d711997 100644
  
  ##
  ## OpenRTX UI sources
+diff --git a/openrtx/include/core/threads.h b/openrtx/include/core/threads.h
+index a94ea9e..2d11327 100644
+--- a/openrtx/include/core/threads.h
++++ b/openrtx/include/core/threads.h
+@@ -13,7 +13,10 @@
+  * Threads' stack sizes
+  */
+ #define UI_THREAD_STKSIZE     2048
+-#define RTX_THREAD_STKSIZE    512
++// blowfang: 512 overflowed in the pager's range send (OpMode_Pager::send ->
++// ffsk_render -> rg_air_line_bit -> pt_packet: about 460 B more than the CW
++// ident needs) and the radio reset half a second after key-up
++#define RTX_THREAD_STKSIZE    2048
+ #define CODEC2_THREAD_STKSIZE 16384
+ #define AUDIO_THREAD_STKSIZE  512
+ 
 diff --git a/openrtx/include/rtx/OpMode_Pager.hpp b/openrtx/include/rtx/OpMode_Pager.hpp
 new file mode 100644
 index 0000000..c0f6016
