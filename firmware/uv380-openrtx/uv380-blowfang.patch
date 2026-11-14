@@ -253,10 +253,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..f867ad6c
+index 00000000..bb53cc7c
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1414 @@
+@@ -0,0 +1,1422 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -378,9 +378,11 @@ index 00000000..f867ad6c
 +// place of the line in
 +extern "C" volatile bool blowfang_txLow;
 +extern "C" volatile bool blowfang_txMic;
++extern "C" volatile uint8_t blowfang_txZero;
 +#else
 +__attribute__((unused)) static volatile bool blowfang_txLow = false;
 +__attribute__((unused)) static volatile bool blowfang_txMic = false;
++__attribute__((unused)) static volatile uint8_t blowfang_txZero = 1;
 +#endif
 +
 +static const uint8_t *msgBytes()
@@ -730,6 +732,8 @@ index 00000000..f867ad6c
 +        p = line + 5;
 +    else if(strncmp(line, "space ", 6) == 0)
 +        p = line + 6;
++    else if(strncmp(line, "zero ", 5) == 0)
++        p = line + 5;
 +    else if(strcmp(line, "tune") != 0)
 +        return 0;
 +    bool num = false;
@@ -753,10 +757,14 @@ index 00000000..f867ad6c
 +        txMark = (uint32_t) v;
 +    else if(num && !neg && (line[0] == 's') && ((v == 0) || ((v >= 800) && (v <= 2600))))
 +        txSpace = (uint32_t) v;
-+    char out[96];
-+    snprintf(out, sizeof(out), "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu",
++    else if(num && !neg && (line[0] == 'z') && (v >= 1) && (v <= 2))
++        blowfang_txZero = (uint8_t) v;
++    char out[112];
++    snprintf(out, sizeof(out),
++             "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu zero=%u pwr=%lu",
 +             (int) txLevel, (unsigned long) txFs, blowfang_txFlat ? 0 : 1,
-+             (long) blowfang_txTrimHz, (unsigned long) txMark, (unsigned long) txSpace);
++             (long) blowfang_txTrimHz, (unsigned long) txMark, (unsigned long) txSpace,
++             (unsigned) blowfang_txZero, (unsigned long) state.channel.power);
 +    pbSay(NULL, out);
 +    return 1;
 +}
@@ -1700,7 +1708,7 @@ index 54704327..1db08a8b 100644
                  default:   currMode = &noMode;
              }
 diff --git a/openrtx/src/ui/default/ui.c b/openrtx/src/ui/default/ui.c
-index 679be118..55b86b14 100644
+index 679be118..88534ba3 100644
 --- a/openrtx/src/ui/default/ui.c
 +++ b/openrtx/src/ui/default/ui.c
 @@ -53,6 +53,7 @@
@@ -1731,7 +1739,21 @@ index 679be118..55b86b14 100644
                  state.channel.mode = OPMODE_FM;
              else //catch any invalid states so they don't get locked out
              #endif
-@@ -1427,6 +1434,7 @@ void ui_updateFSM(bool *sync_rtx)
+@@ -1016,6 +1023,13 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
+                     state.channel.power = 5000;
+                     break;
+ 
++                #if defined(PLATFORM_MDUV3x0)
++                case 5000:
++                    // blowfang: 0 W, effectively none (radio_UV3x0.cpp)
++                    state.channel.power = 0;
++                    break;
++                #endif
++
+                 default:
+                     state.channel.power = 1000;
+             }
+@@ -1427,6 +1441,7 @@ void ui_updateFSM(bool *sync_rtx)
      {
          kbd_msg_t msg;
          msg.value = event.payload;
@@ -1739,7 +1761,7 @@ index 679be118..55b86b14 100644
          bool f1Handled = false;
          enum vpQueueFlags queueFlags = vp_getVoiceLevelQueueFlags();
          // If we get out of standby, we ignore the kdb event
-@@ -1575,6 +1583,12 @@ void ui_updateFSM(bool *sync_rtx)
+@@ -1575,6 +1590,12 @@ void ui_updateFSM(bool *sync_rtx)
                          }
                          else
                          #endif
@@ -1815,10 +1837,10 @@ index d71444c6..15c6e2b2 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a94..aca41282 100644
+index 64b77a94..7961693b 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
-@@ -19,6 +19,19 @@
+@@ -19,6 +19,23 @@
  
  static const rtxStatus_t *config;                // Pointer to data structure with radio configuration
  
@@ -1833,12 +1855,16 @@ index 64b77a94..aca41282 100644
 +// UV-380 (an MD-UV390 Plus) transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
 +// IC-7100 in USB): the K6's chip FSK never synced on it. Receive is untouched.
 +volatile int32_t blowfang_txTrimHz = 3580;
++// A channel power of 0 (macro key 6 cycles 1, 2.5, 5, 0 W; Jeff 11-14: "an
++// effectively zero power transmit option"): 1 keeps the PA off and only the
++// AT1846S's own output leaks out, 2 turns the PA on with its APC at 0 ("zero N")
++volatile uint8_t blowfang_txZero = 1;
 +}
 +
  static mduv3x0Calib_t calData;                   // Calibration data
  static Band    currRxBand = BND_NONE;            // Current band for RX
  static Band    currTxBand = BND_NONE;            // Current band for TX
-@@ -95,6 +108,7 @@ void radio_setOpmode(const enum opmode mode)
+@@ -95,6 +112,7 @@ void radio_setOpmode(const enum opmode mode)
      switch(mode)
      {
          case OPMODE_FM:
@@ -1846,12 +1872,15 @@ index 64b77a94..aca41282 100644
              at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
              C6000.fmMode();                         // HR_C6000 in FM mode
              C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
-@@ -183,11 +197,13 @@ void radio_enableTx()
+@@ -183,15 +201,20 @@ void radio_enableTx()
      gpio_clearPin(RF_APC_SW);
  
      C6000.setModOffset(txModBias);
 -    at1846s.setFrequency(config->txFrequency);
 +    at1846s.setFrequency(config->txFrequency + blowfang_txTrimHz);
++
++    // blowfang: power 0, effectively none (blowfang_txZero)
++    bool zero = (config->txPower < 500);
  
      // Constrain output power between 1W and 5W.
      float power  = static_cast < float >(config->txPower) / 1000.0f;
@@ -1861,7 +1890,12 @@ index 64b77a94..aca41282 100644
      float pwrHi  = static_cast< float >(txpwr_hi);
      float pwrLo  = static_cast< float >(txpwr_lo);
      float apc    = pwrLo + (pwrHi - pwrLo)/4.0f*(power - 1.0f);
-@@ -207,6 +223,19 @@ void radio_enableTx()
+-    DAC->DHR12L1 = static_cast< uint8_t >(apc) * 0xFF;
++    DAC->DHR12L1 = zero ? 0 : static_cast< uint8_t >(apc) * 0xFF;
+ 
+     switch(config->opMode)
+     {
+@@ -207,6 +230,19 @@ void radio_enableTx()
              C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
              break;
  
@@ -1881,7 +1915,21 @@ index 64b77a94..aca41282 100644
          default:
              break;
      }
-@@ -286,7 +315,7 @@ void radio_updateConfiguration()
+@@ -230,8 +266,11 @@ void radio_enableTx()
+         gpio_setPin(PA_SEL_SW);
+     }
+ 
+-    gpio_setPin(TX_PA_EN);
+-    gpio_setPin(RF_APC_SW);
++    if((zero == false) || (blowfang_txZero != 1))
++    {
++        gpio_setPin(TX_PA_EN);
++        gpio_setPin(RF_APC_SW);
++    }
+ 
+     if(config->txToneEn)
+     {
+@@ -286,7 +325,7 @@ void radio_updateConfiguration()
      freq_t  *txCalPoints = calData.vhfCal.txFreq;
      uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
      uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
@@ -1890,7 +1938,7 @@ index 64b77a94..aca41282 100644
                           ? calData.vhfCal.analogSendQrange
                           : calData.vhfCal.sendQrange;
  
-@@ -296,7 +325,7 @@ void radio_updateConfiguration()
+@@ -296,7 +335,7 @@ void radio_updateConfiguration()
          txCalPoints = calData.uhfCal.txFreq;
          loPwrCal    = calData.uhfCal.txLowPower;
          hiPwrCal    = calData.uhfCal.txHighPower;
@@ -1899,7 +1947,7 @@ index 64b77a94..aca41282 100644
                      ? calData.uhfCal.analogSendQrange
                      : calData.uhfCal.sendQrange;
      }
-@@ -313,7 +342,7 @@ void radio_updateConfiguration()
+@@ -313,7 +352,7 @@ void radio_updateConfiguration()
      C6000.setModAmplitude(0, Q);
  
      // Set bandwidth, only for analog FM mode
