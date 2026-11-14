@@ -34,9 +34,10 @@
    ident, not the mic): after the cable comes out it asks for MR_TXMS of FM from the mic instead
    (tx_mic: 1 W, 440.850 only, then the ident), leaves the codec as the firmware sets it for that,
    and records from 400 ms after the request to 1300 ms before its end ("set 0" is 500 ms of it,
-   the gain's measure); the LED goes out after the ident. Without MR_TX: receive only, touches
-   no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3 and the DMA
-   stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
+   the gain's measure); the LED goes out after the ident. The unplug's own PTT send comes first:
+   the LED stays off MR_TXWAIT ms after the unplug, then goes on (talk) and the radio keys.
+   Without MR_TX: receive only, touches no RF register. Puts back 26, E0, E2, E4, PD9, PA13, SPI3
+   and the DMA stream. Returns the superframes, or -1 (no memory for the encoder), -8 (scratch too small).
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
 #include "rxaudio.h"
@@ -57,6 +58,9 @@
 #endif
 #ifndef MR_TXMS
 #define MR_TXMS 5000u
+#endif
+#ifndef MR_TXWAIT
+#define MR_TXWAIT 25000u            /* ms after the unplug: its PTT send (about 11.4 s) is over */
 #endif
 #define RING 4096u                  /* halfwords: 2048 samples, 256 ms */
 #define NSET 6u
@@ -196,6 +200,13 @@ int uv_main(const ortx_api_t *api) {
         api->sleep_ms(20);
     }
     led(0);
+#ifdef MR_TX
+    /* the unplug registers as a PTT press, and PAGER mode sends the message for it (11-14 06:30Z
+       and 08:38Z: 4 packets and the ident, 11.4 s); 05:02Z tx_mic went in on top of that send.
+       LED off until it's over */
+    if (out)
+        api->sleep_ms(MR_TXWAIT);
+#endif
     api->sleep_ms(1000);
     led(1);                         /* talk */
 
