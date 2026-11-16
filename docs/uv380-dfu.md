@@ -65,6 +65,17 @@ The image on the radio needs the module loader (the I2S probe build, `BLOWFANG_I
 radio since 11-13). A future image could take `dfu` as a plain USB command instead; a module
 needs no reflash to get there, so it comes first.
 
+## First run (11-16)
+
+17:02:34Z on Jeff's MD-UV390 PLUS, from hamlet, nobody at the radio: dfuboot armed and erased;
+0483:df11 was on the bus 0.8 s later; radio_tool wrote the keyed PR #123 image (385 KiB,
+0x0800C000-0x0806C580) in 16 s; usb-leave; the serial port and `mod info` were back 2.6 s later.
+`info` afterwards: both vector tables as before, `ready=yes`. About 20 s from command to running
+radio.
+
+hamlet has no host clang: `uv380_dfu.py` puts `$K6_ATFE`, or the ATfE toolchain under
+`~/blowfang-work/toolchains`, on PATH itself to build the modules.
+
 ## Failure cases
 
 - **Refused or cancelled**: nothing written, the radio carries on.
