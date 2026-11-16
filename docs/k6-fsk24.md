@@ -307,6 +307,12 @@ per step and recipe, with the K6's RSSI.
   (whose uploads also lose chunks) wasn't compared at a known level.
 
 
+- **Sweep 3 (staged; Jeff 11-16 21:54Z: "Should we test D/1800 and D/1200 then?"):** plain FSK
+  at each rate, so a flat sender's fallback can step down within D. Slots in turn: D/2400
+  (00e9), D/1800 with the 2.4K and with the 1.2K RX bandwidth (00e9, 00e1; REG_72 0x4898), and
+  D/1200 (00e1), all REG_2B +0400, read by time; 2.2 kHz peak deviation; TX gain -70 with the
+  level cut 0 to -21 dB in 3 dB steps (about -88 to -109 dBm), 32 slots, 6.4 minutes.
+
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 
 - **No more 2400 baud tries through the IC-7100's audio.** Run 2's equaliser got syncs but not

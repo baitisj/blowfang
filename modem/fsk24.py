@@ -70,6 +70,12 @@ VARIANTS = (
     # sends them, 750 us pre-emphasised; level is the peak deviation in kHz after it
     Variant(1800, "iqF", 3.0),            # 18: the pager's F/1800, today's default
     Variant(1200, "iqF", 3.0),            # 19: the pager's F/1200
+    # 20-23: kept for the UV-380's C6000 physical layer mode (blowfang PR #139 defines them)
+    Variant(2400, "reserved", 0.0),       # 20
+    Variant(2400, "reserved", 0.0),       # 21
+    Variant(1200, "reserved", 0.0),       # 22
+    Variant(1200, "reserved", 0.0),       # 23
+    Variant(1800, "iq", 2.2),             # 24: D/1800 for the third sweep (Jeff 11-16)
 )
 RUN1 = tuple(range(8))
 RUN2 = (0, 8, 9, 10, 11, 12)
@@ -77,16 +83,18 @@ RUN3 = (13, 14, 15, 16, 17)
 # the sensitivity sweep: one slot of SWEEP_SLOT_S per rate, the rates in turn, at each level step
 # (dB below the top level); the module (c/k6/mod/fsk24rx_sweep.c) sets each slot's receive recipe
 # a slot: (name, the bench's variant, the module's REG_58, REG_72, word in 1/16 ticks, REG_2B
-# bits). Sweep 1 (11-16 20:48Z), every recipe read by time: D/2400 good, F/1800 and F/1200 failed
-# even at full level (timed reads don't suit FFSK in this probe). Sweep 2 (21:08Z) tried the
-# chip's interrupts for reads, which read junk and stalled the grid; that code was dropped, and
-# F/1800 is measured through the pager instead (steps_report)
+# bits). Sweep 1 (11-16 20:48Z) had D/2400, F/1800 and F/1200, every recipe read by time: D/2400
+# good, the FFSK slots failed even at full level (timed reads don't suit FFSK in this probe; sweep
+# 2's interrupt reads didn't either), so F/1800 was measured through the pager (steps_report).
+# Sweep 3 (Jeff 11-16 21:54Z, "Should we test D/1800 and D/1200 then?"): plain FSK at each rate,
+# all at 2.2 kHz peak, the RX high-pass off, read by time as sweep 1's D/2400
 SWEEP_SLOTS = (
-    ("D/2400", 14, (0x00E9, 24779, 1067, 0x0400)),         # run 3's setting 2
-    ("F/1800", 18, (0x3F01, 18584, 1422, 0x0000)),         # the pager's CFG_F_1800, BAUD_1800
-    ("F/1200", 19, (0x3FE3, 12389, 2133, 0x0000)),         # the pager's CFG_F_1200, BAUD_1200
+    ("D/2400", 14, (0x00E9, 24779, 1067, 0x0400)),         # run 3's setting 2 (FSK 2.4K bandwidth)
+    ("D/1800", 24, (0x00E9, 18584, 1422, 0x0400)),         # the 2.4K bandwidth, BAUD_1800
+    ("D/1800 1.2K", 24, (0x00E1, 18584, 1422, 0x0400)),    # the 1.2K bandwidth: narrower, enough?
+    ("D/1200", 13, (0x00E1, 12389, 2133, 0x0400)),         # FSK 1.2K bandwidth (run 3's setting 0)
 )
-SWEEP_STEPS = tuple(range(0, -48, -4))     # 0 to -44 dB
+SWEEP_STEPS = tuple(range(0, -24, -3))     # 0 to -21 dB: from about -88 dBm at TX gain -70
 SWEEP_SLOT_S = 12
 SWEEP_GUARD_S = (1.5, 1.0)                 # carrier only at a slot's start and end
 EQ = {"taps": [1.0], "centre": 0}          # the measured equaliser: wav --eq loads it here
@@ -311,6 +319,8 @@ def sim(n_rounds=2, ch="ic7100", fs=fsk.FS):
             "flat": None}[ch]
     out = {}
     for vi, v in enumerate(VARIANTS):
+        if v.comp == "reserved":
+            continue
         got = sent = 0
         for r in range(n_rounds):
             x = block_audio(vi, r * PER_BLOCK, fs)
