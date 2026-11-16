@@ -8,15 +8,16 @@
 #                                                 TX RAM read back
 #   sh tools/uv380_c6phy_bench.sh live RUN K6LOG  the UV-380 at 0 W, PA on (power 0, zero 2), its
 #                                                 own receiver off (listen 0), on
-#                                                 440.850: 3 key-ups at 2400 baud while the K6 is
+#                                                 440.850, after the K6's module upload from
+#                                                 the Pluto: 3 key-ups at 2400 baud while the K6 is
 #                                                 in its 2400 settings, 2 at 1200 in its last,
 #                                                 the Pluto capturing each (50 kHz up); then the
 #                                                 radio's power and zero back as found, reports
 #
-# RUN is the run folder (~/blowfang-work/runs/uv380-c6phy-...). live waits for the K6 logger's
-# "fsk24 start" line in K6LOG (the K6 module is uploaded first, over the IC-7100 at RF power 0:
-# the K6's only upload path). Each key-up: AG7EW in Morse first, then 4.6 s of FSK. Nothing here
-# writes to /dev/ttyUSB2 or keys the Pluto.
+# RUN is the run folder (~/blowfang-work/runs/uv380-c6phy-...). live sends the K6 its module
+# (fsk24rx_uv) from the Pluto, AG7EW in MCW first and last (up to 3 sends), waits for the K6
+# logger's "fsk24 start" line in K6LOG, then keys the UV-380. No IC-7100. Each UV-380 key-up:
+# AG7EW in Morse first, then 4.6 s of FSK. Nothing here writes to /dev/ttyUSB2.
 set -eu
 CMD=${1:?stage, dry or live}
 RUN=${2:?the run folder}
@@ -40,8 +41,9 @@ stage)
     for m in c6phytx c6phytx_live c6phytx_live1200; do
         P -m modem.uv380mod "$MOD/$m.c" "$RUN/$m.u3r" --key-file "$KEY"
     done
-    P -m modem.k6 mod "$RUN/up.wav" c/k6/mod/fsk24rx_uv.c --key-file "$KEY" --serial "$(date +%s)" \
-        --phy F --baud 1800 --payload XL --level 0.3 --api-level 2
+    # level 0.5: the fsk24 ladder's test packets' level, sent from the Pluto as it sent them
+    P -m modem.k6 mod "$RUN/up5.wav" c/k6/mod/fsk24rx_uv.c --key-file "$KEY" --serial "$(date +%s)" \
+        --phy F --baud 1800 --payload XL --level 0.5 --api-level 2
     [ -n "$UV" ] && echo "UV-380 on $UV" || echo "no UV-380 on /dev/serial/by-id (*050C*): set UV="
     ls -l "$RUN"
     ;;
@@ -63,12 +65,17 @@ live)
         || { echo "power 0 / zero 2 / listen 0 not read back: nothing sent"; exit 3; }
     restore() { uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" | tee "$RUN/tune-after.txt"; }
     trap restore EXIT
-    echo "$(stamp) waiting for the K6's fsk24 start in $K6LOG"
-    n=0
-    until grep -q "fsk24 start" "$K6LOG" 2>/dev/null; do
-        n=$((n + 1)); [ $n -lt 300 ] || { echo "no fsk24 start in 300 s"; exit 4; }
-        sleep 1
+    # the K6's module from the Pluto (Jeff 11-16: the Pluto, not the IC-7100): F/1800 XL at the
+    # fsk24 ladder's settings (750 us pre-emphasis, 3.7 kHz full scale, gain -40: 11-12/16
+    # packets; about a quarter slip, so up to 3 sends: the K6 keeps a partial upload)
+    for try in 1 2 3; do
+        grep -q "fsk24 start" "$K6LOG" 2>/dev/null && break
+        echo "$(stamp) K6 upload $try from the Pluto"
+        P tools/pluto_bench.py send "$RUN/up5.wav" --preemph --dev 3700 --gain -40 | tee -a "$RUN/k6up.txt"
+        n=0
+        until grep -q "fsk24 start" "$K6LOG" 2>/dev/null || [ $n -ge 8 ]; do n=$((n + 1)); sleep 1; done
     done
+    grep -q "fsk24 start" "$K6LOG" || { echo "the K6 took no module after 3 Pluto sends: nothing keyed"; exit 4; }
     until grep -q "say s 0 " "$K6LOG"; do sleep 1; done
     echo "$(stamp) K6 in setting 0 (D/2400)"
     sleep 5
