@@ -210,3 +210,14 @@ def test_flash_runs_radio_tool_then_leave(tmp_path, monkeypatch):
                   run=run, wait_acm=2)
     assert r == 0, got
     assert ran == [["rt", "-d", "0", "-f", "-i", str(img)], ["rt", "usb-leave"]]
+
+
+def test_module_tools_finds_atfe(tmp_path):
+    tc = tmp_path / "blowfang-work" / "toolchains" / "ATfE-22.1.0-Linux-x86_64" / "bin"
+    tc.mkdir(parents=True)
+    (tc / "clang").write_text("")
+    env = {"PATH": str(tmp_path / "empty")}
+    assert dfu.module_tools(env, str(tmp_path)) == str(tc)
+    assert env["PATH"].startswith(str(tc) + os.pathsep)
+    env = {"PATH": str(tmp_path / "empty"), "K6_ATFE": str(tmp_path / "none")}
+    assert dfu.module_tools(env, str(tmp_path / "nohome")) is None

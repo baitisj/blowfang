@@ -38,6 +38,21 @@ DFU_ID = ("0483", "df11")
 SYSFS = "/sys/bus/usb/devices"
 
 
+def module_tools(env=os.environ, home=os.path.expanduser("~")):
+    """put a module compiler on PATH when there is no clang: $K6_ATFE, else hamlet's ATfE under
+    ~/blowfang-work/toolchains (hamlet has no host clang). -> the directory added, or None"""
+    import shutil
+    if shutil.which("clang", path=env.get("PATH")):
+        return None
+    dirs = [env["K6_ATFE"]] if env.get("K6_ATFE") else []
+    dirs += sorted(glob.glob(os.path.join(home, "blowfang-work", "toolchains", "ATfE-*", "bin")), reverse=True)
+    for d in dirs:
+        if os.path.exists(os.path.join(d, "clang")):
+            env["PATH"] = d + os.pathsep + env.get("PATH", "")
+            return d
+    return None
+
+
 def dfu_devices(sysfs=SYSFS):
     """USB devices that are 0483:df11 (TYT's bootloader, or ST's ROM DFU)"""
     found = []
@@ -191,6 +206,7 @@ def main(argv=None):
             q.add_argument("--radio-tool", required=True)
             q.add_argument("--wait-acm", type=float, default=40.0)
     a = ap.parse_args(argv)
+    module_tools()
     if a.cmd == "info":
         img = probe.module_image(os.path.join(MOD, "bootinfo.c"), a.key_file)
         return 1 if probe.command(a.dev, probe.mod_lines(img), a.log, out=probe.quiet(),
