@@ -210,6 +210,11 @@ static const rt_api_t API = {
     speaker,
     key,
     show,
+    0,                          /* us: none until the TX path below */
+    0,                          /* tx_on: the base firmware has no TX rung yet; its PTT relay */
+    0,                          /* tx_hz:  (active low), V3T_EN PB1 and SW3T_EN PE14 and the PA */
+    0,                          /* tx_power:  calibration come with it, on Andrew's radio */
+    0,                          /* tx_off */
 };
 
 /* the menu entry: SURF from the VFO's frequency, until Back; the radio then listens there again

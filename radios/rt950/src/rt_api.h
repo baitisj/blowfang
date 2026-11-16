@@ -45,8 +45,15 @@ typedef struct {
   void (*speaker)(int on);                                /* the speaker amplifier */
   int (*key)(void);                                       /* a key press as above, or 0 */
   void (*show)(const rt_view_t *v);                       /* draw a frame */
+  /* level 2: transmit on chip 0, for src/digi_tx.c. NULL where the radio can't yet (the base
+     firmware has no TX rung, so port/jm_glue.c leaves them NULL until it does) */
+  uint32_t (*us)(void);                                   /* microseconds, free running */
+  int (*tx_on)(uint32_t hz, int power);                   /* key up chip 0 on hz; 0, or < 0 refused */
+  void (*tx_hz)(uint32_t hz);                             /* move the carrier while keyed (REG_38/39) */
+  void (*tx_power)(int power);                            /* 0: carrier off, still keyed (CW) */
+  void (*tx_off)(void);
 } rt_api_t;
 
-#define RT_API_LEVEL 1
+#define RT_API_LEVEL 2
 
 #endif

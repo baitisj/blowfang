@@ -40,9 +40,16 @@ Neither transmits yet. jaymart1983's keeps TX for a later rung, after receive is
   skips a guard band round chip 0 and chip 0's level fills the bins there. The scale, bars and
   caret logic are the K6's, shared through [c/common/surf_core.inc](../../c/common/surf_core.inc).
   The design is at the top of the file. About 7.9 KB of code at -Os.
+- `src/digi_tx.c`: the first transmit milestone, FT8 and WSPR by stepping chip 0's PLL (no
+  envelope, no audio path), with c/common/tone_fsk.c dithering each 10 Hz write so every symbol's
+  mean frequency is right to about 0.05 Hz. Chip 1 off first, AG7EW in CW after the frame, a key
+  keys down, 70 cm only unless the call says Jeff OK'd the run. In the sim the frame decodes with
+  the K6's FT8 receiver. The polar SSB numbers behind it (what PLL rate, PA resolution and delay
+  match voice SSB needs) are in [docs/rt950-polar-sim.md](../../docs/rt950-polar-sim.md).
 - `port/jm_glue.c`: `rt_api_t` on jaymart1983's drivers (`bk4829_*`, `rx_path_receive`, the
   keypad, the ST7789 screen), and `rt950_surf2()`, the entry a menu item calls. CI compiles it
-  against the pinned checkout; it is not yet wired into that tree's menus.
+  against the pinned checkout; it is not yet wired into that tree's menus, and its transmit
+  calls stay empty until that firmware has a TX path.
 - `sim/rt950_sim.c`: the two chips on a PC (register writes, the tune sequence, RSSI settling
   after a tune, signals that pulse, one chip's LO desensing the other, bus time), running the
   real app code. `tests/test_rt950_surf.py` drives it.
@@ -51,7 +58,8 @@ Neither transmits yet. jaymart1983's keeps TX for a later rung, after receive is
 make -C radios/rt950                      # build/rt950_sim (and the no-guard build for a test)
 make -C radios/rt950 target               # build/surf2.o for the Cortex-M4F, with its size
 make -C radios/rt950 glue JM=../jm        # the glue against a checkout of the base firmware
-python -m pytest -q tests/test_rt950_surf.py tests/test_k6_surf.py
+make -C c/common                          # the polar SSB and tone_fsk host programs
+python -m pytest -q tests/test_rt950_surf.py tests/test_rt950_digi.py tests/test_ssb_polar.py tests/test_tone_fsk.py
 ```
 
 ## What needs Andrew's radio

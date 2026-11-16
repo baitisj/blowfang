@@ -136,7 +136,11 @@ IC-7100 in USB, without Andrew's radio.
 
 ## First steps
 
-1. **Host simulation (now, no radio):** `c/common/ssb_polar.c` with a host test: Hilbert,
+1. **Host simulation (done 2026-11-16, [rt950-polar-sim.md](rt950-polar-sim.md)):** 30 dB of
+   opposite-sideband suppression needs about 8000 PLL writes and PA updates a second, 64 PA
+   levels and the two paths matched to about 15-30 us; 40 dB needs 16000 a second, 256 levels
+   and about 6 us. The 10 Hz step hardly matters. FT8 and WSPR by dithered 10 Hz steps are right
+   to 0.05 Hz a symbol at 1000 writes a second (radios/rt950/src/digi_tx.c). Originally: `c/common/ssb_polar.c` with a host test: Hilbert,
    envelope and frequency split, then quantise as the radio would (PLL 10 Hz steps at N writes
    per second, P power levels, D samples of path mismatch) and report opposite-sideband
    suppression. This tells us what register rate and resolution the radio must deliver before

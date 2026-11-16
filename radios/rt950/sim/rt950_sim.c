@@ -32,6 +32,9 @@
 
    Usage: rt950_sim [--start HZ] [--end MS] [--sig HZ:DBM[:ON:PERIOD]]... [--key MS:K]...
                     [--leak DBM] [--leak-hz HZ] [--offset1 DB] [--dump MS]...
+   or:    rt950_sim --digi ft8|wspr --tones DIGITS [--dial HZ] [--writes N] [--outside] [--key MS:K]
+   which sends one frame with src/digi_tx.c and logs the transmitter: "txon US HZ P", "txw US HZ"
+   (each PLL write), "txp US P" (the CW ident's keying), "txoff US", then "digi RET".
    Keys are the app's characters ('A' side key, 'U' up, 'X' exit, 'P' / 'p' PTT ...). At --end the
    sim sends X. --dump prints the next frame after MS ("view ..." then a line a bin).
    SPDX-License-Identifier: GPL-3.0-or-later */
@@ -41,6 +44,7 @@
 #include <string.h>
 #include "../src/rt_api.h"
 #include "../src/surf2.h"
+#include "../src/digi_tx.h"
 
 #define FLOOR_DBM (-127.0)
 #define SPI_US 250
@@ -77,12 +81,14 @@ static uint32_t end_ms = 30000, start_hz = 440850000u;
 static double leak_dbm = -90.0;
 static uint32_t leak_hz = 15000;
 static int spk, ptt_down, ended;
-static long tunes[2], ptt_traffic, c1_audio, c1_demod;
+static long tunes[2], ptt_traffic, c1_audio, c1_demod, tx_traffic1, tx_c1_on;
+static int keyed;
 static uint32_t guard_min = 0xFFFFFFFFu;
 
 static void spi(int c) {
   now_us += SPI_US;
   if (c == 1 && ptt_down && !ch[1].hz && !ch[1].pend) ptt_traffic++;   /* (after it went off) */
+  if (c == 1 && keyed) tx_traffic1++;
 }
 
 static double level(int c) {
@@ -203,6 +209,38 @@ static void show(const rt_view_t *v) {
     printf("bin %d %u %u %u %u\n", i, v->hz[i], v->lvl[i], v->caret[i], v->flags[i]);
 }
 
+/* the transmitter (level 2): every call logged with the time in us; a frequency write costs
+   the two register writes (REG_38, REG_39) of bus time */
+static uint32_t us(void) {
+  now_us += 10;                         /* (a poll of the clock costs a little) */
+  return (uint32_t)now_us;
+}
+
+static int tx_on(uint32_t hz, int power) {
+  spi(0);
+  if (ch[1].hz) tx_c1_on++;
+  keyed = 1;
+  printf("txon %llu %u %d\n", (unsigned long long)now_us, hz, power);
+  return 0;
+}
+
+static void tx_hz(uint32_t hz) {
+  spi(0);
+  spi(0);
+  printf("txw %llu %u\n", (unsigned long long)now_us, hz);
+}
+
+static void tx_power(int power) {
+  spi(0);
+  printf("txp %llu %d\n", (unsigned long long)now_us, power);
+}
+
+static void tx_off(void) {
+  spi(0);
+  keyed = 0;
+  printf("txoff %llu\n", (unsigned long long)now_us);
+}
+
 static const rt_api_t API = {
     RT_API_LEVEL,
     say,
@@ -216,11 +254,20 @@ static const rt_api_t API = {
     speaker,
     key,
     show,
+    us,
+    tx_on,
+    tx_hz,
+    tx_power,
+    tx_off,
 };
 
 int main(int argc, char **argv) {
   static uint8_t ram[16384];
-  int i, r;
+  static uint8_t tones[256];
+  const char *digi = 0;
+  uint32_t dial = 0, writes = 0;
+  unsigned ntone = 0;
+  int i, r, outside = 0;
   for (i = 1; i < argc; i++) {
     const char *a = argv[i], *v = i + 1 < argc ? argv[i + 1] : "";
     if (!strcmp(a, "--start")) start_hz = (uint32_t)strtoul(v, 0, 10), i++;
@@ -228,7 +275,14 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--leak")) leak_dbm = atof(v), i++;
     else if (!strcmp(a, "--leak-hz")) leak_hz = (uint32_t)strtoul(v, 0, 10), i++;
     else if (!strcmp(a, "--offset1")) ch[1].ofs = atof(v), i++;
-    else if (!strcmp(a, "--dump") && ndump < NDUMP) dumps[ndump++] = (uint32_t)strtoul(v, 0, 10), i++;
+    else if (!strcmp(a, "--digi")) digi = v, i++;
+    else if (!strcmp(a, "--dial")) dial = (uint32_t)strtoul(v, 0, 10), i++;
+    else if (!strcmp(a, "--writes")) writes = (uint32_t)strtoul(v, 0, 10), i++;
+    else if (!strcmp(a, "--outside")) outside = 1;
+    else if (!strcmp(a, "--tones")) {
+      for (ntone = 0; v[ntone] && ntone < sizeof tones; ntone++) tones[ntone] = (uint8_t)(v[ntone] - '0');
+      i++;
+    } else if (!strcmp(a, "--dump") && ndump < NDUMP) dumps[ndump++] = (uint32_t)strtoul(v, 0, 10), i++;
     else if (!strcmp(a, "--sig") && nsig < NSIG) {
       sig_t *s = &sig[nsig++];
       char *e;
@@ -258,6 +312,18 @@ int main(int argc, char **argv) {
   }
   ch[0].r[0x47] = 0x6142;
   rf_tune(0, start_hz);
+  if (digi) {
+    /* --digi ft8|wspr: one frame by digi_send instead of SURF, with chip 1 on (as SURF leaves
+       it) so the test sees it go off first */
+    tf_cfg c;
+    if (!strcmp(digi, "wspr")) tf_wspr_defaults(&c);
+    else tf_ft8_defaults(&c);
+    if (writes) c.writes = (float)writes;
+    rf_tune(1, start_hz + 100000u);
+    r = digi_send(&API, dial ? dial : start_hz, &c, tones, ntone, 1, outside);
+    printf("digi %d\ntx_traffic1 %ld\ntx_c1_on %ld\nc1hz %u\n", r, tx_traffic1, tx_c1_on, ch[1].hz);
+    return 0;
+  }
   r = surf2_run(&API, ram, sizeof ram, start_hz);
   printf("ret %d\n", r);
   printf("tunes0 %ld\ntunes1 %ld\nguard_min %u\nptt_traffic %ld\nc1_audio %ld\nc1_demod %ld\nram %u\n", tunes[0],
