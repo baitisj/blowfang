@@ -22,6 +22,8 @@ radio identity, and when.
   rt950_backup.py read /dev/serial/by-id/... runs/rt950-backup-20261117/stageA --addr 2
   rt950_backup.py read /dev/serial/by-id/... runs/rt950-backup-20261117/stageB --addr 3
   rt950_backup.py info /dev/serial/by-id/...
+  rt950_backup.py read ~/blowfang-work/rt950/ble-pty OUT --addr 2 --block 32 --timeout 4
+                         (over Bluetooth, through rt950_ble_bridge.py)
 
 Nothing it writes belongs in git: these are Radtel's firmware and the radio's own calibration.
 Needs pyserial. SPDX-License-Identifier: GPL-3.0-or-later
@@ -117,10 +119,11 @@ def key_packet(rng):
 
 
 class Radio:
-    def __init__(self, port, addr_bytes, baud=BAUD, timeout=2.0, log=None, rng=None):
+    def __init__(self, port, addr_bytes, baud=BAUD, timeout=2.0, log=None, rng=None, block=BLOCK):
         import serial
         self.ser = serial.Serial(port, baudrate=baud, timeout=timeout)
         self.addr_bytes = addr_bytes
+        self.block = block
         self.key = None
         self.identity = b""
         self.model = ""
@@ -185,7 +188,7 @@ def read_range(radio, start, length, progress, retries=4):
     out = bytearray()
     a = start
     while a < start + length:
-        n = min(BLOCK, start + length - a)
+        n = min(radio.block, start + length - a)
         for attempt in range(retries + 1):
             try:
                 out += radio.read_block(a, n)
@@ -268,7 +271,7 @@ def backup(radio, outdir, ranges, min_passes=2, max_passes=4, progress=None, ter
 
 
 def bar(done, total):
-    if done == total or done % 0x10000 == 0:
+    if done == total or done % 0x1000 == 0:
         print(f"\r  {done * 100 // total:3d}%  {done}/{total}", end="" if done < total else "\n",
               file=sys.stderr, flush=True)
 
@@ -289,11 +292,14 @@ def main(argv=None):
         p.add_argument("--spi-len", type=lambda s: int(s, 0), default=SPI_LEN)
         p.add_argument("--bootloader-len", type=lambda s: int(s, 0), default=BOOTLOADER_LEN)
         p.add_argument("--passes", type=int, default=2)
+        p.add_argument("--block", type=int, default=BLOCK, choices=(8, 16, 32, 64, 128),
+                       help="bytes per read (smaller over Bluetooth if 128 stalls)")
+        p.add_argument("--timeout", type=float, default=2.0, help="seconds to wait for each reply")
         p.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args(argv)
 
     log = (lambda m: print(m, file=sys.stderr)) if a.verbose or a.cmd == "info" else None
-    radio = Radio(a.port, a.addr, a.baud, log=log)
+    radio = Radio(a.port, a.addr, a.baud, timeout=a.timeout, log=log, block=a.block)
     if a.cmd == "info":
         identity, model = radio.handshake()
         radio.close(a.addr == 3)

@@ -114,3 +114,20 @@ def test_the_built_dump_image_cannot_write_or_transmit():
     import check_image
     assert check_image.check(os.path.join(BUILD, "rt950-backup-only.elf"),
                              os.path.join(BUILD, "rt950-backup-only.bin")) == []
+
+
+@pytest.mark.parametrize("block", [8, 32])
+def test_smaller_reads_for_bluetooth(radio, tmp_path, block):
+    r = radio("stock")
+    assert rb.main(["read", r.path, str(tmp_path), "--addr", "2", "--block", str(block)]) == 0
+    assert read(tmp_path / "cps64k.bin") == r.spi[:0x10000]
+    assert r.reads == 2 * 0x10000 // block
+
+
+def test_the_bluetooth_bridge_speaks_at_the_stock_rate():
+    import rt950_ble_bridge as bb
+    s = bb.auth_serial(5)
+    assert len(s) == 20 and s[:4] == b"\x3f" * 4 and s[4] == 5 and max(s[5:]) <= 98
+    assert bb.SELECTORS == tuple(range(9))
+    assert bb.pace_s(5) >= 20 * 10 / 9600            # never faster than the module's 9600 baud UART
+    assert bb.pace_s(2) < bb.pace_s(5)

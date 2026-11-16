@@ -35,6 +35,25 @@ make -C radios/rt950 backup-image JM=../jm      # build/rt950-backup-only.BTF, c
 python -m pytest -q tests/test_rt950_backup.py
 ```
 
+## The connection
+
+Jeff's RT-950 Pro (2026-11-16) has no K-plug: its side accessory port is a 14-pad pogo connector
+with a latch slot and a screw insert, and the USB-C port showed no serial device on hamlet. The
+base firmware's notes describe a "Kenwood-style 3.5mm jack" on UART4, so that unit may be another
+hardware revision. Until the pogo port's cable and pinout are known, Stage A runs over Bluetooth:
+
+- `radios/rt950/tools/rt950_ble_bridge.py scan` finds the radio (the module's ffe0/ff31/ff32/ffe1
+  services); `bridge ADDRESS LINK` connects, runs the module's authentication with UART selector
+  5 (9600 baud, the module's default and so most likely the stock firmware's rate; if the
+  handshake gets no ACK, try `--sel 0`, `--sel 2`, then `--sel 7` and `--sel 6`, since Radtel's app config names baud code 7, 57600), and makes LINK a serial port. Hamlet
+  needs BlueZ running and bleak in the venv.
+- `rt950_backup.py read LINK OUT --addr 2 --block 32 --timeout 4` then reads as over a cable.
+  At 9600 baud a 64 KB pass takes a minute or two.
+
+Stage B can't go over Bluetooth: the bootloader has none, so uploading the dump image and
+returning to stock that way needs a wired connection. (The dump image's in-app updater does
+listen on Bluetooth, but the first upload has to reach the stock firmware or the bootloader.)
+
 ## On the day
 
 The port is the programming cable's, never the K6's ttyUSB2. `PORT` is its `/dev/serial/by-id` path.
