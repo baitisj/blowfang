@@ -28,3 +28,26 @@ clean:
 	rm -f pager_tx_host cw_tx_host range_tx_host range_rx_host pager_rx_host fsk_rx_host
 
 .PHONY: all clean
+
+# Polar SSB and constant-envelope FSK for the RT-950 (docs/rt950-polar-sim.md)
+all: ssb_polar_host
+all: tone_fsk_host
+
+ssb_polar_host: ssb_polar_host.c \
+		ssb_polar.c \
+		ssb_polar.h \
+		host_fft.h
+	$(CC) $(CFLAGS) -o $@ ssb_polar_host.c ssb_polar.c -lm
+
+tone_fsk_host: tone_fsk_host.c \
+		tone_fsk.c \
+		tone_fsk.h \
+		host_fft.h
+	$(CC) $(CFLAGS) -o $@ tone_fsk_host.c tone_fsk.c -lm
+
+clean: clean-rt950-sim
+clean-rt950-sim:
+	rm -f ssb_polar_host
+	rm -f tone_fsk_host
+
+.PHONY: clean-rt950-sim

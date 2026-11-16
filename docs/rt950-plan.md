@@ -16,8 +16,13 @@ EXPLORE taught us on the K6 ([k6-surf.md](k6-surf.md), [k6-explore-app.md](k6-ex
 - SI4732 broadcast receiver (LW/MW/SW to 30 MHz, FM 64-108 MHz). It cannot hear 2 m or 70 cm,
   so it is no use as an SSB reference there; the IC-7100 at hamlet is our reference receiver.
 - Audio out: 12-bit DAC + TIM6 + DMA. The stock radio does true AM by modulating PA power.
-- Open-source base: Hertzz58/Radtel-RT950-Pro-Firmware (GPL-3, heavily WIP). Flashing and
-  backup: nicsure's RT-950 Pro web flasher.
+- Open-source base: jaymart1983/Radtel-RT950-Pro-Firmware (GPL-3, a fork of
+  Hertzz58/Radtel-RT950-Pro-Firmware that receives on the radio; chosen 2026-11-16, see
+  Decisions). Flashing and backup: its own cable and Bluetooth tools, or nicsure's RT-950 Pro
+  web flasher.
+- Front end (from jaymart1983's measurements): the band relay and LNA (PE12 VHF, PE13 UHF, PB0)
+  are set on every tune and look shared by both chips, so the second chip probably only hears
+  on the first chip's side of 300 MHz.
 
 Compared with the K6 (Cortex-M0, 120 KB flash wall, 16 KB RAM) this is a big machine: room for
 float DSP, sotto encode as well as decode, and SURF with history.
@@ -101,7 +106,9 @@ IC-7100 in USB, without Andrew's radio.
 
 ## Open questions that need Andrew's radio
 
-1. Board revision, MCU clock, SRAM size, screen type and resolution.
+1. Board revision, MCU clock, SRAM size, screen type and resolution (jaymart1983's firmware
+   runs at 120 MHz and confirms an ST7789V, 240 x 320, on its radio). The full list of what
+   two-chip SURF assumes is in [radios/rt950/README.md](../radios/rt950/README.md).
 2. Bootloader, flash procedure, and a full backup (stock firmware and the external flash) before
    anything is written.
 3. RF topology: can both chips receive at the same time on the same band? On different bands?
@@ -117,20 +124,33 @@ IC-7100 in USB, without Andrew's radio.
 
 - **Licence: GPL-3 for the RT-950 port, for now.** The RT-950 build may use Hertzz58's GPL-3
   firmware as its base, and the RT-950 portion is GPL-3. The rest of blowfang stays MIT.
+- **Base firmware: jaymart1983's** (Jeff, 2026-11-16: "a lot further along"). Both it and
+  Hertzz58's are GPL-3; jaymart1983's forked Hertzz58's and has since verified reception, the
+  screen, keys, SPI flash and Bluetooth flashing on the radio, fixed the BK4829 frequency units
+  and RSSI register by measurement, keeps chip 1 off the audio bus, and doesn't carry Radtel's
+  firmware images (Hertzz58's commits them and the bootloader, which we must not redistribute).
+  The comparison is in [radios/rt950/README.md](../radios/rt950/README.md).
 - **SSB transmission: allowed.** The usual bench rules still apply: every test TX carries
   AG7EW ident, first tests at low power, and anything outside 70 cm (430-450 MHz), such as
   2 m 144.174 or 144.200, still needs Jeff's OK for that run.
 
 ## First steps
 
-1. **Host simulation (now, no radio):** `c/common/ssb_polar.c` with a host test: Hilbert,
+1. **Host simulation (done 2026-11-16, [rt950-polar-sim.md](rt950-polar-sim.md)):** 30 dB of
+   opposite-sideband suppression needs about 8000 PLL writes and PA updates a second, 64 PA
+   levels and the two paths matched to about 15-30 us; 40 dB needs 16000 a second, 256 levels
+   and about 6 us. The 10 Hz step hardly matters. FT8 and WSPR by dithered 10 Hz steps are right
+   to 0.05 Hz a symbol at 1000 writes a second (radios/rt950/src/digi_tx.c). Originally: `c/common/ssb_polar.c` with a host test: Hilbert,
    envelope and frequency split, then quantise as the radio would (PLL 10 Hz steps at N writes
    per second, P power levels, D samples of path mismatch) and report opposite-sideband
    suppression. This tells us what register rate and resolution the radio must deliver before
    anyone touches it.
 2. **K6 SSB receive trial (now, RX only):** SURF's DSB mode on 2 m / 70 cm SSB and FT8
    activity, IC-7100 in USB alongside.
-3. **SURF two-role refactor (now):** the `sweep_*` / `listen_*` interface above, K6 behaviour
+3. **SURF two-role refactor (done 2026-11-16):** SURF's radio-independent half moved to
+   `c/common/surf_core.inc` (the K6 modules build byte for byte the same) and the two-chip SURF
+   is `radios/rt950/src/surf2.c`, tested on a PC against two modelled BK4829s
+   (`tests/test_rt950_surf.py`). Originally: the `sweep_*` / `listen_*` interface above, K6 behaviour
    unchanged, emulator tests still green.
 4. **With Andrew's radio:** backup, Hertzz58 bring-up (chip IDs on both CS lines, DAC tone),
    then the measurements in the open questions, starting with dual-chip desense and the AM

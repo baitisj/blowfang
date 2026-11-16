@@ -1,0 +1,275 @@
+backup-only.patch: turns jaymart1983/Radtel-RT950-Pro-Firmware at 965eae2 (the commit pinned in
+.github/workflows/rt950.yml) into the dump-only image for the RT-950 Pro backup (docs/rt950-backup.md).
+  spi.c      no Write Enable is ever sent; erase and page program return at once
+  cps.c      CPS writes are answered NAK; identity RT950-BACKUPONLY; CPS 0x800000+ reads MCU flash
+  radio.c    PTT does nothing
+  bk4829.c   REG_30's TX value is gone: TX mode becomes standby
+  display.c  BACKUP ONLY in place of the RX/TX indicator and icons
+Apply with patch -p1 in that tree (make -C radios/rt950 backup-image JM=DIR does it and checks the result).
+SPDX-License-Identifier: GPL-3.0-or-later
+
+diff --git a/src/app/cps.c b/src/app/cps.c
+index 23c1f81..cd82720 100644
+--- a/src/app/cps.c
++++ b/src/app/cps.c
+@@ -107,9 +107,30 @@ static const uint8_t xor_key_table[20][4] = {
+  * anything that does read it gets something meaningful.
+  */
+ static const uint8_t cps_identity[16] = {
+-    'R','T','-','9','5','0','P','R','O',
+-    'V','0','.','1', 0, 0, 0
+-};
++    'R','T','9','5','0','-','B','A','C','K','U','P','O','N','L','Y'
++};  /* BACKUP ONLY: rt950_backup.py --addr 3 refuses any other identity */
++
++/*
++ * BACKUP ONLY: CPS addresses from 0x800000 read the MCU's own flash, so the
++ * 12 KB bootloader at 0x08000000 can be saved down the same cable. The SPI
++ * flash is 4 MB (0x000000-0x3FFFFF); the AT32F403A's flash is 1 MB.
++ */
++#define BK_MCU_WINDOW   0x800000UL
++#define BK_MCU_BASE     0x08000000UL
++#define BK_MCU_SIZE     0x100000UL
++
++static void backup_read(uint32_t addr, uint8_t *buf, uint8_t len)
++{
++    if (addr >= BK_MCU_WINDOW && addr + len <= BK_MCU_WINDOW + BK_MCU_SIZE) {
++        const volatile uint8_t *m = (const volatile uint8_t *)(BK_MCU_BASE + (addr - BK_MCU_WINDOW));
++        for (uint8_t i = 0; i < len; i++)
++            buf[i] = m[i];
++    } else if (addr + len <= 0x400000UL) {
++        spi_flash_read(addr, buf, len);
++    } else {
++        memset(buf, 0xFF, len);
++    }
++}
+ 
+ /*
+  * Session inactivity timeout.
+@@ -363,7 +384,7 @@ int cps_poll(void)
+                 out[2] = rx_buf[2];
+                 out[3] = rx_buf[3];
+                 out[4] = len;
+-                spi_flash_read(addr, &out[5], len);
++                backup_read(addr, &out[5], len);
+                 cps_xor(&out[5], len);          /* host decrypts with the key */
+                 uart_send_buf(cps_port, out, (uint16_t)(5u + len));
+ 
+@@ -373,46 +394,17 @@ int cps_poll(void)
+             }
+ 
+             if (op == CPS_CMD_WRITE) {
++                /* BACKUP ONLY: a write is consumed and refused (NAK 0x15),
++                 * and nothing reaches the flash. */
+                 if (rx_pos < 5u)
+                     break;
+                 uint8_t len = rx_buf[4];
+                 if (len > CPS_PACKET_SIZE)
+                     len = CPS_PACKET_SIZE;
+                 if (rx_pos < (uint16_t)(5u + len))
+-                    break;                      /* payload still arriving */
+-
+-                uint32_t addr = ((uint32_t)rx_buf[1] << 16) |
+-                                ((uint32_t)rx_buf[2] << 8) | rx_buf[3];
+-
+-                /*
+-                 * Erase the sector the first time a write lands in it.
+-                 *
+-                 * Flash writes can only clear bits, so writing over existing
+-                 * data ANDs with it rather than replacing it. That is exactly
+-                 * what happened with the boot splash: the write reported
+-                 * success, the data was silently combined with the image
+-                 * already there, and the radio still showed the old picture.
+-                 *
+-                 * The host never sends an erase -- there is no such command --
+-                 * so the radio has to do it. Tracking the last sector erased
+-                 * means a sequential write erases each sector once, on entry,
+-                 * rather than repeatedly or not at all.
+-                 */
+-                static uint32_t last_erased = 0xFFFFFFFFu;
+-                uint32_t sector = addr & ~0xFFFu;
+-                if (sector != last_erased) {
+-                    spi_flash_erase_4k(sector);
+-                    last_erased = sector;
+-                }
+-
+-                uint8_t plain[CPS_PACKET_SIZE];
+-                memcpy(plain, &rx_buf[5], len);
+-                cps_xor(plain, len);
+-                spi_flash_write_page(addr, plain, len);
+-
+-                uint8_t ack = 0x06u;
+-                uart_send_buf(cps_port, &ack, 1);
+-
++                    break;
++                uint8_t nak = 0x15u;
++                uart_send_buf(cps_port, &nak, 1);
+                 memmove(rx_buf, &rx_buf[5 + len], rx_pos - (5u + len));
+                 rx_pos -= (uint16_t)(5u + len);
+                 continue;
+diff --git a/src/app/display.c b/src/app/display.c
+index 3cb142d..320d936 100644
+--- a/src/app/display.c
++++ b/src/app/display.c
+@@ -498,55 +498,9 @@ void display_draw_status_bar(void)
+     /* Clear status bar area */
+     lcd_fill_rect(0, LAYOUT_STATUS_Y, LCD_WIDTH, LAYOUT_STATUS_H, COLOR_BLACK);
+ 
+-    /* Left: TX/RX indicator */
+-    if (radio_is_transmitting()) {
+-        /* Blink TX text when TOT warning active (last 10s before cutoff) */
+-        static uint8_t blink;
+-        uint16_t tx_color = COLOR_RED;
+-        if (radio_tot_warning_active()) {
+-            blink++;
+-            tx_color = (blink & 0x04) ? COLOR_RED : COLOR_YELLOW;
+-        }
+-        font_draw_string(FONT_SMALL, 2, 4, "TX", tx_color, COLOR_BLACK);
+-    } else {
+-        font_draw_string(FONT_SMALL, 2, 4, "RX", COLOR_GREEN, COLOR_BLACK);
+-    }
+-
+-    /* Status icons region: x=20..86 - GPS, VOX, lock, encryption */
+-    {
+-        uint16_t ix = 20;
+-        const settings_t *s = settings_get();
+-
+-        /* GPS fix indicator */
+-        const gps_data_t *gps = gps_get_data();
+-        if (gps && gps->fix_quality > 0) {
+-            font_draw_string(FONT_SMALL, ix, 4, "GP", COLOR_GREEN, COLOR_BLACK);
+-        } else if (s->aprs_enable) {
+-            /* GPS enabled but no fix - show dim */
+-            font_draw_string(FONT_SMALL, ix, 4, "GP", COLOR_DARK_GRAY, COLOR_BLACK);
+-        }
+-        ix += 18;
+-
+-        /* VOX indicator */
+-        if (s->vox_switch && vox_is_triggered())
+-            font_draw_string(FONT_SMALL, ix, 4, "VX", COLOR_YELLOW, COLOR_BLACK);
+-        else if (s->vox_switch)
+-            font_draw_string(FONT_SMALL, ix, 4, "VX", COLOR_DARK_GRAY, COLOR_BLACK);
+-        ix += 18;
+-
+-        /* Key lock indicator */
+-        if (s->keypad_lock)
+-            font_draw_string(FONT_SMALL, ix, 4, "LK", COLOR_ORANGE, COLOR_BLACK);
+-        ix += 18;
+-
+-        /* Encryption/scrambler indicator */
+-        {
+-            radio_vfo_t act = vfo_get_active();
+-            const vfo_state_t *vs = vfo_get_state(act);
+-            if (vs->scrambler)
+-                font_draw_string(FONT_SMALL, ix, 4, "EN", COLOR_CYAN, COLOR_BLACK);
+-        }
+-    }
++    /* BACKUP ONLY: this image only reads; the TX/RX and status icons are
++     * replaced by a plain label so it is never mistaken for working firmware. */
++    font_draw_string(FONT_SMALL, 2, 4, "BACKUP ONLY", COLOR_YELLOW, COLOR_BLACK);
+ 
+     /* Center: active VFO label + dual-watch indicator */
+     {
+diff --git a/src/app/radio.c b/src/app/radio.c
+index d5499d5..b6f8728 100644
+--- a/src/app/radio.c
++++ b/src/app/radio.c
+@@ -408,6 +408,7 @@ void radio_set_modulation(radio_vfo_t v, radio_mod_t mod)
+ 
+ void radio_ptt_on(void)
+ {
++    return;             /* BACKUP ONLY: the dump image never transmits */
+     if (transmitting) return;
+ 
+     const vfo_state_t *vs = vfo_get_state(vfo_get_active());
+diff --git a/src/drivers/bk4829.c b/src/drivers/bk4829.c
+index ae46e64..5caa62f 100644
+--- a/src/drivers/bk4829.c
++++ b/src/drivers/bk4829.c
+@@ -394,7 +394,7 @@ void bk4829_enable_rx(uint8_t chip)
+ 
+ void bk4829_enable_tx(uint8_t chip)
+ {
+-    bk4829_write_reg(chip, 0x30, 0xC1FE);
++    bk4829_write_reg(chip, 0x30, 0x0000);   /* BACKUP ONLY: standby, never TX */
+ }
+ 
+ void bk4829_standby(uint8_t chip)
+@@ -587,13 +587,15 @@ static const uint16_t reg47_mode_lut[] = {
+ static const uint16_t reg30_mode[] = {
+     0x0000,     /* STANDBY */
+     0xBFF1,     /* RX */
+-    0xC1FE,     /* TX */
++    0x0000,     /* TX: BACKUP ONLY, standby */
+     0x0302,     /* AM_RX */
+     0xC3FA,     /* SCAN */
+ };
+ 
+ void bk4829_set_mode(uint8_t chip, bk4829_mode_t mode, uint8_t cal_value)
+ {
++    if (mode == BK4829_MODE_TX)
++        mode = BK4829_MODE_STANDBY;         /* BACKUP ONLY: never TX */
+     uint8_t lut_idx = (uint8_t)mode & 0x0F;
+ 
+     /* REG_30: two-step mode switch (V0.27 @ 0x080079CC)
+diff --git a/src/drivers/spi.c b/src/drivers/spi.c
+index 2c900ae..935e184 100644
+--- a/src/drivers/spi.c
++++ b/src/drivers/spi.c
+@@ -121,13 +121,9 @@ static void flash_send_addr(uint32_t addr)
+     spi2_xfer_byte((uint8_t)(addr));
+ }
+ 
+-/* Send Write Enable (0x06) command */
+-static void flash_write_enable(void)
+-{
+-    flash_cs_low();
+-    spi2_xfer_byte(FLASH_CMD_WRITE_ENABLE);
+-    flash_cs_high();
+-}
++/* BACKUP ONLY (blowfang radios/rt950/backup): no Write Enable (0x06) is ever
++ * sent, so the flash chip itself refuses every erase and program. The erase and
++ * page-program entry points below return at once as well. */
+ 
+ void spi2_init(void)
+ {
+@@ -228,16 +224,8 @@ uint32_t spi_flash_read_id(void)
+ 
+ static void flash_erase(uint8_t cmd, uint32_t addr)
+ {
+-    flash_write_enable();
+-
+-    flash_cs_low();
+-    delay_ms(1);
+-    spi2_xfer_byte(cmd);
+-    flash_send_addr(addr);
+-    flash_cs_high();
+-    delay_ms(1);
+-
+-    spi_flash_wait_busy();
++    (void)cmd;
++    (void)addr;         /* BACKUP ONLY: never erases */
+ }
+ 
+ void spi_flash_erase_4k(uint32_t addr)
+@@ -280,17 +268,7 @@ void spi_flash_read(uint32_t addr, uint8_t *buf, uint16_t len)
+ 
+ void spi_flash_write_page(uint32_t addr, const uint8_t *buf, uint16_t len)
+ {
+-    if (len == 0 || len > 256)
+-        return;
+-
+-    flash_write_enable();
+-
+-    flash_cs_low();
+-    spi2_xfer_byte(FLASH_CMD_PAGE_PROGRAM);
+-    flash_send_addr(addr);
+-    for (uint16_t i = 0; i < len; i++)
+-        spi2_xfer_byte(buf[i]);
+-    flash_cs_high();
+-
+-    spi_flash_wait_busy();
++    (void)addr;
++    (void)buf;
++    (void)len;          /* BACKUP ONLY: never programs */
+ }
