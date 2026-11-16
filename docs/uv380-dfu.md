@@ -20,6 +20,13 @@ blank it waits in DFU (USB 0483:df11), the same state the key combination gives.
 exactly this on the MD-380 (its `reboot_to_bootloader` DFU command: erase the block at
 0x0800C000, then run the bootloader).
 
+Checked on Jeff's MD-UV390 PLUS on 11-16 (bootloader read on hamlet only, never shared): after
+its startup the bootloader reads PE11 and PE10 (PTT and the side key above it); both low means
+DFU. Otherwise it starts the application only if `(word at 0x0800C000 & 0x2FFE0000) ==
+0x20000000`, the usual "stack in SRAM" test: no checksum, no signature, no RTC backup register,
+backup SRAM or RAM magic. A blank sector 3 reads 0xFFFFFFFF, fails that test, and so means DFU
+at every power-on. The chip is at RDP level 1 (OPTCR 0x0FFF55ED), no sector write protected.
+
 So `dfuboot`, a signed RAM module (`firmware/uv380-openrtx/mod/dfuboot.c`), sent over the radio's
 USB serial to the image already running:
 
@@ -64,18 +71,16 @@ needs no reflash to get there, so it comes first.
 - **Erased, then the flash fails or is interrupted** (cable, power, a wrong image): the radio has
   no application, so it comes up in DFU at every power-on, with no keys, and hamlet runs `flash`
   again. The bootloader is never touched, so this is always recoverable.
-- **Erased, and no df11 appears**: the bootloader did not behave like the MD-380's. Switch the
-  radio off and on (it should come up in DFU); if not, the usual PTT + top side key at power-on
-  still works, because the bootloader is intact. Running `bootinfo` and reading the bootloader's
-  reset path on hamlet before the first real `enter` rules this out.
+- **Erased, and no df11 appears** (not expected: the bootloader's test above was read): switch
+  the radio off and on; the usual PTT + top side key at power-on still works too, because the
+  bootloader is intact.
 
 ## Why not the STM32's own ROM DFU
 
 The F405's system memory (0x1FFF0000) has ST's USB DFU too, and a running image can jump to it.
 It was set aside because:
 
-- TYT sets read protection (RDP level 1) on these radios as far as is known (`bootinfo` reads
-  it). Under RDP 1 the ROM bootloader will not read or write flash; its only way out is "read
+- Jeff's radio is at read protection level 1 (`bootinfo`, 11-16). Under RDP 1 the ROM bootloader will not read or write flash; its only way out is "read
   unprotect", which mass erases the whole chip, TYT's bootloader included: a brick that needs
   the case opened.
 - Even at RDP 0 the ROM DFU offers the whole flash, bootloader sectors included, so one wrong
