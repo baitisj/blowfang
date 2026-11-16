@@ -44,11 +44,13 @@ hardware revision. Until the pogo port's cable and pinout are known, Stage A run
 
 - `radios/rt950/tools/rt950_ble_bridge.py scan` finds the radio (the module's ffe0/ff31/ff32/ffe1
   services); `bridge ADDRESS LINK` connects, runs the module's authentication with UART selector
-  5 (9600 baud, the module's default and so most likely the stock firmware's rate; if the
-  handshake gets no ACK, try `--sel 0`, `--sel 2`, then `--sel 7` and `--sel 6`, since Radtel's app config names baud code 7, 57600), and makes LINK a serial port. Hamlet
+  2 (115200 baud: on 2026-11-16 Jeff's stock radio answered on 2 only, while 5 and 0, both
+  9600, authenticated but never ACKed the handshake), and makes LINK a serial port. Hamlet
   needs BlueZ running and bleak in the venv.
 - `rt950_backup.py read LINK OUT --addr 2 --block 32 --timeout 4` then reads as over a cable.
-  At 9600 baud a 64 KB pass takes a minute or two.
+  A 64 KB pass at 32-byte blocks took about 15 minutes, so the two passes take half an hour;
+  the radio shows its program icon meanwhile. Wait about 5 s between sessions (after `info`):
+  a handshake straight after one got no ACK.
 
 Stage B can't go over Bluetooth: the bootloader has none, so uploading the dump image and
 returning to stock that way needs a wired connection. (The dump image's in-app updater does
