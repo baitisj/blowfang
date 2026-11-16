@@ -197,6 +197,23 @@ def test_fsk24rx_sweep_builds():
     assert 1000 < len(code) < 11776, len(code)
 
 
+@need_clang
+def test_fsk24rx_uv_reads_the_upright_packets():
+    """fsk24rx_uv on the emulated K6 (its first setting, D/2400 with the RX high-pass off) and a
+    key-up's bits: the polarity 0 packets read, CRC right, no bits wrong"""
+    pytest.importorskip("unicorn")
+    from test_k6_pocsag import run_plain
+    from modem import c6phy
+    bits = np.unpackbits(np.frombuffer(c6phy.stream(2400, 2, 13, extra_bytes=8), np.uint8))
+    segs = [(0.5, 2400.0, bits)]
+    e, ret = run_plain(os.path.join(K6, "mod", "fsk24rx_uv.c"),
+                       [("WAIT_MS", "100u"), ("SLOT_SCALE", "80u")], segs, 0.1 + 4 * 60 * 0.08 + 3)
+    assert e.said[0] == "fsk24 start hz=440850000 n=4", e.said[:3]
+    _, pk = fsk24.parse_log(["K6 MOD say " + s for s in e.said])
+    up = [p for p in pk if p["v"] == 20]
+    assert len(up) >= 6 and all(p["c"] == 1 and p["e"] == 0 and p["i"] == 0 for p in up), pk
+
+
 def test_steps_report_counts_the_pagers_packets_per_send():
     lines = [
         "100.5\t1287138\tK6 PKT n=1 got=128 sync=N res=20 magic=a7 rswap=0 soft=0 swap=0 be=0 good=1 bad=0",

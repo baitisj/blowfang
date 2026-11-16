@@ -145,6 +145,14 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   PR #135 makes 5745 the default. It drifted about 2 kHz (4.7 ppm) since 11-14, or the two methods
   differ: re-check it now and then.
   Receive is probably low by the same amount (same reference), but it works and is left alone.
+- C6000 PHYSICAL LAYER MODE (M, 11-16 runs 1-2, docs/uv380-c6phy.md, 0 W into the Pluto): keys
+  and runs cleanly (every 30 ms slot answered on time, carrier continuous, registers restored). Its
+  FSK sits +6.65 to +6.70 kHz from 440.850 with trim 5745, the FM ident just before it +0.6 kHz
+  (five key-ups): the raw mode adds about 6 kHz of its own and needs its own trim. Rewriting both
+  TX RAM halves at the slot edge corrupts the first ~40 TX RAM bits (about 4 ms) of every slot:
+  write only the idle half. With that (half 0 at the first edge) and trim 5745 - 6680 = -935, run
+  3 (22:45-22:50Z) was perfect: the Pluto 26/26 at 2400 and 12/12 at 1200 with 0 bits wrong, the
+  K6's chip FSK the same; FSK within 40 Hz of 440.850, eye 1746 Hz at 2400, +3 above the carrier.
 - FSK (PHY F) on air (M, 11-14 10:25Z, "phy fsk" + tx_request, 1 W, IC-7100 at 48 kHz): reference
   decoder 20/20 packets, 200/200 frames. Baud 1799.97 (-14 ppm); tones roughly 1270/1810 Hz by a rough
   instantaneous-frequency measure (reference wav measured the same way: 1190/1790); 1800/1200 Hz

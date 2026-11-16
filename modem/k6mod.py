@@ -204,6 +204,9 @@ def parse(payload):
 
 REP_STATUS, REP_TEXT = 1, 2
 STATES = {0: "partway", 1: "ran", 2: "refused"}
+# byte 9's high bits (k6_mod.h KM_RATE_*, images from 2026-11-16): the rate ladder (c/k6/k6_rate.h)
+RATE_D24, RATE_AT_D24, RATE_WHY_SHIFT = 0x10, 0x20, 6
+RATE_WHYS = {0: None, 1: "crc", 2: "quiet", 3: "revert"}
 RESULTS = {1: "chunk", 2: "repeat", 3: "ready", -1: "bad CRC", -2: "bad chunk", -3: "bad header",
            -4: "wrong key", -5: "no key in the image", -6: "replay (old serial)"}
 
@@ -211,7 +214,10 @@ RESULTS = {1: "chunk", 2: "repeat", 3: "ready", -1: "bad CRC", -2: "bad chunk", 
 def parse_report(payload):
     """A whitened 64-byte packet -> the K6's report as a dict, or None if it isn't one.
     kind "status": xfer, have, count, r, state, serial, missing (chunk numbers), call, ret, ms,
-    stack_free; kind "text": text. Both: seq, part, parts."""
+    stack_free, and the rate ladder: rates ("F12,F18,D24" from an image that takes D/2400, else
+    "F12,F18"), rung (the K6's now: "D24" or "F18") and fell (why it last dropped from D/2400
+    since the last report: "crc", "quiet", "revert" or None); kind "text": text. Both: seq,
+    part, parts."""
     if len(payload) != 64:
         return None
     d = pager._whiten(bytes(payload))
@@ -222,7 +228,10 @@ def parse_report(payload):
         count = d[7]
         bits = int.from_bytes(d[14:46], "little")
         rep.update(kind="status", xfer=d[5], have=d[6], count=count, r=struct.unpack("b", d[8:9])[0],
-                   state=STATES.get(d[9], str(d[9])), serial=struct.unpack("<I", d[10:14])[0],
+                   state=STATES.get(d[9] & 0x0F, str(d[9] & 0x0F)), serial=struct.unpack("<I", d[10:14])[0],
+                   rates="F12,F18,D24" if d[9] & RATE_D24 else "F12,F18",
+                   rung="D24" if d[9] & RATE_AT_D24 else "F18",
+                   fell=RATE_WHYS[d[9] >> RATE_WHY_SHIFT],
                    missing=[i for i in range(count) if bits >> i & 1],
                    call=d[46:52].split(b"\0")[0].decode("ascii", "replace"),
                    ret=struct.unpack("<i", d[52:56])[0], ms=struct.unpack("<I", d[56:60])[0],

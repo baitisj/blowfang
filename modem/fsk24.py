@@ -70,16 +70,20 @@ VARIANTS = (
     # sends them, 750 us pre-emphasised; level is the peak deviation in kHz after it
     Variant(1800, "iqF", 3.0),            # 18: the pager's F/1800, today's default
     Variant(1200, "iqF", 3.0),            # 19: the pager's F/1200
-    # 20-23: kept for the UV-380's C6000 physical layer mode (blowfang PR #139 defines them)
-    Variant(2400, "reserved", 0.0),       # 20
-    Variant(2400, "reserved", 0.0),       # 21
-    Variant(1200, "reserved", 0.0),       # 22
-    Variant(1200, "reserved", 0.0),       # 23
+    # the UV-380's HR_C6000 in physical layer mode (modem/c6phy.py, firmware/uv380-openrtx/mod/
+    # c6phytx.c): each bit as 2 (2400) or 4 (1200) outer DMR symbols, RRC, from the radio's own
+    # two-point modulation; level is the outer deviation in kHz. "c6phyi": bit 1 sent as -3 (the
+    # polarity test: c6phytx alternates the two packet by packet)
+    Variant(2400, "c6phy", 1.944),        # 20
+    Variant(2400, "c6phyi", 1.944),       # 21
+    Variant(1200, "c6phy", 1.944),        # 22
+    Variant(1200, "c6phyi", 1.944),       # 23
     Variant(1800, "iq", 2.2),             # 24: D/1800 for the third sweep (Jeff 11-16)
 )
 RUN1 = tuple(range(8))
 RUN2 = (0, 8, 9, 10, 11, 12)
 RUN3 = (13, 14, 15, 16, 17)
+C6PHY = (20, 21, 22, 23)
 # the sensitivity sweep: one slot of SWEEP_SLOT_S per rate, the rates in turn, at each level step
 # (dB below the top level); the module (c/k6/mod/fsk24rx_sweep.c) sets each slot's receive recipe
 # a slot: (name, the bench's variant, the module's REG_58, REG_72, word in 1/16 ticks, REG_2B
@@ -162,6 +166,9 @@ def block_audio(v_index, seq0, fs=fsk.FS, n=PER_BLOCK):
     bits = block_bits(v_index, seq0, n)
     if v.comp in ("c6eq", "rrc"):
         return symbol_audio(bits, v.baud, fs, v.level, EQ if v.comp == "c6eq" else None)
+    if v.comp in ("c6phy", "c6phyi"):     # what a flat receiver's discriminator gives: 9 kHz = 1.0
+        b = 1 - np.asarray(bits) if v.comp == "c6phyi" else bits
+        return symbol_audio(b, v.baud, fs, v.level / 9.0)
     if v.comp == "iq":                    # what a flat receiver's discriminator gives: 9 kHz = 1.0
         return fsk._ramp(fsk.nrz(bits, v.baud, fs, 0.5) * v.level / 9.0, fs)
     if v.comp == "iqF":                   # the tones as a de-emphasising receiver gives them
@@ -319,8 +326,6 @@ def sim(n_rounds=2, ch="ic7100", fs=fsk.FS):
             "flat": None}[ch]
     out = {}
     for vi, v in enumerate(VARIANTS):
-        if v.comp == "reserved":
-            continue
         got = sent = 0
         for r in range(n_rounds):
             x = block_audio(vi, r * PER_BLOCK, fs)

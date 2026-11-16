@@ -331,3 +331,59 @@ per step and recipe, with the K6's RSSI.
 - **What 2400 would take in use:** a 2400 baud PHY in the K6 image for uploads and messages, and a
   flat sender: the Pluto on the bench, or the UV-380 or RT-950 in the field. That's an image
   change, so it waits for Jeff's call on the next flash batch. The throughput is in the table above.
+
+## 2400 baud in the image: the rate ladder (11-16, not flashed yet)
+
+Jeff (11-16 20:31Z): "Please plan for 2400 baud mode in the K6 image. We can retain backwards
+compatibility for lower rates based on link quality or error rates." The plan is the doc
+[K6 2400 baud mode: plan](https://claude.ai/artifact/2KyfdA4YJn8hYfyZjobG6r); this is its image
+step (step 5), built ahead of the bench steps 1-3 because the bench was busy. The policy is
+`c/k6/k6_rate.c` (host tests `tests/test_k6_rate.py`); the radio side is in the Aura patch
+(`src/app/pager.rs`).
+
+| rung | modulation | REG_58 | REG_72 | REG_2B | XL payload | who can send it |
+| --- | --- | --- | --- | --- | --- | --- |
+| D/2400 | plain 2-FSK | 00e9 | 60cb | high-pass off (+0400) | 2,000 bit/s | flat FM transmitters: the Pluto now; the UV-380's raw mode and the RT-950 later |
+| F/1800 (default) | FFSK 1200/1800 | 3f01 | 4898 | as found | 1,500 bit/s | anyone, the IC-7100 included |
+| F/1200 | FFSK 1200/1800 | 3fe3 | 3065 (a `--reg 72=3065` write) | as found | 1,000 bit/s | anyone |
+
+D/2400 is run 3's setting 2, the recipe the sweep uses for 2400. The TX gain at D/2400 is the
+old PHY D's 0x00E0 (the CAL burst on PTT goes out on the rung in force, which is how step 3 checks
+the K6's own D/2400 on the IC-7100).
+
+**What the K6 does.**
+
+- It boots, idles and comes back to VOICE MSG on F/1800, so every old sender works as before.
+- It advertises `rates=F12,F18,D24` on every `K6 CFG` line (the REPORT action prints one), and
+  `phy=D baud=2400` there while it is on D/2400. The screen's second line starts with D or F.
+- A control record with **phy=D and baud=2400 together** (`python -m modem.k6 ctl OUT.wav --phy F
+  --set phy=D baud=2400`, sent at F/1800) moves it to D/2400. `phy=F` or `baud=1200` brings it back.
+  A lone `baud=2400`, the old ask for the FFSK 1200/2400 variants (none ever synced; they and
+  `var=` are gone), changes nothing, so an old sender can't leave the K6 deaf.
+- It drops back to F/1800 by itself (`K6 RATE D24>F18 why=... n= bad=` and a CFG line):
+  - `why=revert`: no good packet within 10 s of the switch (the old revert's 60 s is too long a
+    deafness for a rate change);
+  - `why=crc`: 3 of the last 8 synced packets at D/2400 failed their CRC;
+  - `why=quiet`: 30 s with no good packet after the last one (a session's end, so the IC-7100
+    can always reach it again).
+  It never steps up by itself: only the sender knows its transmit path is flat.
+- ARQ reports go at F/1800 on every rung (the plan's open question 2, its recommendation: they
+  are short and every sender hears F/1800). Their status byte 9 carries the ladder above the
+  state (k6_mod.h `KM_RATE_*`): this image takes D/2400, the K6 is on it now, and why it last fell
+  back. `modem.k6mod.parse_report` gives `rates`, `rung` and `fell`; old images read as
+  `rates=F12,F18`, so a new sender never asks them.
+- D/2400 learns its own polarity from the session's first packet that checks only upside down
+  (a voice packet's CRC, or a module chunk's magic and CRC; `K6 RATE D24 inv=1`), before the module
+  loader looks, so an upload needs no voice packet first. F/1800's learned polarity isn't used
+  there, nor changed. The FIFO byte order is the chip's and stays as learned.
+- The `K6 PLAY` line gains `rung=`, `syncs=`, `crcbad=`, `rssi_min=` and `rssi_med=` (the link
+  since the last PLAY line; RSSI at each packet's end, the median in 3 dB bins).
+
+**Open, for the bench (after the flash, Jeff's batch).** The receive path at D/2400 is the image's
+timed FIFO reads with 3 words of lead (`TIMED_LEAD_WORDS_2400`, set on 11-04 against the
+IC-7100's audio). fsk24rx, which read 234 of 234, polls the FIFO and reads 4 words behind
+instead. If the image's reads slip at 2400, `--reg 5e=0203` switches it to interrupt reads (as
+F/1800 uses) for 60 s without a flash; the plan's step 2 module would settle it first. The
+thresholds (3 of 8, 10 s, 30 s) are the plan's defaults until the sensitivity sweep (step 1)
+measures the real margin. The sender's side (`--via pluto` for uploads, the per-path rate state
+and its step-up and step-down policy) is the plan's step 4, a host tools PR.

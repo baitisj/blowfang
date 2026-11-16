@@ -214,7 +214,11 @@ typedef struct {
      0 0xAF   1 kind (KM_REP_*)   2 report seq (counts every report this boot)
      3 part   4 parts             (status = part 0; text parts 1..parts-1)
    kind STATUS:
-     5 xfer  6 have  7 count  8 r (the last km_packet result, int8)  9 state (KM_ST_*)
+     5 xfer  6 have  7 count  8 r (the last km_packet result, int8)
+     9 state (KM_ST_*) in bits 0-3, and from the images of 2026-11-16 the rate ladder (k6_rate.h)
+       above it: KM_RATE_D24 this image takes D/2400, KM_RATE_AT_D24 the K6 is on it now, bits
+       6-7 why it last dropped back to F/1800 since the previous report (KR_WHY_*: 1 CRC
+       failures, 2 silence, 3 no good packet after the switch). Reports go at F/1800 always
      10..13 serial (u32 LE, of the module once it checked)
      14..45 missing chunks: bit i of byte i/8 set = chunk i not held (resend it)
      46..51 the station's call, ASCII, NUL padded
@@ -222,6 +226,9 @@ typedef struct {
    kind TEXT: 5..61 text (KM_TLM_PART bytes, NUL padded): the module's say lines, '\n' after each */
 enum { KM_REP_STATUS = 1, KM_REP_TEXT = 2 };
 enum { KM_ST_PARTWAY = 0, KM_ST_RAN = 1, KM_ST_REFUSED = 2 };
+#define KM_RATE_D24 0x10u
+#define KM_RATE_AT_D24 0x20u
+#define KM_RATE_WHY_SHIFT 6
 
 /* payload: the packet as received (whitened), len 64 or 128. arena: the message store. */
 int km_packet(const uint8_t *payload, int len, void *arena, unsigned arena_bytes);
