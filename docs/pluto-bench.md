@@ -84,6 +84,9 @@ xo_correction stay. v0.39 (2024-10-15, Linux 6.1), installed 11-16 with this scr
 
 ## Gotchas found on 11-16
 
+- **The RX LO leaks out of the RX port.** After a capture it stayed on 440.849998 MHz, 2 Hz under
+  the K6's channel, until it was moved. `quiet` and every capture now park it at 2.4 GHz.
+
 - **Don't stream over `usb:`.** iio_writedev claims the Pluto's USB interface for itself, so the
   tool's iio_attr calls, which power the TX LO up and down, can't open their own context
   ("Unable to claim interface"). Over `ip:192.168.2.1` both work at once. The tool refuses to

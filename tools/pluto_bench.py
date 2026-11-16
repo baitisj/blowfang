@@ -7,7 +7,8 @@ docs/pluto-bench.md has the bench notes.
 
   python3 tools/pluto_bench.py info                 the Pluto's state, range and stored calibration
   python3 tools/pluto_bench.py quiet                TX LO down, DDS test tones off (the Pluto boots
-                                                    with tones keyed at 2.45 GHz: run after a replug)
+                                                    with tones keyed at 2.45 GHz: run after a replug),
+                                                    RX LO parked at 2.4 GHz (it leaks out of the RX port)
   python3 tools/pluto_bench.py send WAV             any audio as FM on 440.850 (or --hz in 430-450),
          [--hz F] [--dev 3000] [--gain -60]         full scale = --dev Hz peak, AG7EW in MCW first
          [--preemph] [--rf-off]                     and last; --preemph for voice (750 us)
@@ -124,8 +125,16 @@ def tx_power(on, uri=None):
     put("out", PHY, "altvoltage1", "powerdown", 0 if on else 1, uri=uri)
 
 
+RX_PARK_HZ = 2_400_000_000   # the RX LO leaks out of the RX port: park it far from the bands under test
+
+
+def park_rx(uri=None):
+    put("out", PHY, "altvoltage0", "frequency", RX_PARK_HZ, uri=uri, check=False)
+
+
 def quiet(uri=None):
     tx_power(False, uri)
+    park_rx(uri)
     for ch in ("altvoltage0", "altvoltage1", "altvoltage2", "altvoltage3"):
         put("out", TX_DEV, ch, "raw", 0, uri=uri, check=False)   # the DDS test tones off
 
@@ -275,12 +284,17 @@ def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE):
     cmd = ["iio_readdev", "-u", uri or URI, "-b", str(CHUNK), "-s", str(n), RX_DEV, "voltage0", "voltage1"]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     dec, parts, t0 = Decimator(rate, rate // IQ_FS_SAVE), [], time.time()
-    while True:
-        raw = p.stdout.read(4 * CHUNK)
-        if not raw:
-            break
-        parts.append(dec(raw[: len(raw) // 4 * 4]))
-    err = p.stderr.read().decode(errors="replace").strip()
+    try:
+        while True:
+            raw = p.stdout.read(4 * CHUNK)
+            if not raw:
+                break
+            parts.append(dec(raw[: len(raw) // 4 * 4]))
+        err = p.stderr.read().decode(errors="replace").strip()
+    finally:
+        if p.poll() is None:
+            p.kill()
+        park_rx(uri)                        # its LO sat on the K6's channel after a capture (11-16)
     if p.wait() or not parts:
         raise SystemExit(f"iio_readdev failed: {err or p.returncode}"
                          + (" (stuck RX buffer: unplug and replug the Pluto)" if "busy" in err else ""))

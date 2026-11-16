@@ -93,6 +93,7 @@ def test_cal_saves_and_setup_applies(tmp_path, monkeypatch):
     flat = [" ".join(map(str, a)) for a in calls]
     assert any(f"xo_correction {c['xo']}" in s for s in flat), flat
     assert any("altvoltage1 powerdown 1" in s for s in flat)
+    assert any(f"altvoltage0 frequency {pl.RX_PARK_HZ}" in s for s in flat)   # quiet parks the RX LO first
     gain = [s for s in flat if "hardwaregain" in s]
     assert gain == ["-q -c -i ad9361-phy voltage0 hardwaregain 40"], gain
     assert all(("-i" in a or "-o" in a or "-d" in a) for a in calls)
