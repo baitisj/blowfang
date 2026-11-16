@@ -237,8 +237,18 @@ power-off. Receive is left alone. They last until power-off. They're there becau
 the UV-380's first FSK sends (11-14), so hamlet can tune the link on air with no reflash.
 
 **tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
-the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only, then the
-ident), while the module runs on. `mod/micduplex_tone.c` switches the C6000's transmit source
+the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only), while the
+module runs on.
+
+**Transmit guard and ident first (level 4, 11-16).** A RAM module run once hung the radio keyed:
+a steady tone for 111 s with no ident, until Jeff switched it off. Now every key-up in PAGER mode
+first arms the STM32's independent watchdog (its own clock; once started only a reset stops it)
+and a thread of its own kicks it every 100 ms, unless the key-up has outlived its length by
+1.5 s. A stuck thread, a frozen MCU or an overlong transmission resets the radio about 2 s later
+(1.4 to 3.8 s over the LSI clock's spread), which lets go of the PA. With no key-up since
+power-on the watchdog never starts. `tx_mic` and `tx_tone` also send the Morse ident first, unkey
+for 100 ms, then key the test, so a carrier a hang leaves up has been identified. Modules that
+timed their windows from the call (micrec, mictx, micduplex*) now see the ident first. `mod/micduplex_tone.c` switches the C6000's transmit source
 meanwhile and reads I2S3, to see whether the radio can send modem audio and hear the mic at once.
 
 **The key.** CI builds images without it. Before flashing, write it in on hamlet with

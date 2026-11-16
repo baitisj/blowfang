@@ -135,12 +135,41 @@ def test_modules_build_for_the_openrtx_table():
 
 
 def test_dmrtx_is_dry_unless_a_wrapper_says_otherwise():
-    """the module only keys with TX_DRY 0, which only a bench wrapper sets"""
+    """the module only keys with TX_DRY 0, which only a bench wrapper sets, and only on an image
+    at API level 4 (ident first, transmit guard): an older image refuses the wrappers"""
     src = open(os.path.join(MOD, "c6dmrtx.c")).read()
     assert "#ifndef TX_DRY\n#define TX_DRY 1\n" in src
-    assert "if (!TX_DRY) {\n        if (api->tx_tone(" in src
+    assert src.count("api->tx_tone(") == 1
+    keyed = src.index("if (!TX_DRY) {\n        if (api->level < 4u) {")
+    assert keyed < src.index("return -1;", keyed) < src.index("api->tx_tone(")
     live = sorted(f for f in os.listdir(MOD) if "#define TX_DRY 0" in open(os.path.join(MOD, f)).read())
     assert live == ["c6dmrtx_live.c", "c6dmrtx_msg.c"]
+    from modem import uv380mod
+    for f in live:
+        assert uv380mod.source_level(os.path.join(MOD, f)) == 4
+
+
+def test_image_guards_every_key_up():
+    """11-16 16:12Z a hung module run left the radio keyed for 111 s with no ident: in the image
+    every key-up arms the watchdog guard first and clears it after, and a module's keyed tests
+    send the ident before they key"""
+    patch = open(os.path.join(ROOT, "firmware", "uv380-openrtx", "uv380-blowfang.patch")).read()
+    start = patch.index("+++ b/openrtx/src/rtx/OpMode_Pager.cpp")
+    pager = patch[start:patch.index("\ndiff --git", start)]
+    lines = [ln[1:] for ln in pager.splitlines() if ln.startswith("+")]
+    code = "\n".join(lines)
+    ups = [i for i, ln in enumerate(lines) if ln.strip() == "radio_enableTx();"]
+    assert len(ups) == 4
+    # the emulator's send (PLATFORM_LINUX) writes a file: no radio, no guard
+    guarded = [i for i in ups if "txGuardOn(" in "\n".join(lines[max(0, i - 3):i])]
+    assert len(guarded) == 3
+    offs = [i for i, ln in enumerate(lines) if ln.strip() == "txGuardOff();"]
+    assert len(offs) == 3 and all(lines[i - 1].strip() == "radio_disableRtx();" for i in offs)
+    assert "TXG_IWDG" in code and "0xCCCCu" in code
+    for test in ("micTest(status, ms);", "toneTest(status, ms, toneHz);"):
+        at = code.index(test)
+        before = code[code.rindex("if((ptt == false)", 0, at):at]
+        assert "sendIdentOnly = true;" in before and "send(status);" in before
 
 
 def test_headers_write_only_what_they_say():

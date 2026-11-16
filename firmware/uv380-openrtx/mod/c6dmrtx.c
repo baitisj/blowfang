@@ -4,14 +4,16 @@
    docs/uv380-c6000-modem.md.
 
    The image has no DMR transmit path, so the keying is borrowed: api->tx_tone keys FM at 1 W on
-   440.850 MHz only (it refuses anywhere else) and sends the Morse ident after. Once the C6000's
-   analog TX is up (0x60 bit 7), this switches the chip to DMR layer 2 with active timing
-   (RadioFoundry modem-hrc6000.md 3.1, 6.1-6.2, MIT): two-point modulation with the radio's own
-   DMR calibration pair (w25sec.h, read only; or TX_I / TX_Q), colour code TX_CC, impolite
-   access, 0x40 = 0xE3. At every slot edge (c6slot.h, PC0) it sets up the slot after: ours gets
-   the next block in TX RAM, 0x50 = data type, 0x41 = 0x80; the other 0x41 = 0. First TX_PRE CSBK
-   preambles (receivers lock), then the message's blocks. Then every register goes back to what
-   the image had, before the tone ends, so the ident goes out in FM as always.
+   440.850 MHz only (it refuses anywhere else). Since 11-16 (API level 4) the image sends the
+   Morse ident first, unkeys for 100 ms, then keys the tone, under its transmit guard (a hang
+   resets the radio about 2 s past the tone's length). This waits for the tone's own key-up:
+   0x60 bit 7 (the C6000's analog TX) up for the ident, down, up again. Then it switches the
+   chip to DMR layer 2 with active timing (RadioFoundry modem-hrc6000.md 3.1, 6.1-6.2, MIT):
+   two-point modulation with the radio's own DMR calibration pair (w25sec.h, read only; or TX_I /
+   TX_Q), colour code TX_CC, impolite access, 0x40 = 0xE3. At every slot edge (c6slot.h, PC0) it
+   sets up the slot after: ours gets the next block in TX RAM, 0x50 = data type, 0x41 = 0x80; the
+   other 0x41 = 0. First TX_PRE CSBK preambles (receivers lock), then the message's blocks.
+   Then every register goes back to what the image had, before the tone ends.
 
    TX_DRY 1 (the default) does all of it with no keying: the chip frames bursts that go nowhere
    (no PA, the AT1846S stays in receive), which proves the slot clock, the RF TX interrupt and
@@ -21,8 +23,12 @@
    TX_SRC 0 sends a test pattern (superframes counting up), 1 the radio's message (what PTT and
    # use: the last recording or the last message heard).
 
-   Lines: "cal I= Q=", "key ok after N ms", "slot0 after N ms", "tx blocks=N/M edges= rftx=
-   82|= late=", "end". TX_MS (<= 5000) is the whole keyed time.
+   Lines: "cal I= Q=", "tx_tone ok", "ident keyed after N ms", "ident done after N ms", "key ok
+   after N ms", "dmr on", "tx blocks=N/M edges= rftx= 82|= late=", "end": one before each step,
+   so a hang shows where (11-16 16:12Z the first live run stopped after "cal" with no trace).
+   From tx_tone to the key-down the lines are kept and said after it: at 1 W the RF stops the
+   radio's USB while keyed (11-16), and a say then blocks. TX_MS (<= 5000) is the tone's keyed
+   time.
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
 #include "c6spi.h"
@@ -57,8 +63,51 @@
 #define TX_TEXT "AG7EW"
 #define TX_FKHZ 440850u
 #define TX_SETTLE_MS 80u        /* after 0x60 shows the analog TX: AT1846S TX + PA (OpenRTX 50 ms) */
+#define TX_IDENT_MS 12000u      /* the image's Morse ident before the tone, at most */
 #define TX_TAIL_MS 350u         /* registers back this long before the keying ends */
 #define TX_MAXBLK ((TX_MS - 300u - TX_TAIL_MS) / 60u)
+
+/* Lines while keyed wait for the key-down (11-16 16:37Z: at 1 W the RF kills the USB link at
+   key-up, and each say then blocks: the DMR started 3 s late and 38 of 62 blocks never went
+   out; the 16:12Z hang after "cal" was likely the same). A keyed run keeps them here. */
+#define TX_NOTES 6u
+#define TX_NOTE 120u
+typedef struct {
+    char s[TX_NOTES][TX_NOTE];
+    unsigned n, quiet;
+} tx_notes;
+
+static void note(const ortx_api_t *api, tx_notes *q, const char *s) {
+    if (!q->quiet) {
+        api->say(s);
+        return;
+    }
+    if (q->n >= TX_NOTES)
+        return;
+    unsigned i = 0;
+    for (; s[i] && i < TX_NOTE - 1u; i++)
+        q->s[q->n][i] = s[i];
+    q->s[q->n][i] = 0;
+    q->n++;
+}
+
+/* after the key-down (0x60 bit 7 low for 300 ms, at most most_ms): the kept lines out */
+static void flush_notes(const ortx_api_t *api, tx_notes *q, uint32_t most_ms) {
+    if (q->quiet) {
+        uint32_t t0 = api->ms(), low = t0;
+        while (api->ms() - t0 < most_ms) {
+            if (api->c6000_read(0x60) & 0x80u)
+                low = api->ms();
+            else if (api->ms() - low >= 300u)
+                break;
+            api->sleep_ms(10);
+        }
+    }
+    q->quiet = 0;
+    for (unsigned i = 0; i < q->n; i++)
+        api->say(q->s[i]);
+    q->n = 0;
+}
 
 /* the test pattern: superframe k is bytes 6k..6k+5 counting up */
 static unsigned test_msg(uint8_t *buf, unsigned nsf) {
@@ -114,23 +163,45 @@ int uv_main(const ortx_api_t *api) {
     }
 
     uint32_t t_key = api->ms();
+    tx_notes q;
+    q.n = 0;
+    q.quiet = 0;
     if (!TX_DRY) {
+        if (api->level < 4u) {      /* the ident after the tone, no transmit guard */
+            api->say("err image below level 4: no transmit guard, nothing sent");
+            c6s_close(&ss);
+            return -1;
+        }
         if (api->tx_tone(TX_MS, 1000)) {
             api->say("err tx_tone refused (not on 440.850 MHz, or TX off)");
             c6s_close(&ss);
             return -1;
         }
-        while ((api->c6000_read(0x60) & 0x80u) == 0) {
-            if (api->ms() - t_key > 400u || api->stop()) {
-                api->say("err the keying never started");
-                c6s_close(&ss);
-                return -1;
+        q.quiet = 1;                /* keyed within ms: no say until the key-down */
+        note(api, &q, "tx_tone ok");
+        /* the ident keys, unkeys (100 ms), then the tone keys */
+        for (unsigned k = 0; k < 3u; k++) {
+            /* no pointer tables: the module is position-independent */
+            const char *what = k == 0u ? "ident keyed" : k == 1u ? "ident done" : "key ok";
+            uint8_t want = k == 1u ? 0x00u : 0x80u;
+            uint32_t most = k == 1u ? TX_IDENT_MS : 1000u, t0 = api->ms();
+            while ((api->c6000_read(0x60) & 0x80u) != want) {
+                if (api->ms() - t0 > most || api->stop()) {
+                    api->fmt(line, sizeof line, "err waiting for %s: no DMR sent", what);
+                    note(api, &q, line);
+                    c6s_close(&ss);
+                    flush_notes(api, &q, TX_IDENT_MS + TX_MS + 1000u);
+                    return -1;
+                }
+                api->sleep_ms(1);
             }
-            api->sleep_ms(1);
+            if (k == 2u) {
+                t_key = api->ms();
+                api->sleep_ms(TX_SETTLE_MS);
+            }
+            api->fmt(line, sizeof line, "%s after %lu ms", what, (unsigned long)(api->ms() - t0));
+            note(api, &q, line);
         }
-        api->sleep_ms(TX_SETTLE_MS);
-        api->fmt(line, sizeof line, "key ok after %lu ms", (unsigned long)(api->ms() - t_key));
-        api->say(line);
     }
     uint32_t t_end = t_key + TX_MS - TX_TAIL_MS;
 
@@ -150,6 +221,7 @@ int uv_main(const ortx_api_t *api) {
     api->c6000_write(0x41, 0x00);
     c6s_poll(&ss);
     api->c6000_write(0x40, 0xE3);           /* TX and RX, active timing */
+    note(api, &q, "dmr on");
 
     unsigned edges = 0, rftx = 0, sent = 0, late = 0, ours = 1, quiet = 0;
     uint8_t f82 = 0;
@@ -194,7 +266,7 @@ int uv_main(const ortx_api_t *api) {
             }
         }
         if (now - t0 > 400u && edges == 0) {
-            api->say("err no slot edges on PC0: stopped");
+            note(api, &q, "err no slot edges on PC0: stopped");
             break;
         }
         if (now >= t_end)
@@ -210,11 +282,12 @@ int uv_main(const ortx_api_t *api) {
     api->fmt(line, sizeof line, "tx blocks=%u/%u edges=%u first=%lu ms rftx=%u 82|=%02x late=%u restored at %lu ms",
              sent, TX_PRE + nblk, edges, (unsigned long)first, rftx, f82, late,
              (unsigned long)(api->ms() - t_key));
-    api->say(line);
+    note(api, &q, line);
     if (!TX_DRY) {
         while (api->ms() - t_key < TX_MS + 200u && !api->stop())
             api->sleep_ms(10);
     }
+    flush_notes(api, &q, 2000u);
     api->say("end");
     return 0;
 }

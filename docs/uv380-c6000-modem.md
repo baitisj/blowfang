@@ -61,13 +61,17 @@ Everything else is in headers the modules include, each sharing a bus with OpenR
 | `c6pages.c` | none | checks c6spi.h against the image's own reads, dumps every space, the DMR calibration, counts interrupt edges |
 | `c6dmrrx.c` | receive | AT1846S and C6000 into DMR layer 2 receive; slot check; every synced burst's type, CRC, colour code, sync errors, FSK error, payload; soft values of the first bursts; re-arms between transmissions. `c6dmrrx_flat.c`: AT1846S left in FM (comparison). `c6dmrrx_raw.c`: physical layer mode, raw 288-bit bursts. `c6dmrrx_long.c`: 60 s, for several sends in one run |
 | `c6dmrtx.c` | **none by default** (TX_DRY 1): the chip frames bursts that go nowhere | the full transmit sequence as a rehearsal: slot clock, RF TX interrupts, TX flags |
-| `c6dmrtx_live.c` | 1 W, 440.850 MHz only, 4.6 s, then the Morse ident | the test pattern as DMR rate 1/2 bursts, keyed through `api->tx_tone`. Only with Jeff at the radio |
+| `c6dmrtx_live.c` | the Morse ident, then 1 W, 440.850 MHz only, 4.6 s; API level 4 images only (transmit guard) | the test pattern as DMR rate 1/2 bursts, keyed through `api->tx_tone`. Only with Jeff at the radio |
 | `c6dmrtx_msg.c` | as live | the radio's own message (last recording or message heard) |
 
-The DMR transmit borrows the image's FM keying: `tx_tone` keys at 1 W on 440.850 (refusing
-anything else), and once the C6000's analog TX is up the module switches the chip to DMR with
-the radio's own DMR modulation pair, sends its bursts at the slot edges, and puts every register
-back 350 ms before the keying ends so the ident goes out in FM as always.
+The DMR transmit borrows the image's FM keying: `tx_tone` sends the Morse ident, unkeys for
+100 ms, then keys at 1 W on 440.850 (refusing anything else). Once the C6000's analog TX is up
+again the module switches the chip to DMR with the radio's own DMR modulation pair, sends its
+bursts at the slot edges, and puts every register back 350 ms before the keying ends. The image
+(API level 4) keys under a transmit guard: the STM32's independent watchdog, armed at the first
+key-up and kicked by a thread of its own unless a key-up outlives its length by 1.5 s. A hung
+module, a stuck thread or a frozen MCU resets the radio about 2 s later (1.4-3.8 s), which lets go
+of the PA.
 
 ## Host tools
 
@@ -148,8 +152,38 @@ back 350 ms before the keying ends so the ident goes out in FM as always.
   turns up 3 to 5 bytes in), and the same magnitude errors.
 - **C3 dry transmit.** 65 of 65 bursts (3 CSBK, 62 data) queued on the slot clock, first edge
   after 2 ms, an RF TX interrupt for each burst, none late; every register restored.
+- **C4, the first live run (16:12:47Z): stuck carrier.** `tx_tone` keyed (1 W, 440.850, the
+  1 kHz tone) and the module's last line was its "cal" line (I=7f Q=36). No "key ok" and no
+  "err the keying never started", though that wait has a 400 ms timeout, so the module stopped
+  inside it (or its lines stopped reaching USB). The image's 4.6 s tone never ended either, so
+  the Morse ident (then sent after the tone) never went out. USB stopped answering, and the
+  IC-7100 heard a steady 998 Hz tone at S9+60 for 111 s until Jeff switched the radio off
+  (16:14:38Z). No DMR was sent. The dry run never called `tx_tone`, so the cause is in the
+  keyed path: not found yet. Since then the image keys only under the transmit guard, sends the
+  ident first, and `c6dmrtx` says a line before each step, so a re-run ends within seconds
+  whatever happens and shows where it stops.
+- **C5 guarded image (PR #123, API level 4), 16:3xZ.** Flashed with no hands (radio_tool
+  usb-leave restarts it). Dry run 65/65, none late, registers restored. Live 1 ran every step
+  but sent no RF: the flash script had left the channel power at 0 (PA off). Live 2 at 1 W
+  (16:37:03Z): ident 3.5 s, 50 ms unkeyed, then the DMR keying, 4.7 s. USB went silent at
+  key-up and the module's lines stalled it: DMR began about 3 s late, so the IC-7100 decoded
+  the 3 CSBK preambles and 24 of 62 blocks (text AG7EW, id 1, 38 never sent, 1 bad). The
+  carrier was down on time, and the radio reset 1.6 s after key-down and came back by itself.
+- **Why the radio hung: 1 W knocks the UV-380 off USB.** In every 1 W run the radio dropped
+  off the USB bus at key-up (the kernel logs a disconnect, not just a quiet CDC link); at power
+  0 every line got through. A module's say() then blocks, which delayed live 2's DMR and very
+  likely froze the 16:12Z run. `c6dmrtx` now keeps its lines from tx_tone to the key-down.
+- **C6, error free (16:43:04Z, 1 W).** Ident, 50 ms gap, DMR from 16:43:07.99 to 12.60Z: the
+  IC-7100 decoded 62 of 62 rate-1/2 blocks and the 3 CSBK preambles, 0 lost, 0 bad, text AG7EW,
+  id 1, the 528-byte test message byte for byte. Plain decode: the chip's DMR arrives flat
+  (with --preemph nothing decodes). The radio still reset about 1.4 s after key-down and the
+  held lines were lost with the USB; the reset cause (watchdog or not) is still to be read.
 
 ## Open questions
+
+- The UV-380 drops off USB under its own 1 W and resets about 1.5 s after each keying: a
+  ferrite or a short shielded cable, or the module's counters by another route (the screen, or
+  RAM that survives the reset), and the reset cause from RCC_CSR.
 
 - Receive is proven through the IC-7100 harness (pre-equalised). A DMR transmitter with a flat
   audio path (another UV-380, a real DMR radio) should need none of that: C4 shows it.
