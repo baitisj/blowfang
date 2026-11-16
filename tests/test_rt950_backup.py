@@ -128,6 +128,6 @@ def test_the_bluetooth_bridge_speaks_at_the_stock_rate():
     import rt950_ble_bridge as bb
     s = bb.auth_serial(5)
     assert len(s) == 20 and s[:4] == b"\x3f" * 4 and s[4] == 5 and max(s[5:]) <= 98
-    assert bb.SAFE_SELECTORS == (0, 2, 5, 8)        # (1, 3, 4 and 7 pass nothing)
+    assert bb.SELECTORS == tuple(range(9))
     assert bb.pace_s(5) >= 20 * 10 / 9600            # never faster than the module's 9600 baud UART
     assert bb.pace_s(2) < bb.pace_s(5)

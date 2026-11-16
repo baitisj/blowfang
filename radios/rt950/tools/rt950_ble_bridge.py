@@ -11,7 +11,9 @@ tools/ble_serial_bridge.py and firmware_upload_ble.py (GPL-3; docs/bluetooth.md 
 The authentication's byte 4 picks the module's UART rate for the connection, and the MCU can't
 follow a change, so it must match the firmware's USART1. Measured by jaymart1983: selectors 0, 5
 and 8 give 9600 (the module's default, which the stock firmware is built for), 2 gives 115200
-(their firmware), 1 3 4 7 pass nothing. The default here is 5. Nothing it sends writes to the
+(their firmware), 1 3 4 7 pass nothing on theirs. Radtel's app config for the RT-950 names baud
+code 7 (57600), so with the stock firmware 7 and 6 are worth trying after 5, 0 and 2. The default
+here is 5. Nothing it sends writes to the
 radio: the authentication is the module's per-connection setup, and the bytes it forwards are
 whatever the tool on the pty sends (rt950_backup.py only reads).
 
@@ -32,10 +34,15 @@ UUID_DATA_PREFERRED = "0000ff32-0000-1000-8000-00805f9b34fb"
 UUID_DATA_FALLBACK = "0000ffe1-0000-1000-8000-00805f9b34fb"
 UUID_CONTROL = "0000ff31-0000-1000-8000-00805f9b34fb"
 CHUNK = 20                      # bytes per BLE write: larger chunks overrun the module
-SAFE_SELECTORS = (
+SELECTORS = (                   # every value byte 4 can take; it only sets the module's UART rate
     0,
+    1,
     2,
+    3,
+    4,
     5,
+    6,
+    7,
     8,
 )
 
@@ -61,7 +68,7 @@ async def scan(seconds=8.0):
     found = await BleakScanner.discover(timeout=seconds, return_adv=True)
     for addr, (dev, adv) in sorted(found.items(), key=lambda kv: -kv[1][1].rssi):
         uu = " ".join(u[4:8] for u in adv.service_uuids)
-        mark = "  <- has the module's services" if any(x in uu for x in ("ff31", "ff32", "ffe1")) else ""
+        mark = "  <- has the module's services" if any(x in uu for x in ("ff31", "ff32", "ffe0", "ffe1")) else ""
         print(f"{addr}  {adv.rssi:4d} dBm  {dev.name or adv.local_name or '?':24s} {uu}{mark}")
 
 
@@ -130,7 +137,7 @@ def main(argv=None):
     p.add_argument("address")
     p.add_argument("link")
     p.add_argument("--seconds", type=float, default=1800.0)
-    p.add_argument("--sel", type=int, default=5, choices=SAFE_SELECTORS)
+    p.add_argument("--sel", type=int, default=5, choices=SELECTORS)
     a = ap.parse_args(argv)
     if a.cmd == "scan":
         asyncio.run(scan(a.seconds))
