@@ -247,18 +247,28 @@ and a thread of its own kicks it every 100 ms, unless the key-up has outlived it
 1.5 s. A stuck thread, a frozen MCU or an overlong transmission resets the radio about 2 s later
 (1.4 to 3.8 s over the LSI clock's spread), which lets go of the PA. With no key-up since
 power-on the watchdog never starts. `tx_mic` and `tx_tone` also send the Morse ident first, unkey
-for 100 ms, then key the test, so a carrier a hang leaves up has been identified.
-
-**No writes into a dead USB bus, and "guard" (11-16, next reflash).** At 1 W the UV-380 drops off
-the USB bus at key-up, and a write nobody reads spins 500 ms in OpenRTX's driver; after each 1 W
-keying the radio then reset (RCC_CSR showed the watchdog). Lines and module writes now skip a
-suspended bus, and after a write times out they're dropped until the host writes again or 3 s
-pass. The watchdog's kicker runs at the scheduler's top priority. The guard leaves breadcrumbs in
-RTC backup registers 16-19 (state on, off or stop, its tick, the last kick, the deadline), which
-survive the reset: the command `guard` prints them with RCC_CSR, then clears both. A reset in
-state stop was the guard ending an overlong key-up; any other state means the kicker was held off. Modules that
+for 100 ms, then key the test, so a carrier a hang leaves up has been identified. Modules that
 timed their windows from the call (micrec, mictx, micduplex*) now see the ident first. `mod/micduplex_tone.c` switches the C6000's transmit source
 meanwhile and reads I2S3, to see whether the radio can send modem audio and hear the mic at once.
+
+**No writes into a dead USB bus, and "guard" (11-16, PR #127).** At 1 W the UV-380 drops off
+the USB bus at key-up, and a write nobody reads spins 500 ms in OpenRTX's driver. Lines and module
+writes skip a suspended bus, and after a write times out they're dropped until the host writes
+again or 3 s pass. The watchdog's kicker runs at the scheduler's top priority. The guard leaves
+breadcrumbs in RTC backup registers 16-19 (state on, off or stop, its tick, the last kick, the
+deadline), which survive a reset: the command `guard` prints them with RCC_CSR, then clears both.
+A reset in state stop was the guard ending an overlong key-up; any other state means the kicker
+was held off.
+
+**The USB interrupt that never ended (11-16, C7).** With PR #127 on the radio the reset still
+came, about 1.9 s after the 1 W keying, and `guard` showed why: state off, the last kick 355 ms
+after key-down, the moment the host re-enumerated the radio. ST's USB library (OpenRTX's
+`usb_dcd_int.c`) clears an IN endpoint's FIFO-empty interrupt mask only on transfer complete. A
+write abandoned when the host went away leaves it set, so once the endpoint is open again the
+interrupt is pending again each time its handler returns, so the CPU never gets back to a
+thread (the kicker included) and the watchdog resets the radio. The
+patch clears the mask when nothing is left to write (as ST's later HAL does), at every bus reset,
+and when a vcom write times out.
 
 **The key.** CI builds images without it. Before flashing, write it in on hamlet with
 `python -m modem.k6 keyimage out/openrtx_mduv3x0p_i2sprobe.bin keyed.bin --key-file

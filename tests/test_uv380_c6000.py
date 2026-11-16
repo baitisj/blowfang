@@ -209,6 +209,29 @@ def test_guard_kicker_outranks_and_leaves_breadcrumbs():
     assert 'strcmp(pbCmd, "guard") == 0' in code
 
 
+def _patch_added(path):
+    patch = open(os.path.join(ROOT, "firmware", "uv380-openrtx", "uv380-blowfang.patch")).read()
+    start = patch.index("+++ b/" + path)
+    end = patch.find("\ndiff --git", start)
+    part = patch[start:end if end >= 0 else len(patch)]
+    return "\n".join(ln[1:] for ln in part.splitlines() if ln.startswith("+"))
+
+
+def test_usb_fifo_empty_interrupt_cannot_storm():
+    """11-16 17:16Z (C7): after a 1 W keying the kicks stopped as USB re-enumerated and the
+    watchdog reset the radio. ST's USB library only clears an IN endpoint's FIFO-empty interrupt
+    mask on transfer complete, so a write abandoned when the host went away fires that interrupt
+    without end once the endpoint is open again. The patch clears it when nothing is left to write
+    (as ST's later HAL does), at every bus reset, and when a vcom write times out"""
+    dcd = _patch_added("platform/mcu/STM32F4xx/drivers/usb/usb_dcd_int.c")
+    assert "if((ep->xfer_len == 0) || (ep->xfer_count >= ep->xfer_len))" in dcd
+    assert "DIEPEMPMSK, 0x1u << epnum, 0);" in dcd
+    assert "USB_OTG_WRITE_REG32(&pdev->regs.DREGS->DIEPEMPMSK, 0);" in dcd
+    vcom = _patch_added("platform/mcu/STM32F4xx/drivers/usb_vcom.c")
+    assert "0x1u << (CDC_IN_EP & 0x7Fu), 0);" in vcom
+    assert "in_ep[CDC_IN_EP & 0x7Fu].xfer_len = 0;" in vcom
+
+
 def test_headers_write_only_what_they_say():
     """w25sec.h sends only the read-security-register command; at1846.h never writes the
     frequency (0x29, 0x2A), TX (0x30) or power registers"""
