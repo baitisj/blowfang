@@ -95,6 +95,26 @@ What can break it (each is a measurement on Andrew's radio):
    sideband back; it needs a trim, measured by nulling the unwanted sideband of a two-tone on
    the IC-7100 waterfall.
 
+## Audio in, and what it means for each plan item (2026-11-16)
+
+The FerriteFW author measured the RT-950 Pro's audio paths (facts and credit in
+[rt950-characteristics.md](rt950-characteristics.md)). The MCU's DAC reaches the BK4829's audio
+input through an RC network: a first-order high-pass near 170 Hz with about -90 deg of phase, and a
+fixed 3.1 kHz chip filter after it unless REG_47 bit 0 bypasses it. With the bypass and a
+level-and-phase equaliser it is flat 50 Hz-5 kHz, and G3RUH 9600 goes out at 0.3 % bit errors. No
+solder anywhere.
+
+| Plan item | Affected? | Why, and the path we take |
+| --- | --- | --- |
+| Dual-chip SURF | no | receive RSSI only, no audio in |
+| FT8 / WSPR TX | no | PLL frequency steps (`digi_tx.c`) never touch the audio path |
+| sotto TX (PHY R, 600/1200 Hz FFSK) | no | inside even the stock 400 Hz-2.5 kHz flat band; DAC first, bypass and equaliser if needed; the chip's tone generator is a second route |
+| Faster modem TX (2400-9600) | no, with work | bypass plus a phase-correcting equaliser of our own, designed from our own channel measurement |
+| Polar SSB TX | partly | the FM-input option for the frequency path is out (AC-coupled at ~170 Hz with -90 deg phase); PLL writes at ~8000 a second remain the path and are still unmeasured. The envelope path is unaffected |
+| Modem RX | partly | 1200 and 2400 baud work (APRS 1200 clean as set; the chip's own FSK modem 1200/2400 clean both ways); 4800 marginal; 9600 receive not possible |
+| sotto RX (PHY R) | likely yes | 600 Hz sits near the board's receive coupling corner with the voice filters off: keep the 300 Hz high-pass on, or correct the coupling in the demodulator |
+| Mic audio (voice SSB, sotto encode) | unknown | still open question 4 |
+
 ## SSB receive: easier than the note says
 
 Jeff's note calls RX the hard part because the BK4829 is "FM only". It isn't quite: the BK4819
@@ -117,7 +137,8 @@ IC-7100 in USB, without Andrew's radio.
 4. Where the mic goes: PA1 "audio level" on an ADC is unverified (raw audio or an envelope?).
    Voice SSB and sotto encode both need raw mic audio.
 5. AM power-mod mechanism and its bandwidth (question 2 under SSB TX).
-6. PLL retune rate and glitches; whether a DC-coupled FM input exists.
+6. PLL retune rate and glitches. (There is no DC-coupled FM input: the DAC reaches the chip
+   through an RC high-pass near 170 Hz, per Ferrite's measurements.)
 7. BK4829 RSSI read time per bin and per-chip RSSI offset.
 
 ## Decisions (Jeff, 2026-11-16)
