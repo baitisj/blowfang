@@ -9,10 +9,35 @@ on:
   push:
     branches: [main]
   pull_request:
+  # weekly, so a radio nobody touched still builds against today's toolchains
+  schedule:
+    - cron: "17 9 * * 1"
   workflow_dispatch:
 
 jobs:
+  # Whether this change touches the UV-380 at all (.github/ci-radios.txt, tools/ci_scope.py): a pull
+  # request that doesn't skips the jobs below, and a skipped job counts as passed. Everything runs
+  # on main, weekly, from "Run workflow", and on a PR labelled ci-full.
+  scope:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: scope
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/ci_scope.py --github uv380
+
   uv380:
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

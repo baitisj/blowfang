@@ -8,8 +8,8 @@ env:
   ATFE_VERSION: 22.1.0
 
 on:
-  # Everything in this repository is K6 firmware or its tooling, so every push to main and every
-  # PR runs it (no path filters).
+  # Every push to main and every PR starts it; the scope job below skips the K6 jobs on a PR that
+  # changes nothing the K6 builds from (.github/ci-radios.txt).
   push:
     branches: [main]
   pull_request:
@@ -19,11 +19,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  # The host tests run as four shards side by side (about 2.5 min instead of 7); every PR still runs
-  # every test. pytest-split picks each shard's tests from tests/durations.json so the shards finish
+  # Whether this change touches the K6 at all (.github/ci-radios.txt, tools/ci_scope.py): a pull
+  # request that doesn't skips the jobs below, and a skipped job counts as passed. Everything runs
+  # on main, weekly, from "Run workflow", and on a PR labelled ci-full.
+  scope:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: scope
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/ci_scope.py --github k6
+
+  # The host tests run as four shards side by side (about 2.5 min instead of 7); every K6 PR still
+  # runs every test. pytest-split picks each shard's tests from tests/durations.json so the shards finish
   # together; a test missing from that file counts as an average one, so a new test needs no edit.
   # Refresh the file after adding a long test (README, "Iterating quickly").
   host-tests-shard:
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -144,16 +166,26 @@ jobs:
             tests/test_nwr_watch.py \
             tests/test_psk31.py
 
-  # One check named host-tests that passes only when every shard passed.
+  # One check named host-tests that passes only when every shard passed, or when the scope job
+  # found no K6 change (and the shards were skipped).
   host-tests:
     runs-on: ubuntu-latest
-    needs: host-tests-shard
+    needs:
+      - scope
+      - host-tests-shard
     if: always()
     steps:
       - name: every shard passed
-        run: test "${{ needs.host-tests-shard.result }}" = success
+        run: |
+          if [ "${{ needs.scope.result }}" = success ] && [ "${{ needs.scope.outputs.run }}" = false ]; then
+            echo "no K6 change in this PR: the shards were skipped"
+            exit 0
+          fi
+          test "${{ needs.host-tests-shard.result }}" = success
 
   aura-pager:
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

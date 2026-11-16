@@ -82,6 +82,29 @@ python -m pytest -q -n auto --store-durations --durations-path tests/durations.j
     $(grep -o 'tests/test_[a-z0-9_]*\.py' .github/workflows/k6-firmware.yml)
 ```
 
+### CI: only the radios a change touches
+
+Each radio has its own workflow: `k6-firmware.yml`, `uv380.yml`, `uv380-openrtx.yml` and
+`rt950.yml`. On a pull request, each one first asks `tools/ci_scope.py` whether the change
+touches that radio, using the map in `.github/ci-radios.txt`. If it doesn't, the radio's jobs
+show as skipped, which counts as passed. Docs-only changes build nothing. Shared code (the sotto
+submodule, `c/common/`, the shared `modem/` files) builds every radio that uses it.
+
+Everything still builds on every push to main (the images hamlet flashes come from there), on
+the weekly run, from "Run workflow" on any branch, and on a PR with the `ci-full` label (add it,
+then re-run the jobs). A file the map doesn't place builds every radio.
+
+To see what your branch will build, and to check the map after adding files:
+
+```sh
+python3 tools/ci_scope.py            # which radios this branch's PR builds (against origin/main)
+python3 tools/ci_scope.py --check    # every file placed; each radio's imports and #includes listed
+```
+
+The Forbidden files workflow runs `--check` on every PR. It fails when a new file is in no
+section, when a line matches nothing after a rename, or when a radio's tests import (or its C
+`#include`s) a file missing from that radio's section. Its message names the line to add.
+
 ## History
 
 This repository was split out of baitisj/sotto on 2026-11-09 with `git filter-repo`, keeping
