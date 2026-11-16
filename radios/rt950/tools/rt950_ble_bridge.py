@@ -11,14 +11,14 @@ tools/ble_serial_bridge.py and firmware_upload_ble.py (GPL-3; docs/bluetooth.md 
 The authentication's byte 4 picks the module's UART rate for the connection, and the MCU can't
 follow a change, so it must match the firmware's USART1. Measured by jaymart1983: selectors 0, 5
 and 8 give 9600 (the module's default, which the stock firmware is built for), 2 gives 115200
-(their firmware), 1 3 4 7 pass nothing on theirs. Radtel's app config for the RT-950 names baud
-code 7 (57600), so with the stock firmware 7 and 6 are worth trying after 5, 0 and 2. The default
-here is 5. Nothing it sends writes to the
+(their firmware), 1 3 4 7 pass nothing on theirs. Jeff's RT-950 Pro on stock firmware
+(2026-11-16) answered CPS on 2 only: 5 and 0 authenticated but never ACKed the handshake. So the
+default here is 2. Nothing it sends writes to the
 radio: the authentication is the module's per-connection setup, and the bytes it forwards are
 whatever the tool on the pty sends (rt950_backup.py only reads).
 
   rt950_ble_bridge.py scan                       list nearby BLE devices with the module's services
-  rt950_ble_bridge.py bridge ADDRESS PTYLINK [--seconds 1800] [--sel 5]
+  rt950_ble_bridge.py bridge ADDRESS PTYLINK [--seconds 1800] [--sel 2]
       PTYLINK becomes a symlink to the pty; then:  rt950_backup.py read PTYLINK OUT --addr 2
 Needs bleak and a running BlueZ. SPDX-License-Identifier: GPL-3.0-or-later
 """
@@ -137,7 +137,7 @@ def main(argv=None):
     p.add_argument("address")
     p.add_argument("link")
     p.add_argument("--seconds", type=float, default=1800.0)
-    p.add_argument("--sel", type=int, default=5, choices=SELECTORS)
+    p.add_argument("--sel", type=int, default=2, choices=SELECTORS)
     a = ap.parse_args(argv)
     if a.cmd == "scan":
         asyncio.run(scan(a.seconds))
