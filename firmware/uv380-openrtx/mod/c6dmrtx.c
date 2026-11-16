@@ -26,7 +26,9 @@
    Lines: "cal I= Q=", "tx_tone ok", "ident keyed after N ms", "ident done after N ms", "key ok
    after N ms", "dmr on", "tx blocks=N/M edges= rftx= 82|= late=", "end": one before each step,
    so a hang shows where (11-16 16:12Z the first live run stopped after "cal" with no trace).
-   TX_MS (<= 5000) is the tone's keyed time.
+   From tx_tone to the key-down the lines are kept and said after it: at 1 W the RF stops the
+   radio's USB while keyed (11-16), and a say then blocks. TX_MS (<= 5000) is the tone's keyed
+   time.
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
 #include "c6spi.h"
@@ -64,6 +66,48 @@
 #define TX_IDENT_MS 12000u      /* the image's Morse ident before the tone, at most */
 #define TX_TAIL_MS 350u         /* registers back this long before the keying ends */
 #define TX_MAXBLK ((TX_MS - 300u - TX_TAIL_MS) / 60u)
+
+/* Lines while keyed wait for the key-down (11-16 16:37Z: at 1 W the RF kills the USB link at
+   key-up, and each say then blocks: the DMR started 3 s late and 38 of 62 blocks never went
+   out; the 16:12Z hang after "cal" was likely the same). A keyed run keeps them here. */
+#define TX_NOTES 6u
+#define TX_NOTE 120u
+typedef struct {
+    char s[TX_NOTES][TX_NOTE];
+    unsigned n, quiet;
+} tx_notes;
+
+static void note(const ortx_api_t *api, tx_notes *q, const char *s) {
+    if (!q->quiet) {
+        api->say(s);
+        return;
+    }
+    if (q->n >= TX_NOTES)
+        return;
+    unsigned i = 0;
+    for (; s[i] && i < TX_NOTE - 1u; i++)
+        q->s[q->n][i] = s[i];
+    q->s[q->n][i] = 0;
+    q->n++;
+}
+
+/* after the key-down (0x60 bit 7 low for 300 ms, at most most_ms): the kept lines out */
+static void flush_notes(const ortx_api_t *api, tx_notes *q, uint32_t most_ms) {
+    if (q->quiet) {
+        uint32_t t0 = api->ms(), low = t0;
+        while (api->ms() - t0 < most_ms) {
+            if (api->c6000_read(0x60) & 0x80u)
+                low = api->ms();
+            else if (api->ms() - low >= 300u)
+                break;
+            api->sleep_ms(10);
+        }
+    }
+    q->quiet = 0;
+    for (unsigned i = 0; i < q->n; i++)
+        api->say(q->s[i]);
+    q->n = 0;
+}
 
 /* the test pattern: superframe k is bytes 6k..6k+5 counting up */
 static unsigned test_msg(uint8_t *buf, unsigned nsf) {
@@ -119,6 +163,9 @@ int uv_main(const ortx_api_t *api) {
     }
 
     uint32_t t_key = api->ms();
+    tx_notes q;
+    q.n = 0;
+    q.quiet = 0;
     if (!TX_DRY) {
         if (api->level < 4u) {      /* the ident after the tone, no transmit guard */
             api->say("err image below level 4: no transmit guard, nothing sent");
@@ -130,7 +177,8 @@ int uv_main(const ortx_api_t *api) {
             c6s_close(&ss);
             return -1;
         }
-        api->say("tx_tone ok");
+        q.quiet = 1;                /* keyed within ms: no say until the key-down */
+        note(api, &q, "tx_tone ok");
         /* the ident keys, unkeys (100 ms), then the tone keys */
         for (unsigned k = 0; k < 3u; k++) {
             /* no pointer tables: the module is position-independent */
@@ -140,8 +188,9 @@ int uv_main(const ortx_api_t *api) {
             while ((api->c6000_read(0x60) & 0x80u) != want) {
                 if (api->ms() - t0 > most || api->stop()) {
                     api->fmt(line, sizeof line, "err waiting for %s: no DMR sent", what);
-                    api->say(line);
+                    note(api, &q, line);
                     c6s_close(&ss);
+                    flush_notes(api, &q, TX_IDENT_MS + TX_MS + 1000u);
                     return -1;
                 }
                 api->sleep_ms(1);
@@ -151,7 +200,7 @@ int uv_main(const ortx_api_t *api) {
                 api->sleep_ms(TX_SETTLE_MS);
             }
             api->fmt(line, sizeof line, "%s after %lu ms", what, (unsigned long)(api->ms() - t0));
-            api->say(line);
+            note(api, &q, line);
         }
     }
     uint32_t t_end = t_key + TX_MS - TX_TAIL_MS;
@@ -172,7 +221,7 @@ int uv_main(const ortx_api_t *api) {
     api->c6000_write(0x41, 0x00);
     c6s_poll(&ss);
     api->c6000_write(0x40, 0xE3);           /* TX and RX, active timing */
-    api->say("dmr on");
+    note(api, &q, "dmr on");
 
     unsigned edges = 0, rftx = 0, sent = 0, late = 0, ours = 1, quiet = 0;
     uint8_t f82 = 0;
@@ -217,7 +266,7 @@ int uv_main(const ortx_api_t *api) {
             }
         }
         if (now - t0 > 400u && edges == 0) {
-            api->say("err no slot edges on PC0: stopped");
+            note(api, &q, "err no slot edges on PC0: stopped");
             break;
         }
         if (now >= t_end)
@@ -233,11 +282,12 @@ int uv_main(const ortx_api_t *api) {
     api->fmt(line, sizeof line, "tx blocks=%u/%u edges=%u first=%lu ms rftx=%u 82|=%02x late=%u restored at %lu ms",
              sent, TX_PRE + nblk, edges, (unsigned long)first, rftx, f82, late,
              (unsigned long)(api->ms() - t_key));
-    api->say(line);
+    note(api, &q, line);
     if (!TX_DRY) {
         while (api->ms() - t_key < TX_MS + 200u && !api->stop())
             api->sleep_ms(10);
     }
+    flush_notes(api, &q, 2000u);
     api->say("end");
     return 0;
 }
