@@ -6,7 +6,8 @@
 #   sh tools/uv380_c6phy_bench.sh stage RUN       build, sign and check everything; no RF
 #   sh tools/uv380_c6phy_bench.sh dry RUN         c6phytx dry on the UV-380 (no RF): slot clock,
 #                                                 TX RAM read back
-#   sh tools/uv380_c6phy_bench.sh live RUN K6LOG  the UV-380 at 0 W, PA on (power 0, zero 2), on
+#   sh tools/uv380_c6phy_bench.sh live RUN K6LOG  the UV-380 at 0 W, PA on (power 0, zero 2), its
+#                                                 own receiver off (listen 0), on
 #                                                 440.850: 3 key-ups at 2400 baud while the K6 is
 #                                                 in its 2400 settings, 2 at 1200 in its last,
 #                                                 the Pluto capturing each (50 kHz up); then the
@@ -55,10 +56,12 @@ live)
     uvcmd tune | tee "$RUN/tune-before.txt"
     PWR=$(sed -n 's/.*pwr=\([0-9]*\).*/\1/p' "$RUN/tune-before.txt" | tail -1)
     ZERO=$(sed -n 's/.*zero=\([0-9]*\).*/\1/p' "$RUN/tune-before.txt" | tail -1)
-    uvcmd "power 0" "zero 2" | tee "$RUN/tune-set.txt"
-    grep -q "pwr=0 .*" "$RUN/tune-set.txt" && grep -q "zero=2" "$RUN/tune-set.txt" \
-        || { echo "power 0 / zero 2 not read back: nothing sent"; exit 3; }
-    restore() { uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" | tee "$RUN/tune-after.txt"; }
+    LISTEN=$(uvcmd listen | sed -n 's/.*listen on=\([01]\).*/\1/p' | tail -1)
+    # the radio's own receiver off: it heard the IC-7100 and refused sends (11-16 21:5xZ)
+    uvcmd "listen 0" "power 0" "zero 2" | tee "$RUN/tune-set.txt"
+    grep -q "pwr=0 .*" "$RUN/tune-set.txt" && grep -q "zero=2" "$RUN/tune-set.txt" && grep -q "listen on=0" "$RUN/tune-set.txt" \
+        || { echo "power 0 / zero 2 / listen 0 not read back: nothing sent"; exit 3; }
+    restore() { uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" | tee "$RUN/tune-after.txt"; }
     trap restore EXIT
     echo "$(stamp) waiting for the K6's fsk24 start in $K6LOG"
     n=0
