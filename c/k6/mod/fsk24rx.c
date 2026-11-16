@@ -308,7 +308,15 @@ int k6_main(const k6_api_t *api) {
     }
     api->delay_us(300);
   }
-  for (i = 0; i < NSV; i++) api->fd_write(SAVED[i], s->sv[i]);
+  /* restore with the modem off: control and config last, then a FIFO clear, so the image's
+     modem doesn't come back armed with this module's FIFO or state (11-16, uploads failing CRC
+     after a run) */
+  api->fd_write(0x59, 0);
+  api->fd_write(0x58, 0);
+  for (i = 2; i < NSV; i++) api->fd_write(SAVED[i], s->sv[i]);
+  api->fd_write(0x58, s->sv[0]);
+  api->fd_write(0x59, (uint16_t)(s->sv[1] | CTRL_CLR));
+  api->fd_write(0x59, s->sv[1]);
   api->fd_write(0x02, 0);
   tn += n, tok += ok;
   p = kv(s->ln, "fsk24 end n=", tn);
