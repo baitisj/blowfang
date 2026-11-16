@@ -30,11 +30,11 @@ voice. EXIT from VOICE MSG goes back to EXPLORE. To play voice again, flash a pa
 **Unattended flashing** (2026-11-08, Jeff OK'd it; boot changed by the release plan, Jeff
 2026-11-13): EXPLORE ignores OTA. The image boots straight into EXPLORE (`K6 EX at boot`).
 VOICE MSG is the RAM arena: its screen says `BLOWFANG RAM ARENA` / `EXIT TO EXPLORER` /
-`AUTO EXPLORE  0 OFF`, with a fourth line only while it's busy (`MOD 12/48`, `PLAYING`, `PAGES MISSING`; # and 6 still show the
+`0 TO STAY HERE`, with a fourth line only while it's busy (`MOD 12/48`, `PLAYING`, `PAGES MISSING`; # and 6 still show the
 link details). It goes back into EXPLORE by itself after 1 minute with no packet and no key
 press (`K6 EX quiet 60 s: EXPLORE`), and EXIT goes there at once. Key 0 in the arena turns that
-fallback off (`K6 EX stay=1`, screen `STAYING HERE  0 ON`) until key 0 again or a power cycle (Jeff's
-to-do, 2026-11-16). EXIT still leaves for EXPLORE. EXIT twice in EXPLORE opens
+fallback off (`K6 EX stay=1`, screen `STAYING HERE.` / `EXIT TO EXPLORE`) until EXIT; it's one way
+(Jeff, 2026-11-16), so the next visit has its quiet minute again, and power-up starts with it off. EXIT twice in EXPLORE opens
 the arena. Missing code pages (after a flash) hold the arena until they're installed. While it sweeps, it reads 440.850 once a second; a carrier there
 stronger than -45 dBm on two reads in a row (the bench IC-7100 reads -18 to -24 dBm) sends it to
 VOICE MSG for 1 minute (`K6 EX beacon -22 dBm: VOICE MSG for 60 s`). So hamlet flashes it without
@@ -235,7 +235,7 @@ s 146.520   S  ======
 | 6 twice | delete every entry the explorer saved on its own for DMR (`6 AGAIN: DEL AUTO DMR`) |
 | 9 | the automatic listen's speaker on or off |
 | 8 | the station editor on the row: its saved entry, or a new station from what the sweep found there (below) |
-| EXIT twice | the RAM arena, VOICE MSG (the list is in RAM and goes when you leave or power off); EXPLORE again after 1 quiet minute (unless key 0 there turned that off) |
+| EXIT twice | the RAM arena, VOICE MSG (the list is in RAM and goes when you leave or power off); EXPLORE again after 1 quiet minute (unless key 0 there held it) |
 
 ### The station editor (key 8)
 

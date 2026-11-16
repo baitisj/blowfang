@@ -320,7 +320,7 @@ index 5f006e4..0e2c0f5 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..bb9e2d6
+index 0000000..79f4335
 --- /dev/null
 +++ b/src/app/pager.rs
 @@ -0,0 +1,4743 @@
@@ -336,7 +336,7 @@ index 0000000..bb9e2d6
 +//! the calibration transmit.
 +//!
 +//! Keys: MENU play (again), EXIT leave (or stop playback), UP/DOWN volume, # frequency,
-+//! 4 pre-emphasis, 9 auto-play, 0 stay in VOICE MSG (explore image: no fallback to EXPLORE), 6 raw packet bytes on the screen (hiss image: the hiss band off and on, an A/B on the
++//! 4 pre-emphasis, 9 auto-play, 0 stay in VOICE MSG until EXIT (explore image: no fallback to EXPLORE), 6 raw packet bytes on the screen (hiss image: the hiss band off and on, an A/B on the
 +//! speaker), * clear the message, side key 1 run the last module again, PTT transmit the
 +//! calibration packet (twice). PHY F (FFSK) only: the old direct-FSK PHY D and its key 1 are
 +//! gone, because one stray press left the radio deaf to the bench's F sends (Jeff, 2026-11-10);
@@ -392,7 +392,7 @@ index 0000000..bb9e2d6
 +    PagesMissing,
 +}
 +
-+/// Key 0 turned the arena's fallback to EXPLORE off (it stays in VOICE MSG)
++/// Key 0 turned the arena's fallback to EXPLORE off (it stays in VOICE MSG until EXIT)
 +#[cfg(feature = "explore")]
 +pub fn arena_stay() -> bool {
 +    explore::stay()
@@ -3980,9 +3980,9 @@ index 0000000..bb9e2d6
 +        KeyId::Down => p.vol = p.vol.saturating_sub(1),
 +        KeyId::Digit4 => p.emphasis = !p.emphasis,
 +        KeyId::Digit9 => p.auto_play = !p.auto_play,
-+        // the arena's fallback to EXPLORE off and on (the screen says which)
++        // the arena stays (no fallback to EXPLORE) until EXIT
 +        #[cfg(feature = "explore")]
-+        KeyId::Digit0 => explore::stay_toggle(),
++        KeyId::Digit0 => explore::stay_set(),
 +        #[cfg(feature = "hiss")]
 +        KeyId::Digit6 => {
 +            let on = unsafe { ffi::sp_hiss() } == 0;
@@ -5069,10 +5069,10 @@ index 0000000..bb9e2d6
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..3898fc2
+index 0000000..56920be
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2396 @@
+@@ -0,0 +1,2397 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5583,20 +5583,20 @@ index 0000000..3898fc2
 +/// EXPLORE's code pages weren't there at the last try (the arena says PAGES MISSING)
 +static mut PAGES_MISSING: bool = false;
 +/// Key 0 in VOICE MSG: the arena stays put, no going back into EXPLORE on its own (Jeff's
-+/// Monday to-do, 2026-11-14). Off at boot; key 0 again, or a power cycle, turns the fallback
-+/// back on. EXIT still leaves for EXPLORE.
++/// Monday to-do, 2026-11-14). One way (Jeff, 2026-11-16: no second 0 to undo it): EXIT to
++/// EXPLORE clears it, so the next visit to the arena has its quiet minute again; off at boot.
 +static mut STAY: bool = false;
 +
 +pub fn stay() -> bool {
 +    unsafe { *addr_of!(STAY) }
 +}
 +
-+/// Key 0 in VOICE MSG: the fallback to EXPLORE off, or on again (its quiet wait from now)
-+pub fn stay_toggle() {
-+    let on = !stay();
-+    unsafe { *addr_of_mut!(STAY) = on };
-+    voice_wait(VOICE_IDLE_MS);
-+    rl!("K6 EX stay={}", on as u8);
++/// Key 0 in VOICE MSG: the arena stays until EXIT
++pub fn stay_set() {
++    if !stay() {
++        unsafe { *addr_of_mut!(STAY) = true };
++        rl!("K6 EX stay=1");
++    }
 +}
 +
 +pub fn pages_missing() -> bool {
@@ -6064,6 +6064,7 @@ index 0000000..3898fc2
 +    app.sync_watching_to_master(syst);
 +    arm(app, syst);
 +    t.beacon_n = 0;
++    unsafe { *addr_of_mut!(STAY) = false }; // EXIT from a held arena: its quiet minute again next time
 +    voice_wait(VOICE_IDLE_MS);
 +    rl!("K6 EX leave");
 +}
@@ -10468,10 +10469,10 @@ index cdfa0f7..429f08b 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..f0d25de
+index 0000000..7c141f1
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,454 @@
+@@ -0,0 +1,460 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -10569,7 +10570,7 @@ index 0000000..f0d25de
 +/// ```text
 +///   BLOWFANG RAM ARENA
 +///   EXIT TO EXPLORER
-+///   AUTO EXPLORE  0 OFF  (or STAYING HERE  0 ON: key 0 turned the fallback off)
++///   0 TO STAY HERE       (after key 0: STAYING HERE. / EXIT TO EXPLORE, no fallback)
 +///   MOD 12/48            (or PLAYING  EXIT STOP, or PAGES MISSING)
 +/// ```
 +#[cfg(feature = "explore")]
@@ -10579,8 +10580,14 @@ index 0000000..f0d25de
 +{
 +    use app::pager::Busy;
 +    line(lcd, 19, "  BLOWFANG RAM ARENA");
-+    line(lcd, 29, "  EXIT TO EXPLORER");
-+    line(lcd, 39, if app::pager::arena_stay() { "  STAYING HERE  0 ON" } else { "  AUTO EXPLORE  0 OFF" });
++    // key 0 held it: no fallback to EXPLORE (Jeff's wording, 2026-11-16)
++    if app::pager::arena_stay() {
++        line(lcd, 29, "  STAYING HERE.");
++        line(lcd, 39, "  EXIT TO EXPLORE");
++    } else {
++        line(lcd, 29, "  EXIT TO EXPLORER");
++        line(lcd, 39, "  0 TO STAY HERE");
++    }
 +    let mut b: TextBuf<24> = TextBuf::new();
 +    match app::pager::arena_busy(app) {
 +        Busy::Module(have, n) => {
