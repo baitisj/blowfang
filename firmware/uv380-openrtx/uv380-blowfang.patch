@@ -281,10 +281,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..c2547da7
+index 00000000..b55f5647
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1530 @@
+@@ -0,0 +1,1531 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -317,6 +317,89 @@ index 00000000..c2547da7
 +}
 +#include "blowfang_message.h"
 +#include "blowfang_config.h"
++
++// The transmit guard (11-16 16:12Z: a module run hung the radio keyed, a
++// steady carrier for 111 s with no ident, until Jeff switched it off). Every
++// key-up first arms the STM32's independent watchdog (IWDG: its own clock,
++// LSI; once started only a reset stops it), and from then on a thread of its
++// own kicks it every 100 ms, unless a key-up has outlived its deadline. So a
++// hung thread, a frozen MCU or an overlong transmission resets the radio
++// within about 2 s (1.4 to 3.8 s over the LSI's spread): the reset lets go of
++// the PA enable (TX_PA_EN, PC5, back to an input) and the boot puts the
++// AT1846S back in receive. Nothing else changes: with no key-up since
++// power-on the watchdog never starts.
++#if defined(PLATFORM_MDUV3x0) && !defined(PLATFORM_LINUX)
++static constexpr uint32_t TXG_IWDG  = 0x40003000u;  // KR, PR, RLR, SR
++static constexpr uint32_t TXG_CSR   = 0x40023874u;  // RCC_CSR: LSION, LSIRDY
++static constexpr uint32_t TXG_PR    = 4u;           // LSI / 64: 2 ms a count at 32 kHz
++static constexpr uint32_t TXG_RLR   = 1000u;        // 2 s at 32 kHz
++static constexpr uint32_t TXG_SLACK = 1500u;        // ms past a key-up's own length
++static constexpr uint32_t IDENT_MAX_MS = 15000u;    // the Morse ident alone
++static constexpr uint32_t IDENT_GAP_MS = 100u;      // unkeyed between the ident and the test
++static volatile uint32_t txgDeadline = 0;           // tick a key-up must be over by; 0: none
++static volatile bool     txgArmed    = false;
++static pthread_t         txgThread;
++
++static inline volatile uint32_t &txgReg(uint32_t a)
++{
++    return *(volatile uint32_t *) a;
++}
++
++static void *txgFunc(void *arg)
++{
++    (void) arg;
++    for(;;)
++    {
++        uint32_t d = txgDeadline;
++        if((d == 0) || ((int32_t) (d - (uint32_t) getTick()) > 0))
++            txgReg(TXG_IWDG) = 0xAAAAu;
++        sleepFor(0, 100);
++    }
++    return NULL;
++}
++
++static void txgArm()
++{
++    if(txgArmed)
++        return;
++    txgReg(TXG_CSR) |= 1u;                          // LSI on
++    for(unsigned i = 0; ((txgReg(TXG_CSR) & 2u) == 0) && (i < 100); i++)
++        sleepFor(0, 1);
++    txgReg(TXG_IWDG) = 0x5555u;                     // PR and RLR writable
++    txgReg(TXG_IWDG + 0x04u) = TXG_PR;
++    txgReg(TXG_IWDG + 0x08u) = TXG_RLR;
++    for(unsigned i = 0; (txgReg(TXG_IWDG + 0x0Cu) != 0) && (i < 100); i++)
++        sleepFor(0, 1);
++    txgReg(TXG_IWDG) = 0xAAAAu;
++    txgReg(TXG_IWDG) = 0xCCCCu;                     // started: no way back but a reset
++    txgArmed = true;
++    pthread_attr_t attr;
++    pthread_attr_init(&attr);
++    pthread_attr_setstacksize(&attr, 1024);
++    pthread_create(&txgThread, &attr, txgFunc, NULL);   // if this fails, the radio resets
++    pthread_attr_destroy(&attr);
++}
++
++// before radio_enableTx: the longest this key-up may last, in ms
++static void txGuardOn(uint32_t ms)
++{
++    txgArm();
++    uint32_t d = (uint32_t) getTick() + ms + TXG_SLACK;
++    txgDeadline = (d == 0) ? 1 : d;
++}
++
++// after radio_disableRtx
++static void txGuardOff()
++{
++    txgDeadline = 0;
++}
++#else
++static constexpr uint32_t IDENT_MAX_MS = 15000u;
++static constexpr uint32_t IDENT_GAP_MS = 100u;
++static inline void txGuardOn(uint32_t ms) { (void) ms; }
++static inline void txGuardOff() { }
++#endif
++
 +
 +static constexpr uint32_t FS        = 48000;    // PWM sample rate into the modulator
 +static constexpr uint32_t BAUD      = 1800;
@@ -964,88 +1047,6 @@ index 00000000..c2547da7
 +{
 +    pager_requestPreview();
 +}
-+
-+// The transmit guard (11-16 16:12Z: a module run hung the radio keyed, a
-+// steady carrier for 111 s with no ident, until Jeff switched it off). Every
-+// key-up first arms the STM32's independent watchdog (IWDG: its own clock,
-+// LSI; once started only a reset stops it), and from then on a thread of its
-+// own kicks it every 100 ms, unless a key-up has outlived its deadline. So a
-+// hung thread, a frozen MCU or an overlong transmission resets the radio
-+// within about 2 s (1.4 to 3.8 s over the LSI's spread): the reset lets go of
-+// the PA enable (TX_PA_EN, PC5, back to an input) and the boot puts the
-+// AT1846S back in receive. Nothing else changes: with no key-up since
-+// power-on the watchdog never starts.
-+#if defined(PLATFORM_MDUV3x0) && !defined(PLATFORM_LINUX)
-+static constexpr uint32_t TXG_IWDG  = 0x40003000u;  // KR, PR, RLR, SR
-+static constexpr uint32_t TXG_CSR   = 0x40023874u;  // RCC_CSR: LSION, LSIRDY
-+static constexpr uint32_t TXG_PR    = 4u;           // LSI / 64: 2 ms a count at 32 kHz
-+static constexpr uint32_t TXG_RLR   = 1000u;        // 2 s at 32 kHz
-+static constexpr uint32_t TXG_SLACK = 1500u;        // ms past a key-up's own length
-+static constexpr uint32_t IDENT_MAX_MS = 15000u;    // the Morse ident alone
-+static constexpr uint32_t IDENT_GAP_MS = 100u;      // unkeyed between the ident and the test
-+static volatile uint32_t txgDeadline = 0;           // tick a key-up must be over by; 0: none
-+static volatile bool     txgArmed    = false;
-+static pthread_t         txgThread;
-+
-+static inline volatile uint32_t &txgReg(uint32_t a)
-+{
-+    return *(volatile uint32_t *) a;
-+}
-+
-+static void *txgFunc(void *arg)
-+{
-+    (void) arg;
-+    for(;;)
-+    {
-+        uint32_t d = txgDeadline;
-+        if((d == 0) || ((int32_t) (d - (uint32_t) getTick()) > 0))
-+            txgReg(TXG_IWDG) = 0xAAAAu;
-+        sleepFor(0, 100);
-+    }
-+    return NULL;
-+}
-+
-+static void txgArm()
-+{
-+    if(txgArmed)
-+        return;
-+    txgReg(TXG_CSR) |= 1u;                          // LSI on
-+    for(unsigned i = 0; ((txgReg(TXG_CSR) & 2u) == 0) && (i < 100); i++)
-+        sleepFor(0, 1);
-+    txgReg(TXG_IWDG) = 0x5555u;                     // PR and RLR writable
-+    txgReg(TXG_IWDG + 0x04u) = TXG_PR;
-+    txgReg(TXG_IWDG + 0x08u) = TXG_RLR;
-+    for(unsigned i = 0; (txgReg(TXG_IWDG + 0x0Cu) != 0) && (i < 100); i++)
-+        sleepFor(0, 1);
-+    txgReg(TXG_IWDG) = 0xAAAAu;
-+    txgReg(TXG_IWDG) = 0xCCCCu;                     // started: no way back but a reset
-+    txgArmed = true;
-+    pthread_attr_t attr;
-+    pthread_attr_init(&attr);
-+    pthread_attr_setstacksize(&attr, 1024);
-+    pthread_create(&txgThread, &attr, txgFunc, NULL);   // if this fails, the radio resets
-+    pthread_attr_destroy(&attr);
-+}
-+
-+// before radio_enableTx: the longest this key-up may last, in ms
-+static void txGuardOn(uint32_t ms)
-+{
-+    txgArm();
-+    uint32_t d = (uint32_t) getTick() + ms + TXG_SLACK;
-+    txgDeadline = (d == 0) ? 1 : d;
-+}
-+
-+// after radio_disableRtx
-+static void txGuardOff()
-+{
-+    txgDeadline = 0;
-+}
-+#else
-+static constexpr uint32_t IDENT_MAX_MS = 15000u;
-+static constexpr uint32_t IDENT_GAP_MS = 100u;
-+static inline void txGuardOn(uint32_t ms) { (void) ms; }
-+static inline void txGuardOff() { }
-+#endif
 +
 +// The keyed mic test (tx_mic): the Morse ident, then ms of FM carrying the
 +// microphone, as FM mode sends it (MIC_PWR on, the C6000's mic input), at 1 W.
