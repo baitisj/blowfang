@@ -59,7 +59,7 @@ Everything else is in headers the modules include, each sharing a bus with OpenR
 | Module | RF | Does |
 |---|---|---|
 | `c6pages.c` | none | checks c6spi.h against the image's own reads, dumps every space, the DMR calibration, counts interrupt edges |
-| `c6dmrrx.c` | receive | AT1846S and C6000 into DMR layer 2 receive; slot check; every burst's type, CRC, colour code, sync errors, FSK error, payload; soft values of the first bursts. `c6dmrrx_flat.c`: AT1846S left in FM (comparison). `c6dmrrx_raw.c`: physical layer mode, raw 288-bit bursts |
+| `c6dmrrx.c` | receive | AT1846S and C6000 into DMR layer 2 receive; slot check; every synced burst's type, CRC, colour code, sync errors, FSK error, payload; soft values of the first bursts; re-arms between transmissions. `c6dmrrx_flat.c`: AT1846S left in FM (comparison). `c6dmrrx_raw.c`: physical layer mode, raw 288-bit bursts. `c6dmrrx_long.c`: 60 s, for several sends in one run |
 | `c6dmrtx.c` | **none by default** (TX_DRY 1): the chip frames bursts that go nowhere | the full transmit sequence as a rehearsal: slot clock, RF TX interrupts, TX flags |
 | `c6dmrtx_live.c` | 1 W, 440.850 MHz only, 4.6 s, then the Morse ident | the test pattern as DMR rate 1/2 bursts, keyed through `api->tx_tone`. Only with Jeff at the radio |
 | `c6dmrtx_msg.c` | as live | the radio's own message (last recording or message heard) |
@@ -76,6 +76,10 @@ back 350 ms before the keying ends so the ident goes out in FM as always.
   `--deemph` pre-compensates a pre-emphasising transmitter.
 - `tools/uv380_dmrburst.py decode`: an IC-7100 recording of the UV-380's bursts back to the
   sotto message (`--preemph` for a de-emphasised recording).
+- `tools/uv380_dmrburst.py fit`: a c6dmrrx log's soft values placed in the known stream, the
+  whole chain fitted as a symbol-rate FIR, and a pre-equaliser for `wav --eq`.
+- `tools/uv380_dmrburst.py rx`: a c6dmrrx log's bursts counted, matched to the sent blocks and
+  unpacked into the message.
 - `tests/test_uv380_c6000.py`: dmrsotto round trips and losses, the C header against the Python
   byte for byte, the test signal through the decoder, the modules building position-independent,
   and that only the two `_live`/`_msg` wrappers can key.
@@ -93,12 +97,64 @@ back 350 ms before the keying ends so the ident goes out in FM as always.
 4. **c6dmrtx_live**, Jeff at the radio: the IC-7100 records, `uv380_dmrburst.py decode` and the
    K6's dmrrx read it. Then `c6dmrtx_msg` with a real recording.
 
+## Bench results (2026-11-16, receive only and dry; no UV-380 TX)
+
+- **C1 c6pages.** c6spi.h reads page 4 like the image (228 same; 0x0B and 0xBB read 0x28 / 0x02
+  through c6spi, the manual's PLL values, and 00 through the image's path; 0x83 is write to
+  clear). Page 1 reads all zeros (write only, it seems). Calibration at 440.850: DMR I = 0x7F,
+  Q = 0x36 (the dmr_i row is all 7F, dmr_q 3C 3D 39 3A 36 38 34 36 32); FM I = 0, Q = 0xB4, which
+  is what 0x45 / 0x46 hold under the image. No slot interrupts in FM, as expected.
+- **Interrupt lines.** PC0 is TIME_SLOT_INTER: 10 edges in 300 ms of active timing.
+- **C2 receive from the IC-7100.** The C6000 locks on the IC-7100's DMR (BS data sync found, idle
+  bursts decoded with colour code 1), but only with the AT1846S in its DMR set; with the FM
+  filters on (`c6dmrrx_flat`) it sees no slots at all. Once locked it free-runs on its own slot
+  clock and missed the next transmission: c6dmrrx now restarts the receiver after 13 slots with
+  no synced burst. With no sync the chip still flags a burst every slot (sync class 0, stale RX
+  RAM); those are now only counted. Only bytes 0-11 of RX RAM change (the 96-bit payload).
+- **Soft values** (RX RAM 0x0A8 and 0x1C8, consecutive slots): one byte per bit, two per symbol,
+  7-bit signed: the symbol's level L, then 16 - |L|, so 16 is the inner / outer threshold and a
+  clean +-3 sits near 24. Each holds slot type, sync and the 98 info symbols (not the CACH), in
+  the orders slot type | sync | info (0x1C8) and sync | info | slot type (0x0A8).
+- **Why the payloads were wrong.** The levels are spread evenly from 0 to about 30 with no four
+  level eye. In the sync, every sign is right but half the +-3 symbols read as +-1, at the same
+  positions in the soft values and in the raw (physical layer) bursts. Fitting channel models to
+  the sync's levels, the IC-7100's pre-emphasis with a low cut (about 300 Hz) and a 3 kHz top
+  fits best (rms 3.3 against 7.9 for a flat channel); de-emphasis alone does not. Hence
+  `uv380_dmrburst.py fit` (the chain measured from the chip's own soft values) and `wav --eq`
+  (the symbols pre-equalised against it).
+- **R1, the pre-equaliser works.** From 22 soft dumps of the plain stream, `fit` found a
+  differentiator-like chain (main tap 4.6, neighbours -1.8 and -1.7, +-3 symbols at level 13.7)
+  and a chip symbol error rate of 0.49. Pre-equalised against it, the send at `--amp 0.18`
+  (5 % clipped) decoded on the C6000: 72 bursts, text AG7EW, all 30 superframes, 21 of 23 rate
+  1/2 blocks (3 lost, 1 bad, concealed). At 0.25 (17 % clipped) only 4 blocks came through, and
+  at 0.35 (33 % clipped) nothing synced. The re-arm works: each send locked afresh. The chip
+  seems to normalise its input level, so clipping, not level, is what the louder sends lost.
+- **R2, quieter is better.** Same equaliser, no clipping: 0.12 gave 20 of 23 blocks, 0.08 gave
+  21 of 23 with none bad (twice: also with a sharper equaliser, regularisation 0.03), 0.06 began
+  to fail (7 lost, 4 bad). Every equalised send decoded AG7EW and all 30 superframes; the plain
+  stream at 0.12 never synced. With the equaliser the chip's symbol error rate fell from 0.49 to
+  0.12 and a +-3 symbol sat at level 20.
+- **R3-R4, error free.** Refined once (`fit --base`, from R2's 0.12 window), the equaliser
+  leaves the whole chain as nearly a single tap (main 7.0, every other tap 0.1 or less), the
+  chip's symbol error rate drops to 0.015, and +-3 symbols sit at level 21. At 0.10 and 0.12 it
+  decoded 23 of 23 blocks with no errors in 5 of 5 sends; 0.14 (1.6 % clipped) lost one block.
+  At 0.08 and 0.06 the refined equaliser never acquired sync, though the eye would have been
+  clean: the chip's sync search seems to need an absolute level, and decoding after it does not.
+  Working recipe for the IC-7100 harness: fit on a plain send, refine on an equalised one, send
+  at 0.10-0.12 of full scale (USB MOD 30 %).
+- **The chip's crc=0 means nothing for rate 1/2 data** (DMR gives those blocks no CRC of their
+  own): five crc=0 blocks came back with wrong bytes. dmrsotto's CRC-16 caught every one.
+- **Raw mode** (`c6dmrrx_raw`): 288-bit windows that do not line up with the bursts (the sync
+  turns up 3 to 5 bytes in), and the same magnitude errors.
+- **C3 dry transmit.** 65 of 65 bursts (3 CSBK, 62 data) queued on the slot clock, first edge
+  after 2 ms, an RF TX interrupt for each burst, none late; every register restored.
+
 ## Open questions
 
-- Is the IC-7100's FM audio path (300 Hz high pass, pre-emphasis) flat enough for the C6000 to
-  sync on synthesized 4FSK? If not, step 2 waits for step 4 (the UV-380 can't hear itself).
-- The interrupt pins on the MD-UV380 (PC0-2) are inferred from the DM-1701 family; c6pages and
-  the slot check confirm them.
+- Receive is proven through the IC-7100 harness (pre-equalised). A DMR transmitter with a flat
+  audio path (another UV-380, a real DMR radio) should need none of that: C4 shows it.
+- PC0 is confirmed as the slot interrupt; PC1 and PC2 are still inferred from the DM-1701
+  family (C3 counted an RF TX edge per burst on PC2).
 - The DMR modulation pair: OpenRTX writes 0x45 = 0 (MOD1 only) for FM and M17; DMR wants both
   (the calibration's sendIrange and sendQrange). Deviation to be checked on the IC-7100 or K6.
 - Longer messages than one 4.6 s keying (about 3.5 s of sotto) need a keying call without the 5 s
