@@ -218,14 +218,36 @@ bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
   is +-25 ppm (up to 11 kHz off at 440 MHz), so first `pluto_bench.py rx` while `k6_bench.py id` keys
   the IC-7100 (its TCXO the reference) and `pluto_bench.py cal --save` on that capture; then a rehearsal with `--rf-off` to check USB keeps up at 2.4 MS/s. If 2400
   reads here, the K6's receiver is fine and the IC-7100's audio path is what stood in the way.
-- **The UV-380 as the flat far end.** Its C6000 modulates the AT1846S directly, and its DMR came
-  through the IC-7100 with no correction. The chip's physical layer mode (0x10 = 0x02,
-  continuous) sends 288 raw bits a 30 ms slot from TX RAM, 4800 symbols a second of our own
-  choosing: +-3 symbols in pairs are 2400 baud plain FSK at +-1944 Hz, nine of our bytes a slot.
-  What it takes: a UV-380 module that refills the two TX RAM halves on the slot interrupt for
-  about 30 s of continuous carrier (c6dmrtx keys only one slot in two, 5 s at a time), the
-  transmit trim checked on that path (this radio sends 3.58 kHz low untrimmed, and the K6's chip
-  FSK never synced on that), and a UV-380 that stays up while keyed at 1 W (the watchdog resets
-  after each 1 W key-up are still open, PR #127). The MCU's PWM into the C6000's line input
-  isn't flat: the audio path pre-emphasises and cuts below 300 Hz, and the K6 read none of the
-  UV-380's FFSK that way (11-14).
+- **The UV-380 as the flat far end** (next, the UV-380 thread's experiment 3 in
+  docs/uv380-c4fm-foundry.md). RadioFoundryC4FM now sends whole C4FM calls through an HR_C7000's
+  physical layer mode, decoded by Yaesu radios. That proves the chain we'd need: enter the mode,
+  refill both TX RAM halves every 30 ms slot, fill with 0x77 when the queue runs dry, key up once,
+  scale the deviation with 0x45/0x46. On the C6000, 0x10 = 0x66 (slotted, proven by RadioFoundry)
+  or 0x02 (continuous) sends 288 raw bits a slot at 4800 symbols a second. Each of our bits as
+  two equal outer symbols is 2400 baud plain FSK at +-1944 Hz, nine bytes a slot; four symbols
+  a bit gives 1200. Run 3 says the K6 reads that: +-1944 Hz is inside the 1.5-4.5 kHz it read
+  perfectly. This module is the K6 end, unchanged. It reports packets that come in upside down
+  (`i=1`), so the symbol polarity, still to be checked, shows up either way. Still open on the
+  UV-380 side: the 3.58 kHz untrimmed transmit offset (the Pluto can measure it), the 5 s keying
+  cap, and the watchdog resets after 1 W key-ups (PR #127). The MCU's PWM into the C6000's line
+  input isn't flat (pre-emphasis, a cut below 300 Hz), and the K6 read none of the UV-380's FFSK
+  that way (11-14). The physical layer route skips that path.
+
+## Plans revised after run 3 and RadioFoundryC4FM (11-16)
+
+- **No more 2400 baud tries through the IC-7100's audio.** Run 2's equaliser got syncs but not
+  clean data, and run 3 shows the chip was never the problem. 1200 and 1800 baud uploads over the
+  IC-7100 go on as they are.
+- **The K6's receive settings stay as found.** Run 3 read 2400 with REG_58 00e1 or 00e9 and REG_2B
+  as found or with the filters off. RadioFoundry's FD6818 tables (MIT) show the chip's DMR set
+  differs from its FM set in three registers: REG_2B = 0x0700, REG_7E = 0xB03F (fixed AGC) and
+  REG_43 = 0x4048 (a wider RF filter). Those become variables only in a sensitivity run.
+- **Next K6 test: sensitivity, with the Pluto.** Step the Pluto's gain down, from -60 to -90 dB
+  and then with a pad, sending 1200 and 2400 alternately. That finds where each stops reading,
+  and so checks the link model's "2400 needs about 3 dB more" (docs/k6-pager.md). Then repeat at
+  the weakest level that still reads, with REG_43 = 0x4048 and REG_7E = 0xB03F, to see whether the
+  DMR set's RF filter and fixed AGC buy margin. It needs `fsk24rx` with a REG_43/REG_7E column in
+  its settings table, and pluto_bench's fsk24 with a gain per round.
+- **What 2400 would take in use:** a 2400 baud PHY in the K6 image for uploads and messages, and a
+  flat sender: the Pluto on the bench, or the UV-380 or RT-950 in the field. That's an image
+  change, so it waits for Jeff's call on the next flash batch. The throughput is in the table above.
