@@ -335,7 +335,11 @@ def main(argv=None):
     k.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE",
                    help="phy=F|D frames=L|XL baud=1200|2400 (1200: the PHY's default rate, F 1800 "
                         "on images after b1f0492) auto=0|1 emph=0|1 var=N vol=0..7; "
-                        "none: a confirmation only (a good packet that keeps a change)")
+                        "none: a confirmation only (a good packet that keeps a change). "
+                        "Images with the rate ladder (CFG rates=F12,F18,D24, docs/k6-fsk24.md): "
+                        "phy=D baud=2400 together asks for D/2400 for a session (flat transmitters "
+                        "only, e.g. the Pluto; never the IC-7100's audio), phy=F or baud=1200 goes "
+                        "back to F/1800; a lone baud=2400 and var= do nothing there")
     k.add_argument("--action", choices=tuple(pager.CTL_ACTIONS), default="none",
                    help="play: play the stored message; clear: drop it; report: a CFG line; boot: print the bootloader; "
                         "reset: reboot (tools/k6_update.py catches the UPDATE window)")
