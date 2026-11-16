@@ -1,0 +1,58 @@
+# RT-950 Pro (radios/rt950, GPL-3): two-chip SURF run on a PC against two modelled BK4829s, its
+# build for the AT32F403A, and the glue compiled against the pinned base firmware
+# (jaymart1983/Radtel-RT950-Pro-Firmware, GPL-3), so the calls into its drivers stay true. Also
+# the K6 SURF tests, since both radios share c/common/surf_core.inc, and the portable polar-TX
+# host tests the RT-950's transmit plan rests on.
+name: RT-950 firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  JM_REPO: https://github.com/jaymart1983/Radtel-RT950-Pro-Firmware
+  JM_COMMIT: 965eae20614dcbc3d806b613ac1821c90845408d
+
+jobs:
+  rt950:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: clang, lld and the Arm toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            clang \
+            lld \
+            llvm \
+            gcc-arm-none-eabi
+      - run: |
+          pip install \
+            numpy \
+            scipy \
+            pytest \
+            unicorn \
+            capstone
+      - name: host build (the sim) and the AT32F403A build
+        run: |
+          make -C radios/rt950
+          make -C radios/rt950 target
+          make -B -C radios/rt950 target CROSS=arm-none-eabi-gcc
+      - name: the glue against the pinned base firmware
+        run: |
+          git init -q jm
+          git -C jm fetch -q --depth 1 "$JM_REPO" "$JM_COMMIT"
+          git -C jm checkout -q FETCH_HEAD
+          make -C radios/rt950 glue JM="$PWD/jm" CROSS=arm-none-eabi-gcc
+      - name: portable host builds
+        run: make -C c/common
+      - name: tests
+        run: |
+          python -m pytest -q \
+            tests/test_rt950_surf.py \
+            tests/test_k6_surf.py

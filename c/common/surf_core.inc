@@ -5,9 +5,9 @@
    listening frequency, on a log "lens" scale, with carets over the peaks it has heard lately and
    side keys that jump between them. The design and every tuning choice are described at the top
    of c/k6/mod/surf.c and in docs/k6-surf.md; Jeff signed the peak behaviour off on 2026-11-12, so
-   this file is that logic moved, not changed: the K6 module built from it is byte for byte the
-   module built before the move (tests/test_k6_surf.py, and the size and hash checks in
-   tests/test_rt950_surf.py).
+   this file is that logic moved, not changed: the K6 modules built from it (surf, surfauto,
+   surfkeys) were byte for byte the modules built before the move, and tests/test_k6_surf.py
+   still checks their behaviour. tests/test_rt950_surf.py runs it on the RT-950's two chips.
 
    What is here: the scale (lens, bins, recentre, window), the sweep of one bin with its quick
    and confirm reads (sweep_bin, conf_now), the floor (floor_q, measure_sfl), the remembered peaks
