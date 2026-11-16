@@ -132,7 +132,7 @@ nothing; it keeps a partial upload, so the script sends up to 3 times).
 So `TX_HALF 0` is the phase: half 0 is written at the first slot edge. The module's defaults are
 now `TX_WRITE 1`, `TX_HALF 0`. The eye at 2400 was 1746 Hz of the ideal 1944 (RRC); the Pluto
 saw a +3 symbol go out above the carrier. The K6 read both polarities (variants 20 and 21, 22
-and 23); it reports the inverted ones as upside down and the module flips them back. The trim
+and 23), counting the inverted ones as upside down. The trim
 stays a bench step (`FSK_OFF`, default 6680); a module can't set it.
 
 The K6's module took 4 more Pluto sends (resuming from 10/18) at -52: about 1 chunk in 4 gets
