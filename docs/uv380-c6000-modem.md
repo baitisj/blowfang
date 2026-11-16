@@ -181,11 +181,13 @@ of the PA.
 
 ## Open questions
 
-- The UV-380 drops off USB under its own 1 W and resets about 1.5 s after each keying. RCC_CSR
-  read 0x3E000000 (IWDGRSTF and SFTRSTF set), so the resets are the transmit guard's watchdog.
-  The next image skips USB writes while the bus is suspended or a write has just timed out, runs
-  the kicker at top priority, and keeps breadcrumbs in RTC backup registers that `guard` prints
-  with RCC_CSR, so the next 1 W keying says whether the kicker was held off or the guard fired.
+- The UV-380 drops off USB under its own 1 W and reset about 1.9 s after each keying: the
+  transmit guard's watchdog (RCC_CSR 0x3E000000). PR #127 (no writes into a dead bus, kicker at
+  top priority, `guard` breadcrumbs) didn't stop it, but C7 (17:16Z, a second perfect send, 62/62)
+  showed why: state off, the last kick 355 ms after key-down, as the host re-enumerated the radio.
+  The likely cause, found in code: ST's USB library leaves an abandoned write's FIFO-empty
+  interrupt enabled, and once the endpoint reopens it is pending again each time its handler
+  returns, so no thread runs. The next image clears it (usb_dcd_int.c, usb_vcom.c); C8 checks.
   Still open: a ferrite or a short shielded cable (no solder), so the lines survive the keying.
 
 - Receive is proven through the IC-7100 harness (pre-equalised). A DMR transmitter with a flat
