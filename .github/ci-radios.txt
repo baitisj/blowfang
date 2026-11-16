@@ -1,0 +1,142 @@
+# Which radios a change builds and tests (tools/ci_scope.py reads this; README "CI" says how).
+# A pull request runs a radio's workflow jobs when it changes a path in that radio's section;
+# the other radios' jobs show as skipped. A push to main, the weekly run, "Run workflow" and a PR
+# labelled ci-full build everything.
+#
+# One path a line, from the top of the repository. A line ending / (or a plain name, like sotto)
+# takes everything inside it. * and ? stay inside one folder and ** crosses folders; a line with
+# a wildcard matches files only (c/* is the files in c/, not c/k6/). A line starting ! takes a
+# path back out (the last line that matches wins, as in .gitignore).
+#
+#   [ignore]   never builds anything (docs), unless a ! line takes the path back
+#   [all]      builds every radio (the codec submodule, this map and its tool)
+#   [<radio>]  that radio's sources, the tests its workflow runs and what they import, and its
+#              own workflow file (one .github/workflows/ line a section)
+# A path no section names builds every radio, and the Forbidden files job fails until it's added.
+# That job (tools/ci_scope.py --check) also checks the Python each radio's tests import and the C
+# its sources #include are in its section, and that no line has gone stale after a rename.
+
+[ignore]
+**/*.md
+LICENSE
+.gitignore
+docs/
+.github/workflows/guard.yml
+.github/workflows/k6-compilers.yml
+tools/hamlet_prune_worktrees.sh
+# docs the K6 build and tests read
+!docs/manual/cards/
+!docs/k6-insights/
+!docs/k6-modules.md
+
+[all]
+.github/ci-radios.txt
+tools/ci_scope.py
+tests/test_ci_scope.py
+.gitmodules
+
+[k6]
+.github/workflows/k6-firmware.yml
+c/k6/
+firmware/k6-aura/
+sim/
+modem/
+!modem/dmrsotto.py
+tools/k6_*
+tools/k6-*
+tools/k6_cc/
+tools/gen_ft8_tables.py
+tools/midi_songs/
+tools/nwr_watch.py
+tools/uv380_i2sprobe.py
+tests/test_k6*
+tests/k6_live_emu.py
+tests/test_nwr_watch.py
+tests/test_psk31.py
+tests/test_range_rx.py
+tests/durations.json
+tests/data/k6/
+docs/manual/cards/
+docs/k6-insights/
+docs/k6-modules.md
+# the codec and the C K6 shares with the other radios
+sotto
+c/*
+c/common/ffsk_tx.*
+c/common/pager_tx.*
+c/common/range_rx*
+c/common/range_tx*
+c/common/surf_core.inc
+
+[uv380]
+.github/workflows/uv380.yml
+radios/uv380/
+# its tests build the OpenRTX RAM modules, the I2S probe and sotto8k too
+firmware/uv380-openrtx/
+c/common/
+sotto
+c/*
+modem/__init__.py
+modem/fsk.py
+modem/k6.py
+modem/k6g.py
+modem/k6mod.py
+modem/k6r.py
+modem/pager.py
+modem/psk31.py
+modem/uv380mod.py
+tools/uv380_*
+tools/tts_*
+tests/test_uv380*
+tests/test_range_rx.py
+tests/data/uv380/
+tests/c/
+# the HR_C6000 DMR modem (tests/test_uv380_c6000.py) and the c/common receivers' own tests
+modem/dmrsotto.py
+tests/test_fsk_rx.py
+tests/test_pager_rx.py
+
+[uv380-openrtx]
+.github/workflows/uv380-openrtx.yml
+firmware/uv380-openrtx/
+c/common/
+sotto
+c/*
+modem/__init__.py
+modem/fsk.py
+modem/k6.py
+modem/k6g.py
+modem/k6r.py
+modem/pager.py
+sim/k6if/__init__.py
+sim/k6if/range.py
+tests/test_uv380_openrtx_emu.py
+radios/uv380/src/board.h
+
+[rt950]
+.github/workflows/rt950.yml
+radios/rt950/
+c/common/
+tools/ssb_polar_sweep.py
+tests/test_rt950*
+tests/test_ssb_polar.py
+tests/test_tone_fsk.py
+# SURF is shared with the K6 (c/common/surf_core.inc), and rt950.yml runs the K6 SURF tests
+c/k6/mod/surf*.c
+c/k6/k6_mod.h
+tests/test_k6_surf.py
+tests/test_k6_i2s.py
+tests/test_k6_rxmap.py
+tools/k6_bench.py
+tools/k6_rxmap.py
+tools/k6_screen.py
+tools/k6_upload.py
+modem/__init__.py
+modem/k6.py
+modem/k6mod.py
+modem/psk31.py
+# FT8 and WSPR references the RT-950's tone FSK is decoded with
+sim/k6digi/__init__.py
+sim/k6digi/ft8_wav.py
+sim/k6digi/ft8ref.py
+sim/k6digi/wsprref.py

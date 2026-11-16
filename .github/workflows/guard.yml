@@ -30,3 +30,18 @@ jobs:
             exit 1
           fi
           echo "clean"
+
+  # .github/ci-radios.txt, the map of which radios a change builds: every file placed, no stale
+  # line, and each radio's test imports and C includes in its section (tools/ci_scope.py --check)
+  ci-radios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - name: the map is complete
+        run: python3 tools/ci_scope.py --check
+      - name: the scope tool's tests
+        run: python -m pytest -q tests/test_ci_scope.py
