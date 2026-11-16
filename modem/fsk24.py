@@ -59,7 +59,7 @@ VARIANTS = (
     Variant(2400, "c6eq", 0.16),          # 10
     Variant(1200, "c6eq", 0.12),          # 11
     Variant(2400, "rrc", 0.25),           # 12: the same symbols with no equaliser
-    # run 3: a flat FM transmitter (the ADALM-Pluto, tools/k6_pluto.py): Gaussian (BT 0.5) NRZ
+    # run 3: a flat FM transmitter (the ADALM-Pluto, tools/pluto_bench.py): Gaussian (BT 0.5) NRZ
     # straight onto the carrier; level is the peak deviation in kHz
     Variant(1200, "iq", 2.2),             # 13: the control
     Variant(2400, "iq", 2.2),             # 14: the RT-950 note's FSK 2400 deviation

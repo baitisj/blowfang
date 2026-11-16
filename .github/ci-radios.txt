@@ -45,6 +45,7 @@ modem/
 tools/k6_*
 tools/k6-*
 tools/k6_cc/
+tools/pluto_bench.py
 tools/gen_ft8_tables.py
 tools/midi_songs/
 tools/nwr_watch.py
@@ -52,6 +53,7 @@ tools/uv380_i2sprobe.py
 tests/test_k6*
 tests/k6_live_emu.py
 tests/test_nwr_watch.py
+tests/test_pluto_bench.py
 tests/test_psk31.py
 tests/test_range_rx.py
 tests/durations.json

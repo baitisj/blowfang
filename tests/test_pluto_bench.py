@@ -1,0 +1,113 @@
+"""tools/pluto_bench.py, the ADALM-Pluto bench instrument: everything that runs without the Pluto
+(the transmit checks, the IQ it streams, the FM audio it makes, its measurements and calibration,
+how it reads iio_attr).
+SPDX-License-Identifier: MIT"""
+import os
+import sys
+
+import numpy as np
+import pytest
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import pluto_bench as pl  # noqa: E402
+
+
+def test_refuses_off_bench_transmits():
+    assert pl.check_tx(440_850_000, -3000, -60) == 440_853_000
+    assert pl.check_tx(432_100_000, 0, -45) == 432_100_000
+    for hz, off, gain in [(440_850_000, 25_000, -60), (440_850_000, 0, -20), (440_850_000, 0, -95),
+                          (146_520_000, 0, -60), (450_500_000, 0, -60), (430_005_000, 0, -60),
+                          (430_015_000, 10_000, -60)]:
+        with pytest.raises(SystemExit):
+            pl.check_tx(hz, off, gain)
+
+
+def test_iq_is_phase_continuous_fm():
+    """the IQ chunks join without a phase step and a discriminator gives the track back"""
+    fs, rate = 48_000, 480_000
+    t = np.arange(int(0.25 * fs)) / fs
+    track = 2200.0 * np.sign(np.sin(2 * np.pi * 300 * t))
+    raw = b"".join(pl.iq_chunks(track, fs, rate, chunk=1000))
+    x = np.frombuffer(raw, np.int16).astype(float)
+    iq = x[0::2] + 1j * x[1::2]
+    assert len(iq) == len(track) * 10 and np.all(np.abs(np.abs(iq) - pl.AMP) < 2)
+    d = np.angle(iq[1:] * np.conj(iq[:-1])) * rate / (2 * np.pi)
+    ref = np.interp(np.arange(1, len(iq)) / rate, t, track)
+    assert np.percentile(np.abs(d - ref), 99) < 30, np.percentile(np.abs(d - ref), 99)
+
+
+def test_audio_track_scales_and_preemphasises():
+    fs = 8000
+    t = np.arange(fs) / fs
+    x = np.sin(2 * np.pi * 1000 * t)
+    tr = pl.audio_track(x, fs, 3000.0)
+    assert len(tr) == pl.FS_TRACK and abs(np.max(np.abs(tr)) - 3000) < 5
+    lo = pl.audio_track(0.3 * np.sin(2 * np.pi * 300 * t), fs, 3000.0, preemph=True)
+    hi = pl.audio_track(0.3 * np.sin(2 * np.pi * 2500 * t), fs, 3000.0, preemph=True)
+    at1k = pl.audio_track(0.3 * x, fs, 3000.0, preemph=True)
+    r = lambda y: np.sqrt(np.mean(y[len(y) // 2:] ** 2))  # noqa: E731
+    assert abs(r(at1k) / r(0.3 * 3000 * x) - 1) < 0.05
+    assert r(lo) < 0.5 * r(at1k) < r(hi) * 0.5 * 1.2
+
+
+def _fm(offset, dev, fs=pl.IQ_FS_SAVE, n=None, seed=1):
+    n = n or fs
+    t = np.arange(n) / fs
+    f = offset + dev * np.sin(2 * np.pi * 800 * t) * (t > 0.3)
+    iq = 0.1 * np.exp(2j * np.pi * np.cumsum(f) / fs)
+    iq[: int(0.1 * fs)] = 0
+    rng = np.random.default_rng(seed)
+    return (iq + 0.001 * (rng.standard_normal(n) + 1j * rng.standard_normal(n))).astype(np.complex64)
+
+
+def test_measure_reads_a_carrier():
+    m = pl.measure(_fm(3210.0, 2500.0))
+    assert abs(m["offset"] - 3210) < 30 and 2300 < m["dev"] < 2700 and 0.85 < m["share"] < 0.95, m
+    assert abs(m["level_dbfs"] + 20) < 1.5 and m["floor_dbfs"] < -45, m
+    assert pl.measure(_fm(0.0, 0.0) * 0)["offset"] is None
+
+
+def test_cal_moves_the_crystal_the_right_way():
+    """a true 440.850 carrier read 1,000 Hz high: the LO was 1,000 Hz low, so the crystal is slow
+    by 2.27 ppm; with that xo the same LO setting lands on the carrier"""
+    xo = pl.xo_from(1000.0, 440_850_000, 40_000_000)
+    assert xo == 40_000_000 - 91
+    assert abs(440_850_000 * xo / 40_000_000 - (440_850_000 - 1000)) < 5
+
+
+def test_cal_saves_and_setup_applies(tmp_path, monkeypatch):
+    monkeypatch.setenv("BLOWFANG_WORK", str(tmp_path))
+    cap = str(tmp_path / "id.cf32")
+    _fm(-2000.0, 2500.0).tofile(cap)
+    import json
+    with open(cap + ".json", "w") as f:
+        json.dump({"hz": 440_850_000, "fs": pl.IQ_FS_SAVE, "xo": 39_999_914, "utc": "x"}, f)
+    pl.main(["cal", cap, "--save"])
+    c = pl.load_cal()
+    assert c and abs(c["xo"] - pl.xo_from(-2000.0, 440_850_000, 39_999_914)) <= 1, c
+    calls = []
+    monkeypatch.setattr(pl, "_iio", lambda args, uri=None, check=True: calls.append(args) or "")
+    pl.setup(rx_hz=146_520_000, rx_gain=40)
+    flat = [" ".join(map(str, a)) for a in calls]
+    assert any(f"xo_correction {c['xo']}" in s for s in flat), flat
+    assert any("altvoltage1 powerdown 1" in s for s in flat)
+    gain = [s for s in flat if "hardwaregain" in s]
+    assert gain == ["-q -c -i ad9361-phy voltage0 hardwaregain 40"], gain
+    assert all(("-i" in a or "-o" in a or "-d" in a) for a in calls)
+
+
+def test_reads_iio_attr_lines():
+    out = "dev 'ad9361-phy', channel 'altvoltage1' (output), attr 'frequency', value '440850000'\n"
+    assert pl.parse_value(out) == "440850000"
+    assert pl.parse_value("39999914\n") == "39999914"
+
+
+def test_decimator_matches_one_shot():
+    rng = np.random.default_rng(3)
+    x = (rng.standard_normal(40_000) * 300).astype(np.int16)
+    whole = pl.Decimator(2_400_000, 10)(x.tobytes())
+    d = pl.Decimator(2_400_000, 10)
+    parts = np.concatenate([d(x[a:a + 3998].tobytes()) for a in range(0, len(x), 3998)])
+    assert len(whole) == len(parts) and np.allclose(whole, parts, atol=1e-4)
