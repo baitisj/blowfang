@@ -82,7 +82,7 @@ for modules and voice messages
 from the station that woke it
 back to EXPLORE after a quiet
 minute, or now with [EXIT]
-[0] stay here: no auto return
+[0] stay here until [EXIT]
 [5] play the message
 [SIDE1] run the last module again
 [MENU] modules
