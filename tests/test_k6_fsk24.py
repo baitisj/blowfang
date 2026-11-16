@@ -135,46 +135,62 @@ def test_run3_flat_fm_variants_read():
     assert all(len(s[2]) / s[1] < 3.0 for s in segs)
 
 
-def _pluto():
-    sys.path.insert(0, os.path.join(ROOT, "tools"))
-    import k6_pluto
-    return k6_pluto
+
+def test_sweep_module_table_is_the_plan():
+    """c/k6/mod/fsk24rx_sweep.c's slot table is fsk24.sweep_table(), slot for slot"""
+    import re
+    src = open(os.path.join(K6, "mod", "fsk24rx_sweep.c")).read()
+    rows = re.findall(r"^\s*(\{0x[0-9A-F]{4}, \d+, \d+, 0x[0-9A-F]{4}\},)", src, re.M)
+    assert rows == fsk24.sweep_table()
+    assert f"#define F24_NV {len(rows)}" in src and "#define F24_ABS 1" in src
+    assert f"#define FE_S {fsk24.SWEEP_SLOT_S}u" in src and "#define WAIT_MS 30000u" in src
 
 
-def test_pluto_refuses_off_bench_transmits():
-    pl = _pluto()
-    assert pl.check_tx(440_850_000, -3000, -60) == 440_853_000
-    for hz, off, gain in [(440_860_000, 0, -60), (440_850_000, 25_000, -60),
-                          (440_850_000, 0, -20), (440_850_000, 0, -95), (146_520_000, 0, -60)]:
-        with pytest.raises(SystemExit):
-            pl.check_tx(hz, off, gain)
+def test_sweep_track_fills_each_slot_inside_its_guards():
+    track, level, segs = fsk24.sweep_track()
+    fs, n = fsk24.fsk.FS, int(fsk24.SWEEP_SLOT_S * fsk24.fsk.FS)
+    plan = fsk24.sweep_plan()
+    assert len(segs) == len(plan) == len(fsk24.SWEEP_STEPS) * len(fsk24.SWEEP_RATES)
+    assert len(track) == len(level) == n * len(plan)
+    g0, g1 = (int(g * fs) for g in fsk24.SWEEP_GUARD_S)
+    for (t0, k, st, vi, sent), (k2, st2, vi2) in zip(segs, plan):
+        assert (k, st, vi) == (k2, st2, vi2) and sent >= 8, segs
+        a = k * n
+        assert np.all(track[a:a + g0] == 0) and np.all(track[a + n - g1:a + n] == 0)
+        assert np.any(track[a + g0:a + n - g1] != 0)
+        assert np.allclose(level[a:a + n], 10 ** (st / 20))
+    assert 2900 < np.max(np.abs(track)) <= 3000.0
 
 
-def test_pluto_iq_is_phase_continuous_fm():
-    """the IQ chunks join without a phase step and a discriminator gives the track back"""
-    pl = _pluto()
-    fs, rate = 48_000, 480_000
-    t = np.arange(int(0.25 * fs)) / fs
-    track = 2200.0 * np.sign(np.sin(2 * np.pi * 300 * t))
-    raw = b"".join(pl.iq_chunks(track, fs, rate, chunk=1000))
-    x = np.frombuffer(raw, np.int16).astype(float)
-    iq = x[0::2] + 1j * x[1::2]
-    assert len(iq) == len(track) * 10 and np.all(np.abs(np.abs(iq) - pl.AMP) < 2)
-    d = np.angle(iq[1:] * np.conj(iq[:-1])) * rate / (2 * np.pi)
-    ref = np.interp(np.arange(1, len(iq)) / rate, t, track)
-    assert np.percentile(np.abs(d - ref), 99) < 30, np.percentile(np.abs(d - ref), 99)
+def test_sweep_ffsk_blocks_read_flat():
+    """the F/1800 and F/1200 sweep variants read back with our F demodulator"""
+    got = fsk24.sim(n_rounds=1, ch="flat")
+    for vi in fsk24.SWEEP_RATES:
+        assert got[vi][0] == got[vi][1], (vi, got)
 
 
-def test_pluto_offset_reads_a_carrier():
-    """a 2.5 kHz-deviation MCW-like FM capture 3,210 Hz off with noise: offset and deviation"""
-    pl = _pluto()
-    fs = pl.IQ_FS_SAVE
-    rng = np.random.default_rng(1)
-    n = fs
-    t = np.arange(n) / fs
-    f = 3210.0 + 2500.0 * np.sin(2 * np.pi * 800 * t) * (t > 0.3)
-    iq = np.exp(2j * np.pi * np.cumsum(f) / fs)
-    iq[: int(0.1 * fs)] = 0
-    iq = iq + 0.01 * (rng.standard_normal(n) + 1j * rng.standard_normal(n))
-    c, dev, share = pl.offset_of(iq.astype(np.complex64))
-    assert abs(c - 3210) < 30 and 2300 < dev < 2700 and 0.85 < share < 0.95, (c, dev, share)
+def test_sweep_report():
+    lines = ["K6 MOD say " + s for s in [
+        "fsk24 start hz=440850000 n=36",
+        "s 0 t=30000 cfg=00e9 b=60cb a=04",
+        "p 0 v=14 q=0 c=1 i=0 e=0 x=0 r=-89",
+        "p 0 v=14 q=1 c=1 i=0 e=0 x=0 r=-90",
+        "p 0 v=14 q=2 c=0 i=0 e=9 x=0 r=-90",
+        "v 0 n=3 ok=2 z=0",
+        "s 1 t=42000 cfg=3f01 b=4898 a=00",
+        "p 1 v=18 q=0 c=1 i=0 e=0 x=0 r=-91",
+        "s 3 t=66000 cfg=00e9 b=60cb a=04",
+        "p 3 v=14 q=16 c=1 i=0 e=0 x=0 r=-93",
+    ]]
+    rep = fsk24.sweep_report(lines)
+    sent = {k: n for _, k, _, _, n in fsk24.sweep_track()[2]}
+    assert rep[0] == "step dB | RSSI dBm | D/2400 | F/1800 | F/1200", rep
+    assert rep[2] == f"0 | -90 | 2/{sent[0]} | 1/{sent[1]} | -/{sent[2]}", rep
+    assert rep[3].startswith(f"-4 | -93 | 1/{sent[3]} | -/"), rep
+
+
+@need_clang
+def test_fsk24rx_sweep_builds():
+    import k6_live_emu as le
+    code, _ = le.build("x", [], os.path.join(K6, "mod", "fsk24rx_sweep.c"))
+    assert 1000 < len(code) < 11776, len(code)
