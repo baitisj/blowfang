@@ -281,10 +281,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..b55f5647
+index 00000000..819018cc
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1531 @@
+@@ -0,0 +1,1617 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -336,13 +336,35 @@ index 00000000..b55f5647
 +static constexpr uint32_t TXG_SLACK = 1500u;        // ms past a key-up's own length
 +static constexpr uint32_t IDENT_MAX_MS = 15000u;    // the Morse ident alone
 +static constexpr uint32_t IDENT_GAP_MS = 100u;      // unkeyed between the ident and the test
++static constexpr int      TXG_PRIO  = 3;           // miosix's highest (PRIORITY_MAX - 1): a
++                                                    // thread spinning in a USB write can't hold it off
 +static volatile uint32_t txgDeadline = 0;           // tick a key-up must be over by; 0: none
 +static volatile bool     txgArmed    = false;
 +static pthread_t         txgThread;
 +
++// Breadcrumbs that outlive a watchdog reset, so "guard" can say why the last
++// one came (11-16: the radio reset about 1.5 s after each 1 W keying). The
++// RTC backup registers (rtc.c already opened the backup domain): 16 the state
++// (TXG_MAGIC plus a TXG_ST_ code), 17 the tick it was entered, 18 the last
++// kick, 19 the deadline. A reset in state "stop" was the guard ending an
++// overlong key-up; in "off" or "on" with the last kick well before the reset,
++// the kicker was held off.
++static constexpr uint32_t TXG_BKP   = 0x40002890u;  // RTC_BKP16R
++static constexpr uint32_t TXG_MAGIC = 0xB10F0000u;
++static constexpr uint32_t TXG_ST_ON   = 1u;         // keyed, deadline set
++static constexpr uint32_t TXG_ST_OFF  = 2u;         // unkeyed
++static constexpr uint32_t TXG_ST_STOP = 3u;         // past the deadline: no more kicks
++
 +static inline volatile uint32_t &txgReg(uint32_t a)
 +{
 +    return *(volatile uint32_t *) a;
++}
++
++static void txgCrumb(uint32_t st, uint32_t deadline)
++{
++    txgReg(TXG_BKP) = TXG_MAGIC | st;
++    txgReg(TXG_BKP + 0x04u) = (uint32_t) getTick();
++    txgReg(TXG_BKP + 0x0Cu) = deadline;
 +}
 +
 +static void *txgFunc(void *arg)
@@ -352,7 +374,12 @@ index 00000000..b55f5647
 +    {
 +        uint32_t d = txgDeadline;
 +        if((d == 0) || ((int32_t) (d - (uint32_t) getTick()) > 0))
++        {
 +            txgReg(TXG_IWDG) = 0xAAAAu;
++            txgReg(TXG_BKP + 0x08u) = (uint32_t) getTick();
++        }
++        else if(txgReg(TXG_BKP) != (TXG_MAGIC | TXG_ST_STOP))
++            txgCrumb(TXG_ST_STOP, d);
 +        sleepFor(0, 100);
 +    }
 +    return NULL;
@@ -376,6 +403,9 @@ index 00000000..b55f5647
 +    pthread_attr_t attr;
 +    pthread_attr_init(&attr);
 +    pthread_attr_setstacksize(&attr, 1024);
++    struct sched_param sp;
++    sp.sched_priority = TXG_PRIO;
++    pthread_attr_setschedparam(&attr, &sp);
 +    pthread_create(&txgThread, &attr, txgFunc, NULL);   // if this fails, the radio resets
 +    pthread_attr_destroy(&attr);
 +}
@@ -386,18 +416,35 @@ index 00000000..b55f5647
 +    txgArm();
 +    uint32_t d = (uint32_t) getTick() + ms + TXG_SLACK;
 +    txgDeadline = (d == 0) ? 1 : d;
++    txgCrumb(TXG_ST_ON, d);
 +}
 +
 +// after radio_disableRtx
 +static void txGuardOff()
 +{
 +    txgDeadline = 0;
++    if(txgArmed)
++        txgCrumb(TXG_ST_OFF, 0);
++}
++
++// "guard": the reset flags (RCC_CSR) and the breadcrumbs, then both cleared
++static inline void txGuardReport(char *out, size_t n)
++{
++    uint32_t csr = txgReg(TXG_CSR);
++    snprintf(out, n, "guard armed=%d now=%lu csr=%08lx st=%08lx at=%lu kick=%lu dl=%lu",
++             txgArmed ? 1 : 0, (unsigned long) getTick(), (unsigned long) csr,
++             (unsigned long) txgReg(TXG_BKP), (unsigned long) txgReg(TXG_BKP + 0x04u),
++             (unsigned long) txgReg(TXG_BKP + 0x08u), (unsigned long) txgReg(TXG_BKP + 0x0Cu));
++    txgReg(TXG_CSR) = csr | (1u << 24);             // RMVF
++    for(unsigned i = 0; i < 4; i++)
++        txgReg(TXG_BKP + 4u * i) = 0;
 +}
 +#else
 +static constexpr uint32_t IDENT_MAX_MS = 15000u;
 +static constexpr uint32_t IDENT_GAP_MS = 100u;
 +static inline void txGuardOn(uint32_t ms) { (void) ms; }
 +static inline void txGuardOff() { }
++static inline void txGuardReport(char *out, size_t n) { snprintf(out, n, "guard none"); }
 +#endif
 +
 +
@@ -685,6 +732,39 @@ index 00000000..b55f5647
 +// 2026-11-13).
 +DMA_RAM static stream_sample_t pbAdcBuf[2048];
 +
++static volatile uint32_t pbHostMs = 0;  // ms at the host's last byte (0: none yet)
++#ifndef PLATFORM_LINUX
++static constexpr uint32_t OTG_DSTS = 0x50000808u;  // bit 0: USB suspended (no cable)
++
++// A write nobody reads busy-waits 500 ms (usb_vcom.c: delayMs spins), and at
++// 1 W the radio drops off the USB bus at key-up (11-16), so a module's lines
++// cost a second each until the host is back. No write while suspended, and
++// after one times out none until the host writes again or SAY_RETRY_MS
++// passes: what is said meanwhile is lost, as it would be anyway.
++static constexpr uint32_t SAY_RETRY_MS = 3000;
++static volatile uint32_t pbSayFail = 0;     // tick of the last write that timed out; 0: none
++
++static bool pbVcom(const void *b, size_t n)
++{
++    if(((*(volatile uint32_t *) OTG_DSTS) & 1u) != 0)
++        return false;
++    uint32_t f = pbSayFail;
++    if(f != 0)
++    {
++        uint32_t h = pbHostMs;
++        if(((h != 0) && ((int32_t) (h - f) > 0)) ||
++           ((uint32_t) getTick() - f >= SAY_RETRY_MS))
++            pbSayFail = 0;
++        else
++            return false;
++    }
++    if(vcom_writeBlock(b, n) >= 0)
++        return true;
++    pbSayFail = (uint32_t) getTick() | 1u;
++    return false;
++}
++#endif
++
 +static void pbSay(void *ctx, const char *s)
 +{
 +    (void) ctx;
@@ -692,8 +772,8 @@ index 00000000..b55f5647
 +    printf("%s\n", s);
 +    fflush(stdout);
 +#else
-+    vcom_writeBlock(s, strlen(s));
-+    vcom_writeBlock("\r\n", 2);
++    if(pbVcom(s, strlen(s)))
++        pbVcom("\r\n", 2);
 +#endif
 +}
 +
@@ -775,12 +855,14 @@ index 00000000..b55f5647
 +#ifndef PLATFORM_LINUX
 +static void omWrite(const void *b, unsigned n)
 +{
-+    vcom_writeBlock(b, n);
++    pbVcom(b, n);
 +}
 +
 +static unsigned omRead(void *b, unsigned n)
 +{
 +    ssize_t r = vcom_readBlock(b, n);
++    if(r > 0)
++        pbHostMs = (uint32_t) getTick() | 1u;
 +    return (r > 0) ? (unsigned) r : 0;
 +}
 +
@@ -1276,9 +1358,7 @@ index 00000000..b55f5647
 +// speaker at once. It keeps pbBusy while it runs, so holdProbe() (PTT, FUNC,
 +// #) stops it within a poll; it stops for every USB command and module too.
 +static constexpr uint32_t HOST_MS = 2000;   // hamlet's readers send a newline every second
-+static volatile uint32_t pbHostMs = 0;  // ms at the host's last byte (0: none yet)
 +#ifndef PLATFORM_LINUX
-+static constexpr uint32_t OTG_DSTS = 0x50000808u;  // bit 0: USB suspended (no cable)
 +static bool lsOn   = false;
 +static bool lsFail = false;    // the arena was taken: tried again LS_RETRY_MS later
 +static uint32_t lsFailMs = 0;
@@ -1438,7 +1518,13 @@ index 00000000..b55f5647
 +        }
 +        pbBusy = true;
 +        int r = 0;
-+        if((strncmp(pbCmd, "mod", 3) == 0) &&
++        if(strcmp(pbCmd, "guard") == 0)
++        {
++            char g[160];
++            txGuardReport(g, sizeof(g));
++            pbSay(NULL, g);
++        }
++        else if((strncmp(pbCmd, "mod", 3) == 0) &&
 +           ((pbCmd[3] == ' ') || (pbCmd[3] == '\0')))
 +        {
 +            om_command(&omHost, pbCmd + 3);

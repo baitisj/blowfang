@@ -172,6 +172,43 @@ def test_image_guards_every_key_up():
         assert "sendIdentOnly = true;" in before and "send(status);" in before
 
 
+def _pager_added():
+    patch = open(os.path.join(ROOT, "firmware", "uv380-openrtx", "uv380-blowfang.patch")).read()
+    start = patch.index("+++ b/openrtx/src/rtx/OpMode_Pager.cpp")
+    pager = patch[start:patch.index("\ndiff --git", start)]
+    return "\n".join(ln[1:] for ln in pager.splitlines() if ln.startswith("+"))
+
+
+def test_image_writes_no_usb_nobody_reads():
+    """11-16: at 1 W the radio drops off the USB bus at key-up, and every write then spins 500 ms
+    (usb_vcom.c), after which the radio reset. Lines and module writes go through pbVcom, which
+    skips a suspended bus and, after a write times out, waits for the host or a retry time"""
+    code = _pager_added()
+    assert code.count("vcom_writeBlock(") == 1          # only inside pbVcom
+    body = code[code.index("static bool pbVcom("):code.index("static void pbSay(")]
+    assert "OTG_DSTS" in body and "pbSayFail" in body and "SAY_RETRY_MS" in body
+    say = code[code.index("static void pbSay("):code.index("static void pbWrite(")]
+    assert "if(pbVcom(s, strlen(s)))" in say
+    om = code[code.index("static void omWrite("):code.index("static void omLine(")]
+    assert "pbVcom(b, n);" in om and "pbHostMs = " in om   # a module's reads count as the host
+
+
+def test_guard_kicker_outranks_and_leaves_breadcrumbs():
+    """the kicker runs at miosix's top priority, and the guard records its state in RTC backup
+    registers, which "guard" prints with RCC_CSR and then clears (RMVF)"""
+    code = _pager_added()
+    arm = code[code.index("static void txgArm("):code.index("static void txGuardOn(")]
+    assert "pthread_attr_setschedparam(&attr, &sp);" in arm
+    assert "TXG_PRIO  = 3;" in code
+    assert "TXG_BKP   = 0x40002890u;" in code          # RTC_BKP16R, clear of rtc.c
+    on = code[code.index("static void txGuardOn("):code.index("static void txGuardOff(")]
+    assert "txgCrumb(TXG_ST_ON, d);" in on
+    assert "txgCrumb(TXG_ST_STOP, d);" in code
+    rep = code[code.index("txGuardReport(char *out, size_t n)\n{"):]
+    assert "(1u << 24)" in rep
+    assert 'strcmp(pbCmd, "guard") == 0' in code
+
+
 def test_headers_write_only_what_they_say():
     """w25sec.h sends only the read-security-register command; at1846.h never writes the
     frequency (0x29, 0x2A), TX (0x30) or power registers"""

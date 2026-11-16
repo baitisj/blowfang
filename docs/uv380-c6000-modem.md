@@ -181,9 +181,12 @@ of the PA.
 
 ## Open questions
 
-- The UV-380 drops off USB under its own 1 W and resets about 1.5 s after each keying: a
-  ferrite or a short shielded cable, or the module's counters by another route (the screen, or
-  RAM that survives the reset), and the reset cause from RCC_CSR.
+- The UV-380 drops off USB under its own 1 W and resets about 1.5 s after each keying. RCC_CSR
+  read 0x3E000000 (IWDGRSTF and SFTRSTF set), so the resets are the transmit guard's watchdog.
+  The next image skips USB writes while the bus is suspended or a write has just timed out, runs
+  the kicker at top priority, and keeps breadcrumbs in RTC backup registers that `guard` prints
+  with RCC_CSR, so the next 1 W keying says whether the kicker was held off or the guard fired.
+  Still open: a ferrite or a short shielded cable (no solder), so the lines survive the keying.
 
 - Receive is proven through the IC-7100 harness (pre-equalised). A DMR transmitter with a flat
   audio path (another UV-380, a real DMR radio) should need none of that: C4 shows it.
