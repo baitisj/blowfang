@@ -62,6 +62,18 @@
 #ifndef TX_SEQ
 #define TX_SEQ 0u
 #endif
+/* TX_WRITE 0: every slot edge writes the next slot to BOTH halves (RadioFoundry's way). On air
+   (11-16 run 2) that put the previous slot's first ~4 ms (40 TX RAM bits) at the head of every
+   slot: the chip is still reading a half when the module's write lands in it. TX_WRITE 1:
+   each edge writes the next slot's bytes to ONE half, the one the chip isn't reading, halves
+   alternating edge by edge; TX_HALF (0 or 1) is the half written at the first edge (which way
+   round is the bench's to find: the wrong one is run 2's failure again). */
+#ifndef TX_WRITE
+#define TX_WRITE 0u
+#endif
+#ifndef TX_HALF
+#define TX_HALF 0u
+#endif
 #define TX_FKHZ 440850u
 #define TX_SETTLE_MS 80u        /* after 0x60 shows the analog TX: AT1846S TX + PA */
 #define TX_IDENT_MS 12000u
@@ -115,6 +127,11 @@ static unsigned scale(unsigned g) {
 /* both TX RAM halves */
 static int put_slot(const ortx_api_t *api, const uint8_t *s) {
     return c6_write(api, C6_DATA, 0x00, s, CF_SLOT) | c6_write(api, C6_DATA, 0x24, s, CF_SLOT);
+}
+
+/* one half: 0 at 0x00, 1 at 0x24 */
+static int put_half(const ortx_api_t *api, const uint8_t *s, unsigned half) {
+    return c6_write(api, C6_DATA, half ? 0x24u : 0x00u, s, CF_SLOT);
 }
 
 int uv_main(const ortx_api_t *api) {
@@ -214,7 +231,7 @@ int uv_main(const ortx_api_t *api) {
     note(api, &q, line);
 
     unsigned edges = 0, rftx = 0, slots = 0, late = 0, lost = 0, tail = 0, chk = 0;
-    uint32_t t0 = api->ms(), first = 0, last_edge = 0;
+    uint32_t t0 = api->ms(), first = 0, last_edge = 0, r42 = 0;
     while (!api->stop()) {
         uint32_t now = api->ms();
         unsigned e = c6s_poll(&ss);
@@ -232,11 +249,17 @@ int uv_main(const ortx_api_t *api) {
                 break;                      /* the last packet and two slots of fill are out */
             if (now + TX_SLOT_MS >= t_end)
                 break;
+            if (edges <= 8u)                /* the chip's slot flags (TransSlot 7, RecvSlot 6) */
+                r42 |= (uint32_t)(api->c6000_read(0x42) >> 5) << (3u * (edges - 1u));
             cf_slot(&g, slot);
-            spi_err |= put_slot(api, slot);
+            if (TX_WRITE)
+                spi_err |= put_half(api, slot, (edges - 1u + TX_HALF) & 1u);
+            else
+                spi_err |= put_slot(api, slot);
             api->c6000_write(0x41, 0x80);
             slots++;
-            if (edges == 1u) {              /* the halves as the chip holds them (page 6) */
+            if (edges == 1u) {              /* the halves as the chip holds them (page 6); with
+                                               TX_WRITE 1 only the half written matches */
                 unsigned ok0 = 0, ok1 = 0;
                 if (!c6_read(api, C6_DATA_R, 0x00, back, CF_SLOT))
                     for (ok0 = 0; ok0 < CF_SLOT && back[ok0] == slot[ok0]; ok0++) {
@@ -263,7 +286,8 @@ int uv_main(const ortx_api_t *api) {
     c6_restore(api, &sv);
     api->c6000_write(0x83, 0xFF);
     c6s_close(&ss);
-    api->fmt(line, sizeof line, "chk 00=%u/36 24=%u/36 spi=%d", chk >> 8, chk & 0xFFu, spi_err);
+    api->fmt(line, sizeof line, "chk 00=%u/36 24=%u/36 spi=%d write=%u half=%u 42=%08lx", chk >> 8, chk & 0xFFu,
+             spi_err, TX_WRITE, TX_HALF, (unsigned long)r42);
     note(api, &q, line);
     api->fmt(line, sizeof line, "tx slots=%u pk=%u/%u bytes=%lu edges=%u first=%lu ms rftx=%u late=%u lost=%u restored at %lu ms",
              slots, g.k < npk ? g.k : npk, npk, (unsigned long)g.i, edges, (unsigned long)first, rftx,

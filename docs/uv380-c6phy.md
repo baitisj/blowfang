@@ -63,7 +63,8 @@ the previous 9 bytes on air and costs that packet.
 | `c6phytx_live.c` | ident, then 4.6 s at the channel's power, 440.850 | 2400 baud, alternating, seq from 0 |
 | `c6phytx_live1200.c` | as live | 1200 baud, alternating, seq from 100 |
 
-Knobs for later wrappers: `TX_POL` 0/1 (one polarity), `TX_DEV` (percent; C4FM's ratio is 139),
+Knobs for later wrappers: `TX_WRITE` 1 / `TX_HALF` 0 or 1 (the idle half only, run 3), `TX_POL`
+0/1 (one polarity), `TX_DEV` (percent; C4FM's ratio is 139),
 `TX_MODE` 0x02 (continuous physical layer, untested on a C6000), `TX_MS` (at most 5000).
 
 ## The K6 end
@@ -91,8 +92,28 @@ before and restored before the key-down).
 
 ## Bench
 
-Not run yet. Keys: `/mnt/project-files/uv380-c6phy/bench-keys.md`. Results go here, and into
-`docs/uv380-characteristics.md`.
+Keys: `/mnt/project-files/uv380-c6phy/bench-keys.md`. `sh tools/uv380_c6phy_bench.sh stage RUN`
+builds and signs everything; `live` is runs 1 and 2's sequence, `live2` run 3's.
+
+**Runs 1 and 2 (11-16, UV-380 at 0 W, PA on, 440.850; the Pluto and the K6 receive).** The raw
+mode works on air: the ident first, every slot answered on time (`late=0`, `lost=0`), both halves
+read back 36/36, the carrier continuous, the radio's registers and settings back as found. The
+Pluto synced every packet, but every one had 16-35 bits wrong and failed its CRC, at both rates;
+the K6 synced none. `python3 -m modem.c6phy errors` on the captures puts every wrong bit in the
+first ~40 TX RAM bits of a slot (about 4 ms: data bits 0-9 at 2400, 0-4 at 1200) and none in the
+middle, where a DMR sync would go. So the chip was still sending the head of a half when the
+module rewrote it: writing both halves at every slot edge is too late for the half on air.
+The FSK's carrier read about +3.4 kHz from 440.850 on the calibrated Pluto, enough to keep the
+K6's narrow chip FSK from syncing.
+
+The K6's module upload from the Pluto: `--preemph --dev 3700 --gain -52` (at -40 the K6 heard
+nothing; it keeps a partial upload, so the script sends up to 3 times).
+
+**Run 3 (`live2`).** One half a slot edge, the idle one (`TX_WRITE 1`), alternating; which half
+is idle at the first edge isn't known, so 4 key-ups at 2400 try `TX_HALF` 0, 1, 0, 1 (0x42's top
+bits at the first 8 edges are on the `chk` line to tell later), then 2 at 1200 with the phase the
+Pluto read better. The transmit trim goes down by the measured offset (`FSK_OFF`, default 3370)
+and again after the first key-up if the Pluto still reads over 300 Hz; it's restored at the end.
 
 ## Next
 

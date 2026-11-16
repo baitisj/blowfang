@@ -162,7 +162,8 @@ def test_decode_a_pluto_capture(tmp_path):
     (tmp_path / "cap.cf32.json").write_text(json.dumps({"fs": 240_000, "hz": 440_900_000}))
     out = c6phy.decode(str(cap), 2400)
     assert abs(int(out[0].split()[1]) - 300) < 20 and "from 440850000 (captured at 440900000" in out[0], out[0]
-    assert out[1] == "2400 baud: 5 syncs, 5 CRC right", out
+    assert out[1].startswith("fsk_carrier_hz=") and abs(int(out[1].split("=")[1].split()[0]) - 300) < 40, out[1]
+    assert out[2] == "2400 baud: 5 syncs, 5 CRC right", out
     assert "CRC right by variant: v20 3, v21 2" in out
     assert any(ln.startswith("a +3 symbol (dibit 01) goes out above the carrier") for ln in out), out
     assert out[-1] == "carrier gaps over 0.5 ms: 0", out
@@ -188,6 +189,52 @@ def test_errors_finds_a_mid_slot_overwrite(tmp_path):
     out = c6phy.errors(str(cap), 2400)
     assert "would be data bits 33-44" in out[0], out
     assert out[1].endswith("(100%) in data bits 33-44"), out
+
+
+@pytest.mark.parametrize("baud", (2400, 1200))
+def test_errors_finds_the_previous_slot_in_the_head(tmp_path, baud):
+    """the bench finding (11-16 run 2: every wrong bit in the first ~40 TX RAM bits of a slot): if
+    the chip sends a slot's first 5 bytes from the slot before (it was still reading the half the
+    module rewrote), `errors` says the wrong bits are the previous slot's bits at the same place"""
+    import json
+    sl = c6phy.slots(baud, 2, 5, 60 if baud == 2400 else 110)
+    raw = sl[0] + b"".join(sl[i][:5] + sl[i][5:] if i == 0 else sl[i - 1][:5] + sl[i][5:]
+                           for i in range(1, len(sl)))
+    f = np.concatenate([np.zeros(24000), c6phy.freq_track(raw, 240_000), np.zeros(24000)]) - 49_700.0
+    iq = np.exp(2j * np.pi * np.cumsum(f) / 240_000)
+    cap = tmp_path / "cap.cf32"
+    iq.astype(np.complex64).tofile(cap)
+    (tmp_path / "cap.cf32.json").write_text(json.dumps({"fs": 240_000, "hz": 440_900_000}))
+    out = c6phy.errors(str(cap), baud, seq0=0)
+    ln = [x for x in out if x.startswith("wrong bits that are the previous slot's bit")]
+    assert ln, out
+    a, b = ln[0].split(": ")[1].split(" (")[0].split(" of ")
+    assert int(b) > 50 and int(a) == int(b), ln
+
+
+def test_phytx_one_half_writes_are_opt_in():
+    """run 3's fix (TX_WRITE 1: the next slot into the idle half only, TX_HALF the phase) is a
+    knob; the default stays both halves, as run 1 and 2 sent"""
+    src = open(os.path.join(MOD, "c6phytx.c")).read()
+    assert "#ifndef TX_WRITE\n#define TX_WRITE 0u\n" in src
+    assert "#ifndef TX_HALF\n#define TX_HALF 0u\n" in src
+    assert "put_half(api, slot, (edges - 1u + TX_HALF) & 1u)" in src
+
+
+@pytest.mark.skipif(not TOOLS, reason="needs clang and lld")
+@pytest.mark.parametrize("half", (0, 1))
+def test_one_half_wrappers_build(tmp_path, half):
+    from modem import uv380mod
+    w = tmp_path / f"c6phytx_half{half}.c"
+    w.write_text(f'''#include "ortx_mod.h"
+#define UV_MODULE_LEVEL 4
+#define TX_DRY 0
+#define TX_WRITE 1u
+#define TX_HALF {half}u
+#include "{os.path.join(MOD, "c6phytx.c")}"
+''')
+    code, entry = uv380mod.build(str(w))
+    assert entry == 0 and len(code) < 5120
 
 
 def test_payload_start_bits_is_the_stream_layout():

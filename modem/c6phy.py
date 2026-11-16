@@ -243,7 +243,8 @@ def errors(cap, baud, seq0=None, pol=2):
     raw_per = SLOT * 8 // per_slot
     hist = np.zeros(per_slot, int)
     npk = key_up_packets(baud)
-    lines, used = [], 0
+    lines, used, prev_hits = [], 0, [0, 0]
+    air = np.unpackbits(np.frombuffer(stream(baud, pol, npk, seq0, extra_bytes=64), np.uint8))
     for j, pl, inv, amp in d.demodulate(y):
         got = np.unpackbits(np.frombuffer(pl, np.uint8))
         best = None
@@ -254,8 +255,15 @@ def errors(cap, baud, seq0=None, pol=2):
                 best = (k, e)
         k, e = best
         used += 1
-        pos = (payload_start_bits(baud, k) + e) % per_slot
+        ab = payload_start_bits(baud, k) + e
+        pos = ab % per_slot
         np.add.at(hist, pos, 1)
+        inv_k = 1 if pol_of(pol, k) else 0
+        ok = ab >= per_slot
+        # hypothesis: on air these bits were the previous slot's bits at the same place
+        prev_air = air[ab[ok] - per_slot] ^ inv_k
+        prev_hits[0] += int(np.sum(prev_air == got[e[ok]]))
+        prev_hits[1] += int(ok.sum())
         lines.append(f"  packet k={k} inverted={int(inv)}: {len(e)} of 512 wrong, slot bits {sorted(set(pos.tolist()))}")
     lo, hi = 132 // raw_per, 179 // raw_per
     head = [f"{baud} baud: {used} packets, {per_slot} data bits a slot, the C6000's mid-slot sync "
@@ -264,6 +272,9 @@ def errors(cap, baud, seq0=None, pol=2):
     inside = int(hist[lo:hi + 1].sum())
     head.append(f"wrong bits {tot}, of them {inside} ({inside / max(tot, 1):.0%}) in data bits {lo}-{hi}")
     head.append("per slot bit: " + " ".join(f"{i}:{c}" for i, c in enumerate(hist) if c))
+    if prev_hits[1]:
+        head.append(f"wrong bits that are the previous slot's bit at the same place: {prev_hits[0]} of "
+                    f"{prev_hits[1]} (all of them: the chip read the half before the write landed; half: by chance)")
     return head + lines
 
 
@@ -279,6 +290,18 @@ def decode(cap, baud):
     lines.append(f"carrier {off + hz - BENCH_HZ:+.0f} Hz from {BENCH_HZ} (captured at {hz}: the RX LO off the "
                  f"K6's channel), on {on.mean():.0%} of the capture")
     pk = read_packets(disc, 48_000, baud)
+    if pk:   # the FSK's own carrier: the mean discriminator over the packets (PN9 is balanced)
+        span = FRAME * 8 / baud
+        sel = np.zeros(len(disc), bool)
+        for t, *_ in pk:
+            a = int(t * 48_000)
+            sel[a:a + int(span * 48_000)] = True
+        fsk_off = off + hz - BENCH_HZ + float(np.mean(disc[sel]))
+        first = int(pk[0][0] * 48_000)
+        on48 = on[::max(1, fs // 48_000)][:first]
+        pre = disc[:first][on48[:first]] if first else disc[:0]
+        lines.append(f"fsk_carrier_hz={fsk_off:+.0f} (the FSK, from {BENCH_HZ}); before it (the ident) "
+                     + (f"{off + hz - BENCH_HZ + float(np.mean(pre)):+.0f} Hz" if len(pre) > 4800 else "not seen"))
     good = [x for x in pk if x[3]]
     lines.append(f"{baud} baud: {len(pk)} syncs, {len(good)} CRC right")
     for t, v, s, ok, inv, e, amp in pk:

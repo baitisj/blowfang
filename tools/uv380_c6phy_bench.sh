@@ -14,12 +14,21 @@
 #                                                 the Pluto capturing each (50 kHz up); then the
 #                                                 radio's power and zero back as found, reports
 #
+#   sh tools/uv380_c6phy_bench.sh live2 RUN K6LOG  as live, with run 2's fixes (11-16): the next
+#                                                 slot into the idle TX RAM half only (TX_WRITE 1),
+#                                                 4 key-ups at 2400 alternating the half phase
+#                                                 (TX_HALF 0, 1, 0, 1), 2 at 1200 with the phase
+#                                                 that read more; the transmit trim lowered by the
+#                                                 FSK's measured carrier offset (FSK_OFF, Hz,
+#                                                 default 3370; re-trimmed after the first key-up
+#                                                 if the Pluto still reads over 300 Hz), restored
+#
 # RUN is the run folder (~/blowfang-work/runs/uv380-c6phy-...). live sends the K6 its module
 # (fsk24rx_uv) from the Pluto, AG7EW in MCW first and last (up to 3 sends), waits for the K6
 # logger's "fsk24 start" line in K6LOG, then keys the UV-380. No IC-7100. Each UV-380 key-up:
 # AG7EW in Morse first, then 4.6 s of FSK. Nothing here writes to /dev/ttyUSB2.
 set -eu
-CMD=${1:?stage, dry or live}
+CMD=${1:?stage, dry, live or live2}
 RUN=${2:?the run folder}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 KEY=${KEY:-$HOME/.config/sotto/k6-mod.key}
@@ -32,6 +41,17 @@ stamp() { date -u +%H:%M:%SZ; }
 
 # "tune" / "power" / "zero" answer with a tune line and no "ok": a 2 s wait each, then read back
 uvcmd() { P tools/uv380_i2sprobe.py cmd "$UV" "$@" --timeout 2 --log "$RUN/uv380.log" || true; }
+# live2's modules: c6phytx on air, one TX RAM half a slot edge, both phases, both rates
+wrappers() {
+    for b in 2400 1200; do
+        for h in 0 1; do
+            seq=0; [ $b = 1200 ] && seq=100
+            printf '%s\n' "#include \"ortx_mod.h\"" "#define UV_MODULE_LEVEL 4" "#define TX_DRY 0" \
+                "#define TX_WRITE 1u" "#define TX_HALF ${h}u" "#define TX_BAUD ${b}u" "#define TX_SEQ ${seq}u" \
+                "#include \"$MOD/c6phytx.c\"" > "$RUN/c6phytx_${b}h$h.c"
+        done
+    done
+}
 uvmod() { P tools/uv380_i2sprobe.py mod "$UV" "$1" --key-file "$KEY" --log "$RUN/uv380.log" --run-timeout 30; }
 
 case "$CMD" in
@@ -40,6 +60,10 @@ stage)
     P -m modem.c6phy plan | tee "$RUN/plan.txt"
     for m in c6phytx c6phytx_live c6phytx_live1200; do
         P -m modem.uv380mod "$MOD/$m.c" "$RUN/$m.u3r" --key-file "$KEY"
+    done
+    wrappers
+    for m in c6phytx_2400h0 c6phytx_2400h1 c6phytx_1200h0 c6phytx_1200h1; do
+        P -m modem.uv380mod "$RUN/$m.c" "$RUN/$m.u3r" --key-file "$KEY"
     done
     # level 0.5: the fsk24 ladder's test packets' level, sent from the Pluto as it sent them
     P -m modem.k6 mod "$RUN/up5.wav" c/k6/mod/fsk24rx_uv.c --key-file "$KEY" --serial "$(date +%s)" \
@@ -52,7 +76,7 @@ dry)
     echo "$(stamp) dry run"
     uvmod "$MOD/c6phytx.c" | tee "$RUN/dry.txt"
     ;;
-live)
+live|live2)
     K6LOG=${3:?the K6 logger log}
     [ -n "$UV" ] || { echo "no UV-380 port"; exit 2; }
     uvcmd tune | tee "$RUN/tune-before.txt"
@@ -63,15 +87,26 @@ live)
     uvcmd "listen 0" "power 0" "zero 2" | tee "$RUN/tune-set.txt"
     grep -q "pwr=0 .*" "$RUN/tune-set.txt" && grep -q "zero=2" "$RUN/tune-set.txt" && grep -q "listen on=0" "$RUN/tune-set.txt" \
         || { echo "power 0 / zero 2 / listen 0 not read back: nothing sent"; exit 3; }
-    restore() { uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" | tee "$RUN/tune-after.txt"; }
+    TRIM=$(sed -n 's/.*trim=\(-*[0-9]*\).*/\1/p' "$RUN/tune-before.txt" | tail -1)
+    restore() {
+        uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" "trim ${TRIM:-5745}" \
+            | tee "$RUN/tune-after.txt"
+    }
     trap restore EXIT
-    # the K6's module from the Pluto (Jeff 11-16: the Pluto, not the IC-7100): F/1800 XL at the
-    # fsk24 ladder's settings (750 us pre-emphasis, 3.7 kHz full scale, gain -40: 11-12/16
-    # packets; about a quarter slip, so up to 3 sends: the K6 keeps a partial upload)
+    if [ "$CMD" = live2 ]; then
+        [ -n "$TRIM" ] || { echo "no trim in the tune line: nothing sent"; exit 3; }
+        T2=$((TRIM - ${FSK_OFF:-3370}))
+        uvcmd "trim $T2" | tee "$RUN/tune-trim.txt"
+        grep -q "trim=$T2 " "$RUN/tune-trim.txt" || { echo "trim $T2 not read back: nothing sent"; exit 3; }
+        wrappers
+    fi
+    # the K6's module from the Pluto (Jeff 11-16: the Pluto, not the IC-7100): F/1800 XL, 750 us
+    # pre-emphasis, 3.7 kHz full scale, gain -52 (run 2: -40 overloads the K6 at the bench's
+    # spacing and it hears nothing); up to 3 sends: the K6 keeps a partial upload
     for try in 1 2 3; do
         grep -q "fsk24 start" "$K6LOG" 2>/dev/null && break
         echo "$(stamp) K6 upload $try from the Pluto"
-        P tools/pluto_bench.py send "$RUN/up5.wav" --preemph --dev 3700 --gain -40 | tee -a "$RUN/k6up.txt"
+        P tools/pluto_bench.py send "$RUN/up5.wav" --preemph --dev 3700 --gain -52 | tee -a "$RUN/k6up.txt"
         n=0
         until grep -q "fsk24 start" "$K6LOG" 2>/dev/null || [ $n -ge 8 ]; do n=$((n + 1)); sleep 1; done
     done
@@ -87,20 +122,56 @@ live)
         wait
         P -m modem.c6phy decode "$RUN/$2.cf32" --baud "$3" | tee "$RUN/$2.decode.txt"
     }
-    key c6phytx_live k2400a 2400
-    sleep 10
-    key c6phytx_live k2400b 2400
-    sleep 10
-    key c6phytx_live k2400c 2400
-    echo "$(stamp) waiting for the K6's setting 3 (D/1200)"
-    until grep -q "say s 3 " "$K6LOG"; do sleep 1; done
-    sleep 3
-    key c6phytx_live1200 k1200a 1200
-    sleep 10
-    key c6phytx_live1200 k1200b 1200
+    key2() {  # as key, $1 a wrapper's path without .c; the errors report too
+        P tools/pluto_bench.py rx "$RUN/$2.cf32" --hz 440900000 --seconds 16 > "$RUN/$2.rx.txt" 2>&1 &
+        sleep 2
+        echo "$(stamp) $2"
+        uvmod "$1.c" | tee "$RUN/$2.txt"
+        wait
+        P -m modem.c6phy decode "$RUN/$2.cf32" --baud "$3" | tee "$RUN/$2.decode.txt"
+        P -m modem.c6phy errors "$RUN/$2.cf32" --baud "$3" > "$RUN/$2.errors.txt" 2>&1 || true
+        head -3 "$RUN/$2.errors.txt"
+    }
+    if [ "$CMD" = live ]; then
+        key c6phytx_live k2400a 2400
+        sleep 10
+        key c6phytx_live k2400b 2400
+        sleep 10
+        key c6phytx_live k2400c 2400
+        echo "$(stamp) waiting for the K6's setting 3 (D/1200)"
+        until grep -q "say s 3 " "$K6LOG"; do sleep 1; done
+        sleep 3
+        key c6phytx_live1200 k1200a 1200
+        sleep 10
+        key c6phytx_live1200 k1200b 1200
+    else
+        crc() { n=$(sed -n 's/.* \([0-9]*\) CRC right$/\1/p' "$RUN/$1.decode.txt" | head -1); echo "${n:-0}"; }
+        key2 "$RUN/c6phytx_2400h0" k2400h0a 2400
+        OFF=$(sed -n 's/^fsk_carrier_hz=\([-+0-9]*\).*/\1/p' "$RUN/k2400h0a.decode.txt" | head -1)
+        if [ -n "$OFF" ] && { [ "$OFF" -gt 300 ] || [ "$OFF" -lt -300 ]; }; then
+            T2=$((T2 - OFF))
+            echo "$(stamp) still $OFF Hz off: trim $T2"
+            uvcmd "trim $T2" | tee -a "$RUN/tune-trim.txt"
+        fi
+        sleep 6
+        key2 "$RUN/c6phytx_2400h1" k2400h1a 2400
+        sleep 6
+        key2 "$RUN/c6phytx_2400h0" k2400h0b 2400
+        sleep 6
+        key2 "$RUN/c6phytx_2400h1" k2400h1b 2400
+        H0=$(( $(crc k2400h0a) + $(crc k2400h0b) )); H1=$(( $(crc k2400h1a) + $(crc k2400h1b) ))
+        H=0; [ "$H1" -gt "$H0" ] && H=1
+        echo "$(stamp) Pluto CRC right: half 0 $H0, half 1 $H1; 1200 with half $H" | tee "$RUN/halves.txt"
+        echo "$(stamp) waiting for the K6's setting 3 (D/1200)"
+        until grep -q "say s 3 " "$K6LOG"; do sleep 1; done
+        sleep 3
+        key2 "$RUN/c6phytx_1200h$H" k1200a 1200
+        sleep 6
+        key2 "$RUN/c6phytx_1200h$H" k1200b 1200
+    fi
     until grep -q "fsk24 end" "$K6LOG"; do sleep 2; done
     P -m modem.fsk24 report "$K6LOG" | tee "$RUN/k6-report.txt"
     ;;
 *)
-    echo "stage, dry or live"; exit 2 ;;
+    echo "stage, dry, live or live2"; exit 2 ;;
 esac
