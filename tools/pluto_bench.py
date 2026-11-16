@@ -263,11 +263,13 @@ def send(track, hz, offset, gain, rate, uri, rf, what):
     lo = check_tx(hz, offset, gain)
     ident = id_track()
     full = np.concatenate([ident, track, ident])
-    setup(rate, tx_hz=lo, gain=gain, uri=uri)
-    print(f"{what}: {len(full) / FS_TRACK:.1f} s on {hz} Hz (LO {lo}), gain {gain} dB, rate {rate}, "
-          f"{'RF OFF (rehearsal)' if not rf else 'RF on'}")
-    print(f"start {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
-    secs, took = stream(full, rate, uri, rf=rf, what=what)
+    import k6_bench as kb
+    with kb.ptt_lock():                     # set-up too: no retuning under another Pluto user's stream
+        setup(rate, tx_hz=lo, gain=gain, uri=uri)
+        print(f"{what}: {len(full) / FS_TRACK:.1f} s on {hz} Hz (LO {lo}), gain {gain} dB, rate {rate}, "
+              f"{'RF OFF (rehearsal)' if not rf else 'RF on'}")
+        print(f"start {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+        secs, took = stream(full, rate, uri, rf=rf, what=what)
     print(f"end {time.strftime('%H:%M:%S', time.gmtime())}Z: {secs:.1f} s of signal in {took:.1f} s"
           f" ({'kept up' if took < secs + 2.0 else 'SLOW: the link did not keep up, gaps on air'})")
 
@@ -429,7 +431,6 @@ def cmd_fsk24_sweep(a):
     full = np.concatenate([ident, track, ident])
     lev = np.concatenate([one, level, one])
     id_s = len(ident) / FS_TRACK
-    setup(a.rate, tx_hz=lo, gain=a.gain, uri=a.uri)
     print(f"fsk24 sweep: {len(segs)} slots of {fsk24.SWEEP_SLOT_S} s, steps {fsk24.SWEEP_STEPS[0]} to "
           f"{fsk24.SWEEP_STEPS[-1]} dB, {sum(s[4] for s in segs)} packets, {len(full) / FS_TRACK:.1f} s on"
           f" {HZ} Hz (LO {lo}, IF {a.if_hz:+.0f} Hz), gain {a.gain} dB,"
@@ -444,13 +445,20 @@ def cmd_fsk24_sweep(a):
     else:
         s0 = float(a.t0) + SWEEP_WAIT_S
     go = s0 - id_s - SWEEP_EARLY_S
-    if go < time.time():
-        raise SystemExit(f"too late: slot 0 was due {time.time() - s0:.1f} s ago")
-    print(f"slot 0 due {time.strftime('%H:%M:%S', time.gmtime(s0))}Z; keying at "
-          f"{time.strftime('%H:%M:%S', time.gmtime(go))}Z", flush=True)
-    time.sleep(go - time.time())
-    print(f"start {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
-    secs, took = stream(full, a.rate, a.uri, rf=not a.rf_off, what="fsk24 sweep", level=lev, if_hz=a.if_hz)
+    import k6_bench as kb
+    # the PTT lock from set-up to the end: another Pluto user (k6_upload --via pluto, whose last
+    # send can still be on air after the K6 starts the module) neither retunes it under us nor
+    # keys over us; it waits for that send to end
+    with kb.ptt_lock():
+        setup(a.rate, tx_hz=lo, gain=a.gain, uri=a.uri)
+        if go < time.time():
+            raise SystemExit(f"too late: slot 0 was due {time.time() - s0:.1f} s ago")
+        print(f"slot 0 due {time.strftime('%H:%M:%S', time.gmtime(s0))}Z; keying at "
+              f"{time.strftime('%H:%M:%S', time.gmtime(go))}Z", flush=True)
+        time.sleep(go - time.time())
+        print(f"start {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+        secs, took = stream(full, a.rate, a.uri, rf=not a.rf_off, what="fsk24 sweep", level=lev,
+                            if_hz=a.if_hz)
     print(f"end {time.strftime('%H:%M:%S', time.gmtime())}Z: {secs:.1f} s of signal in {took:.1f} s"
           f" ({'kept up' if took < secs + 2.0 else 'SLOW: the link did not keep up, the grid slipped'})")
 
