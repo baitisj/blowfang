@@ -233,20 +233,40 @@ bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
   input isn't flat (pre-emphasis, a cut below 300 Hz), and the K6 read none of the UV-380's FFSK
   that way (11-14). The physical layer route skips that path.
 
-## The sensitivity sweep (staged 11-16)
+## Sensitivity sweeps (11-16)
 
-How weak can each rate be? `c/k6/mod/fsk24rx_sweep.c` runs fsk24rx in 36 slots of 12 s on a
-fixed grid (`F24_ABS`): D/2400 (run 3's setting 2: REG_58 00e9, REG_2B +0400), F/1800 and F/1200
-(the pager's recipes) in turn, three slots a level step. `tools/pluto_bench.py fsk24 --sweep
---follow LOG --gain -70` waits for the K6 logger's `fsk24 start` line and sends each slot its
-rate's test packets (`modem.fsk24.sweep_track`), one step lower every three slots: 0 to -44 dB
-in 4 dB steps, set digitally in the IQ. D/2400 goes flat at 2.2 kHz peak deviation; the FFSK
-tones go 750 us pre-emphasised at 3.0 kHz peak, as an ordinary HT sends them (the K6 receives
-with its de-emphasis on). The signal rides 250 kHz above the Pluto's TX LO, so the LO's leak
-(440.600) and the IQ image (440.350) stay off the channel as the signal drops. Carrier only for
-1.5 s at a slot's start and 1.0 s at its end, so a few hundred ms of slip between the K6's clock
-and hamlet's don't matter. `python3 -m modem.fsk24 report --sweep LOG` gives packets right of
-sent per step and rate, with the K6's RSSI.
+How weak can each rate be? `c/k6/mod/fsk24rx_sweep.c` runs fsk24rx in slots of 12 s on a fixed
+grid (`F24_ABS`), one receive recipe a slot, the recipes in turn at each level step.
+`tools/pluto_bench.py fsk24 --sweep --follow LOG --gain -70` waits for the K6 logger's
+`fsk24 start` line and sends each slot its rate's test packets (`modem.fsk24.sweep_track`), the
+level set digitally in the IQ. D/2400 goes flat at 2.2 kHz peak deviation; the FFSK tones go
+750 us pre-emphasised at 3.0 kHz peak, as an ordinary HT sends them (the K6 receives with its
+de-emphasis on). The signal rides 250 kHz above the Pluto's TX LO, so the LO's leak (440.600)
+and the IQ image (440.350) stay off the channel as the signal drops. Carrier only for 1.5 s at
+a slot's start and 1.0 s at its end, so a few hundred ms of slip between the K6's clock and
+hamlet's don't matter. `python3 -m modem.fsk24 report --sweep LOG` gives packets right of sent
+per step and recipe, with the K6's RSSI.
+
+**Sweep 1 (20:48-20:56Z, the Pluto at gain -70, steps of 4 dB, every recipe read by time):**
+
+| step dB | RSSI dBm | D/2400 | F/1800 | F/1200 |
+| --- | --- | --- | --- | --- |
+| 0 | -88 | 16/16 | 0/16 | 3/12 |
+| -4 | -92 | 13/16 | 0/16 | 3/12 |
+| -8 | -96 | 6/16 | 0/16 | 0/12 |
+| -12 | -100 | 0/16 (9 junk) | 0/16 | 0/12 |
+| -16 to -44 | | 0 | 0 | 0 |
+
+- D/2400 read everything at -88 dBm and nothing at -100 (the K6's RSSI, not a calibrated
+  level). The packets that failed had 134-161 of 472 bits wrong, a slip partway through rather
+  than scattered errors, so this may be the timed reads' limit more than the chip's.
+- F/1800 and F/1200 failed even at full level: reading FFSK by time doesn't work in this probe
+  (the pager reads F/1800 on the chip's interrupts, and F/1800 uploads work every day). So
+  sweep 1 has no margin between the rates.
+- **Sweep 2 (staged):** fsk24rx reads on the chip's interrupts when a recipe's REG_2B bits carry
+  bit 0 (`AF_IRQ`: polled REG_0C, 3 words a FIFO-almost-full, the rest at RX-done), as the
+  pager does. Four recipes a step: D/2400 by time (sweep 1's), D/2400, F/1800 and F/1200 by
+  interrupt; 0 to -27 dB in 3 dB steps, 40 slots, 8 minutes.
 
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 

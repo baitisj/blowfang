@@ -76,13 +76,17 @@ RUN2 = (0, 8, 9, 10, 11, 12)
 RUN3 = (13, 14, 15, 16, 17)
 # the sensitivity sweep: one slot of SWEEP_SLOT_S per rate, the rates in turn, at each level step
 # (dB below the top level); the module (c/k6/mod/fsk24rx_sweep.c) sets each slot's receive recipe
-SWEEP_RATES = (14, 18, 19)                 # D/2400 2.2 kHz, F/1800, F/1200
-SWEEP_REGS = {                             # REG_58, REG_72, a word in 1/16 ticks, REG_2B bits
-    14: (0x00E9, 24779, 1067, 0x0400),     # run 3's setting 2 (the 2400 plan's recipe)
-    18: (0x3F01, 18584, 1422, 0x0000),     # the pager's CFG_F_1800, BAUD_1800
-    19: (0x3FE3, 12389, 2133, 0x0000),     # the pager's CFG_F_1200, BAUD_1200
-}
-SWEEP_STEPS = tuple(range(0, -48, -4))     # 0 to -44 dB
+# a slot: (name, the bench's variant, the module's REG_58, REG_72, word in 1/16 ticks, REG_2B
+# bits; bit 0 = read on the chip's interrupts, as the pager reads F/1800). Sweep 1 (11-16 20:48Z)
+# read all three by time: F/1800 and F/1200 failed even at full level, so sweep 2 reads by
+# interrupt, and D/2400 both ways
+SWEEP_SLOTS = (
+    ("D/2400 timed", 14, (0x00E9, 24779, 1067, 0x0400)),   # run 3's setting 2, sweep 1's way
+    ("D/2400", 14, (0x00E9, 24779, 1067, 0x0401)),
+    ("F/1800", 18, (0x3F01, 18584, 1422, 0x0001)),         # the pager's CFG_F_1800, BAUD_1800
+    ("F/1200", 19, (0x3FE3, 12389, 2133, 0x0001)),         # the pager's CFG_F_1200, BAUD_1200
+)
+SWEEP_STEPS = tuple(range(0, -30, -3))     # 0 to -27 dB (sweep 1: nothing below -12)
 SWEEP_SLOT_S = 12
 SWEEP_GUARD_S = (1.5, 1.0)                 # carrier only at a slot's start and end
 EQ = {"taps": [1.0], "centre": 0}          # the measured equaliser: wav --eq loads it here
@@ -208,14 +212,14 @@ def variant_freq(vi, bits, fs=fsk.FS):
 
 
 def sweep_plan():
-    """-> [(slot, step dB, variant)]: every rate in turn at each step"""
-    return [(k, st, vi) for k, (st, vi) in
-            enumerate((st, vi) for st in SWEEP_STEPS for vi in SWEEP_RATES)]
+    """-> [(slot, step dB, variant, SWEEP_SLOTS index)]: every slot kind in turn at each step"""
+    kinds = [(st, si) for st in SWEEP_STEPS for si in range(len(SWEEP_SLOTS))]
+    return [(k, st, SWEEP_SLOTS[si][1], si) for k, (st, si) in enumerate(kinds)]
 
 
 def sweep_table():
     """the module's slot table (F24_V) -> C initializer lines"""
-    return ["{0x%04X, %d, %d, 0x%04X}," % SWEEP_REGS[vi] for _, _, vi in sweep_plan()]
+    return ["{0x%04X, %d, %d, 0x%04X}," % SWEEP_SLOTS[si][2] for _, _, _, si in sweep_plan()]
 
 
 def sweep_track(fs=fsk.FS):
@@ -228,7 +232,7 @@ def sweep_track(fs=fsk.FS):
     track = np.zeros(n_slot * len(plan))
     level = np.ones(len(track))
     segs = []
-    for k, st, vi in plan:
+    for k, st, vi, _ in plan:
         a, end = k * n_slot, (k + 1) * n_slot
         level[a:end] = 10 ** (st / 20.0)
         t = a + int(SWEEP_GUARD_S[0] * fs)
@@ -251,12 +255,11 @@ def sweep_report(lines):
     packet heard in that step) and packets right of sent, per rate"""
     sent = {k: n for _, k, _, _, n in sweep_track()[2]}
     sets, pk = parse_log(lines)
-    head = "step dB | RSSI dBm | " + " | ".join(
-        f"{'D' if VARIANTS[vi].comp == 'iq' else 'F'}/{VARIANTS[vi].baud}" for vi in SWEEP_RATES)
-    out = [head, "--- | --- | " + " | ".join("---" for _ in SWEEP_RATES)]
+    head = "step dB | RSSI dBm | " + " | ".join(name for name, _, _ in SWEEP_SLOTS)
+    out = [head, "--- | --- | " + " | ".join("---" for _ in SWEEP_SLOTS)]
     for i, st in enumerate(SWEEP_STEPS):
         cells, rs = [], []
-        for k, s2, vi in sweep_plan():
+        for k, s2, vi, _ in sweep_plan():
             if s2 != st:
                 continue
             mine = [p for p in pk if p["s"] == k]

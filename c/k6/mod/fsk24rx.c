@@ -35,6 +35,9 @@
      v 2 n=24 ok=20 z=1                        a setting's end: packets, CRC right, junk (more
                                                than E_JUNK bits wrong)
      fsk24 end n=96 ok=80
+   AF_IRQ (bit 0 of a setting's REG_2B bits, not written to REG_2B): read the FIFO on the chip's
+   interrupts (polled: REG_0C bit 0, flags in REG_02), IRQ_WORDS a FIFO-almost-full and the rest
+   at RX-done, as the pager reads F/1800, not by time. x= then counts words padded or repeated.
    F24_ABS: the settings start on a fixed grid of FE_S from the first, not FE_S after the
    last ended (a packet being read holds a change back), so a bench signal can be timed to them
    from the "s 0" line (fsk24rx_sweep.c).
@@ -75,6 +78,12 @@
 #define CTRL_CLR 0x4000u
 #define CTRL_EN 0x1000u
 #define AF_DC_CANCEL 0x4000u
+#define AF_IRQ 0x0001u    /* in a setting's REG_2B bits: read on the chip's interrupts (not REG_2B) */
+#define IRQ_DONE (1u << 13)
+#define IRQ_FULL (1u << 12)
+#define IRQ_SYNC (1u << 1)
+#define IRQ_WORDS 3u      /* words a FIFO-almost-full interrupt (the pager's F/1800: 5e=0203) */
+#define FIFO_WORDS 8u
 
 typedef struct {
   uint16_t cfg, r72, wt, af; /* REG_58, REG_72, a word in 1/16 ticks, REG_2B bits */
@@ -160,14 +169,14 @@ static uint32_t seek(const k6_api_t *api, const st_t *s, const var_t *v) {
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
-  api->fd_write(0x2B, (uint16_t)((s->sv[SAVED_2B] & ~AF_DC_CANCEL) | v->af));
+  api->fd_write(0x2B, (uint16_t)((s->sv[SAVED_2B] & ~AF_DC_CANCEL) | (v->af & ~AF_IRQ)));
   api->fd_write(0x5A, 0x076B);
   api->fd_write(0x5B, 0x3E36);
   api->fd_write(0x58, v->cfg);
   api->fd_write(0x72, v->r72);
   api->fd_write(0x5C, 0x5625); /* the chip's CRC off */
   api->fd_write(0x5D, (uint16_t)((NB - 1) << 8));
-  api->fd_write(0x5E, 0x0204);
+  api->fd_write(0x5E, v->af & AF_IRQ ? 0x0200u | IRQ_WORDS : 0x0204u);
   for (i = 0; i < 2; i++) {
     api->fd_write(0x59, CTRL | CTRL_CLR);
     api->fd_write(0x59, CTRL | CTRL_EN);
@@ -175,6 +184,10 @@ static uint32_t seek(const k6_api_t *api, const st_t *s, const var_t *v) {
     if (!i) api->delay_us(2000);
   }
   for (i = 0; i < 8; i++) w = api->fd_read(0x5F);
+  if (v->af & AF_IRQ) {
+    api->fd_write(0x02, 0);
+    api->fd_write(0x3F, IRQ_DONE | IRQ_FULL | IRQ_SYNC);
+  }
   return w;
 }
 
@@ -260,7 +273,23 @@ int k6_main(const k6_api_t *api) {
       s_line(api, s, cur, now);
       prev = seek(api, s, v);
     }
-    if (!cap) {
+    if (v->af & AF_IRQ) {
+      if (api->fd_read(0x0C) & 1) {
+        uint32_t f = api->fd_read(0x02), m = 0;
+        api->fd_write(0x02, 0);
+        if ((f & (IRQ_SYNC | IRQ_FULL)) && !cap) cap = 1, rn = 0, nx = 0, rpk = 0;
+        if (cap && (f & IRQ_FULL)) m = IRQ_WORDS;
+        if (cap && (f & IRQ_DONE)) m = NW; /* the rest: at most the FIFO's 8 (a short packet fails) */
+        if (m > NW - rn) m = NW - rn;
+        if (m > FIFO_WORDS && (f & IRQ_DONE)) m = FIFO_WORDS;
+        while (m--) {
+          uint32_t w = api->fd_read(0x5F);
+          if (rn >= 8 && w == s->w[rn - 8]) nx++;
+          s->w[rn++] = (uint16_t)w;
+        }
+        if (cap && (f & IRQ_DONE)) while (rn < NW) s->w[rn++] = 0, nx++;
+      }
+    } else if (!cap) {
       uint32_t w = api->fd_read(0x5F);
       if (w != prev) {
         cap = 1, rn = 1, nx = 0, rpk = 0;
@@ -268,7 +297,7 @@ int k6_main(const k6_api_t *api) {
         s->w[0] = (uint16_t)w;
       }
     }
-    while (cap && rn < NW && (int32_t)((clk(api, s) << 4) - t0 - (rn + LAG) * v->wt) >= 0) {
+    while (!(v->af & AF_IRQ) && cap && rn < NW && (int32_t)((clk(api, s) << 4) - t0 - (rn + LAG) * v->wt) >= 0) {
       uint32_t w = api->fd_read(0x5F);
       if (rn >= 8 && w == s->w[rn - 8]) nx++; /* as the empty FIFO reads (or by chance) */
       s->w[rn++] = (uint16_t)w;
