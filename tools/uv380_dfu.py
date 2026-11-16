@@ -105,6 +105,11 @@ def handshake(dev, img, dry=False, out=print, log=None, timeout=15.0):
                 g.write(b)
                 g.flush()
             buf += b
+            # the radio can hold a line's end back until it next writes (11-16 21:23Z:
+            # "\r\nmod say dfuboot armed nonce=..." and nothing more, so the answer never went
+            # out and dfuboot cancelled): once the port is quiet (VTIME 0.2 s) the line is whole
+            if not b and buf.strip() and b"\n" not in buf:
+                buf += b"\n"
             while b"\n" in buf:
                 ln, buf = buf.split(b"\n", 1)
                 ln = ln.decode(errors="replace").strip()
