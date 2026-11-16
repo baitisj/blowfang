@@ -68,3 +68,96 @@ chip: the bench says.
 ## Bench
 
 Keys: `/mnt/project-files/k6-fsk24/bench-keys.md`. Report: `python3 -m modem.fsk24 report LOG`.
+
+## Run 1 (2026-11-16 19:02-19:06Z): no 2400 baud sync at all
+
+K6 on main 1287138, `fsk24rx` at cb7bce2, IC-7100 in FM-D at RF power 0 and USB MOD 30 %, RSSI
+-22 dBm. The first upload lost chunks 1, 2 and 6; the resend completed the transfer (the K6 keeps
+a partial one), the module ran from 19:02:48Z and the signal went out 19:03:09-19:06:10Z, so all
+five settings fell inside it. Files: `/mnt/project-files/k6-fsk24/run1/`.
+
+| setting | REG_58 | baud | REG_2B bits | packets | CRC right |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 00e1 | 1200 | | 6 | 2 |
+| 1 | 00e9 | 2400 | | 0 | 0 |
+| 2 | 00e9 | 2400 | 0400 | 0 | 0 |
+| 3 | 00e9 | 2400 | 0700 | 0 | 0 |
+| 4 | 00e1 | 2400 | 0400 | 0 | 0 |
+
+- **2400 baud: not one sync** in four settings over two minutes, across all six 2400 variants
+  (plain, four pre-equalisers, levels 0.15 to 0.4: about 200 packets on air in those two
+  minutes). The chip's 32-bit sync never matched, so the high-pass, low-pass and de-emphasis
+  bits (the RT-950 note's data set-up) are not what stands in the way.
+- **1200 baud, the control: it still reads, as before.** The plain variant read 2 of 3 with 0 bits
+  wrong; the third had its first 178 bits right but one, then lost the bit clock (85 wrong), the
+  "errors grow along each packet" of 2026-11-05. The pre-equalised 1200 variant read nothing: three
+  syncs came out upside down with about half the bits wrong. So the IC-7100's real low cut is far
+  gentler than the model's second-order 300 Hz one, and undoing the model's breaks it.
+- **What that leaves.** The FD6818's plain FSK receiver doesn't find 2400 baud in what the
+  IC-7100's USB audio makes of it, with or without pre-equalising against the model we have. The
+  RT-950 note's clean 2400 receive had a flat transmitter (a bladeRF). The open test is the same
+  here: a flat FM transmitter as the far end. The RT-950 Pro running FerriteFW's modem test (a
+  BK4829 sending its own chip's 2400 baud FSK) would be one; that needs the RT-950's programming
+  cable (due about 11-30) and Jeff's choice to load FerriteFW. Until then, 2400 baud on the K6 is
+  transmit only: the K6 to the IC-7100 (and the PC behind it).
+
+## What 2400 baud would buy
+
+Per XL packet the pager puts 144 bytes on air (12 of preamble, 4 of sync, 128 of packet: 120
+bytes of codec frames). Against F/1800, today's default:
+
+| | F/1800 | 2400 |
+| --- | ---: | ---: |
+| air time a packet | 0.64 s | 0.48 s |
+| codec payload | 1,500 bit/s | 2,000 bit/s |
+| 60 s of sotto 1200 (75 packets) | 48 s | 36 s |
+| sotto 1200 speech per second of air | 1.25 | 1.67 |
+| sotto 2400 speech per second of air | 0.63 | 0.83 (still slower than real time) |
+
+So a third more throughput: module uploads and messages a quarter shorter, and live sotto 1200
+with more room, but not live sotto 2400. Range mode gains nothing: it trades speed for
+sensitivity (about 550 bit/s), and plain FSK at 2400 needs about 3 dB more signal than at 1200
+(docs/k6-pager.md's link model). The coded 4FSK IF modem (PHY G) already makes 1,200 to 1,730
+bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
+
+## Next: the measured equaliser, then a flat transmitter
+
+- **Run 2 (staged): the IC-7100 with the equaliser the C6000 measured.** Run 1's pre-equalisers
+  came from a model, and the 1200 control showed the model is wrong. The UV-380's C6000 measured
+  the real IC-7100 transmit chain from its own soft values (docs/uv380-c6000-modem.md R1-R4), and
+  the equaliser it fitted took DMR to 23 of 23. That equaliser works on 4800-a-second symbols, so
+  run 2 sends each bit as two +-3 symbols (four at 1200 baud), RRC shaped, through it:
+  `python3 -m modem.fsk24 wav OUT.wav --run 2 --eq EQ.json` (variants 0 and 8-12: the control,
+  three levels at 2400, one at 1200, and the same symbols with no equaliser). Same module.
+- **Run 3 (staged): the ADALM-Pluto as the flat far end** (Jeff, 11-16). The Pluto puts plain
+  FSK straight onto the carrier from IQ: no audio path at all, the same kind of transmitter the
+  RT-950 note used. `tools/k6_pluto.py fsk24` streams it through libiio's command-line tools
+  (hamlet has libiio 0.26), under the bench's PTT lock and owner check, AG7EW in MCW before and
+  after, the TX LO powered down outside the stream, and only on 440.850 MHz at 2.4 MS/s with gain
+  -60 dB by default (about -55 dBm into the antenna; it refuses above -30). Variants 13-17, a
+  round of 9.3 s, 20 rounds (186 s) covering the module's five settings:
+
+  | variant | baud | peak deviation |
+  | --- | --- | --- |
+  | 13 | 1200 | 2.2 kHz (the control) |
+  | 14 | 2400 | 2.2 kHz |
+  | 15 | 2400 | 1.5 kHz |
+  | 16 | 2400 | 3.0 kHz |
+  | 17 | 2400 | 4.5 kHz (POCSAG's) |
+
+  Gaussian NRZ (BT 0.5), the same module, uploaded over the IC-7100 as before. The Pluto's crystal
+  is +-25 ppm (up to 11 kHz off at 440 MHz), so first `k6_pluto.py rx` while `k6_bench.py id` keys
+  the IC-7100 (its TCXO the reference), `k6_pluto.py offset` on that capture, and the result goes
+  in as `--offset-hz`; then a rehearsal with `--rf-off` to check USB keeps up at 2.4 MS/s. If 2400
+  reads here, the K6's receiver is fine and the IC-7100's audio path is what stood in the way.
+- **The UV-380 as the flat far end.** Its C6000 modulates the AT1846S directly, and its DMR came
+  through the IC-7100 with no correction. The chip's physical layer mode (0x10 = 0x02,
+  continuous) sends 288 raw bits a 30 ms slot from TX RAM, 4800 symbols a second of our own
+  choosing: +-3 symbols in pairs are 2400 baud plain FSK at +-1944 Hz, nine of our bytes a slot.
+  What it takes: a UV-380 module that refills the two TX RAM halves on the slot interrupt for
+  about 30 s of continuous carrier (c6dmrtx keys only one slot in two, 5 s at a time), the
+  transmit trim checked on that path (this radio sends 3.58 kHz low untrimmed, and the K6's chip
+  FSK never synced on that), and a UV-380 that stays up while keyed at 1 W (the watchdog resets
+  after each 1 W key-up are still open, PR #127). The MCU's PWM into the C6000's line input
+  isn't flat: the audio path pre-emphasises and cuts below 300 Hz, and the K6 read none of the
+  UV-380's FFSK that way (11-14).
