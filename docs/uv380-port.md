@@ -86,7 +86,8 @@ the UV-380 needs the RF mod or another route.
 - **OpenGD77**: the old GD-77 code is on GitHub; its MD-UV380 build is binary-only (opengd77.com)
   and re-uses the vendor AMBE codec.
 - **Flashing**: TYT's updater, `radio_tool`, or dmr.tools (web). The bootloader lives in the
-  first 48 KB and isn't touched by an app flash, so recovery mode is always there. Before the
+  first 48 KB and isn't touched by an app flash, so recovery mode is always there. Flash mode with no keys
+  held, from the running image over USB: [uv380-dfu.md](uv380-dfu.md). Before the
   first flash: read and keep the codeplug and the calibration (on Jeff's machine only, never in a
   repository; vendor firmware is never redistributed).
 
