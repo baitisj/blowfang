@@ -16,7 +16,7 @@ discriminator. That's the path the K6's chip FSK at 2400 baud needed (docs/k6-fs
 | | |
 | --- | --- |
 | model | PlutoSDR Rev.B, ad9364 (tunes 70 MHz to 6 GHz, so 2 m works without an unlock) |
-| firmware | v0.30-27-gd5bb, kernel 4.14.0, iiod 0.17 |
+| firmware | v0.30-27-gd5bb (PlutoWeb, as found on 11-16), kernel 4.14.0, iiod 0.17 |
 | serial | 104473ae73930001edff2200de632ddf03 |
 | crystal | 40 MHz, +-25 ppm (up to 11 kHz at 440 MHz). xo_correction was 39999914 as found (someone calibrated it once) |
 | on hamlet | USB, libiio 0.26 on hamlet (`usb:1.35.5` on 11-16, the address can change; `ip:192.168.2.1` works too, hamlet is 192.168.2.254). A udev rule gives libiio devices mode 666. No pyadi-iio: the tool uses the command-line tools |
@@ -80,6 +80,8 @@ Python can use it as a library: `pluto_bench.capture()`, `measure()`, `audio_tra
 - **`voltage0` is both an RX and a TX channel on ad9361-phy.** A write without `-i` or `-o` goes
   to both. A gain of +30 then fails on the TX side, which only takes -89.75 to 0. The tool always
   passes one or the other.
-- **A stuck RX buffer** ("Unable to allocate buffer: Device or resource busy") survived every
-  retry, over USB and over IP, with nothing on hamlet holding it. The fix tried is unplugging and
-  replugging the USB cable.
+- **"Unable to allocate buffer: Device or resource busy" on every capture:** something on the
+  Pluto holds the RX buffer, and a replug doesn't clear it. On 11-16 this unit ran PlutoWeb
+  firmware (the web page on port 80 says "PlutoWeb"). It auto-starts the original OpenWebRX (Python
+  2.7, port 8073) at boot: 460.25 MHz, 600 kS/s, gain 73. Transmit stays free. The fix is to turn
+  PlutoWeb's autostart off, or to install stock ADI firmware.
