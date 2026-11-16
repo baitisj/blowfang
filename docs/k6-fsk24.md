@@ -283,6 +283,29 @@ per step and recipe, with the K6's RSSI.
   decodes 4/4 on the host's demodulator, so the signal is right. The likely reading: the K6's
   FFSK receiver needs far more signal than its plain FSK (D/2400 read 16/16 at -70). IC-7100
   uploads come in much stronger. Ladder 2 starts 30 dB higher (-40 to -88 in 6 dB steps).
+- **Ladder 2 (21:34-21:38Z, gains -40 to -88 in 6 dB steps): F/1800 needs far more signal.**
+
+  | TX gain dB | about dBm at the K6 | F/1800 (pager) | D/2400 (sweep 1, probe) |
+  | --- | --- | --- | --- |
+  | -40 | -58 | 12/16 | |
+  | -46 | -64 | 11/16 | |
+  | -52 | -70 | 12/16 | |
+  | -58 | -76 | 11/16 | |
+  | -64 | -82 | 1/16 | |
+  | -70 | -88 | 2/16 | 16/16 |
+  | -74 | -92 | | 13/16 |
+  | -76 | -94 | 0/16 (7 junk) | |
+  | -78 | -96 | | 6/16 |
+  | -82 and below | -100 | 0 | 0 |
+
+  (dBm: the K6's RSSI at gain -70 was -88, and the rest are scaled from it, so they're not
+  calibrated levels.) F/1800 falls off between -58 and -64. D/2400 is still perfect at -70 and
+  half there at -78. **So from a flat transmitter, D/2400 holds on 12-15 dB lower than F/1800.**
+  Even strong, about a quarter of F/1800 packets failed with block 0 perfect and the rest about
+  half wrong: a slip after the first 16 bytes, at every level. The faster rate costs no range
+  here; it gains it. Caveats: the FFSK went pre-emphasised at about 3 kHz peak, and the IC-7100
+  (whose uploads also lose chunks) wasn't compared at a known level.
+
 
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 
