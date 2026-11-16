@@ -178,17 +178,25 @@ of the PA.
   id 1, the 528-byte test message byte for byte. Plain decode: the chip's DMR arrives flat
   (with --preemph nothing decodes). The radio still reset about 1.4 s after key-down and the
   held lines were lost with the USB; the reset cause (watchdog or not) is still to be read.
+- **C7 (17:16Z, 1 W, PR #127 flashed hands-free with `uv380_dfu.py flash`).** A second perfect
+  send: 62/62 blocks, 3 CSBK, AG7EW, 528 bytes exact. The radio still reset 1.9 s after
+  key-down. `guard`: csr 0x24000000 (IWDG), state off, the last kick 355 ms after key-down, as
+  the host re-enumerated the radio. So the kicker was held off by something in the USB
+  reconnect, not by a slow thread.
+- **C8 (19:19:54Z, 1 W, PR #128 flashed hands-free): no reset.** A third perfect send (62/62,
+  3 CSBK, AG7EW, 528 bytes exact). USB still dropped at key-up and came back at key-down under a
+  new ttyACM name, but `guard` read csr 0x00000003 (LSI only, no reset flags), state off from
+  key-down, and kicks up to the read; the radio ran on with no reboot. The USB FIFO-empty
+  interrupt storm (PR #128) was the cause. The module's lines said after key-down still went to
+  the new port that nobody had open.
 
 ## Open questions
 
-- The UV-380 drops off USB under its own 1 W and reset about 1.9 s after each keying: the
-  transmit guard's watchdog (RCC_CSR 0x3E000000). PR #127 (no writes into a dead bus, kicker at
-  top priority, `guard` breadcrumbs) didn't stop it, but C7 (17:16Z, a second perfect send, 62/62)
-  showed why: state off, the last kick 355 ms after key-down, as the host re-enumerated the radio.
-  The likely cause, found in code: ST's USB library leaves an abandoned write's FIFO-empty
-  interrupt enabled, and once the endpoint reopens it is pending again each time its handler
-  returns, so no thread runs. The next image clears it (usb_dcd_int.c, usb_vcom.c); C8 checks.
-  Still open: a ferrite or a short shielded cable (no solder), so the lines survive the keying.
+- The UV-380 drops off USB under its own 1 W at every key-up and comes back at key-down under a
+  new ttyACM name. The resets that followed are fixed (C8, PR #128). Still open: the module's
+  lines said after key-down are lost, because the host reader holds the old port. Fixes: the
+  host reopens the /dev/serial/by-id path after an I/O error, or the image replays a module's
+  last lines on request. A ferrite or a short shielded cable (no solder) may keep USB up.
 
 - Receive is proven through the IC-7100 harness (pre-equalised). A DMR transmitter with a flat
   audio path (another UV-380, a real DMR radio) should need none of that: C4 shows it.

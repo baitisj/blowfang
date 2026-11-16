@@ -268,7 +268,8 @@ write abandoned when the host went away leaves it set, so once the endpoint is o
 interrupt is pending again each time its handler returns, so the CPU never gets back to a
 thread (the kicker included) and the watchdog resets the radio. The
 patch clears the mask when nothing is left to write (as ST's later HAL does), at every bus reset,
-and when a vcom write times out.
+and when a vcom write times out. C8 (11-16 19:19Z) confirmed it: a 1 W keying with no reset, the
+reset flags clear and the kicker running on.
 
 **The key.** CI builds images without it. Before flashing, write it in on hamlet with
 `python -m modem.k6 keyimage out/openrtx_mduv3x0p_i2sprobe.bin keyed.bin --key-file
