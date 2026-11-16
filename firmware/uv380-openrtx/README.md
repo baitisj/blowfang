@@ -247,7 +247,16 @@ and a thread of its own kicks it every 100 ms, unless the key-up has outlived it
 1.5 s. A stuck thread, a frozen MCU or an overlong transmission resets the radio about 2 s later
 (1.4 to 3.8 s over the LSI clock's spread), which lets go of the PA. With no key-up since
 power-on the watchdog never starts. `tx_mic` and `tx_tone` also send the Morse ident first, unkey
-for 100 ms, then key the test, so a carrier a hang leaves up has been identified. Modules that
+for 100 ms, then key the test, so a carrier a hang leaves up has been identified.
+
+**No writes into a dead USB bus, and "guard" (11-16, next reflash).** At 1 W the UV-380 drops off
+the USB bus at key-up, and a write nobody reads spins 500 ms in OpenRTX's driver; after each 1 W
+keying the radio then reset (RCC_CSR showed the watchdog). Lines and module writes now skip a
+suspended bus, and after a write times out they're dropped until the host writes again or 3 s
+pass. The watchdog's kicker runs at the scheduler's top priority. The guard leaves breadcrumbs in
+RTC backup registers 16-19 (state on, off or stop, its tick, the last kick, the deadline), which
+survive the reset: the command `guard` prints them with RCC_CSR, then clears both. A reset in
+state stop was the guard ending an overlong key-up; any other state means the kicker was held off. Modules that
 timed their windows from the call (micrec, mictx, micduplex*) now see the ident first. `mod/micduplex_tone.c` switches the C6000's transmit source
 meanwhile and reads I2S3, to see whether the radio can send modem audio and hear the mic at once.
 
