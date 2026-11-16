@@ -16,10 +16,10 @@ discriminator. That's the path the K6's chip FSK at 2400 baud needed (docs/k6-fs
 | | |
 | --- | --- |
 | model | PlutoSDR Rev.B, ad9364 (tunes 70 MHz to 6 GHz, so 2 m works without an unlock) |
-| firmware | v0.30-27-gd5bb (PlutoWeb, as found on 11-16), kernel 4.14.0, iiod 0.17 |
+| firmware | stock ADI v0.39 (kernel 6.1) since 11-16 19:51Z (was v0.30-27-gd5bb PlutoWeb, with an auto-started OpenWebRX) |
 | serial | 104473ae73930001edff2200de632ddf03 |
-| crystal | 40 MHz, +-25 ppm (up to 11 kHz at 440 MHz). xo_correction was 39999914 as found (someone calibrated it once) |
-| on hamlet | USB, libiio 0.26 on hamlet (`usb:1.35.5` on 11-16, the address can change; `ip:192.168.2.1` works too, hamlet is 192.168.2.254). A udev rule gives libiio devices mode 666. No pyadi-iio: the tool uses the command-line tools |
+| crystal | 40 MHz, +-25 ppm. Measured 11-16 against the IC-7100: 39,999,447 Hz (-13.8 ppm; it read the IC-7100 5.15 kHz high on 440.850 with the old xo_correction 39999914). With that stored, a second check read +150 Hz (0.3 ppm) |
+| on hamlet | USB, libiio 0.26 on hamlet. The tool's default URI is `ip:192.168.2.1` (the Pluto's USB network link; hamlet is 192.168.2.254). The `usb:` address changes with each replug (1.35.5, 1.37.5, 1.38.5 on 11-16), and streaming over `usb:` fails (below). A udev rule gives libiio devices mode 666. No pyadi-iio: the tool uses the command-line tools |
 | TX port | rubber duck (Jeff, 11-16) |
 | RX port | the stock stub, which is poor at 440 MHz on purpose (see below) |
 
@@ -64,7 +64,7 @@ Pluto then writes flash for 3-4 minutes, with LED1 blinking fast (don't unplug i
 `tools/pluto_fw_update.sh PLUTO.frm [SHA256]` does all of that: it checks the image, mounts the
 drive (sudo when there's no udisks), copies, ejects, waits for the Pluto to come back, prints the
 new version and runs `quiet`. An update leaves the u-boot environment alone, so the ad9364 mode and
-xo_correction stay. v0.39 (2024-10-15, Linux 6.1) is staged on hamlet in
+xo_correction stay. v0.39 (2024-10-15, Linux 6.1), installed 11-16 with this script, is kept on hamlet in
 `~/blowfang-work/pluto-fw/v0.39/`; the sha256 of its pluto.frm is
 6506786f9055282acf031a2af057e563deb6bdb4abed6820ddcc67845312e69f.
 
@@ -84,6 +84,11 @@ xo_correction stay. v0.39 (2024-10-15, Linux 6.1) is staged on hamlet in
 
 ## Gotchas found on 11-16
 
+- **Don't stream over `usb:`.** iio_writedev claims the Pluto's USB interface for itself, so the
+  tool's iio_attr calls, which power the TX LO up and down, can't open their own context
+  ("Unable to claim interface"). Over `ip:192.168.2.1` both work at once. The tool refuses to
+  stream over `usb:`.
+
 - **It boots transmitting.** Out of the box the Pluto powers up with its TX LO on at 2.45 GHz,
   gain -10 dB and all four DDS test tones keyed. Run `quiet` after every replug or power cycle;
   every command also does it first.
@@ -96,4 +101,5 @@ xo_correction stay. v0.39 (2024-10-15, Linux 6.1) is staged on hamlet in
   Pluto holds the RX buffer, and a replug doesn't clear it. On 11-16 this unit ran PlutoWeb
   firmware (the web page on port 80 says "PlutoWeb"). It auto-starts the original OpenWebRX (Python
   2.7, port 8073) at boot: 460.25 MHz, 600 kS/s, gain 73. Transmit stays free. The fix is to turn
-  PlutoWeb's autostart off, or to install stock ADI firmware.
+  PlutoWeb's autostart off, or to install stock ADI firmware. Jeff installed v0.39 at 19:51Z,
+  and receive has worked since.

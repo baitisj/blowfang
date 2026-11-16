@@ -49,7 +49,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
-URI = os.environ.get("PLUTO_URI", "usb:")
+# ip: (the Pluto's USB network link), not usb:: over usb: iio_writedev claims the USB interface
+# and the iio_attr that powers the TX LO up and down can't open a second context (11-16 run 3)
+URI = os.environ.get("PLUTO_URI", "ip:192.168.2.1")
 HZ = 440_850_000
 TX_LO_MIN, TX_LO_MAX = 430_010_000, 449_990_000     # the bench authorization: 70 cm only
 OFFSET_MAX = 20_000
@@ -202,6 +204,9 @@ def stream(track, rate=RATE, uri=None, rf=True, what="pluto"):
     only while it plays. The caller has put the ID in the track. -> (seconds of signal, took)"""
     import k6_bench as kb
     secs = len(track) / FS_TRACK
+    if (uri or URI).startswith("usb:"):
+        raise SystemExit("refusing to stream over usb: (iio_writedev holds the interface, so the TX LO"
+                         " could not be powered down from here): use ip:192.168.2.1")
     kb.check_owner()
     with kb.ptt_lock():
         cmd = ["iio_writedev", "-u", uri or URI, "-b", str(CHUNK), TX_DEV, "voltage0", "voltage1"]

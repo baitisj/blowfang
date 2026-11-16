@@ -136,6 +136,40 @@ Files: `/mnt/project-files/k6-fsk24/run2/summary.md`; log and report on hamlet i
 - **The REG_2B filters matter only a little;** the transmit audio path decided it. Run 3, with a
   flat FM transmitter, should read with no slips if that's right.
 
+## Run 3 (2026-11-16 19:54-19:58Z): 234 of 234 from a flat transmitter
+
+The ADALM-Pluto sending plain FSK straight from IQ (`tools/pluto_bench.py fsk24`, docs/pluto-bench.md):
+stock firmware v0.39, calibrated against the IC-7100 to 0.3 ppm, rubber duck on its TX port,
+gain -60 dB. The K6 was on the same bench running the same module (a fresh upload, serial
+1794858813, over the IC-7100, all 18 chunks first time). `fsk24 start` came at 19:54:36Z. The
+Pluto sent 19:55:13-19:58:14Z: 20 rounds, 400 packets, AG7EW in MCW first and last. Setting 0
+missed its first 7 s. Files on hamlet: `~/blowfang-work/runs/fsk24-3-20261116/`; summary in
+`/mnt/project-files/k6-fsk24/run3/summary.md`.
+
+| setting | REG_58 | baud | REG_2B bits | packets | CRC right | PN9 bits wrong |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | 00e1 | 1200 | | 10 | 10 | 0 |
+| 1 | 00e9 | 2400 | | 56 | 56 | 0 |
+| 2 | 00e9 | 2400 | 0400 | 56 | 56 | 0 |
+| 3 | 00e9 | 2400 | 0700 | 54 | 54 | 0 |
+| 4 | 00e1 | 2400 | 0400 | 58 | 58 | 0 |
+
+- **The FD6818 receives plain FSK at 2400 baud perfectly.** Every packet the K6 synced on was
+  right, at every deviation sent (1.5, 2.2, 3.0 and 4.5 kHz), in every setting, RSSI -79 dBm.
+  That includes REG_58 00e1, the 1.2K bandwidth, and REG_2B with the receive filters as found.
+  The settings and the variants were not the limit.
+- **Runs 1 and 2 failed because of the IC-7100's audio path.** Its pre-emphasis and low cut were
+  what stood in the way, not the K6. Run 2's wrong last FIFO word and its bit slips went away
+  with a flat transmitter, so they came from the signal too.
+- **Packets read:** 234 of the 400 sent, which is every one the module could read. Each
+  setting listens at one baud, and the rest add up. 2400 baud packets during setting 0: about
+  45. 1200 baud packets during settings 1-4: about 52. The 38 s the Pluto went on sending after
+  the module's 150 s ended: about 66. A 30 s setting at 2400 has room for about 52 packets, and
+  settings 1-4 read 54-58.
+- **So:** a K6 can take 2400 baud from any flat FM transmitter: the Pluto, an RT-950, a UV-380
+  in C6000 physical layer mode. That would make uploads and messages a quarter shorter (the
+  table below). It can't take 2400 from the IC-7100's USB audio.
+
 ## What 2400 baud would buy
 
 Per XL packet the pager puts 144 bytes on air (12 of preamble, 4 of sync, 128 of packet: 120
@@ -155,7 +189,7 @@ sensitivity (about 550 bit/s), and plain FSK at 2400 needs about 3 dB more signa
 (docs/k6-pager.md's link model). The coded 4FSK IF modem (PHY G) already makes 1,200 to 1,730
 bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
 
-## Next: a flat transmitter
+## The far ends tried
 
 - **Run 2 (done, above): the IC-7100 with the equaliser the C6000 measured.** Run 1's pre-equalisers
   came from a model, and the 1200 control showed the model is wrong. The UV-380's C6000 measured
@@ -164,7 +198,7 @@ bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
   run 2 sends each bit as two +-3 symbols (four at 1200 baud), RRC shaped, through it:
   `python3 -m modem.fsk24 wav OUT.wav --run 2 --eq EQ.json` (variants 0 and 8-12: the control,
   three levels at 2400, one at 1200, and the same symbols with no equaliser). Same module.
-- **Run 3 (staged): the ADALM-Pluto as the flat far end** (Jeff, 11-16). The Pluto puts plain
+- **Run 3 (done, above): the ADALM-Pluto as the flat far end** (Jeff, 11-16). The Pluto puts plain
   FSK straight onto the carrier from IQ: no audio path at all, the same kind of transmitter the
   RT-950 note used. `tools/pluto_bench.py fsk24` (docs/pluto-bench.md) streams it through libiio's command-line tools
   (hamlet has libiio 0.26), under the bench's PTT lock and owner check, AG7EW in MCW before and

@@ -111,3 +111,10 @@ def test_decimator_matches_one_shot():
     d = pl.Decimator(2_400_000, 10)
     parts = np.concatenate([d(x[a:a + 3998].tobytes()) for a in range(0, len(x), 3998)])
     assert len(whole) == len(parts) and np.allclose(whole, parts, atol=1e-4)
+
+
+def test_refuses_to_stream_over_usb():
+    """over usb: iio_writedev holds the interface and the TX LO couldn't be powered down"""
+    with pytest.raises(SystemExit, match="usb:"):
+        pl.stream(np.zeros(480), uri="usb:1.38.5", rf=False)
+    assert pl.URI.startswith("ip:") or os.environ.get("PLUTO_URI")
