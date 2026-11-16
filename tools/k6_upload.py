@@ -217,8 +217,8 @@ def main():
     ap.add_argument("--via", choices=("ic7100", "pluto"), default="ic7100",
                     help="the transmitter: the IC-7100 (default) or the ADALM-Pluto (tools/pluto_bench.py;"
                          " the IC-7100 still listens for the K6's reports, unkeyed)")
-    ap.add_argument("--pluto-gain", type=float, default=-40.0,
-                    help="--via pluto: TX gain, dB (F/1800 reads from -40 to -58; -64 is past its edge)")
+    ap.add_argument("--pluto-gain", type=float, default=-52.0,
+                    help="--via pluto: TX gain, dB (default -52: an upload took 2 sends there, 11-16; at -40 the K6 bench copy heard nothing; -64 is past F/1800's edge)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     if a.freq != 440_850_000:

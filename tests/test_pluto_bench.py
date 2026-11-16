@@ -162,9 +162,9 @@ def test_k6_upload_via_pluto_sends_with_pluto_bench(capsys):
     and a separate CW ID is skipped (pluto_bench IDs every send)"""
     import types
     import k6_upload as ku
-    a = types.SimpleNamespace(via="pluto", freq=440_850_000, pluto_gain=-40.0, level=0.3, dry_run=True)
+    a = types.SimpleNamespace(via="pluto", freq=440_850_000, pluto_gain=-52.0, level=0.3, dry_run=True)
     ku.key_and_play(a, "up1.wav")
     out = capsys.readouterr().out
-    assert "pluto_bench.py send up1.wav --hz 440850000 --preemph --gain -40.0 --dev 6167" in out
+    assert "pluto_bench.py send up1.wav --hz 440850000 --preemph --gain -52.0 --dev 6167" in out
     ku.key_and_play(a, "id.wav", "id")
     assert capsys.readouterr().out == ""
