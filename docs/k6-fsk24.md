@@ -129,6 +129,27 @@ bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
   run 2 sends each bit as two +-3 symbols (four at 1200 baud), RRC shaped, through it:
   `python3 -m modem.fsk24 wav OUT.wav --run 2 --eq EQ.json` (variants 0 and 8-12: the control,
   three levels at 2400, one at 1200, and the same symbols with no equaliser). Same module.
+- **Run 3 (staged): the ADALM-Pluto as the flat far end** (Jeff, 11-16). The Pluto puts plain
+  FSK straight onto the carrier from IQ: no audio path at all, the same kind of transmitter the
+  RT-950 note used. `tools/k6_pluto.py fsk24` streams it through libiio's command-line tools
+  (hamlet has libiio 0.26), under the bench's PTT lock and owner check, AG7EW in MCW before and
+  after, the TX LO powered down outside the stream, and only on 440.850 MHz at 2.4 MS/s with gain
+  -60 dB by default (about -55 dBm into the antenna; it refuses above -30). Variants 13-17, a
+  round of 9.3 s, 20 rounds (186 s) covering the module's five settings:
+
+  | variant | baud | peak deviation |
+  | --- | --- | --- |
+  | 13 | 1200 | 2.2 kHz (the control) |
+  | 14 | 2400 | 2.2 kHz |
+  | 15 | 2400 | 1.5 kHz |
+  | 16 | 2400 | 3.0 kHz |
+  | 17 | 2400 | 4.5 kHz (POCSAG's) |
+
+  Gaussian NRZ (BT 0.5), the same module, uploaded over the IC-7100 as before. The Pluto's crystal
+  is +-25 ppm (up to 11 kHz off at 440 MHz), so first `k6_pluto.py rx` while `k6_bench.py id` keys
+  the IC-7100 (its TCXO the reference), `k6_pluto.py offset` on that capture, and the result goes
+  in as `--offset-hz`; then a rehearsal with `--rf-off` to check USB keeps up at 2.4 MS/s. If 2400
+  reads here, the K6's receiver is fine and the IC-7100's audio path is what stood in the way.
 - **The UV-380 as the flat far end.** Its C6000 modulates the AT1846S directly, and its DMR came
   through the IC-7100 with no correction. The chip's physical layer mode (0x10 = 0x02,
   continuous) sends 288 raw bits a 30 ms slot from TX RAM, 4800 symbols a second of our own

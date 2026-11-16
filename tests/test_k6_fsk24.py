@@ -121,3 +121,60 @@ def test_run2_symbol_variants_read_flat_and_take_the_equaliser():
         fsk24.EQ.update(old)
     assert len(plain) == len(tilted) and np.max(np.abs(plain - tilted)) > 0.01
     assert np.array_equal(plain, fsk24.block_audio(9, 0))
+
+
+def test_run3_flat_fm_variants_read():
+    """run 3's flat FM blocks (a discriminator's view of them) read back with our demodulator,
+    and the frequency track carries the same blocks at their deviation"""
+    got = fsk24.sim(n_rounds=1, ch="flat")
+    for vi in fsk24.RUN3:
+        assert got[vi][0] == got[vi][1], (vi, got)
+    track, segs = fsk24.freq_track(1)
+    assert [s[3] for s in segs] == list(fsk24.RUN3)
+    assert 4400 < np.max(np.abs(track)) < 4600 and track[0] == 0.0
+    assert all(len(s[2]) / s[1] < 3.0 for s in segs)
+
+
+def _pluto():
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import k6_pluto
+    return k6_pluto
+
+
+def test_pluto_refuses_off_bench_transmits():
+    pl = _pluto()
+    assert pl.check_tx(440_850_000, -3000, -60) == 440_853_000
+    for hz, off, gain in [(440_860_000, 0, -60), (440_850_000, 25_000, -60),
+                          (440_850_000, 0, -20), (440_850_000, 0, -95), (146_520_000, 0, -60)]:
+        with pytest.raises(SystemExit):
+            pl.check_tx(hz, off, gain)
+
+
+def test_pluto_iq_is_phase_continuous_fm():
+    """the IQ chunks join without a phase step and a discriminator gives the track back"""
+    pl = _pluto()
+    fs, rate = 48_000, 480_000
+    t = np.arange(int(0.25 * fs)) / fs
+    track = 2200.0 * np.sign(np.sin(2 * np.pi * 300 * t))
+    raw = b"".join(pl.iq_chunks(track, fs, rate, chunk=1000))
+    x = np.frombuffer(raw, np.int16).astype(float)
+    iq = x[0::2] + 1j * x[1::2]
+    assert len(iq) == len(track) * 10 and np.all(np.abs(np.abs(iq) - pl.AMP) < 2)
+    d = np.angle(iq[1:] * np.conj(iq[:-1])) * rate / (2 * np.pi)
+    ref = np.interp(np.arange(1, len(iq)) / rate, t, track)
+    assert np.percentile(np.abs(d - ref), 99) < 30, np.percentile(np.abs(d - ref), 99)
+
+
+def test_pluto_offset_reads_a_carrier():
+    """a 2.5 kHz-deviation MCW-like FM capture 3,210 Hz off with noise: offset and deviation"""
+    pl = _pluto()
+    fs = pl.IQ_FS_SAVE
+    rng = np.random.default_rng(1)
+    n = fs
+    t = np.arange(n) / fs
+    f = 3210.0 + 2500.0 * np.sin(2 * np.pi * 800 * t) * (t > 0.3)
+    iq = np.exp(2j * np.pi * np.cumsum(f) / fs)
+    iq[: int(0.1 * fs)] = 0
+    iq = iq + 0.01 * (rng.standard_normal(n) + 1j * rng.standard_normal(n))
+    c, dev, share = pl.offset_of(iq.astype(np.complex64))
+    assert abs(c - 3210) < 30 and 2300 < dev < 2700 and 0.85 < share < 0.95, (c, dev, share)

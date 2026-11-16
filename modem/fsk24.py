@@ -59,8 +59,17 @@ VARIANTS = (
     Variant(2400, "c6eq", 0.16),          # 10
     Variant(1200, "c6eq", 0.12),          # 11
     Variant(2400, "rrc", 0.25),           # 12: the same symbols with no equaliser
+    # run 3: a flat FM transmitter (the ADALM-Pluto, tools/k6_pluto.py): Gaussian (BT 0.5) NRZ
+    # straight onto the carrier; level is the peak deviation in kHz
+    Variant(1200, "iq", 2.2),             # 13: the control
+    Variant(2400, "iq", 2.2),             # 14: the RT-950 note's FSK 2400 deviation
+    Variant(2400, "iq", 1.5),             # 15
+    Variant(2400, "iq", 3.0),             # 16
+    Variant(2400, "iq", 4.5),             # 17: POCSAG's
 )
+RUN1 = tuple(range(8))
 RUN2 = (0, 8, 9, 10, 11, 12)
+RUN3 = (13, 14, 15, 16, 17)
 EQ = {"taps": [1.0], "centre": 0}          # the measured equaliser: wav --eq loads it here
 
 
@@ -126,18 +135,37 @@ def block_audio(v_index, seq0, fs=fsk.FS, n=PER_BLOCK):
     bits = block_bits(v_index, seq0, n)
     if v.comp in ("c6eq", "rrc"):
         return symbol_audio(bits, v.baud, fs, v.level, EQ if v.comp == "c6eq" else None)
+    if v.comp == "iq":                    # what a flat receiver's discriminator gives: 9 kHz = 1.0
+        return fsk._ramp(fsk.nrz(bits, v.baud, fs, 0.5) * v.level / 9.0, fs)
     return fsk.modulate(bits, "D", v.baud, fs, v.level, comp=channel(v.comp), max_gain_db=v.gain_db)
 
 
 def rounds(n_rounds, fs=fsk.FS, variants=None):
     """-> audio, [(t0 s, baud, bits, variant)] of every block"""
-    variants = list(range(len(VARIANTS))) if variants is None else variants
+    variants = list(RUN1) if variants is None else variants
     parts, segs, t = [np.zeros(int(LEAD_S * fs))], [], LEAD_S
     for r in range(n_rounds):
         for vi in variants:
             seq0 = (r * PER_BLOCK) & 0xFF
             x = block_audio(vi, seq0, fs)
             segs.append((t, float(VARIANTS[vi].baud), block_bits(vi, seq0), vi))
+            parts += [x, np.zeros(int(GAP_S * fs))]
+            t += (len(x) + int(GAP_S * fs)) / fs
+    return np.concatenate(parts), segs
+
+
+def freq_track(n_rounds, fs=fsk.FS, variants=RUN3):
+    """run 3: the instantaneous frequency (Hz, at fs) a flat FM transmitter sends -> track, segs
+    [(t0 s, baud, bits, variant)]; carrier only (0 Hz) in the lead and the gaps"""
+    parts, segs, t = [np.zeros(int(LEAD_S * fs))], [], LEAD_S
+    for r in range(n_rounds):
+        for vi in variants:
+            v = VARIANTS[vi]
+            assert v.comp == "iq", (vi, v)
+            seq0 = (r * PER_BLOCK) & 0xFF
+            bits = block_bits(vi, seq0)
+            x = fsk._ramp(fsk.nrz(bits, v.baud, fs, 0.5) * v.level * 1000.0, fs)
+            segs.append((t, float(v.baud), bits, vi))
             parts += [x, np.zeros(int(GAP_S * fs))]
             t += (len(x) + int(GAP_S * fs)) / fs
     return np.concatenate(parts), segs
