@@ -102,15 +102,19 @@ live|live2)
     fi
     # the K6's module from the Pluto (Jeff 11-16: the Pluto, not the IC-7100): F/1800 XL, 750 us
     # pre-emphasis, 3.7 kHz full scale, gain -52 (run 2: -40 overloads the K6 at the bench's
-    # spacing and it hears nothing); up to 3 sends: the K6 keeps a partial upload
-    for try in 1 2 3; do
+    # spacing and it hears nothing); up to UPLOADS sends (6): the K6 keeps a partial upload, and
+    # at -52 about 1 chunk in 4 gets through a send (run 3: 0 -> 10/18 in 3); re-run without
+    # re-staging to resume, since stage makes a new transfer
+    try=0
+    while [ $try -lt "${UPLOADS:-6}" ]; do
+        try=$((try + 1))
         grep -q "fsk24 start" "$K6LOG" 2>/dev/null && break
         echo "$(stamp) K6 upload $try from the Pluto"
         P tools/pluto_bench.py send "$RUN/up5.wav" --preemph --dev 3700 --gain -52 | tee -a "$RUN/k6up.txt"
         n=0
         until grep -q "fsk24 start" "$K6LOG" 2>/dev/null || [ $n -ge 8 ]; do n=$((n + 1)); sleep 1; done
     done
-    grep -q "fsk24 start" "$K6LOG" || { echo "the K6 took no module after 3 Pluto sends: nothing keyed"; exit 4; }
+    grep -q "fsk24 start" "$K6LOG" || { echo "the K6 took no module after $try Pluto sends: nothing keyed"; exit 4; }
     until grep -q "say s 0 " "$K6LOG"; do sleep 1; done
     echo "$(stamp) K6 in setting 0 (D/2400)"
     sleep 5
