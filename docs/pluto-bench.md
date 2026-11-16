@@ -56,6 +56,18 @@ python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
 Python can use it as a library: `pluto_bench.capture()`, `measure()`, `audio_track()` and
 `send()`, where `send()` takes a frequency track in Hz at 48 kHz.
 
+## Firmware
+
+Stock ADI firmware is what the tool expects: plain iiod, with nothing on the Pluto holding the
+receiver. To update, copy `pluto.frm` to the Pluto's USB drive ("PlutoSDR") and eject it. The
+Pluto then writes flash for 3-4 minutes, with LED1 blinking fast (don't unplug it), and reboots.
+`tools/pluto_fw_update.sh PLUTO.frm [SHA256]` does all of that: it checks the image, mounts the
+drive (sudo when there's no udisks), copies, ejects, waits for the Pluto to come back, prints the
+new version and runs `quiet`. An update leaves the u-boot environment alone, so the ad9364 mode and
+xo_correction stay. v0.39 (2024-10-15, Linux 6.1) is staged on hamlet in
+`~/blowfang-work/pluto-fw/v0.39/`; the sha256 of its pluto.frm is
+6506786f9055282acf031a2af057e563deb6bdb4abed6820ddcc67845312e69f.
+
 ## Transmit rules (the tool enforces them)
 
 - Only 430.010-449.990 MHz (440.850, the K6 bench frequency, by default). Transmitting on 2 m or
