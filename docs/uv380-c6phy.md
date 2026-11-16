@@ -103,8 +103,13 @@ the K6 synced none. `python3 -m modem.c6phy errors` on the captures puts every w
 first ~40 TX RAM bits of a slot (about 4 ms: data bits 0-9 at 2400, 0-4 at 1200) and none in the
 middle, where a DMR sync would go. So the chip was still sending the head of a half when the
 module rewrote it: writing both halves at every slot edge is too late for the half on air.
-The FSK's carrier read about +3.4 kHz from 440.850 on the calibrated Pluto, enough to keep the
-K6's narrow chip FSK from syncing.
+`errors` confirms it on all five captures: every wrong bit (253, 244, 323, 178, 178) is the
+previous slot's bit at the same place, and a model that sends each slot's first 5 bytes from the
+slot before gives k2400b's per-slot histogram exactly. The FSK's own carrier (the mean
+discriminator over its packets, calibrated Pluto) sat +6.65 to +6.70 kHz from 440.850, where the
+FM ident just before it sat +0.6 kHz (+1.3 once): the raw mode adds about 6 kHz of its own,
+enough to keep the K6's narrow chip FSK from syncing. (The decode's first line, about +3.4 kHz,
+averages the ident and the FSK.)
 
 The K6's module upload from the Pluto: `--preemph --dev 3700 --gain -52` (at -40 the K6 heard
 nothing; it keeps a partial upload, so the script sends up to 3 times).
@@ -112,7 +117,7 @@ nothing; it keeps a partial upload, so the script sends up to 3 times).
 **Run 3 (`live2`).** One half a slot edge, the idle one (`TX_WRITE 1`), alternating; which half
 is idle at the first edge isn't known, so 4 key-ups at 2400 try `TX_HALF` 0, 1, 0, 1 (0x42's top
 bits at the first 8 edges are on the `chk` line to tell later), then 2 at 1200 with the phase the
-Pluto read better. The transmit trim goes down by the measured offset (`FSK_OFF`, default 3370)
+Pluto read better. The transmit trim goes down by the measured offset (`FSK_OFF`, default 6680)
 and again after the first key-up if the Pluto still reads over 300 Hz; it's restored at the end.
 
 ## Next

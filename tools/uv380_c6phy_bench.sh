@@ -20,7 +20,7 @@
 #                                                 (TX_HALF 0, 1, 0, 1), 2 at 1200 with the phase
 #                                                 that read more; the transmit trim lowered by the
 #                                                 FSK's measured carrier offset (FSK_OFF, Hz,
-#                                                 default 3370; re-trimmed after the first key-up
+#                                                 default 6680; re-trimmed after the first key-up
 #                                                 if the Pluto still reads over 300 Hz), restored
 #
 # RUN is the run folder (~/blowfang-work/runs/uv380-c6phy-...). live sends the K6 its module
@@ -95,7 +95,7 @@ live|live2)
     trap restore EXIT
     if [ "$CMD" = live2 ]; then
         [ -n "$TRIM" ] || { echo "no trim in the tune line: nothing sent"; exit 3; }
-        T2=$((TRIM - ${FSK_OFF:-3370}))
+        T2=$((TRIM - ${FSK_OFF:-6680}))
         uvcmd "trim $T2" | tee "$RUN/tune-trim.txt"
         grep -q "trim=$T2 " "$RUN/tune-trim.txt" || { echo "trim $T2 not read back: nothing sent"; exit 3; }
         wrappers
