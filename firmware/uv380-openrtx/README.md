@@ -217,9 +217,12 @@ peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM 
 (47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
 turns the line in's pre-emphasis off or on (default on), and `trim N` adds N Hz (-8000 to 8000)
 to the transmit frequency; `mark N` and `space N` set PHY F's tones (800-2600 Hz, 0: 1200 and
-1800), and `zero 1|2` how power 0 transmits (below). Each answers `tune lvl=... fs=... emph=...
-trim=... mark=... space=... zero=... pwr=...` (pwr: the channel's power in mW), and `tune` alone
-only answers.
+1800), `zero 1|2` how power 0 transmits (below), and `power N` the channel's transmit power in mW
+(0, 1000, 2500 or 5000, the steps of macro key 6; Jeff 11-16: so hamlet sets it without a key
+press). Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=... zero=... pwr=...`
+(pwr: the channel's power in mW, read back), and `tune` alone only answers. `power` changes
+`state.channel` and asks the UI thread (`blowfang_syncRtx` in `threads.c`) to send it to the radio,
+the way macro key 6 does.
 
 **Zero power (all images).** Macro key 6 now cycles the channel's power 1, 2.5, 5, 0 W. At 0 W
 (Jeff 11-14: "an effectively zero power transmit option") the APC is at 0 and the PA stays off,
