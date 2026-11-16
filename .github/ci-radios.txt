@@ -96,6 +96,11 @@ tests/data/uv380/
 tests/c/
 # the HR_C6000 DMR modem (tests/test_uv380_c6000.py) and the c/common receivers' own tests
 modem/dmrsotto.py
+# the HR_C6000 physical layer FSK (tests/test_uv380_c6phy.py): fsk24's packets, DMR's RRC
+modem/c6phy.py
+modem/fsk24.py
+sim/k6if/__init__.py
+sim/k6if/dmr.py
 tests/test_fsk_rx.py
 tests/test_pager_rx.py
 
