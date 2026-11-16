@@ -46,6 +46,7 @@ tools/k6_*
 tools/k6-*
 tools/k6_cc/
 tools/pluto_bench.py
+tools/pluto_fw_update.sh
 tools/gen_ft8_tables.py
 tools/midi_songs/
 tools/nwr_watch.py
