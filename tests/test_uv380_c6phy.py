@@ -212,11 +212,11 @@ def test_errors_finds_the_previous_slot_in_the_head(tmp_path, baud):
     assert int(b) > 50 and int(a) == int(b), ln
 
 
-def test_phytx_one_half_writes_are_opt_in():
-    """run 3's fix (TX_WRITE 1: the next slot into the idle half only, TX_HALF the phase) is a
-    knob; the default stays both halves, as run 1 and 2 sent"""
+def test_phytx_writes_the_idle_half():
+    """run 3's fix is the default: the next slot into the idle half only, half 0 at the first
+    edge (11-16: every packet right); TX_WRITE 0 (both halves, run 2) stays as a knob"""
     src = open(os.path.join(MOD, "c6phytx.c")).read()
-    assert "#ifndef TX_WRITE\n#define TX_WRITE 0u\n" in src
+    assert "#ifndef TX_WRITE\n#define TX_WRITE 1u\n" in src
     assert "#ifndef TX_HALF\n#define TX_HALF 0u\n" in src
     assert "put_half(api, slot, (edges - 1u + TX_HALF) & 1u)" in src
 

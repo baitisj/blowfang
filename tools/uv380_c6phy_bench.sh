@@ -13,6 +13,8 @@
 #                                                 in its 2400 settings, 2 at 1200 in its last,
 #                                                 the Pluto capturing each (50 kHz up); then the
 #                                                 radio's power and zero back as found, reports
+#                                                 (the modules' defaults since run 3: the idle
+#                                                 half, TX_HALF 0; trim lowered by FSK_OFF)
 #
 #   sh tools/uv380_c6phy_bench.sh live2 RUN K6LOG  as live, with run 2's fixes (11-16): the next
 #                                                 slot into the idle TX RAM half only (TX_WRITE 1),
@@ -93,13 +95,12 @@ live|live2)
             | tee "$RUN/tune-after.txt"
     }
     trap restore EXIT
-    if [ "$CMD" = live2 ]; then
-        [ -n "$TRIM" ] || { echo "no trim in the tune line: nothing sent"; exit 3; }
-        T2=$((TRIM - ${FSK_OFF:-6680}))
-        uvcmd "trim $T2" | tee "$RUN/tune-trim.txt"
-        grep -q "trim=$T2 " "$RUN/tune-trim.txt" || { echo "trim $T2 not read back: nothing sent"; exit 3; }
-        wrappers
-    fi
+    # the raw mode's FSK sits ~6.7 kHz above the FM (run 2); run 3 trimmed it to +39 Hz
+    [ -n "$TRIM" ] || { echo "no trim in the tune line: nothing sent"; exit 3; }
+    T2=$((TRIM - ${FSK_OFF:-6680}))
+    uvcmd "trim $T2" | tee "$RUN/tune-trim.txt"
+    grep -q "trim=$T2 " "$RUN/tune-trim.txt" || { echo "trim $T2 not read back: nothing sent"; exit 3; }
+    [ "$CMD" = live2 ] && wrappers
     # the K6's module from the Pluto (Jeff 11-16: the Pluto, not the IC-7100): F/1800 XL, 750 us
     # pre-emphasis, 3.7 kHz full scale, gain -52 (run 2: -40 overloads the K6 at the bench's
     # spacing and it hears nothing); up to UPLOADS sends (6): the K6 keeps a partial upload, and

@@ -35,8 +35,9 @@ framing (150 ms of 0x55, 16 preamble bytes a packet, 50 ms more before the secon
 as the key-up lasts. A 4.6 s key-up carries 13 packets at 2400 baud, 6 at 1200
 (`python3 -m modem.c6phy plan`).
 
-Which way the UV-380 swings for +3 isn't known yet, and the K6's chip only syncs one way up. So
-the bench modules alternate polarity packet by packet: even packets send bit 1 as +3 (variant
+Which way the UV-380 swings for +3 wasn't known (run 3: above the carrier), and the K6's chip
+was thought to sync only one way up (run 3: it read both). So the bench modules alternate
+polarity packet by packet: even packets send bit 1 as +3 (variant
 20 at 2400, 22 at 1200), odd ones as -3 (21, 23). Whichever variant the K6 reads is the answer.
 
 ## The module
@@ -63,7 +64,7 @@ the previous 9 bytes on air and costs that packet.
 | `c6phytx_live.c` | ident, then 4.6 s at the channel's power, 440.850 | 2400 baud, alternating, seq from 0 |
 | `c6phytx_live1200.c` | as live | 1200 baud, alternating, seq from 100 |
 
-Knobs for later wrappers: `TX_WRITE` 1 / `TX_HALF` 0 or 1 (the idle half only, run 3), `TX_POL`
+Knobs for later wrappers: `TX_WRITE` 0 (both halves, run 2's failure) / `TX_HALF` 1, `TX_POL`
 0/1 (one polarity), `TX_DEV` (percent; C4FM's ratio is 139),
 `TX_MODE` 0x02 (continuous physical layer, untested on a C6000), `TX_MS` (at most 5000).
 
@@ -114,11 +115,28 @@ averages the ident and the FSK.)
 The K6's module upload from the Pluto: `--preemph --dev 3700 --gain -52` (at -40 the K6 heard
 nothing; it keeps a partial upload, so the script sends up to 3 times).
 
-**Run 3 (`live2`).** One half a slot edge, the idle one (`TX_WRITE 1`), alternating; which half
-is idle at the first edge isn't known, so 4 key-ups at 2400 try `TX_HALF` 0, 1, 0, 1 (0x42's top
-bits at the first 8 edges are on the `chk` line to tell later), then 2 at 1200 with the phase the
-Pluto read better. The transmit trim goes down by the measured offset (`FSK_OFF`, default 6680)
-and again after the first key-up if the Pluto still reads over 300 Hz; it's restored at the end.
+**Run 3 (11-16 22:45-22:50Z, `live2`): it works.** One half a slot edge, the idle one
+(`TX_WRITE 1`), and the transmit trim lowered by 6680 Hz (5745 to -935): the FSK then sat +9 to
++39 Hz from 440.850 (the ident about -6 kHz, which doesn't matter). Every key-up keyed cleanly
+(130 slots at 2400, 121 at 1200, `late=0 lost=0`, both halves 36/36).
+
+| Key-up | Half | Pluto | K6 |
+| --- | --- | --- | --- |
+| 2400 a | 0 | 13/13 CRC right, 0 of 472 PN9 bits wrong | 13/13 (setting 0) |
+| 2400 b | 1 | 0/13, 27-28 bits wrong each | 0 |
+| 2400 c | 0 | 13/13, 0 wrong | 13/13 (setting 1) |
+| 2400 d | 1 | 0/13 | 0 |
+| 1200 a | 0 | 6/6, 0 wrong | 12/12 for both (setting 3) |
+| 1200 b | 0 | 6/6, 0 wrong | |
+
+So `TX_HALF 0` is the phase: half 0 is written at the first slot edge. The module's defaults are
+now `TX_WRITE 1`, `TX_HALF 0`. The eye at 2400 was 1746 Hz of the ideal 1944 (RRC); the Pluto
+saw a +3 symbol go out above the carrier. The K6 read both polarities (variants 20 and 21, 22
+and 23); it reports the inverted ones as upside down and the module flips them back. The trim
+stays a bench step (`FSK_OFF`, default 6680); a module can't set it.
+
+The K6's module took 4 more Pluto sends (resuming from 10/18) at -52: about 1 chunk in 4 gets
+through a send there, so the script now sends up to 6 times.
 
 ## Next
 

@@ -62,14 +62,16 @@
 #ifndef TX_SEQ
 #define TX_SEQ 0u
 #endif
-/* TX_WRITE 0: every slot edge writes the next slot to BOTH halves (RadioFoundry's way). On air
-   (11-16 run 2) that put the previous slot's first ~4 ms (40 TX RAM bits) at the head of every
-   slot: the chip is still reading a half when the module's write lands in it. TX_WRITE 1:
-   each edge writes the next slot's bytes to ONE half, the one the chip isn't reading, halves
-   alternating edge by edge; TX_HALF (0 or 1) is the half written at the first edge (which way
-   round is the bench's to find: the wrong one is run 2's failure again). */
+/* TX_WRITE 1 (default): each slot edge writes the next slot's bytes to ONE half, the one the
+   chip isn't sending, halves alternating edge by edge; TX_HALF is the half written at the first
+   edge. 11-16 run 3: TX_HALF 0 sent every packet right (Pluto 26/26 at 2400, 12/12 at 1200,
+   0 bits wrong; the K6 likewise), TX_HALF 1 none. TX_WRITE 0 writes BOTH halves at every edge
+   (RadioFoundry's way): run 2, where each slot's first 5 bytes (~4 ms) went out from the slot
+   before, because the chip had already taken them from the half the write landed in. The
+   radio's transmit frequency needs its own trim in this mode: the FSK sits ~6.7 kHz above the FM
+   (bench: "trim" 5745 - 6680). */
 #ifndef TX_WRITE
-#define TX_WRITE 0u
+#define TX_WRITE 1u
 #endif
 #ifndef TX_HALF
 #define TX_HALF 0u
