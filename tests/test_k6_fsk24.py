@@ -103,3 +103,21 @@ def test_fsk24rx_dumps_bad_packets():
     bad = [p for p in pk if not p["c"]]
     assert bad and any(p["c"] for p in pk), pk
     assert sum(s.startswith("d 0 00 ") for s in e.said) == min(len(bad), 3), e.said
+
+
+def test_run2_symbol_variants_read_flat_and_take_the_equaliser():
+    """run 2's bits as +-3 DMR symbols (RRC) read back through a flat channel, and the
+    equaliser is applied: a two-tap one changes the audio, the identity doesn't"""
+    flat = fsk24.sim(n_rounds=1, ch="flat")
+    for vi in fsk24.RUN2:
+        assert flat[vi][0] == flat[vi][1], (vi, flat)
+    plain = fsk24.block_audio(9, 0)
+    old = dict(fsk24.EQ)
+    try:
+        fsk24.EQ.update(taps=[1.0, -0.5], centre=0)
+        tilted = fsk24.block_audio(9, 0)
+    finally:
+        fsk24.EQ.clear()
+        fsk24.EQ.update(old)
+    assert len(plain) == len(tilted) and np.max(np.abs(plain - tilted)) > 0.01
+    assert np.array_equal(plain, fsk24.block_audio(9, 0))

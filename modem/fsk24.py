@@ -50,7 +50,18 @@ VARIANTS = (
     Variant(2400, "emhp", 0.2, 30.0),     # 5
     Variant(2400, "emhplp", 0.25, 24.0),  # 6: and the 3 kHz top
     Variant(2400, "em", 0.25),            # 7: the pre-emphasis alone undone
+    # run 2: each bit as 2 (2400 baud) or 4 (1200) DMR symbols of +-3 at 4800 a second, RRC
+    # shaped, through the pre-equaliser the UV-380's C6000 measured on the IC-7100 (its soft
+    # values, docs/uv380-c6000-modem.md R1-R4: tools/uv380_dmrburst.py fit). level: a +-3
+    # symbol's peak before the equaliser's gain, as that tool's --amp (0.10-0.12 was its best)
+    Variant(2400, "c6eq", 0.08),          # 8
+    Variant(2400, "c6eq", 0.12),          # 9
+    Variant(2400, "c6eq", 0.16),          # 10
+    Variant(1200, "c6eq", 0.12),          # 11
+    Variant(2400, "rrc", 0.25),           # 12: the same symbols with no equaliser
 )
+RUN2 = (0, 8, 9, 10, 11, 12)
+EQ = {"taps": [1.0], "centre": 0}          # the measured equaliser: wav --eq loads it here
 
 
 def channel(comp):
@@ -94,9 +105,27 @@ def block_bits(v_index, seq0, n=PER_BLOCK):
     return air.burst_bits([packet(v_index, seq0 + k) for k in range(n)], v.baud)
 
 
+def symbol_audio(bits, baud, fs, amp, eq=None):
+    """bits as +-3 DMR symbols (4800 a second, 4800 / baud a bit), through eq ({"taps",
+    "centre"}, uv380_dmrburst's), the RRC (alpha 0.2), a +-3 symbol at +-amp before eq's gain"""
+    from sim.k6if import dmr
+    per = int(round(dmr.BAUD / baud))
+    sym = np.repeat(np.where(np.asarray(bits) > 0, 3.0, -3.0), per)
+    if eq:
+        g = np.asarray(eq["taps"], float)
+        sym = np.convolve(sym, g)[eq["centre"]:eq["centre"] + len(sym)]
+    sps = fs // dmr.BAUD
+    up = np.zeros(len(sym) * sps)
+    up[::sps] = sym * sps
+    x = np.convolve(up, dmr.rrc(sps), "same") / 3.0 * amp
+    return np.clip(fsk._ramp(x, fs), -1.0, 1.0)
+
+
 def block_audio(v_index, seq0, fs=fsk.FS, n=PER_BLOCK):
     v = VARIANTS[v_index]
     bits = block_bits(v_index, seq0, n)
+    if v.comp in ("c6eq", "rrc"):
+        return symbol_audio(bits, v.baud, fs, v.level, EQ if v.comp == "c6eq" else None)
     return fsk.modulate(bits, "D", v.baud, fs, v.level, comp=channel(v.comp), max_gain_db=v.gain_db)
 
 
@@ -114,8 +143,8 @@ def rounds(n_rounds, fs=fsk.FS, variants=None):
     return np.concatenate(parts), segs
 
 
-def round_seconds(fs=fsk.FS):
-    x, _ = rounds(1, fs)
+def round_seconds(fs=fsk.FS, variants=None):
+    x, _ = rounds(1, fs, variants)
     return (len(x) - int(LEAD_S * fs)) / fs
 
 
@@ -194,6 +223,9 @@ def main(argv=None):
     w.add_argument("out")
     w.add_argument("--rounds", type=int, default=12)
     w.add_argument("--cw-id", default="AG7EW")
+    w.add_argument("--run", type=int, choices=(1, 2), default=1,
+                   help="1: variants 0-7 (the model pre-equalisers); 2: the control and 8-12 (needs --eq)")
+    w.add_argument("--eq", help="run 2: the pre-equaliser json from tools/uv380_dmrburst.py fit")
     s = sub.add_parser("sim")
     s.add_argument("--channel", choices=("ic7100", "flat"), default="ic7100")
     r = sub.add_parser("report")
@@ -201,14 +233,26 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.cmd == "wav":
         from .k6 import _write, cw
-        x, segs = rounds(a.rounds)
+        vs = None
+        if a.run == 2:
+            if not a.eq:
+                raise SystemExit("--run 2 needs --eq EQ.json (uv380_dmrburst.py fit --out)")
+            import json
+            with open(a.eq) as f:
+                e = json.load(f)
+            EQ.clear()
+            EQ.update(taps=e["taps"], centre=e["centre"])
+            vs = list(RUN2)
+        x, segs = rounds(a.rounds, variants=vs)
         if a.cw_id:
             x = np.concatenate([x, np.zeros(int(0.3 * fsk.FS)), cw(a.cw_id, fsk.FS, level=0.3)])
         _write(a.out, x, fsk.FS)
-        print(f"{a.out}: {len(x) / fsk.FS:.1f} s, {a.rounds} rounds of {round_seconds():.1f} s, "
+        print(f"{a.out}: {len(x) / fsk.FS:.1f} s, {a.rounds} rounds of {round_seconds(variants=vs):.1f} s, "
               f"{len(segs) * PER_BLOCK} packets, then {a.cw_id or 'no ID'}")
     elif a.cmd == "sim":
         for vi, (got, sent) in sim(ch=a.channel).items():
+            if vi >= RUN2[1]:
+                continue
             v = VARIANTS[vi]
             print(f"v{vi} {v.baud} {v.comp:6s} {v.level:.2f}: {got}/{sent}")
     else:

@@ -119,3 +119,24 @@ with more room, but not live sotto 2400. Range mode gains nothing: it trades spe
 sensitivity (about 550 bit/s), and plain FSK at 2400 needs about 3 dB more signal than at 1200
 (docs/k6-pager.md's link model). The coded 4FSK IF modem (PHY G) already makes 1,200 to 1,730
 bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
+
+## Next: the measured equaliser, then a flat transmitter
+
+- **Run 2 (staged): the IC-7100 with the equaliser the C6000 measured.** Run 1's pre-equalisers
+  came from a model, and the 1200 control showed the model is wrong. The UV-380's C6000 measured
+  the real IC-7100 transmit chain from its own soft values (docs/uv380-c6000-modem.md R1-R4), and
+  the equaliser it fitted took DMR to 23 of 23. That equaliser works on 4800-a-second symbols, so
+  run 2 sends each bit as two +-3 symbols (four at 1200 baud), RRC shaped, through it:
+  `python3 -m modem.fsk24 wav OUT.wav --run 2 --eq EQ.json` (variants 0 and 8-12: the control,
+  three levels at 2400, one at 1200, and the same symbols with no equaliser). Same module.
+- **The UV-380 as the flat far end.** Its C6000 modulates the AT1846S directly, and its DMR came
+  through the IC-7100 with no correction. The chip's physical layer mode (0x10 = 0x02,
+  continuous) sends 288 raw bits a 30 ms slot from TX RAM, 4800 symbols a second of our own
+  choosing: +-3 symbols in pairs are 2400 baud plain FSK at +-1944 Hz, nine of our bytes a slot.
+  What it takes: a UV-380 module that refills the two TX RAM halves on the slot interrupt for
+  about 30 s of continuous carrier (c6dmrtx keys only one slot in two, 5 s at a time), the
+  transmit trim checked on that path (this radio sends 3.58 kHz low untrimmed, and the K6's chip
+  FSK never synced on that), and a UV-380 that stays up while keyed at 1 W (the watchdog resets
+  after each 1 W key-up are still open, PR #127). The MCU's PWM into the C6000's line input
+  isn't flat: the audio path pre-emphasises and cuts below 300 Hz, and the K6 read none of the
+  UV-380's FFSK that way (11-14).
