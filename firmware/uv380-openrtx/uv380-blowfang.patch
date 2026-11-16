@@ -281,10 +281,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..819018cc
+index 00000000..648bf724
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1617 @@
+@@ -0,0 +1,1629 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -467,13 +467,18 @@ index 00000000..819018cc
 +#if defined(PLATFORM_MDUV3x0)
 +extern "C" volatile bool blowfang_txFlat;
 +extern "C" volatile int32_t blowfang_txTrimHz;
++extern "C" volatile int8_t blowfang_txGainDb;
 +#else
 +__attribute__((unused)) static volatile bool blowfang_txFlat = false;
 +__attribute__((unused)) static volatile int32_t blowfang_txTrimHz = 0;
++__attribute__((unused)) static volatile int8_t blowfang_txGainDb = 0;
 +#endif
 +static constexpr freq_t   TX_MIN_HZ = 430000000;
 +static constexpr freq_t   TX_MAX_HZ = 450000000;
-+static constexpr unsigned SETTLE_MS = 60;       // silence after keying, before the lead-in
++// Quiet carrier after keying, before the lead-in. 60 ms lost the first packet
++// at the K6 (11-16 20:38Z: its preamble began ~86 ms after the carrier came up,
++// against ~670 ms from the IC-7100, which the K6 reads 7/7)
++static constexpr unsigned SETTLE_MS = 500;
 +
 +#ifndef BLOWFANG_CALLSIGN
 +#define BLOWFANG_CALLSIGN "AG7EW"
@@ -909,11 +914,13 @@ index 00000000..819018cc
 +// "lvl N" (FFSK peak, 1000-32000; default 16000), "fs N" (the rate the
 +// modulator is told the PWM runs at, 47000-49000; default 48000: corrects the
 +// tones and the baud rate together), "emph 0|1" (pre-emphasis off or on;
-+// default on), "trim N" (Hz added to the transmit frequency, -8000 to 8000;
-+// default 3580, this radio's measured error), "power N" (transmit power in
++// default off since 11-16), "trim N" (Hz added to the transmit frequency,
++// -8000 to 8000; default 5745, this radio's measured error), "power N" (transmit power in
 +// mW: 0, 1000, 2500 or 5000, what macro key 6 steps through; the UI thread
-+// takes it to the radio as it does the key's). Each answers with all of them
-+// (pwr= reads the power back); "tune" alone only answers.
++// takes it to the radio as it does the key's), "gain N" (the C6000's line in
++// gain while sending, -12 to 15 dB, default 6; it sets the deviation). Each
++// answers with all of them (pwr= reads the power back); "tune" alone only
++// answers.
 +static int tuneCommand(const char *line)
 +{
 +    unsigned long v = 0;
@@ -934,6 +941,8 @@ index 00000000..819018cc
 +        p = line + 5;
 +    else if(strncmp(line, "power ", 6) == 0)
 +        p = line + 6;
++    else if(strncmp(line, "gain ", 5) == 0)
++        p = line + 5;
 +    else if(strcmp(line, "tune") != 0)
 +        return 0;
 +    bool num = false;
@@ -967,12 +976,15 @@ index 00000000..819018cc
 +        pthread_mutex_unlock(&state_mutex);
 +        blowfang_syncRtx = 1;
 +    }
-+    char out[112];
++    else if(num && (line[0] == 'g') && (neg ? (v <= 12) : (v <= 15)))
++        blowfang_txGainDb = neg ? -(int8_t) v : (int8_t) v;
++    char out[128];
 +    snprintf(out, sizeof(out),
-+             "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu zero=%u pwr=%lu",
++             "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu zero=%u pwr=%lu gain=%d",
 +             (int) txLevel, (unsigned long) txFs, blowfang_txFlat ? 0 : 1,
 +             (long) blowfang_txTrimHz, (unsigned long) txMark, (unsigned long) txSpace,
-+             (unsigned) blowfang_txZero, (unsigned long) state.channel.power);
++             (unsigned) blowfang_txZero, (unsigned long) state.channel.power,
++             (int) blowfang_txGainDb);
 +    pbSay(NULL, out);
 +    return 1;
 +}
@@ -2060,10 +2072,10 @@ index d71444c6..15c6e2b2 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a94..7961693b 100644
+index 64b77a94..fe4dc09f 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
-@@ -19,6 +19,23 @@
+@@ -19,6 +19,33 @@
  
  static const rtxStatus_t *config;                // Pointer to data structure with radio configuration
  
@@ -2073,11 +2085,21 @@ index 64b77a94..7961693b 100644
 +extern "C" {
 +volatile bool blowfang_txLow = false;
 +volatile bool blowfang_txMic = false;
-+volatile bool blowfang_txFlat = false;  // the line in without pre-emphasis ("emph 0")
++// The line in without pre-emphasis ("emph 0"), the default since 11-16: the
++// K6 decodes the IC-7100's flat FM-D, and the UV-380's first K6-decoded FSK
++// (11-16 20:38Z, 6/7) was flat
++volatile bool blowfang_txFlat = true;
 +// Added to the transmit frequency given to the AT1846S, in Hz ("trim N"). Jeff's
 +// UV-380 (an MD-UV390 Plus) transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
-+// IC-7100 in USB): the K6's chip FSK never synced on it. Receive is untouched.
-+volatile int32_t blowfang_txTrimHz = 3580;
++// IC-7100 in USB). With 3580 it still read 2.1-2.2 kHz low on the calibrated
++// Pluto (11-16 20:15-20:29Z), and 5745 put it within 50 Hz. Receive is untouched.
++volatile int32_t blowfang_txTrimHz = 5745;
++// The C6000's input gain, in dB, while PAGER sends the MCU's audio through the
++// line in ("gain N"); the voice path's -3 dB (TYT's value) comes back at key-down.
++// At -3 dB the FFSK tones swung only 1.0 kHz on air, against the 3.2 kHz of the
++// IC-7100 the K6 decodes, and the K6 read none; at +6 dB (OpenRTX's M17 value)
++// 2.8 kHz and 6/7 packets (11-16 20:37-20:38Z, the Pluto measuring).
++volatile int8_t blowfang_txGainDb = 6;
 +// A channel power of 0 (macro key 6 cycles 1, 2.5, 5, 0 W; Jeff 11-14: "an
 +// effectively zero power transmit option"): 1 keeps the PA off and only the
 +// AT1846S's own output leaks out, 2 turns the PA on with its APC at 0 ("zero N")
@@ -2087,7 +2109,15 @@ index 64b77a94..7961693b 100644
  static mduv3x0Calib_t calData;                   // Calibration data
  static Band    currRxBand = BND_NONE;            // Current band for RX
  static Band    currTxBand = BND_NONE;            // Current band for TX
-@@ -95,6 +112,7 @@ void radio_setOpmode(const enum opmode mode)
+@@ -26,6 +53,7 @@ static uint8_t txpwr_lo   = 0;                   // APC voltage for TX output po
+ static uint8_t txpwr_hi   = 0;                   // APC voltage for TX output power control, high power
+ static uint8_t rxModBias  = 0;                   // VCXO bias for RX
+ static uint8_t txModBias  = 0;                   // VCXO bias for TX
++static bool    txGainSet  = false;               // blowfang: blowfang_txGainDb is in, -3 dB to restore
+ 
+ static enum opstatus radioStatus;                // Current operating status
+ 
+@@ -95,6 +123,7 @@ void radio_setOpmode(const enum opmode mode)
      switch(mode)
      {
          case OPMODE_FM:
@@ -2095,7 +2125,7 @@ index 64b77a94..7961693b 100644
              at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
              C6000.fmMode();                         // HR_C6000 in FM mode
              C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
-@@ -183,15 +201,20 @@ void radio_enableTx()
+@@ -183,15 +212,20 @@ void radio_enableTx()
      gpio_clearPin(RF_APC_SW);
  
      C6000.setModOffset(txModBias);
@@ -2118,7 +2148,7 @@ index 64b77a94..7961693b 100644
  
      switch(config->opMode)
      {
-@@ -207,6 +230,19 @@ void radio_enableTx()
+@@ -207,6 +241,24 @@ void radio_enableTx()
              C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
              break;
  
@@ -2130,6 +2160,11 @@ index 64b77a94..7961693b 100644
 +                                                          : FmConfig::BW_25kHz;
 +            if(blowfang_txMic || (blowfang_txFlat == false))
 +                cfg = cfg | FmConfig::PREEMPH_EN;
++            if(blowfang_txMic == false)
++            {
++                C6000.setInputGain(blowfang_txGainDb);
++                txGainSet = true;
++            }
 +            C6000.startAnalogTx(blowfang_txMic ? TxAudioSource::MIC : TxAudioSource::LINE_IN,
 +                                cfg);
 +        }
@@ -2138,7 +2173,7 @@ index 64b77a94..7961693b 100644
          default:
              break;
      }
-@@ -230,8 +266,11 @@ void radio_enableTx()
+@@ -230,8 +282,11 @@ void radio_enableTx()
          gpio_setPin(PA_SEL_SW);
      }
  
@@ -2152,7 +2187,21 @@ index 64b77a94..7961693b 100644
  
      if(config->txToneEn)
      {
-@@ -286,7 +325,7 @@ void radio_updateConfiguration()
+@@ -260,6 +315,13 @@ void radio_disableRtx()
+         C6000.stopAnalogTx();
+     }
+ 
++    // blowfang: the voice path's input gain again (radio_setOpmode's)
++    if(txGainSet)
++    {
++        C6000.setInputGain(-3);
++        txGainSet = false;
++    }
++
+     at1846s.disableTone();
+     at1846s.disableCtcss();
+     at1846s.setFuncMode(AT1846S_FuncMode::OFF);
+@@ -286,7 +348,7 @@ void radio_updateConfiguration()
      freq_t  *txCalPoints = calData.vhfCal.txFreq;
      uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
      uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
@@ -2161,7 +2210,7 @@ index 64b77a94..7961693b 100644
                           ? calData.vhfCal.analogSendQrange
                           : calData.vhfCal.sendQrange;
  
-@@ -296,7 +335,7 @@ void radio_updateConfiguration()
+@@ -296,7 +358,7 @@ void radio_updateConfiguration()
          txCalPoints = calData.uhfCal.txFreq;
          loPwrCal    = calData.uhfCal.txLowPower;
          hiPwrCal    = calData.uhfCal.txHighPower;
@@ -2170,7 +2219,7 @@ index 64b77a94..7961693b 100644
                      ? calData.uhfCal.analogSendQrange
                      : calData.uhfCal.sendQrange;
      }
-@@ -313,7 +352,7 @@ void radio_updateConfiguration()
+@@ -313,7 +375,7 @@ void radio_updateConfiguration()
      C6000.setModAmplitude(0, Q);
  
      // Set bandwidth, only for analog FM mode

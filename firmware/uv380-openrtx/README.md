@@ -215,11 +215,12 @@ waits at most 3 s for the preview, and `err busy` says which frame the preview i
 **Bench knobs (probe image).** Over USB, or a module's `api->probe()`: `lvl N` sets the FFSK
 peak (1000-32000, default 16000), `fs N` the rate the modulator is told the PWM runs at
 (47000-49000, default 48000, which moves the tones and the baud rate together), and `emph 0|1`
-turns the line in's pre-emphasis off or on (default on), and `trim N` adds N Hz (-8000 to 8000)
+turns the line in's pre-emphasis off or on (default off since 11-16), and `trim N` adds N Hz (-8000 to 8000)
 to the transmit frequency; `mark N` and `space N` set PHY F's tones (800-2600 Hz, 0: 1200 and
 1800), `zero 1|2` how power 0 transmits (below), and `power N` the channel's transmit power in mW
 (0, 1000, 2500 or 5000, the steps of macro key 6; Jeff 11-16: so hamlet sets it without a key
-press). Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=... zero=... pwr=...`
+press), and `gain N` the C6000's line-in gain while sending (-12 to 15 dB, default 6; below).
+Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=... zero=... pwr=... gain=...`
 (pwr: the channel's power in mW, read back), and `tune` alone only answers. `power` changes
 `state.channel` and asks the UI thread (`blowfang_syncRtx` in `threads.c`) to send it to the radio,
 the way macro key 6 does.
@@ -227,14 +228,31 @@ the way macro key 6 does.
 **Zero power (all images).** Macro key 6 now cycles the channel's power 1, 2.5, 5, 0 W. At 0 W
 (Jeff 11-14: "an effectively zero power transmit option") the APC is at 0 and the PA stays off,
 so only the AT1846S's own output leaks out, for the bench a few feet from the IC-7100 (`zero 2`:
-the PA on with its APC at 0 instead, if that is too little). Nothing is measured yet.
+the PA on with its APC at 0 instead, if that is too little). Measured 11-16 on the bench Pluto:
+`zero 1` is not heard at all a few feet away; `zero 2` came in at 38-42 dB SNR.
 
 **Transmit frequency trim.** Jeff's radio transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
 measured on the IC-7100 in USB). The IC-7100's wide receiver didn't mind, but the K6's chip FSK never
 synced on it, in RNG or FSK. So every image now adds 3580 Hz to the transmit frequency it gives the
 AT1846S (`blowfang_txTrimHz` in `radio_UV3x0.cpp`, in every mode); `trim N` changes it until
 power-off. Receive is left alone. They last until power-off. They're there because the K6 read none of
-the UV-380's first FSK sends (11-14), so hamlet can tune the link on air with no reflash.
+the UV-380's first FSK sends (11-14), so hamlet can tune the link on air with no reflash. On 11-16
+the calibrated Pluto still read the carrier 2.1-2.2 kHz low with 3580, and 5745 brought it within
+50 Hz, so 5745 is the default now.
+
+**Deviation: the C6000's line-in gain (11-16).** Why the K6 read no UV-380 FSK: the tones swung
+only about 1.0 kHz on air, against the 3.2 kHz of the IC-7100 audio the K6 decodes 7/7 (the Pluto,
+receive only, off channel; tone deviation = the 1-2 kHz envelope of its flat FM demod). `lvl`
+barely moves it (4000: 750 Hz, 16000: 990 Hz). The C6000's FM modulation amplitude 0x46 (0xB4, the
+FM calibration) scales it linearly but only to 1.4 kHz at 0xFA. The fix is the C6000's input gain,
+register E4 (`setInputGain`): PAGER mode sets the voice path's -3 dB (TYT's value), while OpenRTX
+sends its own data mode, M17, through the same line in at +6 dB. At +6 dB the tones swung 2.8 kHz
+and the K6 took 6 of 7 packets (20:38Z); +15 dB gave 8 kHz, too much. So a PAGER send from the MCU
+now sets `blowfang_txGainDb` (+6 dB, `gain N`) before keying and puts -3 dB back at key-down; the
+mic path (`blowfang_txMic`) keeps -3 dB. The missing packet was the first: the data began only
+~86 ms after the carrier came up (the IC-7100: ~670 ms), so every send now keys 500 ms of quiet
+carrier before its lead-in (`SETTLE_MS`, was 60). And `emph` defaults to off, as in that run: the
+K6 decodes the IC-7100's flat FM-D.
 
 **tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
 the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only), while the
