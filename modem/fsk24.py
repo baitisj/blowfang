@@ -77,16 +77,16 @@ RUN3 = (13, 14, 15, 16, 17)
 # the sensitivity sweep: one slot of SWEEP_SLOT_S per rate, the rates in turn, at each level step
 # (dB below the top level); the module (c/k6/mod/fsk24rx_sweep.c) sets each slot's receive recipe
 # a slot: (name, the bench's variant, the module's REG_58, REG_72, word in 1/16 ticks, REG_2B
-# bits; bit 0 = read on the chip's interrupts, as the pager reads F/1800). Sweep 1 (11-16 20:48Z)
-# read all three by time: F/1800 and F/1200 failed even at full level, so sweep 2 reads by
-# interrupt, and D/2400 both ways
+# bits). Sweep 1 (11-16 20:48Z), every recipe read by time: D/2400 good, F/1800 and F/1200 failed
+# even at full level (timed reads don't suit FFSK in this probe). Sweep 2 (21:08Z) tried the
+# chip's interrupts for reads, which read junk and stalled the grid; that code was dropped, and
+# F/1800 is measured through the pager instead (steps_report)
 SWEEP_SLOTS = (
-    ("D/2400 timed", 14, (0x00E9, 24779, 1067, 0x0400)),   # run 3's setting 2, sweep 1's way
-    ("D/2400", 14, (0x00E9, 24779, 1067, 0x0401)),
-    ("F/1800", 18, (0x3F01, 18584, 1422, 0x0001)),         # the pager's CFG_F_1800, BAUD_1800
-    ("F/1200", 19, (0x3FE3, 12389, 2133, 0x0001)),         # the pager's CFG_F_1200, BAUD_1200
+    ("D/2400", 14, (0x00E9, 24779, 1067, 0x0400)),         # run 3's setting 2
+    ("F/1800", 18, (0x3F01, 18584, 1422, 0x0000)),         # the pager's CFG_F_1800, BAUD_1800
+    ("F/1200", 19, (0x3FE3, 12389, 2133, 0x0000)),         # the pager's CFG_F_1200, BAUD_1200
 )
-SWEEP_STEPS = tuple(range(0, -30, -3))     # 0 to -27 dB (sweep 1: nothing below -12)
+SWEEP_STEPS = tuple(range(0, -48, -4))     # 0 to -44 dB
 SWEEP_SLOT_S = 12
 SWEEP_GUARD_S = (1.5, 1.0)                 # carrier only at a slot's start and end
 EQ = {"taps": [1.0], "centre": 0}          # the measured equaliser: wav --eq loads it here
@@ -271,6 +271,34 @@ def sweep_report(lines):
     return out
 
 
+def steps_report(lines, steps):
+    """the pager's own receive path through a sensitivity ladder (tools/pluto_bench.py steps):
+    the K6 logger's lines ("EPOCH<tab>BUILD<tab>K6 PKT ...") and the sends' {"steps": [{gain,
+    t0, t1}]} -> table lines: per gain, packets with the CRC right, failed, and the failed ones'
+    median bit errors against the test message"""
+    from .k6_harness import parse_line
+    pk = []
+    for ln in lines:
+        f = ln.split("\t")
+        if len(f) < 2 or "K6 PKT" not in f[-1]:
+            continue
+        try:
+            t = float(f[0])
+        except ValueError:
+            continue
+        d = parse_line(f[-1])
+        if d:
+            pk.append((t, d))
+    out = ["TX gain dB | CRC right | failed | bits wrong (median, failed)", "--- | --- | --- | ---"]
+    for st in steps["steps"]:
+        mine = [d for t, d in pk if st["t0"] <= t <= st["t1"] + 2.0]
+        ok = [d for d in mine if isinstance(d.get("res"), int) and d["res"] >= 0]
+        bad = [d for d in mine if d not in ok]
+        be = sorted(d["be"] for d in bad if isinstance(d.get("be"), int))
+        out.append(f"{st['gain']:g} | {len(ok)} | {len(bad)} | {be[len(be) // 2] if be else '-'}")
+    return out
+
+
 def round_seconds(fs=fsk.FS, variants=None):
     x, _ = rounds(1, fs, variants)
     return (len(x) - int(LEAD_S * fs)) / fs
@@ -360,6 +388,9 @@ def main(argv=None):
     r.add_argument("log")
     r.add_argument("--sweep", action="store_true", help="a sensitivity sweep's log (fsk24rx_sweep)")
     sub.add_parser("sweep-table", help="the sweep module's slot table (c/k6/mod/fsk24rx_sweep.c)")
+    rs = sub.add_parser("report-steps", help="the pager's K6 PKT lines through a pluto_bench steps ladder")
+    rs.add_argument("log")
+    rs.add_argument("steps", help="pluto_bench steps --out json")
     a = ap.parse_args(argv)
     if a.cmd == "wav":
         from .k6 import _write, cw
@@ -385,6 +416,10 @@ def main(argv=None):
                 continue
             v = VARIANTS[vi]
             print(f"v{vi} {v.baud} {v.comp:6s} {v.level:.2f}: {got}/{sent}")
+    elif a.cmd == "report-steps":
+        import json
+        with open(a.log, errors="replace") as f, open(a.steps) as g:
+            print("\n".join(steps_report(f.read().splitlines(), json.load(g))))
     elif a.cmd == "sweep-table":
         print("\n".join(sweep_table()))
     else:

@@ -263,10 +263,19 @@ per step and recipe, with the K6's RSSI.
 - F/1800 and F/1200 failed even at full level: reading FFSK by time doesn't work in this probe
   (the pager reads F/1800 on the chip's interrupts, and F/1800 uploads work every day). So
   sweep 1 has no margin between the rates.
-- **Sweep 2 (staged):** fsk24rx reads on the chip's interrupts when a recipe's REG_2B bits carry
-  bit 0 (`AF_IRQ`: polled REG_0C, 3 words a FIFO-almost-full, the rest at RX-done), as the
-  pager does. Four recipes a step: D/2400 by time (sweep 1's), D/2400, F/1800 and F/1200 by
-  interrupt; 0 to -27 dB in 3 dB steps, 40 slots, 8 minutes.
+- **Sweep 2 (21:08-21:16Z) tried reading on the chip's interrupts** (polled REG_0C, 3 words a
+  FIFO-almost-full, the rest at RX-done). Every packet it read synced with the right header and
+  then went to junk (22 of 32 words padded or repeated), and a read that never saw RX-done held
+  its slot for up to 7 minutes, so the grid fell apart. It repeated only D/2400 16/16 at -88 dBm.
+  The interrupt code was dropped; making a probe read FFSK like the pager isn't worth it when the
+  pager itself can be measured.
+- **The F/1800 ladder (staged):** the pager's own receive path, the one uploads use every day.
+  `python3 -m modem.k6 test T.wav --phy F --baud 1800 --repeat 16` (the spec's test packet,
+  which the pager checks bit by bit), then `tools/pluto_bench.py steps T.wav --preemph --dev
+  3700 --gains -70,-73,...,-97 --out steps.json` sends it once at each TX gain, each send its own
+  transmission with its own ID, and `python3 -m modem.fsk24 report-steps LOG steps.json` counts
+  the K6's `K6 PKT` lines a send. Sweep 1's D/2400 was at TX gain -70 with the level cut
+  digitally, so its steps 0, -4, -8, -12 dB line up with gains -70, -74, -78, -82.
 
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 

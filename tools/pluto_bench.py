@@ -12,6 +12,8 @@ docs/pluto-bench.md has the bench notes.
   python3 tools/pluto_bench.py send WAV             any audio as FM on 440.850 (or --hz in 430-450),
          [--hz F] [--dev 3000] [--gain -60]         full scale = --dev Hz peak, AG7EW in MCW first
          [--preemph] [--rf-off]                     and last; --preemph for voice (750 us)
+  python3 tools/pluto_bench.py steps WAV            the same audio at each TX gain in turn (a
+         --gains -70,-73,... [--preemph] [--out J]  sensitivity ladder; times to J for a report)
   python3 tools/pluto_bench.py rx OUT [--hz F]      capture, TX down: OUT.cf32 = complex64 at 240 kHz
          [--seconds 10] [--gain 30]                 (beside it OUT.cf32.json: frequency, rate, xo),
                                                     OUT.wav = the FM discriminator, flat, 48 kHz,
@@ -462,6 +464,33 @@ def cmd_fsk24(a):
     send(track, HZ, a.offset_hz, a.gain, a.rate, a.uri, not a.rf_off, "fsk24 run 3")
 
 
+def cmd_steps(a):
+    """the same audio at each TX gain in turn, each its own transmission (ID first and last), a
+    pause between; the times go to --out (json) for a report against the receiver's log"""
+    from scipy.io import wavfile
+    gains = [float(g) for g in a.gains.split(",")]
+    for g in gains:
+        check_tx(a.hz, a.offset_hz, g)
+    fs, x = wavfile.read(a.wav)
+    x = np.asarray(x, float)
+    if x.ndim > 1:
+        x = x[:, 0]
+    if np.max(np.abs(x)) > 1.5:
+        x = x / 32768.0
+    track = audio_track(x, fs, a.dev, a.preemph)
+    print(f"steps: {len(gains)} sends of {os.path.basename(a.wav)} ({len(x) / fs:.1f} s), peak deviation "
+          f"{np.max(np.abs(track)):.0f} Hz, gains {a.gains} dB", flush=True)
+    out = {"wav": os.path.abspath(a.wav), "hz": a.hz, "dev": a.dev, "preemph": a.preemph, "steps": []}
+    for g in gains:
+        t0 = time.time()
+        send(track, a.hz, a.offset_hz, g, a.rate, a.uri, not a.rf_off, f"steps gain {g:g}")
+        out["steps"].append({"gain": g, "t0": t0, "t1": time.time()})
+        if a.out:
+            with open(a.out, "w") as f:
+                json.dump(out, f, indent=1)
+        time.sleep(a.pause)
+
+
 def cmd_rx(a):
     y, meta = capture(a.seconds, a.hz, a.gain, a.uri)
     base = a.out
@@ -541,6 +570,16 @@ def main(argv=None):
     f.add_argument("--if-hz", type=float, default=SWEEP_IF,
                    help="--sweep: the signal this far above the TX LO (its leak off the channel)")
     tx_args(f)
+    st = sub.add_parser("steps", help="the same audio at each of --gains in turn (a sensitivity ladder)")
+    st.add_argument("wav")
+    st.add_argument("--gains", required=True, help="TX gains in dB, comma separated, e.g. -70,-73,-76")
+    st.add_argument("--hz", type=int, default=HZ)
+    st.add_argument("--dev", type=float, default=3000.0, help="peak deviation at full scale, Hz")
+    st.add_argument("--preemph", action="store_true", help="750 us pre-emphasis (voice, FFSK)")
+    st.add_argument("--pause", type=float, default=3.0, help="seconds between sends")
+    st.add_argument("--out", help="the sends' gains and times (json), for modem.fsk24 report-steps")
+    tx_args(st)
+    st.set_defaults(gain=GAIN_MAX)
     r = sub.add_parser("rx")
     r.add_argument("out", help="OUT.cf32, or OUT.wav (the FM discriminator; the .cf32 is kept beside it)")
     r.add_argument("--hz", type=int, default=HZ)
@@ -553,7 +592,7 @@ def main(argv=None):
     c.add_argument("--ref-hz", type=int, default=None, help="the carrier's true frequency (default: the capture's)")
     c.add_argument("--save", action="store_true")
     a = ap.parse_args(argv)
-    {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx,
+    {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx, "steps": cmd_steps,
      "measure": cmd_measure, "cal": cmd_cal}[a.cmd](a)
 
 

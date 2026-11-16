@@ -150,3 +150,8 @@ def test_follow_sees_only_new_lines(tmp_path):
     threading.Thread(target=later).start()
     _, ln = pl.follow(str(log), "say fsk24 start", 5.0, poll=0.02)
     assert "n=36" in ln
+
+
+def test_steps_refuses_a_gain_out_of_range():
+    with pytest.raises(SystemExit):
+        pl.main(["steps", "x.wav", "--gains", "-70,-20", "--rf-off"])

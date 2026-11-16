@@ -171,88 +171,22 @@ def test_sweep_ffsk_blocks_read_flat():
 
 def test_sweep_report():
     lines = ["K6 MOD say " + s for s in [
-        "fsk24 start hz=440850000 n=40",
+        "fsk24 start hz=440850000 n=36",
         "s 0 t=30000 cfg=00e9 b=60cb a=04",
         "p 0 v=14 q=0 c=1 i=0 e=0 x=0 r=-89",
         "p 0 v=14 q=1 c=1 i=0 e=0 x=0 r=-90",
         "p 0 v=14 q=2 c=0 i=0 e=9 x=0 r=-90",
         "v 0 n=3 ok=2 z=0",
-        "s 2 t=54000 cfg=3f01 b=4898 a=00",
-        "p 2 v=18 q=0 c=1 i=0 e=0 x=0 r=-91",
-        "s 4 t=78000 cfg=00e9 b=60cb a=04",
-        "p 4 v=14 q=16 c=1 i=0 e=0 x=0 r=-93",
+        "s 1 t=42000 cfg=3f01 b=4898 a=00",
+        "p 1 v=18 q=0 c=1 i=0 e=0 x=0 r=-91",
+        "s 3 t=66000 cfg=00e9 b=60cb a=04",
+        "p 3 v=14 q=16 c=1 i=0 e=0 x=0 r=-93",
     ]]
     rep = fsk24.sweep_report(lines)
     sent = {k: n for _, k, _, _, n in fsk24.sweep_track()[2]}
-    assert rep[0] == "step dB | RSSI dBm | D/2400 timed | D/2400 | F/1800 | F/1200", rep
-    assert rep[2] == f"0 | -90 | 2/{sent[0]} | -/{sent[1]} | 1/{sent[2]} | -/{sent[3]}", rep
-    assert rep[3].startswith(f"-3 | -93 | 1/{sent[4]} | -/"), rep
-
-
-def irq_chip(le, segs):
-    """test_k6_pocsag's plain FSK model plus the chip's interrupt flags, polled: REG_0C bit 0
-    while an enabled flag (REG_3F) is up, the flags in REG_02 (a write clears them): sync,
-    FIFO almost full (as a word arrives and REG_5E <2:0> or more wait) and RX done"""
-    from test_k6_pocsag import plain_chip
-    Base = plain_chip(le, segs)
-
-    class Chip(Base):
-        r = {**Base.r, 0x3F: 0, 0x5E: 0}
-        flags = 0
-
-        def take(self, bit):
-            pkt, cnt, done = self.pkt, self.cnt, self.done
-            super().take(bit)
-            if self.pkt and not pkt:
-                self.flags |= 1 << 1
-            if self.cnt > cnt and self.cnt >= max(1, self.r[0x5E] & 7):
-                self.flags |= 1 << 12
-            if self.done and not done:
-                self.flags |= 1 << 13
-
-        def on_stub(self, uc, addr, size, user):
-            A = self.A
-            name = self.names[(addr - self.stubs) // 16]
-            r0, r1 = uc.reg_read(A.UC_ARM_REG_R0), uc.reg_read(A.UC_ARM_REG_R1)
-            if name == "fd_write" and r0 == 0x02:
-                self.advance()
-                self.flags = 0
-            if name == "fd_read" and r0 in (0x0C, 0x02):
-                self.advance()
-                f = self.flags & self.r[0x3F]
-                self.tick(self.fd_us * 96)
-                uc.reg_write(A.UC_ARM_REG_R0, (1 if f else 0) if r0 == 0x0C else f)
-                return
-            super().on_stub(uc, addr, size, user)
-
-    return Chip
-
-
-@need_clang
-def test_fsk24rx_interrupt_reads_on_the_model():
-    """a setting with AF_IRQ reads its packets on the chip's interrupts: every one right, at
-    2400 and 1200 baud, with nothing padded"""
-    pytest.importorskip("unicorn")
-    import k6_live_emu as le
-    _, segs = fsk24.rounds(2, variants=[0, 2])
-    segs = [(t + 0.3, baud, bits) for t, baud, bits, _ in segs]
-    total = segs[-1][0] + len(segs[-1][2]) / segs[-1][1] + 1.0
-    half = int(total / 2 * 1000)
-    code, entry = le.build("x", [("WAIT_MS", "100u"), ("SLOT_SCALE", f"{half // 30}u"), ("F24_ABS", "1"),
-                                 ("F24_NV", "2"),
-                                 ("F24_V", "{0x00E1, 12389, 2133, 0x0001}, {0x00E9, 24779, 1067, 0x0401}")],
-                           os.path.join(K6, "mod", "fsk24rx.c"))
-    Chip = irq_chip(le, segs)
-    e = Chip(code, entry, np.zeros(16, np.uint8), 0, 5.49e6, 1.5, max_s=total + 5, level=8, scratch=4096)
-    ret = e.run()
-    assert ret is not None, e.said[-5:]
-    sets, pk = fsk24.parse_log(["K6 MOD say " + s for s in e.said])
-    assert set(sets) == {0, 1}, e.said
-    s0 = [p for p in pk if p["s"] == 0]
-    s1 = [p for p in pk if p["s"] == 1]
-    assert s0 and all(p["v"] == 0 for p in s0), s0
-    assert len(s1) >= 4 and all(p["v"] == 2 for p in s1), s1
-    assert all(p["c"] == 1 and p["e"] == 0 and p["x"] == 0 for p in pk), e.said
+    assert rep[0] == "step dB | RSSI dBm | D/2400 | F/1800 | F/1200", rep
+    assert rep[2] == f"0 | -90 | 2/{sent[0]} | 1/{sent[1]} | -/{sent[2]}", rep
+    assert rep[3].startswith(f"-4 | -93 | 1/{sent[3]} | -/"), rep
 
 
 @need_clang
@@ -260,3 +194,16 @@ def test_fsk24rx_sweep_builds():
     import k6_live_emu as le
     code, _ = le.build("x", [], os.path.join(K6, "mod", "fsk24rx_sweep.c"))
     assert 1000 < len(code) < 11776, len(code)
+
+
+def test_steps_report_counts_the_pagers_packets_per_send():
+    lines = [
+        "100.5\t1287138\tK6 PKT n=1 got=128 sync=N res=20 magic=a7 rswap=0 soft=0 swap=0 be=0 good=1 bad=0",
+        "101.1\t1287138\tK6 PKT n=2 got=128 sync=N res=-1 magic=a7 rswap=0 soft=0 swap=0 be=7 good=1 bad=1",
+        "101.9\t1287138\tK6 PLAY id=1",
+        "130.2\t1287138\tK6 PKT n=3 got=128 sync=N res=-1 magic=a7 rswap=0 soft=0 swap=0 be=40 good=1 bad=2",
+        "130.4\t1287138\tK6 PKT n=4 got=60 sync=N res=short ev= good=1 bad=3",
+    ]
+    steps = {"steps": [{"gain": -70, "t0": 99.0, "t1": 120.0}, {"gain": -73, "t0": 125.0, "t1": 145.0}]}
+    rep = fsk24.steps_report(lines, steps)
+    assert rep[2] == "-70 | 1 | 1 | 7" and rep[3] == "-73 | 0 | 2 | 40", rep
