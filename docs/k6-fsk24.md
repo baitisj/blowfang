@@ -269,13 +269,20 @@ per step and recipe, with the K6's RSSI.
   its slot for up to 7 minutes, so the grid fell apart. It repeated only D/2400 16/16 at -88 dBm.
   The interrupt code was dropped; making a probe read FFSK like the pager isn't worth it when the
   pager itself can be measured.
-- **The F/1800 ladder (staged):** the pager's own receive path, the one uploads use every day.
+- **The F/1800 ladder:** the pager's own receive path, the one uploads use every day.
   `python3 -m modem.k6 test T.wav --phy F --baud 1800 --repeat 16` (the spec's test packet,
   which the pager checks bit by bit), then `tools/pluto_bench.py steps T.wav --preemph --dev
-  3700 --gains -70,-73,...,-97 --out steps.json` sends it once at each TX gain, each send its own
-  transmission with its own ID, and `python3 -m modem.fsk24 report-steps LOG steps.json` counts
-  the K6's `K6 PKT` lines a send. Sweep 1's D/2400 was at TX gain -70 with the level cut
-  digitally, so its steps 0, -4, -8, -12 dB line up with gains -70, -74, -78, -82.
+  3700 --gains ... --out steps.json` sends it once at each TX gain (the Pluto's range ends at
+  -89.75 dB), each send its own transmission with its own ID, and `python3 -m modem.fsk24
+  report-steps LOG steps.json` counts the K6's `K6 PKT` lines a send. Sweep 1's D/2400 was at
+  TX gain -70 with the level cut digitally, so its steps 0, -4, -8, -12 dB line up with gains
+  -70, -74, -78, -82.
+- **Ladder 1 (21:27-21:30Z, gains -70 to -88 in 3 dB steps, 16 packets each):** none decoded.
+  Four syncs, all at -76 and all junk (about 473 bits wrong); none at -70 or -73. The same
+  waveform through a model of the Pluto (IQ, FM discriminator, with or without de-emphasis)
+  decodes 4/4 on the host's demodulator, so the signal is right. The likely reading: the K6's
+  FFSK receiver needs far more signal than its plain FSK (D/2400 read 16/16 at -70). IC-7100
+  uploads come in much stronger. Ladder 2 starts 30 dB higher (-40 to -88 in 6 dB steps).
 
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 
