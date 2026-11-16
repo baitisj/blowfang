@@ -79,8 +79,8 @@ def test_images_name_their_table(hello):
     assert uv380mod.image(code, entry, 1, KEY, table="openrtx")[:4] == b"U3R\x01"
     assert uv380mod.image(code, entry, 1, KEY)[:4] == b"U3M\x01"
     with pytest.raises(ValueError):
-        uv380mod.image(code, entry, 1, KEY, level=4, table="openrtx")
-    assert uv380mod.image(code, entry, 1, KEY, level=3, table="openrtx")[:4] == b"U3R\x01"
+        uv380mod.image(code, entry, 1, KEY, level=5, table="openrtx")
+    assert uv380mod.image(code, entry, 1, KEY, level=4, table="openrtx")[:4] == b"U3R\x01"
 
 
 def test_mod_lines():
@@ -98,7 +98,7 @@ def test_mod_lines():
 @emu
 def test_hello_runs(elf, hello):
     out = run(elf, ["mod info"] + tool.mod_lines(img(hello)) + ["mod info"])
-    assert re.fullmatch(r"ok mod info magic=U3R level=3 arena=2[0-9a-f]{7} size=16384 loaded=0/0 "
+    assert re.fullmatch(r"ok mod info magic=U3R level=4 arena=2[0-9a-f]{7} size=16384 loaded=0/0 "
                         r"key=yes serial=0", out[0]), out
     say = [ln[8:] for ln in out if ln.startswith("mod say ")]
     assert re.fullmatch(r"hello world from RAM at 0x2[0-9a-f]{7}", say[0])
