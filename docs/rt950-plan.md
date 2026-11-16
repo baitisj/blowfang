@@ -92,7 +92,7 @@ What can break it (each is a measurement on Andrew's radio):
 
 ## SSB receive: easier than the note says
 
-The note calls RX the hard part because the BK4829 is "FM only". It isn't quite: the BK4819
+Jeff's note calls RX the hard part because the BK4829 is "FM only". It isn't quite: the BK4819
 family has a zero-IF baseband audio mode that UV-K5 custom firmware uses as SSB receive, and
 our own SURF already has it as its DSB mode (key 4: AF 5 + REG_3D 0). It hears both sidebands
 (no opposite-sideband rejection, so about 3 dB more noise), but a tuned SSB signal is
@@ -113,12 +113,13 @@ IC-7100 in USB, without Andrew's radio.
 6. PLL retune rate and glitches; whether a DC-coupled FM input exists.
 7. BK4829 RSSI read time per bin and per-chip RSSI offset.
 
-## Decisions for Jeff
+## Decisions (Jeff, 2026-11-16)
 
-- **Licence.** Blowfang is MIT; Hertzz58's firmware is GPL-3. Either we write our own drivers
-  from register knowledge (keeps MIT), or the RT-950 build becomes GPL-3 as a whole.
-- **TX on 2 m / 70 cm SSB frequencies** (144.174 FT8, 432.174, 144.200 SSB) is outside our
-  standing 440.850 K6 test rule, so any on-air SSB test needs Jeff's yes first.
+- **Licence: GPL-3 for the RT-950 port, for now.** The RT-950 build may use Hertzz58's GPL-3
+  firmware as its base, and the RT-950 portion is GPL-3. The rest of blowfang stays MIT.
+- **SSB transmission: allowed.** The usual bench rules still apply: every test TX carries
+  AG7EW ident, first tests at low power, and anything outside 70 cm (430-450 MHz), such as
+  2 m 144.174 or 144.200, still needs Jeff's OK for that run.
 
 ## First steps
 
