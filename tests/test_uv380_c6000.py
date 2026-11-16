@@ -124,6 +124,7 @@ def test_modules_build_for_the_openrtx_table():
         ("c6dmrtx.c", 4096),
         ("c6dmrrx_flat.c", 5120),
         ("c6dmrrx_raw.c", 5120),
+        ("c6dmrrx_long.c", 5120),
         ("c6dmrtx_live.c", 4096),
         ("c6dmrtx_msg.c", 4096),
     ):
@@ -150,3 +151,62 @@ def test_headers_write_only_what_they_say():
     a = open(os.path.join(MOD, "at1846.h")).read()
     for reg in ("0x29", "0x2A", "0x30"):
         assert f"*reg = {reg}" not in a
+
+
+def _sf_lines(levels, t):
+    """levels -> c6dmrrx soft dump lines: per symbol L then 16 - |L|, 7-bit"""
+    by = bytes(v for lv in levels for v in (int(lv) & 0x7F, (16 - abs(int(lv))) & 0x7F)).hex()
+    return [f"sf {t} 0a8 {o:03x} {by[o * 2:o * 2 + 132]}" for o in range(0, 264, 66)]
+
+
+def test_channel_fit_and_pre_equaliser():
+    """the 11-16 bench's closed eye, modelled: soft dumps (slot type, sync and info symbols in the
+    chip's orders) through a channel that kills the low end are placed in the stream, the fit
+    finds the chain and the pre-equaliser reopens it"""
+    import uv380_dmrburst as tool
+    sym = np.asarray(tool.stream_symbols(ds.pack(rand_msg(30, seed=6), 2, "AG7EW")), float)
+    h = np.array([-0.1, 0.3, -0.6, 1.2, -2.7, -1.3, 6.0, -2.5, 0.9, -0.9, 0.2, -0.3])   # lags -6..5
+    lv = np.convolve(sym, h)[6:6 + len(sym)]
+    rng = np.random.default_rng(7)
+    lines = []
+    lays = list(tool.LAYOUTS.values())
+    for n in range(10):
+        idx = int(rng.integers(1, len(sym) // 144 - 1)) * 144 + lays[n % len(lays)]
+        lines += _sf_lines(np.clip(np.round(lv[idx] + rng.normal(0, 1, 132)), -63, 63), 1000 + 60 * n)
+    dumps = tool.soft_dumps(lines)
+    assert len(dumps) == 10
+    fit = tool.fit_channel(sym, dumps)
+    assert fit["placed"] == 10 and fit["sign"] == 1.0 and not fit["mixed"]
+    assert np.allclose(fit["h"][:12], h, atol=0.3) and fit["ser"] > 0.2
+    eq = tool.design_eq(fit)
+    out = np.convolve(tool.equalise(sym, eq), h)[6:6 + len(sym)]
+    dec = np.select([out < -16, out < 0, out < 16], [-3, -1, 1], 3)
+    assert np.mean(dec[50:-50] != sym[50:-50]) < 0.05
+    # a second pass through the equalised chain refines it (base in series with the residual)
+    rest = np.convolve(tool.equalise(sym, eq), h)[6:6 + len(sym)] * 0.7
+    lines = []
+    for n in range(10):
+        idx = int(rng.integers(1, len(sym) // 144 - 1)) * 144 + lays[n % len(lays)]
+        lines += _sf_lines(np.clip(np.round(rest[idx] + rng.normal(0, 1, 132)), -63, 63), 2000 + 60 * n)
+    eq2 = tool.compose_eq(eq, tool.fit_channel(sym, tool.soft_dumps(lines)))
+    assert np.isclose(np.linalg.norm(eq2["taps"]), np.linalg.norm(eq["taps"]))
+    out2 = np.convolve(tool.equalise(sym, eq2), h)[6:6 + len(sym)]
+    out2 *= 24 / np.mean(np.abs(out2)[np.abs(sym) == 3])
+    dec2 = np.select([out2 < -16, out2 < 0, out2 < 16], [-3, -1, 1], 3)
+    assert np.mean(dec2[50:-50] != sym[50:-50]) <= np.mean(dec[50:-50] != sym[50:-50]) + 0.01
+
+
+def test_rx_log_unpacks_the_message(tmp_path):
+    """as uv380_i2sprobe logs it: every module line behind a "mod say" prefix"""
+    import uv380_dmrburst as tool
+    blocks = ds.pack(tool.test_message(), 1, "AG7EW")
+    log = tmp_path / "rx.log"
+    lines = ["mod say b 10 sc=2 dt=9 crc=0 cc=1 sy=0 se=0 fe=0 new=1 d=" + "00" * 24]
+    lines += [f"mod say b {60 * i} sc=2 dt=7 crc=0 cc=1 sy=0 se=0 fe=0 new=1 d={b.hex()}{'00' * 12}"
+              for i, b in enumerate(blocks)]
+    log.write_text("\n".join(lines) + "\n")
+    got = [b["payload"] for b in tool.rx_bursts(log.read_text().splitlines()) if b["dt"] == 7]
+    assert got == blocks
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "uv380_dmrburst.py"), "rx", str(log)],
+                       capture_output=True, text=True, check=True).stdout
+    assert "23 of 23 sent" in r and "'lost': 0" in r

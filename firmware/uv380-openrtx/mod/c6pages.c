@@ -18,11 +18,12 @@
 #include "c6slot.h"
 #include "w25sec.h"
 
-/* page 4 registers that change by themselves (status, RSSI, interrupt flags, codec status) */
+/* page 4 registers that change by themselves (status, RSSI, interrupt flags, codec status), and
+   0x83, write-to-clear (reads 0x82 through the image, 0xFF here: 11-16 bench) */
 static int volatile_reg(unsigned r) {
     return r == 0x0F || (r >= 0x42 && r <= 0x44) || r == 0x4E || r == 0x4F ||
            (r >= 0x51 && r <= 0x55) || r == 0x5F || r == 0x82 || r == 0x84 || r == 0x86 ||
-           r == 0x88 || r == 0x89 || r == 0x90 || (r >= 0x93 && r <= 0x98) || r == 0xE3;
+           r == 0x83 || r == 0x88 || r == 0x89 || r == 0x90 || (r >= 0x93 && r <= 0x98) || r == 0xE3;
 }
 
 static void dump(const ortx_api_t *api, const char *tag, unsigned sp, unsigned a, unsigned n) {
