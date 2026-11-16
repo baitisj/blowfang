@@ -4,7 +4,8 @@
   python3 tools/k6_upload.py mod-ifcal.bin --api-level 4 --telemetry 4 --key-file ... --payload XL
 
 On hamlet: the IC-7100 (rigctld on :4532) sends the module as F/1800 audio with magic 0xAE, so
-the K6 answers. While the tool waits, it records the IC-7100's receive audio (parec) and decodes
+the K6 answers. --via pluto: the ADALM-Pluto sends it (pluto_bench.py send, pre-emphasised, gain
+--pluto-gain, its own MCW ID first and last) and the IC-7100 only listens. While the tool waits, it records the IC-7100's receive audio (parec) and decodes
 the K6's 0xAF reports (modem/k6mod.py):
 
   partway   the K6 lists the chunks it lacks: they go again, same serial and transfer id
@@ -77,6 +78,10 @@ def switch_size(st, heard, fallback):
     return fallback and st is None and not heard
 
 
+PLUTO_DEV = 3700.0   # pluto_bench send --dev for audio at level 0.5, pre-emphasised: about 3 kHz peak
+                     # (the F/1800 ladders, 11-16: 11-12/16 packets from TX gain -40 to -58)
+
+
 def rig(a, *args):
     cmd = ["rigctl", "-m", "2", "-r", a.rigctld] + [str(v) for v in args]
     if a.dry_run:
@@ -86,7 +91,20 @@ def rig(a, *args):
 
 
 def key_and_play(a, path, kind="data", text=bench.ID_TEXT):
-    """the bench's keying sequence under its PTT lock (tools/k6_bench.py); kind "id" for a CW ID"""
+    """the bench's keying sequence under its PTT lock (tools/k6_bench.py); kind "id" for a CW ID.
+    --via pluto: the ADALM-Pluto sends it instead (tools/pluto_bench.py send, AG7EW in MCW first
+    and last, so a separate ID isn't needed); the IC-7100 only listens"""
+    if a.via == "pluto":
+        if kind == "id":
+            return
+        cmd = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "pluto_bench.py"),
+               "send", path, "--hz", str(a.freq), "--preemph", "--gain", str(a.pluto_gain),
+               "--dev", f"{PLUTO_DEV * 0.5 / a.level:.0f}"]
+        if a.dry_run:
+            print("dry run:", " ".join(cmd))
+            return
+        subprocess.run(cmd, check=True)
+        return
     bench.key_and_play(lambda *v: rig(a, *v), path, a.device, a.dry_run, kind,
                        f"{TOOL} {os.path.basename(path)}", text)
 
@@ -196,6 +214,11 @@ def main():
     ap.add_argument("--rec-device", default=REC)
     ap.add_argument("--call", default="AG7EW")
     ap.add_argument("--keep", metavar="RAW", help="copy the recording here at the end (raw s16le mono 48 kHz)")
+    ap.add_argument("--via", choices=("ic7100", "pluto"), default="ic7100",
+                    help="the transmitter: the IC-7100 (default) or the ADALM-Pluto (tools/pluto_bench.py;"
+                         " the IC-7100 still listens for the K6's reports, unkeyed)")
+    ap.add_argument("--pluto-gain", type=float, default=-40.0,
+                    help="--via pluto: TX gain, dB (F/1800 reads from -40 to -58; -64 is past its edge)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     if a.freq != 440_850_000:
