@@ -137,7 +137,7 @@ def test_refusals(elf, hello):
     code, entry = hello
     assert refused(run(elf, tool.mod_lines(img(hello, key=secrets.token_bytes(16))))) == [-4]
     assert refused(run(elf, tool.mod_lines(img(hello, magic=b"U3M")))) == [-3]
-    assert refused(run(elf, tool.mod_lines(img(hello, level=4)))) == [-3]
+    assert refused(run(elf, tool.mod_lines(img(hello, level=5)))) == [-3]
     bad = bytearray(img(hello))
     bad[40] ^= 1
     assert refused(run(elf, tool.mod_lines(bytes(bad)))) == [-4]
