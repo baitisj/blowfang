@@ -61,3 +61,8 @@ c/common/ssb_polar_host
 c/common/tone_fsk_host
 firmware/uv380-openrtx/build/
 firmware/uv380-openrtx/out/
+
+# RT-950 backups and firmware images are never committed (Radtel firmware, the radio's calibration)
+*.BTF
+*.btf
+rt950-backup-*/

@@ -3,7 +3,7 @@
 blowfang on the Radtel RT-950 Pro: an Artery AT32F403A (Cortex-M4F, 1 MB flash, 96 KB SRAM) and
 two BK4829 transceivers. The plan, and why two chips matter, are in
 [docs/rt950-plan.md](../../docs/rt950-plan.md). **Nothing here has run on an RT-950 Pro yet.**
-Andrew has the only one; everything is built to compile for the radio and tested on a PC against
+Andrew has one and Jeff has one (2026-11-16); everything is built to compile for the radio and tested on a PC against
 a model of its two chips.
 
 ## Licence: GPL-3
@@ -50,6 +50,11 @@ Neither transmits yet. jaymart1983's keeps TX for a later rung, after receive is
   keypad, the ST7789 screen), and `rt950_surf2()`, the entry a menu item calls. CI compiles it
   against the pinned checkout; it is not yet wired into that tree's menus, and its transmit
   calls stay empty until that firmware has a TX path.
+- `tools/rt950_backup.py`, `backup/`: the backup before anything else runs on a radio
+  ([docs/rt950-backup.md](../../docs/rt950-backup.md)). A read-only CPS reader (the stock
+  firmware's 64 KB, or all 4 MB and the bootloader through a dump-only image), the patch that
+  makes that image from the base firmware (no SPI erase or program, no TX, BACKUP ONLY on the
+  screen), the check CI runs on the built image, and a fake radio on a pty for dry runs.
 - `sim/rt950_sim.c`: the two chips on a PC (register writes, the tune sequence, RSSI settling
   after a tune, signals that pulse, one chip's LO desensing the other, bus time), running the
   real app code. `tests/test_rt950_surf.py` drives it.
@@ -58,16 +63,18 @@ Neither transmits yet. jaymart1983's keeps TX for a later rung, after receive is
 make -C radios/rt950                      # build/rt950_sim (and the no-guard build for a test)
 make -C radios/rt950 target               # build/surf2.o for the Cortex-M4F, with its size
 make -C radios/rt950 glue JM=../jm        # the glue against a checkout of the base firmware
+make -C radios/rt950 backup-image JM=../jm   # the dump-only image, built and checked
 make -C c/common                          # the polar SSB and tone_fsk host programs
-python -m pytest -q tests/test_rt950_surf.py tests/test_rt950_digi.py tests/test_ssb_polar.py tests/test_tone_fsk.py
+python -m pytest -q tests/test_rt950_surf.py tests/test_rt950_digi.py tests/test_rt950_backup.py tests/test_ssb_polar.py tests/test_tone_fsk.py
 ```
 
 ## What needs Andrew's radio
 
 Each is a constant or an assumption in the code, listed with where it lives:
 
-1. **Backup first**: the stock firmware and the 4 MB SPI flash, before anything is written
-   (jaymart1983's `tools/` has a CPS flash reader and Bluetooth flashing).
+1. **Backup first**: the settings, the 4 MB SPI flash and the bootloader, and Radtel's .BTF for
+   the stock version, before anything is written ([docs/rt950-backup.md](../../docs/rt950-backup.md)).
+   Jeff has an RT-950 Pro too now (2026-11-16), so these can run on his bench as well.
 2. **Both chips hearing at once.** The band relay and LNA (PE12 VHF, PE13 UHF, PB0) seem to be
    shared, so chip 1 is assumed to hear through chip 0's front end, on chip 0's side of 300 MHz.
    Check: chip 1's RSSI tracks a carrier while chip 0 is tuned elsewhere on the same band

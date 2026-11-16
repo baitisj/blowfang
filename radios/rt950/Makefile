@@ -5,6 +5,9 @@
 #   make -C radios/rt950 target-libm CROSS=arm-none-eabi-gcc   and c/common/tone_fsk.c too
 #   make -C radios/rt950 glue JM=DIR   port/jm_glue.c compiled against a checkout of
 #                                      jaymart1983/Radtel-RT950-Pro-Firmware at DIR
+#   make -C radios/rt950 backup-image JM=DIR   the dump-only image for the backup: that
+#                                      checkout with backup/backup-only.patch, built and checked
+#                                      (build/rt950-backup-only.BTF; docs/rt950-backup.md)
 # The target build uses clang (as the K6 modules do) unless CROSS=arm-none-eabi-gcc.
 # SPDX-License-Identifier: GPL-3.0-or-later
 CC ?= cc
@@ -60,7 +63,25 @@ glue: build/jm_glue.o
 build/jm_glue.o: port/jm_glue.c src/rt_api.h src/surf2.h | build
 	$(CROSS) $(ARCH) -Os -std=c11 -Wall -Wextra -Werror -I$(JM)/include -Isrc -c port/jm_glue.c -o $@
 
+# the dump-only image: the pinned base firmware with every SPI erase and program, every CPS write
+# and the TX value taken out, then backup/check_image.py proves it from the built image
+BK = build/jm-backup
+backup-image: backup/backup-only.patch backup/check_image.py | build
+	rm -rf $(BK)
+	mkdir -p $(BK)
+	cd $(JM) && git archive HEAD | tar -x -C $(CURDIR)/$(BK)
+	patch -d $(BK) -p1 --quiet < backup/backup-only.patch
+	$(MAKE) -C $(BK) btf TARGET=rt950-backup-only
+	cp $(BK)/build/rt950-backup-only.elf build/
+	cp $(BK)/build/rt950-backup-only.bin build/
+	cp $(BK)/build/rt950-backup-only.BTF build/
+	python3 backup/check_image.py build/rt950-backup-only.elf build/rt950-backup-only.bin
+	python3 $(BK)/tools/firmware_upload.py verify build/rt950-backup-only.BTF | tee build/rt950-backup-only.verify.txt
+	grep -q "valid SRAM" build/rt950-backup-only.verify.txt
+	grep -q "valid app flash" build/rt950-backup-only.verify.txt
+	sha256sum build/rt950-backup-only.BTF
+
 clean:
 	rm -rf build
 
-.PHONY: all target target-libm glue clean
+.PHONY: all target target-libm glue backup-image clean
