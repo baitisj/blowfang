@@ -166,3 +166,33 @@ def test_decode_a_pluto_capture(tmp_path):
     assert "CRC right by variant: v20 3, v21 2" in out
     assert any(ln.startswith("a +3 symbol (dibit 01) goes out above the carrier") for ln in out), out
     assert out[-1] == "carrier gaps over 0.5 ms: 0", out
+
+
+def test_errors_finds_a_mid_slot_overwrite(tmp_path):
+    """the bench lead (11-16 run 2: every packet 16-35 bits wrong, the same bits at 1200): if the
+    chip writes its 48-bit sync over TX RAM bits 132-179 of every slot, `errors` puts every wrong
+    bit in data bits 33-44 of the slot (2400)"""
+    import json
+    sync = np.unpackbits(np.frombuffer(bytes.fromhex("D5D7F77FD757"), np.uint8))
+
+    def clobber(sl):
+        b = np.unpackbits(np.frombuffer(sl, np.uint8))
+        b[132:180] = sync
+        return np.packbits(b).tobytes()
+    raw = b"".join(clobber(x) for x in c6phy.slots(2400, 2, 5, 60))
+    f = np.concatenate([np.zeros(24000), c6phy.freq_track(raw, 240_000), np.zeros(24000)]) - 49_700.0
+    iq = np.exp(2j * np.pi * np.cumsum(f) / 240_000)
+    cap = tmp_path / "cap.cf32"
+    iq.astype(np.complex64).tofile(cap)
+    (tmp_path / "cap.cf32.json").write_text(json.dumps({"fs": 240_000, "hz": 440_900_000}))
+    out = c6phy.errors(str(cap), 2400)
+    assert "would be data bits 33-44" in out[0], out
+    assert out[1].endswith("(100%) in data bits 33-44"), out
+
+
+def test_payload_start_bits_is_the_stream_layout():
+    for baud in (2400, 1200):
+        st = c6phy.stream(baud, 0, 5)
+        for k in range(5):
+            b = c6phy.payload_start_bits(baud, k) // 8
+            assert st[b:b + 64] == fsk24.packet(c6phy.VAR[baud], k)
