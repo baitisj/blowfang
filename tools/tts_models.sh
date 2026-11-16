@@ -6,8 +6,9 @@
 #   sh tools/tts_models.sh ~/blowfang-work/tts/models [--score] [--all]
 #
 # Default: Kokoro v1.0 (int8 model, 88 MB, and its voice pack) and the Piper voice
-# en_US-hfc_female-medium. --all adds every Piper voice the comparison tried.
-# Licenses: Kokoro Apache-2.0; Piper voices per their MODEL_CARD (hfc_female: CC0).
+# en_US-lessac-high (Jeff's two picks, 11-16). --all adds every Piper voice the comparison tried.
+# Licences: Kokoro Apache-2.0. Piper voices per their MODEL_CARD; lessac's data is the
+# Blizzard 2013 set (non-commercial use only), hfc_* are CC0.
 # SPDX-License-Identifier: MIT
 set -eu
 [ $# -ge 1 ] || { echo "usage: sh tools/tts_models.sh DIR [--score] [--all]" >&2; exit 2; }
@@ -49,7 +50,7 @@ piper_old() {  # piper_old NAME: en-us-NAME.onnx and .onnx.json from piper v0.0.
 
 get "$KOKORO/kokoro-v1.0.int8.onnx" kokoro-v1.0.int8.onnx
 get "$KOKORO/voices-v1.0.bin" voices-v1.0.bin
-sherpa_tar tts-models vits-piper-en_US-hfc_female-medium
+sherpa_tar tts-models vits-piper-en_US-lessac-high
 
 if [ $ALL = 1 ]; then
     for v in \
@@ -57,7 +58,7 @@ if [ $ALL = 1 ]; then
         en_US-joe-medium \
         en_US-john-medium \
         en_US-kristin-medium \
-        en_US-lessac-high \
+        en_US-hfc_female-medium \
         en_US-norman-medium \
         en_GB-alan-medium \
         en_GB-cori-high \

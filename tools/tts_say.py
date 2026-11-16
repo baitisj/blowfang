@@ -11,7 +11,7 @@ install (docs/uv380-tts.md has the comparison after sotto 1200 and the setup):
     ~/blowfang-work/tts/bin/pip install -r tools/tts_requirements.txt
     sh tools/tts_models.sh ~/blowfang-work/tts/models
     ~/blowfang-work/tts/bin/python tools/tts_say.py "Received F S K." out.wav
-    ... tools/tts_say.py --engine piper --voice en_US-hfc_female-medium --rate 8000 "Hello." out.wav
+    ... tools/tts_say.py --engine piper --voice en_US-lessac-high --rate 8000 "Hello." out.wav
 
 Writes 16-bit mono at the engine's own rate (Kokoro 24000, Piper 22050 or 16000, espeak-ng
 22050), or at --rate (8000 for the sotto 1200 encoder). Model files come from --models, else
@@ -34,7 +34,7 @@ ENGINES = (
 DEFAULT_ENGINE = "kokoro"
 DEFAULT_VOICE = {
     "kokoro": "af_heart",
-    "piper": "en_US-hfc_female-medium",
+    "piper": "en_US-lessac-high",
     "espeak": "en-us",
 }
 KOKORO_MODEL = "kokoro-v1.0.int8.onnx"
@@ -177,7 +177,7 @@ def main(argv=None):
     ap.add_argument("wpm", nargs="?", type=int, help="old form: espeak-ng words a minute (140)")
     ap.add_argument("--engine", choices=ENGINES, help=f"default {DEFAULT_ENGINE}, or espeak when "
                                                        "its model files are missing")
-    ap.add_argument("--voice", help="kokoro af_heart, piper en_US-hfc_female-medium, espeak en-us")
+    ap.add_argument("--voice", help="kokoro af_heart, piper en_US-lessac-high, espeak en-us")
     ap.add_argument("--speed", type=float, default=1.0, help="1.0 = the voice's own pace")
     ap.add_argument("--rate", type=int, help="resample to this rate (8000 for sotto 1200)")
     ap.add_argument("--models", help="model folder (default $BLOWFANG_TTS_MODELS or "

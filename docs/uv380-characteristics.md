@@ -163,6 +163,12 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   carrier with no time limit (until the store filled, or PTT, which the cable seating gives). OpenRTX's FM mode had no
   transmit time limit: the patch now drops the carrier after 3 minutes until PTT is let go, and a
   PAGER send stops after 120 s whatever happens.
+- PLAYER RECEIVE, LONGER MESSAGES (M, 11-16 09:12:29-09:14:03Z, cable in, PAGER listener on,
+  IC-7100 at RF power 0 on 440.850 FM-D, tools/uv380_say.py sends): Kokoro speech msg 0x5d, 141
+  frames in 8 PHY R packets (19.1 s on air): `listen` after it `msgs` +1, `last=141`; Piper msg
+  0x5e, 137 frames in 7 packets (17.2 s): `last=137`. Both whole. `pk` rose 7 and 6, one short of
+  the packets sent (the last packet counts as PL_READY, not PL_PACKET). `pv` read 0 for both, as
+  in the 11-14 cable-in runs, so playback isn't confirmed from USB (docs/uv380-tts.md).
 - Only Plus images (`mduv3x0p`) on Jeff's radio; a plain `mduv3x0` image is wrong for it (M).
 - Calibration isn't dumpable; the stock firmware isn't readable (M, 11-13 backup).
 

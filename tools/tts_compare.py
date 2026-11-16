@@ -54,6 +54,59 @@ SENTENCES = (
     "This is A G seven E W, testing the sotto player on four four zero point eight five.",
 )
 
+# round 2 (the leaders only): Harvard lists 3-6 and more of the player's kind of message
+MORE = (
+    "The small pup gnawed a hole in the sock.",
+    "The fish twisted and turned on the bent hook.",
+    "Press the pants and sew a button on the vest.",
+    "The swan dive was far short of perfect.",
+    "The beauty of the view stunned the young boy.",
+    "Two blue fish swam in the tank.",
+    "Her purse was full of useless trash.",
+    "The colt reared and threw the tall rider.",
+    "It snowed, rained, and hailed the same morning.",
+    "Read verse out loud for pleasure.",
+    "Hoist the load to your left shoulder.",
+    "Take the winding path to reach the lake.",
+    "Note closely the size of the gas tank.",
+    "Wipe the grease off his dirty face.",
+    "Mend the coat before you go out.",
+    "The wrist was badly strained and hung limp.",
+    "The stray cat gave birth to kittens.",
+    "The young girl gave no clear response.",
+    "The meal was cooked before the bell rang.",
+    "What joy there is in living.",
+    "A king ruled the state in the early days.",
+    "The ship was torn apart on the sharp reef.",
+    "Sickness kept him home the third week.",
+    "The wide road shimmered in the hot sun.",
+    "The lazy cow lay in the cool grass.",
+    "Lift the square stone over the fence.",
+    "The rope will bind the seven books at once.",
+    "Hop over the fence and plunge in.",
+    "The friendly gang left the drug store.",
+    "Mesh wire keeps chicks inside.",
+    "The frosty air passed through the coat.",
+    "The crooked maze failed to fool the mouse.",
+    "Adding fast leads to wrong sums.",
+    "The show was a flop from the very start.",
+    "A saw is a tool used for making boards.",
+    "The wagon moved on well oiled wheels.",
+    "March the soldiers past the next hill.",
+    "A cup of sugar makes sweet fudge.",
+    "Place a rosebush near the porch steps.",
+    "Both lost their lives in the raging storm.",
+    "Received F S K. Seven packets, one hundred fifteen frames.",
+    "The battery is low. Charge the radio before the next drive.",
+    "Echo test from hamlet. Reply in five seconds.",
+    "Weather at the bench: clear, nine degrees, light wind from the north.",
+    "Message received at twelve forty. Signal strength three out of five.",
+)
+SETS = {
+    "short": SENTENCES,
+    "long": MORE,
+}
+
 VOICES = (
     ("espeak", "en-us"),
     ("piper", "en-us-amy-low"),
@@ -147,6 +200,9 @@ def main(argv=None):
     ap.add_argument("--models", default=tts_say.models_dir())
     ap.add_argument("--out", required=True)
     ap.add_argument("--only", help="engine or voice substring")
+    ap.add_argument("--voices", help="file of ENGINE VOICE lines, one voice a line")
+    ap.add_argument("--set", choices=sorted(SETS), default="short",
+                    help="short: 10 sentences, all voices; long: 45 more, for the leaders")
     ap.add_argument("--no-score", action="store_true", help="just write the wavs")
     a = ap.parse_args(argv)
     from pesq import pesq
@@ -154,13 +210,17 @@ def main(argv=None):
     os.makedirs(a.out, exist_ok=True)
     sc = None if a.no_score else Scorer(a.models)
     rows = []
-    for eng, voice in VOICES:
+    voices = VOICES
+    if a.voices:
+        voices = tuple(tuple(ln.split()[:2]) for ln in open(a.voices) if ln.split())
+    sentences = SETS[a.set]
+    for eng, voice in voices:
         tag = f"{eng}-{voice}"
         if a.only and a.only not in tag:
             continue
         vd = os.path.join(a.out, tag)
         os.makedirs(vd, exist_ok=True)
-        for i, text in enumerate(SENTENCES):
+        for i, text in enumerate(sentences):
             t0 = time.time()
             y, fs = tts_say.synth(text, eng, voice, 1.0, a.models)
             dt = time.time() - t0
@@ -200,7 +260,7 @@ def main(argv=None):
         w.writerows(rows)
     if sc:
         summ = []
-        for eng, voice in VOICES:
+        for eng, voice in voices:
             rs = [r for r in rows if r["voice"] == voice]
             if not rs:
                 continue

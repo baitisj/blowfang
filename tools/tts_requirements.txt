@@ -3,7 +3,9 @@
 #   ~/blowfang-work/tts/bin/pip install -r tools/tts_requirements.txt
 numpy
 scipy
+soundfile
 espeakng-loader
+# on Python 3.14 (hamlet): pip install --ignore-requires-python kokoro-onnx==0.6.1
 kokoro-onnx==0.6.1
 piper-tts==1.8.0
 # scoring only (tools/tts_compare.py)
