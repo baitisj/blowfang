@@ -31,7 +31,10 @@ PART=$(lsblk -rno NAME,LABEL | awk '$2=="PlutoSDR"{print $1; exit}')
 DEV=/dev/$PART
 DISK=/dev/$(lsblk -rno PKNAME "$DEV" | head -1)
 echo "Pluto drive: $DEV on $DISK"
-echo "before: $(iio_attr -u usb: -C fw_version 2>/dev/null | tail -1 || true)"
+fwver() { iio_attr -u usb: -C fw_version 2>/dev/null | tail -1 | sed 's/^fw_version: *//' || true; }
+present() { grep -qs PlutoSDR /sys/bus/usb/devices/*/product; }
+BEFORE=$(fwver)
+echo "before: ${BEFORE:-unknown}"
 
 MNT=$(lsblk -rno MOUNTPOINT "$DEV" | head -1)
 if [ -z "$MNT" ]; then
@@ -57,19 +60,26 @@ if ! eject "$DISK" 2>/dev/null; then
 fi
 echo "ejected at $(date -u +%H:%M:%SZ). DO NOT UNPLUG: LED1 blinks fast while it writes flash."
 
-# wait for the Pluto to go away and come back with the new image
-for i in $(seq 1 60); do
+# wait for the Pluto to finish writing and drop off USB (it stays enumerated while it flashes;
+# iio is not asked anything meanwhile), then to come back reporting a different version
+for i in $(seq 1 120); do
   sleep 5
-  if ! iio_info -s 2>/dev/null | grep -q PlutoSDR; then break; fi
+  present || break
 done
-echo "Pluto rebooting ..."
+if present; then
+  echo "the Pluto is still on USB after 10 minutes: check LED1 (blinking fast = still writing; leave it)"
+  exit 1
+fi
+echo "Pluto rebooting at $(date -u +%H:%M:%SZ) ..."
 for i in $(seq 1 96); do
   sleep 5
-  if iio_attr -u usb: -C fw_version >/dev/null 2>&1; then
-    echo "back at $(date -u +%H:%M:%SZ): $(iio_attr -u usb: -C fw_version | tail -1)"
+  present || continue
+  NOW=$(fwver)
+  if [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ]; then
+    echo "back at $(date -u +%H:%M:%SZ): $NOW (was ${BEFORE:-unknown})"
     python3 "$HERE/pluto_bench.py" quiet || true
     exit 0
   fi
 done
-echo "the Pluto hasn't come back after 8 minutes: check its LEDs (LED1 still blinking = still writing; leave it)"
+echo "the Pluto hasn't come back with a new version after 8 minutes (now: $(fwver)): check its LEDs"
 exit 1
