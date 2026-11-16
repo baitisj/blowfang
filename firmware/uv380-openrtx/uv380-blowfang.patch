@@ -205,6 +205,34 @@ index 4e8e0630..8b1d41f4 100644
  /*
       * Initialise remaining fields
       */
+diff --git a/openrtx/src/core/threads.c b/openrtx/src/core/threads.c
+index 537c23be..b097a286 100644
+--- a/openrtx/src/core/threads.c
++++ b/openrtx/src/core/threads.c
+@@ -32,6 +32,10 @@ pthread_mutex_t rtx_mutex;
+ /**
+  * \internal Thread managing user input and UI
+  */
++// blowfang: set by another thread (the pager's "power N" over USB) after it
++// changes state.channel, so this one hands the change to the radio
++volatile uint8_t blowfang_syncRtx = 0;
++
+ void *ui_threadFunc(void *arg)
+ {
+     (void) arg;
+@@ -65,6 +69,12 @@ void *ui_threadFunc(void *arg)
+ 
+         vp_tick();                           // continue playing voice prompts in progress if any.
+ 
++        if(blowfang_syncRtx != 0)
++        {
++            blowfang_syncRtx = 0;
++            sync_rtx = true;
++        }
++
+         // If synchronization needed take mutex and update RTX configuration
+         if(sync_rtx)
+         {
 diff --git a/openrtx/src/rtx/OpMode_FM.cpp b/openrtx/src/rtx/OpMode_FM.cpp
 index 9d4901c1..f4245aca 100644
 --- a/openrtx/src/rtx/OpMode_FM.cpp
@@ -253,10 +281,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..bb53cc7c
+index 00000000..307473cc
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1422 @@
+@@ -0,0 +1,1437 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -384,6 +412,9 @@ index 00000000..bb53cc7c
 +__attribute__((unused)) static volatile bool blowfang_txMic = false;
 +__attribute__((unused)) static volatile uint8_t blowfang_txZero = 1;
 +#endif
++
++// threads.c (blowfang): the UI thread sends state.channel to the radio again
++extern "C" volatile uint8_t blowfang_syncRtx;
 +
 +static const uint8_t *msgBytes()
 +{
@@ -714,8 +745,10 @@ index 00000000..bb53cc7c
 +// modulator is told the PWM runs at, 47000-49000; default 48000: corrects the
 +// tones and the baud rate together), "emph 0|1" (pre-emphasis off or on;
 +// default on), "trim N" (Hz added to the transmit frequency, -8000 to 8000;
-+// default 3580, this radio's measured error). Each answers with all four;
-+// "tune" alone only answers.
++// default 3580, this radio's measured error), "power N" (transmit power in
++// mW: 0, 1000, 2500 or 5000, what macro key 6 steps through; the UI thread
++// takes it to the radio as it does the key's). Each answers with all of them
++// (pwr= reads the power back); "tune" alone only answers.
 +static int tuneCommand(const char *line)
 +{
 +    unsigned long v = 0;
@@ -734,6 +767,8 @@ index 00000000..bb53cc7c
 +        p = line + 6;
 +    else if(strncmp(line, "zero ", 5) == 0)
 +        p = line + 5;
++    else if(strncmp(line, "power ", 6) == 0)
++        p = line + 6;
 +    else if(strcmp(line, "tune") != 0)
 +        return 0;
 +    bool num = false;
@@ -759,6 +794,14 @@ index 00000000..bb53cc7c
 +        txSpace = (uint32_t) v;
 +    else if(num && !neg && (line[0] == 'z') && (v >= 1) && (v <= 2))
 +        blowfang_txZero = (uint8_t) v;
++    else if(num && !neg && (line[0] == 'p') &&
++            ((v == 0) || (v == 1000) || (v == 2500) || (v == 5000)))
++    {
++        pthread_mutex_lock(&state_mutex);
++        state.channel.power = (uint32_t) v;
++        pthread_mutex_unlock(&state_mutex);
++        blowfang_syncRtx = 1;
++    }
 +    char out[112];
 +    snprintf(out, sizeof(out),
 +             "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu zero=%u pwr=%lu",
