@@ -233,6 +233,21 @@ bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
   input isn't flat (pre-emphasis, a cut below 300 Hz), and the K6 read none of the UV-380's FFSK
   that way (11-14). The physical layer route skips that path.
 
+## The sensitivity sweep (staged 11-16)
+
+How weak can each rate be? `c/k6/mod/fsk24rx_sweep.c` runs fsk24rx in 36 slots of 12 s on a
+fixed grid (`F24_ABS`): D/2400 (run 3's setting 2: REG_58 00e9, REG_2B +0400), F/1800 and F/1200
+(the pager's recipes) in turn, three slots a level step. `tools/pluto_bench.py fsk24 --sweep
+--follow LOG --gain -70` waits for the K6 logger's `fsk24 start` line and sends each slot its
+rate's test packets (`modem.fsk24.sweep_track`), one step lower every three slots: 0 to -44 dB
+in 4 dB steps, set digitally in the IQ. D/2400 goes flat at 2.2 kHz peak deviation; the FFSK
+tones go 750 us pre-emphasised at 3.0 kHz peak, as an ordinary HT sends them (the K6 receives
+with its de-emphasis on). The signal rides 250 kHz above the Pluto's TX LO, so the LO's leak
+(440.600) and the IQ image (440.350) stay off the channel as the signal drops. Carrier only for
+1.5 s at a slot's start and 1.0 s at its end, so a few hundred ms of slip between the K6's clock
+and hamlet's don't matter. `python3 -m modem.fsk24 report --sweep LOG` gives packets right of
+sent per step and rate, with the K6's RSSI.
+
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 
 - **No more 2400 baud tries through the IC-7100's audio.** Run 2's equaliser got syncs but not

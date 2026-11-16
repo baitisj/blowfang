@@ -119,3 +119,34 @@ def test_refuses_to_stream_over_usb():
     with pytest.raises(SystemExit, match="usb:"):
         pl.stream(np.zeros(480), uri="usb:1.38.5", rf=False)
     assert pl.URI.startswith("ip:") or os.environ.get("PLUTO_URI")
+
+
+def test_sweep_if_and_level():
+    """the sweep's IF: the LO below the channel, refused when the LO or its image leave 70 cm;
+    the level envelope scales the IQ, and the IF moves the tone"""
+    assert pl.check_tx(440_850_000, 0, -70, 250_000) == 440_600_000
+    with pytest.raises(SystemExit):
+        pl.check_tx(430_400_000, 0, -70, 250_000)       # image 429.9 MHz
+    with pytest.raises(SystemExit):
+        pl.check_tx(440_850_000, 0, -70, 600_000)       # more than IF_MAX
+    lev = np.r_[np.ones(4800), np.full(4800, 0.01)]
+    raw = b"".join(pl.iq_chunks(np.zeros(9600), level=lev, if_hz=250_000.0))
+    x = np.frombuffer(raw, np.int16).astype(float)
+    iq = x[0::2] + 1j * x[1::2]
+    assert abs(np.abs(iq[:1000]).max() - pl.AMP) < 2 and abs(np.abs(iq[-1000:]).max() - pl.AMP / 100) < 2
+    f = np.angle(iq[101:200] * np.conj(iq[100:199])).mean() * pl.RATE / (2 * np.pi)
+    assert abs(f - 250_000) < 10
+
+
+def test_follow_sees_only_new_lines(tmp_path):
+    import threading
+    import time
+    log = tmp_path / "k6.log"
+    log.write_text("K6 MOD say fsk24 start hz=1 n=1\n")
+    def later():
+        time.sleep(0.2)
+        with open(log, "a") as f:
+            f.write("noise\nK6 MOD say fsk24 start hz=440850000 n=36\n")
+    threading.Thread(target=later).start()
+    _, ln = pl.follow(str(log), "say fsk24 start", 5.0, poll=0.02)
+    assert "n=36" in ln

@@ -38,6 +38,7 @@ python3 tools/pluto_bench.py rx OUT.cf32|OUT.wav [--hz F] [--seconds 10] [--gain
 python3 tools/pluto_bench.py measure CAP.cf32        offset (Hz, ppm), peak deviation, level, floor
 python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
 python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
+python3 tools/pluto_bench.py fsk24 --sweep --follow LOG --gain -70   the K6 sensitivity sweep
 ```
 
 - **send:** plays any audio file as FM. Full scale is `--dev` Hz of peak deviation (3 kHz by
@@ -52,6 +53,10 @@ python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
   reference. `--save` writes `$BLOWFANG_WORK/state/pluto-cal.json`, and every later command sets the
   AD9361's xo_correction from it, which moves TX and RX together. The Pluto forgets
   xo_correction when it powers off; the stored file puts it back.
+
+- **fsk24 --sweep:** the stepped-level signal for `c/k6/mod/fsk24rx_sweep.c` (docs/k6-fsk24.md).
+  The level steps are digital, and the signal sits 250 kHz above the TX LO (`--if-hz`), so the
+  LO's leak and the IQ image stay off the channel; the tool checks that all three stay in 70 cm.
 
 Python can use it as a library: `pluto_bench.capture()`, `measure()`, `audio_track()` and
 `send()`, where `send()` takes a frequency track in Hz at 48 kHz.

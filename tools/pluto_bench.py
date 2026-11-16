@@ -22,6 +22,10 @@ docs/pluto-bench.md has the bench notes.
                                                     crystal (xo_correction); --save stores it and
                                                     every later command applies it
   python3 tools/pluto_bench.py fsk24 [--rounds N]   fsk24 run 3 (docs/k6-fsk24.md)
+  python3 tools/pluto_bench.py fsk24 --sweep        the sensitivity sweep for fsk24rx_sweep: timed
+         --follow LOG --gain -70                    from the K6 logger's "fsk24 start" line, 0 to
+                                                    -44 dB in 4 dB steps (digital), the signal
+                                                    250 kHz above the LO (its leak off channel)
 
 Receive works anywhere the Pluto tunes (this one is an ad9364: 70 MHz to 6 GHz). Transmit keeps
 the project's bench rules: only 430.010-449.990 MHz (440.850, the K6 bench frequency, by default;
@@ -56,6 +60,8 @@ URI = os.environ.get("PLUTO_URI", "ip:192.168.2.1")
 HZ = 440_850_000
 TX_LO_MIN, TX_LO_MAX = 430_010_000, 449_990_000     # the bench authorization: 70 cm only
 OFFSET_MAX = 20_000
+IF_MAX = 500_000            # the sweep's IF: the signal this far from the LO at most
+SWEEP_IF = 250_000          # fsk24 --sweep: LO leak and image 250 and 500 kHz below the channel
 GAIN_MAX = -30.0
 GAIN_MIN = -89.75
 RATE = 2_400_000            # above 2.083 MS/s: no FIR needed in the AD9361
@@ -156,13 +162,18 @@ def setup(rate=RATE, tx_hz=None, rx_hz=None, gain=None, rx_gain=None, uri=None):
         put("in", PHY, "voltage0", "hardwaregain", int(rx_gain if rx_gain is not None else 30), uri=uri)
 
 
-def check_tx(hz, offset, gain):
+def check_tx(hz, offset, gain, if_hz=0):
+    """-> the TX LO. if_hz: the signal sent that far above the LO (digitally), so the LO's leak
+    and the IQ image (the LO minus if_hz) sit off the channel; all three stay in the band"""
     if abs(offset) > OFFSET_MAX:
         raise SystemExit(f"refusing: offset {offset} Hz is more than {OFFSET_MAX}")
-    lo = hz - offset
-    if not (TX_LO_MIN <= hz <= TX_LO_MAX and TX_LO_MIN <= lo <= TX_LO_MAX):
-        raise SystemExit(f"refusing: transmit only in {TX_LO_MIN}..{TX_LO_MAX} Hz (asked {hz}, LO {lo});"
-                         " outside 70 cm needs Jeff's OK")
+    if abs(if_hz) > IF_MAX:
+        raise SystemExit(f"refusing: IF {if_hz} Hz is more than {IF_MAX}")
+    lo = hz - offset - if_hz
+    image = lo - if_hz
+    if not all(TX_LO_MIN <= f <= TX_LO_MAX for f in (hz, lo, image)):
+        raise SystemExit(f"refusing: transmit only in {TX_LO_MIN}..{TX_LO_MAX} Hz (asked {hz}, LO {lo},"
+                         f" image {image}); outside 70 cm needs Jeff's OK")
     if not (GAIN_MIN <= gain <= GAIN_MAX):
         raise SystemExit(f"refusing: gain {gain} dB outside {GAIN_MIN}..{GAIN_MAX}")
     return lo
@@ -191,24 +202,28 @@ def audio_track(x, fs, dev, preemph=False):
     return np.clip(x, -1.0, 1.0) * dev
 
 
-def iq_chunks(track, fs_track=FS_TRACK, rate=RATE, chunk=CHUNK):
+def iq_chunks(track, fs_track=FS_TRACK, rate=RATE, chunk=CHUNK, level=None, if_hz=0.0):
     """instantaneous frequency (Hz at fs_track) -> int16 interleaved IQ bytes, chunk by chunk,
-    phase continuous (the track interpolated linearly to rate)"""
+    phase continuous (the track interpolated linearly to rate). level: the amplitude (1 = AMP)
+    a track sample, held; if_hz: added to the frequency (the signal that far above the LO)"""
     n_out = int(len(track) * rate / fs_track)
     t_src = np.arange(len(track)) / fs_track
     phase = 0.0
     for a in range(0, n_out, chunk):
         b = min(n_out, a + chunk)
-        f = np.interp(np.arange(a, b) / rate, t_src, track)
+        f = np.interp(np.arange(a, b) / rate, t_src, track) + if_hz
         ph = phase + 2 * np.pi * np.cumsum(f) / rate
         phase = float(ph[-1] % (2 * np.pi))
+        amp = AMP
+        if level is not None:
+            amp = AMP * np.asarray(level)[np.minimum((np.arange(a, b) * fs_track) // rate, len(level) - 1)]
         iq = np.empty(2 * (b - a), np.int16)
-        iq[0::2] = np.round(AMP * np.cos(ph))
-        iq[1::2] = np.round(AMP * np.sin(ph))
+        iq[0::2] = np.round(amp * np.cos(ph))
+        iq[1::2] = np.round(amp * np.sin(ph))
         yield iq.tobytes()
 
 
-def stream(track, rate=RATE, uri=None, rf=True, what="pluto"):
+def stream(track, rate=RATE, uri=None, rf=True, what="pluto", level=None, if_hz=0.0):
     """the track through iio_writedev, under the bench's PTT lock and owner check; the TX LO up
     only while it plays. The caller has put the ID in the track. -> (seconds of signal, took)"""
     import k6_bench as kb
@@ -222,7 +237,7 @@ def stream(track, rate=RATE, uri=None, rf=True, what="pluto"):
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         t0 = time.time()
         try:
-            gen = iq_chunks(track, rate=rate)
+            gen = iq_chunks(track, rate=rate, level=level, if_hz=if_hz)
             p.stdin.write(next(gen))          # first buffer queued before RF comes up
             if rf:
                 tx_power(True, uri)
@@ -373,8 +388,75 @@ def cmd_send(a):
          f"send {os.path.basename(a.wav)}")
 
 
+SWEEP_WAIT_S = 30.0          # fsk24rx_sweep's WAIT_MS: slot 0 starts this long after "fsk24 start"
+SWEEP_EARLY_S = 0.3          # start writing this much before the plan (iio_writedev's queue)
+
+
+def follow(path, needle, timeout_s, poll=0.05):
+    """wait for a new line holding needle at the end of a log another process writes ->
+    (the time it was seen, the line)"""
+    t_end = time.time() + timeout_s
+    while not os.path.exists(path):
+        if time.time() > t_end:
+            raise SystemExit(f"no log {path} after {timeout_s:.0f} s")
+        time.sleep(poll)
+    with open(path, errors="replace") as f:
+        f.seek(0, os.SEEK_END)
+        buf = ""
+        while time.time() < t_end:
+            got = f.read()
+            if not got:
+                time.sleep(poll)
+                continue
+            buf += got
+            *done, buf = buf.split("\n")
+            for ln in done:
+                if needle in ln:
+                    return time.time(), ln
+    raise SystemExit(f"no '{needle}' in {path} after {timeout_s:.0f} s")
+
+
+def cmd_fsk24_sweep(a):
+    """the sensitivity sweep: each of the module's slots gets its rate's packets at its step's
+    level, on the module's grid (slot 0 SWEEP_WAIT_S after its "fsk24 start" line)"""
+    from modem import fsk24
+    track, level, segs = fsk24.sweep_track(FS_TRACK)
+    lo = check_tx(HZ, a.offset_hz, a.gain, a.if_hz)
+    ident = id_track()
+    one = np.ones(len(ident))
+    full = np.concatenate([ident, track, ident])
+    lev = np.concatenate([one, level, one])
+    id_s = len(ident) / FS_TRACK
+    setup(a.rate, tx_hz=lo, gain=a.gain, uri=a.uri)
+    print(f"fsk24 sweep: {len(segs)} slots of {fsk24.SWEEP_SLOT_S} s, steps {fsk24.SWEEP_STEPS[0]} to "
+          f"{fsk24.SWEEP_STEPS[-1]} dB, {sum(s[4] for s in segs)} packets, {len(full) / FS_TRACK:.1f} s on"
+          f" {HZ} Hz (LO {lo}, IF {a.if_hz:+.0f} Hz), gain {a.gain} dB,"
+          f" {'RF OFF (rehearsal)' if a.rf_off else 'RF on'}", flush=True)
+    if a.follow:
+        print(f"waiting for 'fsk24 start' in {a.follow} ...", flush=True)
+        seen, ln = follow(a.follow, "say fsk24 start", a.wait_s)
+        print(f"{time.strftime('%H:%M:%S', time.gmtime(seen))}Z {ln.strip()}", flush=True)
+        s0 = seen + SWEEP_WAIT_S
+    elif a.t0 == "now":
+        s0 = time.time() + id_s + 1.0
+    else:
+        s0 = float(a.t0) + SWEEP_WAIT_S
+    go = s0 - id_s - SWEEP_EARLY_S
+    if go < time.time():
+        raise SystemExit(f"too late: slot 0 was due {time.time() - s0:.1f} s ago")
+    print(f"slot 0 due {time.strftime('%H:%M:%S', time.gmtime(s0))}Z; keying at "
+          f"{time.strftime('%H:%M:%S', time.gmtime(go))}Z", flush=True)
+    time.sleep(go - time.time())
+    print(f"start {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+    secs, took = stream(full, a.rate, a.uri, rf=not a.rf_off, what="fsk24 sweep", level=lev, if_hz=a.if_hz)
+    print(f"end {time.strftime('%H:%M:%S', time.gmtime())}Z: {secs:.1f} s of signal in {took:.1f} s"
+          f" ({'kept up' if took < secs + 2.0 else 'SLOW: the link did not keep up, the grid slipped'})")
+
+
 def cmd_fsk24(a):
     from modem import fsk24
+    if a.sweep:
+        return cmd_fsk24_sweep(a)
     track, segs = fsk24.freq_track(a.rounds)
     print(f"fsk24 run 3: {a.rounds} rounds, {len(segs) * fsk24.PER_BLOCK} packets")
     send(track, HZ, a.offset_hz, a.gain, a.rate, a.uri, not a.rf_off, "fsk24 run 3")
@@ -451,6 +533,13 @@ def main(argv=None):
     tx_args(s)
     f = sub.add_parser("fsk24")
     f.add_argument("--rounds", type=int, default=20)
+    f.add_argument("--sweep", action="store_true",
+                   help="the sensitivity sweep for c/k6/mod/fsk24rx_sweep.c (use --gain -70)")
+    f.add_argument("--follow", metavar="LOG", help="--sweep: time it from the K6 logger's 'fsk24 start' line")
+    f.add_argument("--t0", help="--sweep: the module's start (epoch s), or 'now' (a rehearsal)")
+    f.add_argument("--wait-s", type=float, default=900.0, help="--follow: how long to wait for the line")
+    f.add_argument("--if-hz", type=float, default=SWEEP_IF,
+                   help="--sweep: the signal this far above the TX LO (its leak off the channel)")
     tx_args(f)
     r = sub.add_parser("rx")
     r.add_argument("out", help="OUT.cf32, or OUT.wav (the FM discriminator; the .cf32 is kept beside it)")
