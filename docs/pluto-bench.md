@@ -39,6 +39,7 @@ python3 tools/pluto_bench.py measure CAP.cf32        offset (Hz, ppm), peak devi
 python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
 python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
 python3 tools/pluto_bench.py fsk24 --sweep --follow LOG --gain -70   the K6 sensitivity sweep
+python3 tools/pluto_bench.py steps WAV --gains -70,-73,... [--preemph] [--dev 3000] [--out J]
 ```
 
 - **send:** plays any audio file as FM. Full scale is `--dev` Hz of peak deviation (3 kHz by
@@ -57,6 +58,10 @@ python3 tools/pluto_bench.py fsk24 --sweep --follow LOG --gain -70   the K6 sens
 - **fsk24 --sweep:** the stepped-level signal for `c/k6/mod/fsk24rx_sweep.c` (docs/k6-fsk24.md).
   The level steps are digital, and the signal sits 250 kHz above the TX LO (`--if-hz`), so the
   LO's leak and the IQ image stay off the channel; the tool checks that all three stay in 70 cm.
+
+- **steps:** one audio file sent once at each TX gain, each send a transmission of its own (ID
+  first and last), with the times in `--out` for a report against a receiver's log: a
+  sensitivity ladder through any receiver, with no module on it.
 
 Python can use it as a library: `pluto_bench.capture()`, `measure()`, `audio_track()` and
 `send()`, where `send()` takes a frequency track in Hz at 48 kHz.

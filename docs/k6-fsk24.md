@@ -233,20 +233,79 @@ bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
   input isn't flat (pre-emphasis, a cut below 300 Hz), and the K6 read none of the UV-380's FFSK
   that way (11-14). The physical layer route skips that path.
 
-## The sensitivity sweep (staged 11-16)
+## Sensitivity sweeps (11-16)
 
-How weak can each rate be? `c/k6/mod/fsk24rx_sweep.c` runs fsk24rx in 36 slots of 12 s on a
-fixed grid (`F24_ABS`): D/2400 (run 3's setting 2: REG_58 00e9, REG_2B +0400), F/1800 and F/1200
-(the pager's recipes) in turn, three slots a level step. `tools/pluto_bench.py fsk24 --sweep
---follow LOG --gain -70` waits for the K6 logger's `fsk24 start` line and sends each slot its
-rate's test packets (`modem.fsk24.sweep_track`), one step lower every three slots: 0 to -44 dB
-in 4 dB steps, set digitally in the IQ. D/2400 goes flat at 2.2 kHz peak deviation; the FFSK
-tones go 750 us pre-emphasised at 3.0 kHz peak, as an ordinary HT sends them (the K6 receives
-with its de-emphasis on). The signal rides 250 kHz above the Pluto's TX LO, so the LO's leak
-(440.600) and the IQ image (440.350) stay off the channel as the signal drops. Carrier only for
-1.5 s at a slot's start and 1.0 s at its end, so a few hundred ms of slip between the K6's clock
-and hamlet's don't matter. `python3 -m modem.fsk24 report --sweep LOG` gives packets right of
-sent per step and rate, with the K6's RSSI.
+How weak can each rate be? `c/k6/mod/fsk24rx_sweep.c` runs fsk24rx in slots of 12 s on a fixed
+grid (`F24_ABS`), one receive recipe a slot, the recipes in turn at each level step.
+`tools/pluto_bench.py fsk24 --sweep --follow LOG --gain -70` waits for the K6 logger's
+`fsk24 start` line and sends each slot its rate's test packets (`modem.fsk24.sweep_track`), the
+level set digitally in the IQ. D/2400 goes flat at 2.2 kHz peak deviation; the FFSK tones go
+750 us pre-emphasised at 3.0 kHz peak, as an ordinary HT sends them (the K6 receives with its
+de-emphasis on). The signal rides 250 kHz above the Pluto's TX LO, so the LO's leak (440.600)
+and the IQ image (440.350) stay off the channel as the signal drops. Carrier only for 1.5 s at
+a slot's start and 1.0 s at its end, so a few hundred ms of slip between the K6's clock and
+hamlet's don't matter. `python3 -m modem.fsk24 report --sweep LOG` gives packets right of sent
+per step and recipe, with the K6's RSSI.
+
+**Sweep 1 (20:48-20:56Z, the Pluto at gain -70, steps of 4 dB, every recipe read by time):**
+
+| step dB | RSSI dBm | D/2400 | F/1800 | F/1200 |
+| --- | --- | --- | --- | --- |
+| 0 | -88 | 16/16 | 0/16 | 3/12 |
+| -4 | -92 | 13/16 | 0/16 | 3/12 |
+| -8 | -96 | 6/16 | 0/16 | 0/12 |
+| -12 | -100 | 0/16 (9 junk) | 0/16 | 0/12 |
+| -16 to -44 | | 0 | 0 | 0 |
+
+- D/2400 read everything at -88 dBm and nothing at -100 (the K6's RSSI, not a calibrated
+  level). The packets that failed had 134-161 of 472 bits wrong, a slip partway through rather
+  than scattered errors, so this may be the timed reads' limit more than the chip's.
+- F/1800 and F/1200 failed even at full level: reading FFSK by time doesn't work in this probe
+  (the pager reads F/1800 on the chip's interrupts, and F/1800 uploads work every day). So
+  sweep 1 has no margin between the rates.
+- **Sweep 2 (21:08-21:16Z) tried reading on the chip's interrupts** (polled REG_0C, 3 words a
+  FIFO-almost-full, the rest at RX-done). Every packet it read synced with the right header and
+  then went to junk (22 of 32 words padded or repeated), and a read that never saw RX-done held
+  its slot for up to 7 minutes, so the grid fell apart. It repeated only D/2400 16/16 at -88 dBm.
+  The interrupt code was dropped; making a probe read FFSK like the pager isn't worth it when the
+  pager itself can be measured.
+- **The F/1800 ladder:** the pager's own receive path, the one uploads use every day.
+  `python3 -m modem.k6 test T.wav --phy F --baud 1800 --repeat 16` (the spec's test packet,
+  which the pager checks bit by bit), then `tools/pluto_bench.py steps T.wav --preemph --dev
+  3700 --gains ... --out steps.json` sends it once at each TX gain (the Pluto's range ends at
+  -89.75 dB), each send its own transmission with its own ID, and `python3 -m modem.fsk24
+  report-steps LOG steps.json` counts the K6's `K6 PKT` lines a send. Sweep 1's D/2400 was at
+  TX gain -70 with the level cut digitally, so its steps 0, -4, -8, -12 dB line up with gains
+  -70, -74, -78, -82.
+- **Ladder 1 (21:27-21:30Z, gains -70 to -88 in 3 dB steps, 16 packets each):** none decoded.
+  Four syncs, all at -76 and all junk (about 473 bits wrong); none at -70 or -73. The same
+  waveform through a model of the Pluto (IQ, FM discriminator, with or without de-emphasis)
+  decodes 4/4 on the host's demodulator, so the signal is right. The likely reading: the K6's
+  FFSK receiver needs far more signal than its plain FSK (D/2400 read 16/16 at -70). IC-7100
+  uploads come in much stronger. Ladder 2 starts 30 dB higher (-40 to -88 in 6 dB steps).
+- **Ladder 2 (21:34-21:38Z, gains -40 to -88 in 6 dB steps): F/1800 needs far more signal.**
+
+  | TX gain dB | about dBm at the K6 | F/1800 (pager) | D/2400 (sweep 1, probe) |
+  | --- | --- | --- | --- |
+  | -40 | -58 | 12/16 | |
+  | -46 | -64 | 11/16 | |
+  | -52 | -70 | 12/16 | |
+  | -58 | -76 | 11/16 | |
+  | -64 | -82 | 1/16 | |
+  | -70 | -88 | 2/16 | 16/16 |
+  | -74 | -92 | | 13/16 |
+  | -76 | -94 | 0/16 (7 junk) | |
+  | -78 | -96 | | 6/16 |
+  | -82 and below | -100 | 0 | 0 |
+
+  (dBm: the K6's RSSI at gain -70 was -88, and the rest are scaled from it, so they're not
+  calibrated levels.) F/1800 falls off between -58 and -64. D/2400 is still perfect at -70 and
+  half there at -78. **So from a flat transmitter, D/2400 holds on 12-15 dB lower than F/1800.**
+  Even strong, about a quarter of F/1800 packets failed with block 0 perfect and the rest about
+  half wrong: a slip after the first 16 bytes, at every level. The faster rate costs no range
+  here; it gains it. Caveats: the FFSK went pre-emphasised at about 3 kHz peak, and the IC-7100
+  (whose uploads also lose chunks) wasn't compared at a known level.
+
 
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 

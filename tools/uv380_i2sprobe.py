@@ -186,6 +186,12 @@ def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, st
                     g.write(b)
                     g.flush()
                 buf += b
+                # a line the radio hasn't ended yet: once the port has gone quiet (a read with
+                # nothing, VTIME 0.2 s), take it as whole. 11-16 20:07Z and 20:59Z the radio sent
+                # "\r\nok mod begin N" and held the line's own end back until it next wrote, so
+                # "mod begin" timed out and uv380_dfu.py flash never started
+                if not b and buf.strip() and b"\n" not in buf:
+                    buf += b"\n"
                 while b"\n" in buf:
                     ln, buf = buf.split(b"\n", 1)
                     ln = ln.decode(errors="replace").strip()
