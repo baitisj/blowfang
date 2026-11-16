@@ -68,3 +68,54 @@ chip: the bench says.
 ## Bench
 
 Keys: `/mnt/project-files/k6-fsk24/bench-keys.md`. Report: `python3 -m modem.fsk24 report LOG`.
+
+## Run 1 (2026-11-16 19:02-19:06Z): no 2400 baud sync at all
+
+K6 on main 1287138, `fsk24rx` at cb7bce2, IC-7100 in FM-D at RF power 0 and USB MOD 30 %, RSSI
+-22 dBm. The first upload lost chunks 1, 2 and 6; the resend completed the transfer (the K6 keeps
+a partial one), the module ran from 19:02:48Z and the signal went out 19:03:09-19:06:10Z, so all
+five settings fell inside it. Files: `/mnt/project-files/k6-fsk24/run1/`.
+
+| setting | REG_58 | baud | REG_2B bits | packets | CRC right |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 00e1 | 1200 | | 6 | 2 |
+| 1 | 00e9 | 2400 | | 0 | 0 |
+| 2 | 00e9 | 2400 | 0400 | 0 | 0 |
+| 3 | 00e9 | 2400 | 0700 | 0 | 0 |
+| 4 | 00e1 | 2400 | 0400 | 0 | 0 |
+
+- **2400 baud: not one sync** in four settings over two minutes, across all six 2400 variants
+  (plain, four pre-equalisers, levels 0.15 to 0.4: about 200 packets on air in those two
+  minutes). The chip's 32-bit sync never matched, so the high-pass, low-pass and de-emphasis
+  bits (the RT-950 note's data set-up) are not what stands in the way.
+- **1200 baud, the control: it still reads, as before.** The plain variant read 2 of 3 with 0 bits
+  wrong; the third had its first 178 bits right but one, then lost the bit clock (85 wrong), the
+  "errors grow along each packet" of 2026-11-05. The pre-equalised 1200 variant read nothing: three
+  syncs came out upside down with about half the bits wrong. So the IC-7100's real low cut is far
+  gentler than the model's second-order 300 Hz one, and undoing the model's breaks it.
+- **What that leaves.** The FD6818's plain FSK receiver doesn't find 2400 baud in what the
+  IC-7100's USB audio makes of it, with or without pre-equalising against the model we have. The
+  RT-950 note's clean 2400 receive had a flat transmitter (a bladeRF). The open test is the same
+  here: a flat FM transmitter as the far end. The RT-950 Pro running FerriteFW's modem test (a
+  BK4829 sending its own chip's 2400 baud FSK) would be one; that needs the RT-950's programming
+  cable (due about 11-30) and Jeff's choice to load FerriteFW. Until then, 2400 baud on the K6 is
+  transmit only: the K6 to the IC-7100 (and the PC behind it).
+
+## What 2400 baud would buy
+
+Per XL packet the pager puts 144 bytes on air (12 of preamble, 4 of sync, 128 of packet: 120
+bytes of codec frames). Against F/1800, today's default:
+
+| | F/1800 | 2400 |
+| --- | ---: | ---: |
+| air time a packet | 0.64 s | 0.48 s |
+| codec payload | 1,500 bit/s | 2,000 bit/s |
+| 60 s of sotto 1200 (75 packets) | 48 s | 36 s |
+| sotto 1200 speech per second of air | 1.25 | 1.67 |
+| sotto 2400 speech per second of air | 0.63 | 0.83 (still slower than real time) |
+
+So a third more throughput: module uploads and messages a quarter shorter, and live sotto 1200
+with more room, but not live sotto 2400. Range mode gains nothing: it trades speed for
+sensitivity (about 550 bit/s), and plain FSK at 2400 needs about 3 dB more signal than at 1200
+(docs/k6-pager.md's link model). The coded 4FSK IF modem (PHY G) already makes 1,200 to 1,730
+bit/s at 45-49 dB-Hz, where uncoded 2400 needs about 52.
