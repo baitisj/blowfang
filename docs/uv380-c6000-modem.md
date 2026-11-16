@@ -162,8 +162,28 @@ of the PA.
   keyed path: not found yet. Since then the image keys only under the transmit guard, sends the
   ident first, and `c6dmrtx` says a line before each step, so a re-run ends within seconds
   whatever happens and shows where it stops.
+- **C5 guarded image (PR #123, API level 4), 16:3xZ.** Flashed with no hands (radio_tool
+  usb-leave restarts it). Dry run 65/65, none late, registers restored. Live 1 ran every step
+  but sent no RF: the flash script had left the channel power at 0 (PA off). Live 2 at 1 W
+  (16:37:03Z): ident 3.5 s, 50 ms unkeyed, then the DMR keying, 4.7 s. USB went silent at
+  key-up and the module's lines stalled it: DMR began about 3 s late, so the IC-7100 decoded
+  the 3 CSBK preambles and 24 of 62 blocks (text AG7EW, id 1, 38 never sent, 1 bad). The
+  carrier was down on time, and the radio reset 1.6 s after key-down and came back by itself.
+- **Why the radio hung: 1 W knocks the UV-380 off USB.** In every 1 W run the radio dropped
+  off the USB bus at key-up (the kernel logs a disconnect, not just a quiet CDC link); at power
+  0 every line got through. A module's say() then blocks, which delayed live 2's DMR and very
+  likely froze the 16:12Z run. `c6dmrtx` now keeps its lines from tx_tone to the key-down.
+- **C6, error free (16:43:04Z, 1 W).** Ident, 50 ms gap, DMR from 16:43:07.99 to 12.60Z: the
+  IC-7100 decoded 62 of 62 rate-1/2 blocks and the 3 CSBK preambles, 0 lost, 0 bad, text AG7EW,
+  id 1, the 528-byte test message byte for byte. Plain decode: the chip's DMR arrives flat
+  (with --preemph nothing decodes). The radio still reset about 1.4 s after key-down and the
+  held lines were lost with the USB; the reset cause (watchdog or not) is still to be read.
 
 ## Open questions
+
+- The UV-380 drops off USB under its own 1 W and resets about 1.5 s after each keying: a
+  ferrite or a short shielded cable, or the module's counters by another route (the screen, or
+  RAM that survives the reset), and the reset cause from RCC_CSR.
 
 - Receive is proven through the IC-7100 harness (pre-equalised). A DMR transmitter with a flat
   audio path (another UV-380, a real DMR radio) should need none of that: C4 shows it.
