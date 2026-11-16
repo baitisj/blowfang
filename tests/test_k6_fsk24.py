@@ -150,10 +150,10 @@ def test_sweep_track_fills_each_slot_inside_its_guards():
     track, level, segs = fsk24.sweep_track()
     fs, n = fsk24.fsk.FS, int(fsk24.SWEEP_SLOT_S * fsk24.fsk.FS)
     plan = fsk24.sweep_plan()
-    assert len(segs) == len(plan) == len(fsk24.SWEEP_STEPS) * len(fsk24.SWEEP_RATES)
+    assert len(segs) == len(plan) == len(fsk24.SWEEP_STEPS) * len(fsk24.SWEEP_SLOTS)
     assert len(track) == len(level) == n * len(plan)
     g0, g1 = (int(g * fs) for g in fsk24.SWEEP_GUARD_S)
-    for (t0, k, st, vi, sent), (k2, st2, vi2) in zip(segs, plan):
+    for (t0, k, st, vi, sent), (k2, st2, vi2, _) in zip(segs, plan):
         assert (k, st, vi) == (k2, st2, vi2) and sent >= 8, segs
         a = k * n
         assert np.all(track[a:a + g0] == 0) and np.all(track[a + n - g1:a + n] == 0)
@@ -165,7 +165,7 @@ def test_sweep_track_fills_each_slot_inside_its_guards():
 def test_sweep_ffsk_blocks_read_flat():
     """the F/1800 and F/1200 sweep variants read back with our F demodulator"""
     got = fsk24.sim(n_rounds=1, ch="flat")
-    for vi in fsk24.SWEEP_RATES:
+    for vi in {v for _, v, _ in fsk24.SWEEP_SLOTS}:
         assert got[vi][0] == got[vi][1], (vi, got)
 
 
@@ -194,3 +194,16 @@ def test_fsk24rx_sweep_builds():
     import k6_live_emu as le
     code, _ = le.build("x", [], os.path.join(K6, "mod", "fsk24rx_sweep.c"))
     assert 1000 < len(code) < 11776, len(code)
+
+
+def test_steps_report_counts_the_pagers_packets_per_send():
+    lines = [
+        "100.5\t1287138\tK6 PKT n=1 got=128 sync=N res=20 magic=a7 rswap=0 soft=0 swap=0 be=0 good=1 bad=0",
+        "101.1\t1287138\tK6 PKT n=2 got=128 sync=N res=-1 magic=a7 rswap=0 soft=0 swap=0 be=7 good=1 bad=1",
+        "101.9\t1287138\tK6 PLAY id=1",
+        "130.2\t1287138\tK6 PKT n=3 got=128 sync=N res=-1 magic=a7 rswap=0 soft=0 swap=0 be=40 good=1 bad=2",
+        "130.4\t1287138\tK6 PKT n=4 got=60 sync=N res=short ev= good=1 bad=3",
+    ]
+    steps = {"steps": [{"gain": -70, "t0": 99.0, "t1": 120.0}, {"gain": -73, "t0": 125.0, "t1": 145.0}]}
+    rep = fsk24.steps_report(lines, steps)
+    assert rep[2] == "-70 | 1 | 1 | 7" and rep[3] == "-73 | 0 | 2 | 40", rep

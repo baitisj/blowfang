@@ -76,12 +76,16 @@ RUN2 = (0, 8, 9, 10, 11, 12)
 RUN3 = (13, 14, 15, 16, 17)
 # the sensitivity sweep: one slot of SWEEP_SLOT_S per rate, the rates in turn, at each level step
 # (dB below the top level); the module (c/k6/mod/fsk24rx_sweep.c) sets each slot's receive recipe
-SWEEP_RATES = (14, 18, 19)                 # D/2400 2.2 kHz, F/1800, F/1200
-SWEEP_REGS = {                             # REG_58, REG_72, a word in 1/16 ticks, REG_2B bits
-    14: (0x00E9, 24779, 1067, 0x0400),     # run 3's setting 2 (the 2400 plan's recipe)
-    18: (0x3F01, 18584, 1422, 0x0000),     # the pager's CFG_F_1800, BAUD_1800
-    19: (0x3FE3, 12389, 2133, 0x0000),     # the pager's CFG_F_1200, BAUD_1200
-}
+# a slot: (name, the bench's variant, the module's REG_58, REG_72, word in 1/16 ticks, REG_2B
+# bits). Sweep 1 (11-16 20:48Z), every recipe read by time: D/2400 good, F/1800 and F/1200 failed
+# even at full level (timed reads don't suit FFSK in this probe). Sweep 2 (21:08Z) tried the
+# chip's interrupts for reads, which read junk and stalled the grid; that code was dropped, and
+# F/1800 is measured through the pager instead (steps_report)
+SWEEP_SLOTS = (
+    ("D/2400", 14, (0x00E9, 24779, 1067, 0x0400)),         # run 3's setting 2
+    ("F/1800", 18, (0x3F01, 18584, 1422, 0x0000)),         # the pager's CFG_F_1800, BAUD_1800
+    ("F/1200", 19, (0x3FE3, 12389, 2133, 0x0000)),         # the pager's CFG_F_1200, BAUD_1200
+)
 SWEEP_STEPS = tuple(range(0, -48, -4))     # 0 to -44 dB
 SWEEP_SLOT_S = 12
 SWEEP_GUARD_S = (1.5, 1.0)                 # carrier only at a slot's start and end
@@ -208,14 +212,14 @@ def variant_freq(vi, bits, fs=fsk.FS):
 
 
 def sweep_plan():
-    """-> [(slot, step dB, variant)]: every rate in turn at each step"""
-    return [(k, st, vi) for k, (st, vi) in
-            enumerate((st, vi) for st in SWEEP_STEPS for vi in SWEEP_RATES)]
+    """-> [(slot, step dB, variant, SWEEP_SLOTS index)]: every slot kind in turn at each step"""
+    kinds = [(st, si) for st in SWEEP_STEPS for si in range(len(SWEEP_SLOTS))]
+    return [(k, st, SWEEP_SLOTS[si][1], si) for k, (st, si) in enumerate(kinds)]
 
 
 def sweep_table():
     """the module's slot table (F24_V) -> C initializer lines"""
-    return ["{0x%04X, %d, %d, 0x%04X}," % SWEEP_REGS[vi] for _, _, vi in sweep_plan()]
+    return ["{0x%04X, %d, %d, 0x%04X}," % SWEEP_SLOTS[si][2] for _, _, _, si in sweep_plan()]
 
 
 def sweep_track(fs=fsk.FS):
@@ -228,7 +232,7 @@ def sweep_track(fs=fsk.FS):
     track = np.zeros(n_slot * len(plan))
     level = np.ones(len(track))
     segs = []
-    for k, st, vi in plan:
+    for k, st, vi, _ in plan:
         a, end = k * n_slot, (k + 1) * n_slot
         level[a:end] = 10 ** (st / 20.0)
         t = a + int(SWEEP_GUARD_S[0] * fs)
@@ -251,12 +255,11 @@ def sweep_report(lines):
     packet heard in that step) and packets right of sent, per rate"""
     sent = {k: n for _, k, _, _, n in sweep_track()[2]}
     sets, pk = parse_log(lines)
-    head = "step dB | RSSI dBm | " + " | ".join(
-        f"{'D' if VARIANTS[vi].comp == 'iq' else 'F'}/{VARIANTS[vi].baud}" for vi in SWEEP_RATES)
-    out = [head, "--- | --- | " + " | ".join("---" for _ in SWEEP_RATES)]
+    head = "step dB | RSSI dBm | " + " | ".join(name for name, _, _ in SWEEP_SLOTS)
+    out = [head, "--- | --- | " + " | ".join("---" for _ in SWEEP_SLOTS)]
     for i, st in enumerate(SWEEP_STEPS):
         cells, rs = [], []
-        for k, s2, vi in sweep_plan():
+        for k, s2, vi, _ in sweep_plan():
             if s2 != st:
                 continue
             mine = [p for p in pk if p["s"] == k]
@@ -265,6 +268,34 @@ def sweep_report(lines):
             cells.append(f"{ok}/{sent[k]}" if k in sets else f"-/{sent[k]}")
         r = f"{sorted(rs)[len(rs) // 2]}" if rs else "-"
         out.append(f"{st} | {r} | " + " | ".join(cells))
+    return out
+
+
+def steps_report(lines, steps):
+    """the pager's own receive path through a sensitivity ladder (tools/pluto_bench.py steps):
+    the K6 logger's lines ("EPOCH<tab>BUILD<tab>K6 PKT ...") and the sends' {"steps": [{gain,
+    t0, t1}]} -> table lines: per gain, packets with the CRC right, failed, and the failed ones'
+    median bit errors against the test message"""
+    from .k6_harness import parse_line
+    pk = []
+    for ln in lines:
+        f = ln.split("\t")
+        if len(f) < 2 or "K6 PKT" not in f[-1]:
+            continue
+        try:
+            t = float(f[0])
+        except ValueError:
+            continue
+        d = parse_line(f[-1])
+        if d:
+            pk.append((t, d))
+    out = ["TX gain dB | CRC right | failed | bits wrong (median, failed)", "--- | --- | --- | ---"]
+    for st in steps["steps"]:
+        mine = [d for t, d in pk if st["t0"] <= t <= st["t1"] + 2.0]
+        ok = [d for d in mine if isinstance(d.get("res"), int) and d["res"] >= 0]
+        bad = [d for d in mine if d not in ok]
+        be = sorted(d["be"] for d in bad if isinstance(d.get("be"), int))
+        out.append(f"{st['gain']:g} | {len(ok)} | {len(bad)} | {be[len(be) // 2] if be else '-'}")
     return out
 
 
@@ -357,6 +388,9 @@ def main(argv=None):
     r.add_argument("log")
     r.add_argument("--sweep", action="store_true", help="a sensitivity sweep's log (fsk24rx_sweep)")
     sub.add_parser("sweep-table", help="the sweep module's slot table (c/k6/mod/fsk24rx_sweep.c)")
+    rs = sub.add_parser("report-steps", help="the pager's K6 PKT lines through a pluto_bench steps ladder")
+    rs.add_argument("log")
+    rs.add_argument("steps", help="pluto_bench steps --out json")
     a = ap.parse_args(argv)
     if a.cmd == "wav":
         from .k6 import _write, cw
@@ -382,6 +416,10 @@ def main(argv=None):
                 continue
             v = VARIANTS[vi]
             print(f"v{vi} {v.baud} {v.comp:6s} {v.level:.2f}: {got}/{sent}")
+    elif a.cmd == "report-steps":
+        import json
+        with open(a.log, errors="replace") as f, open(a.steps) as g:
+            print("\n".join(steps_report(f.read().splitlines(), json.load(g))))
     elif a.cmd == "sweep-table":
         print("\n".join(sweep_table()))
     else:
