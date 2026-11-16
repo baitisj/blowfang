@@ -2,7 +2,8 @@
 
 blowfang on the Radtel RT-950 Pro: an Artery AT32F403A (Cortex-M4F, 1 MB flash, 96 KB SRAM) and
 two BK4829 transceivers. The plan, and why two chips matter, are in
-[docs/rt950-plan.md](../../docs/rt950-plan.md). **Nothing here has run on an RT-950 Pro yet.**
+[docs/rt950-plan.md](../../docs/rt950-plan.md); what the radio can and can't do, with measurements, is in
+[docs/rt950-characteristics.md](../../docs/rt950-characteristics.md). **No blowfang code has run on an RT-950 Pro yet.**
 Andrew has one and Jeff has one (2026-11-16); everything is built to compile for the radio and tested on a PC against
 a model of its two chips.
 
