@@ -101,7 +101,13 @@ carrier at 50 dB SNR. Built with REFCAL_HZ, refcal doesn't wait for the upload's
 (gp0dma's 30 s wait for RSSI under -80 dBm, GP0_NO_WAIT): on 2026-11-17 05:06-05:14Z that wait
 outlasted the tail in four tries, and refcal then scanned an empty channel (-6). A mean IF with
 too few good blocks now says so (`refcal m 440850.00 few n=3 lost=0 lo=21890 hi=23410`: good blocks, blocks with DMA losses,
-and the IF range of the others in Hz). A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
+and the IF range of the others in Hz)
+
+The relay at 06:10Z (PR #151's no-wait build) showed it: lost=0, but the Pluto's carrier read
+8.9-9.8 kHz with the narrow filter, against the 16.9 kHz nominal (and the +6 probe moved it
++430 Hz, 85 % of six steps). ifcal and xtalstep measured that nominal with the wide filter, so
+refcal now reads the IF with the wide filter (the scan stays narrow; REFCAL_NARROW for the old
+way), and puts the pager's own filter back at the end (it used to leave it narrow).. A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
 refcal's ppb less the Pluto's (+ slow) ppb.
 
 Tests: tests/test_k6_refcal.py (emulated M0, gp0dma's DMA model, a receiver that follows the

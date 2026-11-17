@@ -138,7 +138,8 @@ def test_scans_pilots_nulls_on_the_strongest_and_takes_the_median(tmp_path):
     assert field(last, "n") == "3" and field(last, "t") == "27728"
     # put back: REG_3B, the AFC, GP0, the ADC, the clocks; back on the pager's frequency
     assert regs[0x3B] == BASE3B and regs[0x73] == 0x4682 and regs[0x34] == 0
-    assert air.tunes[-1][1] == 440_850_000
+    assert air.tunes[-1][1] == 440_850_000 and air.tunes[-1][2]            # (its own wide filter)
+    assert all(not w for _, hz, w in air.tunes[:90]) and air.tunes[90][2]   # scan narrow, IF wide
     assert ast[0x308] == 0 and ast[0x28] == 1 << 1 and ast[0x14] == 3
     assert said[-1] == "refcal done" and all(len(ln) <= 60 for ln in said)
 
