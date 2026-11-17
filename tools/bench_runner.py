@@ -16,8 +16,12 @@ docs/bench-runner.md has the job format and the rules.
   bench_runner.py serve                the runner itself (the blowfang-bench-runner user unit)
   bench_runner.py selftest             the rule checks against sample jobs, then this machine's
                                        setup (key, cable, rigctld, Pluto launcher, Aura)
-  bench_runner.py install [--unit]     copy this file and k6_bench.py into $BLOWFANG_WORK/bin;
-                                       --unit also writes the user unit
+  bench_runner.py install [--unit]     copy this file, bench_inbox.py and k6_bench.py into
+                                       $BLOWFANG_WORK/bin; --unit also writes the user unit
+  bench_runner.py inbox on|off         take jobs from cloud threads (the claude/bench-jobs branch,
+                                       tools/bench_inbox.py) and push their results back (on)
+  bench_runner.py autoupdate on|off    while idle, install main once main's own selftest passes (on)
+  bench_runner.py rollback             put back the runner the last self-update replaced
 
 A job is a JSON file: who (the thread, one word), a channel to claim, how long, a checkout, and
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
@@ -69,6 +73,10 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import k6_bench as kb  # noqa: E402
+try:                                   # the inbox (cloud threads' jobs) and self-update: optional
+    import bench_inbox as bi  # noqa: E402
+except ImportError:                    # an install from before it
+    bi = None
 
 NEVER_FLASH = ("acd06ba", "a1a86f9", "35e982f")
 PLACEHOLDER = b"sotto-K6MOD-key!"            # modem/k6mod.py: an unkeyed image's key bytes
@@ -488,19 +496,19 @@ def check_step(job, i, step, rs, problems):
     elif do == "uv380.send":
         if args:
             problems.append(f"{what}: takes no args (the runner sends the checkout's txreq.c)")
-        if not os.path.isfile(os.path.join(job_checkout(job), *UV380_SEND_MODULE)):
+        if not os.path.isfile(os.path.join(job_sources(job), *UV380_SEND_MODULE)):
             problems.append(f"{what}: the checkout has no {'/'.join(UV380_SEND_MODULE)}")
     elif do == "uv380.m17":
         if len(args) != 1 or args[0] not in UV380_M17_PLANS:
             problems.append(f"{what}: args: one plan, {' or '.join(UV380_M17_PLANS)} (the checkout's"
                             " c6m17tx_PLAN.c)")
-        elif not os.path.isfile(os.path.join(job_checkout(job), *uv380_m17_module(args[0]))):
+        elif not os.path.isfile(os.path.join(job_sources(job), *uv380_m17_module(args[0]))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_m17_module(args[0]))}")
     elif do == "uv380.voice":
         if len(args) != 1 or not isinstance(args[0], str) or args[0] not in UV380_VOICE_PLANS:
             problems.append(f"{what}: args: one plan, {', '.join(UV380_VOICE_PLANS)} (the checkout's"
                             " c6vcheck.c / c6dvtx*.c)")
-        elif not os.path.isfile(os.path.join(job_checkout(job), *uv380_voice_module(args[0]))):
+        elif not os.path.isfile(os.path.join(job_sources(job), *uv380_voice_module(args[0]))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_voice_module(args[0]))}")
     elif do == "uv380.flash":
         staged_file(step, "image", rs, what, problems)
@@ -549,6 +557,12 @@ def job_checkout(job):
     return os.path.realpath(os.path.expanduser(job.get("checkout") or default_checkout()))
 
 
+def job_sources(job):
+    """where the UV-380 module steps take their module source from: "sources" (a worktree, such as
+    an inbox job's sources_commit) or the checkout. The tools always run from the checkout"""
+    return os.path.realpath(os.path.expanduser(job["sources"])) if job.get("sources") else job_checkout(job)
+
+
 def check_job(job):
     """the problems with a job (empty: it may run)"""
     problems = []
@@ -576,6 +590,10 @@ def check_job(job):
         problems.append(f"checkout {co}: a worktree under ~/blowfang-work/worktrees, or ~/blowfang")
     elif not (os.path.isdir(os.path.join(co, "tools")) and os.path.isdir(os.path.join(co, "modem"))):
         problems.append(f"checkout {co}: not a blowfang checkout (no tools/ and modem/)")
+    if job.get("sources"):
+        src = job_sources(job)
+        if not under(src, [os.path.realpath(os.path.join(work(), "worktrees"))]):
+            problems.append(f"sources {src}: a worktree under ~/blowfang-work/worktrees")
     if job.get("not_before"):
         try:
             parse_utc(job["not_before"])
@@ -873,7 +891,7 @@ def uv380_send_step(ctx, step, env, timeout, module=UV380_SEND_MODULE, run_timeo
         ctx.say("note: the UV-380's listener is on; it refuses a send while it hears a carrier")
     co = job_checkout(ctx.job)
     argv = [py(), os.path.join(co, "tools", "uv380_i2sprobe.py"), "mod", uv380_port(),
-            os.path.join(co, *module), "--key-file", key_path(),
+            os.path.join(job_sources(ctx.job), *module), "--key-file", key_path(),
             "--log", os.path.join(ctx.rd, "uv380.log"), "--run-timeout", str(run_timeout)]
     return run_proc(ctx, argv, co, timeout, env)
 
@@ -888,7 +906,15 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
         res.update(status="refused", reason=f"checkout not clean: {head}")
         ctx.say(res["reason"])
         return res
-    ctx.say(f"job {job['id']} by {job['who']}, checkout {res['checkout']} at {head}")
+    if job.get("sources"):
+        ok, shead = checkout_clean(job_sources(job))
+        res["sources"], res["sources_head"] = job_sources(job), shead
+        if not ok:
+            res.update(status="refused", reason=f"sources not clean: {shead}")
+            ctx.say(res["reason"])
+            return res
+    ctx.say(f"job {job['id']} by {job['who']}, checkout {res['checkout']} at {head}"
+            + (f", module sources {res['sources']} at {res['sources_head']}" if job.get("sources") else ""))
     env = step_env(job)
     deadline = now() + 60 * float(job["minutes"])
     for i, step in enumerate(job["steps"]):
@@ -1044,8 +1070,8 @@ def cancel_path(job_id):
     return os.path.join(qdir(), f"cancel-{job_id}")
 
 
-def serve_once(rig=None, now=time.time, claim=kb.claim, release=kb.release):
-    """start the next job that may run now; True when one ran"""
+def serve_once(rig=None, now=time.time, claim=kb.claim, release=kb.release, on_start=None):
+    """start the next job that may run now; True when one ran. on_start(job) once it has its claim"""
     ensure_dirs()
     if os.path.exists(qdir("PAUSE")) or STOPPING:
         return False
@@ -1074,6 +1100,11 @@ def serve_once(rig=None, now=time.time, claim=kb.claim, release=kb.release):
                                          "job": job})
         os.remove(os.path.join(qdir("incoming"), jid + ".json"))
         note(f"running {jid} ({job['who']})")
+        if on_start:
+            try:
+                on_start(job)
+            except Exception as e:            # the inbox's push must never stop the job
+                note(f"on_start for {jid}: {type(e).__name__}: {e}")
         try:
             res = run_job(job, run_dir(jid), rig, now=now,
                           cancelled=lambda: bool(STOPPING) or os.path.exists(cancel_path(jid)))
@@ -1107,9 +1138,26 @@ def cmd_serve(a):
     note(f"runner started, pid {os.getpid()}")
     print(f"bench runner: queue {qdir()}, log {runner_log()}", flush=True)
     signal.signal(signal.SIGTERM, lambda *x: STOPPING.append(1))
+    inbox = bi.Inbox() if bi else None
+    if inbox:
+        bi.bind(sys.modules.get(__name__))
+        note("inbox " + ("on" if inbox.enabled() else "off (state/inbox.off)") + ", self-update "
+             + ("on" if inbox.autoupdate() else "off (state/autoupdate.off)"))
     while not STOPPING:
         BACKGROUND[:] = [p for p in BACKGROUND if p.poll() is None]
-        if not serve_once():
+        ran = serve_once(on_start=inbox.started if inbox else None)
+        if inbox:
+            inbox.finished()
+            act = None if STOPPING else inbox.tick(idle=not ran)
+            if act == "exec":                 # a newer runner is installed: become it (same pid)
+                note("runner re-executing the newly installed runner")
+                lk.close()
+                os.execv(sys.executable, [sys.executable, os.path.join(work(), "bin", "bench_runner.py")]
+                         + sys.argv[1:])
+            if act == "restart":              # the unit changed: systemd restarts us on it
+                note("runner exiting so systemd restarts it on the new unit")
+                return 75
+        if not ran:
             time.sleep(a.every)
     note("runner stopped (SIGTERM)")
     return 0
@@ -1221,6 +1269,34 @@ def cmd_hold(a):
     print("IC-7100 held: no IC-7100 step runs until free-ic7100")
 
 
+def cmd_switch(a):
+    """inbox on|off, autoupdate on|off: a state file the runner reads each loop"""
+    f = os.path.join(work(), "state", f"{a.cmd}.off")
+    os.makedirs(os.path.dirname(f), exist_ok=True)
+    if a.onoff == "off":
+        open(f, "w").write(utcnow())
+    else:
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(f)
+    note(f"{a.cmd} {a.onoff}")
+    print(f"{a.cmd} {a.onoff}" + (" (the runner picks it up within seconds)" if runner_pid() else ""))
+
+
+def cmd_rollback(a):
+    """put back the runner files the last self-update replaced, and stop self-update"""
+    b = kb.path("bin")
+    prev = os.path.join(b, "previous")
+    if not os.path.isdir(prev) or not os.listdir(prev):
+        raise SystemExit("no previous runner in " + prev)
+    for f in os.listdir(prev):
+        shutil.copy2(os.path.join(prev, f), os.path.join(b, f))
+        print("restored", os.path.join(b, f))
+    os.makedirs(os.path.join(work(), "state"), exist_ok=True)
+    open(os.path.join(work(), "state", "autoupdate.off"), "w").write(f"rollback {utcnow()}")
+    note("rollback: previous runner files restored, self-update off")
+    print("self-update is off (autoupdate on turns it back on); now: systemctl --user restart blowfang-bench-runner")
+
+
 def cmd_free(a):
     with contextlib.suppress(FileNotFoundError):
         os.remove(hold_path())
@@ -1252,12 +1328,19 @@ WantedBy=default.target
 def cmd_install(a):
     b = kb.path("bin")
     os.makedirs(b, exist_ok=True)
-    for f in ("bench_runner.py", "k6_bench.py", "k6-reset-trigger.sh"):
+    for f in ("bench_runner.py", "bench_inbox.py", "k6_bench.py", "k6-reset-trigger.sh"):
         src = os.path.join(HERE, f)
+        if not os.path.exists(src):
+            continue
         if os.path.realpath(src) != os.path.realpath(os.path.join(b, f)):
             shutil.copy2(src, os.path.join(b, f))
         os.chmod(os.path.join(b, f), 0o755)
         print("installed", os.path.join(b, f))
+    head = subprocess.run(["git", "-C", HERE, "rev-parse", "HEAD"], capture_output=True, text=True)
+    if head.returncode == 0 and os.path.realpath(HERE) != os.path.realpath(b):
+        put_json(os.path.join(b, ".installed.json"), {"commit": head.stdout.strip(), "at": utcnow(),
+                                                       "why": f"install from {os.path.dirname(HERE)}"})
+        print("from commit", head.stdout.strip())
     ensure_dirs()
     if a.unit:
         d = os.path.expanduser("~/.config/systemd/user")
@@ -1319,6 +1402,42 @@ def sample_jobs(tmp, co, key):
     ]
 
 
+def inbox_samples():
+    """(name, job, should_pass) for the inbox's own rules (the runner's checks come after)"""
+    J = lambda jid, *steps, **kw: dict(dict(id=jid, who="selftest", freq_mhz=440.850, minutes=10), steps=list(steps), **kw)
+    return [
+        ("Pluto send of a pushed WAV", J("in-ok", {"do": "pluto", "args": ["send", "job:x.wav", "--gain", "-60"]}), True),
+        ("UV-380 M17 from a branch's module, Pluto capture in the run folder", J("in-m17", {"do": "pluto", "args": ["rx", "run:m.cf32", "--hz", "441900000"], "background": True}, {"do": "uv380.m17", "args": ["bert"]}, freq_mhz=441.850, sources_commit="519e64f"), True),
+        ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),
+        ("a K6 module as C source", J("in-c", {"do": "k6.upload", "module": "job:m.c"}), False),
+        ("a hamlet path", J("in-path", {"do": "pluto", "args": ["send", "/home/baitisj/blowfang-work/x.wav"]}), False),
+        ("a name climbing out", J("in-dots", {"do": "pluto", "args": ["send", "job:../x.wav"]}), False),
+        ("its own checkout", J("in-co", {"do": "wait", "seconds": 1}, checkout="/home/baitisj/blowfang"), False),
+    ]
+
+
+def inbox_setup(say):
+    """warnings only (the network is not the rules): can this machine fetch and push the inbox?"""
+    ib = bi.Inbox()
+    say(True, f"inbox {'on' if ib.enabled() else 'OFF'}, self-update {'on' if ib.autoupdate() else 'OFF'};"
+        f" installed commit {bi.installed_commit(bi._br()) or 'unknown'}")
+    if not ib.enabled():
+        return
+    url = ib.url()
+    try:
+        r = bi.git("ls-remote", url, "refs/heads/" + bi.BRANCH, check=False, timeout=60)
+        say((r.returncode == 0 and bool(r.stdout.strip())) or None,
+            f"inbox branch {bi.BRANCH} at {url}" + ("" if r.returncode == 0 and r.stdout.strip() else ": not readable"))
+        src = ["--git-dir", ib.gd()] if os.path.isdir(ib.gd()) else ["-C", default_checkout()]
+        ref = "refs/heads/main" if os.path.isdir(ib.gd()) else "HEAD"
+        r = bi.git(*src, "push", "--dry-run", "--quiet", url, f"{ref}:refs/heads/{bi.BRANCH}-authcheck",
+                   check=False, timeout=60)
+        say(r.returncode == 0 or None, "inbox push (dry run)" + ("" if r.returncode == 0 else
+            ": " + r.stderr.decode(errors="replace").strip()[-160:] + " (results can't come back)"))
+    except (OSError, subprocess.TimeoutExpired) as e:
+        say(None, f"inbox: {e}")
+
+
 def cmd_selftest(a):
     import tempfile
     bad = 0
@@ -1341,6 +1460,15 @@ def cmd_selftest(a):
     shutil.rmtree(stage, ignore_errors=True)
     if key is None:
         os.environ.pop("BLOWFANG_KEY")
+    if bi:
+        for name, job, want in inbox_samples():
+            probs = bi.remote_rules(job, job["id"])
+            ok = (not probs) == want
+            bad += not ok
+            say(ok, f"inbox {'takes' if want else 'refuses'}: {name}" + ("" if ok else f"  -> got {probs or 'no problems'}"))
+        inbox_setup(say)
+    else:
+        say(None, "bench_inbox.py is not beside the runner: no inbox, no self-update")
     try:
         say(True, f"K6 cable {k6_cable()}")
     except Refused as e:
@@ -1398,9 +1526,17 @@ def main(argv=None):
     s = sub.add_parser("install")
     s.add_argument("--unit", action="store_true")
     s.set_defaults(fn=cmd_install)
+    for n in ("inbox", "autoupdate"):
+        s = sub.add_parser(n, help=f"{n} on|off")
+        s.add_argument("onoff", choices=("on", "off"))
+        s.set_defaults(fn=cmd_switch)
+    sub.add_parser("rollback").set_defaults(fn=cmd_rollback)
     a = ap.parse_args(argv)
     return a.fn(a)
 
+
+if bi:
+    bi.bind(sys.modules.get(__name__))
 
 if __name__ == "__main__":
     sys.exit(main())

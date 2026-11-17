@@ -11,9 +11,12 @@ import pytest
 
 TOOLS = os.path.join(os.path.dirname(__file__), "..", "tools")
 sys.path.insert(0, TOOLS)
-spec = importlib.util.spec_from_file_location("bench_runner", os.path.join(TOOLS, "bench_runner.py"))
-br = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(br)
+br = sys.modules.get("bench_runner")             # one copy for both test files: the inbox binds to it
+if br is None:
+    spec = importlib.util.spec_from_file_location("bench_runner", os.path.join(TOOLS, "bench_runner.py"))
+    br = importlib.util.module_from_spec(spec)
+    sys.modules["bench_runner"] = br
+    spec.loader.exec_module(br)
 kb = br.kb
 REPO = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 KEY = b"0123456789abcdef"
@@ -29,6 +32,8 @@ def work(tmp_path, monkeypatch):
     monkeypatch.setenv("BLOWFANG_KEY", str(w / "k"))
     monkeypatch.setenv("K6_CABLE", "/dev/k6cable")
     monkeypatch.setattr(br, "checkout_clean", lambda co: (True, "abc1234"))
+    (w / "state").mkdir()
+    (w / "state" / "inbox.off").write_text("tests")   # no git, no network (test_bench_inbox has those)
     br.STOPPING.clear()
     return w
 
@@ -357,7 +362,7 @@ def test_pause_cancel_not_before_and_repeat(work):
 def test_stale_running_job_marked_failed(work, capsys, monkeypatch):
     br.ensure_dirs()
     br.put_json(br.qdir("running.json"), {"id": "x", "who": "t1", "since": "?", "job": job("x", {"do": "wait"})})
-    monkeypatch.setattr(br, "serve_once", lambda: br.STOPPING.append(1) or False)
+    monkeypatch.setattr(br, "serve_once", lambda **kw: br.STOPPING.append(1) or False)
     br.main(["serve", "--every", "0"])
     assert "stopped during" in json.load(open(os.path.join(br.qdir("failed"), "x.json")))["result"]["reason"]
 
