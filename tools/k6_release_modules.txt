@@ -20,6 +20,7 @@
 6 morse
 7 gw
 8 stockfont
+31 settings
 # serial report only (a cable, or hamlet's logger), receive only
 16 cwlisten
 17 pocsag

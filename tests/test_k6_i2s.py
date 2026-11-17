@@ -24,7 +24,7 @@ need_clang = pytest.mark.skipif(not (shutil.which("clang") and shutil.which("ld.
 NAMES = ["say", "ticks", "fd_read", "fd_write", "delay_us", "tune", "rx_hz", "ms", "key_down",
          "scratch", "tx_on", "tx_off", "tx_pa", "key_poll", "cal_read", "cal_write",
          "fl_read", "fl_prog", "fl_erase", "lcd_text", "lcd_bar", "lcd_wf", "lcd_flush", "led",
-         "clock_set", "clock_get", "lcd_glyphs"]
+         "clock_set", "clock_get", "lcd_glyphs", "setting"]
 FL_LO, FL_HI, FL_READ_HI = 0x0F0000, 0x100000, 0x200000   # level 5's flash (c/k6/k6_mod.h)
 REFUSED = (0x30, 0x33, 0x36, 0x37)
 PERIOD = 400            # samples between modelled DFS edges
@@ -33,7 +33,7 @@ PERIOD = 400            # samples between modelled DFS edges
 def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spare=1024,
         mmio=(), level=2, tx=None, rx_hz=440_850_000, keys=(), cal=None, tune=None, count=200_000_000, code=None, gpiob=None,
         flash=None, lcd=None, pb_idr=None, led=None, keypad=None, fsk=None, paint=False, clock=None,
-        write_us=0):
+        write_us=0, settings=None):
     """regs: the chip's registers at the start. GP0 drives PB1 only while REG_33 bit 8 is clear
     (else PB1's pull-up reads 1), following REG_34[3:0]: 13 (DFS) toggles every PERIOD reads of
     PB1 once i2s_en's bit is set, 15 (XTAL/2) on every read, others hold 0. gp0_gate: the image
@@ -76,6 +76,9 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
     1 ms in 4 s); each clock_set lands in clock["sets"] as (us, ms, date, w) and becomes the fix.
     write_us: what an fd_write takes (us, or a function of (reg, us) giving it); the write lands
     (in tx["w"], the registers) at its end.
+    settings: a dict for level 10's setting call, as the core keeps them: settings["light"] the
+    backlight's setting (default 2), each call lands in settings["log"] as (us, id, value, save)
+    and each save in settings["saves"] (the value saved); settings["refuse_save"] refuses saves.
     Returns (ret, said lines, registers at the end, writes)."""
     unicorn = pytest.importorskip("unicorn")
     from unicorn import arm_const as A
@@ -287,6 +290,22 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
                 for ptr, v in zip((r0, r1, r2), vals):
                     if ptr:
                         uc.mem_write(ptr, int(v).to_bytes(4, "little"))
+        elif name == "setting":
+            assert level >= 10 and settings is not None, f"setting called (level {level})"
+            v = r1 - (1 << 32) if r1 & 0x80000000 else r1
+            settings.setdefault("log", []).append((st["us"], r0, v, r2))
+            saves = settings.setdefault("saves", [])
+            if r0 != 0 or v > 7:                   # KM_SET_LIGHT only, KM_LIGHT_MAX
+                ret = -1
+            else:
+                if v >= 0:
+                    settings["light"] = v
+                ret = settings.setdefault("light", 2)
+                if r2:
+                    if settings.get("refuse_save") or len(saves) >= 4:   # (keyed, KM_SET_SAVES)
+                        ret = -1
+                    else:
+                        saves.append(settings["light"])
         elif name == "led":
             assert level >= 7, "led called below level 7"
             if led is not None:

@@ -415,6 +415,7 @@ samedf         # level 2, the plain FSK receiver as a sampler of NOAA SAME audio
 samerx         # level 2, NOAA SAME headers read in the radio from the plain FSK receiver as a sampler, 162.550 for 2 h, docs/k6-pocsag.md
 samerx_440     # level 2, samerx on 440.850 for the bench: its three sample rates (receive only, docs/k6-pocsag.md)
 scan           # level 2, patched by tools/k6_scan.py
+settings       # level 10, the radio's settings: the backlight's idle time (hal::light), saved in Aura's settings record
 settle         # level 2
 spksweep
 stockfont      # level 6, reads the stock fonts from SPI flash itself (READ only), docs/k6-stock-firmware.md
