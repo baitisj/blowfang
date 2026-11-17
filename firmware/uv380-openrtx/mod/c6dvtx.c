@@ -19,12 +19,19 @@
    message's last block, up to a whole superframe, repeat its end block (a receiver ignores a
    repeat).
 
+   TX_VIA picks the port the 27 payload bytes go through: 0 (the default) V_SPI (c6vspi.h), as
+   OpenGD77's GD-77 driver hands its AMBE frames over (SPI1, page 3, reg 0, in the slot interrupt);
+   1 U_SPI page 3 (c6spi.h C6_SOUND), the bus the chip's registers are on (OpenGD77's init fills
+   page 3 that way); 2 both by turns, a superframe each, V_SPI first, so one call tells which
+   the encoder takes. V1 (11-17, 0x22 = 0x80, V_SPI) sent the headers and the terminator but no
+   voice sync at all in the 60 voice slots.
+
    TX_DRY 1 (the default) does all of it with no keying (no PA, the AT1846S stays in receive): it
    proves the port, the slot clock and the burst set-up before anything goes on air. Wrappers with
    TX_DRY 0 transmit, at API level 4 only (ident first, transmit guard), on the radio's channel
    (api->tx_tone keys only 441.850 or 440.850 MHz): only with Jeff at the radio, or at 0 W.
 
-   Lines: "cal I= Q= ...", the keying's lines (c6key.h), "dmr on", "tx hdr=N voice=N/M term=N
+   Lines: "cal I= Q= ...", the keying's lines (c6key.h), "dmr on", "tx enc= via= u= hdr=N voice=N/M term=N
    edges= first= rftx= 82|= late= restored at", "end". While keyed they are kept for the key-down.
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
@@ -52,7 +59,12 @@
 #define TX_HDR 3u
 #endif
 #ifndef TX_ENC
-#define TX_ENC 0x80u            /* 0x22: encode start (RadioFoundry writes 0x86: also I2S, master) */
+#define TX_ENC 0x86u            /* 0x22: vocoder encode start; 0x86 as RadioFoundry and OpenGD77 (facts
+                                   only, GPL) write it ("Start Vocoder Encode, I2S mode"); V1 sent
+                                   0x80 and the chip sent no voice bursts */
+#endif
+#ifndef TX_VIA
+#define TX_VIA 0
 #endif
 #ifndef TX_I
 #define TX_I 0u                 /* 0: from the calibration table */
@@ -177,6 +189,7 @@ int uv_main(const ortx_api_t *api) {
     c6k_note(api, &q, "dmr on");
 
     unsigned edges = 0, rftx = 0, step = 0, hdr = 0, voice = 0, term = 0, late = 0, ours = 1, quiet = 0;
+    unsigned via_u = 0;                         /* voice bursts sent through U_SPI page 3 */
     uint8_t f82 = 0;
     uint32_t t0 = api->ms(), first = 0, last_edge = 0;
     uint8_t blk[DS_BLOCK], pay[DV_BYTES];
@@ -211,13 +224,21 @@ int uv_main(const ortx_api_t *api) {
                         ds_make(blk, k < nblk ? k : nblk - 1u, msg, nbytes, TX_ID, TX_TEXT, textlen);
                         dv_encode(blk, pay);
                     }
-                    vs_write(pay);
+                    if (TX_VIA == 1 || (TX_VIA == 2 && (k / 6u) % 2u == 1u)) {
+                        c6_write(api, C6_SOUND, 0x00, pay, DV_BYTES);
+                        via_u++;
+                    } else {
+                        vs_write(pay);
+                    }
                     api->c6000_write(0x50, (uint8_t)(0x08u | ((k % 6u) << 4)));
                     voice++;
                 } else {
                     for (unsigned i = 0; i < DV_BYTES; i++)
                         pay[i] = 0;
-                    vs_write(pay);
+                    if (TX_VIA == 1)
+                        c6_write(api, C6_SOUND, 0x00, pay, DV_BYTES);
+                    else
+                        vs_write(pay);
                     api->c6000_write(0x50, 0x20);       /* terminator with LC */
                     term++;
                 }
@@ -245,8 +266,8 @@ int uv_main(const ortx_api_t *api) {
     api->c6000_write(0x83, 0xFF);
     c6s_close(&ss);
     vs_close(&vp);
-    api->fmt(line, sizeof line, "tx hdr=%u voice=%u/%u term=%u edges=%u first=%lu ms rftx=%u 82|=%02x late=%u restored at %lu ms",
-             hdr, voice, nvoice, term, edges, (unsigned long)first, rftx, f82, late,
+    api->fmt(line, sizeof line, "tx enc=%02x via=%d u=%u hdr=%u voice=%u/%u term=%u edges=%u first=%lu ms rftx=%u 82|=%02x late=%u restored at %lu ms",
+             (unsigned)TX_ENC, TX_VIA, via_u, hdr, voice, nvoice, term, edges, (unsigned long)first, rftx, f82, late,
              (unsigned long)(api->ms() - t_key));
     c6k_note(api, &q, line);
     if (!TX_DRY) {
