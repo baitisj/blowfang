@@ -427,8 +427,8 @@ main 40a2ec9); its CFG line's `rates=` is still to be read on the bench.
 
 **The sender's side (plan step 4; Jeff 11-17 04:27Z agreed the plan's answers).** The Pluto sends
 D/2400 now; the UV-380 and RT-950 as their transmit work lands; K6 to K6 only if that becomes a
-feature. K6 replies stay on F/1800. `tools/k6_upload.py --via pluto --rate auto` (not the
-default for now, see the second bench run below):
+feature. K6 replies stay on F/1800. `tools/k6_upload.py --via pluto --rate auto` (the default
+again from 11-17 09:30Z, after the interrupt-read image; see the runs below):
 
 - Each D/2400 send is one transmission: the F/1800 control record (`phy=D baud=2400`, three
   copies at the upload's packet size, pre-emphasised at 3 kHz peak as any F/1800 Pluto send),
@@ -481,8 +481,28 @@ quiet minute). stockfont.c, 25 XL chunks, Pluto -66, K6 RSSI -88 both times:
 
 The image now reads by interrupt (REG_5E 0x0203) on every rung, D/2400 included (the
 aura-pager.patch change after this run). Until that image is on the radio, a sender can get the
-same with a `--reg 5e=0203` control record before the D/2400 session; `--rate` stays F18 by
-default until the flash and a level ladder at D/2400 confirm it.
+same with a `--reg 5e=0203` control record before the D/2400 session.
+
+**Level ladder on the new image (11-17 09:19-09:28Z, keyed 8a78fb5, build ID 9ef10204feb5739f,
+no register write; the D/2400 switch shows `timed=0` by itself).** stockfont.c, 25 XL chunks,
+`--rate D24 --rounds 1 --no-fallback`:
+
+| Pluto gain | K6 RSSI | K6 | data / wall |
+|---|---|---|---|
+| -52 | -74 | 25/25 in one send, ran, on D24 | 24.5 s / 71 s |
+| -60 | -82 | 25/25, ran | 24.5 s / 72 s |
+| -66 | -88 | 25/25, ran | 24.5 s / 71 s |
+| -72 | -94 | 3/25, `RATE D24>F18 why=crc` | 24.5 s / 75 s |
+| -78 | - | void: the K6 had dropped to EXPLORE | - |
+| -84 | about -106 | nothing heard | - |
+
+The edge, about -94 dBm, matches sweep 3. F/1800 at the upload's deviation has nearly the same
+edge (next section), so a step down to F/1800 buys little range: the ladder's step down is for
+timing faults, and D/2400's case is its speed. At -72 the K6
+fell back and sent its report while the Pluto was still sending the rest of the chunks, so the
+IC-7100 missed it. `--rate` defaults to `auto` again (PR after this run). Wall time is the same
+as F/1800's 71 s for this module because stockfont runs 34 s before its report; the on-air
+saving is 5 s a send (35.0 against 39.9 s).
 
 **F/1800 at the upload's own deviation (11-17 09:28-10:05Z, image 8a78fb5).** The F/1800 test
 packets that failed in ladder 2 (above), and again tonight, went out about 4 dB under an upload.

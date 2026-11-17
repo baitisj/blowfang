@@ -308,12 +308,12 @@ def test_start_rung_size_limit():
 
 
 @need_host
-def test_upload_default_is_f1800(monkeypatch, tmp_path):
-    """until the image's D/2400 receive holds a long upload, the default never asks"""
+def test_upload_default_is_auto(monkeypatch, tmp_path):
+    """the default asks for D/2400 on a Pluto path known to take it (images from 8a78fb5 on)"""
     monkeypatch.setattr(k6_upload, "D24_MIN_CHUNKS", 1)
     st = str(tmp_path / "rate.json")
     k6_upload.save_rates({"pluto": {"rung": "D24", "clean": 0, "k6_d24": True}}, st)
-    assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st], d24="ok")] == ["F18"]
+    assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st], d24="ok")] == ["D24"]
 
 
 @need_host
