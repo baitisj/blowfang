@@ -88,8 +88,8 @@ def adc_bench(t16=1733 * 16, v17=1540 * 16, aden=1):
     return (0x40012400, 0x400, r, w), st, seen
 
 
-def go(tmp_path, stations, e_ppb, extra="", aden=1, sign=SIGN, dev=0.0):
-    air = Air(stations, e_ppb, sign)
+def go(tmp_path, stations, e_ppb, extra="", aden=1, sign=SIGN, dev=0.0, air_cls=None):
+    air = (air_cls or Air)(stations, e_ppb, sign)
     mmio, rcc, tim, dma, sim = dma_bench(f_if=air.f_if, dev=dev)
     adc, ast, seen = adc_bench(aden=aden)
     regs = {**START, 0x73: 0x4682, 0x43: 0x3028, 0x3B: BASE3B, 0x3C: X3C, 0x67: air.rssi}
@@ -195,3 +195,45 @@ def test_a_crystal_4_ppm_off_still_nulls(tmp_path):
     # 4 ppm at 596 MHz puts the carrier 2.4 kHz off the nominal IF before the first null
     ret, said, regs, *_ = go(tmp_path, {PILOT(35): (-75, 0.0)}, e_ppb=+4000, extra="#define REFCAL_APPLY 1\n")
     assert abs(ret - 4000) <= 8 and regs[0x3B] == BASE3B + 21, said[-4:]   # 4000 / 192.3 = 20.8
+
+
+@need_clang
+def test_the_bench_carrier_on_440850(tmp_path):
+    # the Pluto as the go-between (2026-11-17): refcal for 440.850 alone, the module's upload
+    # followed by a PSK31 'AG7EW TEST' carrier (modelled as a 1 kHz tone at 600 Hz deviation)
+    # strong at the K6; the K6 1.5 ppm slow
+    ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1500, dev=600.0,
+                             extra="#define REFCAL_HZ 440850000\n")
+    scans = [ln for ln in said if ln.startswith("refcal s ")]
+    assert scans == ["refcal s 440850.00 -63 -112"], scans
+    assert abs(ret + 1500) <= 8 and field(said[-2], "k") == "-8" and said[-2].endswith(" dry"), said[-5:]
+    assert regs[0x3B] == BASE3B
+
+
+@need_clang
+def test_a_reference_failing_the_probe_moves_on_to_the_next(tmp_path):
+    # RF 14 strongest, but the IF there follows something else (TV data: 3 kHz high, the steps
+    # barely moving it); RF 35 behind it is a clean carrier
+    class Swamped(Air):
+        def f_if(self, t, regs):
+            if abs(self.hz - PILOT(14)) < 3_000 and regs.get(0x73, 0) & 0x10:
+                return NOMINAL + 3100 + 0.25 * (Air.f_if(self, t, regs) - NOMINAL) + 0 * t
+            return Air.f_if(self, t, regs)
+    ret, said, regs, *_ = go(tmp_path, {PILOT(14): (-70, 0.0), PILOT(35): (-76, 0.0)}, e_ppb=-330,
+                             air_cls=Swamped)
+    steps = [ln.split()[2] for ln in said if ln.startswith("refcal step ")]
+    assert steps == ["470309.44", "596309.44"], said
+    assert "refcal the probe moved the IF wrongly" in said
+    rs = [ln.split()[2] for ln in said if ln.startswith("refcal r ")]
+    assert rs == ["596309.44"] and abs(ret + 330) <= 8, said[-4:]
+
+
+@need_clang
+def test_every_probe_failing_keeps_nothing(tmp_path):
+    class Flat(Air):
+        def f_if(self, t, regs):
+            return NOMINAL + 3100 + 0 * t if regs.get(0x73, 0) & 0x10 and self.near()[0] else Air.f_if(self, t, regs)
+    ret, said, regs, *_ = go(tmp_path, {PILOT(14): (-70, 0.0), PILOT(20): (-72, 0.0)}, e_ppb=-330,
+                             air_cls=Flat)
+    assert ret == -12 and "refcal no reference passed the probe: nothing kept" in said
+    assert regs[0x3B] == BASE3B
