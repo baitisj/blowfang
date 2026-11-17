@@ -46,6 +46,13 @@ one of them changes.
   chip drifts against it; a fixed trim (rangetx RT_PPM) can't hold a phase for seconds, so the
   PHY R receiver follows the walk instead (docs/k6-range.md, K10). A register write takes about
   117 us keyed (M).
+- The 26 MHz crystal (no TCXO) read -0.066 ppm (29 Hz low at 440.850) on 2026-11-17 06:18Z,
+  MCU temperature index t=30039, by the Pluto relay: refcal +251 ppb against the Pluto's carrier,
+  less the Pluto's own +0.317 ppm (slow) against UHF TV pilots 14/26/35 (M, docs/k6-drift-cal.md).
+  ifcal's bench pair against the IC-7100 on 2026-11-06 read -330 ppb. The GP0 IF tap reads a
+  carrier near 16.9 kHz (26 MHz / 1536) only with the wide filter; with the narrow one the same
+  carrier read 8.9-9.8 kHz (M, 06:10Z). One REG_3B step moved it 81 Hz at 440.850 (95 % of 5 Hz of
+  26 MHz) (M).
 
 ## Memory and code
 

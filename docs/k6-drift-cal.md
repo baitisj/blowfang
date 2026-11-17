@@ -107,7 +107,14 @@ The relay at 06:10Z (PR #151's no-wait build) showed it: lost=0, but the Pluto's
 8.9-9.8 kHz with the narrow filter, against the 16.9 kHz nominal (and the +6 probe moved it
 +430 Hz, 85 % of six steps). ifcal and xtalstep measured that nominal with the wide filter, so
 refcal now reads the IF with the wide filter (the scan stays narrow; REFCAL_NARROW for the old
-way), and puts the pager's own filter back at the end (it used to leave it narrow).. A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
+way), and puts the pager's own filter back at the end (it used to leave it narrow).
+
+**First result (06:18Z, 4397dfc):** the wide-filter IF read 16807.3 Hz (all 32 blocks, spread
+214 Hz), the probe moved +484.0 Hz against +508.7 (95 %), null-seeking went k=+1, +2, +1 to a
+residual of -25.8 Hz, and refcal said `ppb=+251 n=1 k=+1 t=30039 dry`. The Pluto read the pilots
++0.317 ppm (slow) just before, so **the K6's crystal was -0.066 ppm** (29 Hz low at 440.850). The
+module started 0.2 s before the upload audio ended and took 9.4 s; the 60 s tail had 48 s to spare.
+The off-air run's 3.1 kHz at 470 MHz was the narrow filter too, not the crystal.. A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
 refcal's ppb less the Pluto's (+ slow) ppb.
 
 Tests: tests/test_k6_refcal.py (emulated M0, gp0dma's DMA model, a receiver that follows the
