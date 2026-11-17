@@ -5296,7 +5296,7 @@ new file mode 100644
 index 0000000..56920be
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2397 @@
+@@ -0,0 +1,2400 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5799,7 +5799,10 @@ index 0000000..56920be
 +/// pages missing (after a flash, before hamlet installs them) hold the arena until they're in.
 +const VOICE_IDLE_MS: u32 = 60_000;
 +const BEACON_HZ: u32 = 440_850_000;
-+const BEACON_DBM: i32 = -45;
++/// -60 since 2026-11-17 (Jeff): at -45 the bench Pluto at its top gain (-30, read -52 dBm here)
++/// couldn't wake it, nor could the IC-7100 at power 0 on its stub (-50 to -55); the floor on
++/// 440.850 reads about -114, so -60 twice in a row is still far over anything but a key-up
++const BEACON_DBM: i32 = -60;
 +const BEACON_EVERY_MS: u32 = 1000;
 +const BEACON_HOLD_MS: u32 = 60_000;
 +/// VOICE MSG since (ms), and how long it waits for quiet before EXPLORE
