@@ -1657,8 +1657,8 @@ index 0000000..a1c6695
 +const GAIN_F: u16 = 0x00B4;
 +const CRC_OFF: u16 = 0x5625;
 +const FIFO_THR: u16 = 0x0204; // TX almost empty 64 words, RX almost full 4 words
-+/// F/1800 default: interrupt reads, 3 words per FIFO-almost-full interrupt (as tested on air)
-+const FIFO_THR_F1800: u16 = 0x0203;
++/// every rung's default: interrupt reads, 3 words an interrupt (F/1800 on air; D/2400 11-17)
++const FIFO_THR_IRQ: u16 = 0x0203;
 +
 +const TICKS_PER_S: u32 = 10_000; // uptime: 100 us
 +const GAP_TICKS: u32 = 3 * TICKS_PER_S; // play 3 s after the last packet
@@ -1754,8 +1754,8 @@ index 0000000..a1c6695
 +/// tunes or changes the payload length the timed read counts on
 +/// A write to REG_5E (FIFO thresholds) also switches the receiver from timed FIFO reads to
 +/// interrupt reads: on each FIFO-almost-full interrupt it takes as many words as the RX
-+/// threshold says are waiting (see `irq_words`). The revert or `--reg 0=0` brings the timed
-+/// reads back, except at F/1800, which reads by interrupt (0x0203) without a write.
++/// threshold says are waiting (see `irq_words`). Since 11-17 every rung reads by interrupt
++/// (0x0203) without a write, so the revert or `--reg 0=0` leaves interrupt reads on.
 +const POKE_OK: [u8; 12] = [
 +    REG_AF_FILT, REG_FSK_CFG, REG_FSK_CTRL, REG_FSK_5C, REG_BAUD, REG_RX_BW, REG_DEMOD_GAIN,
 +    REG_AFC, REG_DC_FILT, REG_DISC_GAIN, REG_AF_BYPASS, REG_FIFO_THR,
@@ -2149,18 +2149,18 @@ index 0000000..a1c6695
 +        v
 +    }
 +
-+    /// F at the default rate (1800 baud), not D/2400
-+    fn f1800(&self) -> bool {
-+        !self.d2400
-+    }
++    // D/2400 read by time until 11-17: those reads slipped after about 5 XL packets of a long
++    // upload (stockfont, 9/25, then CRC fallback); with REG_5E 0x0203 the same upload took
++    // 25/25 at the same level (docs/k6-fsk24.md), so D/2400 reads by interrupt as F/1800 does
++    // (the timed-read code stays, unreached, for a later probe)
 +
-+    /// The REG_5E value in force: a control-packet write, else 0x0203 at F/1800 (interrupt
-+    /// reads), else none (timed reads, REG_5E = FIFO_THR)
++    /// The REG_5E value in force: a control-packet write, else 0x0203 (interrupt reads, on
++    /// every rung; the timed reads with REG_5E = FIFO_THR are no longer reached)
 +    fn fifo_thr(&self) -> Option<u16> {
-+        self.fifo_thr_poke().or(if self.f1800() { Some(FIFO_THR_F1800) } else { None })
++        self.fifo_thr_poke().or(Some(FIFO_THR_IRQ))
 +    }
 +
-+    /// Timed FIFO reads, unless REG_5E asks for interrupt reads (a write, or F/1800)
++    /// Timed FIFO reads: never now, as fifo_thr always gives a value (see above)
 +    fn timed(&self) -> bool {
 +        self.timed_read && self.fifo_thr().is_none()
 +    }

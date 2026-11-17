@@ -467,3 +467,19 @@ IC-7100 on 11-04) slipping over a long burst, or gain/AGC on a strong signal. Ne
 upload with `--reg 5e=0203` (interrupt reads, 60 s) and a D/2400 gain ladder. The ladder itself
 worked as designed (CRC fallback, step down, the D/2400 record asking for F/1800). Until this is
 fixed, `--rate` defaults to F18.
+
+**Found: the timed reads (11-17 08:47-08:50Z, serial log on).** The K6 woken from EXPLORE by the
+Pluto (PSK31 at -30, then `K6 EX beacon ... VOICE MSG`), each step within 30 s so it stayed in
+ARENA (two earlier tries, 06:21Z and 06:30Z, were lost to the K6 dropping back to EXPLORE after a
+quiet minute). stockfont.c, 25 XL chunks, Pluto -66, K6 RSSI -88 both times:
+
+- Timed reads (the image's D/2400 default, CFG `timed=1`): chunks 0-4, 7, 8, 11, 12 (9/25),
+  then `K6 RATE D24>F18 why=crc n=8 bad=3`. The failed packets are junk syncs (`res=-2`,
+  `be` about 495 of 1024 bits), the mark of a read that slipped, not of noise.
+- After `--reg 5e=0203` (`K6 REGS ... 5e=0203 poke=1`, CFG `timed=0` at D/2400): chunks 0-24 in a
+  row, 25/25 in one send, the module ran, report `on D24`.
+
+The image now reads by interrupt (REG_5E 0x0203) on every rung, D/2400 included (the
+aura-pager.patch change after this run). Until that image is on the radio, a sender can get the
+same with a `--reg 5e=0203` control record before the D/2400 session; `--rate` stays F18 by
+default until the flash and a level ladder at D/2400 confirm it.
