@@ -208,3 +208,13 @@ def test_a_pluto_send_does_not_wake_the_ic7100_keeper(tmp_path, monkeypatch):
         assert kb.keeper_due(time.time() + later, kb._read("last_tx"), kb._read("last_id")) is None
     assert "self-IDed" in open(kb.path("txlog")).read()
     assert "MCW" in open(kb.path("cwid_log")).read()
+
+
+def test_peak_puts_the_wavs_own_peak_at_the_deviation():
+    # modem.k6 audio is half scale: --dev 3700 sends it at 1850 Hz; --peak 3000 sends 3000 Hz
+    x = 0.5 * np.sin(2 * np.pi * 1200 * np.arange(4800) / 48000)
+    assert pl.full_scale_dev(x, 3700.0) == 3700.0
+    dev = pl.full_scale_dev(x, 3700.0, peak=3000.0)
+    assert abs(np.max(np.abs(pl.audio_track(x, 48000, dev))) - 3000.0) < 1.0
+    with pytest.raises(SystemExit):
+        pl.full_scale_dev(np.zeros(10), 3000.0, peak=3000.0)

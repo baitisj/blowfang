@@ -12,6 +12,10 @@ docs/pluto-bench.md has the bench notes.
   python3 tools/pluto_bench.py send WAV             any audio as FM on 440.850 (or --hz in 430-450),
          [--hz F] [--dev 3000] [--gain -60]         full scale = --dev Hz peak, AG7EW in MCW first
          [--preemph] [--rf-off]                     and last; --preemph for voice (750 us)
+         [--peak HZ]                                or the wav's own peak = HZ (before --preemph):
+                                                    modem.k6 wavs are half scale, so --dev 3700
+                                                    gives them only ~1850 Hz; --peak 3000 = what
+                                                    k6_upload sends (PLUTO_PEAK_HZ)
   python3 tools/pluto_bench.py steps WAV            the same audio at each TX gain in turn (a
          --gains -70,-73,... [--preemph] [--out J]  sensitivity ladder; times to J for a report)
   python3 tools/pluto_bench.py rx OUT [--hz F]      capture, TX down: OUT.cf32 = complex64 at 240 kHz
@@ -204,6 +208,19 @@ def audio_track(x, fs, dev, preemph=False):
     return np.clip(x, -1.0, 1.0) * dev
 
 
+def full_scale_dev(x, dev, peak=None):
+    """the deviation (Hz) for full scale: --dev as given, or with --peak the one that puts the
+    wav's own peak there (modem.k6 audio is 0.5 level: --dev 3700 sent F/1800 test packets at
+    ~1850 Hz, under the 3000 Hz an upload uses, and the K6 dropped bits or never synced,
+    2026-11-17, docs/k6-fsk24.md)"""
+    if peak is None:
+        return dev
+    m = float(np.max(np.abs(np.asarray(x, float)))) if len(x) else 0.0
+    if m <= 0:
+        raise SystemExit("--peak: the wav is silent")
+    return peak / m
+
+
 def iq_chunks(track, fs_track=FS_TRACK, rate=RATE, chunk=CHUNK, level=None, if_hz=0.0):
     """instantaneous frequency (Hz at fs_track) -> int16 interleaved IQ bytes, chunk by chunk,
     phase continuous (the track interpolated linearly to rate). level: the amplitude (1 = AMP)
@@ -389,7 +406,10 @@ def cmd_send(a):
         x = x[:, 0]
     if np.issubdtype(np.asarray(x).dtype, np.floating) and np.max(np.abs(x)) > 1.5:
         x = x / 32768.0                     # integer PCM read as float
-    track = audio_track(x, fs, a.dev, a.preemph)
+    dev = full_scale_dev(x, a.dev, a.peak)
+    print(f"send: wav peak {np.max(np.abs(x)):.3f} of full scale -> {np.max(np.abs(x)) * dev:.0f} Hz "
+          f"before pre-emphasis", flush=True)
+    track = audio_track(x, fs, dev, a.preemph)
     send(track, a.hz, a.offset_hz, a.gain, a.rate, a.uri, not a.rf_off,
          f"send {os.path.basename(a.wav)}")
 
@@ -487,10 +507,13 @@ def cmd_steps(a):
         x = x[:, 0]
     if np.max(np.abs(x)) > 1.5:
         x = x / 32768.0
-    track = audio_track(x, fs, a.dev, a.preemph)
+    dev = full_scale_dev(x, a.dev, a.peak)
+    track = audio_track(x, fs, dev, a.preemph)
     print(f"steps: {len(gains)} sends of {os.path.basename(a.wav)} ({len(x) / fs:.1f} s), peak deviation "
-          f"{np.max(np.abs(track)):.0f} Hz, gains {a.gains} dB", flush=True)
-    out = {"wav": os.path.abspath(a.wav), "hz": a.hz, "dev": a.dev, "preemph": a.preemph, "steps": []}
+          f"{np.max(np.abs(x)) * dev:.0f} Hz before pre-emphasis, {np.max(np.abs(track)):.0f} Hz sent, "
+          f"gains {a.gains} dB", flush=True)
+    out = {"wav": os.path.abspath(a.wav), "hz": a.hz, "dev": dev, "peak": a.peak, "preemph": a.preemph,
+           "steps": []}
     for g in gains:
         t0 = time.time()
         send(track, a.hz, a.offset_hz, g, a.rate, a.uri, not a.rf_off, f"steps gain {g:g}")
@@ -570,6 +593,9 @@ def main(argv=None):
     s.add_argument("wav")
     s.add_argument("--hz", type=int, default=HZ)
     s.add_argument("--dev", type=float, default=3000.0, help="peak deviation at full scale, Hz")
+    s.add_argument("--peak", type=float, default=None, metavar="HZ",
+                   help="scale the wav so its own peak is HZ (before --preemph), overriding --dev; "
+                        "3000 matches k6_upload's F/1800 uploads")
     s.add_argument("--preemph", action="store_true", help="750 us pre-emphasis (voice)")
     tx_args(s)
     f = sub.add_parser("fsk24")
@@ -587,6 +613,9 @@ def main(argv=None):
     st.add_argument("--gains", required=True, help="TX gains in dB, comma separated, e.g. -70,-73,-76")
     st.add_argument("--hz", type=int, default=HZ)
     st.add_argument("--dev", type=float, default=3000.0, help="peak deviation at full scale, Hz")
+    st.add_argument("--peak", type=float, default=None, metavar="HZ",
+                    help="scale the wav so its own peak is HZ (before --preemph), overriding --dev; "
+                         "3000 matches k6_upload's F/1800 uploads")
     st.add_argument("--preemph", action="store_true", help="750 us pre-emphasis (voice, FFSK)")
     st.add_argument("--pause", type=float, default=3.0, help="seconds between sends")
     st.add_argument("--out", help="the sends' gains and times (json), for modem.fsk24 report-steps")

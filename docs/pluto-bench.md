@@ -33,15 +33,19 @@ pad) on RX, keep HTs a few metres away when they key, and keep the RX gain manua
 ```
 python3 tools/pluto_bench.py info                    state, tuning range, stored calibration
 python3 tools/pluto_bench.py quiet                   TX LO down, DDS test tones off
-python3 tools/pluto_bench.py send WAV [--hz F] [--dev 3000] [--gain -60] [--preemph] [--rf-off]
+python3 tools/pluto_bench.py send WAV [--hz F] [--dev 3000 | --peak HZ] [--gain -60] [--preemph] [--rf-off]
 python3 tools/pluto_bench.py rx OUT.cf32|OUT.wav [--hz F] [--seconds 10] [--gain 30]
 python3 tools/pluto_bench.py measure CAP.cf32        offset (Hz, ppm), peak deviation, level, floor
 python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
 python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
 python3 tools/pluto_bench.py fsk24 --sweep --follow LOG --gain -70   the K6 sensitivity sweep
-python3 tools/pluto_bench.py steps WAV --gains -70,-73,... [--preemph] [--dev 3000] [--out J]
+python3 tools/pluto_bench.py steps WAV --gains -70,-73,... [--preemph] [--dev 3000 | --peak HZ] [--out J]
 ```
 
+- **Match an upload's level with `--peak`.** `--dev` is full scale, and `modem.k6` wavs are half
+  scale, so `--dev 3700` sends them at about 1850 Hz peak, 4 dB under `k6_upload --via pluto`'s
+  F/1800 (3000 Hz). That cost F/1800 test packets most of their packets on 11-16 and 11-17
+  (docs/k6-fsk24.md). `--peak 3000` scales the wav by its own peak instead.
 - **send:** plays any audio file as FM. Full scale is `--dev` Hz of peak deviation (3 kHz by
   default). Data goes flat; add `--preemph` (750 us, the usual narrowband FM voice curve) for
   speech an HT will de-emphasise. AG7EW in MCW goes before and after it, always.
