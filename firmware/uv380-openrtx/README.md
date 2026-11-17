@@ -244,7 +244,8 @@ AT1846S (`blowfang_txTrimHz` in `radio_UV3x0.cpp`, in every mode); `trim N` chan
 power-off. Receive is left alone. They last until power-off. They're there because the K6 read none of
 the UV-380's first FSK sends (11-14), so hamlet can tune the link on air with no reflash. On 11-16
 the calibrated Pluto still read the carrier 2.1-2.2 kHz low with 3580, and 5745 brought it within
-50 Hz, so 5745 is the default now.
+50 Hz, so 5745 was the default. On 441.850 (11-17) the warm carrier read about 350 Hz low with it
+(the CW ident, against a TV pilot), so the default is now 6100 (docs/uv380-characteristics.md).
 
 **Deviation: the C6000's line-in gain (11-16).** Why the K6 read no UV-380 FSK: the tones swung
 only about 1.0 kHz on air, against the 3.2 kHz of the IC-7100 audio the K6 decodes 7/7 (the Pluto,

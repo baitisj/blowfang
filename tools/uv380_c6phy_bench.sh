@@ -100,7 +100,7 @@ live|live2)
     restore() {
         BACK=
         [ -z "$FREQ" ] || BACK="freq 441850"
-        uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" "trim ${TRIM:-5745}" $BACK \
+        uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" "trim ${TRIM:-6100}" $BACK \
             | tee "$RUN/tune-after.txt"
     }
     trap restore EXIT

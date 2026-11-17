@@ -282,7 +282,7 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..d5fb85f0
+index 00000000..06bab946
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
 @@ -0,0 +1,1652 @@
@@ -924,7 +924,7 @@ index 00000000..d5fb85f0
 +// modulator is told the PWM runs at, 47000-49000; default 48000: corrects the
 +// tones and the baud rate together), "emph 0|1" (pre-emphasis off or on;
 +// default off since 11-16), "trim N" (Hz added to the transmit frequency,
-+// -8000 to 8000; default 5745, this radio's measured error), "power N" (transmit power in
++// -8000 to 8000; default 6100, this radio's measured error), "power N" (transmit power in
 +// mW: 0, 1000, 2500 or 5000, what macro key 6 steps through; the UI thread
 +// takes it to the radio as it does the key's), "gain N" (the C6000's line in
 +// gain while sending, -12 to 15 dB, default 6; it sets the deviation), "freq N"
@@ -2096,10 +2096,10 @@ index d71444c6..15c6e2b2 100644
  
      gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER,
 diff --git a/platform/drivers/baseband/radio_UV3x0.cpp b/platform/drivers/baseband/radio_UV3x0.cpp
-index 64b77a94..fe4dc09f 100644
+index 64b77a94..9524a382 100644
 --- a/platform/drivers/baseband/radio_UV3x0.cpp
 +++ b/platform/drivers/baseband/radio_UV3x0.cpp
-@@ -19,6 +19,33 @@
+@@ -19,6 +19,36 @@
  
  static const rtxStatus_t *config;                // Pointer to data structure with radio configuration
  
@@ -2116,8 +2116,11 @@ index 64b77a94..fe4dc09f 100644
 +// Added to the transmit frequency given to the AT1846S, in Hz ("trim N"). Jeff's
 +// UV-380 (an MD-UV390 Plus) transmitted 3.58 kHz low on 440.850 (11-14 10:40Z,
 +// IC-7100 in USB). With 3580 it still read 2.1-2.2 kHz low on the calibrated
-+// Pluto (11-16 20:15-20:29Z), and 5745 put it within 50 Hz. Receive is untouched.
-+volatile int32_t blowfang_txTrimHz = 5745;
++// Pluto (11-16 20:15-20:29Z), and 5745 put it within 50 Hz. On 441.850 (11-17,
++// Pluto checked on a TV pilot) 5745 read about 350 Hz low warm (the CW ident's
++// steady carrier; the FFSK's mean sits 200-400 Hz lower), so 6100 now. Receive is
++// untouched.
++volatile int32_t blowfang_txTrimHz = 6100;
 +// The C6000's input gain, in dB, while PAGER sends the MCU's audio through the
 +// line in ("gain N"); the voice path's -3 dB (TYT's value) comes back at key-down.
 +// At -3 dB the FFSK tones swung only 1.0 kHz on air, against the 3.2 kHz of the
@@ -2133,7 +2136,7 @@ index 64b77a94..fe4dc09f 100644
  static mduv3x0Calib_t calData;                   // Calibration data
  static Band    currRxBand = BND_NONE;            // Current band for RX
  static Band    currTxBand = BND_NONE;            // Current band for TX
-@@ -26,6 +53,7 @@ static uint8_t txpwr_lo   = 0;                   // APC voltage for TX output po
+@@ -26,6 +56,7 @@ static uint8_t txpwr_lo   = 0;                   // APC voltage for TX output po
  static uint8_t txpwr_hi   = 0;                   // APC voltage for TX output power control, high power
  static uint8_t rxModBias  = 0;                   // VCXO bias for RX
  static uint8_t txModBias  = 0;                   // VCXO bias for TX
@@ -2141,7 +2144,7 @@ index 64b77a94..fe4dc09f 100644
  
  static enum opstatus radioStatus;                // Current operating status
  
-@@ -95,6 +123,7 @@ void radio_setOpmode(const enum opmode mode)
+@@ -95,6 +126,7 @@ void radio_setOpmode(const enum opmode mode)
      switch(mode)
      {
          case OPMODE_FM:
@@ -2149,7 +2152,7 @@ index 64b77a94..fe4dc09f 100644
              at1846s.setOpMode(AT1846S_OpMode::FM);  // AT1846S in FM mode
              C6000.fmMode();                         // HR_C6000 in FM mode
              C6000.setInputGain(-3);                 // Input gain in dB, as per TYT firmware
-@@ -183,15 +212,20 @@ void radio_enableTx()
+@@ -183,15 +215,20 @@ void radio_enableTx()
      gpio_clearPin(RF_APC_SW);
  
      C6000.setModOffset(txModBias);
@@ -2172,7 +2175,7 @@ index 64b77a94..fe4dc09f 100644
  
      switch(config->opMode)
      {
-@@ -207,6 +241,24 @@ void radio_enableTx()
+@@ -207,6 +244,24 @@ void radio_enableTx()
              C6000.startAnalogTx(TxAudioSource::LINE_IN, FmConfig::BW_25kHz);
              break;
  
@@ -2197,7 +2200,7 @@ index 64b77a94..fe4dc09f 100644
          default:
              break;
      }
-@@ -230,8 +282,11 @@ void radio_enableTx()
+@@ -230,8 +285,11 @@ void radio_enableTx()
          gpio_setPin(PA_SEL_SW);
      }
  
@@ -2211,7 +2214,7 @@ index 64b77a94..fe4dc09f 100644
  
      if(config->txToneEn)
      {
-@@ -260,6 +315,13 @@ void radio_disableRtx()
+@@ -260,6 +318,13 @@ void radio_disableRtx()
          C6000.stopAnalogTx();
      }
  
@@ -2225,7 +2228,7 @@ index 64b77a94..fe4dc09f 100644
      at1846s.disableTone();
      at1846s.disableCtcss();
      at1846s.setFuncMode(AT1846S_FuncMode::OFF);
-@@ -286,7 +348,7 @@ void radio_updateConfiguration()
+@@ -286,7 +351,7 @@ void radio_updateConfiguration()
      freq_t  *txCalPoints = calData.vhfCal.txFreq;
      uint8_t *loPwrCal    = calData.vhfCal.txLowPower;
      uint8_t *hiPwrCal    = calData.vhfCal.txHighPower;
@@ -2234,7 +2237,7 @@ index 64b77a94..fe4dc09f 100644
                           ? calData.vhfCal.analogSendQrange
                           : calData.vhfCal.sendQrange;
  
-@@ -296,7 +358,7 @@ void radio_updateConfiguration()
+@@ -296,7 +361,7 @@ void radio_updateConfiguration()
          txCalPoints = calData.uhfCal.txFreq;
          loPwrCal    = calData.uhfCal.txLowPower;
          hiPwrCal    = calData.uhfCal.txHighPower;
@@ -2243,7 +2246,7 @@ index 64b77a94..fe4dc09f 100644
                      ? calData.uhfCal.analogSendQrange
                      : calData.uhfCal.sendQrange;
      }
-@@ -313,7 +375,7 @@ void radio_updateConfiguration()
+@@ -313,7 +378,7 @@ void radio_updateConfiguration()
      C6000.setModAmplitude(0, Q);
  
      // Set bandwidth, only for analog FM mode
