@@ -33,7 +33,8 @@ such send is one transmission: an F/1800 control record (phy=D baud=2400, pre-em
 F/1800 Pluto send) and then the chunks at D/2400, flat, 2.2 kHz peak. The K6 replies at F/1800 as
 before and falls back to F/1800 by itself (3 bad CRCs of 8, 10 s with no good packet after the
 switch, 30 s quiet), so every send asks again. --rate auto (the default) asks only once a report
-has shown the K6 takes D24, and keeps per-transmitter state in $BLOWFANG_WORK/state/k6-rate.json:
+has shown the K6 takes D24 and only for an image of D24_MIN_CHUNKS (16) chunks or more (asking
+costs about 3 s a send, so a smaller one is quicker at F/1800), and keeps per-transmitter state in $BLOWFANG_WORK/state/k6-rate.json:
 a send at D/2400 that loses over 15 % of its chunks, or a report that says the K6 fell back on
 CRC or revert, sends the rest at F/1800 (the first such send led by a D/2400 record asking for
 F/1800, for a K6 still on D/2400) and marks the path F18; two clean uploads after that
@@ -101,6 +102,9 @@ D24_GAP_S = 0.6           # carrier between the control record and the D/2400 ch
 STEP_DOWN_LOST = 0.15     # a D/2400 send losing more than this share of its chunks: F/1800 for the rest
 CLEAN_LOST = 0.05         # an upload losing less than this overall is clean
 CLEAN_TO_STEP_UP = 2      # clean uploads at F/1800 before the path goes back to D/2400
+D24_MIN_CHUNKS = 16       # auto asks for D/2400 only for an image this big: each D/2400 send carries
+                          # about 3 s more (the F/1800 control record and the gap) and saves 0.3 s an
+                          # XL chunk; hello.c (4 chunks, 11-17 04:51Z): 28 s wall at D/2400, 24 at F/1800
 
 
 def rate_path():
@@ -129,15 +133,18 @@ def path_state(d, via):
     return dict({"rung": "D24", "clean": 0, "k6_d24": False}, **d.get(via, {}))
 
 
-def start_rung(want, via, ps):
-    """the rung for a send: ic7100 always F18; --rate F18/D24 as asked; auto: D24 when the K6 is
-    known to take it and the path is marked D24"""
+def start_rung(want, via, ps, count=None):
+    """the rung for an upload's first send: ic7100 always F18; --rate F18/D24 as asked; auto: D24
+    when the K6 is known to take it, the path is marked D24 and the image has at least
+    D24_MIN_CHUNKS chunks (count; None: no limit)"""
     if via != "pluto":
         if want == "D24":
             raise SystemExit("--rate D24 needs a flat transmitter (--via pluto): the IC-7100's audio can't carry it")
         return "F18"
     if want in ("F18", "D24"):
         return want
+    if count is not None and count < D24_MIN_CHUNKS:
+        return "F18"
     return "D24" if ps["k6_d24"] and ps["rung"] == "D24" else "F18"
 
 
@@ -405,7 +412,6 @@ def main():
     want = a.rate if ladder else "F18"
     rates = load_rates(a.rate_state)
     ps = path_state(rates, a.via)
-    rung = start_rung(want, a.via, ps)
     if a.freq != 440_850_000:
         sys.exit("the K6 answers on 440.850 only")
     f = rig(a, "f")
@@ -416,6 +422,9 @@ def main():
     xfer = serial & 0xFF
     payload = a.payload
     count = chunks_of(a, payload)
+    rung = start_rung(want, a.via, ps, count)
+    if want == "auto" and a.via == "pluto" and ps["k6_d24"] and ps["rung"] == "D24" and count < D24_MIN_CHUNKS:
+        print(f"{count} chunks, under {D24_MIN_CHUNKS}: F/1800 is quicker than asking for D/2400", flush=True)
     todo = list(range(count))
     heard = False                    # a report has come for this chunk size
     have = 0                         # chunks the K6 had at its last report for this transfer
