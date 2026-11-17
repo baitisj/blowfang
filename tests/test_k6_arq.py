@@ -257,6 +257,7 @@ def test_key_and_play_flat_dev(capsys):
 def test_upload_auto_learns_then_asks_d24(monkeypatch, tmp_path, capsys):
     """auto: the first upload goes at F/1800 and learns the K6 takes D24 from its report; the
     next goes at D/2400 in one send"""
+    monkeypatch.setattr(k6_upload, "D24_MIN_CHUNKS", 1)     # hello.c is 4 chunks
     st = str(tmp_path / "rate.json")
     argv = ["--via", "pluto", "--rate-state", st]
     sends = fake_upload(monkeypatch, "XL", argv, d24="ok")
@@ -271,6 +272,7 @@ def test_upload_auto_learns_then_asks_d24(monkeypatch, tmp_path, capsys):
 def test_upload_d24_deaf_steps_down_and_comes_back(monkeypatch, tmp_path, capsys):
     """a D/2400 send that brings no report: the rest at F/1800 (no size switch on that silence),
     the path marked F18; two clean F/1800 uploads mark it D24 again"""
+    monkeypatch.setattr(k6_upload, "D24_MIN_CHUNKS", 1)
     st = str(tmp_path / "rate.json")
     k6_upload.save_rates({"pluto": {"rung": "D24", "clean": 0, "k6_d24": True}}, st)
     argv = ["--via", "pluto", "--rate-state", st]
@@ -283,6 +285,26 @@ def test_upload_d24_deaf_steps_down_and_comes_back(monkeypatch, tmp_path, capsys
         assert [r for *_, r in fake_upload(monkeypatch, "XL", argv, d24="deaf")] == ["F18"]
         assert k6_upload.load_rates(st)["pluto"]["clean"] == clean
     assert k6_upload.load_rates(st)["pluto"]["rung"] == "D24"
+
+
+@need_host
+def test_upload_small_module_stays_f1800(monkeypatch, tmp_path, capsys):
+    """auto, a K6 known to take D24, but hello.c's 4 chunks: asking would cost more than it saves"""
+    st = str(tmp_path / "rate.json")
+    k6_upload.save_rates({"pluto": {"rung": "D24", "clean": 0, "k6_d24": True}}, st)
+    assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st], d24="ok")] == ["F18"]
+    assert "F/1800 is quicker" in capsys.readouterr().out
+    assert k6_upload.load_rates(st)["pluto"]["rung"] == "D24"          # the path stays D24
+    assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st, "--rate", "D24"],
+                                       d24="ok")] == ["D24"]              # forced: asks anyway
+
+
+def test_start_rung_size_limit():
+    known = {"rung": "D24", "clean": 0, "k6_d24": True}
+    n = k6_upload.D24_MIN_CHUNKS
+    assert k6_upload.start_rung("auto", "pluto", known, n - 1) == "F18"
+    assert k6_upload.start_rung("auto", "pluto", known, n) == "D24"
+    assert k6_upload.start_rung("D24", "pluto", known, 1) == "D24"
 
 
 @need_host

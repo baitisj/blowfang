@@ -433,7 +433,10 @@ feature. K6 replies stay on F/1800. `tools/k6_upload.py --via pluto --rate auto`
   copies at the upload's packet size, pre-emphasised at 3 kHz peak as any F/1800 Pluto send),
   0.6 s of carrier (the K6 leaves its burst 250 ms after the last packet, then retunes), then the
   chunks at D/2400, flat, 2.2 kHz peak. The K6 falls back by itself, so every send asks again.
-- It asks only once a report has shown `rates=..D24`, and keeps per-transmitter state in
+- It asks only once a report has shown `rates=..D24`, and only for an image of 16 XL chunks or
+  more (about 1.9 KB): asking costs about 3 s a send and saves 0.3 s a chunk. First bench run
+  (11-17 04:51Z, hello.c, 4 chunks, Pluto -52): D/2400 took twice first try, 0 lost, but 28 s
+  wall against 24 s at F/1800. It keeps per-transmitter state in
   `$BLOWFANG_WORK/state/k6-rate.json` (`rung`, `clean`, `k6_d24`).
 - Step down (the rest of that upload at F/1800, the path marked F18): a D/2400 send that brings
   no report, loses over 15 % of its chunks, or a report saying the K6 fell back on `crc` or
