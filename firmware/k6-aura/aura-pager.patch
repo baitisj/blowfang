@@ -5799,7 +5799,7 @@ index 0000000..56920be
 +/// pages missing (after a flash, before hamlet installs them) hold the arena until they're in.
 +const VOICE_IDLE_MS: u32 = 60_000;
 +const BEACON_HZ: u32 = 440_850_000;
-+const BEACON_DBM: i32 = -45;
++const BEACON_DBM: i32 = -60;
 +const BEACON_EVERY_MS: u32 = 1000;
 +const BEACON_HOLD_MS: u32 = 60_000;
 +/// VOICE MSG since (ms), and how long it waits for quiet before EXPLORE

@@ -66,7 +66,8 @@ one of them changes.
 - SPI read over the cable: the whole 2 MB chip in 239 s, about 8.8 KB/s (M).
 - The OTA reset from the IC-7100 flashed first try once the K6 left EXPLORE; the EXPLORE CW-ID wake
   needs the 440.850 carrier above -45 dBm at the K6, and the IC-7100 on its stub antenna at power 0
-  read only -50 to -55 dBm (M).
+  read only -50 to -55 dBm (M). On 2026-11-17 the Pluto's wake at its -30 gain limit read -52 dBm
+  and missed too, so the threshold is -60 dBm from the next flash (M).
 
 ## Bench notes
 
