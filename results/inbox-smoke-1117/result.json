@@ -1,12 +1,12 @@
 {
  "id": "inbox-smoke-1117",
- "status": "queued",
- "queued": "2026-11-17T23:27:05Z",
+ "status": "running",
+ "since": "2026-11-17T23:27:11Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "2ce53774b2030e3b1f80f0d99908505a28e6ce40",
   "path": "jobs/inbox-smoke-1117"
  },
  "runner_commit": "dd3926f8dc4daef745c1a80ee6c6bcb802a99f50",
- "updated": "2026-11-17T23:27:05Z"
+ "updated": "2026-11-17T23:27:11Z"
 }
