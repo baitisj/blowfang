@@ -165,7 +165,7 @@ index 393659ae..5c31aed8 100644
  
  /**
 diff --git a/openrtx/src/core/state.c b/openrtx/src/core/state.c
-index 4e8e0630..8b1d41f4 100644
+index 4e8e0630..76ac8e84 100644
 --- a/openrtx/src/core/state.c
 +++ b/openrtx/src/core/state.c
 @@ -10,6 +10,7 @@
@@ -176,18 +176,19 @@ index 4e8e0630..8b1d41f4 100644
  #include "core/battery.h"
  #include "hwconfig.h"
  #include "interfaces/platform.h"
-@@ -45,6 +46,28 @@ void state_init()
+@@ -45,6 +46,29 @@ void state_init()
          state.channel = cps_getDefaultChannel();
      }
  
 +#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
 +    /*
-+     * blowfang I2S probe image: boot in PAGER mode on 440.850 MHz, where the
-+     * probe runs, so a run needs no menus.
++     * blowfang I2S probe image: boot in PAGER mode on 441.850 MHz, the
++     * UV-380's bench channel (Jeff 11-17: not everything on 440.850, the
++     * K6's), so a run needs no menus; "freq 440850" over USB for the K6.
 +     */
 +    state.channel.mode         = OPMODE_PAGER;
-+    state.channel.rx_frequency = 440850000;
-+    state.channel.tx_frequency = 440850000;
++    state.channel.rx_frequency = 441850000;
++    state.channel.tx_frequency = 441850000;
 +#endif
 +
 +#ifdef PLATFORM_LINUX
@@ -281,10 +282,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..648bf724
+index 00000000..d5fb85f0
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1629 @@
+@@ -0,0 +1,1652 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -528,7 +529,15 @@ index 00000000..648bf724
 +static volatile bool   msgChanged = false;  // update() makes a new msg_id
 +static bool            sendIdentOnly = false;   // send(): the Morse ident alone
 +#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
-+static constexpr freq_t SEND_HZ   = 440850000;  // tx_request sends only here
++// The bench channels (Jeff 11-17: not everything on one frequency; hamlet's
++// channel plan): the UV-380's own work on 441.850 MHz, where it boots, and its
++// sends to the K6 on the K6's 440.850 ("freq 440850"). Sends go only on these.
++static constexpr freq_t SEND_HZ    = 441850000;  // the UV-380's bench channel
++static constexpr freq_t SEND_K6_HZ = 440850000;  // the K6's channel
++static bool sendHere(freq_t f)
++{
++    return (f == SEND_HZ) || (f == SEND_K6_HZ);
++}
 +static volatile bool   txRequest  = false;  // a module asked for a send
 +static volatile unsigned micTxMs  = 0;      // a module asked for the keyed mic test
 +static volatile unsigned toneTxMs = 0;      // a module asked for the keyed line-in tone
@@ -918,7 +927,9 @@ index 00000000..648bf724
 +// -8000 to 8000; default 5745, this radio's measured error), "power N" (transmit power in
 +// mW: 0, 1000, 2500 or 5000, what macro key 6 steps through; the UI thread
 +// takes it to the radio as it does the key's), "gain N" (the C6000's line in
-+// gain while sending, -12 to 15 dB, default 6; it sets the deviation). Each
++// gain while sending, -12 to 15 dB, default 6; it sets the deviation), "freq N"
++// (the channel in kHz, receive and transmit: 441850, the UV-380's bench
++// channel and where it boots, or 440850, the K6's; freq= reads it back). Each
 +// answers with all of them (pwr= reads the power back); "tune" alone only
 +// answers.
 +static int tuneCommand(const char *line)
@@ -943,6 +954,8 @@ index 00000000..648bf724
 +        p = line + 6;
 +    else if(strncmp(line, "gain ", 5) == 0)
 +        p = line + 5;
++    else if(strncmp(line, "freq ", 5) == 0)
++        p = line + 5;
 +    else if(strcmp(line, "tune") != 0)
 +        return 0;
 +    bool num = false;
@@ -956,7 +969,7 @@ index 00000000..648bf724
 +    }
 +    if(num && !neg && (line[0] == 'l') && (v >= 1000) && (v <= 32000))
 +        txLevel = (int16_t) v;
-+    else if(num && !neg && (line[0] == 'f') && (v >= 47000) && (v <= 49000))
++    else if(num && !neg && (line[0] == 'f') && (line[1] == 's') && (v >= 47000) && (v <= 49000))
 +        txFs = (uint32_t) v;
 +    else if(num && (line[0] == 'e') && (v <= 1) && (neg == false))
 +        blowfang_txFlat = (v == 0);
@@ -978,13 +991,24 @@ index 00000000..648bf724
 +    }
 +    else if(num && (line[0] == 'g') && (neg ? (v <= 12) : (v <= 15)))
 +        blowfang_txGainDb = neg ? -(int8_t) v : (int8_t) v;
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++    else if(num && !neg && (line[0] == 'f') && (line[1] == 'r') &&
++            sendHere((freq_t) v * 1000))
++    {
++        pthread_mutex_lock(&state_mutex);
++        state.channel.rx_frequency = (freq_t) v * 1000;
++        state.channel.tx_frequency = (freq_t) v * 1000;
++        pthread_mutex_unlock(&state_mutex);
++        blowfang_syncRtx = 1;
++    }
++#endif
 +    char out[128];
 +    snprintf(out, sizeof(out),
-+             "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu zero=%u pwr=%lu gain=%d",
++             "tune lvl=%d fs=%lu emph=%d trim=%ld mark=%lu space=%lu zero=%u pwr=%lu gain=%d freq=%lu",
 +             (int) txLevel, (unsigned long) txFs, blowfang_txFlat ? 0 : 1,
 +             (long) blowfang_txTrimHz, (unsigned long) txMark, (unsigned long) txSpace,
 +             (unsigned) blowfang_txZero, (unsigned long) state.channel.power,
-+             (int) blowfang_txGainDb);
++             (int) blowfang_txGainDb, (unsigned long) (state.channel.tx_frequency / 1000));
 +    pbSay(NULL, out);
 +    return 1;
 +}
@@ -1149,7 +1173,7 @@ index 00000000..648bf724
 +static int omTxMic(unsigned ms)
 +{
 +    rtxStatus_t st = rtx_getCurrentStatus();
-+    if((ms == 0) || (ms > 5000) || (st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++    if((ms == 0) || (ms > 5000) || (sendHere(st.txFrequency) == false) || (st.txDisable != 0))
 +        return -1;
 +    micTxMs = ms;
 +    return 0;
@@ -1184,7 +1208,7 @@ index 00000000..648bf724
 +{
 +    rtxStatus_t st = rtx_getCurrentStatus();
 +    if((ms == 0) || (ms > 5000) || (hz < 100) || (hz > 3000) ||
-+       (st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++       (sendHere(st.txFrequency) == false) || (st.txDisable != 0))
 +        return -1;
 +    toneHz   = hz;
 +    toneTxMs = ms;
@@ -1350,7 +1374,7 @@ index 00000000..648bf724
 +static int omTxRequest()
 +{
 +    rtxStatus_t st = rtx_getCurrentStatus();
-+    if((st.txFrequency != SEND_HZ) || (st.txDisable != 0))
++    if((sendHere(st.txFrequency) == false) || (st.txDisable != 0))
 +        return -1;
 +    txRequest = true;
 +    return 0;
@@ -1677,12 +1701,12 @@ index 00000000..648bf724
 +
 +#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
 +    // a module's tx_request (ortx_mod.h): the message as a PTT press sends it,
-+    // once the module has ended, only on SEND_HZ
++    // once the module has ended, only on SEND_HZ or SEND_K6_HZ
 +    if(txRequest && (pbBusy == false))
 +    {
 +        txRequest = false;
 +        if((ptt == false) && (status->txDisable == 0) &&
-+           (status->txFrequency == SEND_HZ))
++           sendHere(status->txFrequency))
 +        {
 +            holdProbe();
 +            joinPreview(true);
@@ -1699,7 +1723,7 @@ index 00000000..648bf724
 +        unsigned ms = micTxMs;
 +        micTxMs = 0;
 +        if((ptt == false) && (status->txDisable == 0) &&
-+           (status->txFrequency == SEND_HZ))
++           sendHere(status->txFrequency))
 +        {
 +            joinPreview(true);
 +            blowfang_txLow = true;
@@ -1718,7 +1742,7 @@ index 00000000..648bf724
 +        unsigned ms = toneTxMs;
 +        toneTxMs = 0;
 +        if((ptt == false) && (status->txDisable == 0) &&
-+           (status->txFrequency == SEND_HZ))
++           sendHere(status->txFrequency))
 +        {
 +            joinPreview(true);
 +            blowfang_txLow = true;
@@ -1732,11 +1756,11 @@ index 00000000..648bf724
 +    }
 +    // FUNC held: record the mic until it is let go, then send what was
 +    // recorded as PTT does (RNG or FSK), at the channel's power, only on
-+    // SEND_HZ; a tap too short to record a frame sends the ident alone
++    // SEND_HZ or SEND_K6_HZ; a tap too short to record a frame sends the ident alone
 +    if(fnHeld == false)
 +        fnArmed = true;
 +    else if(fnArmed && (ptt == false) && (status->txDisable == 0) &&
-+            (status->txFrequency == SEND_HZ))
++            sendHere(status->txFrequency))
 +    {
 +        fnArmed = false;
 +        armed   = false;    // a PTT that cut the recording short doesn't send twice

@@ -8,7 +8,7 @@
 #                                                 TX RAM read back
 #   sh tools/uv380_c6phy_bench.sh live RUN K6LOG  the UV-380 at 0 W, PA on (power 0, zero 2), its
 #                                                 own receiver off (listen 0), on
-#                                                 440.850, after the K6's module upload from
+#                                                 440.850 (freq 440850 on newer images), after the K6's module upload from
 #                                                 the Pluto: 3 key-ups at 2400 baud while the K6 is
 #                                                 in its 2400 settings, 2 at 1200 in its last,
 #                                                 the Pluto capturing each (50 kHz up); then the
@@ -86,12 +86,21 @@ live|live2)
     ZERO=$(sed -n 's/.*zero=\([0-9]*\).*/\1/p' "$RUN/tune-before.txt" | tail -1)
     LISTEN=$(uvcmd listen | sed -n 's/.*listen on=\([01]\).*/\1/p' | tail -1)
     # the radio's own receiver off: it heard the IC-7100 and refused sends (11-16 21:5xZ)
-    uvcmd "listen 0" "power 0" "zero 2" | tee "$RUN/tune-set.txt"
+    # images since the 11-17 channel plan boot on 441.850 (the UV-380's channel) and read freq=
+    # back: these sends are for the K6, so they go on its 440.850, and the radio goes back to
+    # 441.850 afterwards. An older image has no freq= and only sends on 440.850.
+    FREQ=
+    grep -q "freq=" "$RUN/tune-before.txt" && FREQ="freq 440850"
+    uvcmd "listen 0" "power 0" "zero 2" $FREQ | tee "$RUN/tune-set.txt"
     grep -q "pwr=0 .*" "$RUN/tune-set.txt" && grep -q "zero=2" "$RUN/tune-set.txt" && grep -q "listen on=0" "$RUN/tune-set.txt" \
         || { echo "power 0 / zero 2 / listen 0 not read back: nothing sent"; exit 3; }
+    [ -z "$FREQ" ] || grep -q "freq=440850" "$RUN/tune-set.txt" \
+        || { echo "freq 440850 not read back: nothing sent"; exit 3; }
     TRIM=$(sed -n 's/.*trim=\(-*[0-9]*\).*/\1/p' "$RUN/tune-before.txt" | tail -1)
     restore() {
-        uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" "trim ${TRIM:-5745}" \
+        BACK=
+        [ -z "$FREQ" ] || BACK="freq 441850"
+        uvcmd "power ${PWR:-1000}" "zero ${ZERO:-1}" "listen ${LISTEN:-1}" "trim ${TRIM:-5745}" $BACK \
             | tee "$RUN/tune-after.txt"
     }
     trap restore EXIT

@@ -86,11 +86,11 @@ typedef struct ortx_api {
     unsigned (*msg)(const uint8_t **bytes);         /* the message: superframes (6 bytes each) */
     void (*preview)(void);              /* the # key: the message on the speaker */
     /* send the message as a PTT press would (PHY R in the range build, then the Morse ident),
-       once the module has ended; only on 440.850 MHz: 0, or -1 (another frequency, TX off) */
+       once the module has ended; only on 441.850 or 440.850 MHz (the bench channels): 0, or -1 (another frequency, TX off) */
     int (*tx_request)(void);
     /* the keyed mic test: ms (at most 5000) of FM carrying the microphone as FM mode sends it
        (MIC_PWR on, the C6000's mic input), at 1 W whatever the channel says; only on
-       440.850 MHz. Level 4 images send the Morse ident first, unkey for 100 ms, then key the
+       441.850 or 440.850 MHz. Level 4 images send the Morse ident first, unkey for 100 ms, then key the
        test (level 2-3 images: the test within about 30 ms, the ident after). The module runs on
        meanwhile, so it can capture I2S3 (rxaudio.h's rx_start_as_is: register 26 and PD9 left
        alone). Under the transmit guard (level 4): a key-up still up 1.5 s past its length, or a
@@ -98,7 +98,7 @@ typedef struct ortx_api {
     int (*tx_mic)(unsigned ms);
     /* level 3: the keyed line-in tone: ms (at most 5000) of FM carrying an hz (100-3000) tone
        from the MCU through the line in, as every send's audio goes, at 1 W; only on
-       440.850 MHz. Ident first and the transmit guard as tx_mic (level 4). The module runs on
+       441.850 or 440.850 MHz. Ident first and the transmit guard as tx_mic (level 4). The module runs on
        meanwhile, and may switch the C6000's transmit source (E0) and capture I2S3: 0, or -1
        (refused) */
     int (*tx_tone)(unsigned ms, unsigned hz);
