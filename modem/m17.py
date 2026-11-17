@@ -387,6 +387,18 @@ def write_wav(path, pcm, fs=8000):
 
 # ---- modulation model and receiver ------------------------------------------------------------
 
+def dc_block(x, n=1920):
+    """x less its running mean over n samples (40 ms at 48 kHz, a frame): a capture's carrier
+    estimate spans the FM ident and the raw mode's burst, which the chip puts kHz apart"""
+    x = np.asarray(x, float)
+    if len(x) < n:
+        return x - np.mean(x)
+    c = np.cumsum(np.concatenate([[0.0], x]))
+    m = (c[n:] - c[:-n]) / n
+    m = np.concatenate([np.full(n // 2, m[0]), m, np.full(len(x) - len(m) - n // 2, m[-1])])
+    return x - m
+
+
 def rrc(alpha, sps, span=8):
     t = np.arange(-span * sps, span * sps + 1) / sps
     h = np.zeros_like(t)
@@ -532,11 +544,45 @@ def summarize(frames):
             s["bert_frames"] += 1
             s["bert_bits"] += 197
             s["bert_errors"] += errs
+            s.setdefault("bert_per_frame", []).append(errs)
     return s
 
 
+def runs(frames, gap=0.040, tol=0.001):
+    """frames in runs of one key-up's 40 ms spacing -> lists; a lone sync match (noise, or data
+    that happens to look like a sync) has no neighbour and makes no run"""
+    out, cur = [], []
+    for f in sorted(frames, key=lambda f: f["at"]):
+        if cur and abs(f["at"] - cur[-1]["at"] - gap) <= tol:
+            cur.append(f)
+        else:
+            if len(cur) > 1:
+                out.append(cur)
+            cur = [f]
+    if len(cur) > 1:
+        out.append(cur)
+    return out
+
+
 def demod(disc, fs=48000, alpha=0.5):
-    """discriminator (Hz) -> frames, with each frame's sampling and level figures.
+    """discriminator (Hz) -> frames in runs (see runs()). Two passes: frames found with DC blocked
+    over a frame, then each run's own DC (its frames' mean, where the data averages out) taken
+    off around the run and the frames found again"""
+    disc = np.asarray(disc, float)
+    first = [f for r in runs(_demod(dc_block(disc, 40 * fs // 1000), fs, alpha)) for f in r]
+    if not first:
+        return []
+    d2 = dc_block(disc, 40 * fs // 1000)
+    pad = int(0.2 * fs)
+    for r in runs(first):
+        a, b = int(r[0]["at"] * fs), int((r[-1]["at"] + 0.040) * fs)
+        dc = float(np.mean(disc[a:b]))
+        d2[max(0, a - pad):b + pad] = disc[max(0, a - pad):b + pad] - dc
+    return [f for r in runs(_demod(d2, fs, alpha)) for f in r]
+
+
+def _demod(disc, fs=48000, alpha=0.5):
+    """discriminator (Hz, DC off) -> frames, with each frame's sampling and level figures.
     RRC matched filter, syncword correlation, the outer level from the sync's +-3 symbols"""
     sps = fs // SYM_RATE
     y = np.convolve(disc, rrc(alpha, sps), "same")
@@ -593,6 +639,89 @@ def demod(disc, fs=48000, alpha=0.5):
     return out
 
 
+ORDERS = {"msb": (0, 1, 2, 3), "lsb": (3, 2, 1, 0), "nibbles swapped": (2, 3, 0, 1),
+          "pairs swapped": (1, 0, 3, 2)}
+
+
+def symbol_track(disc, fs=48000, alpha=0.5, win=1200):
+    """discriminator -> one matched-filter sample a symbol, the phase picked per window of `win`
+    symbols for the most energy (follows a few hundred ppm of clock between radio and capture)"""
+    sps = fs // SYM_RATE
+    y = np.convolve(dc_block(disc, 40 * fs // 1000), rrc(alpha, sps), "same")
+    out = []
+    for w0 in range(0, len(y) - sps, win * sps):
+        seg = y[w0:w0 + (win + 1) * sps]
+        n = min(win, len(seg) // sps - 1)
+        ph = max(range(sps), key=lambda d: float(np.mean(seg[d::sps][:n] ** 2)))
+        out.append(seg[ph::sps][:n])
+    return np.concatenate(out) if out else np.zeros(0)
+
+
+def hypothesis_symbols(data, order, perm):
+    """the symbols `data` makes if the chip sends a byte's dibits in `order` (positions, MSB dibit
+    = 0) and maps dibit d to level perm[d]"""
+    b = np.frombuffer(bytes(data), np.uint8)
+    d = np.stack([b >> 6 & 3, b >> 4 & 3, b >> 2 & 3, b & 3], axis=1)[:, list(order)].ravel()
+    return np.asarray(perm, float)[d]
+
+
+def probe(r, data, slot=144):
+    """which byte-to-symbol rule the received symbols `r` follow, against the bytes the module sent:
+    every dibit order in ORDERS x every level map, by cross-correlation -> report lines. Then, under
+    the best rule, the symbol errors where the run lines up, by place in the 30 ms slot (144
+    symbols), and which sent slot each received slot matches best (a half sent twice or out of
+    turn shows as a repeated or skipped number)"""
+    import itertools
+    from scipy import signal
+    r = r - np.mean(r)
+    rn = r / (np.std(r) + 1e-9)
+    res = []
+    for oname, order in ORDERS.items():
+        for perm in itertools.permutations((3, 1, -1, -3)):
+            e = hypothesis_symbols(data, order, perm)
+            c = signal.fftconvolve(rn, e[::-1], "valid") / (np.linalg.norm(e) * np.sqrt(len(e)))
+            k = int(np.argmax(c))
+            res.append((float(c[k]), k, oname, perm, e))
+    res.sort(key=lambda t: -t[0])
+    lines = ["rule (dibit order; level of dibit 00 01 10 11): correlation"]
+    for sc, k, oname, perm, _ in res[:4]:
+        lines.append(f"  {oname:16s} {perm[0]:+d} {perm[1]:+d} {perm[2]:+d} {perm[3]:+d}: {sc:.3f} at symbol {k}")
+    sc, k, oname, perm, e = res[0]
+    ns = len(e) // slot
+    es = e[:ns * slot].reshape(ns, slot)
+    pos, wrong, got, gains = k, np.zeros(slot, int), [], []
+    for i in range(ns):          # follow the clock slot by slot (+-4 symbols), any sent slot near i
+        best = None
+        for sh in range(-4, 5):
+            a = pos + sh
+            if a < 0 or a + slot > len(r):
+                continue
+            c = r[a:a + slot]
+            for jj in range(max(0, i - 3), min(ns, i + 4)):
+                g = float(c @ es[jj] / (es[jj] @ es[jj]))
+                if g <= 0:
+                    continue
+                qq = np.clip(np.round((c / g + 3) / 2), 0, 3) * 2 - 3
+                n = int((qq != es[jj]).sum())
+                if best is None or n < best[0]:
+                    best = (n, a, qq, g, jj)
+        if best is None:
+            break
+        n, a, qq, g, jj = best
+        wrong += qq != es[i]
+        gains.append(g)
+        got.append(str(jj) if n < 0.1 * slot else f"{jj}?" if n < 0.4 * slot else "-")
+        pos = a + slot
+    tot = int(wrong.sum())
+    lines.append(f"best: {oname}, levels {perm}: {tot} of {len(got) * slot} symbols wrong "
+                 f"(SER {tot / max(1, len(got) * slot):.2e}), outer {np.median(gains) * 3:.0f} Hz")
+    if tot:
+        lines.append("wrong symbols by place in the slot (16 symbol bins): "
+                     + " ".join(str(int(x)) for x in wrong.reshape(-1, 16).sum(1)))
+        lines.append("received slot i matches sent slot: " + " ".join(got))
+    return lines
+
+
 def report(frames, s):
     lines = []
     if s["lsf"] or s["lsf_bad"]:
@@ -604,6 +733,10 @@ def report(frames, s):
     if s["bert_frames"]:
         ber = s["bert_errors"] / max(1, s["bert_bits"])
         lines.append(f"BERT {s['bert_frames']} frames, {s['bert_errors']} of {s['bert_bits']} bits wrong (BER {ber:.2e})")
+        bad = [(i, e) for i, e in enumerate(s.get("bert_per_frame", [])) if e]
+        if bad:
+            lines.append(f"BERT frames with errors ({len(bad)}): "
+                         + " ".join(f"#{i}:{e}" for i, e in bad[:30]) + (" ..." if len(bad) > 30 else ""))
     lv = {}
     for f in frames:
         for k, v in f.get("levels", {}).items():
@@ -625,11 +758,16 @@ def decode_capture(cap, baseband=None):
     from . import c6phy
     iq, meta = c6phy.read_capture(cap)
     fs = int(meta.get("fs", 240_000))                     # pluto_bench.py rx saves 240 kS/s
-    off, on, disc = c6phy.capture_disc(iq, fs)
+    off, on, disc = c6phy.capture_disc(iq, fs, bw_hz=12000.0)
     if disc is None:
         return ["no signal in the capture"]
     frames = demod(disc)
-    lines = [f"carrier {off:+.0f} Hz from the capture's centre"] + report(frames, summarize(frames))
+    lines = [f"carrier {off:+.0f} Hz from the capture's centre (ident and burst together)"]
+    if frames:
+        at = np.array([f["at"] for f in frames])
+        burst = np.concatenate([disc[int(t * 48000):int((t + 0.04) * 48000)] for t in at])
+        lines.append(f"M17 burst {off + float(np.mean(burst)):+.0f} Hz from the capture's centre")
+    lines += report(frames, summarize(frames))
     if baseband:
         from scipy import signal
         bb = signal.resample_poly(disc, 1, 2)                  # 48 -> 24 kHz
@@ -660,6 +798,10 @@ def main(argv=None):
     d = sub.add_parser("decode")
     d.add_argument("cap")
     d.add_argument("--baseband")
+    pr = sub.add_parser("probe", help="which symbol rule a capture follows, against a plan")
+    pr.add_argument("cap", help="Pluto .cf32, or a 24 kHz s16 .raw from decode --baseband")
+    pr.add_argument("plan")
+    pr.add_argument("--c2")
     s = sub.add_parser("sim")
     s.add_argument("plan")
     s.add_argument("--c2")
@@ -690,6 +832,16 @@ def main(argv=None):
             disc = disc + np.random.default_rng(1).normal(0, a.noise_hz, len(disc))
         fr = demod(disc)
         print("\n".join(report(fr, summarize(fr))))
+    elif a.cmd == "probe":
+        data = build(a.plan, c2) + eot() * 2
+        if a.cap.endswith(".raw"):
+            from scipy import signal
+            disc = signal.resample_poly(np.fromfile(a.cap, "<i2").astype(float) / 8000 * OUTER_HZ, 2, 1)
+        else:
+            from . import c6phy
+            iq, meta = c6phy.read_capture(a.cap)
+            _, _, disc = c6phy.capture_disc(iq, int(meta.get("fs", 240_000)), bw_hz=12000.0)
+        print("\n".join(probe(symbol_track(disc), data)))
     else:
         print("\n".join(decode_capture(a.cap, a.baseband)))
 

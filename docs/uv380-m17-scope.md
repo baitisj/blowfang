@@ -174,7 +174,7 @@ host encoder, with its CW ident.
 4. **M17 RX** (only if milestone 2 says go): tap driver, x3 interpolation, OpenRTX's demodulator.
 5. **Upstream** (below), starting after milestone 1 with evidence in hand.
 
-## Milestone 1: built (2026-11-17), bench run pending
+## Milestone 1: built (2026-11-17), works on air (22:00-22:27Z)
 
 | Piece | What |
 | --- | --- |
@@ -189,6 +189,37 @@ Bench job (per plan, at 0 W on 441.850; job files in `/mnt/project-files/uv380-m
 Pluto `rx` in the background at 441.900 MHz, `uv380.cmd` listen 0, power 0, zero 2, trim
 (the FM trim less 6680), `uv380.m17 PLAN`, wait, `uv380.cmd` trim back. Then
 `python3 -m modem.m17 decode CAP.cf32 --baseband CAP.raw` and `m17_replay_tool CAP.raw`.
+
+### On air (11-17, the UV-380 at 0 W on 441.850, the Pluto receive only at 441.900)
+
+Every key-up: the Morse ident (3.9 s), then the burst, `chk 00=36/36 24=36/36`, every slot on
+time (`late=0 lost=0`), all bytes sent, the radio's registers and trim back as found. Trim for the
+raw mode: 6100 - 6680 = -580.
+
+| Job (UTC) | Sent | Decoded from the Pluto capture |
+| --- | --- | --- |
+| m17-bert-1117d (22:00:26.5-31.3Z) | 4800 B, 100 frames, 136 slots | 92 BERT frames found, 0 of 18124 bits wrong; probe: every one of the 132 data slots in order, symbol errors 0.87 % before FEC |
+| m17-sms-1117e (22:25:32-35.9Z) | 3840 B, 80 frames | LSF 20/20 good, source AG7EW; packets 20/20 CRC good, "AG7EW M17 TEST 01" .. "20" |
+| m17-voice-1117e (22:27:06.3-10.1Z) | 3696 B, 77 frames | LSF 1/1, source AG7EW; 73 of 74 stream frames, LICH 0 bad; Codec2 decoded to 2.92 s of speech |
+
+Measured: symbol rate 4800.0 baud (+0 ppm against the Pluto's clock, from the 40.000 ms frame
+spacing); levels about -2300 / -770 / +750 / +2310 Hz, so `TX_DEV 123` gives 96 % of M17's
+2400 Hz with the inner levels at a third (a later wrapper can try 128); the burst +200 to +370 Hz
+from 441.850 by the uncorrected Pluto, the ident before it about 7 kHz lower (the raw mode's own
+offset, `docs/uv380-c6phy.md`). The chip's byte-to-symbol rule is the standard one: MSB dibit
+first, 01 +3, 00 +1, 10 -1, 11 -3 (`python3 -m modem.m17 probe CAP plan` tests every order and
+map against the sent bytes).
+
+Two decoder lessons (host side only, the module was right from the first key-up):
+- The capture's one carrier estimate spans the ident and the burst, kilohertz apart, and left the
+  burst off zero: no sync matched (BER 0.38 on lone false syncs). The demodulator now blocks DC
+  over a frame, finds the frames, takes each run's own DC from its frames and decodes again; the
+  capture filter is 12 kHz wide for M17.
+- Lone sync matches in noise made frames of every kind; frames now count only in runs 40 ms apart.
+
+A few frames go unfound (8 of 100 BERT, 1 of 74 stream) at the 0.93 sync threshold: the next
+decoder step is to decode every 40 ms slot of a run, found or not. OpenRTX's `m17_replay_tool` on
+the `--baseband` files is still to run as a second opinion.
 
 ## Upstream plan (OpenRTX)
 

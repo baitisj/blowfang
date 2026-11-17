@@ -206,7 +206,7 @@ def read_capture(cap):
     return np.fromfile(cap, np.complex64), meta
 
 
-def capture_disc(iq, fs):
+def capture_disc(iq, fs, bw_hz=8000.0):
     """-> carrier offset, signal mask, discriminator at 48 kHz (offset removed)"""
     p = np.abs(iq) ** 2
     on = p > np.percentile(p, 99) * 0.01
@@ -214,7 +214,7 @@ def capture_disc(iq, fs):
         return None, on, None
     off = carrier(iq, fs, on)
     shift = np.exp(-2j * np.pi * off * np.arange(len(iq)) / fs).astype(np.complex64)
-    return off, on, fm_demod(iq * shift, fs)
+    return off, on, fm_demod(iq * shift, fs, bw_hz=bw_hz)
 
 
 def payload_start_bits(baud, k):

@@ -170,6 +170,12 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   write only the idle half. With that (half 0 at the first edge) and trim 5745 - 6680 = -935, run
   3 (22:45-22:50Z) was perfect: the Pluto 26/26 at 2400 and 12/12 at 1200 with 0 bits wrong, the
   K6's chip FSK the same; FSK within 40 Hz of 440.850, eye 1746 Hz at 2400, +3 above the carrier.
+- M17 THROUGH THE PHYSICAL LAYER MODE (M, 11-17 22:00-22:27Z, docs/uv380-m17-scope.md, 0 W on
+  441.850, the Pluto receive only): BERT 0 bits wrong in 92 frames, SMS 20/20 packets, voice 73/74
+  stream frames LICH good. 4800.0 baud (+0 ppm vs the Pluto). TX_DEV 123: outer about +-2300 Hz,
+  inner about +-760 (a third). Trim 6100 - 6680 = -580 put the burst +200 to +370 Hz from 441.850
+  (uncorrected Pluto) and the ident before it about 7 kHz below the burst. Symbol map MSB dibit first,
+  01 +3, 00 +1, 10 -1, 11 -3 (the DMR / M17 map).
 - FSK (PHY F) on air (M, 11-14 10:25Z, "phy fsk" + tx_request, 1 W, IC-7100 at 48 kHz): reference
   decoder 20/20 packets, 200/200 frames. Baud 1799.97 (-14 ppm); tones roughly 1270/1810 Hz by a rough
   instantaneous-frequency measure (reference wav measured the same way: 1190/1790); 1800/1200 Hz
