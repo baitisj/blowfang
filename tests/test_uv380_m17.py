@@ -170,3 +170,29 @@ def test_decode_a_capture(tmp_path):
     off = float(re.search(r"carrier ([-+]\d+) Hz", out).group(1))
     assert abs(off + 50_000) < 1000
     assert os.path.getsize(tmp_path / "m.raw") > 0
+
+
+def probe_capture(data, order, perm, swap=False):
+    b = bytearray(data)
+    if swap:
+        b[36:72], b[72:108] = data[72:108], data[36:72]
+    sym = m17.hypothesis_symbols(bytes(b), order, perm)
+    up = np.zeros(len(sym) * 10)
+    up[::10] = sym
+    disc = np.convolve(up, m17.rrc(0.2, 10) * 10, "same") * 800
+    disc = np.concatenate([np.zeros(4800), disc, np.zeros(4800)])
+    disc += np.random.default_rng(2).normal(0, 200, len(disc))
+    return m17.probe(m17.symbol_track(disc), data)
+
+
+def test_probe_names_the_chips_symbol_rule():
+    """probe, against the plan's bytes: a chip sending the dibits LSB first with the inner levels
+    swapped is named so; one sending a pair of halves out of turn shows it slot by slot"""
+    pytest.importorskip("scipy")
+    data = m17.build("bert")[:48 * 30]
+    out = probe_capture(data, (3, 2, 1, 0), (-1, 3, 1, -3))
+    assert out[1].split()[:5] == ["lsb", "-1", "+3", "+1", "-3:"]
+    assert "SER 0.00e+00" in out[5] or " 0 of " in out[5]
+    out = probe_capture(data, (0, 1, 2, 3), (1, 3, -1, -3), swap=True)
+    assert out[1].split()[:5] == ["msb", "+1", "+3", "-1", "-3:"]
+    assert "matches sent slot: 0 2 1 3 4" in out[-1]

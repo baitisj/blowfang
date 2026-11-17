@@ -593,6 +593,89 @@ def demod(disc, fs=48000, alpha=0.5):
     return out
 
 
+ORDERS = {"msb": (0, 1, 2, 3), "lsb": (3, 2, 1, 0), "nibbles swapped": (2, 3, 0, 1),
+          "pairs swapped": (1, 0, 3, 2)}
+
+
+def symbol_track(disc, fs=48000, alpha=0.5, win=1200):
+    """discriminator -> one matched-filter sample a symbol, the phase picked per window of `win`
+    symbols for the most energy (follows a few hundred ppm of clock between radio and capture)"""
+    sps = fs // SYM_RATE
+    y = np.convolve(disc, rrc(alpha, sps), "same")
+    out = []
+    for w0 in range(0, len(y) - sps, win * sps):
+        seg = y[w0:w0 + (win + 1) * sps]
+        n = min(win, len(seg) // sps - 1)
+        ph = max(range(sps), key=lambda d: float(np.mean(seg[d::sps][:n] ** 2)))
+        out.append(seg[ph::sps][:n])
+    return np.concatenate(out) if out else np.zeros(0)
+
+
+def hypothesis_symbols(data, order, perm):
+    """the symbols `data` makes if the chip sends a byte's dibits in `order` (positions, MSB dibit
+    = 0) and maps dibit d to level perm[d]"""
+    b = np.frombuffer(bytes(data), np.uint8)
+    d = np.stack([b >> 6 & 3, b >> 4 & 3, b >> 2 & 3, b & 3], axis=1)[:, list(order)].ravel()
+    return np.asarray(perm, float)[d]
+
+
+def probe(r, data, slot=144):
+    """which byte-to-symbol rule the received symbols `r` follow, against the bytes the module sent:
+    every dibit order in ORDERS x every level map, by cross-correlation -> report lines. Then, under
+    the best rule, the symbol errors where the run lines up, by place in the 30 ms slot (144
+    symbols), and which sent slot each received slot matches best (a half sent twice or out of
+    turn shows as a repeated or skipped number)"""
+    import itertools
+    from scipy import signal
+    r = r - np.mean(r)
+    rn = r / (np.std(r) + 1e-9)
+    res = []
+    for oname, order in ORDERS.items():
+        for perm in itertools.permutations((3, 1, -1, -3)):
+            e = hypothesis_symbols(data, order, perm)
+            c = signal.fftconvolve(rn, e[::-1], "valid") / (np.linalg.norm(e) * np.sqrt(len(e)))
+            k = int(np.argmax(c))
+            res.append((float(c[k]), k, oname, perm, e))
+    res.sort(key=lambda t: -t[0])
+    lines = ["rule (dibit order; level of dibit 00 01 10 11): correlation"]
+    for sc, k, oname, perm, _ in res[:4]:
+        lines.append(f"  {oname:16s} {perm[0]:+d} {perm[1]:+d} {perm[2]:+d} {perm[3]:+d}: {sc:.3f} at symbol {k}")
+    sc, k, oname, perm, e = res[0]
+    ns = len(e) // slot
+    es = e[:ns * slot].reshape(ns, slot)
+    pos, wrong, got, gains = k, np.zeros(slot, int), [], []
+    for i in range(ns):          # follow the clock slot by slot (+-4 symbols), any sent slot near i
+        best = None
+        for sh in range(-4, 5):
+            a = pos + sh
+            if a < 0 or a + slot > len(r):
+                continue
+            c = r[a:a + slot]
+            for jj in range(max(0, i - 3), min(ns, i + 4)):
+                g = float(c @ es[jj] / (es[jj] @ es[jj]))
+                if g <= 0:
+                    continue
+                qq = np.clip(np.round((c / g + 3) / 2), 0, 3) * 2 - 3
+                n = int((qq != es[jj]).sum())
+                if best is None or n < best[0]:
+                    best = (n, a, qq, g, jj)
+        if best is None:
+            break
+        n, a, qq, g, jj = best
+        wrong += qq != es[i]
+        gains.append(g)
+        got.append(str(jj) if n < 0.1 * slot else f"{jj}?" if n < 0.4 * slot else "-")
+        pos = a + slot
+    tot = int(wrong.sum())
+    lines.append(f"best: {oname}, levels {perm}: {tot} of {len(got) * slot} symbols wrong "
+                 f"(SER {tot / max(1, len(got) * slot):.2e}), outer {np.median(gains) * 3:.0f} Hz")
+    if tot:
+        lines.append("wrong symbols by place in the slot (16 symbol bins): "
+                     + " ".join(str(int(x)) for x in wrong.reshape(-1, 16).sum(1)))
+        lines.append("received slot i matches sent slot: " + " ".join(got))
+    return lines
+
+
 def report(frames, s):
     lines = []
     if s["lsf"] or s["lsf_bad"]:
@@ -660,6 +743,10 @@ def main(argv=None):
     d = sub.add_parser("decode")
     d.add_argument("cap")
     d.add_argument("--baseband")
+    pr = sub.add_parser("probe", help="which symbol rule a capture follows, against a plan")
+    pr.add_argument("cap", help="Pluto .cf32, or a 24 kHz s16 .raw from decode --baseband")
+    pr.add_argument("plan")
+    pr.add_argument("--c2")
     s = sub.add_parser("sim")
     s.add_argument("plan")
     s.add_argument("--c2")
@@ -690,6 +777,16 @@ def main(argv=None):
             disc = disc + np.random.default_rng(1).normal(0, a.noise_hz, len(disc))
         fr = demod(disc)
         print("\n".join(report(fr, summarize(fr))))
+    elif a.cmd == "probe":
+        data = build(a.plan, c2) + eot() * 2
+        if a.cap.endswith(".raw"):
+            from scipy import signal
+            disc = signal.resample_poly(np.fromfile(a.cap, "<i2").astype(float) / 8000 * OUTER_HZ, 2, 1)
+        else:
+            from . import c6phy
+            iq, meta = c6phy.read_capture(a.cap)
+            _, _, disc = c6phy.capture_disc(iq, int(meta.get("fs", 240_000)))
+        print("\n".join(probe(symbol_track(disc), data)))
     else:
         print("\n".join(decode_capture(a.cap, a.baseband)))
 
