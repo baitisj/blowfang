@@ -23,8 +23,8 @@
    OpenGD77's GD-77 driver hands its AMBE frames over (SPI1, page 3, reg 0, in the slot interrupt);
    1 U_SPI page 3 (c6spi.h C6_SOUND), the bus the chip's registers are on (OpenGD77's init fills
    page 3 that way); 2 both by turns, a superframe each, V_SPI first, so one call tells which
-   the encoder takes. V1 (11-17, 0x22 = 0x80, V_SPI) sent the headers and the terminator but no
-   voice sync at all in the 60 voice slots.
+   the encoder takes. V1 (11-17, 0x22 = 0x80, V_SPI) and V1c (0x86, both) decoded once the
+   capture's carrier was mixed to 0 Hz: V_SPI bit exact in plain order, U_SPI page 3 random.
 
    TX_DRY 1 (the default) does all of it with no keying (no PA, the AT1846S stays in receive): it
    proves the port, the slot clock and the burst set-up before anything goes on air. Wrappers with
