@@ -53,6 +53,9 @@ one of them changes.
   carrier near 16.9 kHz (26 MHz / 1536) only with the wide filter; with the narrow one the same
   carrier read 8.9-9.8 kHz (M, 06:10Z). One REG_3B step moved it 81 Hz at 440.850 (95 % of 5 Hz of
   26 MHz) (M).
+- Overnight 2026-11-17 09:10-17:25Z (12 relay reads, t 29976-30134): the crystal -1.87 +- 0.17 ppm
+  (824 Hz low at 440.850), single reads +-0.25 ppm, no clear temperature trend over that small
+  span (M, docs/k6-drift-cal.md).
 
 ## Memory and code
 
