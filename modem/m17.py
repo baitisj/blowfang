@@ -387,6 +387,18 @@ def write_wav(path, pcm, fs=8000):
 
 # ---- modulation model and receiver ------------------------------------------------------------
 
+def dc_block(x, n=1920):
+    """x less its running mean over n samples (40 ms at 48 kHz, a frame): a capture's carrier
+    estimate spans the FM ident and the raw mode's burst, which the chip puts kHz apart"""
+    x = np.asarray(x, float)
+    if len(x) < n:
+        return x - np.mean(x)
+    c = np.cumsum(np.concatenate([[0.0], x]))
+    m = (c[n:] - c[:-n]) / n
+    m = np.concatenate([np.full(n // 2, m[0]), m, np.full(len(x) - len(m) - n // 2, m[-1])])
+    return x - m
+
+
 def rrc(alpha, sps, span=8):
     t = np.arange(-span * sps, span * sps + 1) / sps
     h = np.zeros_like(t)
@@ -539,7 +551,7 @@ def demod(disc, fs=48000, alpha=0.5):
     """discriminator (Hz) -> frames, with each frame's sampling and level figures.
     RRC matched filter, syncword correlation, the outer level from the sync's +-3 symbols"""
     sps = fs // SYM_RATE
-    y = np.convolve(disc, rrc(alpha, sps), "same")
+    y = np.convolve(dc_block(disc, 40 * fs // 1000), rrc(alpha, sps), "same")
     pats = {k: symbols(v) for k, v in SYNCS.items()}
     out, i, n = [], 0, len(y)
     span = FRAME_BYTES * 4 * sps
@@ -601,7 +613,7 @@ def symbol_track(disc, fs=48000, alpha=0.5, win=1200):
     """discriminator -> one matched-filter sample a symbol, the phase picked per window of `win`
     symbols for the most energy (follows a few hundred ppm of clock between radio and capture)"""
     sps = fs // SYM_RATE
-    y = np.convolve(disc, rrc(alpha, sps), "same")
+    y = np.convolve(dc_block(disc, 40 * fs // 1000), rrc(alpha, sps), "same")
     out = []
     for w0 in range(0, len(y) - sps, win * sps):
         seg = y[w0:w0 + (win + 1) * sps]
@@ -708,11 +720,16 @@ def decode_capture(cap, baseband=None):
     from . import c6phy
     iq, meta = c6phy.read_capture(cap)
     fs = int(meta.get("fs", 240_000))                     # pluto_bench.py rx saves 240 kS/s
-    off, on, disc = c6phy.capture_disc(iq, fs)
+    off, on, disc = c6phy.capture_disc(iq, fs, bw_hz=12000.0)
     if disc is None:
         return ["no signal in the capture"]
     frames = demod(disc)
-    lines = [f"carrier {off:+.0f} Hz from the capture's centre"] + report(frames, summarize(frames))
+    lines = [f"carrier {off:+.0f} Hz from the capture's centre (ident and burst together)"]
+    if frames:
+        at = np.array([f["at"] for f in frames])
+        burst = np.concatenate([disc[int(t * 48000):int((t + 0.04) * 48000)] for t in at])
+        lines.append(f"M17 burst {off + float(np.mean(burst)):+.0f} Hz from the capture's centre")
+    lines += report(frames, summarize(frames))
     if baseband:
         from scipy import signal
         bb = signal.resample_poly(disc, 1, 2)                  # 48 -> 24 kHz
@@ -785,7 +802,7 @@ def main(argv=None):
         else:
             from . import c6phy
             iq, meta = c6phy.read_capture(a.cap)
-            _, _, disc = c6phy.capture_disc(iq, int(meta.get("fs", 240_000)))
+            _, _, disc = c6phy.capture_disc(iq, int(meta.get("fs", 240_000)), bw_hz=12000.0)
         print("\n".join(probe(symbol_track(disc), data)))
     else:
         print("\n".join(decode_capture(a.cap, a.baseband)))

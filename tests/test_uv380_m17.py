@@ -196,3 +196,29 @@ def test_probe_names_the_chips_symbol_rule():
     out = probe_capture(data, (0, 1, 2, 3), (1, 3, -1, -3), swap=True)
     assert out[1].split()[:5] == ["msb", "+1", "+3", "-1", "-3:"]
     assert "matches sent slot: 0 2 1 3 4" in out[-1]
+
+
+def test_decode_with_the_ident_kilohertz_away(tmp_path):
+    """as on air (m17-bert-1117d): the FM ident sits ~6.5 kHz below the raw mode's burst in one
+    key-up, so the capture's one carrier estimate lands between them. The burst still decodes,
+    and its own offset is reported"""
+    pytest.importorskip("scipy")
+    from scipy import signal
+    data = m17.build("sms")[:48 * 12]
+    fs = 240_000
+    disc48 = m17.modulate(data, alpha=0.2, outer_hz=3075.0)
+    burst = signal.resample_poly(disc48, fs // 8000, 48000 // 8000) - 50_600.0
+    t = np.arange(int(1.5 * fs)) / fs
+    ident = 2500.0 * np.sin(2 * np.pi * 800 * t) - 57_100.0
+    pad = np.zeros(fs // 5)
+    d = np.concatenate([pad, ident, burst, pad])
+    iq = np.exp(2j * np.pi * np.cumsum(d) / fs).astype(np.complex64)
+    iq[:len(pad)] = 0
+    iq[-len(pad):] = 0
+    iq += (np.random.default_rng(1).normal(0, 0.05, (len(iq), 2)) @ [1, 1j]).astype(np.complex64)
+    cap = tmp_path / "m.cf32"
+    iq.tofile(cap)
+    out = "\n".join(m17.decode_capture(str(cap)))
+    assert "packets 3 CRC good, 0 bad" in out, out
+    burst_hz = float(re.search(r"M17 burst ([-+]\d+) Hz", out).group(1))
+    assert abs(burst_hz + 50_600) < 300, out
