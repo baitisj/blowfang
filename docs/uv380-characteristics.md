@@ -148,6 +148,18 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   All of this was measured on 440.850. Since the 11-17 channel plan the probe image boots on
   441.850 (the UV-380's bench channel; `freq 440850` for sends to the K6): 1 MHz up the offset
   should scale by about 0.2%, i.e. +13 Hz, but read the carrier on 441.850 on the first run there.
+  441.850 (M, 11-17, trim 5745, 0 W `zero 2`, PHY F, the Pluto receive only with its LO 70 kHz
+  off and checked on the ATSC ch14 pilot first, values corrected by it):
+  - cold, 20 min after power-on (09:08Z, pilot +15 Hz): the whole send -636 and -574 Hz, its FFSK
+    -646 and -590 Hz;
+  - warm, 5.5 h on (14:13Z, pilot +107 Hz, the Pluto drifted): whole send -526 and -555 Hz, FFSK
+    -577 and -775 Hz, the CW ident -355 and -346 Hz.
+  The ident is a steady tone, so its mean is the cleanest carrier reading: about -350 Hz warm,
+  0.8 ppm, against -40 Hz on 440.850 the night before. The FFSK's mean sits 200-400 Hz below the
+  ident and moves from send to send (the data's own low frequencies through the line in, or a DC
+  step at the PWM's start), so it is no measure of the carrier. The default is now 6100 (5745 +
+  350, the carrier centred); check the FFSK on the K6 at the next UV-380 to K6 run, and `trim N`
+  moves it with no reflash.
   The C6000 modules (c6dmrtx, c6phytx) still take their calibration at 440.850 (TX_FKHZ), 1 MHz
   away on the same table.
 - C6000 PHYSICAL LAYER MODE (M, 11-16 runs 1-2, docs/uv380-c6phy.md, 0 W into the Pluto): keys
