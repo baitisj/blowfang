@@ -1,12 +1,32 @@
 {
  "id": "inbox-smoke-1117",
- "status": "running",
- "since": "2026-11-17T23:27:11Z",
+ "who": "inbox",
+ "started": "2026-11-17T23:27:13Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "wait",
+   "started": "2026-11-17T23:27:13Z",
+   "ended": "2026-11-17T23:27:14Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-17T23:27:14Z",
+   "ended": "2026-11-17T23:27:15Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-dd3926f8dc4d",
+ "head": "dd3926f8dc4daef745c1a80ee6c6bcb802a99f50",
+ "ended": "2026-11-17T23:27:15Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "2ce53774b2030e3b1f80f0d99908505a28e6ce40",
   "path": "jobs/inbox-smoke-1117"
  },
  "runner_commit": "dd3926f8dc4daef745c1a80ee6c6bcb802a99f50",
- "updated": "2026-11-17T23:27:11Z"
+ "updated": "2026-11-17T23:27:15Z"
 }
