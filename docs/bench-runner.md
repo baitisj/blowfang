@@ -19,7 +19,7 @@ From a checkout of this branch (or main once merged), on hamlet:
     systemctl --user daemon-reload
     systemctl --user enable --now blowfang-bench-runner
 
-`selftest` runs 24 sample jobs through the checks (7 that must pass, 17 that must be refused),
+`selftest` runs 28 sample jobs through the checks (8 that must pass, 20 that must be refused),
 then reports this machine's setup: the module key, the K6 cable by its by-id name, rigctld and the
 IC-7100's power, Aura's flash.py, the PTT lock and the cable's reader. Setup problems are warnings
 (the steps that need the missing piece refuse); a wrong check is a FAIL.
@@ -92,6 +92,8 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `logger.stop` | `k6_bench.py serial-release WHO` | |
 | `wait` | `seconds`, or until `pattern` (regex) shows in the run folder's `file` (default k6.log) | ≤ 1 h |
 | `uv380.flash` | `uv380_dfu.py flash DEV IMAGE --sha256 … --radio-tool …` | sha256, commit |
+| `uv380.cmd` | `uv380_i2sprobe.py cmd DEV ARGS… tune listen`: the UV-380's bench settings over USB, e.g. `["listen 0", "power 0", "zero 2"]` | only `tune`, `listen [0\|1]`, `power 0`, `zero 1\|2`, `phy fsk\|rng`, `emph 0\|1`, `trim N` (±8000), `gain N` (-12..15), `freq 441850\|440850` (in the claim); nothing that writes memory or registers; every setting read back after |
+| `uv380.send` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/txreq.c` (the checkout's own module, signed by the runner): one send of the stored message as PTT sends it, ident first | no args; right before, the radio itself must read `pwr=0` and a `freq=` of its two channels inside the claim (an image without `freq=`, from before the 441.850 move, is refused) |
 
 There is no step that runs a script. A script could do anything; the runner's worth is that it
 checks every key-up before it happens. A test that needs a new kind of step gets one here, with
@@ -107,6 +109,10 @@ its checks and a test.
 - The K6 cable only through k6_install, k6_update and a serial-hold logger, found by its by-id
   name (`/dev/serial/by-id/*Prolific*`; `K6_CABLE` in the unit overrides). No job argument may
   name a device.
+- UV-380: power 0 only (Jeff 11-16: 0 W bench sends are fine while he's away; anything above
+  waits for him), on 441.850 or 440.850 inside the claim, read back from the radio before every
+  send. The port is found by its USB ids 0483:5740 (`UV380_DEV` in the unit overrides), never
+  guessed: ttyACM0 on hamlet is the Pluto's console.
 - Pluto gain at most -30 dB; Pluto steps only from a checkout with `note_self_ided` (3a72067 on).
 - IC-7100: no step while `bench_runner.py hold-ic7100 WHY` is set (Jeff on HF or Ragtime;
   `free-ic7100` ends it); before each IC-7100 step the RF power is read back and, if above the

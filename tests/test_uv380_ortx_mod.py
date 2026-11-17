@@ -286,6 +286,14 @@ def test_serials_always_grow(tmp_path):
     assert tool.next_serial(f, now=5000) == 5000
 
 
+def test_txreq_builds_for_the_openrtx_table():
+    """the bench runner's uv380.send module: tx_request (level 2) and nothing else"""
+    src = os.path.join(MOD, "txreq.c")
+    code, entry = uv380mod.build(src)
+    assert entry == 0 and len(code) < 512
+    assert uv380mod.source_table(src) == "openrtx" and uv380mod.source_level(src) == 2
+
+
 def test_c6listen_builds_for_the_openrtx_table():
     """it pokes GPIOD, so it can't run on the emulator's fake; it must build position-independent"""
     code, entry = uv380mod.build(os.path.join(MOD, "c6listen.c"))
