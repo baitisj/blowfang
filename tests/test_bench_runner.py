@@ -462,6 +462,23 @@ def test_pluto_background_only_to_receive(work):
     assert not bg
 
 
+def test_background_pluto_rx_needs_no_k6_cable(work, monkeypatch):
+    """a background Pluto rx passes while it runs (11-17: it was checked like a logger, for the K6
+    cable, and failed every time); one that exits with an error fails the job"""
+    def command(job, step, rd):
+        return [sys.executable, "-c", step["args"][1]], rd, True
+    monkeypatch.setattr(br, "command", command)
+    monkeypatch.setattr(br.kb, "serial_owner", lambda: None)
+    rx = {"do": "pluto", "args": ["rx", "import time; time.sleep(4)"], "background": True}
+    res = br.run_job(job("p", rx), str(work / "rd"), Rig())
+    assert res["status"] == "done", res
+    bad = {"do": "pluto", "args": ["rx", "raise SystemExit(3)"], "background": True}
+    res = br.run_job(job("p", bad), str(work / "rd2"), Rig())
+    assert res["status"] == "failed" and "background pluto exited 3" in res["reason"], res
+    for p in br.BACKGROUND:
+        p.wait()
+
+
 def test_uv380_port_by_usb_ids(work, monkeypatch):
     monkeypatch.delenv("UV380_DEV", raising=False)
     monkeypatch.setattr(br.glob, "glob", lambda pat: [])
