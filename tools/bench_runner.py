@@ -21,7 +21,8 @@ docs/bench-runner.md has the job format and the rules.
 
 A job is a JSON file: who (the thread, one word), a channel to claim, how long, a checkout, and
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
-ic7100, ic7100.tune, ic7100.power0, logger, logger.stop, wait, uv380.flash), turned into one
+ic7100, ic7100.tune, ic7100.power0, logger, logger.stop, wait, uv380.flash, uv380.cmd,
+uv380.send), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -34,6 +35,9 @@ and the point is that the runner checks everything before it keys. The checks, i
   - the K6 cable only through k6_install / k6_update / a serial-hold logger, the port found by
     its by-id name (USB numbering moves on reboot); no job argument may name a /dev path
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
+  - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
+    channels), each read back; a send only at power 0 (read back first) on 441.850 or 440.850 inside
+    the claim, through the checkout's own txreq.c module (the image sends ident first)
   - IC-7100: never while Jeff holds it (hold-ic7100), RF power read back at most the job's limit
     (0 by default, 0.5 at most; the runner only ever lowers it, to 0), rig on 70 cm in the claim
   - one job at a time, under a k6_bench claim (the per-frequency claim other threads see)
@@ -73,13 +77,22 @@ JOB_MAX_MIN = 240
 CLAIM_RETRY_S = 30
 STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload": 900,
                 "pluto": 1800, "ic7100": 300, "ic7100.tune": 30, "ic7100.power0": 30,
-                "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300}
+                "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
+                "uv380.cmd": 60, "uv380.send": 120}
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24")
 PLUTO_TX = ("send", "steps", "fsk24")
 IC7100_SUBS = ("send", "id", "stop")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 WHO_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 HEX_RE = re.compile(r"^[0-9a-f]{64}$")
+# the UV-380's USB bench commands a job may send (OpMode_Pager.cpp tuneCommand, "phy", "listen"):
+# nothing that writes memory or registers (the probe also takes wr, c6w, pin, ...), power only 0
+UV380_CMD_RE = re.compile(r"^(tune|listen|listen [01]|power 0|zero [12]|phy (fsk|rng)|emph [01]|"
+                          r"trim -?\d{1,4}|gain -?\d{1,2}|freq \d{6})$")
+UV380_SEND_HZ = (441_850_000, 440_850_000)    # the image sends only on these (SEND_HZ, SEND_K6_HZ)
+UV380_SEND_MODULE = ("firmware", "uv380-openrtx", "mod", "txreq.c")
+UV380_READBACK = {"power": "pwr", "zero": "zero", "trim": "trim", "gain": "gain", "emph": "emph",
+                  "freq": "freq"}
 
 
 class Refused(Exception):
@@ -149,10 +162,26 @@ def k6_cable():
 
 
 def uv380_port():
+    """the UV-380 (OpenRTX's USB serial, 0483:5740) by the USB ids behind each by-id name, or
+    $UV380_DEV. Never a guess: ttyACM0 on hamlet is the Pluto's console (by-id names carry the
+    product and serial, not the ids, so a name glob found nothing and fell back to it)"""
     if os.environ.get("UV380_DEV"):
         return os.environ["UV380_DEV"]
-    hits = sorted(glob.glob("/dev/serial/by-id/*0483*5740*"))
-    return os.path.realpath(hits[0]) if len(hits) == 1 else "/dev/ttyACM0"
+    hits = []
+    for p in sorted(glob.glob("/dev/serial/by-id/*")):
+        dev = os.path.basename(os.path.realpath(p))
+        usb = os.path.realpath(f"/sys/class/tty/{dev}/device/..")
+        try:
+            ids = (open(os.path.join(usb, "idVendor")).read().strip(),
+                   open(os.path.join(usb, "idProduct")).read().strip())
+        except OSError:
+            continue
+        if ids == ("0483", "5740"):
+            hits.append(os.path.realpath(p))
+    if len(set(hits)) != 1:
+        raise Refused(f"the UV-380: {len(set(hits))} ports with USB ids 0483:5740 (want one: is it on"
+                      " and on the probe image? UV380_DEV in the unit overrides)")
+    return hits[0]
 
 
 def utcnow():
@@ -428,12 +457,39 @@ def check_step(job, i, step, rs, problems):
         s = step.get("seconds", 0)
         if not isinstance(s, (int, float)) or not 0 <= s <= WAIT_MAX_S:
             problems.append(f"{what}: seconds 0..{WAIT_MAX_S}")
+    elif do == "uv380.cmd":
+        if not args:
+            problems.append(f"{what}: args: the commands, such as [\"listen 0\", \"power 0\", \"zero 2\"]")
+        for c in args:
+            check_uv380_cmd(job, c, what, problems)
+    elif do == "uv380.send":
+        if args:
+            problems.append(f"{what}: takes no args (the runner sends the checkout's txreq.c)")
+        if not os.path.isfile(os.path.join(job_checkout(job), *UV380_SEND_MODULE)):
+            problems.append(f"{what}: the checkout has no {'/'.join(UV380_SEND_MODULE)}")
     elif do == "uv380.flash":
         staged_file(step, "image", rs, what, problems)
         staged_file(step, "radio_tool", rs, what, problems, need_sha=False)
         check_commit(step, what, problems)
         if args:
             problems.append(f"{what}: takes no args")
+
+
+def check_uv380_cmd(job, c, what, problems):
+    if not UV380_CMD_RE.match(c):
+        problems.append(f"{what}: '{c}' is not a UV-380 bench command (tune, listen [0|1], power 0,"
+                        " zero 1|2, phy fsk|rng, emph 0|1, trim N, gain N, freq 441850|440850)")
+        return
+    k, _, v = c.partition(" ")
+    if k == "trim" and abs(int(v)) > 8000:
+        problems.append(f"{what}: '{c}': trim -8000..8000 Hz")
+    elif k == "gain" and not -12 <= int(v) <= 15:
+        problems.append(f"{what}: '{c}': gain -12..15 dB")
+    elif k == "freq":
+        if int(v) * 1000 not in UV380_SEND_HZ:
+            problems.append(f"{what}: '{c}': the UV-380's channels are 441850 and 440850 kHz")
+        else:
+            check_tx_hz(job, int(v) * 1000, what, problems)
 
 
 def ic7100_limits(job, what, problems, keys=True):
@@ -702,6 +758,72 @@ def checkout_clean(co):
     return (not r.stdout.strip()), head if not r.stdout.strip() else "changed files: " + r.stdout.strip()[:200]
 
 
+def uv380_probe(ctx, cmds, env, timeout=60.0):
+    """send the UV-380 bench commands over USB (uv380_i2sprobe.py cmd); its lines, also in the log.
+    tune, power and the like answer with a line of their own and no "ok", so the tool's exit code
+    says nothing: the caller reads the lines back"""
+    co = job_checkout(ctx.job)
+    argv = [py(), os.path.join(co, "tools", "uv380_i2sprobe.py"), "cmd", uv380_port()] + list(cmds) + [
+        "--timeout", "2", "--log", os.path.join(ctx.rd, "uv380.log")]
+    ctx.say("$ " + " ".join(argv))
+    r = subprocess.run(argv, cwd=co, env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                       timeout=timeout)
+    out = (r.stdout or "") + (r.stderr or "")
+    ctx.log.write(out)
+    return out
+
+
+def uv380_state(out):
+    """the last tune line's fields and the last listen line's on= (str values), from probe output"""
+    st = {}
+    for ln in out.splitlines():
+        ln = ln.strip()
+        if ln.startswith("tune "):
+            st.update(dict(kv.split("=", 1) for kv in ln.split()[1:] if "=" in kv))
+        m = re.match(r"listen on=([01])", ln)
+        if m:
+            st["listen"] = m.group(1)
+    return st
+
+
+def uv380_cmd_step(ctx, step, env):
+    """the job's commands, then tune and listen read back: each setting must read what was set"""
+    cmds = list(step["args"])
+    out = uv380_probe(ctx, cmds + ["tune", "listen"], env)
+    st = uv380_state(out)
+    if "pwr" not in st:
+        return 1, "no tune line came back (is the UV-380 on USB, on the probe image?)"
+    for c in cmds:
+        k, _, v = c.partition(" ")
+        f = "listen" if k == "listen" and v else UV380_READBACK.get(k)
+        if f and st.get(f) != v:
+            return 1, f"'{c}' reads back {f}={st.get(f)}"
+    ctx.say("UV-380 " + " ".join(f"{k}={v}" for k, v in st.items()))
+    return 0, None
+
+
+def uv380_send_step(ctx, step, env, timeout):
+    """one send of the radio's stored message, as PTT sends it (ident first): only at power 0 on one
+    of its two channels inside the claim, checked on the radio's own read-back right before"""
+    st = uv380_state(uv380_probe(ctx, ["tune", "listen"], env))
+    if "freq" not in st:
+        raise Refused("the UV-380 reads no freq= (an image before the 441.850 move, or not on USB)")
+    if st.get("pwr") != "0":
+        raise Refused(f"the UV-380 reads pwr={st.get('pwr')}: sends only at power 0 (uv380.cmd \"power 0\")")
+    hz = int(st["freq"]) * 1000
+    probs = [] if hz in UV380_SEND_HZ else [f"the UV-380 is on {hz} Hz, not one of its two channels"]
+    check_tx_hz(ctx.job, hz, "the UV-380's frequency", probs)
+    if probs:
+        raise Refused(probs[0])
+    if st.get("listen") == "1":
+        ctx.say("note: the UV-380's listener is on; it refuses a send while it hears a carrier")
+    co = job_checkout(ctx.job)
+    argv = [py(), os.path.join(co, "tools", "uv380_i2sprobe.py"), "mod", uv380_port(),
+            os.path.join(co, *UV380_SEND_MODULE), "--key-file", key_path(),
+            "--log", os.path.join(ctx.rd, "uv380.log"), "--run-timeout", "30"]
+    return run_proc(ctx, argv, co, timeout, env)
+
+
 def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
     """run one job's steps under its claim (the caller holds it); the result as a dict"""
     ctx = Ctx(job, rd, rig, cancelled)
@@ -739,6 +861,10 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 got = kb.rig_hz(ctx.rig)
                 ctx.say(f"IC-7100 F {got} M {ctx.rig('m')} RFPOWER {rig_power(ctx.rig):.2f}")
                 rc, why = (0, None) if got == step["hz"] else (1, f"the rig reads {got}, not {step['hz']}")
+            elif step["do"] == "uv380.cmd":
+                rc, why = uv380_cmd_step(ctx, step, env)
+            elif step["do"] == "uv380.send":
+                rc, why = uv380_send_step(ctx, step, env, timeout)
             elif step["do"] == "ic7100.power0":
                 ctx.rig("L", "RFPOWER", "0")
                 p = rig_power(ctx.rig)
@@ -758,7 +884,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                     rc, why = run_proc(ctx, argv, cwd, timeout, env)
         except Refused as e:
             rc, why = 1, f"refused: {e}"
-        except (OSError, ValueError, subprocess.CalledProcessError, SystemExit) as e:
+        except (OSError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired,
+                SystemExit) as e:
             rc, why = 1, f"{type(e).__name__}: {e}"
         if why and not rc:
             rc = 1                            # stopped (cancel, timeout) even if the tool exited 0
@@ -1116,6 +1243,10 @@ def sample_jobs(tmp, co, key):
         ("rxmap's Line A override", J("bad-linea", {"do": "k6.upload", "module": mod, "sha256": h(mod), "args": ["--south-of-line-a"]}), False),
         ("checkout outside the worktrees", J("bad-co", {"do": "wait", "seconds": 1}, checkout="/tmp"), False),
         ("IC-7100 send with no --freq", J("bad-nofreq", {"do": "ic7100", "args": ["send", wav]}), False),
+        ("UV-380 at 0 W, one send on 441.850", J("ok-uv380", {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2"]}, {"do": "uv380.send"}, freq_mhz=441.850), True),
+        ("UV-380 power 1000", J("bad-uvpower", {"do": "uv380.cmd", "args": ["power 1000"]}, freq_mhz=441.850), False),
+        ("UV-380 memory write", J("bad-uvwr", {"do": "uv380.cmd", "args": ["wr 40020018 1"]}, freq_mhz=441.850), False),
+        ("UV-380 to 440.850 under a 441.850 claim", J("bad-uvfreq", {"do": "uv380.cmd", "args": ["freq 440850"]}, freq_mhz=441.850), False),
     ]
 
 

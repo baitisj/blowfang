@@ -344,6 +344,97 @@ def test_command_lines(work):
     assert argv[2:6] == ["--port", "/dev/k6cable", "--key-file", br.key_path()] and argv[6] == "flash"
 
 
+# ---- the UV-380 steps ----
+
+def uv_job(*steps, freq_mhz=441.850):
+    return job("u", *steps, freq_mhz=freq_mhz)
+
+
+def test_uv380_commands_checked(work):
+    ok = uv_job({"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "phy fsk", "trim 6350",
+                                              "gain 6", "emph 0", "tune"]}, {"do": "uv380.send"})
+    assert br.check_job(ok) == []
+    for c, want in (("power 1000", "not a UV-380 bench command"), ("wr 40020018 1", "not a UV-380"),
+                    ("c6w 10 66", "not a UV-380"), ("trim 9000", "trim -8000..8000"),
+                    ("gain 20", "gain -12..15"), ("freq 446000", "441850 and 440850"),
+                    ("freq 440850", "outside the job's claim")):
+        assert want in problems(uv_job({"do": "uv380.cmd", "args": [c]})), c
+    assert "takes no args" in problems(uv_job({"do": "uv380.send", "args": ["x"]}))
+    assert br.check_job(uv_job({"do": "uv380.cmd", "args": ["freq 440850"]}, freq_mhz=440.850)) == []
+
+
+class Radio:
+    """the UV-380's answers to uv380_probe: tune and listen lines from its state"""
+
+    def __init__(self, pwr="0", freq="441850", listen="1", tuneline=True):
+        self.st = dict(pwr=pwr, zero="1", trim="5745", gain="6", emph="0", freq=freq)
+        self.listen, self.tuneline, self.sent = listen, tuneline, []
+
+    def __call__(self, ctx, cmds, env, timeout=60.0):
+        out = []
+        for c in cmds:
+            self.sent.append(c)
+            k, _, v = c.partition(" ")
+            if k == "listen" and v:
+                self.listen = v
+            elif k == "power":
+                self.st["pwr"] = v
+            elif k in self.st:
+                self.st[k] = v
+            if k == "listen":
+                out.append(f"listen on={self.listen} running=0")
+            elif self.tuneline:
+                f = "" if self.st["freq"] is None else f" freq={self.st['freq']}"
+                out.append("tune lvl=16000 fs=48000 " + " ".join(
+                    f"{x}={self.st[x]}" for x in ("emph", "trim", "zero", "pwr", "gain")) + f)
+        return "\n".join(out) + "\n"
+
+
+def test_uv380_cmd_reads_back(work, monkeypatch):
+    radio = Radio()
+    monkeypatch.setattr(br, "uv380_probe", radio)
+    j = uv_job({"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2"]})
+    assert br.run_job(j, str(work / "rd"), Rig())["status"] == "done"
+    assert radio.sent[:3] == ["listen 0", "power 0", "zero 2"] and radio.listen == "0"
+    stuck = Radio()
+    monkeypatch.setattr(br, "uv380_probe", lambda ctx, cmds, env, timeout=60.0:
+                        stuck(ctx, [c for c in cmds if not c.startswith("zero")], env))
+    res = br.run_job(j, str(work / "rd2"), Rig())
+    assert res["status"] == "failed" and "reads back zero=1" in res["reason"]
+    monkeypatch.setattr(br, "uv380_probe", Radio(tuneline=False))
+    res = br.run_job(j, str(work / "rd3"), Rig())
+    assert res["status"] == "failed" and "no tune line" in res["reason"]
+
+
+def test_uv380_send_only_at_power_0_on_its_channel(work, monkeypatch):
+    monkeypatch.setattr(br, "command", fake_command({}))
+    ran = []
+    monkeypatch.setattr(br, "run_proc", lambda ctx, argv, cwd, timeout, env: (ran.append(argv), (0, None))[1])
+    monkeypatch.setattr(br, "uv380_port", lambda: "/dev/uv380")
+    j = uv_job({"do": "uv380.send"})
+    for radio, want in ((Radio(pwr="1000"), "sends only at power 0"),
+                        (Radio(freq="440850"), "outside the job's claim"),
+                        (Radio(freq=None), "no freq=")):
+        monkeypatch.setattr(br, "uv380_probe", radio)
+        res = br.run_job(j, str(work / "rd"), Rig())
+        assert res["status"] == "failed" and want in res["reason"], (want, res)
+    assert ran == []
+    monkeypatch.setattr(br, "uv380_probe", Radio())
+    assert br.run_job(j, str(work / "rd2"), Rig())["status"] == "done"
+    argv = ran[0]
+    assert argv[2:4] == ["mod", "/dev/uv380"] and argv[4].endswith("firmware/uv380-openrtx/mod/txreq.c")
+    assert argv[5:7] == ["--key-file", br.key_path()]
+
+
+def test_uv380_port_by_usb_ids(work, monkeypatch):
+    monkeypatch.delenv("UV380_DEV", raising=False)
+    monkeypatch.setattr(br.glob, "glob", lambda pat: [])
+    with pytest.raises(br.Refused, match="0 ports with USB ids 0483:5740"):
+        br.uv380_port()
+    monkeypatch.setenv("UV380_DEV", "/dev/x")
+    assert br.uv380_port() == "/dev/x"
+
+
 def test_unit_and_install(work):
     assert "bench_runner.py serve" in br.unit_text()
     br.main(["install"])
