@@ -44,6 +44,32 @@ Because the bursts are real DMR (BS / MS data sync, slot type, CSBK preambles), 
 receiver locks on them: the K6's dmrrx, `sim/k6if/dmrdec.py` on an IC-7100 recording, an SDR
 running DSD. Only the payload is ours.
 
+### Sotto in DMR voice bursts (modem/dmrvoice.py, c/common/dmr_voice.h)
+
+The same messages as a DMR voice call instead of a data packet: 3 voice LC headers, whole
+superframes of voice bursts A-F, a terminator. A voice burst has 216 payload bits (108, the sync
+or EMB, 108) that a DMR radio fills with three AMBE+2 frames. The UV-380 has no AMBE chip: TYT's
+firmware runs the codec on the STM32 and hands the C6000 each burst's 27 bytes over the chip's
+second SPI port (V_SPI, page 3; RadioFoundry modem-hrc6000.md 5 and 6.1, MIT), and the chip
+sends them as given. The vocoder's FEC is the vocoder's business, so all 216 bits are ours:
+
+- one dmr_sotto block (the same 12 bytes as the data path, CRC-16 included) a burst
+- 96 bits + 6 tail, K=7 rate 1/2 convolutional code (generators 0171 0133): 204 bits
+- interleaved over the burst (coded bit j to payload bit 61 j mod 216), 12 bits left 0
+- received soft (positive = 1, from the matched filter), decoded by soft Viterbi; the block's
+  CRC drops a burst it can't fix, and the sequence numbers keep the rest in place
+
+One burst every 60 ms is 9 payload bytes: sotto 1200 in real time, as on the data path. What it
+adds: our own soft-decision code (in simulation it fixed every burst with 6 random bit errors
+and 98 % with 12, where the chip's BPTC(196,96) is decoded hard), and a call any DMR radio shows as a
+voice call (talk group 9, source TX_RADIO) rather than a data packet. Its sound would be noise to
+an AMBE decoder; only our decoder reads it.
+
+The chip may not put page 3's bits on the air in the plain order (byte order, bit order, an
+inversion): the first keying sends a raw test pattern (PN9 per burst, no FEC), and the host
+learns the mapping from it (`uv380_dmrvoice.py voice --learn`). A plain map needs nothing more;
+any other is handed to the decoder as `--map`.
+
 ## The RAM modules (firmware/uv380-openrtx/mod/)
 
 The image's module table reaches only the C6000's main register page, under OpenRTX's lock.
@@ -54,6 +80,8 @@ Everything else is in headers the modules include, each sharing a bus with OpenR
 | `c6spi.h` | every C6000 space: page 1 (sync pattern, CRC masks, tone table), TX RAM, RX RAM (payloads, soft values), 11-bit addresses | bit-banged on PE2-5 as OpenRTX does; a transaction runs with interrupts off and only while CS is high, else it sleeps 1 ms |
 | `c6slot.h` | the chip's interrupt lines: PC0 timeslot, PC1 system, PC2 RF TX | 0.3 us pulses latched in EXTI pending bits with the NVIC interrupt left off; masked read-modify-writes only |
 | `at1846.h` | AT1846S registers (DMR receive set: filters off, low frequencies passed) | OpenRTX's I2C has no lock: a transfer starts only after both lines read idle with SDA an output, interrupts off. Never writes frequency, TX or power registers |
+| `c6vspi.h` | the C6000's voice port (V_SPI, page 3: each voice burst's 27 bytes), PB12 CS, PB13 SCK, PB14 MISO, PB15 MOSI as on the DM-1701 | bit-banged, mode 2; OpenRTX's MD-UV3x0 pin map uses none of PB12-PB15, and vs_open refuses if any is an output or alternate function; every pin's mode, pull, speed and level put back by vs_close |
+| `c6key.h` | the keying (tx_tone, the ident first, the wait for the tone's key-up) and the lines kept while keyed | c6dmrtx's code as a header, for c6dvtx |
 | `w25sec.h` | the factory calibration in the W25Q128 security registers (DMR I/Q gains at 0x2030 / 0x2040) | read only: the read-security-register command (0x48) is the only one it sends |
 
 | Module | RF | Does |
@@ -63,6 +91,11 @@ Everything else is in headers the modules include, each sharing a bus with OpenR
 | `c6dmrtx.c` | **none by default** (TX_DRY 1): the chip frames bursts that go nowhere | the full transmit sequence as a rehearsal: slot clock, RF TX interrupts, TX flags |
 | `c6dmrtx_live.c` | the Morse ident, then 1 W, 440.850 MHz only, 4.6 s; API level 4 images only (transmit guard) | the test pattern as DMR rate 1/2 bursts, keyed through `api->tx_tone`. Only with Jeff at the radio |
 | `c6dmrtx_msg.c` | as live | the radio's own message (last recording or message heard) |
+| `c6vcheck.c` | none | is V_SPI on PB12-PB15? Page 3 read with MISO pulled up then down (the chip drives it, or nothing does), then two patterns written and read back with 0x06 = 0x21 |
+| `c6dvtx.c` | **none by default** (TX_DRY 1) | the voice call as a rehearsal: LC in page 2, 0x06 = 0x21, 0x22 = encode start, headers (0x50 = 0x10), bursts A-F (page 3 over V_SPI, 0x50 = 0x08 + n << 4), terminator (0x50 = 0x20), everything put back |
+| `c6dvtx_pn.c` | the Morse ident, then the radio's power on its channel (441.850 or 440.850), 4.6 s; level 4 | the raw test pattern, 60 bursts (10 superframes): the map |
+| `c6dvtx_live.c` | as `_pn` | a test message under the voice FEC |
+| `c6dvtx_msg.c` | as `_pn` | the radio's own message under the voice FEC (about 3.4 s of sotto 1200 in one keying) |
 
 The DMR transmit borrows the image's FM keying: `tx_tone` sends the Morse ident, unkeys for
 100 ms, then keys at 1 W on 440.850 (refusing anything else). Once the C6000's analog TX is up
@@ -84,6 +117,14 @@ of the PA.
   whole chain fitted as a symbol-rate FIR, and a pre-equaliser for `wav --eq`.
 - `tools/uv380_dmrburst.py rx`: a c6dmrrx log's bursts counted, matched to the sent blocks and
   unpacked into the message.
+- `tools/uv380_dmrvoice.py voice`: a recording (Pluto `rx` wav or IC-7100) of a c6dvtx call back
+  to the sotto message (`--map` for a learned mapping); `voice --learn MAP.json` on a
+  `c6dvtx_pn` call writes the mapping and prints the bit errors through the plain map and the
+  learned one. `vwav` writes such a call as audio (`--pn`, `--map`). It reads bursts B-F 60 ms
+  apart after each burst A, on A's timing, as `sim/k6if/dmrdec.py` reads their EMBs.
+- `tests/test_uv380_dmrvoice.py`: the voice FEC C against Python byte for byte, the Viterbi's
+  corrections, a call through audio and back, a mapping learned and used, a lost first superframe,
+  the modules building, and that only the `c6dvtx_` wrappers key.
 - `tests/test_uv380_c6000.py`: dmrsotto round trips and losses, the C header against the Python
   byte for byte, the test signal through the decoder, the modules building position-independent,
   and that only the two `_live`/`_msg` wrappers can key.
@@ -100,6 +141,20 @@ of the PA.
 3. **c6dmrtx** dry (no RF): the slot clock and TX flags.
 4. **c6dmrtx_live**, Jeff at the radio: the IC-7100 records, `uv380_dmrburst.py decode` and the
    K6's dmrrx read it. Then `c6dmrtx_msg` with a real recording.
+
+### Voice bursts (V0-V2)
+
+Receiver: the Pluto (the standard 70 cm instrument), `pluto_bench.py rx` on the UV-380's
+441.850, its wav into `uv380_dmrvoice.py voice`. The UV-380 keys at the radio's power setting:
+0 W (PA on, APC 0) unless Jeff is at the radio. Levels as the 11-17 data-path run (gain -3,
+emph 1) and the current trim.
+
+- **V0** `c6vcheck` (no RF): `idle ... driven=1` says the chip answers on PB14; `same=27` that a
+  read returns what was written. Then `c6dvtx` dry: `voice=60/60 term=1`, no `err`.
+- **V1** `c6dvtx_pn`: `voice --learn MAP.json`. `plain map 0/...` (or a handful of errors from
+  noise) = the plain order; else the map is kept for V2.
+- **V2** `c6dvtx_msg` with a recording: `voice [--map MAP.json] --out MSG.bit`, the bytes compared
+  with the radio's message, then played through the sotto decoder.
 
 ## Bench results (2026-11-16, receive only and dry; no UV-380 TX)
 
@@ -206,5 +261,9 @@ of the PA.
   (the calibration's sendIrange and sendQrange). Deviation to be checked on the IC-7100 or K6.
 - Longer messages than one 4.6 s keying (about 3.5 s of sotto) need a keying call without the 5 s
   cap, for the next reflash batch, or a transmit path in the image.
+- Voice bursts: whether V_SPI is on PB12-PB15 on this board (V0), whether 0x22 = 0x80 starts the
+  encoder or RadioFoundry's 0x86 (I2S bits too) is needed, and the page 3 to air mapping (V1).
+  The chip makes the EMB and the embedded LC itself; their LCSS in 0x50's low bits (the manual's
+  example sets them, RadioFoundry doesn't) is left to the chip.
 - Physical layer mode receive: what the chip needs to frame a burst (a DMR sync, presumably), and
   whether its soft values make a better outer code worth it over the chip's BPTC.
