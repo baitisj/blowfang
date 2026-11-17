@@ -498,6 +498,17 @@ build either way. CI names the artifact `aura-pager-<commit>` and stores each
 K6 reports that build, and the sweep stops if the K6 reboots into another one. Images from
 before this change report no build at all.
 
+**Signal, battery and backlight on the serial lines** (2026-11-17, Jeff: diagnose failed
+uploads from serial alone). `K6 PKT` and `K6 MOD r=` lines carry `rssi=` (dBm, REG_67) and
+`noise=` (the noise meter, REG_65[7:0]) as read at the packet's sync, CRC failures included,
+so a weak signal and a garbled strong one look different. `K6 CFG` lines carry `rssi=`, the
+idle channel in dBm, and `batt=`, the battery in mV. Both are read at each idle tick (the pager
+images read the battery only at boot before this). They also carry `bl=`, the backlight's
+idle setting (`docs/k6-modules.md`, API level 10). The FD6818 has no documented AFC readback,
+so there is no frequency error on these lines. `K6 CFG why=tick` comes only from the arena
+(VOICE MSG); EXPLORE prints `K6 EX ...` lines instead, so a log with ticks all along never left
+the arena.
+
 **Checking a playback without listening.** Each `K6 PLAY` line carries `pcm=` and `samples=`:
 an FNV-1a checksum of the samples the K6 decoded and played, taken before the PWM conversion,
 and how many there were. `tools/k6_pcmhash.py` rebuilds the same number on the PC. It packs the

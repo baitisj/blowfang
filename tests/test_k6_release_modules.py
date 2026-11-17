@@ -10,7 +10,7 @@ ROOT = os.path.join(os.path.dirname(__file__), "..")
 LIST = os.path.join(ROOT, "tools", "k6_release_modules.txt")
 MOD = os.path.join(ROOT, "c", "k6", "mod")
 BLOCK = 11752                      # the module block less its header and tag (test_k6_gw.py)
-LEVEL_MAX = 9                      # the images' API level
+LEVEL_MAX = 10                     # the images' API level
 PAGE_AND_DECK_SLOTS = range(9, 16) # EXPLORE's pages 9-11, the editor's 12, help decks 13-15
 
 need_clang = pytest.mark.skipif(not shutil.which("clang") or not shutil.which("ld.lld"),

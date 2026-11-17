@@ -156,6 +156,7 @@ jobs:
             tests/test_k6_rt.py \
             tests/test_k6_rxmap.py \
             tests/test_k6_scan.py \
+            tests/test_k6_settings.py \
             tests/test_k6_sted.py \
             tests/test_k6_stockfont.py \
             tests/test_k6_stop.py \
