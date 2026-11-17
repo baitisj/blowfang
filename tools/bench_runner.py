@@ -22,7 +22,7 @@ docs/bench-runner.md has the job format and the rules.
 A job is a JSON file: who (the thread, one word), a channel to claim, how long, a checkout, and
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, logger, logger.stop, wait, uv380.flash, uv380.cmd,
-uv380.send), turned into one
+uv380.send, uv380.m17), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -37,7 +37,9 @@ and the point is that the runner checks everything before it keys. The checks, i
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
     channels), each read back; a send only at power 0 (read back first) on 441.850 or 440.850 inside
-    the claim, through the checkout's own txreq.c module (the image sends ident first)
+    the claim, through the checkout's own txreq.c module (the image sends ident first), or one of
+    the checkout's own M17 modules (c6m17tx_bert/sms/voice.c: tx_tone's ident first)
+  - a Pluto step may run in the background only to receive (rx)
   - IC-7100: never while Jeff holds it (hold-ic7100), RF power read back at most the job's limit
     (0 by default, 0.5 at most; the runner only ever lowers it, to 0), rig on 70 cm in the claim
   - one job at a time, under a k6_bench claim (the per-frequency claim other threads see)
@@ -78,7 +80,7 @@ CLAIM_RETRY_S = 30
 STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload": 900,
                 "pluto": 1800, "ic7100": 300, "ic7100.tune": 30, "ic7100.power0": 30,
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
-                "uv380.cmd": 60, "uv380.send": 120}
+                "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120}
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24")
 PLUTO_TX = ("send", "steps", "fsk24")
 IC7100_SUBS = ("send", "id", "stop")
@@ -91,6 +93,11 @@ UV380_CMD_RE = re.compile(r"^(tune|listen|listen [01]|power 0|zero [12]|phy (fsk
                           r"trim -?\d{1,4}|gain -?\d{1,2}|freq \d{6})$")
 UV380_SEND_HZ = (441_850_000, 440_850_000)    # the image sends only on these (SEND_HZ, SEND_K6_HZ)
 UV380_SEND_MODULE = ("firmware", "uv380-openrtx", "mod", "txreq.c")
+UV380_M17_PLANS = ("bert", "sms", "voice")     # firmware/uv380-openrtx/mod/c6m17tx_PLAN.c
+
+
+def uv380_m17_module(plan):
+    return ("firmware", "uv380-openrtx", "mod", f"c6m17tx_{plan}.c")
 UV380_READBACK = {"power": "pwr", "zero": "zero", "trim": "trim", "gain": "gain", "emph": "emph",
                   "freq": "freq"}
 
@@ -394,6 +401,8 @@ def check_step(job, i, step, rs, problems):
             return
         if "--as" in args:
             problems.append(f"{what}: --as is the runner's to set")
+        if step.get("background") and args[0] != "rx":
+            problems.append(f"{what}: only a Pluto rx (receive) may run in the background")
         if args[0] in PLUTO_TX:
             for f in opts(args, "--hz") or [str(kb.PAGER_HZ)]:
                 check_tx_hz(job, as_hz(f), what, problems)
@@ -467,6 +476,12 @@ def check_step(job, i, step, rs, problems):
             problems.append(f"{what}: takes no args (the runner sends the checkout's txreq.c)")
         if not os.path.isfile(os.path.join(job_checkout(job), *UV380_SEND_MODULE)):
             problems.append(f"{what}: the checkout has no {'/'.join(UV380_SEND_MODULE)}")
+    elif do == "uv380.m17":
+        if len(args) != 1 or args[0] not in UV380_M17_PLANS:
+            problems.append(f"{what}: args: one plan, {' or '.join(UV380_M17_PLANS)} (the checkout's"
+                            " c6m17tx_PLAN.c)")
+        elif not os.path.isfile(os.path.join(job_checkout(job), *uv380_m17_module(args[0]))):
+            problems.append(f"{what}: the checkout has no {'/'.join(uv380_m17_module(args[0]))}")
     elif do == "uv380.flash":
         staged_file(step, "image", rs, what, problems)
         staged_file(step, "radio_tool", rs, what, problems, need_sha=False)
@@ -594,7 +609,8 @@ def command(job, step, rd):
         return [py(), tool("k6_upload.py"), os.path.realpath(os.path.expanduser(step["module"])),
                 "--key-file", key] + args, co, False
     if do == "pluto":
-        return [py(), tool("pluto_bench.py"), "--as", who] + args, co, False
+        return [py(), tool("pluto_bench.py"), "--as", who] + args, co, bool(step.get("background")) and \
+            args[0] == "rx"
     if do == "ic7100":
         return [py(), bench_bin(), "--as", who] + args, co, False
     if do == "logger":
@@ -735,6 +751,21 @@ def wait_step(ctx, step):
     return (1, f"no /{step['pattern']}/ in {f}") if pat else (0, None)
 
 
+def module_tools(env):
+    """a module compiler on the steps' PATH: uv380.send / uv380.m17 build their module from source at
+    send time, and the service's PATH has no clang (hamlet has none on the host). $K6_ATFE, else
+    the newest ATfE under BLOWFANG_WORK/toolchains, as tools/uv380_dfu.py finds it -> the dir added"""
+    if shutil.which("clang", path=env.get("PATH")):
+        return None
+    dirs = [env["K6_ATFE"]] if env.get("K6_ATFE") else []
+    dirs += sorted(glob.glob(os.path.join(work(), "toolchains", "ATfE-*", "bin")), reverse=True)
+    for d in dirs:
+        if os.path.exists(os.path.join(d, "clang")):
+            env["PATH"] = d + os.pathsep + env.get("PATH", "")
+            return d
+    return None
+
+
 def step_env(job):
     env = dict(os.environ)
     env["K6_BENCH_AS"] = job["who"]
@@ -742,6 +773,7 @@ def step_env(job):
     env["BLOWFANG_REPO"] = job_checkout(job)
     env.pop("K6LOG", None)
     env["PYTHONUNBUFFERED"] = "1"
+    module_tools(env)
     return env
 
 
@@ -802,9 +834,10 @@ def uv380_cmd_step(ctx, step, env):
     return 0, None
 
 
-def uv380_send_step(ctx, step, env, timeout):
+def uv380_send_step(ctx, step, env, timeout, module=UV380_SEND_MODULE, run_timeout=30):
     """one send of the radio's stored message, as PTT sends it (ident first): only at power 0 on one
-    of its two channels inside the claim, checked on the radio's own read-back right before"""
+    of its two channels inside the claim, checked on the radio's own read-back right before.
+    uv380.m17 is the same with one of the checkout's M17 modules (tx_tone: the ident first)"""
     st = uv380_state(uv380_probe(ctx, ["tune", "listen"], env))
     if "freq" not in st:
         raise Refused("the UV-380 reads no freq= (an image before the 441.850 move, or not on USB)")
@@ -819,8 +852,8 @@ def uv380_send_step(ctx, step, env, timeout):
         ctx.say("note: the UV-380's listener is on; it refuses a send while it hears a carrier")
     co = job_checkout(ctx.job)
     argv = [py(), os.path.join(co, "tools", "uv380_i2sprobe.py"), "mod", uv380_port(),
-            os.path.join(co, *UV380_SEND_MODULE), "--key-file", key_path(),
-            "--log", os.path.join(ctx.rd, "uv380.log"), "--run-timeout", "30"]
+            os.path.join(co, *module), "--key-file", key_path(),
+            "--log", os.path.join(ctx.rd, "uv380.log"), "--run-timeout", str(run_timeout)]
     return run_proc(ctx, argv, co, timeout, env)
 
 
@@ -865,6 +898,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 rc, why = uv380_cmd_step(ctx, step, env)
             elif step["do"] == "uv380.send":
                 rc, why = uv380_send_step(ctx, step, env, timeout)
+            elif step["do"] == "uv380.m17":
+                rc, why = uv380_send_step(ctx, step, env, timeout, uv380_m17_module(step["args"][0]), 45)
             elif step["do"] == "ic7100.power0":
                 ctx.rig("L", "RFPOWER", "0")
                 p = rig_power(ctx.rig)
@@ -874,12 +909,18 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 argv, cwd, bg = command(job, step, rd)
                 if bg:
                     ctx.say("$ (background) " + " ".join(argv))
-                    BACKGROUND.append(subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                                                       stdout=open(os.path.join(rd, "logger.out"), "a"),
-                                                       stderr=subprocess.STDOUT, start_new_session=True))
+                    out = "logger.out" if step["do"] == "logger" else step["do"] + ".out"
+                    proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                                            stdout=open(os.path.join(rd, out), "a"),
+                                            stderr=subprocess.STDOUT, start_new_session=True)
+                    BACKGROUND.append(proc)
                     time.sleep(2.0)
-                    o = kb.serial_owner()
-                    rc, why = (0, None) if o and o.get("who") == job["who"] else (1, "the logger did not start")
+                    if step["do"] == "logger":     # the logger holds the K6 cable for the job
+                        o = kb.serial_owner()
+                        rc, why = (0, None) if o and o.get("who") == job["who"] else (1, "the logger did not start")
+                    else:                           # a Pluto rx: still capturing (or done cleanly)
+                        r = proc.poll()
+                        rc, why = (0, None) if r in (None, 0) else (1, f"the background {step['do']} exited {r}")
                 else:
                     rc, why = run_proc(ctx, argv, cwd, timeout, env)
         except Refused as e:
@@ -1246,6 +1287,9 @@ def sample_jobs(tmp, co, key):
         ("UV-380 at 0 W, one send on 441.850", J("ok-uv380", {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2"]}, {"do": "uv380.send"}, freq_mhz=441.850), True),
         ("UV-380 power 1000", J("bad-uvpower", {"do": "uv380.cmd", "args": ["power 1000"]}, freq_mhz=441.850), False),
         ("UV-380 memory write", J("bad-uvwr", {"do": "uv380.cmd", "args": ["wr 40020018 1"]}, freq_mhz=441.850), False),
+        ("UV-380 M17 BERT at 0 W on 441.850, the Pluto listening", J("ok-m17", {"do": "pluto", "args": ["rx", os.path.join(tmp, "m.cf32"), "--hz", "441900000", "--seconds", "40"], "background": True}, {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "trim -935"]}, {"do": "uv380.m17", "args": ["bert"]}, {"do": "uv380.cmd", "args": ["trim 5745"]}, freq_mhz=441.850), True),
+        ("UV-380 M17 with no plan", J("bad-m17", {"do": "uv380.m17"}, freq_mhz=441.850), False),
+        ("Pluto send in the background", J("bad-bgtx", {"do": "pluto", "args": ["send", wav, "--gain", "-60"], "background": True}), False),
         ("UV-380 to 440.850 under a 441.850 claim", J("bad-uvfreq", {"do": "uv380.cmd", "args": ["freq 440850"]}, freq_mhz=441.850), False),
     ]
 
@@ -1283,6 +1327,12 @@ def cmd_selftest(a):
     say(os.path.exists(os.path.join(aura_dir(), "tools", "flash.py")) or None, f"Aura flash.py in {aura_dir()} (k6.update)")
     say(os.path.exists(os.path.join(HERE, "k6-reset-trigger.sh")) or None, "k6-reset-trigger.sh beside the runner (k6.update)")
     say(hasattr(kb, "GUARD_HZ") or False, "k6_bench.py beside the runner has channel claims")
+    env = {"PATH": os.environ.get("PATH", "")}
+    module_tools(env)
+    cc = [shutil.which(t, path=env["PATH"]) for t in ("clang", "ld.lld", "llvm-objcopy", "llvm-nm")]
+    say(all(cc) or False, "module compiler for uv380.send / uv380.m17: " + (cc[0] if all(cc) else
+        "clang, ld.lld, llvm-objcopy or llvm-nm missing (PATH, $K6_ATFE, or BLOWFANG_WORK/toolchains/ATfE-*/bin)"))
+    bad += not all(cc)
     say(kb.lock_free() or None, "PTT lock free")
     so = kb.serial_owner()
     say(True, "K6 cable reader: " + (f"{so['who']} (pid {so['pid']})" if so else "none"))

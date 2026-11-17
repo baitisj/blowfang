@@ -161,9 +161,41 @@ def test_job_shape(work):
     assert "plain name" in problems(job("a", {"do": "logger", "seconds": 9, "file": "../x"}))
 
 
+def fake_atfe(work):
+    tc = work / "toolchains" / "ATfE-22.1.0-Linux-x86_64" / "bin"
+    tc.mkdir(parents=True)
+    for t in ("clang", "ld.lld", "llvm-objcopy", "llvm-nm"):
+        (tc / t).write_text("#!/bin/sh\n")
+        (tc / t).chmod(0o755)
+    return tc
+
+
 def test_selftest_passes(work, capsys):
+    fake_atfe(work)
     assert br.main(["selftest"]) == 0
     assert "PASS" in capsys.readouterr().out
+
+
+def test_steps_get_the_module_compiler(work, tmp_path, monkeypatch):
+    """the service's PATH has no clang: uv380.send / uv380.m17 steps build their module, so the
+    steps' env carries the ATfE under BLOWFANG_WORK/toolchains (or $K6_ATFE)"""
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    monkeypatch.delenv("K6_ATFE", raising=False)
+    assert br.module_tools({"PATH": str(tmp_path / "empty")}) is None
+    tc = fake_atfe(work)
+    env = br.step_env(job("a"))
+    assert env["PATH"].split(os.pathsep)[0] == str(tc)
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "clang").write_text("")
+    env = {"PATH": str(tmp_path / "empty"), "K6_ATFE": str(other)}
+    assert br.module_tools(env) == str(other) and env["PATH"].startswith(str(other) + os.pathsep)
+
+
+def test_selftest_fails_without_the_module_compiler(work, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(br.shutil, "which", lambda *a, **k: None)
+    assert br.main(["selftest"]) == 1
+    assert "FAIL  module compiler" in capsys.readouterr().out
 
 
 # ---- running ----
@@ -424,6 +456,59 @@ def test_uv380_send_only_at_power_0_on_its_channel(work, monkeypatch):
     argv = ran[0]
     assert argv[2:4] == ["mod", "/dev/uv380"] and argv[4].endswith("firmware/uv380-openrtx/mod/txreq.c")
     assert argv[5:7] == ["--key-file", br.key_path()]
+
+
+def test_uv380_m17_checked(work):
+    for plan in br.UV380_M17_PLANS:
+        assert br.check_job(uv_job({"do": "uv380.m17", "args": [plan]})) == [], plan
+    for args in ([], ["x"], ["sms", "voice"], ["../txreq"]):
+        assert "one plan" in problems(uv_job({"do": "uv380.m17", "args": args})), args
+
+
+def test_uv380_m17_sends_the_checkouts_module_at_power_0(work, monkeypatch):
+    monkeypatch.setattr(br, "command", fake_command({}))
+    ran = []
+    monkeypatch.setattr(br, "run_proc", lambda ctx, argv, cwd, timeout, env: (ran.append(argv), (0, None))[1])
+    monkeypatch.setattr(br, "uv380_port", lambda: "/dev/uv380")
+    j = uv_job({"do": "uv380.m17", "args": ["sms"]})
+    monkeypatch.setattr(br, "uv380_probe", Radio(pwr="1000"))
+    res = br.run_job(j, str(work / "rd"), Rig())
+    assert res["status"] == "failed" and "sends only at power 0" in res["reason"] and ran == []
+    monkeypatch.setattr(br, "uv380_probe", Radio())
+    assert br.run_job(j, str(work / "rd2"), Rig())["status"] == "done"
+    argv = ran[0]
+    assert argv[2:4] == ["mod", "/dev/uv380"] and argv[4].endswith("firmware/uv380-openrtx/mod/c6m17tx_sms.c")
+    assert argv[5:7] == ["--key-file", br.key_path()] and argv[-2:] == ["--run-timeout", "45"]
+
+
+def test_pluto_background_only_to_receive(work):
+    j = job("a")
+    rd = str(work / "rd")
+    rx = {"do": "pluto", "args": ["rx", "cap.cf32", "--hz", "441900000", "--seconds", "30"], "background": True}
+    assert br.check_job(job("p", rx)) == []
+    argv, _, bg = br.command(j, rx, rd)
+    assert bg and argv[-6:] == rx["args"]
+    send = {"do": "pluto", "args": ["send", "x.wav", "--gain", "-60"], "background": True}
+    assert "only a Pluto rx" in problems(job("p", send))
+    _, _, bg = br.command(j, dict(send), rd)
+    assert not bg
+
+
+def test_background_pluto_rx_needs_no_k6_cable(work, monkeypatch):
+    """a background Pluto rx passes while it runs (11-17: it was checked like a logger, for the K6
+    cable, and failed every time); one that exits with an error fails the job"""
+    def command(job, step, rd):
+        return [sys.executable, "-c", step["args"][1]], rd, True
+    monkeypatch.setattr(br, "command", command)
+    monkeypatch.setattr(br.kb, "serial_owner", lambda: None)
+    rx = {"do": "pluto", "args": ["rx", "import time; time.sleep(4)"], "background": True}
+    res = br.run_job(job("p", rx), str(work / "rd"), Rig())
+    assert res["status"] == "done", res
+    bad = {"do": "pluto", "args": ["rx", "raise SystemExit(3)"], "background": True}
+    res = br.run_job(job("p", bad), str(work / "rd2"), Rig())
+    assert res["status"] == "failed" and "background pluto exited 3" in res["reason"], res
+    for p in br.BACKGROUND:
+        p.wait()
 
 
 def test_uv380_port_by_usb_ids(work, monkeypatch):

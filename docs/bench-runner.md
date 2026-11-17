@@ -22,7 +22,10 @@ From a checkout of this branch (or main once merged), on hamlet:
 `selftest` runs 28 sample jobs through the checks (8 that must pass, 20 that must be refused),
 then reports this machine's setup: the module key, the K6 cable by its by-id name, rigctld and the
 IC-7100's power, Aura's flash.py, the PTT lock and the cable's reader. Setup problems are warnings
-(the steps that need the missing piece refuse); a wrong check is a FAIL.
+(the steps that need the missing piece refuse); a wrong check is a FAIL. So is a missing module
+compiler: `uv380.send` and `uv380.m17` build their module from the checkout at send time, and the
+service's PATH has no clang, so the runner puts `$K6_ATFE`, else the newest
+`BLOWFANG_WORK/toolchains/ATfE-*/bin`, on the steps' PATH (as `tools/uv380_dfu.py` does).
 
 Stop it any time: `systemctl --user stop blowfang-bench-runner` (the running step gets SIGTERM:
 the keying tools unkey on it, and the job is marked cancelled). Reinstall after a merge with the
@@ -84,7 +87,7 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `k6.flash` | `k6_install.py … flash IMAGE` (the cable session; keys it with our key) | sha256, our key or the placeholder, commit |
 | `k6.update` | `k6_update.py IMAGE --port CABLE --aura … --trigger "sh bin/k6-reset-trigger.sh" --window 0.6` | the image itself keyed with our key (no placeholder), sha256, commit; IC-7100 rules (the reset packet) |
 | `k6.upload` | `k6_upload.py MODULE --key-file KEY ARGS` | `--freq` in the claim, `--pluto-gain` ≤ -30, no `--key-file` from the job; IC-7100 rules (it sets the rig's mode and records its audio) |
-| `pluto` | `pluto_bench.py --as WHO ARGS` | `send` / `steps` / `fsk24`: `--hz` in the claim, every gain ≤ -30 dB; `rx` anywhere; checkout has the keeper fix |
+| `pluto` | `pluto_bench.py --as WHO ARGS`; with `"background": true` an `rx` runs beside the next steps (to hear a UV-380 send) | `send` / `steps` / `fsk24`: `--hz` in the claim, every gain ≤ -30 dB; `rx` anywhere; only `rx` may run in the background; checkout has the keeper fix |
 | `ic7100` | `k6_bench.py --as WHO send WAV --freq HZ` / `id` / `stop` | `--freq` required for send and in the claim, no `--no-id`; IC-7100 rules |
 | `ic7100.tune` | rigctl `F HZ`, `M PKTFM 12000`, `L RFPOWER 0`, read back | 70 cm in the claim; not while held |
 | `ic7100.power0` | rigctl `L RFPOWER 0`, read back | |
@@ -94,6 +97,7 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `uv380.flash` | `uv380_dfu.py flash DEV IMAGE --sha256 … --radio-tool …` | sha256, commit |
 | `uv380.cmd` | `uv380_i2sprobe.py cmd DEV ARGS… tune listen`: the UV-380's bench settings over USB, e.g. `["listen 0", "power 0", "zero 2"]` | only `tune`, `listen [0\|1]`, `power 0`, `zero 1\|2`, `phy fsk\|rng`, `emph 0\|1`, `trim N` (±8000), `gain N` (-12..15), `freq 441850\|440850` (in the claim); nothing that writes memory or registers; every setting read back after |
 | `uv380.send` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/txreq.c` (the checkout's own module, signed by the runner): one send of the stored message as PTT sends it, ident first | no args; right before, the radio itself must read `pwr=0` and a `freq=` of its two channels inside the claim (an image without `freq=`, from before the 441.850 move, is refused) |
+| `uv380.m17` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/c6m17tx_PLAN.c` (the checkout's own module, signed by the runner): one M17 transmission through the C6000's physical layer mode, tx_tone's Morse ident first (docs/uv380-m17-scope.md) | args: one plan, `bert`, `sms` or `voice`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim) |
 
 There is no step that runs a script. A script could do anything; the runner's worth is that it
 checks every key-up before it happens. A test that needs a new kind of step gets one here, with

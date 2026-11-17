@@ -102,6 +102,8 @@ modem/dmrsotto.py
 modem/dmrvoice.py
 # the HR_C6000 physical layer FSK (tests/test_uv380_c6phy.py): fsk24's packets, DMR's RRC
 modem/c6phy.py
+# M17 through the physical layer mode (tests/test_uv380_m17.py)
+modem/m17.py
 modem/fsk24.py
 sim/k6if/__init__.py
 sim/k6if/dmr.py
