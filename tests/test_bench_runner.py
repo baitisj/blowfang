@@ -25,7 +25,7 @@ def work(tmp_path, monkeypatch):
     w.mkdir()
     monkeypatch.setenv("BLOWFANG_WORK", str(w))
     monkeypatch.setenv("BLOWFANG_REPO", REPO)
-    (w / "k").write_bytes(KEY)
+    (w / "k").write_text(KEY.hex() + "\n")          # the format k6mod.new_key writes
     monkeypatch.setenv("BLOWFANG_KEY", str(w / "k"))
     monkeypatch.setenv("K6_CABLE", "/dev/k6cable")
     monkeypatch.setattr(br, "checkout_clean", lambda co: (True, "abc1234"))
@@ -352,3 +352,11 @@ def test_unit_and_install(work):
     out = subprocess.run([sys.executable, os.path.join(work, "bin", "bench_runner.py"), "status"],
                          capture_output=True, text=True, env=dict(os.environ))
     assert "NOT running" in out.stdout
+
+
+def test_key_file_is_hex_text(work):
+    assert br.read_key() == KEY
+    open(br.key_path(), "wb").write(KEY)          # raw bytes are not a key file
+    assert br.read_key() is None
+    p, h = stage(work, "k.bin", KEY)
+    assert "no module key" in problems(job("a", {"do": "k6.update", "image": p, "sha256": h, "commit": "8a78fb5"}))

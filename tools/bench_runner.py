@@ -267,9 +267,10 @@ def check_commit(step, what, problems, also=()):
 
 
 def read_key():
+    """the module key's 16 bytes: the file holds 32 hex digits (modem/k6mod.py new_key/read_key)"""
     try:
-        k = open(key_path(), "rb").read()
-    except OSError:
+        k = bytes.fromhex(open(key_path()).read().strip())
+    except (OSError, ValueError, UnicodeDecodeError):
         return None
     return k if len(k) == 16 else None
 
@@ -279,7 +280,7 @@ def check_image_keys(data, what, problems, want_keyed):
     else k6_install keys it: our key, or the placeholder it writes our key over"""
     key = read_key()
     if key is None:
-        problems.append(f"{what}: no 16-byte module key at {key_path()}")
+        problems.append(f"{what}: no module key (32 hex digits) at {key_path()}")
         return
     n_key, n_ph = data.count(key), data.count(PLACEHOLDER)
     if want_keyed:
@@ -1131,7 +1132,7 @@ def cmd_selftest(a):
     k = key or b"0123456789abcdef"
     if key is None:
         os.environ["BLOWFANG_KEY"] = os.path.join(stage, "k")
-        open(os.environ["BLOWFANG_KEY"], "wb").write(k)
+        open(os.environ["BLOWFANG_KEY"], "w").write(k.hex() + "\n")
     for name, job, want in sample_jobs(stage, co, k):
         probs = check_job(job)
         ok = (not probs) == want
