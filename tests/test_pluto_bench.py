@@ -168,3 +168,11 @@ def test_k6_upload_via_pluto_sends_with_pluto_bench(capsys):
     assert "pluto_bench.py send up1.wav --hz 440850000 --preemph --gain -52.0 --dev 6167" in out
     ku.key_and_play(a, "id.wav", "id")
     assert capsys.readouterr().out == ""
+
+
+def test_as_flag_sets_the_holder(monkeypatch):
+    """--as WHO = $K6_BENCH_AS=WHO without an env prefix (allow rules match whole commands)"""
+    monkeypatch.delenv("K6_BENCH_AS", raising=False)
+    monkeypatch.setattr(pl, "cmd_info", lambda a: None)
+    pl.main(["--as", "fsk24", "info"])
+    assert os.environ["K6_BENCH_AS"] == "fsk24"

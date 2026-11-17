@@ -393,3 +393,19 @@ def test_an_old_release_request_does_not_stop_a_new_reader(work):
     b.serial_release("font", wait=10)
     t.join(10)
     assert out == [0]
+
+
+# ---- --as and the Pluto launcher (Jeff 11-17: allow rules can't match an env prefix) ----
+
+def test_as_flag_sets_the_holder(work, monkeypatch):
+    monkeypatch.delenv("K6_BENCH_AS", raising=False)
+    b.main(["claim", "fsk24", "5", "test"])
+    b.main(["--as", "fsk24", "owner"])
+    assert os.environ["K6_BENCH_AS"] == "fsk24"
+    b.check_owner()                        # the holder passes with no env prefix
+
+
+def test_install_writes_a_pluto_launcher(work):
+    t = b.launcher_text("/home/x/blowfang")
+    assert "runpy.run_path" in t and "'/home/x/blowfang', 'tools', 'pluto_bench.py'" in t
+    compile(t, "pluto_bench.py", "exec")

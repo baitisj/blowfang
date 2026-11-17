@@ -10,7 +10,11 @@ they share. Every tool that keys the IC-7100 goes through here (docs/hamlet-perm
   python3 tools/k6_bench.py idkeeper           the CW ID keeper (the k6-idkeeper user unit runs it)
   python3 tools/k6_bench.py wavs               (re)make the ID and K6 reset WAVs (needs the checkout)
   python3 tools/k6_bench.py install [--unit]   copy this file and the reset trigger into
-                                               $BLOWFANG_WORK/bin, make the WAVs, write the unit
+                                               $BLOWFANG_WORK/bin, add a pluto_bench.py launcher
+                                               there, make the WAVs, write the unit
+  python3 tools/k6_bench.py --as WHO CMD ...   any command as bench holder WHO (the same as
+                                               $K6_BENCH_AS=WHO, without an env prefix, so one
+                                               allow rule on the command covers it)
   python3 tools/k6_bench.py stop [--freq HZ]   stop a running K6 module that listens for it
                                                (c/k6/mod/k6_stop.h): two PSK31 'AG7EW STOP' bursts
   python3 tools/k6_bench.py owner              who holds the bench, until when, doing what
@@ -787,6 +791,17 @@ WantedBy=default.target
 """
 
 
+def launcher_text(r):
+    """$BLOWFANG_WORK/bin/pluto_bench.py: runs the checkout's tools/pluto_bench.py (it needs the
+    checkout's modem package), so every session calls the Pluto tool by one fixed path"""
+    return (f"#!/usr/bin/env python3\n"
+            f"# written by k6_bench.py install: runs {r}/tools/pluto_bench.py (needs that checkout)\n"
+            f"import os, runpy, sys\n"
+            f"t = os.path.join({r!r}, 'tools', 'pluto_bench.py')\n"
+            f"sys.argv[0] = t\n"
+            f"runpy.run_path(t, run_name='__main__')\n")
+
+
 def cmd_install(a):
     b = path("bin")
     for d in (b, os.path.dirname(path("lock")), os.path.dirname(path("cwid_log"))):
@@ -795,6 +810,11 @@ def cmd_install(a):
         shutil.copy2(os.path.join(HERE, f), os.path.join(b, f))
         os.chmod(os.path.join(b, f), 0o755)
         print("installed", os.path.join(b, f))
+    lp = os.path.join(b, "pluto_bench.py")
+    with open(lp, "w") as fh:
+        fh.write(launcher_text(repo()))
+    os.chmod(lp, 0o755)
+    print("installed", lp, "(runs", os.path.join(repo(), "tools", "pluto_bench.py") + ")")
     make_wavs()
     if a.unit:
         d = os.path.expanduser("~/.config/systemd/user")
@@ -810,6 +830,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--rigctld", help="host:port (default rigctl's own, localhost:4532)")
     ap.add_argument("--device", default=SINK, help="the IC-7100's USB audio sink")
+    ap.add_argument("--as", dest="as_who", metavar="WHO",
+                    help="act as bench holder WHO (sets $K6_BENCH_AS for this command)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("paths").set_defaults(fn=cmd_paths)
     sub.add_parser("status").set_defaults(fn=cmd_status)
@@ -858,6 +880,8 @@ def main(argv=None):
     n.add_argument("--unit", action="store_true", help="also write ~/.config/systemd/user/k6-idkeeper.service")
     n.set_defaults(fn=cmd_install)
     a = ap.parse_args(argv)
+    if a.as_who:
+        os.environ["K6_BENCH_AS"] = a.as_who
     return a.fn(a)
 
 

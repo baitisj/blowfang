@@ -551,6 +551,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="tools/pluto_bench.py", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--uri", default=None, help=f"libiio URI (default $PLUTO_URI or {URI})")
+    ap.add_argument("--as", dest="as_who", metavar="WHO",
+                    help="act as bench holder WHO (sets $K6_BENCH_AS: no env prefix, so one allow rule fits)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("info")
     sub.add_parser("quiet")
@@ -600,6 +602,8 @@ def main(argv=None):
     c.add_argument("--ref-hz", type=int, default=None, help="the carrier's true frequency (default: the capture's)")
     c.add_argument("--save", action="store_true")
     a = ap.parse_args(argv)
+    if a.as_who:
+        os.environ["K6_BENCH_AS"] = a.as_who
     {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx, "steps": cmd_steps,
      "measure": cmd_measure, "cal": cmd_cal}[a.cmd](a)
 
