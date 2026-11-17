@@ -25,9 +25,24 @@ The K6 waits 2 s after the last packet and for a clear channel, keys up on 440.8
 tx_on takes about 1.4 s), sends the report twice, then its own CW ID. The tool sends the PC's CW
 ID at the end. Before the first key-up the K6 needs an image from 2026-11-06 on (API level 4).
 Never use ttyUSB2 (the K6's PTT line); this tool opens no serial port.
+
+The rate ladder (images with PR #138: CFG and ARQ reports carry rates=F12,F18,D24; docs/k6-fsk24.md,
+the 2400 plan): over a flat transmitter (--via pluto) the chunks can go as plain 2-FSK at 2400 baud
+(D/2400, a third more throughput; sweep 3: as sensitive as F/1800 or D/1200 to within 1 dB). Each
+such send is one transmission: an F/1800 control record (phy=D baud=2400, pre-emphasised as any
+F/1800 Pluto send) and then the chunks at D/2400, flat, 2.2 kHz peak. The K6 replies at F/1800 as
+before and falls back to F/1800 by itself (3 bad CRCs of 8, 10 s with no good packet after the
+switch, 30 s quiet), so every send asks again. --rate auto (the default) asks only once a report
+has shown the K6 takes D24, and keeps per-transmitter state in $BLOWFANG_WORK/state/k6-rate.json:
+a send at D/2400 that loses over 15 % of its chunks, or a report that says the K6 fell back on
+CRC or revert, sends the rest at F/1800 (the first such send led by a D/2400 record asking for
+F/1800, for a K6 still on D/2400) and marks the path F18; two clean uploads after that
+(under 5 % lost) mark it D24 again. The IC-7100's audio can't carry D/2400: --via ic7100 is
+always F/1800.
 SPDX-License-Identifier: MIT
 """
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -78,10 +93,151 @@ def switch_size(st, heard, fallback):
     return fallback and st is None and not heard
 
 
+# ---- the rate ladder (the sender's side) ----
+
+D24_PEAK_HZ = 2200.0      # D/2400's peak deviation from the Pluto (fsk24 sweeps; run 3 read 1.5-4.5 kHz)
+D24_GAP_S = 0.6           # carrier between the control record and the D/2400 chunks: the K6 leaves its
+                          # burst 250 ms after the last packet (NEXT_SYNC_WAIT_TICKS), then retunes
+STEP_DOWN_LOST = 0.15     # a D/2400 send losing more than this share of its chunks: F/1800 for the rest
+CLEAN_LOST = 0.05         # an upload losing less than this overall is clean
+CLEAN_TO_STEP_UP = 2      # clean uploads at F/1800 before the path goes back to D/2400
+
+
+def rate_path():
+    return os.path.join(bench.work(), "state", "k6-rate.json")
+
+
+def load_rates(path=None):
+    try:
+        d = json.load(open(path or rate_path()))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_rates(d, path=None):
+    p = path or rate_path()
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p + ".tmp", "w") as f:
+        json.dump(d, f, indent=1, sort_keys=True)
+    os.replace(p + ".tmp", p)
+
+
+def path_state(d, via):
+    """one transmitter's state: rung (where its next upload starts, if the K6 takes D24), clean
+    (clean uploads in a row at F/1800 since a step down), k6_d24 (a report showed rates ..D24)"""
+    return dict({"rung": "D24", "clean": 0, "k6_d24": False}, **d.get(via, {}))
+
+
+def start_rung(want, via, ps):
+    """the rung for a send: ic7100 always F18; --rate F18/D24 as asked; auto: D24 when the K6 is
+    known to take it and the path is marked D24"""
+    if via != "pluto":
+        if want == "D24":
+            raise SystemExit("--rate D24 needs a flat transmitter (--via pluto): the IC-7100's audio can't carry it")
+        return "F18"
+    if want in ("F18", "D24"):
+        return want
+    return "D24" if ps["k6_d24"] and ps["rung"] == "D24" else "F18"
+
+
+def lost_share(sent, have_before, have_after):
+    """the share of a send's chunks the K6 didn't get (0..1); None when nothing was sent"""
+    if not sent:
+        return None
+    return min(1.0, max(0.0, 1.0 - (have_after - have_before) / sent))
+
+
+def after_send(rung, st, lost, want):
+    """-> the rung for the next send in this upload, and why it changed (or None). A D/2400 send
+    with no report, over STEP_DOWN_LOST lost, or a K6 that fell back on crc/revert, steps down."""
+    if rung != "D24" or want == "D24":
+        return rung, None
+    if st is None:
+        return "F18", "no report after a D/2400 send"
+    if st.get("fell") in ("crc", "revert"):
+        return "F18", f"the K6 fell back from D/2400 ({st['fell']})"
+    if lost is not None and lost > STEP_DOWN_LOST:
+        return "F18", f"{lost:.0%} of the D/2400 chunks lost"
+    return rung, None
+
+
+def end_upload(ps, stepped_down, lost_total, done):
+    """the path's state after an upload: a step down marks it F18; clean uploads at F18 count up
+    and CLEAN_TO_STEP_UP of them mark it D24 again"""
+    ps = dict(ps)
+    if stepped_down:
+        ps.update(rung="F18", clean=0)
+    elif done and lost_total is not None and lost_total < CLEAN_LOST:
+        if ps["rung"] == "F18":
+            ps["clean"] += 1
+            if ps["clean"] >= CLEAN_TO_STEP_UP:
+                ps.update(rung="D24", clean=0)
+    else:
+        ps["clean"] = 0
+    return ps
+
+
+def preemph(x, fs):
+    """750 us pre-emphasis shelved at 3 kHz, 0 dB at 1 kHz: pluto_bench --preemph's filter (and
+    modem/fsk24.py's), here so the tool needs no modem import beyond k6mod (ci-radios scope)"""
+    from scipy import signal as sps
+    w1, w2 = 1.0 / 750e-6, 2 * np.pi * 3000.0
+    b, a = sps.bilinear([1.0 / w1, 1.0], [1.0 / w2, 1.0], fs)
+    _, h = sps.freqz(b, a, [1000.0], fs=fs)
+    return sps.lfilter(b, a, np.asarray(x, float)) / abs(h[0])
+
+
+def flat_track(parts, fs, gap_s=D24_GAP_S):
+    """[(audio, peak Hz, pre-emphasise)] joined with gap_s of carrier between -> (audio scaled to
+    +-1, full-scale deviation Hz) for pluto_bench send --dev without --preemph. Each part's audio
+    peak becomes its peak Hz; a pre-emphasised part gets it before emphasis, as pluto_bench
+    --preemph sends F/1800 (the 1 kHz level kept)"""
+    out = []
+    for x, peak, emph in parts:
+        if out:
+            out.append(np.zeros(int(gap_s * fs)))
+        y = np.asarray(x, float) / max(1e-9, np.max(np.abs(x))) * peak
+        out.append(preemph(y, fs) if emph else y)
+    hz = np.concatenate(out)
+    full = float(np.max(np.abs(hz))) * 1.02
+    return hz / full, full
+
+
+def d24_track(ctl_x, d24_x, fs, ctl_peak=None, d24_peak=D24_PEAK_HZ, gap_s=D24_GAP_S):
+    """an F/1800 control record (pre-emphasised, ctl_peak Hz before it) then gap_s of carrier then
+    D/2400 chunks (flat, d24_peak Hz)"""
+    return flat_track([(ctl_x, ctl_peak or PLUTO_PEAK_HZ, True), (d24_x, d24_peak, False)], fs, gap_s)
+
+
 PLUTO_PEAK_HZ = 3000.0   # the upload's peak deviation before pre-emphasis, whatever --level: the
                          # F/1800 ladders' (f1800.wav peaks at 0.81 under pluto_bench --dev 3700, so
                          # about 3 kHz; 11-16: 11-12/16 packets from TX gain -40 to -58). It was
                          # 1850 Hz until 11-17, 4 dB less, and on a weak path every upload chunk failed
+
+
+def d24_send(a, d, rnd, serial, xfer, todo, payload, back=False):
+    """one transmission with a rate change in it -> (WAV path, full-scale Hz for pluto_bench --dev,
+    modem.k6's note). back=False: the F/1800 control record asking for D/2400, the gap, the chunks
+    at D/2400. back=True: a D/2400 control record asking for F/1800 (a K6 that may still be on
+    D/2400 after a step down hears only that), the gap, the chunks at F/1800"""
+    import soundfile as sf
+    c = os.path.join(d, f"ctl{rnd}.wav")
+    m = os.path.join(d, f"chunks{rnd}.wav")
+    ctl_wav(a, c, payload, back)
+    note = mod_wav(a, m, serial, xfer, todo, payload, rung="F18" if back else "D24")
+    cx, cfs = sf.read(c)
+    mx, mfs = sf.read(m)
+    if cfs != mfs:
+        raise SystemExit(f"control record at {cfs} Hz, chunks at {mfs} Hz")
+    pk = getattr(a, "pluto_peak", PLUTO_PEAK_HZ)
+    if back:
+        x, full = flat_track([(cx, D24_PEAK_HZ, False), (mx, pk, True)], cfs)
+    else:
+        x, full = d24_track(cx, mx, cfs, pk)
+    w = os.path.join(d, f"up{rnd}.wav")
+    sf.write(w, x, cfs, subtype="PCM_16")
+    return w, full, note
 
 
 def rig(a, *args):
@@ -92,16 +248,18 @@ def rig(a, *args):
     return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout.strip()
 
 
-def key_and_play(a, path, kind="data", text=bench.ID_TEXT):
+def key_and_play(a, path, kind="data", text=bench.ID_TEXT, flat_dev=None):
     """the bench's keying sequence under its PTT lock (tools/k6_bench.py); kind "id" for a CW ID.
     --via pluto: the ADALM-Pluto sends it instead (tools/pluto_bench.py send, AG7EW in MCW first
-    and last, so a separate ID isn't needed); the IC-7100 only listens"""
+    and last, so a separate ID isn't needed); the IC-7100 only listens. flat_dev: a WAV already
+    shaped (d24_track): full scale = flat_dev Hz, no pre-emphasis added"""
     if a.via == "pluto":
         if kind == "id":
             return
+        dev = flat_dev or getattr(a, "pluto_peak", PLUTO_PEAK_HZ) / a.level
         cmd = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "pluto_bench.py"),
-               "send", path, "--hz", str(a.freq), "--preemph", "--gain", str(a.pluto_gain),
-               "--dev", f"{getattr(a, 'pluto_peak', PLUTO_PEAK_HZ) / a.level:.0f}"]
+               "send", path, "--hz", str(a.freq)] + ([] if flat_dev else ["--preemph"]) + \
+              ["--gain", str(a.pluto_gain), "--dev", f"{dev:.0f}"]
         if a.dry_run:
             print("dry run:", " ".join(cmd))
             return
@@ -111,9 +269,21 @@ def key_and_play(a, path, kind="data", text=bench.ID_TEXT):
                        f"{TOOL} {os.path.basename(path)}", text)
 
 
-def mod_wav(a, path, serial, xfer, only=None, payload=None):
+def ctl_wav(a, path, payload=None, back=False):
+    """a control record for a session (three copies), at the upload's packet size (the K6 hears
+    only the size it is set to): sent at F/1800 asking for D/2400, or (back) sent at D/2400 asking
+    for F/1800"""
+    phy, baud, want = ("D", "2400", ["phy=F"]) if back else ("F", "1800", ["phy=D", "baud=2400"])
+    cmd = [sys.executable, "-m", "modem.k6", "ctl", path, "--phy", phy, "--baud", baud,
+           "--payload", payload or a.payload, "--level", str(a.level), "--set"] + want
+    subprocess.run(cmd, check=True, capture_output=True, text=True,
+                   cwd=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
+
+def mod_wav(a, path, serial, xfer, only=None, payload=None, rung=None):
+    phy, baud = ("D", 2400) if rung == "D24" else (a.phy, a.baud)
     cmd = [sys.executable, "-m", "modem.k6", "mod", path, a.source, "--key-file", a.key_file,
-           "--serial", str(serial), "--xfer", str(xfer), "--phy", a.phy, "--baud", str(a.baud),
+           "--serial", str(serial), "--xfer", str(xfer), "--phy", phy, "--baud", str(baud),
            "--payload", payload or a.payload, "--level", str(a.level), "--arq", "--telemetry", str(a.telemetry)]
     if a.api_level:
         cmd += ["--api-level", str(a.api_level)]
@@ -224,8 +394,18 @@ def main():
     ap.add_argument("--pluto-peak", type=float, default=PLUTO_PEAK_HZ,
                     help="--via pluto: peak deviation before pre-emphasis, Hz (default 3000, as the F/1800"
                          " ladders that decode)")
+    ap.add_argument("--rate", choices=("auto", "F18", "D24"), default="auto",
+                    help="--via pluto: the chunks' rate (auto: D/2400 once a report showed the K6 takes"
+                         " it and this transmitter's state says D24, see above; F18 never asks; D24 always"
+                         " asks). --via ic7100 is always F/1800")
+    ap.add_argument("--rate-state", metavar="JSON", help="the rate ladder's state file (default $BLOWFANG_WORK/state/k6-rate.json)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    ladder = a.phy == "F" and a.baud == 1800     # the ladder starts from F/1800, as the K6 boots
+    want = a.rate if ladder else "F18"
+    rates = load_rates(a.rate_state)
+    ps = path_state(rates, a.via)
+    rung = start_rung(want, a.via, ps)
     if a.freq != 440_850_000:
         sys.exit("the K6 answers on 440.850 only")
     f = rig(a, "f")
@@ -238,30 +418,56 @@ def main():
     count = chunks_of(a, payload)
     todo = list(range(count))
     heard = False                    # a report has come for this chunk size
+    have = 0                         # chunks the K6 had at its last report for this transfer
+    sent_total = got_total = 0       # chunks sent, and how many of them the K6 newly had
+    stepped_down = done = maybe_d24 = False
     with tempfile.TemporaryDirectory() as d:
         rec = Recorder(a, d)
         try:
             for rnd in range(1, a.rounds + 1):
-                w = os.path.join(d, f"up{rnd}.wav")
+                if rung == "D24" or maybe_d24:
+                    w, full, note = d24_send(a, d, rnd, serial, xfer, todo, payload, back=rung != "D24")
+                else:
+                    w, full = os.path.join(d, f"up{rnd}.wav"), None
+                    note = mod_wav(a, w, serial, xfer, todo, payload)
                 print(f"{time.strftime('%H:%M:%S')} send {rnd}: {len(todo)} of {count} {payload} chunks "
-                      f"(serial {serial}, xfer {xfer}); {mod_wav(a, w, serial, xfer, todo, payload)}",
-                      flush=True)
-                key_and_play(a, w)
+                      f"at {'D/2400' if rung == 'D24' else f'{a.phy}/{a.baud:g}'}"
+                      f"{' after a D/2400 record asking for F/1800' if maybe_d24 and rung != 'D24' else ''} "
+                      f"(serial {serial}, xfer {xfer}); {note}", flush=True)
+                sent_d24 = rung == "D24"
+                key_and_play(a, w, flat_dev=full)
                 since = rec.samples()
                 print(f"{time.strftime('%H:%M:%S')} listening for the K6's report", flush=True)
                 st, text, _ = listen(a, rec, since, xfer, 25.0 + a.run_s)
                 step, arg = next_step(st, count, xfer)
                 if st is not None:
                     print(f"{time.strftime('%H:%M:%S')} K6: {st['state']}, {st['have']}/{st['count']} "
-                          f"chunks, r={st['r']} ({k6mod.RESULTS.get(st['r'], '?')})", flush=True)
+                          f"chunks, r={st['r']} ({k6mod.RESULTS.get(st['r'], '?')}), rates {st.get('rates')}"
+                          f" on {st.get('rung')}" + (f", fell back ({st['fell']})" if st.get("fell") else ""),
+                          flush=True)
+                    if st.get("rates"):
+                        ps["k6_d24"] = "D24" in st["rates"]
                 else:
                     print(f"{time.strftime('%H:%M:%S')} no report heard", flush=True)
-                if step == "send" and switch_size(st, heard, a.fallback):
+                have_after = st["have"] if st is not None and st.get("xfer") == xfer else have
+                lost = lost_share(len(todo), have, have_after)
+                sent_total += len(todo)
+                got_total += max(0, have_after - have)
+                have = have_after
+                rung, why = after_send(rung, st, lost, want)
+                # after a D/2400 send the K6 may still be on D/2400 (its report says; no report:
+                # unknown) and then hears no F/1800 record: the next F/1800 send says so at D/2400
+                maybe_d24 = sent_d24 and rung != "D24" and (st is None or st.get("rung") != "F18")
+                if why:
+                    stepped_down = True
+                    print(f"{time.strftime('%H:%M:%S')} {why}: the rest goes at F/1800", flush=True)
+                if step == "send" and not why and switch_size(st, heard, a.fallback):
                     payload = other_size(payload)
                     serial = max(int(time.time()), serial + 1)   # a new transfer: the K6 takes a newer serial
                     xfer = serial & 0xFF
                     count = chunks_of(a, payload)
                     arg = list(range(count))
+                    have = 0
                     print(f"{time.strftime('%H:%M:%S')} no report after a whole send: the K6 may be "
                           f"set to {payload} packets, so the next send is {count} {payload} chunks", flush=True)
                 heard = heard or st is not None
@@ -271,11 +477,18 @@ def main():
                 print(arg)
                 if text:
                     print("K6 telemetry:\n" + text, end="" if text.endswith("\n") else "\n")
+                done = step == "done"
                 break
             else:
                 print(f"gave up after {a.rounds} sends")
         finally:
             rec.stop()
+            if a.via == "pluto" and not a.dry_run:
+                lost_total = 1 - got_total / sent_total if sent_total else None
+                rates[a.via] = end_upload(ps, stepped_down, lost_total, done)
+                save_rates(rates, a.rate_state)
+                print(f"rate ladder ({a.via}): {rates[a.via]}"
+                      + (f", {lost_total:.0%} of {sent_total} chunks sent were lost" if lost_total is not None else ""))
             if a.keep:
                 import shutil
                 shutil.copy(rec.path, a.keep)

@@ -422,5 +422,24 @@ IC-7100's audio). fsk24rx, which read 234 of 234, polls the FIFO and reads 4 wor
 instead. If the image's reads slip at 2400, `--reg 5e=0203` switches it to interrupt reads (as
 F/1800 uses) for 60 s without a flash; the plan's step 2 module would settle it first. The
 thresholds (3 of 8, 10 s, 30 s) are the plan's defaults until the sensitivity sweep (step 1)
-measures the real margin. The sender's side (`--via pluto` for uploads, the per-path rate state
-and its step-up and step-down policy) is the plan's step 4, a host tools PR.
+measures the real margin. The image went on the radio with the backlight batch (11-17 03:27Z,
+main 40a2ec9); its CFG line's `rates=` is still to be read on the bench.
+
+**The sender's side (plan step 4; Jeff 11-17 04:27Z agreed the plan's answers).** The Pluto sends
+D/2400 now; the UV-380 and RT-950 as their transmit work lands; K6 to K6 only if that becomes a
+feature. K6 replies stay on F/1800. `tools/k6_upload.py --via pluto --rate auto` (the default):
+
+- Each D/2400 send is one transmission: the F/1800 control record (`phy=D baud=2400`, three
+  copies at the upload's packet size, pre-emphasised at 3 kHz peak as any F/1800 Pluto send),
+  0.6 s of carrier (the K6 leaves its burst 250 ms after the last packet, then retunes), then the
+  chunks at D/2400, flat, 2.2 kHz peak. The K6 falls back by itself, so every send asks again.
+- It asks only once a report has shown `rates=..D24`, and keeps per-transmitter state in
+  `$BLOWFANG_WORK/state/k6-rate.json` (`rung`, `clean`, `k6_d24`).
+- Step down (the rest of that upload at F/1800, the path marked F18): a D/2400 send that brings
+  no report, loses over 15 % of its chunks, or a report saying the K6 fell back on `crc` or
+  `revert`. A silence after a D/2400 send steps the rate down before the packet size is switched.
+  The next send after a step down opens with a D/2400 control record asking for F/1800 (unless
+  the last report said the K6 is on F/1800 already): a K6 still on D/2400 hears only that.
+- Step up: two clean uploads (under 5 % lost) at F/1800 mark the path D24 again. Sweep 3 showed
+  a slower rate buys at most 1 dB, so the ladder is about timing faults, not range.
+- `--rate F18` never asks, `--rate D24` always does (Pluto only); `--via ic7100` is F/1800.
