@@ -179,3 +179,32 @@ def test_as_flag_sets_the_holder(monkeypatch):
     monkeypatch.setattr(pl, "cmd_info", lambda a: None)
     pl.main(["--as", "fsk24", "info"])
     assert os.environ["K6_BENCH_AS"] == "fsk24"
+
+
+def test_a_pluto_send_does_not_wake_the_ic7100_keeper(tmp_path, monkeypatch):
+    """the Pluto IDs itself (MCW first and last): its sends go in the logs but not in last_tx /
+    last_id, so the keeper never keys the IC-7100 for a periodic ID after one (11-17)"""
+    import subprocess as sp
+    import time
+    import k6_bench as kb
+    monkeypatch.setenv("BLOWFANG_WORK", str(tmp_path))
+    monkeypatch.delenv("K6_BENCH_AS", raising=False)
+
+    class P:
+        def __init__(self, *a, **k):
+            self.stdin = open(os.devnull, "wb")
+
+        def wait(self, timeout=None):
+            return 0
+
+        def poll(self):
+            return 0
+
+    monkeypatch.setattr(sp, "Popen", P)
+    monkeypatch.setattr(pl, "tx_power", lambda on, uri=None: None)
+    pl.stream(np.zeros(4800), uri="ip:192.168.2.1", rf=True, what="test", hz=440_850_000)
+    assert kb._read("last_tx") == 0.0 and kb._read("last_id") == 0.0
+    for later in (0, 300, 540, 600, 900):
+        assert kb.keeper_due(time.time() + later, kb._read("last_tx"), kb._read("last_id")) is None
+    assert "self-IDed" in open(kb.path("txlog")).read()
+    assert "MCW" in open(kb.path("cwid_log")).read()

@@ -167,6 +167,15 @@ def note_id(t0, t1, why, text=ID_TEXT):
     _append("cwid_log", f"{utc(t0)} UTC  CW ID '{text}' ({why}), {t1 - t0:.1f} s")
 
 
+def note_self_ided(t0, t1, what, text=ID_TEXT):
+    """a transmission that IDs itself first and last (the Pluto's MCW): logged in txlog and the
+    CW ID log, but NOT in last_tx / last_id. Those are the IC-7100 keeper's state, and a Pluto
+    send there made the keeper key the IC-7100 for a "9-min periodic" ID 9 min later (found
+    11-17, every Pluto send all evening), even while Jeff had the IC-7100 for other work."""
+    _append("txlog", f"{t0:.3f} {t1:.3f} {what} [self-IDed, not an IC-7100 session]")
+    _append("cwid_log", f"{utc(t0)} UTC  MCW '{text}' first and last ({what}), {t1 - t0:.1f} s")
+
+
 # ---- the bench owner ----
 #
 # A claim holds the whole bench (no frequency, as before: nobody else keys anything) or one 70 cm
