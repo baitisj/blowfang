@@ -10,7 +10,7 @@ everything on the same frequency on the bench." So each kind of work gets its ow
 | Channel | Who | What |
 | --- | --- | --- |
 | 440.850 MHz | K6 work | the K6 link: module uploads, fsk24, pager, voice tests; the K6's own TX (CW ID AG7EW) |
-| UV-380 channel, picked by the survey below | UV-380 work that doesn't involve the K6 | UV-380 to Pluto or IC-7100 (DMR, c6phy, FSK, mic tests) |
+| 441.850 MHz (surveyed below) | UV-380 work that doesn't involve the K6 | UV-380 to Pluto or IC-7100 (DMR, c6phy, FSK, mic tests) |
 | off 70 cm (2.4 GHz park) | the Pluto's receiver when idle | its RX LO leaks out of the RX port |
 | TV pilots (470-600 MHz), NOAA 162 MHz | frequency reference captures | receive only |
 
@@ -42,4 +42,10 @@ A receive-only Pluto survey (11-17) of 440.000-441.900, 445.800-446.300 and 433.
 - outside 446.000 ±25 kHz (calling),
 - outside 432.0-432.3 MHz (weak signal) and 435-438 MHz (satellites).
 
-The result and the chosen channel go below.
+Result (11-17 02:3x-02:47Z, stub antenna): no 12.5 kHz channel in any window rose more than 10 dB
+over its floor, and the clear channels sat within about 1 dB of each other. Channels at the edges
+of each 240 kHz capture were left out (the Pluto's filter makes them read falsely quiet).
+Candidates meeting the rules: 441.725, 441.7375, 441.850, 441.8625, 441.875 MHz.
+
+**Chosen: 441.850 MHz** for UV-380 work, 1 MHz above the K6's channel. Recheck it with a longer
+listen on a better antenna before the UV-380 image moves there.
