@@ -255,8 +255,8 @@ def stream(track, rate=RATE, uri=None, rf=True, what="pluto", level=None, if_hz=
                 p.kill()
             t1 = time.time()
             if rf:
-                kb.note_tx(t0, t1, f"{what} (Pluto IQ, {secs:.1f} s)")
-                kb.note_id(t0, t1, f"{what}: MCW {ID_TEXT} first and last")
+                # its own MCW ID first and last: logged, but kept out of the IC-7100 keeper's state
+                kb.note_self_ided(t0, t1, f"{what} (Pluto IQ, {secs:.1f} s)", ID_TEXT)
     return secs, t1 - t0
 
 
