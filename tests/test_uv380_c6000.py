@@ -143,9 +143,19 @@ def test_dmrtx_is_dry_unless_a_wrapper_says_otherwise():
     keyed = src.index("if (!TX_DRY) {\n        if (api->level < 4u) {")
     assert keyed < src.index("return -1;", keyed) < src.index("api->tx_tone(")
     live = sorted(f for f in os.listdir(MOD) if "#define TX_DRY 0" in open(os.path.join(MOD, f)).read())
-    assert live == ["c6dmrtx_live.c", "c6dmrtx_msg.c", "c6dvtx_live.c", "c6dvtx_msg.c", "c6dvtx_pn.c",
-                    "c6phytx_live.c", "c6phytx_live1200.c"]
-    # c6dvtx's: tests/test_uv380_dmrvoice.py
+    assert live == [
+        "c6dmrtx_live.c",
+        "c6dmrtx_msg.c",
+        "c6dvtx_live.c",
+        "c6dvtx_msg.c",
+        "c6dvtx_pn.c",
+        "c6m17tx_bert.c",
+        "c6m17tx_sms.c",
+        "c6m17tx_voice.c",
+        "c6phytx_live.c",
+        "c6phytx_live1200.c",
+    ]
+    # c6dvtx's: tests/test_uv380_dmrvoice.py; c6m17tx's: tests/test_uv380_m17.py
     live = [f for f in live if f.startswith("c6dmrtx")]      # c6phytx's: tests/test_uv380_c6phy.py
     from modem import uv380mod
     for f in live:
