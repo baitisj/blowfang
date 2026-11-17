@@ -89,8 +89,13 @@ keep power low and check it on the bench before any on-air use.
 mod, which is the block for K6 to UV-380. In this image, PAGER mode receives while it's idle, and
 `i2sprobe.c` runs a pass every 5 s. Each pass writes its lines to the radio's USB serial port.
 PTT and # still work: the probe stands aside for them. On the radio, this image boots straight
-into PAGER mode on 440.850 MHz, so a run needs no menus (PTT there sends the pager message: don't
-press it unless that's the test).
+into PAGER mode on 441.850 MHz, the UV-380's own bench channel (Jeff 11-17: hamlet's channel plan
+gives the K6 440.850 and the UV-380 441.850, so one radio's tests can't step on the other's), so a
+run needs no menus (PTT there sends the pager message: don't press it unless that's the test).
+`freq 440850` over USB moves it to the K6's channel for a send to the K6, and `freq 441850` back;
+those two are the only channels it sends on, and the only ones `freq` takes. Switch the radio off,
+or move it back to 441.850, after a run on 440.850: left listening there it broke the K6's tests
+(11-17).
 
 **DMA buffers.** On this radio OpenRTX's linker script puts `.bss` in the 64 KB CCM RAM, which no
 DMA can reach. Every buffer a DMA stream reads or writes (the probe's captures, its PC3 input, and
@@ -162,12 +167,12 @@ plays in place of the stored one until the next recording or a power-off. A modu
 `enc_end`; the encoder runs in a thread of its own (16 KB stack: its deepest calls take about
 8 KB, more than a module's), handed 320 samples at a time. Its state (about 24 KB) comes from a static arena in CCM (`sotto8k/sotto8k_enc_arena.h`), not the heap: on 11-14 the heap's 40 KB left after the module arena couldn't take both it and the thread's stack, and the radio reset as usbenc started. `msg` gives the message back,
 `preview` presses #, and `tx_request` sends it as a PTT press would, once the module has ended
-and only on 440.850 MHz. `mod/usbenc.c` records audio sent over USB
+and only on 441.850 or 440.850 MHz (the bench channels). `mod/usbenc.c` records audio sent over USB
 (`tools/uv380_i2sprobe.py inject /dev/ttyACM0 SPEECH.raw --module
 firmware/uv380-openrtx/mod/usbenc.c`) and dumps the superframes, to check the radio's encoder
 against `sotto_enc -1200`. Sends a module asks for go at 1 W whatever the channel says. `tx_mic(ms)` is the
 keyed mic test (Jeff's pick, 11-13): up to 5 s of FM carrying the microphone as FM mode sends it
-(MIC_PWR on, the C6000's mic input), at 1 W on 440.850 MHz only, then the Morse ident, while the
+(MIC_PWR on, the C6000's mic input), at 1 W on 441.850 or 440.850 MHz only, then the Morse ident, while the
 module runs on; `mod/mictx.c` captures I2S3 through it with the route left as the firmware sets
 it (`rx_start_as_is`), to see whether the mic reaches the MCU while keyed. A level 1 image refuses
 level 2 modules (`r=-3`). The image for this
@@ -180,7 +185,7 @@ decodes and plays as it arrives, and back; the macro menu and the main screen sh
 (or a module's `api->probe()`), `phy fsk` and `phy rng` do the same and answer with the one in use.
 The plain build always sends FSK.
 
-**FUNC: hold to record, let go to send (probe image).** In PAGER mode on 440.850 MHz, holding FUNC
+**FUNC: hold to record, let go to send (probe image).** In PAGER mode on 441.850 or 440.850 MHz, holding FUNC
 (the black side button above PTT) records the mic as sotto 1200 from the C6000's codec input
 (I2S3, `pager_rec.c`, gain 5), LED orange, WITHOUT transmitting: only the C6000 runs its analog
 transmit with the mic selected (E0 c1 ... 60 80, the half of OpenRTX's startAnalogTx that leaves
@@ -219,10 +224,11 @@ turns the line in's pre-emphasis off or on (default off since 11-16), and `trim 
 to the transmit frequency; `mark N` and `space N` set PHY F's tones (800-2600 Hz, 0: 1200 and
 1800), `zero 1|2` how power 0 transmits (below), and `power N` the channel's transmit power in mW
 (0, 1000, 2500 or 5000, the steps of macro key 6; Jeff 11-16: so hamlet sets it without a key
-press), and `gain N` the C6000's line-in gain while sending (-12 to 15 dB, default 6; below).
-Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=... zero=... pwr=... gain=...`
-(pwr: the channel's power in mW, read back), and `tune` alone only answers. `power` changes
-`state.channel` and asks the UI thread (`blowfang_syncRtx` in `threads.c`) to send it to the radio,
+press), `gain N` the C6000's line-in gain while sending (-12 to 15 dB, default 6; below), and
+`freq N` the channel in kHz, receive and transmit (441850, where it boots, or 440850 for sends to
+the K6; nothing else). Each answers `tune lvl=... fs=... emph=... trim=... mark=... space=... zero=...
+pwr=... gain=... freq=...` (pwr: the channel's power in mW, freq: its frequency in kHz, read
+back), and `tune` alone only answers. `power` and `freq` change `state.channel` and ask the UI thread (`blowfang_syncRtx` in `threads.c`) to send it to the radio,
 the way macro key 6 does.
 
 **Zero power (all images).** Macro key 6 now cycles the channel's power 1, 2.5, 5, 0 W. At 0 W
@@ -255,7 +261,7 @@ carrier before its lead-in (`SETTLE_MS`, was 60). And `emph` defaults to off, as
 K6 decodes the IC-7100's flat FM-D.
 
 **tx_tone (level 3).** `api->tx_tone(ms, hz)` keys the radio like `tx_mic`, but with a tone from
-the MCU through the line in, the path every send's audio takes (1 W, 440.850 MHz only), while the
+the MCU through the line in, the path every send's audio takes (1 W, 441.850 or 440.850 MHz only), while the
 module runs on.
 
 **Transmit guard and ident first (level 4, 11-16).** A RAM module run once hung the radio keyed:

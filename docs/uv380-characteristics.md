@@ -145,6 +145,11 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   PR #135 makes 5745 the default. It drifted about 2 kHz (4.7 ppm) since 11-14, or the two methods
   differ: re-check it now and then.
   Receive is probably low by the same amount (same reference), but it works and is left alone.
+  All of this was measured on 440.850. Since the 11-17 channel plan the probe image boots on
+  441.850 (the UV-380's bench channel; `freq 440850` for sends to the K6): 1 MHz up the offset
+  should scale by about 0.2%, i.e. +13 Hz, but read the carrier on 441.850 on the first run there.
+  The C6000 modules (c6dmrtx, c6phytx) still take their calibration at 440.850 (TX_FKHZ), 1 MHz
+  away on the same table.
 - C6000 PHYSICAL LAYER MODE (M, 11-16 runs 1-2, docs/uv380-c6phy.md, 0 W into the Pluto): keys
   and runs cleanly (every 30 ms slot answered on time, carrier continuous, registers restored). Its
   FSK sits +6.65 to +6.70 kHz from 440.850 with trim 5745, the FM ident just before it +0.6 kHz
