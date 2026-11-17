@@ -58,6 +58,8 @@
 #define CHECK_US 12000          /* a settled read */
 #endif
 #define SUB_HZ 20000u           /* a wide bin: one quick read this far apart across it */
+#define NSUB 64                 /* ... up to this many reads (no bin of the spans to +-5 MHz has more) */
+#define NWIDE 24                /* a bin wider than that (+-10 and +-25 MHz only): this many, spread */
 #define SQ_DB 10                /* squelch: settled dB over the settled floor */
 #define HYST_DB 3
 #define HANG_MS 1500
@@ -128,15 +130,19 @@ static const int8_t GAIN_DB[] = {
     -33,
     -45};
 #define NGAINS 8
-/* the span: the last bin's offset from the middle, x 2.5 kHz (100 kHz to 5 MHz) */
+/* the span: the last bin's offset from the middle, x 2.5 kHz (100 kHz to 25 MHz; +-10 and
+   +-25 MHz since 2026-11-17, for a custom range as wide as the UHF TV band: Jeff wanted to see
+   which TV pilots hamlet hears, to calibrate the K6's crystal against them) */
 static const uint16_t SPANS[] = {
     40,
     100,
     200,
     400,
     1000,
-    2000};
-#define NSPANS 6
+    2000,
+    4000,
+    10000};
+#define NSPANS 8
 /* the scale's curve for each span (Jeff 2026-11-10: log all the way, +-20 kHz kept in place):
    off(j) = a (r^j - 1) in L_HZ units, each step r times the last, worked in fixed point as
    g += g * k >> 12 from g = 256 a; k and 256 a found offline so that bin C lands exactly on
@@ -147,14 +153,18 @@ static const uint16_t LK[] = {
     520,
     688,
     906,
-    1070};
+    1070,
+    1237,
+    1463};
 static const uint16_t LG[] = {
     60201,
     11442,
     6458,
     4196,
     2620,
-    1925};
+    1925,
+    1435,
+    991};
 /* the axis's ticks, kHz from the middle, as on log paper; 20 (the lens's edge), 100 and 1000 major */
 static const uint16_t TICKS[] = {
     5,
@@ -181,7 +191,9 @@ static const uint16_t TICKS[] = {
     2000,
     3000,
     4000,
-    5000};
+    5000,
+    10000,
+    20000};
 /* a caret's fall, ms per 1/8 px (A/B cycles it): the whole height in about 15 s, 1, 5, 20 min */
 static const uint16_t FALL_MS[] = {
     100,
@@ -346,7 +358,8 @@ static void lens(sf_t *s) {
   uint32_t g0 = LG[s->si], g = g0, k = LK[s->si], j, v;
   s->off[0] = 0;
   for (j = 1; j <= C; j++) {
-    g += (g * k) >> 12;
+    g += (g >> 12) * k + (((g & 4095u) * k) >> 12);   /* g * k >> 12 without overflowing 32 bits
+                                                         (g reaches 12.8 M at +-25 MHz) */
     v = (g - g0 + 128) >> 8;
     s->off[j] = (uint16_t)(v > s->off[j - 1] ? v : s->off[j - 1] + 1u);
   }
@@ -363,6 +376,11 @@ static uint32_t spu(sf_t *s, int i) {
 
 /* the step around bin i (Hz) */
 static uint32_t sp(sf_t *s, int i) { return L_HZ * spu(s, i); }
+
+/* the spacing of a wide bin's quick reads across w Hz: SUB_HZ (the wide filter's width), or for
+   a bin wider than NSUB of those (only at +-10 and +-25 MHz) NWIDE reads spread across it: a
+   narrow carrier between two can be missed there, a TV channel (6 MHz) can't */
+static uint32_t sub_hz(uint32_t w) { return w > NSUB * SUB_HZ ? udiv(w, NWIDE) : SUB_HZ; }
 
 /* the frequencies bin i stands for: halfway to its neighbours */
 static void cov(sf_t *s, int i, uint32_t *lo, uint32_t *hi) {
@@ -495,7 +513,8 @@ static void pm_push(sf_t *s) {
        hundreds of kHz at +-2.5 MHz, gave 463.950 to the caret of 463.6375 next to it: the side
        keys passed it, Jeff 2026-11-11) */
     w = spu(s, i);
-    if (w > SUB_HZ / L_HZ) w = SUB_HZ / L_HZ;
+    t = udiv(sub_hz(L_HZ * w), L_HZ);
+    if (w > t) w = t;
     for (k = 0; k < s->npm; k++) {
       e = &s->pm[k];
       if (e->h < lo->h) lo = e;
@@ -670,9 +689,10 @@ static int conf_now(sf_t *s, int r, int o, uint32_t f) {
 /* bin i's quick level: the loudest of reads SUB_HZ apart across its range (the wide filter's
    width: a coarse bin far out would miss a carrier between two bins), and where it was */
 static void sweep_bin(sf_t *s, int i) {
-  uint32_t lo, hi, f, at = s->hz[i];
+  uint32_t lo, hi, f, at = s->hz[i], sh;
   int r, o = s->lvl[i], v;
   cov(s, i, &lo, &hi);
+  sh = sub_hz(hi - lo);
   s->cf[i] = 0;
   if (hi - lo <= SUB_HZ) {                 /* the lens and bins up to 20 kHz wide: one read */
     r = read_at(s, i, SETTLE_US);
@@ -683,7 +703,7 @@ static void sweep_bin(sf_t *s, int i) {
       s->cf[i] = (uint8_t)(v < 1 ? 1 : v);
     }
   } else {
-    for (r = -999, f = lo + SUB_HZ / 2; f < hi && !s->qk; f += SUB_HZ)
+    for (r = -999, f = lo + sh / 2; f < hi && !s->qk; f += sh)
       if (f >= s->bd->lo && f <= s->bd->hi && (v = read_hz(s, f, SETTLE_US)) > r) {
         r = v, at = f;
         /* the same for a wide bin: at its first sub-read that rises to a peak, once a bin */
