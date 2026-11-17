@@ -893,12 +893,18 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 argv, cwd, bg = command(job, step, rd)
                 if bg:
                     ctx.say("$ (background) " + " ".join(argv))
-                    BACKGROUND.append(subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                                                       stdout=open(os.path.join(rd, "logger.out"), "a"),
-                                                       stderr=subprocess.STDOUT, start_new_session=True))
+                    out = "logger.out" if step["do"] == "logger" else step["do"] + ".out"
+                    proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                                            stdout=open(os.path.join(rd, out), "a"),
+                                            stderr=subprocess.STDOUT, start_new_session=True)
+                    BACKGROUND.append(proc)
                     time.sleep(2.0)
-                    o = kb.serial_owner()
-                    rc, why = (0, None) if o and o.get("who") == job["who"] else (1, "the logger did not start")
+                    if step["do"] == "logger":     # the logger holds the K6 cable for the job
+                        o = kb.serial_owner()
+                        rc, why = (0, None) if o and o.get("who") == job["who"] else (1, "the logger did not start")
+                    else:                           # a Pluto rx: still capturing (or done cleanly)
+                        r = proc.poll()
+                        rc, why = (0, None) if r in (None, 0) else (1, f"the background {step['do']} exited {r}")
                 else:
                     rc, why = run_proc(ctx, argv, cwd, timeout, env)
         except Refused as e:
