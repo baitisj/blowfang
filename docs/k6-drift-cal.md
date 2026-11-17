@@ -114,7 +114,33 @@ way), and puts the pager's own filter back at the end (it used to leave it narro
 residual of -25.8 Hz, and refcal said `ppb=+251 n=1 k=+1 t=30039 dry`. The Pluto read the pilots
 +0.317 ppm (slow) just before, so **the K6's crystal was -0.066 ppm** (29 Hz low at 440.850). The
 module started 0.2 s before the upload audio ended and took 9.4 s; the 60 s tail had 48 s to spare.
-The off-air run's 3.1 kHz at 470 MHz was the narrow filter too, not the crystal.. A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
+The off-air run's 3.1 kHz at 470 MHz was the narrow filter too, not the crystal.
+
+### Overnight relay (2026-11-17 09:10-17:25Z, every 45 min, 12 of 12)
+
+| UTC | refcal ppb | Pluto ppm | K6 ppm | t | v |
+|---|---|---|---|---|---|
+| 09:10 | -1750 | +0.061 | -1.811 | 30044 | 24108 |
+| 09:55 | -1400 | +0.347 | -1.747 | 29976 | 24108 |
+| 10:40 | -1761 | -0.006 | -1.755 | 30082 | 24099 |
+| 11:25 | -2105 | -0.039 | -2.066 | 30119 | 24109 |
+| 12:10 | -2024 | -0.022 | -2.002 | 30134 | 24112 |
+| 12:55 | -1763 | +0.196 | -1.959 | 30122 | 24101 |
+| 13:40 | -1748 | +0.139 | -1.887 | 30115 | 24105 |
+| 14:25 | -1331 | +0.275 | -1.606 | 30123 | 24103 |
+| 15:10 | -1329 | +0.310 | -1.639 | 30118 | 24111 |
+| 15:55 | -2002 | +0.137 | -2.139 | 30120 | 24115 |
+| 16:40 | -1744 | +0.122 | -1.866 | 30096 | 24107 |
+| 17:25 | -1743 | +0.213 | -1.956 | 30107 | 24109 |
+
+The K6's crystal: -1.87 +- 0.17 ppm (median -1.88), about 824 Hz low at 440.850. refcal's own
+ppb (sd 0.26 ppm) followed the Pluto's wander (r 0.84); taking off the Pluto's pilot reading
+brings the spread to 0.17. t moved only 158 counts and the trend with it is weak (r -0.33), so
+this night gives no drift table. A single read scatters about +-0.25 ppm at a steady t:
+average 3-4 reads per point. The 06:18Z read (-0.066 ppm, IF spread 150-240 Hz against 450-770
+overnight) is 1.8 ppm off the night at the same t and is still unexplained; the UV-380 came on
+(441.850, receiving) at 08:47Z in between. Next check: a power-cycle and a relay read straight
+after. Hamlet files: ~/blowfang-work/runs/relay-overnight-20261117/ (summary.csv, loop.sh).. A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
 refcal's ppb less the Pluto's (+ slow) ppb.
 
 Tests: tests/test_k6_refcal.py (emulated M0, gp0dma's DMA model, a receiver that follows the
