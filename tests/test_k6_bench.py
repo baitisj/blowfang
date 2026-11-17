@@ -2,6 +2,7 @@
 against a fake rig (no rigctld, no sound card, no serial port)."""
 import fcntl
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -319,6 +320,61 @@ def test_status_and_owner_say_who_holds_it(work, capsys, monkeypatch):
     out = capsys.readouterr().out
     assert "explore until" in out and ": DMR run" in out
     assert "you are surf" in out and "bench owner   explore" in out
+
+
+def test_channel_claims_share_the_bench(work, monkeypatch):
+    k6, uv = 440_850_000, 441_000_000
+    b.claim("fsk24", 30, "sweep", hz=k6)
+    b.claim("c6phy", 30, "UV-380 tests", hz=uv)              # 150 kHz away: both hold
+    assert {c["who"]: c["hz"] for c in b.claims()} == {"fsk24": k6, "c6phy": uv}
+    with pytest.raises(SystemExit, match="440.850 MHz is held by fsk24"):
+        b.claim("surf", 10, hz=440_900_000)                  # inside the 100 kHz guard
+    with pytest.raises(SystemExit, match="every channel free"):
+        b.claim("surf", 10)                                  # the whole bench: not while channels are held
+    b.check_owner("fsk24", k6)
+    b.check_owner("c6phy", uv)
+    b.check_owner("surf", 445_950_000)                       # a free channel: anyone may key there
+    with pytest.raises(SystemExit, match="you are c6phy"):
+        b.check_owner("c6phy", k6)
+    with pytest.raises(SystemExit, match="held by"):
+        b.check_owner("fsk24")                               # frequency unknown: refused
+    monkeypatch.setenv("K6_BENCH_AS", "c6phy")
+    r = Rig(hz=k6)
+    with pytest.raises(SystemExit, match="440.850 MHz is held by fsk24"):
+        b.key_and_play(r, "x.wav")                           # the rig's own frequency is checked
+    assert "T 1" not in r.calls
+    b.key_and_play(Rig(hz=uv), "x.wav")
+    b.claim("c6phy", 60, "moved", hz=441_100_000)            # a holder moves its own claim
+    assert [c["hz"] for c in b.claims() if c["who"] == "c6phy"] == [441_100_000]
+    assert b.release("c6phy") and [c["who"] for c in b.claims()] == ["fsk24"]
+    assert b.release("jeff", force=True) and b.claims() == []
+
+
+def test_a_whole_bench_claim_shuts_out_channel_claims(work):
+    b.claim("explore", 30)
+    with pytest.raises(SystemExit, match="the bench is held by explore"):
+        b.claim("c6phy", 10, hz=441_000_000)
+    with pytest.raises(SystemExit):
+        b.check_owner("c6phy", 441_000_000)
+
+
+def test_claim_freq_on_the_command_line(work, capsys):
+    b.main(["claim", "c6phy", "20", "UV-380", "--freq", "441.000"])
+    b.main(["owner"])
+    out = capsys.readouterr().out
+    assert "c6phy on 441.000 MHz until" in out
+    assert b.claims()[0]["hz"] == 441_000_000
+    with pytest.raises(SystemExit, match="70 cm only"):
+        b.main(["claim", "x", "5", "--freq", "146.520"])
+
+
+def test_an_old_owner_file_is_one_whole_bench_claim(work):
+    os.makedirs(os.path.dirname(b.path("owner")), exist_ok=True)
+    json.dump({"who": "explore", "what": "", "since": time.time(), "until": time.time() + 600},
+              open(b.path("owner"), "w"))
+    assert b.owner()["who"] == "explore" and b.owner()["hz"] is None
+    with pytest.raises(SystemExit):
+        b.claim("c6phy", 10, hz=441_000_000)
 
 
 def test_a_corrupt_owner_file_means_free(work):
