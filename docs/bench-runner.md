@@ -19,11 +19,11 @@ From a checkout of this branch (or main once merged), on hamlet:
     systemctl --user daemon-reload
     systemctl --user enable --now blowfang-bench-runner
 
-`selftest` runs 28 sample jobs through the checks (8 that must pass, 20 that must be refused),
+`selftest` runs 33 sample jobs through the checks (10 that must pass, 23 that must be refused),
 then reports this machine's setup: the module key, the K6 cable by its by-id name, rigctld and the
 IC-7100's power, Aura's flash.py, the PTT lock and the cable's reader. Setup problems are warnings
 (the steps that need the missing piece refuse); a wrong check is a FAIL. So is a missing module
-compiler: `uv380.send` and `uv380.m17` build their module from the checkout at send time, and the
+compiler: `uv380.send`, `uv380.m17` and `uv380.voice` build their module from the checkout at send time, and the
 service's PATH has no clang, so the runner puts `$K6_ATFE`, else the newest
 `BLOWFANG_WORK/toolchains/ATfE-*/bin`, on the steps' PATH (as `tools/uv380_dfu.py` does).
 
@@ -98,6 +98,7 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `uv380.cmd` | `uv380_i2sprobe.py cmd DEV ARGS… tune listen`: the UV-380's bench settings over USB, e.g. `["listen 0", "power 0", "zero 2"]` | only `tune`, `listen [0\|1]`, `power 0`, `zero 1\|2`, `phy fsk\|rng`, `emph 0\|1`, `trim N` (±8000), `gain N` (-12..15), `freq 441850\|440850` (in the claim); nothing that writes memory or registers; every setting read back after |
 | `uv380.send` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/txreq.c` (the checkout's own module, signed by the runner): one send of the stored message as PTT sends it, ident first | no args; right before, the radio itself must read `pwr=0` and a `freq=` of its two channels inside the claim (an image without `freq=`, from before the 441.850 move, is refused) |
 | `uv380.m17` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/c6m17tx_PLAN.c` (the checkout's own module, signed by the runner): one M17 transmission through the C6000's physical layer mode, tx_tone's Morse ident first (docs/uv380-m17-scope.md) | args: one plan, `bert`, `sms` or `voice`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim) |
+| `uv380.voice` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/MODULE` (the checkout's own module, signed by the runner): DMR voice bursts over the C6000's voice port (docs/uv380-c6000-modem.md, "Voice bursts (V0-V2)"). `check` = c6vcheck.c and `dry` = c6dvtx.c never key; `pn`, `live`, `msg` = c6dvtx_pn/live/msg.c send one voice call, tx_tone's Morse ident first | args: one plan, `check`, `dry`, `pn`, `live` or `msg`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim), for every plan |
 
 There is no step that runs a script. A script could do anything; the runner's worth is that it
 checks every key-up before it happens. A test that needs a new kind of step gets one here, with

@@ -481,6 +481,33 @@ def test_uv380_m17_sends_the_checkouts_module_at_power_0(work, monkeypatch):
     assert argv[5:7] == ["--key-file", br.key_path()] and argv[-2:] == ["--run-timeout", "45"]
 
 
+def test_uv380_voice_checked(work):
+    for plan in br.UV380_VOICE_PLANS:
+        assert br.check_job(uv_job({"do": "uv380.voice", "args": [plan]})) == [], plan
+    for args in ([], ["x"], ["pn", "msg"], ["../txreq.c"], ["c6vcheck.c"]):
+        assert "one plan" in problems(uv_job({"do": "uv380.voice", "args": args})), args
+
+
+def test_uv380_voice_sends_the_checkouts_module_at_power_0(work, monkeypatch):
+    """every voice plan, even the two that never key (check, dry), goes through the same read-back"""
+    monkeypatch.setattr(br, "command", fake_command({}))
+    ran = []
+    monkeypatch.setattr(br, "run_proc", lambda ctx, argv, cwd, timeout, env: (ran.append(argv), (0, None))[1])
+    monkeypatch.setattr(br, "uv380_port", lambda: "/dev/uv380")
+    for plan in ("check", "pn"):
+        j = uv_job({"do": "uv380.voice", "args": [plan]})
+        monkeypatch.setattr(br, "uv380_probe", Radio(pwr="1000"))
+        res = br.run_job(j, str(work / f"rd-{plan}"), Rig())
+        assert res["status"] == "failed" and "sends only at power 0" in res["reason"] and ran == []
+    for plan, mod in br.UV380_VOICE_PLANS.items():
+        monkeypatch.setattr(br, "uv380_probe", Radio())
+        assert br.run_job(uv_job({"do": "uv380.voice", "args": [plan]}), str(work / f"rd2-{plan}"),
+                          Rig())["status"] == "done"
+        argv = ran.pop()
+        assert argv[2:4] == ["mod", "/dev/uv380"] and argv[4].endswith("firmware/uv380-openrtx/mod/" + mod)
+        assert argv[5:7] == ["--key-file", br.key_path()] and argv[-2:] == ["--run-timeout", "45"]
+
+
 def test_pluto_background_only_to_receive(work):
     j = job("a")
     rd = str(work / "rd")
