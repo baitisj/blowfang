@@ -751,6 +751,21 @@ def wait_step(ctx, step):
     return (1, f"no /{step['pattern']}/ in {f}") if pat else (0, None)
 
 
+def module_tools(env):
+    """a module compiler on the steps' PATH: uv380.send / uv380.m17 build their module from source at
+    send time, and the service's PATH has no clang (hamlet has none on the host). $K6_ATFE, else
+    the newest ATfE under BLOWFANG_WORK/toolchains, as tools/uv380_dfu.py finds it -> the dir added"""
+    if shutil.which("clang", path=env.get("PATH")):
+        return None
+    dirs = [env["K6_ATFE"]] if env.get("K6_ATFE") else []
+    dirs += sorted(glob.glob(os.path.join(work(), "toolchains", "ATfE-*", "bin")), reverse=True)
+    for d in dirs:
+        if os.path.exists(os.path.join(d, "clang")):
+            env["PATH"] = d + os.pathsep + env.get("PATH", "")
+            return d
+    return None
+
+
 def step_env(job):
     env = dict(os.environ)
     env["K6_BENCH_AS"] = job["who"]
@@ -758,6 +773,7 @@ def step_env(job):
     env["BLOWFANG_REPO"] = job_checkout(job)
     env.pop("K6LOG", None)
     env["PYTHONUNBUFFERED"] = "1"
+    module_tools(env)
     return env
 
 
@@ -1311,6 +1327,12 @@ def cmd_selftest(a):
     say(os.path.exists(os.path.join(aura_dir(), "tools", "flash.py")) or None, f"Aura flash.py in {aura_dir()} (k6.update)")
     say(os.path.exists(os.path.join(HERE, "k6-reset-trigger.sh")) or None, "k6-reset-trigger.sh beside the runner (k6.update)")
     say(hasattr(kb, "GUARD_HZ") or False, "k6_bench.py beside the runner has channel claims")
+    env = {"PATH": os.environ.get("PATH", "")}
+    module_tools(env)
+    cc = [shutil.which(t, path=env["PATH"]) for t in ("clang", "ld.lld", "llvm-objcopy", "llvm-nm")]
+    say(all(cc) or False, "module compiler for uv380.send / uv380.m17: " + (cc[0] if all(cc) else
+        "clang, ld.lld, llvm-objcopy or llvm-nm missing (PATH, $K6_ATFE, or BLOWFANG_WORK/toolchains/ATfE-*/bin)"))
+    bad += not all(cc)
     say(kb.lock_free() or None, "PTT lock free")
     so = kb.serial_owner()
     say(True, "K6 cable reader: " + (f"{so['who']} (pid {so['pid']})" if so else "none"))
