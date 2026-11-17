@@ -46,6 +46,7 @@ tools/k6_*
 tools/k6-*
 tools/k6_cc/
 tools/pluto_bench.py
+tools/bench_runner.py
 tools/pluto_fw_update.sh
 tools/gen_ft8_tables.py
 tools/midi_songs/
@@ -55,6 +56,7 @@ tests/test_k6*
 tests/k6_live_emu.py
 tests/test_nwr_watch.py
 tests/test_pluto_bench.py
+tests/test_bench_runner.py
 tests/test_psk31.py
 tests/test_range_rx.py
 tests/durations.json

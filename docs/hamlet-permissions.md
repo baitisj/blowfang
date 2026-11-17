@@ -5,6 +5,10 @@ run the K6 / IC-7100 bench tools without asking, inside the bench authorization 
 transmit, receive and flash on 70 cm, 430-450 MHz, CW ID as AG7EW, never airband, never write to
 `/dev/ttyUSB2`. Anything outside it still prompts.
 
+Since 2026-11-17 flashes and key-ups that auto mode still stops go through the bench runner
+instead ([bench-runner.md](bench-runner.md)): one service Jeff starts once, which runs the
+threads' staged jobs under these same rules, checked in code.
+
 The rules are in [`hamlet-claude-settings.json`](hamlet-claude-settings.json). Jeff installs them
 by hand. No session changes hamlet's settings.
 
