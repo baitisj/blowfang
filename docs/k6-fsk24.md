@@ -301,6 +301,10 @@ per step and recipe, with the K6's RSSI.
   (dBm: the K6's RSSI at gain -70 was -88, and the rest are scaled from it, so they're not
   calibrated levels.) F/1800 falls off between -58 and -64. D/2400 is still perfect at -70 and
   half there at -78. **So from a flat transmitter, D/2400 holds on 12-15 dB lower than F/1800.**
+  (Overstated: these F/1800 test packets went at about half the upload's deviation, --dev 3700
+  on a half-scale wav, so about 1850 Hz peak. At the upload's 3000 Hz peak F/1800 decodes at
+  -82 dBm, and its edge is about the same as D/2400's: see "F/1800 at the upload's own deviation"
+  below.)
   Even strong, about a quarter of F/1800 packets failed with block 0 perfect and the rest about
   half wrong: a slip after the first 16 bytes, at every level. The faster rate costs no range
   here; it gains it. Caveats: the FFSK went pre-emphasised at about 3 kHz peak, and the IC-7100
