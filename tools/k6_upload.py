@@ -32,7 +32,10 @@ the 2400 plan): over a flat transmitter (--via pluto) the chunks can go as plain
 such send is one transmission: an F/1800 control record (phy=D baud=2400, pre-emphasised as any
 F/1800 Pluto send) and then the chunks at D/2400, flat, 2.2 kHz peak. The K6 replies at F/1800 as
 before and falls back to F/1800 by itself (3 bad CRCs of 8, 10 s with no good packet after the
-switch, 30 s quiet), so every send asks again. --rate auto (the default) asks only once a report
+switch, 30 s quiet), so every send asks again. The default is --rate F18 for now: on 11-17 a
+25-chunk upload at D/2400 lost most of its chunks (3/25 at Pluto gain -52, 11/25 at -66, 23/25 at
+-78) while F/1800 took all 25 at -52 and -66; the image's D/2400 receive path is being looked at.
+--rate auto asks only once a report
 has shown the K6 takes D24 and only for an image of D24_MIN_CHUNKS (16) chunks or more (asking
 costs about 3 s a send, so a smaller one is quicker at F/1800), and keeps per-transmitter state in $BLOWFANG_WORK/state/k6-rate.json:
 a send at D/2400 that loses over 15 % of its chunks, or a report that says the K6 fell back on
@@ -401,8 +404,10 @@ def main():
     ap.add_argument("--pluto-peak", type=float, default=PLUTO_PEAK_HZ,
                     help="--via pluto: peak deviation before pre-emphasis, Hz (default 3000, as the F/1800"
                          " ladders that decode)")
-    ap.add_argument("--rate", choices=("auto", "F18", "D24"), default="auto",
-                    help="--via pluto: the chunks' rate (auto: D/2400 once a report showed the K6 takes"
+    ap.add_argument("--rate", choices=("auto", "F18", "D24"), default="F18",
+                    help="--via pluto: the chunks' rate (default F18 until the image's D/2400 receive"
+                         " holds a long upload: 11-17 05:20Z stockfont, 25 chunks, got 3/25 at Pluto -52,"
+                         " 11/25 at -66, 23/25 at -78; auto: D/2400 once a report showed the K6 takes"
                          " it and this transmitter's state says D24, see above; F18 never asks; D24 always"
                          " asks). --via ic7100 is always F/1800")
     ap.add_argument("--rate-state", metavar="JSON", help="the rate ladder's state file (default $BLOWFANG_WORK/state/k6-rate.json)")

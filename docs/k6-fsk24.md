@@ -427,7 +427,8 @@ main 40a2ec9); its CFG line's `rates=` is still to be read on the bench.
 
 **The sender's side (plan step 4; Jeff 11-17 04:27Z agreed the plan's answers).** The Pluto sends
 D/2400 now; the UV-380 and RT-950 as their transmit work lands; K6 to K6 only if that becomes a
-feature. K6 replies stay on F/1800. `tools/k6_upload.py --via pluto --rate auto` (the default):
+feature. K6 replies stay on F/1800. `tools/k6_upload.py --via pluto --rate auto` (not the
+default for now, see the second bench run below):
 
 - Each D/2400 send is one transmission: the F/1800 control record (`phy=D baud=2400`, three
   copies at the upload's packet size, pre-emphasised at 3 kHz peak as any F/1800 Pluto send),
@@ -446,3 +447,23 @@ feature. K6 replies stay on F/1800. `tools/k6_upload.py --via pluto --rate auto`
 - Step up: two clean uploads (under 5 % lost) at F/1800 mark the path D24 again. Sweep 3 showed
   a slower rate buys at most 1 dB, so the ladder is about timing faults, not range.
 - `--rate F18` never asks, `--rate D24` always does (Pluto only); `--via ic7100` is F/1800.
+
+**Second bench run (11-17 05:20-05:29Z, stockfont.c, 2,961 B, 25 XL chunks, K6 woken from
+EXPLORE by the Pluto).** Long uploads at D/2400 lose most of their chunks, and the losses shrink
+as the signal gets weaker:
+
+| step | Pluto gain | sends | K6 | wall |
+|---|---|---|---|---|
+| 1 | -52 | F/1800 | 25/25, ran | 71 s |
+| 2 | -52 | D/2400, then F/1800 | 3/25 at D/2400, fell back (crc); 25/25 after the F/1800 send | 116 s |
+| 3 | -66 | D/2400, then F/1800 | 11/25 at D/2400, fell back (crc); 25/25 after | 115 s |
+| 4 | -66 | F/1800 | 25/25, ran | 71 s |
+| 5 | -78 | D/2400, D/2400 (no report), F/1800 | 23/25 at D/2400; 25/25 after the F/1800 send | 203 s |
+
+The four-chunk hello.c went clean at D/2400 at -52 twice (04:51Z), so the losses come with long
+bursts. Sweep 3's fsk24rx module (polled FIFO reads) was perfect from -60 to -81, so the
+suspects are the image's own D/2400 receive: the timed reads (3 words of lead, set against the
+IC-7100 on 11-04) slipping over a long burst, or gain/AGC on a strong signal. Next: the same
+upload with `--reg 5e=0203` (interrupt reads, 60 s) and a D/2400 gain ladder. The ladder itself
+worked as designed (CRC fallback, step down, the D/2400 record asking for F/1800). Until this is
+fixed, `--rate` defaults to F18.
