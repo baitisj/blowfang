@@ -426,6 +426,42 @@ def test_uv380_send_only_at_power_0_on_its_channel(work, monkeypatch):
     assert argv[5:7] == ["--key-file", br.key_path()]
 
 
+def test_uv380_m17_checked(work):
+    for plan in br.UV380_M17_PLANS:
+        assert br.check_job(uv_job({"do": "uv380.m17", "args": [plan]})) == [], plan
+    for args in ([], ["x"], ["sms", "voice"], ["../txreq"]):
+        assert "one plan" in problems(uv_job({"do": "uv380.m17", "args": args})), args
+
+
+def test_uv380_m17_sends_the_checkouts_module_at_power_0(work, monkeypatch):
+    monkeypatch.setattr(br, "command", fake_command({}))
+    ran = []
+    monkeypatch.setattr(br, "run_proc", lambda ctx, argv, cwd, timeout, env: (ran.append(argv), (0, None))[1])
+    monkeypatch.setattr(br, "uv380_port", lambda: "/dev/uv380")
+    j = uv_job({"do": "uv380.m17", "args": ["sms"]})
+    monkeypatch.setattr(br, "uv380_probe", Radio(pwr="1000"))
+    res = br.run_job(j, str(work / "rd"), Rig())
+    assert res["status"] == "failed" and "sends only at power 0" in res["reason"] and ran == []
+    monkeypatch.setattr(br, "uv380_probe", Radio())
+    assert br.run_job(j, str(work / "rd2"), Rig())["status"] == "done"
+    argv = ran[0]
+    assert argv[2:4] == ["mod", "/dev/uv380"] and argv[4].endswith("firmware/uv380-openrtx/mod/c6m17tx_sms.c")
+    assert argv[5:7] == ["--key-file", br.key_path()] and argv[-2:] == ["--run-timeout", "45"]
+
+
+def test_pluto_background_only_to_receive(work):
+    j = job("a")
+    rd = str(work / "rd")
+    rx = {"do": "pluto", "args": ["rx", "cap.cf32", "--hz", "441900000", "--seconds", "30"], "background": True}
+    assert br.check_job(job("p", rx)) == []
+    argv, _, bg = br.command(j, rx, rd)
+    assert bg and argv[-6:] == rx["args"]
+    send = {"do": "pluto", "args": ["send", "x.wav", "--gain", "-60"], "background": True}
+    assert "only a Pluto rx" in problems(job("p", send))
+    _, _, bg = br.command(j, dict(send), rd)
+    assert not bg
+
+
 def test_uv380_port_by_usb_ids(work, monkeypatch):
     monkeypatch.delenv("UV380_DEV", raising=False)
     monkeypatch.setattr(br.glob, "glob", lambda pat: [])
