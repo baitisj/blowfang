@@ -483,3 +483,37 @@ The image now reads by interrupt (REG_5E 0x0203) on every rung, D/2400 included 
 aura-pager.patch change after this run). Until that image is on the radio, a sender can get the
 same with a `--reg 5e=0203` control record before the D/2400 session; `--rate` stays F18 by
 default until the flash and a level ladder at D/2400 confirm it.
+
+**F/1800 at the upload's own deviation (11-17 09:28-10:05Z, image 8a78fb5).** The F/1800 test
+packets that failed in ladder 2 (above), and again tonight, went out about 4 dB under an upload.
+`modem.k6 test` audio is half scale, so `pluto_bench.py steps --dev 3700` put its peak at about
+1850 Hz, where `k6_upload --via pluto` sends F/1800 at 3000 Hz (`PLUTO_PEAK_HZ`, peak/level). At
+-52 dB (K6 RSSI -74) the same 24 test packets went 0/12 at `--dev 3700`, never synced at
+`--dev 3000` or `2800`, and went 23/24 at `--dev 6000` (3000 Hz peak); `hello.c` uploaded at F18
+4/4 on the first pass at -52 and -60, and the SURF relay's 39-chunk upload at -40 got 39/39. Its
+FIFO interrupt times stay regular on every failed packet (26.7 ms, three words each), so these
+losses were never FIFO reads. In the failed packets whose first half was logged, the data after the
+failure point is the sent data one bit early: the chip's bit clock **dropped a bit**, a lone `1`
+(the 1200 Hz tone, two thirds of a cycle at 1800 baud) or one of a pair, between `0`s.
+
+Ladder at `--dev 6000 --preemph` (24 test packets a step, runs/fifo-f18d-20261117 on hamlet):
+
+| TX gain dB | K6 RSSI dBm | F/1800 good | failures |
+| --- | --- | --- | --- |
+| -60 | -82 | 23/24 | the first packet only (res=2) |
+| -66 | -88 | 24/24 | |
+| -72 | -94 | 16/24 | mostly bit slips (one or two dropped bits), one junk, one 1-bit error |
+| -76 | -97 | 0/24 (14 synced) | slips, some with a bit added back later; two with 1-3 bit errors |
+| -80 | -101 | 0/24 (1 synced) | junk |
+| -60 again | -82 | 23/24 | the first packet only: no warm-up drift |
+
+D/2400 on the same image an hour earlier (the 2400 thread's stockfont ladder) took 25/25 at -66
+(RSSI -88) and failed at -72. **So at the upload's deviation F/1800 is about as sensitive as D/2400,
+not 12-15 dB worse;** ladder 2's gap was the under-deviated F/1800 send. The case for D/2400 is its
+speed (a third more bits a second), not range. Near the edge F/1800 fails by bit slips more than by bit
+errors, so a receiver that tried a missing bit back in before giving up on a CRC could win back some
+of the 2 dB between "all good" and "none" (not built: the CRC-16 would see about 500 extra
+candidates a failed packet, so it needs the header fields as a second check).
+
+`pluto_bench.py send/steps --peak HZ` (11-17) scales a wav by its own peak, so a test send matches
+an upload: `--peak 3000 --preemph` for F/1800.
