@@ -132,8 +132,74 @@ its checks and a test.
 `pause [WHY]` / `resume`: start no new job. `cancel ID`: a waiting job never starts; the running
 one gets SIGTERM at once.
 
+## The inbox: jobs from cloud threads
+
+Cloud threads have no hamlet shell, so the runner also takes jobs from a branch (Jeff, 2026-11-17:
+"Yes, build the jobs inbox", accepting that whoever can push to this repository can queue a
+transmission). `tools/bench_inbox.py` is both sides:
+
+    python3 tools/bench_inbox.py submit runs/m17/job.json     # from any checkout, cloud or hamlet
+    python3 tools/bench_inbox.py show m17-bert-1118a          # result.json, files, the log's tail
+    python3 tools/bench_inbox.py get m17-bert-1118a out/      # the files that came back
+    python3 tools/bench_inbox.py status                       # the runner's status.json, last results
+    python3 tools/bench_inbox.py cancel m17-bert-1118a
+
+The branch is `claude/bench-jobs` (an orphan branch; it never merges):
+
+| path | written by | |
+|---|---|---|
+| `jobs/ID/job.json` | the thread | the job, as above, with the inbox's differences below |
+| `jobs/ID/NAME` | the thread | a file the job names as `job:NAME` (WAVs, built modules), ≤ 16 MB, ≤ 64 files, ≤ 32 MB in all |
+| `jobs/ID/cancel` | the thread | drop a waiting job, or stop a running one within about a minute |
+| `results/ID/result.json` | the runner | `queued`, `refused` (with `problems`), `running`, then `done` / `failed` / `cancelled`, as `show` prints it locally |
+| `results/ID/runner.log` | the runner | the run's log (its last 512 KB) |
+| `results/ID/files/…`, `files.json` | the runner | the run folder's files up to 20 MB each (40 MB a job); `files.json` lists every file with its size and sha256, and where a big one stays on hamlet |
+| `status.json` | the runner | its installed commit, the running job, the queue, pause and IC-7100 hold, the last error and self-update; pushed when it changes and at least hourly |
+
+The runner fetches the branch every minute while idle (a bare clone in
+`~/blowfang-work/inbox/blowfang.git`), and checks each new job twice: the inbox's own rules, then
+`submit` (every check above, unchanged). What an inbox job may name differs, because the people
+who can push are not the people with a hamlet shell:
+
+- **Files** only as `job:NAME` (pushed in the job's folder; staged in `~/blowfang-work/runs/inbox/ID`)
+  or `run:NAME` (the job's run folder, for outputs such as `["rx", "run:m.cf32", …]`). No hamlet paths.
+- **Tools from main.** No `checkout`: the job runs from a runner-made worktree
+  `~/blowfang-work/worktrees/inbox-<commit>` of main's tip, or of `tools_commit` (a commit on main).
+  A branch's tools never run on hamlet.
+- **UV-380 module sources from any pushed commit.** `sources_commit` (with `uv380.send`, `uv380.m17`,
+  `uv380.voice`) builds the module from a worktree `src-<commit>` of that commit, after a check that
+  the module and every file it `#include`s stay inside that tree (no absolute or climbing includes,
+  no `#embed`, `.incbin` or asm `.include`: those could put a hamlet file on the air or in the
+  public log).
+- **No flashes** (`k6.install`, `k6.flash`, `k6.update`, `uv380.flash`) and no `.c` K6 modules
+  (push the built `.bin`; the runner signs it). Flashes stay a local `submit`.
+- `submit` fills in a `job:` module's or image's `sha256` and lints the job before it pushes; the
+  runner's checks still decide.
+
+An id already used on hamlet is refused in the branch, untouched locally. The results are public
+(the repository is): runner logs carry commands, paths and rig readings, never keys.
+
+Jeff's switches: `bench_runner.py inbox off|on` (state/inbox.off; the runner stops fetching and
+pushing), and `pause` as before.
+
+## Self-update
+
+While idle (no job running or due within two minutes, not paused, no job's logger left running),
+every five minutes the runner compares main's `tools/bench_runner.py`, `bench_inbox.py`,
+`k6_bench.py` and `k6-reset-trigger.sh` with its installed copies. When they differ it makes a
+worktree of main, runs that main's own `selftest --checkout WORKTREE` (it must end `PASS`), keeps
+the old copies in `bin/previous/`, runs main's `install` (`--unit` too when the unit exists), and
+re-executes itself (same pid; a changed unit means `daemon-reload` and an exit so systemd restarts
+it). A main whose selftest fails is not tried again; `status.json` and the runner log say why.
+`bin/.installed.json` records the commit installed.
+
+`bench_runner.py autoupdate off|on` turns it off and on; `bench_runner.py rollback` puts
+`bin/previous/` back and turns self-update off (then restart the unit).
+
 ## Allow rules
 
 None new. Jeff's rules from 11-17 (`Bash(~/blowfang-work/bin/*)` and
 `Bash(/home/baitisj/blowfang-work/bin/*)`) already cover `bench_runner.py submit`, `check`,
-`status` and `show`. Starting the service is the one step that needs Jeff's typed line.
+`status` and `show`. Starting the service is the one step that needs Jeff's typed line, and the
+inbox and self-update need it once more (install this version and restart); after that main's
+runner changes install themselves.
