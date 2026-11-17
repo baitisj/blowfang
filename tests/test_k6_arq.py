@@ -259,7 +259,7 @@ def test_upload_auto_learns_then_asks_d24(monkeypatch, tmp_path, capsys):
     next goes at D/2400 in one send"""
     monkeypatch.setattr(k6_upload, "D24_MIN_CHUNKS", 1)     # hello.c is 4 chunks
     st = str(tmp_path / "rate.json")
-    argv = ["--via", "pluto", "--rate-state", st]
+    argv = ["--via", "pluto", "--rate-state", st, "--rate", "auto"]
     sends = fake_upload(monkeypatch, "XL", argv, d24="ok")
     assert [r for *_, r in sends] == ["F18"]
     assert k6_upload.load_rates(st)["pluto"]["k6_d24"] is True
@@ -275,7 +275,7 @@ def test_upload_d24_deaf_steps_down_and_comes_back(monkeypatch, tmp_path, capsys
     monkeypatch.setattr(k6_upload, "D24_MIN_CHUNKS", 1)
     st = str(tmp_path / "rate.json")
     k6_upload.save_rates({"pluto": {"rung": "D24", "clean": 0, "k6_d24": True}}, st)
-    argv = ["--via", "pluto", "--rate-state", st]
+    argv = ["--via", "pluto", "--rate-state", st, "--rate", "auto"]
     sends = fake_upload(monkeypatch, "XL", argv, d24="deaf")
     assert [(p, r) for p, _, _, r in sends] == [("XL", "D24"), ("XL", "F18")]
     assert fake_upload.backs == [False, True]          # the F/1800 resend led by a D/2400 record
@@ -292,7 +292,7 @@ def test_upload_small_module_stays_f1800(monkeypatch, tmp_path, capsys):
     """auto, a K6 known to take D24, but hello.c's 4 chunks: asking would cost more than it saves"""
     st = str(tmp_path / "rate.json")
     k6_upload.save_rates({"pluto": {"rung": "D24", "clean": 0, "k6_d24": True}}, st)
-    assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st], d24="ok")] == ["F18"]
+    assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st, "--rate", "auto"], d24="ok")] == ["F18"]
     assert "F/1800 is quicker" in capsys.readouterr().out
     assert k6_upload.load_rates(st)["pluto"]["rung"] == "D24"          # the path stays D24
     assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st, "--rate", "D24"],
@@ -305,6 +305,15 @@ def test_start_rung_size_limit():
     assert k6_upload.start_rung("auto", "pluto", known, n - 1) == "F18"
     assert k6_upload.start_rung("auto", "pluto", known, n) == "D24"
     assert k6_upload.start_rung("D24", "pluto", known, 1) == "D24"
+
+
+@need_host
+def test_upload_default_is_f1800(monkeypatch, tmp_path):
+    """until the image's D/2400 receive holds a long upload, the default never asks"""
+    monkeypatch.setattr(k6_upload, "D24_MIN_CHUNKS", 1)
+    st = str(tmp_path / "rate.json")
+    k6_upload.save_rates({"pluto": {"rung": "D24", "clean": 0, "k6_d24": True}}, st)
+    assert [r for *_, r in fake_upload(monkeypatch, "XL", ["--via", "pluto", "--rate-state", st], d24="ok")] == ["F18"]
 
 
 @need_host
