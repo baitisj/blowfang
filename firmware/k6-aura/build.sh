@@ -354,7 +354,7 @@ fesw           # level 2, the receive front end's band switch as an attenuator: 
 fesw_vhf       # level 2, fesw on fifteen frequencies of the VHF path, 136 to 174 MHz: is the 2 m floor the same everywhere (receive only, docs/k6-fesw.md)
 fskaprs        # level 2, the chip's FSK modem on AX.25 packets (docs/k6-aprs-clock.md)
 fsk24rx        # level 2, the chip's FSK modem on plain FSK at 2400 baud from the pre-equalised IC-7100, 440.850 bench (receive only, docs/k6-fsk24.md)
-fsk24rx_sweep  # level 2, fsk24rx in 12 s slots of D/2400, F/1800 and F/1200 while the Pluto steps its level down: receive sensitivity (receive only, docs/k6-fsk24.md)
+fsk24rx_sweep  # level 2, fsk24rx in 12 s slots of D/2400, D/1800 (two bandwidths) and D/1200 while the Pluto steps its level down: receive sensitivity (receive only, docs/k6-fsk24.md)
 ft8rx          # level 2, the whole FT8 decoder on the K6, from the IF (docs/k6-ft8-wspr.md); in the release set
 ft8tx          # level 3
 ft8wf

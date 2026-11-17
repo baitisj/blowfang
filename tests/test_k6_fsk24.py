@@ -159,7 +159,8 @@ def test_sweep_track_fills_each_slot_inside_its_guards():
         assert np.all(track[a:a + g0] == 0) and np.all(track[a + n - g1:a + n] == 0)
         assert np.any(track[a + g0:a + n - g1] != 0)
         assert np.allclose(level[a:a + n], 10 ** (st / 20))
-    assert 2900 < np.max(np.abs(track)) <= 3000.0
+    peak = max(fsk24.VARIANTS[v].level for _, v, _ in fsk24.SWEEP_SLOTS) * 1000
+    assert 0.95 * peak < np.max(np.abs(track)) <= peak
 
 
 def test_sweep_ffsk_blocks_read_flat():
@@ -171,22 +172,22 @@ def test_sweep_ffsk_blocks_read_flat():
 
 def test_sweep_report():
     lines = ["K6 MOD say " + s for s in [
-        "fsk24 start hz=440850000 n=36",
+        "fsk24 start hz=440850000 n=32",
         "s 0 t=30000 cfg=00e9 b=60cb a=04",
         "p 0 v=14 q=0 c=1 i=0 e=0 x=0 r=-89",
         "p 0 v=14 q=1 c=1 i=0 e=0 x=0 r=-90",
         "p 0 v=14 q=2 c=0 i=0 e=9 x=0 r=-90",
         "v 0 n=3 ok=2 z=0",
-        "s 1 t=42000 cfg=3f01 b=4898 a=00",
-        "p 1 v=18 q=0 c=1 i=0 e=0 x=0 r=-91",
-        "s 3 t=66000 cfg=00e9 b=60cb a=04",
-        "p 3 v=14 q=16 c=1 i=0 e=0 x=0 r=-93",
+        "s 1 t=42000 cfg=00e9 b=4898 a=04",
+        "p 1 v=24 q=0 c=1 i=0 e=0 x=0 r=-91",
+        "s 4 t=78000 cfg=00e9 b=60cb a=04",
+        "p 4 v=14 q=16 c=1 i=0 e=0 x=0 r=-93",
     ]]
     rep = fsk24.sweep_report(lines)
     sent = {k: n for _, k, _, _, n in fsk24.sweep_track()[2]}
-    assert rep[0] == "step dB | RSSI dBm | D/2400 | F/1800 | F/1200", rep
-    assert rep[2] == f"0 | -90 | 2/{sent[0]} | 1/{sent[1]} | -/{sent[2]}", rep
-    assert rep[3].startswith(f"-4 | -93 | 1/{sent[3]} | -/"), rep
+    assert rep[0] == "step dB | RSSI dBm | D/2400 | D/1800 | D/1800 1.2K | D/1200", rep
+    assert rep[2] == f"0 | -90 | 2/{sent[0]} | 1/{sent[1]} | -/{sent[2]} | -/{sent[3]}", rep
+    assert rep[3].startswith(f"-3 | -93 | 1/{sent[4]} | -/"), rep
 
 
 @need_clang
