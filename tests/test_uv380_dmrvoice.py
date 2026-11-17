@@ -1,6 +1,6 @@
 """sotto in DMR voice bursts on the UV-380's HR_C6000 (docs/uv380-c6000-modem.md, "Sotto in DMR voice
 bursts"): the voice FEC (modem/dmrvoice.py and its C twin c/common/dmr_voice.h, byte for byte),
-its soft Viterbi, a voice call through audio and back (tools/uv380_dmrburst.py vwav / voice), the
+its soft Viterbi, a voice call through audio and back (tools/uv380_dmrvoice.py vwav / voice), the
 page 3 -> air map learned from the raw test pattern, and the RAM modules (c6vcheck, c6dvtx and its
 wrappers), which must build position-independent and stay dry unless a wrapper says otherwise.
 SPDX-License-Identifier: MIT"""
@@ -89,7 +89,7 @@ def test_a_burst_too_damaged_fails_its_crc_and_is_concealed():
 
 
 def test_voice_call_comes_back_through_audio():
-    import uv380_dmrburst as tool
+    import uv380_dmrvoice as tool
     m = rand_msg(40, seed=4)
     blocks = ds.pack(m, 4, "AG7EW")
     pay = tool.voice_payloads(blocks)
@@ -115,7 +115,7 @@ def _odd_map():
 
 
 def test_test_pattern_learns_the_chips_map_and_the_map_decodes():
-    import uv380_dmrburst as tool
+    import uv380_dmrvoice as tool
     mp = _odd_map()
     x = tool.symbols_audio(tool.voice_stream_symbols([dv.pn(k) for k in range(60)], mp=mp), 48000, 0.35)
     _, vb, _ = tool.decode_voice(x, 48000)
@@ -130,7 +130,7 @@ def test_test_pattern_learns_the_chips_map_and_the_map_decodes():
 
 
 def test_learning_survives_a_lost_first_superframe():
-    import uv380_dmrburst as tool
+    import uv380_dmrvoice as tool
     sym = tool.voice_stream_symbols([dv.pn(k) for k in range(60)], lead=0, hdr=0)
     x = tool.symbols_audio(sym[6 * 288:], 48000, 0.35)         # the first superframe cut off
     _, vb, _ = tool.decode_voice(x, 48000)
