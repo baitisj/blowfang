@@ -5,6 +5,10 @@ run the K6 / IC-7100 bench tools without asking, inside the bench authorization 
 transmit, receive and flash on 70 cm, 430-450 MHz, CW ID as AG7EW, never airband, never write to
 `/dev/ttyUSB2`. Anything outside it still prompts.
 
+Since 2026-11-17 flashes and key-ups that auto mode still stops go through the bench runner
+instead ([bench-runner.md](bench-runner.md)): one service Jeff starts once, which runs the
+threads' staged jobs under these same rules, checked in code.
+
 The rules are in [`hamlet-claude-settings.json`](hamlet-claude-settings.json). Jeff installs them
 by hand. No session changes hamlet's settings.
 
@@ -113,8 +117,15 @@ session's scratchpad under `/tmp`, so a reboot would have broken flashing (the r
   reset trigger, `k6_upload.py`, `k6_ifcap.py`, `k6_afsweep.py`, `k6_rxmap.py`) is refused
   unless `K6_BENCH_AS` (or `send --as`) names the holder, and the refusal says who holds it
   and until when. The CW ID keeper never asks. A claim lasts at most 12 hours and ends by
-  itself, so a session that dies leaves nothing stuck; `release WHO --force` ends anyone's.
+  itself, so a session that dies leaves nothing stuck; `release WHO --force` ends every claim.
   With no claim the bench is free, as before. `status` and `owner` show it.
+- **Channel claims** (`claim WHO MIN WHAT --freq 440.850`): a claim can hold one 70 cm channel
+  instead of the whole bench, so threads working on channels 100 kHz or more apart share the
+  bench (docs/hamlet-channels.md has the plan). Anyone else's key-up within 100 kHz of a held
+  channel is refused, and so is a second claim there. A key-up whose frequency the tool doesn't
+  know (k6_gw, k6_talk) is refused while anyone else holds anything, and a whole-bench claim
+  waits until every channel is free. The PTT lock still keeps the IC-7100 and the Pluto to one
+  keyer at a time.
 - `k6_bench.py` uses only the standard library, so the copy in `~/blowfang-work/bin` keeps working
   whatever commit `~/blowfang` has checked out. Run `install` again after the helper changes.
 

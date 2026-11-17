@@ -35,6 +35,9 @@
      v 2 n=24 ok=20 z=1                        a setting's end: packets, CRC right, junk (more
                                                than E_JUNK bits wrong)
      fsk24 end n=96 ok=80
+   F24_ABS: the settings start on a fixed grid of FE_S from the first, not FE_S after the
+   last ended (a packet being read holds a change back), so a bench signal can be timed to them
+   from the "s 0" line (fsk24rx_sweep.c).
    Writes REG_58, 59, 5A, 5B, 5C, 5D, 5E, 72, 2B, 3F and 02, put back as read. Receive only.
    Returns the packets with the CRC right, or -3 (old image), -8 (scratch). Any key ends it.
    SPDX-License-Identifier: MIT */
@@ -249,7 +252,11 @@ int k6_main(const k6_api_t *api) {
       say(api, s, p);
       tn += n, tok += ok, n = ok = nz = ndump = 0;
       if (++cur >= NV) break;
+#ifdef F24_ABS
+      v = &V[cur], tset += FE_S * SLOT_SCALE; /* slots on a fixed grid from the first (a sweep) */
+#else
       v = &V[cur], tset = now;
+#endif
       s_line(api, s, cur, now);
       prev = seek(api, s, v);
     }
@@ -301,7 +308,15 @@ int k6_main(const k6_api_t *api) {
     }
     api->delay_us(300);
   }
-  for (i = 0; i < NSV; i++) api->fd_write(SAVED[i], s->sv[i]);
+  /* restore with the modem off: control and config last, then a FIFO clear, so the image's
+     modem doesn't come back armed with this module's FIFO or state (11-16, uploads failing CRC
+     after a run) */
+  api->fd_write(0x59, 0);
+  api->fd_write(0x58, 0);
+  for (i = 2; i < NSV; i++) api->fd_write(SAVED[i], s->sv[i]);
+  api->fd_write(0x58, s->sv[0]);
+  api->fd_write(0x59, (uint16_t)(s->sv[1] | CTRL_CLR));
+  api->fd_write(0x59, s->sv[1]);
   api->fd_write(0x02, 0);
   tn += n, tok += ok;
   p = kv(s->ln, "fsk24 end n=", tn);

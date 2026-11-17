@@ -116,8 +116,23 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
 
 - RF to the MCU needs a hardware mod per OpenRTX (D); the no-mod receive path above is the
   exception found here. The mic needs no mod: OpenRTX's M17 reads it on PA3 (see the table above). No-mod transmit paths: MCU PWM into the C6000's line input, C6000 DAC (D).
-- Pager / range transmit: FFSK from the MCU through the C6000 with pre-emphasis (PAGER mode);
-  deviation not yet measured (I).
+- Pager / range transmit: FFSK from the MCU through the C6000's line in (PAGER mode). DEVIATION
+  (M, 11-16 20:15-20:39Z, bench Pluto receive only with its LO 250 kHz off channel; tone deviation =
+  the 1-2 kHz envelope of its flat FM demod; 0 W setting with `zero 2`, emph 0, trim 5745):
+  - At the voice path's C6000 input gain of -3 dB (E4 0x23): about 1.0 kHz, against 3.2 kHz from
+    the IC-7100 audio the K6 decodes 7/7. The K6 read no packet: this was why it never synced (11-14).
+  - `lvl` barely moves it (4000: 750 Hz, 16000: 990 Hz): something compresses before the modulator.
+  - C6000 0x46 (FM modulation amplitude, 0xB4 from the FM calibration; 0x45 = 0 in FM) scales it
+    linearly: 7E 703 Hz, B4 1009, E1 1244, FA 1366. Key-up does not rewrite it.
+  - E4 (input gain): 0x26 (+6 dB, OpenRTX's M17 value) 2840 Hz, K6 6/7 packets (the first lost to
+    the short lead below); 0x29 (+15 dB) 8 kHz, over-deviated, 5/7. Key-up does not rewrite E4.
+  - PR #135 sends at +6 dB (`gain N`) and restores -3 dB at key-down.
+- KEY-UP TO DATA (M, 11-16, same captures): the first preamble began ~86 ms after the carrier came
+  up, against ~670 ms from the IC-7100 (hamlet waits after PTT); the K6 lost that first packet.
+  PR #135 keys 500 ms of quiet carrier first.
+- ZERO POWER (M, 11-16 20:12-20:16Z, the same Pluto a few feet away): `zero 1` (PA off, APC 0) is
+  not heard at all; `zero 2` (PA on, APC 0) gives 38-42 dB SNR. The Pluto's receive LO on the
+  channel (440.849998 MHz) leaked a carrier that deafened the K6 (20:20Z): capture off channel.
 - TRANSMIT FREQUENCY ERROR: this radio (MD-UV390 Plus) transmits 3.58 kHz low (M, 11-14 10:38-10:42Z:
   IC-7100 receive only in USB at 440.848/846/844, a UV-380 RNG send at 1 W on 440.850; carrier line
   at 440.846409-440.846432 MHz, -8.1 ppm, rising 23-29 Hz over an 18 s send; add the IC-7100's own
@@ -125,7 +140,36 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   wide receiver doesn't mind: it decoded every RNG and FSK send. The K6's chip FSK never synced on
   one: FSK in the arena printed no PKT line (10:25Z), rangerx saw 0 of 10 RNG packets (10:35Z).
   8425334 adds `blowfang_txTrimHz` (default +3580) to the transmit frequency, with `trim N` over USB.
+  11-16 (M, calibrated Pluto, xo 0.3 ppm after cal): with 3580 still 2.1-2.2 kHz low (-2191 to
+  -2104 Hz over four sends); 5745 gave -49 and -31 Hz. The IC-7100 read +280 Hz on the same Pluto.
+  PR #135 makes 5745 the default. It drifted about 2 kHz (4.7 ppm) since 11-14, or the two methods
+  differ: re-check it now and then.
   Receive is probably low by the same amount (same reference), but it works and is left alone.
+  All of this was measured on 440.850. Since the 11-17 channel plan the probe image boots on
+  441.850 (the UV-380's bench channel; `freq 440850` for sends to the K6): 1 MHz up the offset
+  should scale by about 0.2%, i.e. +13 Hz, but read the carrier on 441.850 on the first run there.
+  441.850 (M, 11-17, trim 5745, 0 W `zero 2`, PHY F, the Pluto receive only with its LO 70 kHz
+  off and checked on the ATSC ch14 pilot first, values corrected by it):
+  - cold, 20 min after power-on (09:08Z, pilot +15 Hz): the whole send -636 and -574 Hz, its FFSK
+    -646 and -590 Hz;
+  - warm, 5.5 h on (14:13Z, pilot +107 Hz, the Pluto drifted): whole send -526 and -555 Hz, FFSK
+    -577 and -775 Hz, the CW ident -355 and -346 Hz.
+  The ident is a steady tone, so its mean is the cleanest carrier reading: about -350 Hz warm,
+  0.8 ppm, against -40 Hz on 440.850 the night before. The FFSK's mean sits 200-400 Hz below the
+  ident and moves from send to send (the data's own low frequencies through the line in, or a DC
+  step at the PWM's start), so it is no measure of the carrier. The default is now 6100 (5745 +
+  350, the carrier centred); check the FFSK on the K6 at the next UV-380 to K6 run, and `trim N`
+  moves it with no reflash.
+  The C6000 modules (c6dmrtx, c6phytx) still take their calibration at 440.850 (TX_FKHZ), 1 MHz
+  away on the same table.
+- C6000 PHYSICAL LAYER MODE (M, 11-16 runs 1-2, docs/uv380-c6phy.md, 0 W into the Pluto): keys
+  and runs cleanly (every 30 ms slot answered on time, carrier continuous, registers restored). Its
+  FSK sits +6.65 to +6.70 kHz from 440.850 with trim 5745, the FM ident just before it +0.6 kHz
+  (five key-ups): the raw mode adds about 6 kHz of its own and needs its own trim. Rewriting both
+  TX RAM halves at the slot edge corrupts the first ~40 TX RAM bits (about 4 ms) of every slot:
+  write only the idle half. With that (half 0 at the first edge) and trim 5745 - 6680 = -935, run
+  3 (22:45-22:50Z) was perfect: the Pluto 26/26 at 2400 and 12/12 at 1200 with 0 bits wrong, the
+  K6's chip FSK the same; FSK within 40 Hz of 440.850, eye 1746 Hz at 2400, +3 above the carrier.
 - FSK (PHY F) on air (M, 11-14 10:25Z, "phy fsk" + tx_request, 1 W, IC-7100 at 48 kHz): reference
   decoder 20/20 packets, 200/200 frames. Baud 1799.97 (-14 ppm); tones roughly 1270/1810 Hz by a rough
   instantaneous-frequency measure (reference wav measured the same way: 1190/1790); 1800/1200 Hz

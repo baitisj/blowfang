@@ -48,7 +48,7 @@ extern "C" {
 #define KM_HDR 16
 #define KM_TAG 8
 #define KM_ABI 1
-#define KM_LEVEL 9
+#define KM_LEVEL 10
 
 typedef struct k6_api {
   uint16_t abi, level;              /* KM_ABI, KM_LEVEL */
@@ -150,7 +150,22 @@ typedef struct k6_api {
      show '?' for those bytes, so a module that also runs there reads api->level and writes
      plain text instead (same run-time check as level 6). */
   void (*lcd_glyphs)(const uint16_t *cols, int n);
+  /* level 10 (2026-11-17, Jeff asked for a backlight timeout in a Settings module): the radio's
+     own settings, for the SETTINGS module (c/k6/mod/settings.c). setting(id, value, save):
+     value -1 reads it, 0 or more sets it at once (for this power-on); save 1 also writes Aura's
+     settings record (its wear-levelled region in SPI flash, where Aura's own menu keeps them),
+     so it holds at the next power-on. Returns the value now, or -1: an id it doesn't know, a
+     value out of range, a save while keyed or past KM_SET_SAVES this run, or a lean image.
+     KM_SET_LIGHT: the backlight's idle time, 0 always on, 1-7 = 5, 10, 15, 20, 30, 60, 120 s
+     (Aura's ABR 0-4 and blowfang's 5-7). The core lights the screen on any key (a module's
+     key_down / key_poll too), a good packet, a message playing and PTT, and puts it out when
+     the time is up. A module that uses this declares K6_MODULE_LEVEL 10. */
+  int (*setting)(int id, int value, int save);
 } k6_api_t;
+
+#define KM_SET_LIGHT 0
+#define KM_LIGHT_MAX 7
+#define KM_SET_SAVES 4
 
 #define KM_GLYPH_COLS 6
 #define KM_GLYPHS 8
@@ -214,7 +229,11 @@ typedef struct {
      0 0xAF   1 kind (KM_REP_*)   2 report seq (counts every report this boot)
      3 part   4 parts             (status = part 0; text parts 1..parts-1)
    kind STATUS:
-     5 xfer  6 have  7 count  8 r (the last km_packet result, int8)  9 state (KM_ST_*)
+     5 xfer  6 have  7 count  8 r (the last km_packet result, int8)
+     9 state (KM_ST_*) in bits 0-3, and from the images of 2026-11-16 the rate ladder (k6_rate.h)
+       above it: KM_RATE_D24 this image takes D/2400, KM_RATE_AT_D24 the K6 is on it now, bits
+       6-7 why it last dropped back to F/1800 since the previous report (KR_WHY_*: 1 CRC
+       failures, 2 silence, 3 no good packet after the switch). Reports go at F/1800 always
      10..13 serial (u32 LE, of the module once it checked)
      14..45 missing chunks: bit i of byte i/8 set = chunk i not held (resend it)
      46..51 the station's call, ASCII, NUL padded
@@ -222,6 +241,9 @@ typedef struct {
    kind TEXT: 5..61 text (KM_TLM_PART bytes, NUL padded): the module's say lines, '\n' after each */
 enum { KM_REP_STATUS = 1, KM_REP_TEXT = 2 };
 enum { KM_ST_PARTWAY = 0, KM_ST_RAN = 1, KM_ST_REFUSED = 2 };
+#define KM_RATE_D24 0x10u
+#define KM_RATE_AT_D24 0x20u
+#define KM_RATE_WHY_SHIFT 6
 
 /* payload: the packet as received (whitened), len 64 or 128. arena: the message store. */
 int km_packet(const uint8_t *payload, int len, void *arena, unsigned arena_bytes);

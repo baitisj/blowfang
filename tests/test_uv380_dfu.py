@@ -76,6 +76,7 @@ def _fake_radio(m, script, sent):
 
     def w(s):
         os.write(m, (s + "\r\n").encode())
+    w.m = m
 
     while True:
         ln = readline()
@@ -95,7 +96,7 @@ def _handshake(script, dry):
     import pty
     m, s = pty.openpty()
     sent, got = [], []
-    t = threading.Thread(target=_fake_radio, args=(m, script, sent))
+    t = threading.Thread(target=_fake_radio, args=(m, script, sent), daemon=True)
     t.start()
     r = dfu.handshake(os.ttyname(s), bytes(200), dry=dry, out=got.append, timeout=5)
     t.join(5)
@@ -126,6 +127,19 @@ def test_tool_answers_the_nonce():
     answers = []
     r, _, _ = _handshake(_armed(answers), dry=True)
     assert r == "dry" and answers == ["dry 0badf00d"]
+
+
+def test_tool_answers_an_unended_line():
+    """11-16 21:23Z: the radio sent "\\r\\nmod say dfuboot armed ..." and held the line's end back
+    until it next wrote; the tool must still answer within dfuboot's 10 s"""
+    answers = []
+
+    def script(w, readline):
+        os.write(w.m, b"\r\nmod say dfuboot armed nonce=0badf00d rdp=1 boot pc=08000a01")
+        answers.append(readline())
+        os.write(w.m, b"\r\nmod say dfuboot erasing sector 3, then reset into TYT's bootloader")
+    r, _, _ = _handshake(script, dry=False)
+    assert r == "erasing" and answers == ["erase 0badf00d"]
 
 
 def test_tool_reports_a_refusal():

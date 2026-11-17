@@ -47,13 +47,14 @@ starts on the band holding the pager's frequency (70 cm on the bench), centred o
 | UP / DOWN | the middle one channel up / down (the band's step); held, it repeats. The scale moves with it, each bin keeping the level of the old one nearest it |
 | SIDE1 / SIDE2 (orange) | the nearest caret (remembered peak, below) above / below, on screen or off it, whether or not it is on the air now; it moves to the middle on the channel raster. No search: the sweeps go on as they were. If only a coarse outer bin heard the caret, the loudest channel of the lens within that bin's width is then taken instead; a caret a fine bin heard is its channel and stays (until 2026-11-11 any louder channel in the whole lens won, which pulled a jump to the weaker of two close stations straight back: Jeff on the radio). With no caret that way, line 5 says "no peak" and the middle stays (Jeff, 2026-11-11; until then a press searched what was on the air at that moment) |
 | A/B | how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the whole height (line 5 says "fall 5m" for 1.5 s) |
-| BAND | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather), AIR (118-137, 25 kHz, AM, receive only). Each starts at its centre with its default step and span, but MAR/WX opens on NOAA weather's 162.475, the marine coast channels below it (Jeff, 2026-11-12: from the band's centre, 159.275 at +-1 MHz, neither was on screen) |
+| BAND | next band: 2m (144-148, 10 kHz), 1.25m (222-225, 10 kHz), 70cm (430-450, 25 kHz), GMRS (462.550-467.725, 12.5 kHz), MAR/WX (156.000-162.550, 25 kHz: marine and NOAA weather), AIR (118-137, 25 kHz, AM, receive only), USER (the custom range, below; 470-608 MHz, the UHF TV band, until V sets one). Each starts at its centre with its default step and span, but MAR/WX opens on NOAA weather's 162.475, the marine coast channels below it (Jeff, 2026-11-12: from the band's centre, 159.275 at +-1 MHz, neither was on screen) |
 | # | next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (line 5 says "step 50k" for 1.5 s). The middle stays put; UP / DOWN then move onto the new raster. BAND resets the step to the band's default |
 | 5 | the band's centre (MAR/WX: 162.475) |
 | 4 | the demodulator: FM, DSB, AM, FM (Jeff, 2026-11-11). DSB is the chip's "USB": REG_47 AF 5 at the zero IF (REG_3D 0), the AFC off, both sidebands heard (docs/k6-afsweep.md). The title always shows the mode at its far right (Jeff, 2026-11-12: before, airband's own AM showed as SURF); line 5 says the mode for 1.5 s. The floor is measured again, since the zero IF's is another. At the zero IF a steady carrier is taken out of the RSSI (docs/k6-acars.md, seventh run), so DSB is for listening, not for finding carriers. BAND resets it; EXIT puts REG_3D back |
 | 7 / 9 | fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB. From auto, 9 starts at the top (0 dB) and 7 at -7 dB (Aura's own top AGC step). The title shows it after the step (`70cm 25k G-12`), line 5 says "gain -12 dB" for 1.5 s |
 | 8 | the receiver's own AGC again ("gain auto") |
-| 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz (defaults: 2m and 1.25m 500 kHz, 70cm and MAR/WX 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
+| V | type a custom range (USER): the low edge in MHz, `#`, the high edge, then MENU (or V again). `*` is the decimal point, DOWN takes the last character back, `#` goes back and forth between the two, EXIT drops the typing (a second EXIT leaves SURF). Line 5 shows it as you type (`set 470.3_-608`). Only a low edge (`V 162*55 MENU`) is a single frequency: USER becomes 1 MHz each side of it with the middle on it, a VFO. A range the K6 can't receive (outside 18-630 MHz, or high under low) says "bad range" and stays typing. See "Custom range" below |
+| 1 / 3 | zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz, 10 MHz, 25 MHz (defaults: 2m and 1.25m 500 kHz, 70cm and MAR/WX 1 MHz, GMRS 2.5 MHz). The lens stays +-20 kHz |
 | * | monitor: audio open on the bar all the time, no sweeping (the title shows a speaker). The chip's own squelch opens all the way too, egzumer's squelch 0 (REG_78 RSSI 0, REG_4F noise 127, REG_4D/4E glitch 255): Jeff heard MON cut weak signals on 2026-11-11 though the module never closes the audio in MON. Leaving MON and EXIT put the four registers back as Aura had them. Not yet tried on the radio |
 | 0 | hold: no refresh sweeps while a signal plays (the title shows a pause sign). While the scan is paused (hold on a station that plays, or monitor) the carets stop falling, and fall on from where they were after it (Jeff, 2026-11-13) |
 | MENU | says the bar's frequency and level on the serial port |
@@ -112,6 +113,28 @@ by about 17 % a bin to 145 kHz at the edge (4 kHz at the lens's edge); at +-100 
 nearly even (2.5 to 4.5 kHz); at +-5 MHz from 1 kHz to about 1 MHz. A bin wider than 20 kHz takes quick reads
 20 kHz apart across its range (halfway to each neighbour) and keeps the loudest and where it was:
 a jump goes to that frequency's channel, not the bin's centre.
+
+**Custom range (USER, Jeff 2026-11-17).** The K6's plain crystal drifts as the garage cools
+(on 11-16 it stopped decoding 440.850 uploads), and Jeff wants to calibrate it against carriers
+that are always on: UHF TV pilots first (470-608 MHz, 309.44 kHz over each 6 MHz channel's lower
+edge), then NOAA and Canadian weather radio (162.400-162.550), AIS base stations and paging
+control channels (docs/k6-drift-cal.md once refcal lands; the proposal is the Claude Doc "K6
+frequency drift calibration"). So BAND has a seventh stop, USER, any range the K6 receives,
+typed on the keypad with V. It starts as 470-608 MHz (`SURF_USER_LO` / `SURF_USER_HI` set
+another at build time), and if the radio's own frequency is in no other band but in USER, SURF
+opens on USER. A new range puts the middle on its centre with 25 kHz steps (# changes them), the
+smallest span that shows all of it, or +-25 MHz for anything wider (UP / DOWN and the side keys
+reach the rest), and AM if it lies inside 108-137 MHz. MENU after typing says `user 470.000
+608.000` on the serial port for the bench log. The range lasts until EXIT (the module keeps
+nothing in flash).
+
+For a range that wide there are two more spans, +-10 MHz and +-25 MHz (`LK`, `LG` found as for
+the others; the curve's fixed-point step is now worked as `(g >> 12) k + ((g & 4095) k >> 12)`, the
+same value, since `g k` overflows 32 bits at +-25 MHz). Their outer bins are up to 6.6 MHz wide,
+so a bin wider than 64 reads of 20 kHz takes 24 reads spread across it instead (a whole sweep at
++-25 MHz is about 2 s, not 4). A TV station's 5.4 MHz of 8VSB data fills such a bin; a lone
+narrow carrier can fall between two of its reads, so zoom in (or UP / DOWN onto it) to find
+pilots. No bin of the spans to +-5 MHz is that wide, so they sweep exactly as before.
 
 **Airband (AM).** BAND's sixth stop is 118-137 MHz in AM: REG_47 AF 7 and the AFC off (REG_73
 bit 4), as Aura's `apply_modulation` does. Aura's AM AGC values (REG_14 0, REG_49 (50 << 7) | 32)

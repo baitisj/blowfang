@@ -8,7 +8,7 @@
 #define K6_MODULE_LEVEL 6
 #define K6_MODULE_OPT z
 /* 9: the top gain, 7 x 7: down to -45 dB, 8: the AGC, BAND x 3: airband (AM), #: its next step,
-   5: its centre, BAND x 3: back to 70 cm (its default step) */
-#define SURF_SCRIPT "97777777" "8" "NNN" "#5" "NNN"
+   5: its centre, BAND x 4: USER (the custom range), then back to 70 cm (its default step) */
+#define SURF_SCRIPT "97777777" "8" "NNN" "#5" "NNNN"
 #define SURF_SCRIPT_MS 3000
 #include "surf.c"

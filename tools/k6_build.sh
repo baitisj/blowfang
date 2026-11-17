@@ -162,6 +162,9 @@ $CC $CFLAGS -Os -c "$ROOT/c/k6/ifpager.c" -o "$OUT/ifpager.o"
 # only the images that call it link it (rt.c goes in as k6_rt.o: c/fixed/cm0/rt.c is the bench's)
 for f in xscan xlisten explore cwid; do $CC $CFLAGS -Oz -c "$ROOT/c/k6/$f.c" -o "$OUT/$f.o"; done
 $CC $CFLAGS -Oz -c "$ROOT/c/k6/rt.c" -o "$OUT/k6_rt.o"
+# the pager's rate ladder (c/k6/k6_rate.h: D/2400 per session, back to F/1800 on CRC failures or
+# silence): the policy only, per packet and per main-loop pass
+$CC $CFLAGS -Oz -c "$ROOT/c/k6/k6_rate.c" -o "$OUT/k6_rate.o"
 # the station editor (the release plan): only in the edit code page, never in the library
 $CC $CFLAGS -Oz -c "$ROOT/c/k6/sted.c" -o "$OUT/sted.o"
 # Listen for ID's side detectors (DMR syncs on the GP0 IF, the CTCSS read): -Os, the DMR
@@ -176,7 +179,7 @@ $CC $CFLAGS -DKP_PAGE=KP_TABLE -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_table.o"
 $CC $CFLAGS -DKP_PAGE=KP_EDIT -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_edit.o"
 LIBOBJS="$OUT/sotto_pager.o $OUT/k6_mod.o $OUT/sotto_fx_dec.o $OUT/sp_cb.o $OUT/sp_vlr.o $OUT/fx_math.o $OUT/fx_tables.o $OUT/ifpager.o
   $OUT/xscan.o $OUT/xlisten.o $OUT/xdmr.o $OUT/explore.o $OUT/cwid.o $OUT/k6_rt.o $OUT/sted.o"
-LIBOBJS="$LIBOBJS $OUT/k6_lib.o"
+LIBOBJS="$LIBOBJS $OUT/k6_lib.o $OUT/k6_rate.o"
 if [ -n "$LR" ]; then     # not hot (field unpacking and shape sums once per 40 ms): -Oz
   $CC $CFLAGS -Oz -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_lr.c" -o "$OUT/sotto_fx_lr.o"
   LIBOBJS="$LIBOBJS $OUT/sotto_fx_lr.o"

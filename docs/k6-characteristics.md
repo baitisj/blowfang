@@ -14,6 +14,7 @@ one of them changes.
 | GP0 IF tap | deaf: about -79 dBm for a usable signal (the 1-bit tap's own noise); needs S9+ signals; freeze the gain (AGC costs about 5 dB) | M, k6-if-fec.md, k6-aprs-clock.md |
 | Plain FSK receiver | sign of the discriminator audio, 4800 a second (REG_58 00E9), clock follows zero crossings (about 3.93 samples a bit, slips now and then); up to 6348 baud; hears to about -122 dBm (DMR sync runs) | M, k6-range.md, k6-dmr.md |
 | Tone (1200/2400) modem | reads Bell 202 only when mark >= space and the audio is clean: no pre-emphasised packet, nothing with noise 12 dB under | M, k6-aprs-clock.md |
+| 2400 baud plain FSK | sends it clean (CAL burst, 11-04); receives nothing from the IC-7100, not even a sync, with the RX high-pass, low-pass and de-emphasis off and the IC-7100's audio pre-equalised four ways (fsk24 run 1, 11-16); D/1200 from the same signal reads, its bit clock slipping partway in some packets. With the C6000-measured IC-7100 equaliser (run 2, 11-16) it syncs: 42 packets, 3 with all 472 data bits right, the rest slipping a bit or two before long runs; the last FIFO word (the CRC) comes out wrong at 2400. From a flat FM transmitter (the ADALM-Pluto, run 3, 11-16) it receives 2400 perfectly: 234 of 234 packets, 0 bits wrong, deviation 1.5-4.5 kHz, both RX bandwidths, filters on or off. The IC-7100's audio path was the limit. Sensitivity (Pluto sweeps, 11-16; K6 RSSI, not calibrated): D/2400 16/16 at -88 dBm, 6/16 at -96, none at -100; the pager's F/1800 11-12/16 down to about -76 dBm, 1/16 at -82 (but those F/1800 sends were about 4 dB under-deviated, 1850 Hz peak). At the upload's 3000 Hz peak (11-17, image 8a78fb5) F/1800 is 24/24 at -88 dBm, 16/24 at -94, 0 at -97, the same as D/2400 on that image (25/25 at -88, failed at -94): the two rates have about the same range | M, k6-fsk24.md |
 | 9600 baud | the chip FSK modem can't | M, k6-ais.md |
 | POCSAG | 512 baud perfect; 1200 works after the fix; 2400 never starts | M, k6-pocsag.md |
 | DMR | sync detected to about -122 dBm by the plain receiver; voice and data not decoded | M, k6-dmr.md |
@@ -45,6 +46,13 @@ one of them changes.
   chip drifts against it; a fixed trim (rangetx RT_PPM) can't hold a phase for seconds, so the
   PHY R receiver follows the walk instead (docs/k6-range.md, K10). A register write takes about
   117 us keyed (M).
+- The 26 MHz crystal (no TCXO) read -0.066 ppm (29 Hz low at 440.850) on 2026-11-17 06:18Z,
+  MCU temperature index t=30039, by the Pluto relay: refcal +251 ppb against the Pluto's carrier,
+  less the Pluto's own +0.317 ppm (slow) against UHF TV pilots 14/26/35 (M, docs/k6-drift-cal.md).
+  ifcal's bench pair against the IC-7100 on 2026-11-06 read -330 ppb. The GP0 IF tap reads a
+  carrier near 16.9 kHz (26 MHz / 1536) only with the wide filter; with the narrow one the same
+  carrier read 8.9-9.8 kHz (M, 06:10Z). One REG_3B step moved it 81 Hz at 440.850 (95 % of 5 Hz of
+  26 MHz) (M).
 
 ## Memory and code
 
@@ -64,8 +72,9 @@ one of them changes.
   48 s (M).
 - SPI read over the cable: the whole 2 MB chip in 239 s, about 8.8 KB/s (M).
 - The OTA reset from the IC-7100 flashed first try once the K6 left EXPLORE; the EXPLORE CW-ID wake
-  needs the 440.850 carrier above -45 dBm at the K6, and the IC-7100 on its stub antenna at power 0
-  read only -50 to -55 dBm (M).
+  needed the 440.850 carrier above -45 dBm at the K6, and the IC-7100 on its stub antenna at power 0
+  read only -50 to -55 dBm (M). On 2026-11-17 the Pluto's PSK31 wake at gain -30 (its top) read
+  -52 dBm and didn't wake it either (M), so the threshold is now -60 dBm.
 
 ## Bench notes
 

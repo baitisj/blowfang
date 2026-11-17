@@ -283,6 +283,34 @@ screen (`draw_mod_screen`) and the paged one (`draw_mod_page`) draw them. The co
 200 B of flash and 8 B of RAM. The emulator (`tests/test_k6_i2s.py`) records each frame's
 glyphs, and `tools/k6_screen.py` draws them.
 
+## API level 10: the radio's settings (the backlight)
+
+Added 2026-11-17. Jeff: "the backlight remains on the entire time, draining battery", and the
+setting "probably" belongs "in a Settings module". Aura has a backlight timeout (its ABR
+setting), but it runs in Aura's radio main loop, which the pager images never reach: they lit
+the light at power-on and never put it out. The core now keeps the timeout itself
+(`src/hal/light.rs` in the patch), and a module picks the delay.
+
+- **The core:** the delay is Aura's ABR byte in its settings record (`Settings::backlight_time`,
+  its own wear-levelled region in SPI flash), read at power-on: 0 always on, 1-4 Aura's
+  5/10/15/20 s, 5-7 blowfang's 30 s, 1 min, 2 min. Aura's own default is 2 (10 s). Any key, a
+  good voice packet, a message playing, a module starting and PTT light the screen and start
+  the time again. A key still does its job: the first press in the dark is not swallowed, so
+  key sequences (EXIT twice) work as before. While a module runs, its `key_down` and `key_poll`
+  calls light the screen on a key held and run the timeout, and `lcd_flush` runs it too, so a
+  module used for an hour (SURF) still goes dark and wakes on its keys. `K6 CFG` lines say the
+  setting as `bl=`. The lean images keep the light on, as before.
+- **The call:** `setting(id, value, save)`. value -1 reads, 0 or more sets it at once (for this
+  power-on); save 1 also writes Aura's settings record, so it holds at the next power-on
+  (serial `K6 SET saved bl=N`). It returns the value now, or -1: an id it doesn't know, a value
+  out of range, a save while keyed or past `KM_SET_SAVES` (4) in one run, or a lean image. One
+  id so far, `KM_SET_LIGHT` (0); the next settings take the next ids.
+- **The module:** `c/k6/mod/settings.c`, MENU name SETTINGS, library slot 31. UP / DOWN step
+  through the delays and set each at once, so the new delay can be tried before it is kept;
+  EXIT saves it if it changed and leaves (two minutes with no key do the same). Serial
+  `settings light=N secs=S saved` (or `unchanged`). Tests: `tests/test_k6_settings.py`
+  (`tests/test_k6_i2s.py` `run(settings=...)` models the call).
+
 ## The SPI module library
 
 Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).

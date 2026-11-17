@@ -161,3 +161,26 @@ def test_cmd_tool_over_a_pty():
     t.join(5)
     assert bad == 1
     assert got == ["auto pass line", "ok buf cap=20001000 capx=20002000 n=2048", "err nope: unknown command"]
+
+
+def test_command_takes_an_unended_line():
+    """the radio sometimes holds a line's end back until it next writes (11-16 20:59Z:
+    "\\r\\nok mod begin 1484" and no more): the tool takes the line once the port goes quiet"""
+    import os
+    import pty
+    import threading
+    m, s = pty.openpty()
+    got = []
+
+    def radio():
+        buf = b""
+        while b"\n" not in buf:
+            buf += os.read(m, 64)
+        os.write(m, b"\r\nok mod begin 1484")
+
+    t = threading.Thread(target=radio)
+    t.start()
+    bad = tool.command(os.ttyname(s), ["mod begin 1484"], out=got.append, timeout=5, pass_timeout=5)
+    t.join(5)
+    assert bad == 0
+    assert got == ["ok mod begin 1484"]

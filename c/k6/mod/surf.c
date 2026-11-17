@@ -44,8 +44,13 @@
      A/B             how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the
                      whole height (line 5: "fall 5m")
      BAND            next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX, airband (AM, 118-137
-                     MHz, receive only); each starts at its centre (MAR/WX: on NOAA weather's
-                     162.475, with the marine coast channels below) with its default step and span
+                     MHz, receive only), USER (the custom range: V); each starts at its centre
+                     (MAR/WX: on NOAA weather's 162.475, with the marine coast channels below)
+                     with its default step and span
+     V               type a custom range, USER (Jeff, 2026-11-17: to find carriers to calibrate
+                     the crystal against): low MHz, #, high MHz, MENU ('*' the point, DOWN a
+                     backspace, # back and forth, EXIT drops it); a low edge alone is +-1 MHz
+                     round it. Until then USER is SURF_USER_LO..HI, the UHF TV band
      #               next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
                      stays; UP / DOWN then move onto the new raster; BAND resets the step)
      5               the band's centre (MAR/WX: 162.475)
@@ -55,7 +60,8 @@
      7 / 9           fixed receiver gain down / up: 0, -7, -12, -17, -22, -27, -33, -45 dB (from
                      auto, 9 starts at the top and 7 at -7); the title shows it ("70cm 25k G-12")
      8               the receiver's own AGC again (the gain leaves the title)
-     1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz
+     1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz,
+                     10 MHz, 25 MHz (the last two: outer bins read 24 times, not every 20 kHz)
      *               monitor: audio open on the bar all the time, no sweeping; the chip's own
                      squelch open all the way too (put back on leaving MON and at EXIT)
      0               hold: no refresh sweeps while a signal plays (default: one every 5 s);
@@ -135,6 +141,23 @@ K6_MODULE_NAME(K6_NAME);
 
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
+
+/* the custom range (Jeff, 2026-11-17): BAND's last stop, USER, is a band the keypad sets (V);
+   until then it is SURF_USER_LO .. SURF_USER_HI, the UHF TV band, whose pilots the drift
+   calibration wants (docs/k6-surf.md "Custom range") */
+#ifndef SURF_USER_LO
+#define SURF_USER_LO 470000000u
+#endif
+#ifndef SURF_USER_HI
+#define SURF_USER_HI 608000000u
+#endif
+#define USER_MIN 18000000u      /* what the K6 receives (docs/k6-rxmap.md: 18-630 MHz) */
+#define USER_MAX 630000000u
+#define ED_LEN 7                /* a typed frequency: "470.309" */
+#define SF_EXTRA                                                                                   \
+  band_t ub;                    /* USER */                                                         \
+  uint8_t ed, en[2];            /* V: the field being typed (1 low, 2 high, 0 none), lengths */    \
+  char eb[2][ED_LEN + 1];       /* the typed text */
 
 #include "../../common/surf_core.inc"   /* the scale, the sweep of a bin, the floor, the carets */
 
@@ -244,6 +267,97 @@ static void gain(sf_t *s) {
   s->t_msg = s->now + MSG_MS;
 }
 
+/* ---- the custom range (USER) ---- */
+
+/* USER on lo .. hi: the middle on its centre, the smallest span that shows it all (or the
+   widest), 25 kHz steps (# changes it), AM if it is all airband */
+static void user_set(sf_t *s, uint32_t lo, uint32_t hi) {
+  band_t *u = &s->ub;
+  int i;
+  u->lo = lo;
+  u->hi = hi;
+  u->home = lo + ((hi - lo) >> 1);
+  u->st = ST_25K;
+  for (i = 0; i < NSPANS - 1 && 2 * U_HZ * SPANS[i] < hi - lo; i++) {}
+  u->si = (uint8_t)i;
+  u->am = lo >= 108000000u && hi <= 137000000u;
+  put(u->name, "USER")[0] = 0;
+}
+
+/* typed MHz ("470.309", "608") in Hz; 0 for none */
+static uint32_t ed_hz(const char *t) {
+  uint32_t v = 0;
+  int fr = -1;
+  for (; *t; t++) {
+    if (*t == '.') {
+      fr = 0;
+    } else if (fr < 6) {
+      v = 10 * v + (uint32_t)(*t - '0');
+      if (fr >= 0) fr++;
+    }
+  }
+  for (fr = fr < 0 ? 0 : fr; fr < 6; fr++) v *= 10;
+  return v;
+}
+
+/* V typed range done: low and high, or only low: +-1 MHz round it ("a frequency, MENU" is a
+   VFO); 0 if it is no range the K6 receives */
+static int ed_done(sf_t *s) {
+  uint32_t lo = ed_hz(s->eb[0]), hi = ed_hz(s->eb[1]);
+  if (!s->en[1]) {
+    hi = lo + 1000000u;
+    lo = lo > USER_MIN + 1000000u ? lo - 1000000u : USER_MIN;
+    if (hi > USER_MAX) hi = USER_MAX;
+  }
+  if (lo < USER_MIN || hi > USER_MAX || hi <= lo) return 0;
+  user_set(s, lo, hi);
+  band(s, &s->ub);
+  if (!s->en[1]) recentre(s, ed_hz(s->eb[0])), moved(s);   /* (one frequency: there, on 25 kHz) */
+  /* "user 470.000 608.000" for the bench's log */
+  {
+    char *p = put(s->ln, "user ");
+    p = mhz(p, lo, 3);
+    *p++ = ' ';
+    say_end(s, mhz(p, hi, 3));
+  }
+  return 1;
+}
+
+/* a key while V is typing a range: digits, * the point, # the other field, DOWN a backspace,
+   MENU or V take it, EXIT drops it (and stays in SURF) */
+static void ed_key(sf_t *s, int k) {
+  int f = s->ed - 1, n = s->en[f], i;
+  char *t = s->eb[f];
+  if (k >= '0' && k <= '9') {
+    if (n < ED_LEN) t[n++] = (char)k;
+  } else if (k == '*') {
+    for (i = 0; i < n && t[i] != '.'; i++) {}
+    if (i == n && n && n < ED_LEN) t[n++] = '.';
+  } else if (k == 'D') {
+    if (n) n--;
+  } else if (k == '#') {
+    s->ed = (uint8_t)(3 - s->ed);
+  } else if (k == 'M' || k == 'V') {
+    if (s->en[0] && ed_done(s)) s->ed = 0;
+    else note(s, "bad range");
+  } else if (k == 'X') {
+    s->ed = 0;
+  }
+  t[n] = 0;
+  s->en[f] = (uint8_t)n;
+}
+
+/* line 5 while typing: "set 470.3_-608", the cursor after the field being typed */
+static char *ed_line(sf_t *s) {
+  char *p = put(s->ln, "set ");
+  p = put(p, s->eb[0]);
+  if (s->ed == 1) *p++ = '_';
+  *p++ = '-';
+  p = put(p, s->eb[1]);
+  if (s->ed == 2) *p++ = '_';
+  return p;
+}
+
 /* ---- the keypad ---- */
 
 static int kp_scan(sf_t *s) {
@@ -315,7 +429,16 @@ static void moved(sf_t *s) {
 }
 
 static void on_key(sf_t *s, int k) {
+  if (s->ed) {
+    ed_key(s, k);
+    return;
+  }
   switch (k) {
+  case 'V':                           /* type a custom range (USER): low # high MENU */
+    s->ed = 1;
+    s->en[0] = s->en[1] = 0;
+    s->eb[0][0] = s->eb[1][0] = 0;
+    break;
   case 'U': go_to(s, s->cen + s->ch); break;
   case 'D': go_to(s, s->cen - s->ch); break;
   case '5':
@@ -328,7 +451,9 @@ static void on_key(sf_t *s, int k) {
     put(put(s->msg, "fall "), FALL[s->fall])[0] = 0;
     s->t_msg = s->now + MSG_MS;
     break;
-  case 'N': band(s, s->bd + 1 == BANDS + NBANDS ? BANDS : s->bd + 1); break;
+  case 'N':                           /* the next band; USER after the last, then the first */
+    band(s, s->bd == &s->ub ? BANDS : s->bd + 1 == BANDS + NBANDS ? &s->ub : s->bd + 1);
+    break;
   case '#':                           /* the next channel step (a new band resets it) */
     s->st = (uint8_t)(s->st + 1 == NSTEPS ? 0 : s->st + 1);
     s->ch = STEPS[s->st];             /* (the middle stays; UP / DOWN go onto the new raster) */
@@ -556,7 +681,7 @@ static void draw(sf_t *s) {
   px(b, x, AX + 1), px(b, x + 1, AX + 1), px(b, x, AX + 2), px(b, x + 1, AX + 2);
   for (i = 0; i < (int)sizeof TICKS / 2; i++) {   /* the axis's ticks, each side of the middle */
     uint32_t o = 1000u * TICKS[i];
-    int j, e, big = TICKS[i] == 20 || TICKS[i] == 100 || TICKS[i] == 1000;
+    int j, e, big = TICKS[i] == 20 || TICKS[i] == 100 || TICKS[i] == 1000 || TICKS[i] == 10000;
     if (o > U_HZ * SPANS[s->si]) break;
     for (e = -1; e <= 1; e += 2) {
       j = bin_of(s, e < 0 ? s->cen - o : s->cen + o);
@@ -603,7 +728,9 @@ static void draw(sf_t *s) {
   if (s->audio) p = put(p, " RX");
   *p = 0;
   api->lcd_text(1, s->ln);
-  if (k >= 0) {
+  if (s->ed) {
+    p = ed_line(s);
+  } else if (k >= 0) {
     p = rt_info(s, k);
   } else {
     /* the axis's labels: the span at each end, the lens's edges under their ticks
@@ -656,7 +783,8 @@ int k6_main(const k6_api_t *api) {
   audio(s, 0);
   {
     uint32_t hz = api->rx_hz();
-    s->bd = &BANDS[2];
+    user_set(s, SURF_USER_LO, SURF_USER_HI);
+    s->bd = hz >= s->ub.lo && hz <= s->ub.hi ? &s->ub : &BANDS[2];
     for (i = 0; i < NBANDS; i++)
       if (hz >= BANDS[i].lo && hz <= BANDS[i].hi) s->bd = &BANDS[i];
     s->st = s->bd->st;
@@ -710,7 +838,7 @@ int k6_main(const k6_api_t *api) {
       k = SC[s->sc++];
     }
 #endif
-    if (k == 'X') break;
+    if (k == 'X' && !s->ed) break;   /* (typing a range, EXIT drops the typing) */
     if (k) {
       on_key(s, k);
       s->now = api->ms();

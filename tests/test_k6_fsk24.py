@@ -103,3 +103,125 @@ def test_fsk24rx_dumps_bad_packets():
     bad = [p for p in pk if not p["c"]]
     assert bad and any(p["c"] for p in pk), pk
     assert sum(s.startswith("d 0 00 ") for s in e.said) == min(len(bad), 3), e.said
+
+
+def test_run2_symbol_variants_read_flat_and_take_the_equaliser():
+    """run 2's bits as +-3 DMR symbols (RRC) read back through a flat channel, and the
+    equaliser is applied: a two-tap one changes the audio, the identity doesn't"""
+    flat = fsk24.sim(n_rounds=1, ch="flat")
+    for vi in fsk24.RUN2:
+        assert flat[vi][0] == flat[vi][1], (vi, flat)
+    plain = fsk24.block_audio(9, 0)
+    old = dict(fsk24.EQ)
+    try:
+        fsk24.EQ.update(taps=[1.0, -0.5], centre=0)
+        tilted = fsk24.block_audio(9, 0)
+    finally:
+        fsk24.EQ.clear()
+        fsk24.EQ.update(old)
+    assert len(plain) == len(tilted) and np.max(np.abs(plain - tilted)) > 0.01
+    assert np.array_equal(plain, fsk24.block_audio(9, 0))
+
+
+def test_run3_flat_fm_variants_read():
+    """run 3's flat FM blocks (a discriminator's view of them) read back with our demodulator,
+    and the frequency track carries the same blocks at their deviation"""
+    got = fsk24.sim(n_rounds=1, ch="flat")
+    for vi in fsk24.RUN3:
+        assert got[vi][0] == got[vi][1], (vi, got)
+    track, segs = fsk24.freq_track(1)
+    assert [s[3] for s in segs] == list(fsk24.RUN3)
+    assert 4400 < np.max(np.abs(track)) < 4600 and track[0] == 0.0
+    assert all(len(s[2]) / s[1] < 3.0 for s in segs)
+
+
+
+def test_sweep_module_table_is_the_plan():
+    """c/k6/mod/fsk24rx_sweep.c's slot table is fsk24.sweep_table(), slot for slot"""
+    import re
+    src = open(os.path.join(K6, "mod", "fsk24rx_sweep.c")).read()
+    rows = re.findall(r"^\s*(\{0x[0-9A-F]{4}, \d+, \d+, 0x[0-9A-F]{4}\},)", src, re.M)
+    assert rows == fsk24.sweep_table()
+    assert f"#define F24_NV {len(rows)}" in src and "#define F24_ABS 1" in src
+    assert f"#define FE_S {fsk24.SWEEP_SLOT_S}u" in src and "#define WAIT_MS 30000u" in src
+
+
+def test_sweep_track_fills_each_slot_inside_its_guards():
+    track, level, segs = fsk24.sweep_track()
+    fs, n = fsk24.fsk.FS, int(fsk24.SWEEP_SLOT_S * fsk24.fsk.FS)
+    plan = fsk24.sweep_plan()
+    assert len(segs) == len(plan) == len(fsk24.SWEEP_STEPS) * len(fsk24.SWEEP_SLOTS)
+    assert len(track) == len(level) == n * len(plan)
+    g0, g1 = (int(g * fs) for g in fsk24.SWEEP_GUARD_S)
+    for (t0, k, st, vi, sent), (k2, st2, vi2, _) in zip(segs, plan):
+        assert (k, st, vi) == (k2, st2, vi2) and sent >= 8, segs
+        a = k * n
+        assert np.all(track[a:a + g0] == 0) and np.all(track[a + n - g1:a + n] == 0)
+        assert np.any(track[a + g0:a + n - g1] != 0)
+        assert np.allclose(level[a:a + n], 10 ** (st / 20))
+    peak = max(fsk24.VARIANTS[v].level for _, v, _ in fsk24.SWEEP_SLOTS) * 1000
+    assert 0.95 * peak < np.max(np.abs(track)) <= peak
+
+
+def test_sweep_ffsk_blocks_read_flat():
+    """the F/1800 and F/1200 sweep variants read back with our F demodulator"""
+    got = fsk24.sim(n_rounds=1, ch="flat")
+    for vi in {v for _, v, _ in fsk24.SWEEP_SLOTS}:
+        assert got[vi][0] == got[vi][1], (vi, got)
+
+
+def test_sweep_report():
+    lines = ["K6 MOD say " + s for s in [
+        "fsk24 start hz=440850000 n=32",
+        "s 0 t=30000 cfg=00e9 b=60cb a=04",
+        "p 0 v=14 q=0 c=1 i=0 e=0 x=0 r=-89",
+        "p 0 v=14 q=1 c=1 i=0 e=0 x=0 r=-90",
+        "p 0 v=14 q=2 c=0 i=0 e=9 x=0 r=-90",
+        "v 0 n=3 ok=2 z=0",
+        "s 1 t=42000 cfg=00e9 b=4898 a=04",
+        "p 1 v=24 q=0 c=1 i=0 e=0 x=0 r=-91",
+        "s 4 t=78000 cfg=00e9 b=60cb a=04",
+        "p 4 v=14 q=16 c=1 i=0 e=0 x=0 r=-93",
+    ]]
+    rep = fsk24.sweep_report(lines)
+    sent = {k: n for _, k, _, _, n in fsk24.sweep_track()[2]}
+    assert rep[0] == "step dB | RSSI dBm | D/2400 | D/1800 | D/1800 1.2K | D/1200", rep
+    assert rep[2] == f"0 | -90 | 2/{sent[0]} | 1/{sent[1]} | -/{sent[2]} | -/{sent[3]}", rep
+    assert rep[3].startswith(f"-3 | -93 | 1/{sent[4]} | -/"), rep
+
+
+@need_clang
+def test_fsk24rx_sweep_builds():
+    import k6_live_emu as le
+    code, _ = le.build("x", [], os.path.join(K6, "mod", "fsk24rx_sweep.c"))
+    assert 1000 < len(code) < 11776, len(code)
+
+
+@need_clang
+def test_fsk24rx_uv_reads_the_upright_packets():
+    """fsk24rx_uv on the emulated K6 (its first setting, D/2400 with the RX high-pass off) and a
+    key-up's bits: the polarity 0 packets read, CRC right, no bits wrong"""
+    pytest.importorskip("unicorn")
+    from test_k6_pocsag import run_plain
+    from modem import c6phy
+    bits = np.unpackbits(np.frombuffer(c6phy.stream(2400, 2, 13, extra_bytes=8), np.uint8))
+    segs = [(0.5, 2400.0, bits)]
+    e, ret = run_plain(os.path.join(K6, "mod", "fsk24rx_uv.c"),
+                       [("WAIT_MS", "100u"), ("SLOT_SCALE", "80u")], segs, 0.1 + 4 * 60 * 0.08 + 3)
+    assert e.said[0] == "fsk24 start hz=440850000 n=4", e.said[:3]
+    _, pk = fsk24.parse_log(["K6 MOD say " + s for s in e.said])
+    up = [p for p in pk if p["v"] == 20]
+    assert len(up) >= 6 and all(p["c"] == 1 and p["e"] == 0 and p["i"] == 0 for p in up), pk
+
+
+def test_steps_report_counts_the_pagers_packets_per_send():
+    lines = [
+        "100.5\t1287138\tK6 PKT n=1 got=128 sync=N res=20 magic=a7 rswap=0 soft=0 swap=0 be=0 good=1 bad=0",
+        "101.1\t1287138\tK6 PKT n=2 got=128 sync=N res=-1 magic=a7 rswap=0 soft=0 swap=0 be=7 good=1 bad=1",
+        "101.9\t1287138\tK6 PLAY id=1",
+        "130.2\t1287138\tK6 PKT n=3 got=128 sync=N res=-1 magic=a7 rswap=0 soft=0 swap=0 be=40 good=1 bad=2",
+        "130.4\t1287138\tK6 PKT n=4 got=60 sync=N res=short ev= good=1 bad=3",
+    ]
+    steps = {"steps": [{"gain": -70, "t0": 99.0, "t1": 120.0}, {"gain": -73, "t0": 125.0, "t1": 145.0}]}
+    rep = fsk24.steps_report(lines, steps)
+    assert rep[2] == "-70 | 1 | 1 | 7" and rep[3] == "-73 | 0 | 2 | 40", rep
