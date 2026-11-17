@@ -178,18 +178,27 @@ def end_upload(ps, stepped_down, lost_total, done):
     return ps
 
 
+def preemph(x, fs):
+    """750 us pre-emphasis shelved at 3 kHz, 0 dB at 1 kHz: pluto_bench --preemph's filter (and
+    modem/fsk24.py's), here so the tool needs no modem import beyond k6mod (ci-radios scope)"""
+    from scipy import signal as sps
+    w1, w2 = 1.0 / 750e-6, 2 * np.pi * 3000.0
+    b, a = sps.bilinear([1.0 / w1, 1.0], [1.0 / w2, 1.0], fs)
+    _, h = sps.freqz(b, a, [1000.0], fs=fs)
+    return sps.lfilter(b, a, np.asarray(x, float)) / abs(h[0])
+
+
 def flat_track(parts, fs, gap_s=D24_GAP_S):
     """[(audio, peak Hz, pre-emphasise)] joined with gap_s of carrier between -> (audio scaled to
     +-1, full-scale deviation Hz) for pluto_bench send --dev without --preemph. Each part's audio
     peak becomes its peak Hz; a pre-emphasised part gets it before emphasis, as pluto_bench
     --preemph sends F/1800 (the 1 kHz level kept)"""
-    from modem import fsk24
     out = []
     for x, peak, emph in parts:
         if out:
             out.append(np.zeros(int(gap_s * fs)))
         y = np.asarray(x, float) / max(1e-9, np.max(np.abs(x))) * peak
-        out.append(fsk24.preemph(y, fs) if emph else y)
+        out.append(preemph(y, fs) if emph else y)
     hz = np.concatenate(out)
     full = float(np.max(np.abs(hz))) * 1.02
     return hz / full, full
