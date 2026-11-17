@@ -165,6 +165,17 @@ def test_k6_upload_via_pluto_sends_with_pluto_bench(capsys):
     a = types.SimpleNamespace(via="pluto", freq=440_850_000, pluto_gain=-52.0, level=0.3, dry_run=True)
     ku.key_and_play(a, "up1.wav")
     out = capsys.readouterr().out
-    assert "pluto_bench.py send up1.wav --hz 440850000 --preemph --gain -52.0 --dev 6167" in out
+    assert "pluto_bench.py send up1.wav --hz 440850000 --preemph --gain -52.0 --dev 10000" in out
     ku.key_and_play(a, "id.wav", "id")
     assert capsys.readouterr().out == ""
+    a.pluto_peak, a.level = 2500.0, 1.0
+    ku.key_and_play(a, "up2.wav")
+    assert "--dev 2500" in capsys.readouterr().out
+
+
+def test_as_flag_sets_the_holder(monkeypatch):
+    """--as WHO = $K6_BENCH_AS=WHO without an env prefix (allow rules match whole commands)"""
+    monkeypatch.delenv("K6_BENCH_AS", raising=False)
+    monkeypatch.setattr(pl, "cmd_info", lambda a: None)
+    pl.main(["--as", "fsk24", "info"])
+    assert os.environ["K6_BENCH_AS"] == "fsk24"

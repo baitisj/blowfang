@@ -10,13 +10,20 @@ they share. Every tool that keys the IC-7100 goes through here (docs/hamlet-perm
   python3 tools/k6_bench.py idkeeper           the CW ID keeper (the k6-idkeeper user unit runs it)
   python3 tools/k6_bench.py wavs               (re)make the ID and K6 reset WAVs (needs the checkout)
   python3 tools/k6_bench.py install [--unit]   copy this file and the reset trigger into
-                                               $BLOWFANG_WORK/bin, make the WAVs, write the unit
+                                               $BLOWFANG_WORK/bin, add a pluto_bench.py launcher
+                                               there, make the WAVs, write the unit
+  python3 tools/k6_bench.py --as WHO CMD ...   any command as bench holder WHO (the same as
+                                               $K6_BENCH_AS=WHO, without an env prefix, so one
+                                               allow rule on the command covers it)
   python3 tools/k6_bench.py stop [--freq HZ]   stop a running K6 module that listens for it
                                                (c/k6/mod/k6_stop.h): two PSK31 'AG7EW STOP' bursts
   python3 tools/k6_bench.py owner              who holds the bench, until when, doing what
   python3 tools/k6_bench.py claim WHO MIN WHAT  hold the bench for MIN minutes (WHO: a short name,
-                                               such as the thread's; again by WHO extends it)
-  python3 tools/k6_bench.py release WHO        give it back (--force: whoever holds it)
+         [--freq MHZ]                          such as the thread's; again by WHO extends it);
+                                               --freq holds only that 70 cm channel, so threads on
+                                               channels 100 kHz or more apart share the bench
+                                               (docs/hamlet-channels.md)
+  python3 tools/k6_bench.py release WHO        give it back (--force: every claim)
   python3 tools/k6_bench.py serial-hold WHO -- CMD...   run the one /dev/ttyUSB2 reader (a logger) as
                                                WHO, until it ends or someone asks for the port
   python3 tools/k6_bench.py serial-owner       who reads /dev/ttyUSB2 (WHO, pid, command, since)
@@ -31,7 +38,8 @@ What they share, under $BLOWFANG_WORK/state/ (it outlives reboots, unlike a sess
   cwid.wav          'AG7EW SOTTO TEST', MCW 800 Hz, 20 wpm, level 0.4
   reset.wav         the K6 reset control packet (modem.k6 ctl --phy F --seq 201 --action reset), XL then L
   stop.wav          one burst of the module stop signal: PSK31 'AG7EW STOP', 1000 Hz, level 0.3
-  bench.owner       who holds the bench and until when (JSON: who, what, since, until; epoch s)
+  bench.owner       who holds the bench or a channel, until when (JSON: {"claims": [who, what,
+                    since, until (epoch s), hz (null: the whole bench)]})
   serial.lock       flock, held by serial-hold for as long as its reader runs
   serial.owner      that reader (JSON: who, pid, cmd, since); stale once serial.lock is free
   serial.release    a request to let go of the port (JSON: by, at); serial-hold watches for it
@@ -41,7 +49,11 @@ The bench owner: a session that will use the radios for a while claims the bench
 claim runs, a data key-up through this file (send, the reset trigger, k6_upload, k6_ifcap,
 k6_afsweep, k6_rxmap) is refused unless $K6_BENCH_AS (or send's --as) names the holder. The CW ID keeper never
 asks: an ID is the law, whoever holds the bench. A claim ends by itself at its time, so a session
-that dies leaves nothing stuck. With no claim the bench is free to anyone, as before.
+that dies leaves nothing stuck. With no claim the bench is free to anyone, as before. A claim with
+--freq holds one 70 cm channel instead of the whole bench: a key-up on that channel (or within
+100 kHz of it) by anyone else is refused, a second claim there too, and a key-up whose frequency
+the tool doesn't know is refused while anyone else holds anything. The PTT lock still lets only
+one keyer (IC-7100 or Pluto) at a time on the air.
 
 The keeper (FCC 97.119): a session is active while a data TX ended less than 10 min ago. While
 active, it IDs when 9 min have passed since the last ID; 2 min after the last data TX it sends a
@@ -64,7 +76,9 @@ import fcntl
 import json
 import os
 import shutil
+import signal
 import subprocess
+import threading
 import sys
 import time
 import wave
@@ -154,16 +168,46 @@ def note_id(t0, t1, why, text=ID_TEXT):
 
 
 # ---- the bench owner ----
+#
+# A claim holds the whole bench (no frequency, as before: nobody else keys anything) or one 70 cm
+# channel (--freq): then other threads may hold other channels at the same time, at least GUARD_HZ
+# away, and a second claim on that channel is refused. Every keying tool still goes through the
+# one PTT lock, so the IC-7100 and the Pluto never key for two threads at once.
 
-def owner(now=None):
-    """the running claim as a dict (who, what, since, until), or None when the bench is free"""
+GUARD_HZ = 100_000              # two channel claims closer than this collide (the K6's FSK filter
+                                # is 12.5-25 kHz wide; 100 kHz leaves room for drift and splatter)
+
+
+def _claims_raw():
     try:
         o = json.load(open(path("owner")))
-        if (now or time.time()) < float(o["until"]):
-            return o
-    except (OSError, ValueError, KeyError, TypeError):
-        pass
-    return None
+    except (OSError, ValueError):
+        return []
+    if isinstance(o, dict) and "claims" in o:
+        o = o["claims"]
+    elif isinstance(o, dict):
+        o = [o]                     # a bench.owner from before channel claims: one whole-bench claim
+    return [c for c in o if isinstance(c, dict)] if isinstance(o, list) else []
+
+
+def claims(now=None):
+    """the running claims, a list of dicts (who, what, since, until, hz: None = the whole bench)"""
+    now = now or time.time()
+    out = []
+    for c in _claims_raw():
+        try:
+            if now < float(c["until"]):
+                out.append(dict(c, hz=int(c["hz"]) if c.get("hz") is not None else None))
+        except (KeyError, TypeError, ValueError):
+            pass
+    return out
+
+
+def owner(now=None):
+    """a running claim as a dict (who, what, since, until, hz), or None when nobody holds anything:
+    the whole-bench claim when there is one, else the claim that started first"""
+    cs = sorted(claims(now), key=lambda c: (c["hz"] is not None, float(c.get("since") or 0)))
+    return cs[0] if cs else None
 
 
 def me():
@@ -171,61 +215,104 @@ def me():
     return os.environ.get("K6_BENCH_AS") or None
 
 
+def mhz(hz):
+    return f"{hz / 1e6:.3f} MHz"
+
+
 def owner_line(o, now=None):
     now = now or time.time()
-    return (f"{o['who']} until {utc(float(o['until']))} UTC ({(float(o['until']) - now) / 60:.0f} min left)"
+    return (f"{o['who']}" + (f" on {mhz(o['hz'])}" if o.get("hz") is not None else "")
+            + f" until {utc(float(o['until']))} UTC ({(float(o['until']) - now) / 60:.0f} min left)"
             + (f": {o['what']}" if o.get("what") else ""))
 
 
-def check_owner(who=None):
-    """SystemExit unless the bench is free or `who` (default $K6_BENCH_AS) holds it"""
-    o = owner()
+def collides(c, who, hz):
+    """does claim c (someone else's unless c['who'] == who) stand in the way of `who` on hz
+    (None: the whole bench, or a key-up whose frequency the caller doesn't know)?"""
+    if c["who"] == who:
+        return False
+    return c["hz"] is None or hz is None or abs(c["hz"] - hz) < GUARD_HZ
+
+
+def check_owner(who=None, hz=None):
+    """SystemExit unless nobody else's claim covers a key-up by `who` (default $K6_BENCH_AS) on hz
+    (None: unknown, so any claim by someone else refuses it)"""
     who = who or me()
-    if o and o["who"] != who:
-        raise SystemExit(f"refusing: the bench is held by {owner_line(o)}; "
-                         f"{'you are ' + who if who else 'set K6_BENCH_AS to the holder'}"
-                         f" (k6_bench.py owner)")
+    for c in claims():
+        if collides(c, who, hz):
+            raise SystemExit(f"refusing: {'the bench' if c['hz'] is None else mhz(c['hz'])} is held by "
+                             f"{owner_line(c)}; {'you are ' + who if who else 'set K6_BENCH_AS to the holder'}"
+                             f" (k6_bench.py owner)")
 
 
-def claim(who, minutes, what="", now=None):
-    """hold the bench for `minutes` from now; the holder can extend or shorten its own claim
-    (at most 12 h: a forgotten claim must not hold the bench for days)"""
+def parse_freq(s):
+    """'440.850' (MHz) or '440850000' (Hz) -> Hz, 70 cm only"""
+    v = float(s)
+    hz = int(round(v * 1e6)) if v < 10_000 else int(round(v))
+    if not in_band(hz):
+        raise SystemExit(f"claim: {s} is not in 430.010-449.990 MHz (bench channels are 70 cm only)")
+    return hz
+
+
+def _save_claims(cs):
+    p = path("owner")
+    if not cs:
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(p)
+        return
+    tmp = p + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump({"claims": cs}, f)
+    os.replace(tmp, p)
+
+
+def claim(who, minutes, what="", now=None, hz=None):
+    """hold the bench (hz None) or one channel (hz) for `minutes` from now; the holder can extend,
+    shorten or move its own claim (one claim per holder; at most 12 h: a forgotten claim must not
+    hold the bench for days)"""
     if not 0 < minutes <= 720:
         raise SystemExit("claim: MIN is 1 to 720")
     if not who or any(c.isspace() for c in who):
         raise SystemExit("claim: WHO is one short word, such as the thread's name")
+    if hz is not None and not in_band(hz):
+        raise SystemExit(f"claim: {hz} Hz is not in 430.010-449.990 MHz (bench channels are 70 cm only)")
     now = now or time.time()
     p = path("owner")
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p + ".lock", "a") as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
-        o = owner(now)
-        if o and o["who"] != who:
-            raise SystemExit(f"the bench is held by {owner_line(o, now)}")
-        new = {"who": who, "what": what, "since": o["since"] if o else round(now, 3),
-               "until": round(now + 60 * minutes, 3)}
-        tmp = p + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(new, f)
-        os.replace(tmp, p)
-        _append("txlog", f"{now:.3f} {now:.3f} bench claimed by {who} for {minutes:g} min: {what}")
+        cs = claims(now)
+        for c in cs:
+            if collides(c, who, hz):
+                where = "the bench" if c["hz"] is None else mhz(c["hz"])
+                why = " (a whole-bench claim needs every channel free)" if hz is None and c["hz"] else ""
+                raise SystemExit(f"{where} is held by {owner_line(c, now)}{why}")
+        mine = [c for c in cs if c["who"] == who]
+        new = {"who": who, "what": what, "since": mine[0]["since"] if mine else round(now, 3),
+               "until": round(now + 60 * minutes, 3), "hz": hz}
+        _save_claims([c for c in cs if c["who"] != who] + [new])
+        _append("txlog", f"{now:.3f} {now:.3f} {'bench' if hz is None else mhz(hz)} claimed by {who}"
+                         f" for {minutes:g} min: {what}")
     return new
 
 
 def release(who, force=False, now=None):
-    """end `who`'s claim (force: anyone's); True when one ended"""
+    """end `who`'s claim (force: every claim); True when one ended"""
     now = now or time.time()
     p = path("owner")
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p + ".lock", "a") as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
-        o = owner(now)
-        if not o:
+        cs = claims(now)
+        if not cs:
             return False
-        if o["who"] != who and not force:
-            raise SystemExit(f"release: the bench is held by {owner_line(o, now)}, not {who}")
-        os.remove(p)
-        _append("txlog", f"{now:.3f} {now:.3f} bench released by {who} (held by {o['who']})")
+        gone = cs if force else [c for c in cs if c["who"] == who]
+        if not gone:
+            raise SystemExit(f"release: {who} holds nothing; held: "
+                             + "; ".join(owner_line(c, now) for c in cs))
+        _save_claims([c for c in cs if c not in gone])
+        held = ", ".join(c["who"] + ("" if c["hz"] is None else " " + mhz(c["hz"])) for c in gone)
+        _append("txlog", f"{now:.3f} {now:.3f} bench released by {who} (held by {held})")
     return True
 
 
@@ -442,13 +529,32 @@ def simplex(rig):
 
 
 @contextlib.contextmanager
+def unkey_on_signal():
+    """turn SIGTERM and SIGHUP into SystemExit while keyed, so the finally that unkeys runs (a
+    pkill of a keying tool left the IC-7100 keyed for 40 s on 11-17). SIGKILL can't be caught:
+    scripts stop keying tools with SIGTERM and wait for them. Main thread only (signal's rule)."""
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def stop(signum, frame):
+        raise SystemExit(f"signal {signum} while keyed: unkeying")
+    old = {s: signal.signal(s, stop) for s in (signal.SIGTERM, signal.SIGHUP)}
+    try:
+        yield
+    finally:
+        for s, h in old.items():
+            signal.signal(s, h)
+
+
+@contextlib.contextmanager
 def keyed(rig, kind="data", what="", text=ID_TEXT, dry_run=False, lead=0.2):
     """PTT on for the with-body, under the lock, then off (always). Afterwards the keeper's state:
     kind "data" sets last_tx and a txlog line, kind "id" sets last_id and a k6-cwid.txt line.
     dry_run: no lock and no state (rig is the caller's, which prints instead).
     A data key-up checks the bench owner first (check_owner); a CW ID never does."""
-    if kind != "id" and not dry_run:
-        check_owner()
+    if kind != "id" and not dry_run and any(c["who"] != me() for c in claims()):
+        check_owner(hz=rig_hz(rig))           # the rig is asked only when someone else holds a claim
     with (contextlib.nullcontext() if dry_run else ptt_lock()):
         t = rig("t")
         if t != "0":
@@ -456,15 +562,16 @@ def keyed(rig, kind="data", what="", text=ID_TEXT, dry_run=False, lead=0.2):
         if not dry_run:
             simplex(rig)
         t0 = time.time()
-        try:
-            rig("T", 1)
-            time.sleep(lead)
-            yield
-        finally:
-            rig("T", 0)
-            if not dry_run:
-                (note_id(t0, time.time(), what or "CW ID", text) if kind == "id"
-                 else note_tx(t0, time.time(), what or "data"))
+        with (contextlib.nullcontext() if dry_run else unkey_on_signal()):
+            try:
+                rig("T", 1)
+                time.sleep(lead)
+                yield
+            finally:
+                rig("T", 0)
+                if not dry_run:
+                    (note_id(t0, time.time(), what or "CW ID", text) if kind == "id"
+                     else note_tx(t0, time.time(), what or "data"))
 
 
 def play(wav, device=SINK, dry_run=False, max_s=None):
@@ -624,20 +731,23 @@ def cmd_status(a):
     print(f"PTT lock      {'free' if lock_free() else 'held (someone is keying)'}")
     so = serial_owner()
     print(f"serial reader {so['who'] + ' (pid ' + str(so['pid']) + ')' if so else 'none through serial-hold'}")
-    o = owner(now)
-    print(f"bench owner   {owner_line(o, now) if o else 'nobody (free)'}")
+    cs = claims(now)
+    print(f"bench owner   {'; '.join(owner_line(c, now) for c in cs) if cs else 'nobody (free)'}")
 
 
 def cmd_owner(a):
-    o = owner()
-    print(owner_line(o) if o else "nobody holds the bench")
-    if o and me() and me() != o["who"]:
-        print(f"(you are {me()}: your data sends are refused until then)")
+    cs = claims()
+    for c in cs:
+        print(owner_line(c))
+    if not cs:
+        print("nobody holds the bench")
+    elif me() and any(collides(c, me(), None) for c in cs):
+        print(f"(you are {me()}: your sends are refused where those claims cover them)")
 
 
 def cmd_claim(a):
-    o = claim(a.who, a.minutes, " ".join(a.what))
-    print("bench held by", owner_line(o))
+    o = claim(a.who, a.minutes, " ".join(a.what), hz=a.freq)
+    print(f"{'bench' if o['hz'] is None else mhz(o['hz'])} held by", owner_line(o))
 
 
 def cmd_release(a):
@@ -670,10 +780,10 @@ def cmd_send(a):
     dur = wav_seconds(a.wav)
     if dur > a.max_s:
         raise SystemExit(f"refusing: {a.wav} is {dur:.1f} s, over --max-s {a.max_s:.0f}")
-    check_owner(a.who)
+    rig = rigctl(a.rigctld)
+    check_owner(a.who, rig_hz(rig))
     if a.who:
         os.environ["K6_BENCH_AS"] = a.who     # for keyed() below
-    rig = rigctl(a.rigctld)
     with ptt_lock():
         hz = rig_hz(rig)
         if not in_band(hz):
@@ -705,7 +815,7 @@ def send_stop(rig, device=SINK, gap=STOP_GAP_S, dry_run=False):
 
 def cmd_stop(a):
     rig = rigctl(a.rigctld)
-    check_owner()
+    check_owner(hz=rig_hz(rig))
     with ptt_lock():
         hz = rig_hz(rig)
         if not in_band(hz):
@@ -787,6 +897,17 @@ WantedBy=default.target
 """
 
 
+def launcher_text(r):
+    """$BLOWFANG_WORK/bin/pluto_bench.py: runs the checkout's tools/pluto_bench.py (it needs the
+    checkout's modem package), so every session calls the Pluto tool by one fixed path"""
+    return (f"#!/usr/bin/env python3\n"
+            f"# written by k6_bench.py install: runs {r}/tools/pluto_bench.py (needs that checkout)\n"
+            f"import os, runpy, sys\n"
+            f"t = os.path.join({r!r}, 'tools', 'pluto_bench.py')\n"
+            f"sys.argv[0] = t\n"
+            f"runpy.run_path(t, run_name='__main__')\n")
+
+
 def cmd_install(a):
     b = path("bin")
     for d in (b, os.path.dirname(path("lock")), os.path.dirname(path("cwid_log"))):
@@ -795,6 +916,11 @@ def cmd_install(a):
         shutil.copy2(os.path.join(HERE, f), os.path.join(b, f))
         os.chmod(os.path.join(b, f), 0o755)
         print("installed", os.path.join(b, f))
+    lp = os.path.join(b, "pluto_bench.py")
+    with open(lp, "w") as fh:
+        fh.write(launcher_text(repo()))
+    os.chmod(lp, 0o755)
+    print("installed", lp, "(runs", os.path.join(repo(), "tools", "pluto_bench.py") + ")")
     make_wavs()
     if a.unit:
         d = os.path.expanduser("~/.config/systemd/user")
@@ -810,6 +936,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--rigctld", help="host:port (default rigctl's own, localhost:4532)")
     ap.add_argument("--device", default=SINK, help="the IC-7100's USB audio sink")
+    ap.add_argument("--as", dest="as_who", metavar="WHO",
+                    help="act as bench holder WHO (sets $K6_BENCH_AS for this command)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("paths").set_defaults(fn=cmd_paths)
     sub.add_parser("status").set_defaults(fn=cmd_status)
@@ -840,10 +968,13 @@ def main(argv=None):
     c.add_argument("who", help="one word, such as the thread's name; set K6_BENCH_AS to it for your sends")
     c.add_argument("minutes", type=float)
     c.add_argument("what", nargs="*", help="what for, a few words")
+    c.add_argument("--freq", type=parse_freq, default=None,
+                   help="hold only this 70 cm channel (MHz, such as 440.850): other threads may hold"
+                        " channels 100 kHz or more away; without it, the whole bench")
     c.set_defaults(fn=cmd_claim)
     r = sub.add_parser("release", help="give the bench back")
     r.add_argument("who")
-    r.add_argument("--force", action="store_true", help="end anyone's claim (Jeff, or a dead session's)")
+    r.add_argument("--force", action="store_true", help="end every claim (Jeff, or a dead session's)")
     r.set_defaults(fn=cmd_release)
     sh = sub.add_parser("serial-hold", help="run the one /dev/ttyUSB2 reader until asked to let go")
     sh.add_argument("who")
@@ -858,6 +989,8 @@ def main(argv=None):
     n.add_argument("--unit", action="store_true", help="also write ~/.config/systemd/user/k6-idkeeper.service")
     n.set_defaults(fn=cmd_install)
     a = ap.parse_args(argv)
+    if a.as_who:
+        os.environ["K6_BENCH_AS"] = a.as_who
     return a.fn(a)
 
 

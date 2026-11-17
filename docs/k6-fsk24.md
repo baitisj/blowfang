@@ -307,11 +307,48 @@ per step and recipe, with the K6's RSSI.
   (whose uploads also lose chunks) wasn't compared at a known level.
 
 
-- **Sweep 3 (staged; Jeff 11-16 21:54Z: "Should we test D/1800 and D/1200 then?"):** plain FSK
-  at each rate, so a flat sender's fallback can step down within D. Slots in turn: D/2400
-  (00e9), D/1800 with the 2.4K and with the 1.2K RX bandwidth (00e9, 00e1; REG_72 0x4898), and
-  D/1200 (00e1), all REG_2B +0400, read by time; 2.2 kHz peak deviation; TX gain -70 with the
-  level cut 0 to -21 dB in 3 dB steps (about -88 to -109 dBm), 32 slots, 6.4 minutes.
+- **Sweep 3 (11-17 02:47-02:54Z; Jeff 11-16 21:54Z: "Should we test D/1800 and D/1200 then?"):**
+  plain FSK at each rate, so a flat sender's fallback can step down within D. Slots in turn:
+  D/2400 (00e9), D/1800 with the 2.4K and with the 1.2K RX bandwidth (00e9, 00e1; REG_72
+  0x4898), and D/1200 (00e1), all REG_2B +0400, read by time; 2.2 kHz peak deviation; level cut
+  0 to -21 dB in 3 dB steps, 32 slots, 6.4 minutes. The module went up over the IC-7100 (RF power
+  0); the Pluto swept at TX gain -60, 10 dB above the plan (see "What went wrong first" below).
+  The module read 419 of 463 and its report came back over ARQ.
+
+  | step dB | K6 RSSI dBm | D/2400 | D/1800 2.4K | D/1800 1.2K | D/1200 |
+  | --- | --- | --- | --- | --- | --- |
+  | 0 | -79 | 16/16 | 16/16 | 16/16 | 12/12 |
+  | -3 | -82 | 16/16 | 16/16 | 16/16 | 12/12 |
+  | -6 | -85 | 16/16 | 16/16 | 16/16 | 12/12 |
+  | -9 | -88 | 16/16 | 16/16 | 16/16 | 12/12 |
+  | -12 | -90 | 16/16 | 16/16 | 16/16 | 12/12 |
+  | -15 | -93 | 16/16 | 16/16 | 16/16 | 12/12 |
+  | -18 | -96 | 14/16 | 14/16 | 16/16 | 11/12 |
+  | -21 | -99 | 1/16 | 1/16 | 2/16 | 0/12 |
+
+  **Every D rate is perfect to -93 dBm and all four fall off together between -96 and -99.**
+  D/1800 on the 1.2K filter is a hair better at -96 (16/16); D/1200 is no better than D/2400.
+  So on this chip a slower plain-FSK rate buys about 1 dB at most: the rate ladder's fallback
+  from D/2400 is for timing and slips, not range. D/2400 also did better than in sweep 1 (14/16
+  at -96 against 6/16), most likely because the UV-380 was off this time.
+  The Pluto's output matches the afternoon: -79 dBm at gain -60 against sweep 1's -88 at -70.
+  Files: hamlet ~/blowfang-work/runs/fsk24-sweep3-20261116/ (report_s3ic.txt, k6log-s3ic.txt).
+
+- **What went wrong first (11-16 22:45Z to 11-17 02:45Z), so it isn't repeated:**
+  - From about 22:45Z, every packet to the K6 failed from both the Pluto and the IC-7100. The
+    UV-380 (another thread's c6phy tests, keyed on 440.850 next to the K6) was the cause. Once
+    Jeff switched it off at 01:25Z, IC-7100 test packets read with zero bit errors (raw view, key
+    6: `BE 0 ... 00000000`). A power-cycle, crystal drift (the K6 transmits +170 Hz, 0.38 ppm,
+    measured by the Pluto against TV pilots) and offsets of ±15 kHz were all ruled out on the way.
+    Hence the bench channel plan (docs/hamlet-channels.md): the UV-380 moves to 441.850.
+  - The Pluto's duck turned vertical at 01:11Z was cross-polarised with the K6: 6-10 dB lost
+    until it went back. Keep the bench antennas fixed between runs.
+  - `k6_upload --via pluto` sent about 1850 Hz peak deviation, 4 dB under the F/1800 ladders, and
+    on the weaker path every chunk failed. Fixed: 3 kHz peak, `--pluto-peak` (blowfang PR #141).
+  - The K6 and Pluto tests at 02:06-02:09Z were void: the K6 was in another room.
+  - Killing k6_upload during its closing CW ID left the IC-7100 keyed for about 40 s at RF power
+    0 (02:54:37-02:55:17Z). Bench scripts now wait for the tool to exit and force PTT off; a
+    SIGTERM handler in k6_bench's keying unkeys too.
 
 ## Plans revised after run 3 and RadioFoundryC4FM (11-16)
 

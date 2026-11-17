@@ -225,16 +225,18 @@ def iq_chunks(track, fs_track=FS_TRACK, rate=RATE, chunk=CHUNK, level=None, if_h
         yield iq.tobytes()
 
 
-def stream(track, rate=RATE, uri=None, rf=True, what="pluto", level=None, if_hz=0.0):
+def stream(track, rate=RATE, uri=None, rf=True, what="pluto", level=None, if_hz=0.0, hz=None):
     """the track through iio_writedev, under the bench's PTT lock and owner check; the TX LO up
-    only while it plays. The caller has put the ID in the track. -> (seconds of signal, took)"""
+    only while it plays. The caller has put the ID in the track; hz is the signal's frequency for
+    the owner check (None: unknown, refused while anyone else holds any claim).
+    -> (seconds of signal, took)"""
     import k6_bench as kb
     secs = len(track) / FS_TRACK
     if (uri or URI).startswith("usb:"):
         raise SystemExit("refusing to stream over usb: (iio_writedev holds the interface, so the TX LO"
                          " could not be powered down from here): use ip:192.168.2.1")
-    kb.check_owner()
-    with kb.ptt_lock():
+    kb.check_owner(hz=hz)
+    with kb.ptt_lock(), kb.unkey_on_signal():     # a SIGTERM still powers the TX LO down
         cmd = ["iio_writedev", "-u", uri or URI, "-b", str(CHUNK), TX_DEV, "voltage0", "voltage1"]
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         t0 = time.time()
@@ -269,7 +271,7 @@ def send(track, hz, offset, gain, rate, uri, rf, what):
         print(f"{what}: {len(full) / FS_TRACK:.1f} s on {hz} Hz (LO {lo}), gain {gain} dB, rate {rate}, "
               f"{'RF OFF (rehearsal)' if not rf else 'RF on'}")
         print(f"start {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
-        secs, took = stream(full, rate, uri, rf=rf, what=what)
+        secs, took = stream(full, rate, uri, rf=rf, what=what, hz=hz)
     print(f"end {time.strftime('%H:%M:%S', time.gmtime())}Z: {secs:.1f} s of signal in {took:.1f} s"
           f" ({'kept up' if took < secs + 2.0 else 'SLOW: the link did not keep up, gaps on air'})")
 
@@ -458,7 +460,7 @@ def cmd_fsk24_sweep(a):
         time.sleep(go - time.time())
         print(f"start {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
         secs, took = stream(full, a.rate, a.uri, rf=not a.rf_off, what="fsk24 sweep", level=lev,
-                            if_hz=a.if_hz)
+                            if_hz=a.if_hz, hz=HZ)
     print(f"end {time.strftime('%H:%M:%S', time.gmtime())}Z: {secs:.1f} s of signal in {took:.1f} s"
           f" ({'kept up' if took < secs + 2.0 else 'SLOW: the link did not keep up, the grid slipped'})")
 
@@ -551,6 +553,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="tools/pluto_bench.py", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--uri", default=None, help=f"libiio URI (default $PLUTO_URI or {URI})")
+    ap.add_argument("--as", dest="as_who", metavar="WHO",
+                    help="act as bench holder WHO (sets $K6_BENCH_AS: no env prefix, so one allow rule fits)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("info")
     sub.add_parser("quiet")
@@ -600,6 +604,8 @@ def main(argv=None):
     c.add_argument("--ref-hz", type=int, default=None, help="the carrier's true frequency (default: the capture's)")
     c.add_argument("--save", action="store_true")
     a = ap.parse_args(argv)
+    if a.as_who:
+        os.environ["K6_BENCH_AS"] = a.as_who
     {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx, "steps": cmd_steps,
      "measure": cmd_measure, "cal": cmd_cal}[a.cmd](a)
 

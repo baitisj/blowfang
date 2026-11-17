@@ -78,8 +78,10 @@ def switch_size(st, heard, fallback):
     return fallback and st is None and not heard
 
 
-PLUTO_DEV = 3700.0   # pluto_bench send --dev for audio at level 0.5, pre-emphasised: about 3 kHz peak
-                     # (the F/1800 ladders, 11-16: 11-12/16 packets from TX gain -40 to -58)
+PLUTO_PEAK_HZ = 3000.0   # the upload's peak deviation before pre-emphasis, whatever --level: the
+                         # F/1800 ladders' (f1800.wav peaks at 0.81 under pluto_bench --dev 3700, so
+                         # about 3 kHz; 11-16: 11-12/16 packets from TX gain -40 to -58). It was
+                         # 1850 Hz until 11-17, 4 dB less, and on a weak path every upload chunk failed
 
 
 def rig(a, *args):
@@ -99,7 +101,7 @@ def key_and_play(a, path, kind="data", text=bench.ID_TEXT):
             return
         cmd = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "pluto_bench.py"),
                "send", path, "--hz", str(a.freq), "--preemph", "--gain", str(a.pluto_gain),
-               "--dev", f"{PLUTO_DEV * 0.5 / a.level:.0f}"]
+               "--dev", f"{getattr(a, 'pluto_peak', PLUTO_PEAK_HZ) / a.level:.0f}"]
         if a.dry_run:
             print("dry run:", " ".join(cmd))
             return
@@ -219,6 +221,9 @@ def main():
                          " the IC-7100 still listens for the K6's reports, unkeyed)")
     ap.add_argument("--pluto-gain", type=float, default=-52.0,
                     help="--via pluto: TX gain, dB (default -52: an upload took 2 sends there, 11-16; at -40 the K6 bench copy heard nothing; -64 is past F/1800's edge)")
+    ap.add_argument("--pluto-peak", type=float, default=PLUTO_PEAK_HZ,
+                    help="--via pluto: peak deviation before pre-emphasis, Hz (default 3000, as the F/1800"
+                         " ladders that decode)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     if a.freq != 440_850_000:
