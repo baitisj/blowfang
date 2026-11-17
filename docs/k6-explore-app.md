@@ -36,7 +36,8 @@ press (`K6 EX quiet 60 s: EXPLORE`), and EXIT goes there at once. Key 0 in the a
 fallback off (`K6 EX stay=1`, screen `STAYING HERE.` / `EXIT TO EXPLORE`) until EXIT; it's one way
 (Jeff, 2026-11-16), so the next visit has its quiet minute again, and power-up starts with it off. EXIT twice in EXPLORE opens
 the arena. Missing code pages (after a flash) hold the arena until they're installed. While it sweeps, it reads 440.850 once a second; a carrier there
-stronger than -45 dBm on two reads in a row (the bench IC-7100 reads -18 to -24 dBm) sends it to
+stronger than -60 dBm on two reads in a row (the bench IC-7100 reads -18 to -24 dBm; the Pluto at
+its top gain, -30, reads -52 dBm; -45 until 2026-11-17, which the Pluto couldn't reach) sends it to
 VOICE MSG for 1 minute (`K6 EX beacon -22 dBm: VOICE MSG for 60 s`). So hamlet flashes it without
 Jeff: key up on 440.850 with the CW ID (`k6_bench.py id`), wait for `K6 EX beacon` (a listen going
 on finishes first, 2 minutes at most), then the OTA reset and `k6_update.py` as usual.
