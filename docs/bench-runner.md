@@ -22,7 +22,10 @@ From a checkout of this branch (or main once merged), on hamlet:
 `selftest` runs 28 sample jobs through the checks (8 that must pass, 20 that must be refused),
 then reports this machine's setup: the module key, the K6 cable by its by-id name, rigctld and the
 IC-7100's power, Aura's flash.py, the PTT lock and the cable's reader. Setup problems are warnings
-(the steps that need the missing piece refuse); a wrong check is a FAIL.
+(the steps that need the missing piece refuse); a wrong check is a FAIL. So is a missing module
+compiler: `uv380.send` and `uv380.m17` build their module from the checkout at send time, and the
+service's PATH has no clang, so the runner puts `$K6_ATFE`, else the newest
+`BLOWFANG_WORK/toolchains/ATfE-*/bin`, on the steps' PATH (as `tools/uv380_dfu.py` does).
 
 Stop it any time: `systemctl --user stop blowfang-bench-runner` (the running step gets SIGTERM:
 the keying tools unkey on it, and the job is marked cancelled). Reinstall after a merge with the

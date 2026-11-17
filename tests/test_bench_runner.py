@@ -161,9 +161,41 @@ def test_job_shape(work):
     assert "plain name" in problems(job("a", {"do": "logger", "seconds": 9, "file": "../x"}))
 
 
+def fake_atfe(work):
+    tc = work / "toolchains" / "ATfE-22.1.0-Linux-x86_64" / "bin"
+    tc.mkdir(parents=True)
+    for t in ("clang", "ld.lld", "llvm-objcopy", "llvm-nm"):
+        (tc / t).write_text("#!/bin/sh\n")
+        (tc / t).chmod(0o755)
+    return tc
+
+
 def test_selftest_passes(work, capsys):
+    fake_atfe(work)
     assert br.main(["selftest"]) == 0
     assert "PASS" in capsys.readouterr().out
+
+
+def test_steps_get_the_module_compiler(work, tmp_path, monkeypatch):
+    """the service's PATH has no clang: uv380.send / uv380.m17 steps build their module, so the
+    steps' env carries the ATfE under BLOWFANG_WORK/toolchains (or $K6_ATFE)"""
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    monkeypatch.delenv("K6_ATFE", raising=False)
+    assert br.module_tools({"PATH": str(tmp_path / "empty")}) is None
+    tc = fake_atfe(work)
+    env = br.step_env(job("a"))
+    assert env["PATH"].split(os.pathsep)[0] == str(tc)
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "clang").write_text("")
+    env = {"PATH": str(tmp_path / "empty"), "K6_ATFE": str(other)}
+    assert br.module_tools(env) == str(other) and env["PATH"].startswith(str(other) + os.pathsep)
+
+
+def test_selftest_fails_without_the_module_compiler(work, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(br.shutil, "which", lambda *a, **k: None)
+    assert br.main(["selftest"]) == 1
+    assert "FAIL  module compiler" in capsys.readouterr().out
 
 
 # ---- running ----
