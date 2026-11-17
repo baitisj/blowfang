@@ -252,3 +252,14 @@ def test_every_probe_failing_keeps_nothing(tmp_path):
                              air_cls=Flat)
     assert ret == -12 and "refcal no reference passed the probe: nothing kept" in said
     assert regs[0x3B] == BASE3B
+
+
+@need_clang
+def test_a_carrier_outside_the_window_says_where_it_is(tmp_path):
+    # the K6 12 ppm fast at 440.850: the carrier 5.3 kHz off the nominal IF (the side the chip's mixing says), outside refcal's
+    # +-5 kHz window; the failed read says what it saw
+    ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=12000, extra="#define REFCAL_HZ 440850000\n")
+    few = [ln for ln in said if " few " in ln]
+    assert ret == -6 and few, said
+    lo, hi = int(field(few[0], "lo")), int(field(few[0], "hi"))
+    assert field(few[0], "lost") == "0" and lo <= hi and abs((lo + hi) / 2 - NOMINAL) > 5000, few

@@ -214,7 +214,7 @@ static int level(const k6_api_t *api) {
 /* the mean IF over nb blocks, 0.1 Hz (0: too few good blocks, or a key) */
 static int32_t mean_if(rc_t *c, uint32_t hz, int k, int nb) {
   blk_t blk;
-  uint32_t sum = 0, lo = 0xFFFFFFFFu, hi = 0, n = 0;
+  uint32_t sum = 0, lo = 0xFFFFFFFFu, hi = 0, n = 0, nl = 0, mn = 0xFFFFFFFFu, mx = 0;
   int i;
   char *p;
   c->api->delay_us(300000);                               /* the synthesizer and the IF settled */
@@ -225,16 +225,21 @@ static int32_t mean_if(rc_t *c, uint32_t hz, int k, int nb) {
     if (c->api->key_poll()) return 0;
     /* (+-5 kHz of the nominal IF: 8 ppm at 600 MHz before the first null; ifcal's +-2 kHz is
        3 ppm there, and the garage's cold may take the K6 further) */
+    nl += lost != 0;
+    if (!lost && blk.ifm < mn) mn = blk.ifm;
+    if (!lost && blk.ifm > mx) mx = blk.ifm;
     if (lost || blk.ifm < 12000 || blk.ifm > 22000) continue;
     sum += blk.ifm, n++;
     if (blk.ifm < lo) lo = blk.ifm;
     if (blk.ifm > hi) hi = blk.ifm;
   }
   if (n < (uint32_t)nb / 2) {
-    /* (what it saw: good blocks, the last block's IF) */
+    /* (what it saw: good blocks, blocks with losses, the IF range of the rest, Hz) */
     p = khz(put(c->line, TAG " m "), hz);
     p = kv(put(p, " few"), " n=", n);
-    say0(c->api, c->line, kv(p, " last=", blk.ifm));
+    p = kv(p, " lost=", nl);
+    p = kv(p, " lo=", mn > mx ? 0 : mn);
+    say0(c->api, c->line, kv(p, " hi=", mx));
     return 0;
   }
   sum = udiv(sum * 10 + n / 2, n);
