@@ -377,6 +377,20 @@ def test_an_old_owner_file_is_one_whole_bench_claim(work):
         b.claim("c6phy", 10, hz=441_000_000)
 
 
+def test_a_sigterm_while_keyed_unkeys(work):
+    """pkill (SIGTERM) of a keying tool mid-transmission: the finally still sends T 0"""
+    import signal
+    before = signal.getsignal(signal.SIGTERM)
+    r = Rig()
+    with pytest.raises(SystemExit, match="unkeying"):
+        with b.keyed(r, "id", "test"):
+            assert r.ptt == 1
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(1)
+    assert r.ptt == 0 and r.calls[-1] == "T 0"
+    assert signal.getsignal(signal.SIGTERM) == before          # the old handler is back
+
+
 def test_a_corrupt_owner_file_means_free(work):
     os.makedirs(os.path.dirname(b.path("owner")), exist_ok=True)
     open(b.path("owner"), "w").write("{not json")

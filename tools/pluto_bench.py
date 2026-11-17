@@ -236,7 +236,7 @@ def stream(track, rate=RATE, uri=None, rf=True, what="pluto", level=None, if_hz=
         raise SystemExit("refusing to stream over usb: (iio_writedev holds the interface, so the TX LO"
                          " could not be powered down from here): use ip:192.168.2.1")
     kb.check_owner(hz=hz)
-    with kb.ptt_lock():
+    with kb.ptt_lock(), kb.unkey_on_signal():     # a SIGTERM still powers the TX LO down
         cmd = ["iio_writedev", "-u", uri or URI, "-b", str(CHUNK), TX_DEV, "voltage0", "voltage1"]
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         t0 = time.time()

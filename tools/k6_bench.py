@@ -76,7 +76,9 @@ import fcntl
 import json
 import os
 import shutil
+import signal
 import subprocess
+import threading
 import sys
 import time
 import wave
@@ -527,6 +529,25 @@ def simplex(rig):
 
 
 @contextlib.contextmanager
+def unkey_on_signal():
+    """turn SIGTERM and SIGHUP into SystemExit while keyed, so the finally that unkeys runs (a
+    pkill of a keying tool left the IC-7100 keyed for 40 s on 11-17). SIGKILL can't be caught:
+    scripts stop keying tools with SIGTERM and wait for them. Main thread only (signal's rule)."""
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def stop(signum, frame):
+        raise SystemExit(f"signal {signum} while keyed: unkeying")
+    old = {s: signal.signal(s, stop) for s in (signal.SIGTERM, signal.SIGHUP)}
+    try:
+        yield
+    finally:
+        for s, h in old.items():
+            signal.signal(s, h)
+
+
+@contextlib.contextmanager
 def keyed(rig, kind="data", what="", text=ID_TEXT, dry_run=False, lead=0.2):
     """PTT on for the with-body, under the lock, then off (always). Afterwards the keeper's state:
     kind "data" sets last_tx and a txlog line, kind "id" sets last_id and a k6-cwid.txt line.
@@ -541,15 +562,16 @@ def keyed(rig, kind="data", what="", text=ID_TEXT, dry_run=False, lead=0.2):
         if not dry_run:
             simplex(rig)
         t0 = time.time()
-        try:
-            rig("T", 1)
-            time.sleep(lead)
-            yield
-        finally:
-            rig("T", 0)
-            if not dry_run:
-                (note_id(t0, time.time(), what or "CW ID", text) if kind == "id"
-                 else note_tx(t0, time.time(), what or "data"))
+        with (contextlib.nullcontext() if dry_run else unkey_on_signal()):
+            try:
+                rig("T", 1)
+                time.sleep(lead)
+                yield
+            finally:
+                rig("T", 0)
+                if not dry_run:
+                    (note_id(t0, time.time(), what or "CW ID", text) if kind == "id"
+                     else note_tx(t0, time.time(), what or "data"))
 
 
 def play(wav, device=SINK, dry_run=False, max_s=None):
