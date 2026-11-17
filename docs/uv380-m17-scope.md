@@ -174,6 +174,22 @@ host encoder, with its CW ident.
 4. **M17 RX** (only if milestone 2 says go): tap driver, x3 interpolation, OpenRTX's demodulator.
 5. **Upstream** (below), starting after milestone 1 with evidence in hand.
 
+## Milestone 1: built (2026-11-17), bench run pending
+
+| Piece | What |
+| --- | --- |
+| `modem/m17.py` | M17 frames from the spec: LSF, stream (LICH, Golay), packet, BERT, EOT; Codec2 3200 through libcodec2; a demodulator (RRC 0.5, syncword lock, levels from the sync) and decoder (Viterbi) for Pluto captures, with `--baseband` writing 24 kHz s16 for OpenRTX's `m17_replay_tool` |
+| Checks | the packet frame equals OpenRTX's RF-captured reference (`tests/unit/M17_packet.cpp`) byte for byte; OpenRTX's own test baseband (`M17_test_baseband.raw`) decodes to 1 LSF and 663 stream frames (their test wants 660 or more), and re-encoding every one of them gives the received bytes exactly |
+| `c6m17tx.c` + `_bert`, `_sms`, `_voice` | c6phytx's keying and slot feeding with the bytes of `m17tx_PLAN.h`; `TX_DEV` 123; EOT fill after the data; 7.7-8.8 KB |
+| Plans | bert: 98 PRBS9 frames (4.0 s); sms: 20 transmissions of "AG7EW M17 TEST nn" (3.2 s); voice: 2.96 s of Codec2 3200, Kokoro af_heart "A G 7 E W. M 17 test." (`tests/data/uv380/m17-voice.c2`, 3.1 s on air) |
+| Sim | all three plans decode through the chip's alpha 0.2 at 2400 Hz and at 1944 Hz (TX_DEV 100), with noise |
+| Runner | `uv380.m17` step (one plan, the `uv380.send` read-back), and a Pluto `rx` may run in the background so it hears the send |
+
+Bench job (per plan, at 0 W on 441.850; job files in `/mnt/project-files/uv380-m17/bench-keys.md`):
+Pluto `rx` in the background at 441.900 MHz, `uv380.cmd` listen 0, power 0, zero 2, trim
+(the FM trim less 6680), `uv380.m17 PLAN`, wait, `uv380.cmd` trim back. Then
+`python3 -m modem.m17 decode CAP.cf32 --baseband CAP.raw` and `m17_replay_tool CAP.raw`.
+
 ## Upstream plan (OpenRTX)
 
 **What we offer, in order:** M17 RX on MD-UV3x0 and DM-1701 with no mod (if milestone 2 goes);
