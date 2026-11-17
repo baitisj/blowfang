@@ -79,10 +79,32 @@ dry run that puts REG_3B back. `REFCAL_APPLY` leaves the trim in place until pow
 `REFCAL_KNOWN` lists references the Pluto found off nominal, as {kHz × 100, 0.1 Hz} pairs.
 Nothing is written to flash yet.
 
+If the probe's move isn't one step's worth on the strongest reference, refcal probes the next
+strongest, up to REFCAL_PROBES (3), and returns -12 only when none passes.
+
+### First bench run (2026-11-17 04:46Z, K6 on its stub)
+
+refcal reached the K6 (38/38 chunks from the Pluto at -63 dBm) and kept nothing (-12). RF 14 read
+-105 dBm against -130 beside it, but its mean IF was 20031.6 Hz (3.1 kHz above nominal, spread
+1894 Hz), and six steps moved it +146.7 Hz against +542.7 expected (27 %). The weather channels
+were all at the floor (-111 to -114). Either the pilot sits under its own 8VSB data on the stub, or
+the K6 is about 6.6 ppm off and the pilot sat at the IF filter's edge. The first MCU temperature
+reading: t=29906 v=24081. The Pluto read pilots 14, 26 and 35 within 0.06 ppm of each other, and
+itself 0.92 ppm slow. Next time, the K6 goes on the big antenna (Jeff).
+
+### The Pluto relay
+
+The Pluto checks itself against the pilots (`pluto_bench.py rx`, then the pilots' offsets), then
+sends refcal built with `REFCAL_HZ 440850000`, followed in the same send by about 25 s of PSK31
+'AG7EW TEST' at a low level. The module starts as its last chunk checks, so it measures that
+carrier at 50 dB SNR. A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
+refcal's ppb less the Pluto's (+ slow) ppb.
+
 Tests: tests/test_k6_refcal.py (emulated M0, gp0dma's DMA model, a receiver that follows the
 tunes, an IF that REG_3B moves, the ADC). It covers the scan, the probe on either mixing side,
 null-seeking from 4 ppm off, the median leaving out a pilot 1 kHz off, a weather station with
-voice, a dry run against REFCAL_APPLY, no reference, and an ADC left off.
+voice, a dry run against REFCAL_APPLY, no reference, an ADC left off, the relay's 440.850 carrier,
+and a reference failing the probe (the next one taken; all failing keeps nothing).
 
 ## Still to do
 

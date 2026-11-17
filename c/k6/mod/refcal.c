@@ -20,7 +20,9 @@
         mean IF over REFCAL_BLOCKS of gp0dma's blocks (52 ms each). Then REG_3B + REFCAL_PROBE
         and again: the IF's move tells which way a step turns it (the chip mixes high or low),
         and its size must be within 40-160 % of what one step means at that frequency (5 Hz of
-        the crystal's 26 MHz: 0.192 ppm, 85 Hz at 440.850, 90 Hz at 470.309).
+        the crystal's 26 MHz: 0.192 ppm, 85 Hz at 440.850, 90 Hz at 470.309). If it isn't (on
+        2026-11-17 RF 14's pilot at -105 dBm on the K6's stub moved 27 %: its own 8VSB data
+        filled the IF filter), the next strongest reference is probed, up to REFCAL_PROBES.
      4  null-seeking: REG_3B at the step that should put the carrier on the nominal IF
         (26 MHz / 1536), and the IF again, up to 3 times. Near the null the read is unbiased: at
         low SNR the noise in the IF filter pulls a plain mean towards the filter's middle, which
@@ -49,7 +51,7 @@
    writes (REG_33, REG_34, TIM17, DMA channel 1, their clocks), the ADC's CCR, SMPR and CHSELR,
    all put back. Returns the median ppb, or gp0dma's errors (-2 key, -3 image below level 4,
    -4 PB1, -5 REG_33, -7 TIM17 / DMA busy, -8 scratch), -6 no reference REFCAL_SNR dB up, -12
-   the probe's move not one step's (nothing kept). SPDX-License-Identifier: MIT */
+   no reference's probe moving one step's worth (up to REFCAL_PROBES tried; nothing kept). SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 4
 #define K6_MODULE_OPT z /* the DMA ring needs 516 B of the store past the code */
 #define GP0_SWEEP 1
@@ -63,6 +65,9 @@
 #endif
 #ifndef REFCAL_SNR
 #define REFCAL_SNR 10    /* dB over the quieter side */
+#endif
+#ifndef REFCAL_PROBES
+#define REFCAL_PROBES 3 /* references tried for the probe */
 #endif
 #ifndef REFCAL_PROBE
 #define REFCAL_PROBE 6   /* REG_3B steps for the probe */
@@ -251,7 +256,7 @@ int k6_main(const k6_api_t *api) {
   uint32_t t, v, g, rx = api->rx_hz();
   int32_t m0, m1, d, e, ppb[REFCAL_NREF], x;
   int8_t lvl[NREFS], side[NREFS];
-  int ret, i, j, best = -1, k = 0, sign, n = 0;
+  int ret, i, j, best = -1, k = 0, sign = 0, n = 0, bad = 0;
   uint16_t r73;
   char *p;
   (void)carrier;                                           /* (gp0dma's: refcal scans instead) */
@@ -296,7 +301,7 @@ int k6_main(const k6_api_t *api) {
   goto out;
 #endif
   api->fd_write(0x73, (uint16_t)(r73 | 0x0010));          /* AFC off (taken at the next RX on) */
-  for (n = 0; n < REFCAL_NREF; n++) {
+  while (n < REFCAL_NREF) {
     uint32_t hz;
     int32_t r;
     /* the strongest reference not yet read, REFCAL_SNR dB over its side */
@@ -307,7 +312,7 @@ int k6_main(const k6_api_t *api) {
     lvl[best] = side[best];                                /* (read) */
     hz = ref_hz(best);
     g = step_mhz(&c, hz);
-    if (!n) {
+    if (!sign) {
       /* the first: the probe tells which way a step turns the IF here */
       at(&c, hz, 0);
       m0 = mean_if(&c, hz, 0, REFCAL_BLOCKS);
@@ -323,9 +328,11 @@ int k6_main(const k6_api_t *api) {
       say0(api, c.line, dt(put(p, " g="), (int32_t)udiv(g * REFCAL_PROBE + 50, 100)));
       x = d < 0 ? -d : d;                                  /* |d| x 100 vs PROBE g (mHz) */
       if ((uint32_t)x * 100u * 10u < 4u * REFCAL_PROBE * g || (uint32_t)x * 100u * 10u > 16u * REFCAL_PROBE * g) {
-        api->say(TAG " the probe moved the IF wrongly: nothing kept");
-        ret = -12;
-        goto out;
+        /* not this one's carrier the IF follows (a TV pilot under its own data, 2026-11-17):
+           the next strongest, up to REFCAL_PROBES of them */
+        api->say(TAG " the probe moved the IF wrongly");
+        if (++bad >= REFCAL_PROBES) break;
+        continue;
       }
       sign = d < 0 ? -1 : 1;
       /* null-seeking from the read at the old REG_3B */
@@ -372,10 +379,11 @@ int k6_main(const k6_api_t *api) {
     p = sgn(put(p, " ppb="), ppb[n]);
     p = dt(put(p, " res="), r);
     say0(api, c.line, sgn(put(p, " k="), k));
+    n++;
   }
   if (!n) {
-    api->say(TAG " no reference");
-    ret = -6;
+    api->say(bad ? TAG " no reference passed the probe: nothing kept" : TAG " no reference");
+    ret = bad ? -12 : -6;
     goto out;
   }
   /* the median (of an even count, the lower middle) */
