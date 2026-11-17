@@ -544,14 +544,48 @@ def summarize(frames):
             s["bert_frames"] += 1
             s["bert_bits"] += 197
             s["bert_errors"] += errs
+            s.setdefault("bert_per_frame", []).append(errs)
     return s
 
 
+def runs(frames, gap=0.040, tol=0.001):
+    """frames in runs of one key-up's 40 ms spacing -> lists; a lone sync match (noise, or data
+    that happens to look like a sync) has no neighbour and makes no run"""
+    out, cur = [], []
+    for f in sorted(frames, key=lambda f: f["at"]):
+        if cur and abs(f["at"] - cur[-1]["at"] - gap) <= tol:
+            cur.append(f)
+        else:
+            if len(cur) > 1:
+                out.append(cur)
+            cur = [f]
+    if len(cur) > 1:
+        out.append(cur)
+    return out
+
+
 def demod(disc, fs=48000, alpha=0.5):
-    """discriminator (Hz) -> frames, with each frame's sampling and level figures.
+    """discriminator (Hz) -> frames in runs (see runs()). Two passes: frames found with DC blocked
+    over a frame, then each run's own DC (its frames' mean, where the data averages out) taken
+    off around the run and the frames found again"""
+    disc = np.asarray(disc, float)
+    first = [f for r in runs(_demod(dc_block(disc, 40 * fs // 1000), fs, alpha)) for f in r]
+    if not first:
+        return []
+    d2 = dc_block(disc, 40 * fs // 1000)
+    pad = int(0.2 * fs)
+    for r in runs(first):
+        a, b = int(r[0]["at"] * fs), int((r[-1]["at"] + 0.040) * fs)
+        dc = float(np.mean(disc[a:b]))
+        d2[max(0, a - pad):b + pad] = disc[max(0, a - pad):b + pad] - dc
+    return [f for r in runs(_demod(d2, fs, alpha)) for f in r]
+
+
+def _demod(disc, fs=48000, alpha=0.5):
+    """discriminator (Hz, DC off) -> frames, with each frame's sampling and level figures.
     RRC matched filter, syncword correlation, the outer level from the sync's +-3 symbols"""
     sps = fs // SYM_RATE
-    y = np.convolve(dc_block(disc, 40 * fs // 1000), rrc(alpha, sps), "same")
+    y = np.convolve(disc, rrc(alpha, sps), "same")
     pats = {k: symbols(v) for k, v in SYNCS.items()}
     out, i, n = [], 0, len(y)
     span = FRAME_BYTES * 4 * sps
@@ -699,6 +733,10 @@ def report(frames, s):
     if s["bert_frames"]:
         ber = s["bert_errors"] / max(1, s["bert_bits"])
         lines.append(f"BERT {s['bert_frames']} frames, {s['bert_errors']} of {s['bert_bits']} bits wrong (BER {ber:.2e})")
+        bad = [(i, e) for i, e in enumerate(s.get("bert_per_frame", [])) if e]
+        if bad:
+            lines.append(f"BERT frames with errors ({len(bad)}): "
+                         + " ".join(f"#{i}:{e}" for i, e in bad[:30]) + (" ..." if len(bad) > 30 else ""))
     lv = {}
     for f in frames:
         for k, v in f.get("levels", {}).items():
