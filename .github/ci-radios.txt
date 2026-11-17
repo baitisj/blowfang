@@ -42,6 +42,7 @@ firmware/k6-aura/
 sim/
 modem/
 !modem/dmrsotto.py
+!modem/dmrvoice.py
 tools/k6_*
 tools/k6-*
 tools/k6_cc/
@@ -96,8 +97,9 @@ tests/test_uv380*
 tests/test_range_rx.py
 tests/data/uv380/
 tests/c/
-# the HR_C6000 DMR modem (tests/test_uv380_c6000.py) and the c/common receivers' own tests
+# the HR_C6000 DMR modem (tests/test_uv380_c6000.py, test_uv380_dmrvoice.py) and the c/common receivers' own tests
 modem/dmrsotto.py
+modem/dmrvoice.py
 # the HR_C6000 physical layer FSK (tests/test_uv380_c6phy.py): fsk24's packets, DMR's RRC
 modem/c6phy.py
 modem/fsk24.py
