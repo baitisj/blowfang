@@ -55,6 +55,11 @@
 #define K6_MODULE_LEVEL 4
 #define K6_MODULE_OPT z /* the DMA ring needs 516 B of the store past the code */
 #define GP0_SWEEP 1
+#ifdef REFCAL_HZ
+/* the Pluto relay: the carrier to measure follows the upload in the same key-up, so no waiting
+   for the upload's carrier to go (bench 2026-11-17 05:06-05:14Z: that wait outlasted the tail) */
+#define GP0_NO_WAIT 1
+#endif
 #define GP0_NO_MAIN 1
 #define TAG "refcal"
 #include "gp0dma.c"
@@ -225,7 +230,13 @@ static int32_t mean_if(rc_t *c, uint32_t hz, int k, int nb) {
     if (blk.ifm < lo) lo = blk.ifm;
     if (blk.ifm > hi) hi = blk.ifm;
   }
-  if (n < (uint32_t)nb / 2) return 0;
+  if (n < (uint32_t)nb / 2) {
+    /* (what it saw: good blocks, the last block's IF) */
+    p = khz(put(c->line, TAG " m "), hz);
+    p = kv(put(p, " few"), " n=", n);
+    say0(c->api, c->line, kv(p, " last=", blk.ifm));
+    return 0;
+  }
   sum = udiv(sum * 10 + n / 2, n);
   p = khz(put(c->line, TAG " m "), hz);
   p = put(p, " if=");

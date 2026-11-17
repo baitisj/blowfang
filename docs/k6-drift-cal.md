@@ -97,7 +97,10 @@ itself 0.92 ppm slow. Next time, the K6 goes on the big antenna (Jeff).
 The Pluto checks itself against the pilots (`pluto_bench.py rx`, then the pilots' offsets), then
 sends refcal built with `REFCAL_HZ 440850000`, followed in the same send by about 25 s of PSK31
 'AG7EW TEST' at a low level. The module starts as its last chunk checks, so it measures that
-carrier at 50 dB SNR. A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
+carrier at 50 dB SNR. Built with REFCAL_HZ, refcal doesn't wait for the upload's carrier to go
+(gp0dma's 30 s wait for RSSI under -80 dBm, GP0_NO_WAIT): on 2026-11-17 05:06-05:14Z that wait
+outlasted the tail in four tries, and refcal then scanned an empty channel (-6). A mean IF with
+too few good blocks now says so (`refcal m 440850.00 few n=3 last=17012`). A carrier p ppm low looks like the K6 p ppm fast, so the K6's own error is
 refcal's ppb less the Pluto's (+ slow) ppb.
 
 Tests: tests/test_k6_refcal.py (emulated M0, gp0dma's DMA model, a receiver that follows the

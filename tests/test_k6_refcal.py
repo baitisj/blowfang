@@ -202,8 +202,23 @@ def test_the_bench_carrier_on_440850(tmp_path):
     # the Pluto as the go-between (2026-11-17): refcal for 440.850 alone, the module's upload
     # followed by a PSK31 'AG7EW TEST' carrier (modelled as a 1 kHz tone at 600 Hz deviation)
     # strong at the K6; the K6 1.5 ppm slow
+    # the tail ends 20 s into the module (the bench, 05:06-05:14Z: refcal waited for the
+    # upload's carrier to go, which outlasted the tail, then scanned an empty channel)
+    class Tail(Air):
+        now = 0
+
+        def tune(self, hz, wide, us):
+            self.now = us
+            Air.tune(self, hz, wide, us)
+
+        def rssi(self, us):
+            self.now = us
+            return Air.rssi(self, us)
+
+        def near(self):
+            return (None, FLOOR) if self.now > 20_000_000 else Air.near(self)
     ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1500, dev=600.0,
-                             extra="#define REFCAL_HZ 440850000\n")
+                             extra="#define REFCAL_HZ 440850000\n", air_cls=Tail)
     scans = [ln for ln in said if ln.startswith("refcal s ")]
     assert scans == ["refcal s 440850.00 -63 -112"], scans
     assert abs(ret + 1500) <= 8 and field(said[-2], "k") == "-8" and said[-2].endswith(" dry"), said[-5:]
