@@ -16,9 +16,9 @@
      2  the scan: every reference (23 ATSC pilots on RF 14-36, the 7 weather channels, or
         REFCAL_HZ alone), a settled RSSI on it and on the quieter of +-400 kHz, narrow filter:
         "refcal s 470309.44 -71 -104" (kHz, dBm on it, dBm beside it). REFCAL_SCAN_ONLY ends here.
-     3  the AFC off (REG_73 bit 4) and the strongest reference REFCAL_SNR dB over its side: the
-        mean IF over REFCAL_BLOCKS of gp0dma's blocks (52 ms each). Then REG_3B + REFCAL_PROBE
-        and again: the IF's move tells which way a step turns it (the chip mixes high or low),
+     3  the AFC off (REG_73 bit 4), the wide filter (REFCAL_NARROW keeps the narrow one), and the
+        strongest reference REFCAL_SNR dB over its side: the mean IF over REFCAL_BLOCKS of
+        gp0dma's blocks (52 ms each). Then REG_3B + REFCAL_PROBE and again: the IF's move tells which way a step turns it (the chip mixes high or low),
         and its size must be within 40-160 % of what one step means at that frequency (5 Hz of
         the crystal's 26 MHz: 0.192 ppm, 85 Hz at 440.850, 90 Hz at 470.309). If it isn't (on
         2026-11-17 RF 14's pilot at -105 dBm on the K6's stub moved 27 %: its own 8VSB data
@@ -55,6 +55,11 @@
 #define K6_MODULE_LEVEL 4
 #define K6_MODULE_OPT z /* the DMA ring needs 516 B of the store past the code */
 #define GP0_SWEEP 1
+#ifdef REFCAL_HZ
+/* the Pluto relay: the carrier to measure follows the upload in the same key-up, so no waiting
+   for the upload's carrier to go (bench 2026-11-17 05:06-05:14Z: that wait outlasted the tail) */
+#define GP0_NO_WAIT 1
+#endif
 #define GP0_NO_MAIN 1
 #define TAG "refcal"
 #include "gp0dma.c"
@@ -188,13 +193,14 @@ typedef struct {
   uint8_t *ring;
   uint32_t rsz;
   uint16_t r3b, x3c;
+  int wide;
   char line[64];
 } rc_t;
 
-/* the receiver on hz, narrow, REG_3B at base + k (taken at the RX on the tune does) */
+/* the receiver on hz, c->wide, REG_3B at base + k (taken at the RX on the tune does) */
 static void at(rc_t *c, uint32_t hz, int k) {
   c->api->fd_write(0x3B, (uint16_t)(c->r3b + k));
-  c->api->tune(hz, 0);
+  c->api->tune(hz, c->wide);
 }
 
 static int level(const k6_api_t *api) {
@@ -209,7 +215,7 @@ static int level(const k6_api_t *api) {
 /* the mean IF over nb blocks, 0.1 Hz (0: too few good blocks, or a key) */
 static int32_t mean_if(rc_t *c, uint32_t hz, int k, int nb) {
   blk_t blk;
-  uint32_t sum = 0, lo = 0xFFFFFFFFu, hi = 0, n = 0;
+  uint32_t sum = 0, lo = 0xFFFFFFFFu, hi = 0, n = 0, nl = 0, mn = 0xFFFFFFFFu, mx = 0;
   int i;
   char *p;
   c->api->delay_us(300000);                               /* the synthesizer and the IF settled */
@@ -220,12 +226,23 @@ static int32_t mean_if(rc_t *c, uint32_t hz, int k, int nb) {
     if (c->api->key_poll()) return 0;
     /* (+-5 kHz of the nominal IF: 8 ppm at 600 MHz before the first null; ifcal's +-2 kHz is
        3 ppm there, and the garage's cold may take the K6 further) */
+    nl += lost != 0;
+    if (!lost && blk.ifm < mn) mn = blk.ifm;
+    if (!lost && blk.ifm > mx) mx = blk.ifm;
     if (lost || blk.ifm < 12000 || blk.ifm > 22000) continue;
     sum += blk.ifm, n++;
     if (blk.ifm < lo) lo = blk.ifm;
     if (blk.ifm > hi) hi = blk.ifm;
   }
-  if (n < (uint32_t)nb / 2) return 0;
+  if (n < (uint32_t)nb / 2) {
+    /* (what it saw: good blocks, blocks with losses, the IF range of the rest, Hz) */
+    p = khz(put(c->line, TAG " m "), hz);
+    p = kv(put(p, " few"), " n=", n);
+    p = kv(p, " lost=", nl);
+    p = kv(p, " lo=", mn > mx ? 0 : mn);
+    say0(c->api, c->line, kv(p, " hi=", mx));
+    return 0;
+  }
   sum = udiv(sum * 10 + n / 2, n);
   p = khz(put(c->line, TAG " m "), hz);
   p = put(p, " if=");
@@ -256,7 +273,7 @@ int k6_main(const k6_api_t *api) {
   uint32_t t, v, g, rx = api->rx_hz();
   int32_t m0, m1, d, e, ppb[REFCAL_NREF], x;
   int8_t lvl[NREFS], side[NREFS];
-  int ret, i, j, best = -1, k = 0, sign = 0, n = 0, bad = 0;
+  int ret, i, j, best = -1, k = 0, sign = 0, n = 0, bad = 0, w0;
   uint16_t r73;
   char *p;
   (void)carrier;                                           /* (gp0dma's: refcal scans instead) */
@@ -268,6 +285,8 @@ int k6_main(const k6_api_t *api) {
   c.r3b = api->fd_read(0x3B);
   c.x3c = api->fd_read(0x3C);
   r73 = api->fd_read(0x73);
+  w0 = api->fd_read(0x43) == 0x3028;                       /* (ifcal's test for wide) */
+  c.wide = 0;                                              /* the scan: narrow */
   temp(api, &t, &v);
   p = kv(c.line, TAG " t=", t);
   p = kv(p, " v=", v);
@@ -301,6 +320,11 @@ int k6_main(const k6_api_t *api) {
   goto out;
 #endif
   api->fd_write(0x73, (uint16_t)(r73 | 0x0010));          /* AFC off (taken at the next RX on) */
+  /* the IF reads with the wide filter, where the nominal IF is known (26 MHz / 1536: ifcal,
+     xtalstep): with the narrow one the relay's carrier read 8.9-9.8 kHz (2026-11-17 06:10Z) */
+#ifndef REFCAL_NARROW
+  c.wide = 1;
+#endif
   while (n < REFCAL_NREF) {
     uint32_t hz;
     int32_t r;
@@ -403,6 +427,7 @@ int k6_main(const k6_api_t *api) {
 #endif
 out:
   api->fd_write(0x73, r73);
+  c.wide = w0;                                             /* the pager's own filter */
   if (ret < 0 && ret > -20) k = 0;                         /* (an error keeps nothing) */
   at(&c, rx, k);                                           /* back on the pager's frequency */
   teardown(api, &sv);

@@ -352,10 +352,14 @@ NOINLINE static int setup(const k6_api_t *api, saved_t *sv, uint8_t **ring) {
   uint32_t room, t0;
   if (api->level < 2) return -3;
   t0 = api->ms();
+#ifndef GP0_NO_WAIT /* (a module measuring a carrier that follows its own upload) */
   while (rssi(api) > -80 && api->ms() - t0 < 30000) {
     if (api->key_down()) return -2;
     api->delay_us(10000);
   }
+#else
+  (void)t0;
+#endif
   api->delay_us(200000);
   sv->floor = rssi(api);
   *ring = (uint8_t *)(((uint32_t)api->scratch(&room) + 3) & ~3u);

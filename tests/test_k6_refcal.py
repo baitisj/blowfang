@@ -138,7 +138,8 @@ def test_scans_pilots_nulls_on_the_strongest_and_takes_the_median(tmp_path):
     assert field(last, "n") == "3" and field(last, "t") == "27728"
     # put back: REG_3B, the AFC, GP0, the ADC, the clocks; back on the pager's frequency
     assert regs[0x3B] == BASE3B and regs[0x73] == 0x4682 and regs[0x34] == 0
-    assert air.tunes[-1][1] == 440_850_000
+    assert air.tunes[-1][1] == 440_850_000 and air.tunes[-1][2]            # (its own wide filter)
+    assert all(not w for _, hz, w in air.tunes[:90]) and air.tunes[90][2]   # scan narrow, IF wide
     assert ast[0x308] == 0 and ast[0x28] == 1 << 1 and ast[0x14] == 3
     assert said[-1] == "refcal done" and all(len(ln) <= 60 for ln in said)
 
@@ -202,8 +203,23 @@ def test_the_bench_carrier_on_440850(tmp_path):
     # the Pluto as the go-between (2026-11-17): refcal for 440.850 alone, the module's upload
     # followed by a PSK31 'AG7EW TEST' carrier (modelled as a 1 kHz tone at 600 Hz deviation)
     # strong at the K6; the K6 1.5 ppm slow
+    # the tail ends 20 s into the module (the bench, 05:06-05:14Z: refcal waited for the
+    # upload's carrier to go, which outlasted the tail, then scanned an empty channel)
+    class Tail(Air):
+        now = 0
+
+        def tune(self, hz, wide, us):
+            self.now = us
+            Air.tune(self, hz, wide, us)
+
+        def rssi(self, us):
+            self.now = us
+            return Air.rssi(self, us)
+
+        def near(self):
+            return (None, FLOOR) if self.now > 20_000_000 else Air.near(self)
     ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1500, dev=600.0,
-                             extra="#define REFCAL_HZ 440850000\n")
+                             extra="#define REFCAL_HZ 440850000\n", air_cls=Tail)
     scans = [ln for ln in said if ln.startswith("refcal s ")]
     assert scans == ["refcal s 440850.00 -63 -112"], scans
     assert abs(ret + 1500) <= 8 and field(said[-2], "k") == "-8" and said[-2].endswith(" dry"), said[-5:]
@@ -237,3 +253,14 @@ def test_every_probe_failing_keeps_nothing(tmp_path):
                              air_cls=Flat)
     assert ret == -12 and "refcal no reference passed the probe: nothing kept" in said
     assert regs[0x3B] == BASE3B
+
+
+@need_clang
+def test_a_carrier_outside_the_window_says_where_it_is(tmp_path):
+    # the K6 12 ppm fast at 440.850: the carrier 5.3 kHz off the nominal IF (the side the chip's mixing says), outside refcal's
+    # +-5 kHz window; the failed read says what it saw
+    ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=12000, extra="#define REFCAL_HZ 440850000\n")
+    few = [ln for ln in said if " few " in ln]
+    assert ret == -6 and few, said
+    lo, hi = int(field(few[0], "lo")), int(field(few[0], "hi"))
+    assert field(few[0], "lost") == "0" and lo <= hi and abs((lo + hi) / 2 - NOMINAL) > 5000, few
