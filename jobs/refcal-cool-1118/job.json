@@ -1,0 +1,125 @@
+{
+ "id": "refcal-cool-1118",
+ "who": "refcal",
+ "freq_mhz": 440.85,
+ "minutes": 15,
+ "wait_bench_min": 40,
+ "repeat": {
+  "every_min": 45,
+  "until": "2026-11-18T16:00:00Z"
+ },
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 600,
+   "file": "k6.log"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p14a.cf32",
+    "--hz",
+    "470249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p26a.cf32",
+    "--hz",
+    "542249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p35a.cf32",
+    "--hz",
+    "596249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 20,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:refcal_wait.bin",
+   "sha256": "af407969b886946a47c784fad9e3bd213aa4efd1ed39257b94dd0e11b616f0df",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "4",
+    "--rate",
+    "F18",
+    "--rate-state",
+    "run:k6-rate.json"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tail.wav",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "refcal (ppb=|no |done)",
+   "seconds": 120,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p14b.cf32",
+    "--hz",
+    "470249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
