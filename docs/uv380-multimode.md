@@ -148,8 +148,9 @@ the chip set-ups as tables in flash.
 - **fsk4_rx**: the FM tap reader (0x82 bit 1 flags, halves 0x030/0x230, inverted) and the 4FSK
   demodulator now inside `c/common/m17_rx.c`: symbol timing, level fit, soft dibits. Split out,
   it serves M17 and YSF; each framer brings its own sync words (M17 LSF/stream/packet/BERT, YSF
-  D471C9634D). YSF receive is the one piece with no bench result yet: YSF's 2.7 kHz outer
-  deviation is 12 % more than M17's, which the tap (flat to 3.4 kHz, ~3 units/Hz) should take.
+  D471C9634D). YSF receive has no bench result yet (c/common/ysf_rx.c, milestone 5): YSF's
+  2.7 kHz outer deviation is 12 % more than M17's, which the tap (flat to 3.4 kHz, ~3 units/Hz)
+  should take.
 - **dmr_rx**: the chip's own DMR receive into RX RAM (c6dmrrx), extended from data bursts to
   voice bursts.
 
@@ -231,9 +232,39 @@ also saves flash there.
    (the guard deadline follows the stream). Bench: each mode at 0 W to the Pluto, decoded by
    modem/m17.py, modem/dmrvoice.py and modem/ysf.py; the K6 FSK mode still to the K6. Needs
    Jeff's typed line in a hamlet session (the runner inbox refuses flashes by design).
-5. **Receive**: fsk4_rx split from m17_rx.c, M17 sotto receive to the speaker, YSF receive (new:
-   Pluto sends modem/ysf.py frames, the radio decodes), DMR voice receive. As modules first, then
-   in the image with Jeff's ear for the speaker (flash 2).
+5. **Receive**: YSF receive, M17 sotto receive to the speaker, DMR voice receive. As modules
+   first, then in the image with Jeff's ear for the speaker (flash 2).
+   - **YSF receive, step 1 (built, host tested, not yet on the bench)**: `c/common/ysf_rx.[ch]`,
+     the C version of modem/ysf.py's demodulator and decoder on m17_rx.c's front end (DC follower,
+     x3 RRC interpolator at 24 kHz, here alpha 0.2 over +-6 symbols). It keeps the frame's 480
+     symbols as 16-bit samples (not soft bits) and makes soft bits from them as each decoder asks,
+     so the whole receiver is 4.7 KB of RAM: FICH (K=5 Viterbi, Golay, CRC-16), header and
+     terminator CSD (callsigns), data FR, and sotto VW (tail-biting K=7 at rate 7/18, CRC-8 per
+     superframe). Once locked, a frame whose FICH is lost is read on as the next sotto VW frame
+     and its CRC-8s decide. On simulated tap audio (tests/test_uv380_ysfrx.py, 11 tests) every
+     superframe decodes, 3000 units of noise on a 9000-unit outer level still decodes, and a
+     minute of tap noise gives no frames. `mod/c6ysfrx.c` (8.8 KB, + 4.8 KB state in scratch)
+     runs it on the radio's FM tap exactly as c6m17rx does; runner plans `uv380.rx ysf|ysftap`;
+     `python3 -m modem.ysf wav` makes the Pluto's test transmission (c6sotto's test message as
+     sotto VW, `--dev 5400` puts the outer symbol at 2700 Hz).
+   - The two receivers' front ends are the same code twice (about 40 lines); they become one
+     `fsk4_rx` when both go into the image, not before (the M17 one is proven on air and stays as
+     it is until then).
+
+**On air (11-18 20:21-20:22Z, job sotto3-air-1118, main 2bc44cf, 0 W on 441.850, the Pluto
+listening):** the c6sotto modules sent the radio's own recorded message (250 superframes) in all
+three modes from the image already on the radio, no flash. The dry run (sotto3-dry-1118) first:
+every mode streamed with no late or lost slot.
+
+| mode | sent | Pluto decode | check |
+|---|---|---|---|
+| M17 | 105 stream frames, 210 superframes | 101 frames found, 101/101 CRC good, LSF src AG7EW | 4 frames not found by the Python demod (3 gaps); first 9100475824d1 and last 56d3d545aca1 as sent |
+| YSF | 43 frames, 205 superframes | 43/43 FICH good, 205/205 sotto VW CRC-8 good, AG7EW to ALL | first and last as sent; outer 2691 Hz (YSF wants 2700) |
+| DMR | 3 headers, 60 voice bursts, terminator, 85 superframes | 60/60 blocks CRC good, text AG7EW, 510 bytes | first 9100475824d1, last 1f2604c8257a as sent |
+
+The transmit side reported no late slots for M17, so the 4 missing M17 frames look like the
+Pluto decoder missing a sync at 0 W rather than gaps on air; the M17 voice run of 11-17 also
+found 73 of 74.
 
 Measured so far (clang -Os, Thumb-2): m17_tx 2.5 KB, ysf_tx 2.5 KB, about half the estimate
 above; a whole c6sotto module (core + framer + keying + cal) 5.8 KB (DMR) to 6.9 KB (YSF).
