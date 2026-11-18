@@ -1,12 +1,12 @@
 {
  "id": "m17spk-1118c",
- "status": "queued",
- "queued": "2026-11-18T14:55:55Z",
+ "status": "running",
+ "since": "2026-11-18T14:56:02Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "88c2e498d93e3ed10e6ca8f4d5631de2c2ad6209",
   "path": "jobs/m17spk-1118c"
  },
  "runner_commit": "a7074a21a7949de86c16dd707b004c265e160ebe",
- "updated": "2026-11-18T14:55:55Z"
+ "updated": "2026-11-18T14:56:02Z"
 }
