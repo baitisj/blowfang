@@ -1,0 +1,293 @@
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+ok mod begin 8888
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 128
+ok mod hex 1b80 128
+ok mod hex 1c00 128
+ok mod hex 1c80 128
+ok mod hex 1d00 128
+ok mod hex 1d80 128
+ok mod hex 1e00 128
+ok mod hex 1e80 128
+ok mod hex 1f00 128
+ok mod hex 1f80 128
+ok mod hex 2000 128
+ok mod hex 2080 128
+ok mod hex 2100 128
+ok mod hex 2180 128
+ok mod hex 2200 128
+ok mod hex 2280 56
+mod run serial=1795017454 code=8864
+mod say m17 start s=150 v34=1c at=ok scratch=7496 need=6944 tap=0
+mod say st 1000 halves=31 gaps=0 frames=0 lost=0 rssi=-92 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=133 rep=0
+mod say st 2000 halves=62 gaps=0 frames=0 lost=0 rssi=-94 lp=26 fd=25 sp=0 bz=0 rd=110 dsp=152 rep=0
+mod say st 3000 halves=93 gaps=0 frames=0 lost=0 rssi=-65 lp=9 fd=8 sp=0 bz=0 rd=110 dsp=131 rep=0
+mod say st 4006 halves=125 gaps=0 frames=0 lost=0 rssi=-65 lp=10 fd=9 sp=0 bz=0 rd=113 dsp=141 rep=0
+mod say st 5006 halves=156 gaps=0 frames=0 lost=0 rssi=-65 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=135 rep=0
+mod say st 6006 halves=187 gaps=0 frames=0 lost=0 rssi=-65 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=134 rep=0
+mod say f 6249 lsf ok=1 sc=992 g=1740 m=0 src=AG7EW dst=ALL type=0005
+mod say f 6289 str fn=0000 lich=1 sc=993 g=1770 m=0
+mod say spk start q=6
+mod say st 7016 halves=219 gaps=0 frames=18 lost=0 rssi=-65 lp=39 fd=22 sp=30 bz=0 rd=162 dsp=220 rep=18
+mod say f 7289 str fn=0019 lich=1 sc=992 g=1742 m=0
+mod say st 8017 halves=250 gaps=0 frames=43 lost=0 rssi=-65 lp=33 fd=23 sp=0 bz=0 rd=193 dsp=235 rep=3
+mod say f 8289 str fn=0032 lich=1 sc=994 g=1776 m=0
+mod say st 9017 halves=281 gaps=0 frames=68 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=201 dsp=220 rep=3
+mod say f 9289 str fn=004b lich=1 sc=994 g=1761 m=0
+mod say st 10034 halves=313 gaps=0 frames=94 lost=0 rssi=-65 lp=36 fd=35 sp=0 bz=0 rd=195 dsp=284 rep=3
+mod say f 10289 str fn=0064 lich=1 sc=991 g=1758 m=0
+mod say st 11036 halves=345 gaps=0 frames=119 lost=0 rssi=-65 lp=24 fd=22 sp=0 bz=0 rd=209 dsp=237 rep=13
+mod say f 11289 str fn=007d lich=1 sc=994 g=1768 m=0
+mod say st 12038 halves=376 gaps=0 frames=144 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=160 dsp=238 rep=3
+mod say f 12289 str fn=0096 lich=1 sc=991 g=1756 m=0
+mod say st 13041 halves=407 gaps=0 frames=169 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=198 dsp=247 rep=3
+mod say f 13289 str fn=00af lich=1 sc=992 g=1730 m=0
+mod say st 14041 halves=438 gaps=0 frames=194 lost=0 rssi=-65 lp=24 fd=23 sp=0 bz=0 rd=205 dsp=209 rep=3
+mod say f 14289 str fn=00c8 lich=1 sc=991 g=1760 m=0
+mod say st 15057 halves=470 gaps=0 frames=219 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=188 dsp=200 rep=25
+mod say f 15289 str fn=00e1 lich=1 sc=993 g=1769 m=0
+mod say st 16059 halves=501 gaps=0 frames=244 lost=0 rssi=-65 lp=24 fd=23 sp=0 bz=0 rd=211 dsp=274 rep=3
+mod say f 16289 str fn=00fa lich=1 sc=993 g=1767 m=0
+mod say st 17064 halves=533 gaps=0 frames=270 lost=0 rssi=-65 lp=22 fd=21 sp=0 bz=0 rd=180 dsp=243 rep=3
+mod say f 17289 str fn=0113 lich=1 sc=993 g=1747 m=0
+mod say st 18064 halves=564 gaps=0 frames=294 lost=0 rssi=-65 lp=36 fd=23 sp=0 bz=0 rd=202 dsp=244 rep=3
+mod say f 18249 str fn=812b lich=1 sc=992 g=1769 m=0
+mod say f 18289 eot
+mod say f 18369 lsf ok=1 sc=937 g=1651 m=0 src=AG7EW dst=ALL type=0005
+mod say f 18409 str fn=0000 lich=1 sc=977 g=1804 m=0
+mod say st 19064 halves=595 gaps=0 frames=318 lost=0 rssi=-65 lp=26 fd=25 sp=0 bz=0 rd=205 dsp=208 rep=22
+mod say f 19409 str fn=0019 lich=1 sc=991 g=1757 m=0
+mod say st 20080 halves=627 gaps=0 frames=344 lost=0 rssi=-65 lp=22 fd=21 sp=0 bz=0 rd=197 dsp=249 rep=3
+mod say f 20409 str fn=0032 lich=1 sc=992 g=1746 m=0
+mod say st 21080 halves=658 gaps=0 frames=369 lost=0 rssi=-65 lp=22 fd=21 sp=0 bz=0 rd=142 dsp=232 rep=3
+mod say f 21409 str fn=004b lich=1 sc=993 g=1769 m=0
+mod say st 22096 halves=690 gaps=0 frames=394 lost=0 rssi=-65 lp=24 fd=23 sp=0 bz=0 rd=144 dsp=244 rep=16
+mod say f 22409 str fn=0064 lich=1 sc=992 g=1760 m=0
+mod say st 23096 halves=721 gaps=0 frames=419 lost=0 rssi=-65 lp=24 fd=23 sp=0 bz=0 rd=134 dsp=324 rep=3
+mod say f 23409 str fn=007d lich=1 sc=990 g=1784 m=0
+mod say st 24103 halves=753 gaps=0 frames=445 lost=0 rssi=-65 lp=24 fd=23 sp=1 bz=0 rd=162 dsp=259 rep=3
+mod say f 24409 str fn=0096 lich=1 sc=987 g=1720 m=0
+mod say st 25103 halves=784 gaps=0 frames=469 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=152 dsp=285 rep=3
+mod say f 25409 str fn=00af lich=1 sc=987 g=1732 m=0
+mod say st 26103 halves=815 gaps=0 frames=494 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=156 dsp=272 rep=3
+mod say f 26409 str fn=00c8 lich=1 sc=991 g=1788 m=0
+mod say st 27119 halves=847 gaps=0 frames=520 lost=0 rssi=-65 lp=30 fd=23 sp=0 bz=0 rd=148 dsp=276 rep=3
+mod say f 27409 str fn=00e1 lich=1 sc=990 g=1753 m=0
+mod say st 28119 halves=878 gaps=0 frames=545 lost=0 rssi=-65 lp=23 fd=22 sp=1 bz=0 rd=144 dsp=269 rep=14
+mod say f 28409 str fn=00fa lich=1 sc=989 g=1748 m=0
+mod say st 29134 halves=910 gaps=0 frames=570 lost=0 rssi=-65 lp=22 fd=21 sp=0 bz=0 rd=126 dsp=279 rep=3
+mod say f 29409 str fn=0113 lich=1 sc=990 g=1759 m=0
+mod say st 30135 halves=941 gaps=0 frames=595 lost=0 rssi=-65 lp=22 fd=21 sp=1 bz=0 rd=141 dsp=306 rep=3
+mod say f 30369 str fn=812b lich=1 sc=987 g=1721 m=0
+mod say f 30409 eot
+mod say spk stop frames=1200 gap=165 drop=0
+mod say st 31140 halves=972 gaps=1 frames=604 lost=0 rssi=-65 lp=68 fd=21 sp=46 bz=0 rd=120 dsp=148 rep=17
+mod say st 32140 halves=1003 gaps=1 frames=604 lost=0 rssi=-65 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=136 rep=0
+mod say st 33140 halves=1034 gaps=1 frames=604 lost=0 rssi=-65 lp=10 fd=9 sp=0 bz=0 rd=111 dsp=136 rep=0
+mod say st 34140 halves=1066 gaps=1 frames=604 lost=0 rssi=-65 lp=32 fd=31 sp=0 bz=0 rd=115 dsp=172 rep=0
+mod say st 35141 halves=1097 gaps=1 frames=604 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=128 rep=0
+mod say st 36141 halves=1128 gaps=1 frames=604 lost=0 rssi=-65 lp=24 fd=23 sp=0 bz=0 rd=111 dsp=156 rep=0
+mod say st 37141 halves=1159 gaps=1 frames=604 lost=0 rssi=-65 lp=9 fd=8 sp=0 bz=0 rd=111 dsp=136 rep=0
+mod say st 38152 halves=1191 gaps=1 frames=604 lost=0 rssi=-65 lp=12 fd=11 sp=0 bz=0 rd=115 dsp=141 rep=0
+mod say st 39152 halves=1222 gaps=1 frames=604 lost=0 rssi=-65 lp=11 fd=10 sp=0 bz=0 rd=112 dsp=140 rep=0
+mod say st 40152 halves=1253 gaps=1 frames=604 lost=0 rssi=-65 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=141 rep=0
+mod say f 40241 lsf ok=1 sc=994 g=1807 m=0 src=AG7EW dst=ALL type=0005
+mod say f 40281 str fn=0000 lich=1 sc=994 g=1799 m=0
+mod say spk start q=6
+mod say st 41153 halves=1285 gaps=1 frames=625 lost=0 rssi=-65 lp=39 fd=33 sp=30 bz=0 rd=222 dsp=199 rep=5
+mod say f 41281 str fn=0019 lich=1 sc=991 g=1788 m=0
+mod say st 42159 halves=1316 gaps=1 frames=650 lost=0 rssi=-65 lp=35 fd=34 sp=0 bz=0 rd=192 dsp=282 rep=3
+mod say f 42281 str fn=0032 lich=1 sc=996 g=1770 m=0
+mod say st 43159 halves=1347 gaps=1 frames=675 lost=0 rssi=-65 lp=35 fd=34 sp=0 bz=0 rd=225 dsp=210 rep=3
+mod say f 43281 str fn=004b lich=1 sc=995 g=1789 m=0
+mod say st 44175 halves=1379 gaps=1 frames=701 lost=0 rssi=-65 lp=36 fd=33 sp=0 bz=0 rd=258 dsp=223 rep=3
+mod say f 44281 str fn=0064 lich=1 sc=995 g=1826 m=0
+mod say st 45175 halves=1410 gaps=1 frames=725 lost=0 rssi=-65 lp=35 fd=34 sp=0 bz=0 rd=230 dsp=248 rep=3
+mod say f 45281 str fn=007d lich=1 sc=994 g=1779 m=0
+mod say st 46191 halves=1442 gaps=1 frames=751 lost=0 rssi=-65 lp=32 fd=22 sp=0 bz=0 rd=208 dsp=227 rep=3
+mod say f 46281 str fn=0096 lich=1 sc=996 g=1823 m=0
+mod say st 47191 halves=1473 gaps=1 frames=776 lost=0 rssi=-65 lp=36 fd=35 sp=0 bz=0 rd=225 dsp=225 rep=3
+mod say f 47281 str fn=00af lich=1 sc=991 g=1785 m=0
+mod say st 48192 halves=1505 gaps=1 frames=801 lost=0 rssi=-65 lp=33 fd=32 sp=0 bz=0 rd=261 dsp=206 rep=3
+mod say f 48281 str fn=00c8 lich=1 sc=993 g=1806 m=0
+mod say st 49213 halves=1537 gaps=1 frames=827 lost=0 rssi=-65 lp=33 fd=32 sp=0 bz=0 rd=210 dsp=247 rep=3
+mod say f 49281 str fn=00e1 lich=1 sc=996 g=1802 m=0
+mod say st 50231 halves=1568 gaps=1 frames=852 lost=0 rssi=-65 lp=34 fd=33 sp=0 bz=0 rd=239 dsp=251 rep=3
+mod say f 50281 str fn=00fa lich=1 sc=997 g=1791 m=0
+mod say st 51237 halves=1600 gaps=1 frames=877 lost=0 rssi=-65 lp=33 fd=32 sp=0 bz=0 rd=255 dsp=192 rep=3
+mod say f 51281 str fn=0113 lich=1 sc=995 g=1775 m=0
+mod say st 52239 halves=1631 gaps=1 frames=902 lost=0 rssi=-65 lp=36 fd=34 sp=0 bz=0 rd=213 dsp=264 rep=3
+mod say f 52241 str fn=812b lich=1 sc=997 g=1785 m=0
+mod say f 52281 eot
+mod say f 52361 lsf ok=1 sc=922 g=1686 m=0 src=AG7EW dst=ALL type=0005
+mod say f 52401 str fn=0000 lich=1 sc=992 g=1866 m=0
+mod say st 53239 halves=1662 gaps=1 frames=926 lost=0 rssi=-65 lp=34 fd=25 sp=0 bz=0 rd=176 dsp=240 rep=9
+mod say f 53401 str fn=0019 lich=1 sc=996 g=1812 m=0
+mod say st 54257 halves=1694 gaps=1 frames=952 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=196 dsp=200 rep=3
+mod say f 54401 str fn=0032 lich=1 sc=995 g=1767 m=0
+mod say st 55257 halves=1725 gaps=1 frames=976 lost=0 rssi=-65 lp=33 fd=21 sp=0 bz=0 rd=183 dsp=240 rep=3
+mod say f 55401 str fn=004b lich=1 sc=997 g=1806 m=0
+mod say st 56274 halves=1757 gaps=1 frames=1002 lost=0 rssi=-65 lp=24 fd=22 sp=0 bz=0 rd=234 dsp=160 rep=3
+mod say f 56401 str fn=0064 lich=1 sc=996 g=1806 m=0
+mod say st 57274 halves=1788 gaps=1 frames=1027 lost=0 rssi=-65 lp=22 fd=21 sp=0 bz=0 rd=216 dsp=188 rep=3
+mod say f 57401 str fn=007d lich=1 sc=998 g=1814 m=0
+mod say st 58278 halves=1820 gaps=1 frames=1052 lost=0 rssi=-65 lp=32 fd=31 sp=1 bz=0 rd=192 dsp=228 rep=3
+mod say f 58401 str fn=0096 lich=1 sc=993 g=1769 m=0
+mod say st 59280 halves=1851 gaps=1 frames=1077 lost=0 rssi=-65 lp=35 fd=34 sp=0 bz=0 rd=254 dsp=213 rep=3
+mod say f 59401 str fn=00af lich=1 sc=997 g=1793 m=0
+mod say st 60280 halves=1882 gaps=1 frames=1102 lost=0 rssi=-65 lp=23 fd=22 sp=0 bz=0 rd=220 dsp=205 rep=3
+mod say f 60401 str fn=00c8 lich=1 sc=997 g=1790 m=0
+mod say st 61294 halves=1914 gaps=1 frames=1128 lost=0 rssi=-65 lp=36 fd=35 sp=0 bz=0 rd=221 dsp=230 rep=3
+mod say f 61401 str fn=00e1 lich=1 sc=997 g=1792 m=0
+mod say st 62294 halves=1945 gaps=1 frames=1152 lost=0 rssi=-65 lp=33 fd=31 sp=0 bz=0 rd=215 dsp=195 rep=3
+mod say f 62401 str fn=00fa lich=1 sc=995 g=1789 m=0
+mod say st 63311 halves=1977 gaps=1 frames=1178 lost=0 rssi=-65 lp=34 fd=21 sp=0 bz=0 rd=208 dsp=214 rep=3
+mod say f 63401 str fn=0113 lich=1 sc=997 g=1803 m=0
+mod say st 64312 halves=2008 gaps=1 frames=1203 lost=0 rssi=-65 lp=31 fd=22 sp=0 bz=0 rd=188 dsp=227 rep=4
+mod say f 64361 str fn=812b lich=1 sc=988 g=1742 m=0
+mod say f 64401 eot
+mod say spk stop frames=1200 gap=167 drop=0
+mod say st 65317 halves=2039 gaps=2 frames=1208 lost=0 rssi=-65 lp=88 fd=22 sp=69 bz=0 rd=135 dsp=139 rep=4
+mod say st 66317 halves=2070 gaps=2 frames=1208 lost=0 rssi=-65 lp=9 fd=8 sp=0 bz=0 rd=111 dsp=137 rep=0
+mod say st 67317 halves=2101 gaps=2 frames=1208 lost=0 rssi=-65 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=139 rep=0
+mod say st 68325 halves=2133 gaps=2 frames=1208 lost=0 rssi=-65 lp=10 fd=9 sp=0 bz=0 rd=115 dsp=136 rep=0
+mod say st 69325 halves=2164 gaps=2 frames=1208 lost=0 rssi=-93 lp=27 fd=26 sp=0 bz=0 rd=111 dsp=149 rep=0
+mod say st 70325 halves=2195 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=135 rep=0
+mod say st 71332 halves=2227 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=114 dsp=138 rep=0
+mod say st 72332 halves=2258 gaps=2 frames=1208 lost=0 rssi=-93 lp=10 fd=9 sp=0 bz=0 rd=111 dsp=141 rep=0
+mod say st 73332 halves=2289 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=140 rep=0
+mod say st 74332 halves=2321 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=114 dsp=141 rep=0
+mod say st 75333 halves=2352 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=130 rep=0
+mod say st 76333 halves=2383 gaps=2 frames=1208 lost=0 rssi=-93 lp=21 fd=20 sp=0 bz=0 rd=111 dsp=139 rep=0
+mod say st 77333 halves=2414 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=135 rep=0
+mod say st 78341 halves=2446 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=114 dsp=151 rep=0
+mod say st 79341 halves=2477 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=135 rep=0
+mod say st 80341 halves=2508 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=134 rep=0
+mod say st 81350 halves=2540 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=114 dsp=137 rep=0
+mod say st 82350 halves=2571 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=135 rep=0
+mod say st 83350 halves=2602 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=132 rep=0
+mod say st 84357 halves=2634 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=115 dsp=143 rep=0
+mod say st 85357 halves=2665 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=136 rep=0
+mod say st 86357 halves=2696 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=128 rep=0
+mod say st 87365 halves=2728 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=114 dsp=144 rep=0
+mod say st 88365 halves=2759 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=134 rep=0
+mod say st 89365 halves=2790 gaps=2 frames=1208 lost=0 rssi=-94 lp=17 fd=16 sp=0 bz=0 rd=111 dsp=152 rep=0
+mod say st 90373 halves=2822 gaps=2 frames=1208 lost=0 rssi=-93 lp=13 fd=12 sp=0 bz=0 rd=114 dsp=146 rep=0
+mod say st 91373 halves=2853 gaps=2 frames=1208 lost=0 rssi=-94 lp=9 fd=8 sp=0 bz=0 rd=111 dsp=112 rep=0
+mod say st 92373 halves=2884 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=137 rep=0
+mod say st 93381 halves=2916 gaps=2 frames=1208 lost=0 rssi=-93 lp=23 fd=22 sp=0 bz=0 rd=114 dsp=152 rep=0
+mod say st 94381 halves=2947 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=136 rep=0
+mod say st 95381 halves=2978 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=140 rep=0
+mod say st 96389 halves=3010 gaps=2 frames=1208 lost=0 rssi=-93 lp=28 fd=27 sp=0 bz=0 rd=115 dsp=162 rep=0
+mod say st 97389 halves=3041 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=140 rep=0
+mod say st 98389 halves=3072 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=132 rep=0
+mod say st 99395 halves=3104 gaps=2 frames=1208 lost=0 rssi=-94 lp=10 fd=9 sp=0 bz=0 rd=114 dsp=138 rep=0
+mod say st 100395 halves=3135 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=132 rep=0
+mod say st 101395 halves=3166 gaps=2 frames=1208 lost=0 rssi=-94 lp=27 fd=26 sp=0 bz=0 rd=111 dsp=156 rep=0
+mod say st 102395 halves=3197 gaps=2 frames=1208 lost=0 rssi=-95 lp=13 fd=12 sp=0 bz=0 rd=111 dsp=132 rep=0
+mod say st 103395 halves=3229 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=114 dsp=134 rep=0
+mod say st 104395 halves=3260 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=135 rep=0
+mod say st 105395 halves=3291 gaps=2 frames=1208 lost=0 rssi=-95 lp=12 fd=11 sp=0 bz=0 rd=112 dsp=131 rep=0
+mod say st 106395 halves=3322 gaps=2 frames=1208 lost=0 rssi=-92 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=138 rep=0
+mod say st 107396 halves=3354 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=114 dsp=140 rep=0
+mod say st 108396 halves=3385 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=131 rep=0
+mod say st 109396 halves=3416 gaps=2 frames=1208 lost=0 rssi=-94 lp=13 fd=12 sp=0 bz=0 rd=111 dsp=142 rep=0
+mod say st 110396 halves=3448 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=114 dsp=133 rep=0
+mod say st 111397 halves=3479 gaps=2 frames=1208 lost=0 rssi=-94 lp=34 fd=33 sp=0 bz=0 rd=110 dsp=164 rep=0
+mod say st 112397 halves=3510 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=138 rep=0
+mod say st 113397 halves=3541 gaps=2 frames=1208 lost=0 rssi=-95 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=131 rep=0
+mod say st 114405 halves=3573 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=115 dsp=143 rep=0
+mod say st 115405 halves=3604 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=134 rep=0
+mod say st 116405 halves=3635 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=135 rep=0
+mod say st 117412 halves=3667 gaps=2 frames=1208 lost=0 rssi=-93 lp=35 fd=34 sp=0 bz=0 rd=115 dsp=178 rep=0
+mod say st 118412 halves=3698 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=135 rep=0
+mod say st 119412 halves=3729 gaps=2 frames=1208 lost=0 rssi=-94 lp=30 fd=29 sp=0 bz=0 rd=112 dsp=170 rep=0
+mod say st 120412 halves=3761 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=114 dsp=137 rep=0
+mod say st 121412 halves=3792 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=131 rep=0
+mod say st 122412 halves=3823 gaps=2 frames=1208 lost=0 rssi=-93 lp=27 fd=26 sp=0 bz=0 rd=110 dsp=160 rep=0
+mod say st 123412 halves=3854 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=111 dsp=137 rep=0
+mod say st 124420 halves=3886 gaps=2 frames=1208 lost=0 rssi=-95 lp=12 fd=11 sp=0 bz=0 rd=115 dsp=145 rep=0
+mod say st 125420 halves=3917 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=143 rep=0
+mod say st 126420 halves=3948 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=137 rep=0
+mod say st 127430 halves=3980 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=115 dsp=145 rep=0
+mod say st 128430 halves=4011 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=136 rep=0
+mod say st 129430 halves=4042 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=111 dsp=134 rep=0
+mod say st 130438 halves=4074 gaps=2 frames=1208 lost=0 rssi=-93 lp=14 fd=13 sp=0 bz=0 rd=114 dsp=142 rep=0
+mod say st 131438 halves=4105 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=132 rep=0
+mod say st 132438 halves=4136 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=138 rep=0
+mod say st 133445 halves=4168 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=114 dsp=143 rep=0
+mod say st 134445 halves=4199 gaps=2 frames=1208 lost=0 rssi=-93 lp=10 fd=9 sp=0 bz=0 rd=110 dsp=135 rep=0
+mod say st 135445 halves=4230 gaps=2 frames=1208 lost=0 rssi=-93 lp=26 fd=25 sp=0 bz=0 rd=110 dsp=156 rep=0
+mod say st 136452 halves=4262 gaps=2 frames=1208 lost=0 rssi=-93 lp=31 fd=30 sp=0 bz=0 rd=114 dsp=157 rep=0
+mod say st 137452 halves=4293 gaps=2 frames=1208 lost=0 rssi=-93 lp=10 fd=9 sp=0 bz=0 rd=110 dsp=133 rep=0
+mod say st 138452 halves=4324 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=140 rep=0
+mod say st 139461 halves=4356 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=113 dsp=144 rep=0
+mod say st 140461 halves=4387 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=131 rep=0
+mod say st 141461 halves=4418 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=137 rep=0
+mod say st 142468 halves=4450 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=113 dsp=137 rep=0
+mod say st 143468 halves=4481 gaps=2 frames=1208 lost=0 rssi=-94 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=140 rep=0
+mod say st 144468 halves=4512 gaps=2 frames=1208 lost=0 rssi=-93 lp=12 fd=11 sp=0 bz=0 rd=110 dsp=141 rep=0
+mod say st 145476 halves=4544 gaps=2 frames=1208 lost=0 rssi=-93 lp=29 fd=28 sp=0 bz=0 rd=114 dsp=166 rep=0
+mod say st 146476 halves=4575 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=136 rep=0
+mod say st 147476 halves=4606 gaps=2 frames=1208 lost=0 rssi=-92 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=145 rep=0
+mod say st 148484 halves=4638 gaps=2 frames=1208 lost=0 rssi=-93 lp=11 fd=10 sp=0 bz=0 rd=114 dsp=149 rep=0
+mod say st 149484 halves=4669 gaps=2 frames=1208 lost=0 rssi=-94 lp=11 fd=10 sp=0 bz=0 rd=110 dsp=141 rep=0
+mod say end halves=4685 gaps=2 frames=1208 lost=0 lsf=4 str=1200 pkt=0 bert=0 eot=4 sms=0 bert_bits=0 bert_err=0
+ok mod run ret=0 ms=150009
