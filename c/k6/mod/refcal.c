@@ -81,6 +81,9 @@
 #ifndef REFCAL_PROBE
 #define REFCAL_PROBE 6   /* REG_3B steps for the probe */
 #endif
+#ifndef REFCAL_SETTLE_MS
+#define REFCAL_SETTLE_MS 3000 /* REFCAL_WAIT: after the carrier comes, before the scan */
+#endif
 #ifndef REFCAL_NREF
 #define REFCAL_NREF 4    /* references read at the null, the first included */
 #endif
@@ -296,6 +299,15 @@ int k6_main(const k6_api_t *api) {
 #ifdef REFCAL_WAIT
   ret = carrier(api, sv.floor);                            /* the tail's own key-up */
   if (ret) goto out;
+  /* the Pluto's LO shows before its stream does (2026-11-18: the scan read -100..-120 dBm at
+     the start of a tail the pager then heard at -65): let the transmitter come up */
+  for (i = 0; i < REFCAL_SETTLE_MS / 100; i++) {
+    if (api->key_poll()) {
+      ret = -2;
+      goto out;
+    }
+    api->delay_us(100000);
+  }
 #endif
   temp(api, &t, &v);
   p = kv(c.line, TAG " t=", t);
