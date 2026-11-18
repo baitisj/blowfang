@@ -46,7 +46,7 @@ def multitone(seconds, fs=FS, peak=HALF):
 
 
 def bert_frames(seconds):
-    return max(1, int(seconds / 0.040))
+    return max(1, int(seconds / 0.040)) if seconds > 0 else 0
 
 
 def bert_audio(nframes, fs=FS, alpha=0.5):
@@ -57,7 +57,7 @@ def bert_audio(nframes, fs=FS, alpha=0.5):
 
 def test_signal(tones_s=30.0, bert_s=30.0, fs=FS):
     gap = np.zeros(int(0.5 * fs) if tones_s > 0 else 0)
-    bert, data = bert_audio(bert_frames(bert_s), fs)
+    bert, data = bert_audio(bert_frames(bert_s), fs) if bert_s > 0 else (np.zeros(0), b"")
     return np.concatenate([multitone(tones_s, fs), gap, bert]), data
 
 
@@ -309,6 +309,8 @@ def main(argv=None):
     w.add_argument("out")
     w.add_argument("--tones-s", type=float, default=30.0)
     w.add_argument("--bert-s", type=float, default=30.0)
+    w.add_argument("--sms", action="append", default=[], help="then an M17 SMS (packet) with this text")
+    w.add_argument("--c2", help="then an M17 voice stream of this Codec2 3200 file")
     t = sub.add_parser("tap")
     t.add_argument("log")
     t.add_argument("--wav")
@@ -317,9 +319,14 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.cmd == "wav":
         x, data = test_signal(a.tones_s, a.bert_s)
+        traffic = (m17.tx_sms(a.sms) if a.sms else b"") + (m17.tx_voice(open(a.c2, "rb").read()) if a.c2 else b"")
+        if traffic:
+            gap = np.zeros(FS // 2)
+            x = np.concatenate([x, gap, m17.modulate(traffic, fs=FS, alpha=0.5, outer_hz=HALF), gap])
         m17.write_wav(a.out, np.round(x * 32767), FS)
-        print(f"{a.out}: {len(x) / FS:.1f} s at {FS} Hz, multitone {a.tones_s:g} s then "
-              f"{bert_frames(a.bert_s)} BERT frames; send with --dev 4800 (M17 2400 Hz outer)")
+        print(f"{a.out}: {len(x) / FS:.1f} s at {FS} Hz, multitone {a.tones_s:g} s, "
+              f"{bert_frames(a.bert_s)} BERT frames, {len(a.sms)} SMS, voice {'yes' if a.c2 else 'no'}; "
+              f"send with --dev 4800 (M17 2400 Hz outer)")
         return 0
     lines = open(a.log, errors="replace").read().splitlines()
     for ln in (tap_report(lines, a.wav) if a.cmd == "tap" else phy_report(lines)):
