@@ -10,10 +10,15 @@
    "id": "refcal-cool-1118-r2",
    "who": "refcal",
    "not_before": "2026-11-18T01:55:10Z"
+  },
+  {
+   "id": "c4fm-1118b",
+   "who": "c4fm",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T01:37:32Z",
+ "last_poll": "2026-11-18T01:43:37Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T01:37:42Z"
+ "updated": "2026-11-18T01:43:37Z"
 }
