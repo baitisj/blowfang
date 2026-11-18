@@ -1,0 +1,100 @@
+{
+ "id": "m17rx-tap1c-1118c",
+ "who": "m17rx",
+ "freq_mhz": 441.85,
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "tap1c"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "tap start",
+   "file": "uv380.log",
+   "seconds": 120
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:traffic.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:bert10.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-55"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:bert10.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-60"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:bert10.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-65"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:traffic.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-60"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "end halves",
+   "file": "uv380.log",
+   "seconds": 240
+  }
+ ]
+}
