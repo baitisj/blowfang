@@ -8,8 +8,12 @@
    AT1846S::setFrequency writes them) are set for each point, the receiver is restarted by
    clearing and restoring register 0x30's rx bit (0x0020; OpenRTX's reloadConfig), and after
    SC_SETTLE_MS the RSSI (api->rssi, the AT1846S's own) is read SC_READS times, SC_GAP_MS apart:
-   the point's mean and peak. Then the next point. At the end the old 0x29/0x2A/0x30 go back
-   and the receiver restarts on its own channel.
+   the point's mean and peak. Then the next point. At the end the module asks the image to
+   hand its own channel to the radio again (api->probe("power 0"): the pager's "power N"
+   command, which makes OpenRTX re-apply the whole channel, frequency included, through
+   radio_updateConfiguration; the bench runs at 0 W anyway). It does not write back what it read
+   from 0x29/0x2A: on the radio (11-18, job uvscan-1118a) those read 0x26D7/0xE970 while tuned to
+   441.850, not the 0x006B/0xDFA0 OpenRTX writes, so a read-back is no way to restore.
 
    It only ever moves the receive frequency, inside SC_MIN_KHZ..SC_MAX_KHZ (the UHF path the
    radio is already on, so no band switch or front-end GPIO is touched). It never sets 0x30's
@@ -17,7 +21,7 @@
    puts everything back. PTT, preview or Ctrl-C (api->stop) end it the same way.
 
    Lines ("mod say ..."):
-     scan start n=NNN lo=425000 hi=435000 step=12.5 f0=441850 r30=XXXX
+     scan start n=NNN lo=425000 hi=435000 step=12500 r29=XXXX r2a=XXXX r30=XXXX
      r 425000 ccccccc...        one row of up to 50 points from that frequency (kHz), one char a
                                 point: '0' + (mean dBm + 160) / 2 ('0' = -160 dBm or less)
      p 425612 m=-98 fl=-121     a point SC_SIG_DB or more over the sweep's median: kHz,
@@ -89,15 +93,12 @@ static int tune(const ortx_api_t *api, const saved_t *s, uint32_t khz) {
     return 0;
 }
 
+/* the image's own channel back on the radio: OpenRTX re-applies the channel (frequency
+   included) when the pager's "power N" command hands it a change */
 static void put_back(const ortx_api_t *api, const saved_t *s) {
-    uint16_t r30 = 0;
-    at_write(api, 0x29, s->r29);
-    at_write(api, 0x2A, s->r2a);
-    if (at_read(api, 0x30, &r30) == 0 && !(r30 & R30_TX)) {
-        at_write(api, 0x30, (uint16_t)(r30 & ~R30_RXTX));
-        api->sleep_ms(1);
-        at_write(api, 0x30, (uint16_t)(s->r30 & ~R30_TX));
-    }
+    (void)s;
+    api->probe("power 0");
+    api->sleep_ms(200);
 }
 
 /* mean and peak dBm at one point: 0, or the tune's error, or -3 (stopped) */
@@ -141,10 +142,9 @@ int uv_main(const ortx_api_t *api) {
     saved_t s;
     if (at_read(api, 0x29, &s.r29) || at_read(api, 0x2A, &s.r2a) || at_read(api, 0x30, &s.r30))
         return -1;
-    uint32_t f0 = (((uint32_t)s.r29 << 16) | s.r2a) / 16u;
-    api->fmt(line, sizeof line, "scan start n=%lu lo=%lu hi=%lu step=%lu f0=%lu r30=%04x", (unsigned long)n,
-             (unsigned long)SC_LO_KHZ, (unsigned long)SC_HI_KHZ, (unsigned long)step, (unsigned long)f0,
-             (unsigned)s.r30);
+    api->fmt(line, sizeof line, "scan start n=%lu lo=%lu hi=%lu step=%lu r29=%04x r2a=%04x r30=%04x",
+             (unsigned long)n, (unsigned long)SC_LO_KHZ, (unsigned long)SC_HI_KHZ, (unsigned long)step,
+             (unsigned)s.r29, (unsigned)s.r2a, (unsigned)s.r30);
     api->say(line);
     if (s.r30 & R30_TX) {
         api->say("scan refused: tx bit set");
@@ -172,7 +172,6 @@ int uv_main(const ortx_api_t *api) {
         done = i + 1;
         if (k == SC_ROW || i + 1 == n) {
             row[k] = 0;
-            put_back(api, &s);           /* the own channel between rows, so OpenRTX sees no gap */
             api->fmt(line, sizeof line, "r %lu %s", (unsigned long)row_khz, row);
             api->say(line);
             k = 0;
@@ -221,7 +220,6 @@ int uv_main(const ortx_api_t *api) {
             rc = measure(api, &s, (f - SC_NEAR_KHZ) * 1000u, &a, &ax);
         if (!rc)
             rc = measure(api, &s, (f + SC_NEAR_KHZ) * 1000u, &b, &bx);
-        put_back(api, &s);
         if (rc) {
             ret = rc;
             break;

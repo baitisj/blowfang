@@ -93,3 +93,17 @@ clean-c6core:
 	rm -f c6core_host
 
 .PHONY: clean-c6core
+
+# YSF receiver for the UV-380's 8 kHz FM tap (docs/uv380-multimode.md milestone 5)
+all: ysf_rx_host
+
+ysf_rx_host: ysf_rx_host.c \
+		ysf_rx.c \
+		ysf_rx.h
+	$(CC) $(CFLAGS) -o $@ ysf_rx_host.c ysf_rx.c
+
+clean: clean-ysf-rx
+clean-ysf-rx:
+	rm -f ysf_rx_host
+
+.PHONY: clean-ysf-rx
