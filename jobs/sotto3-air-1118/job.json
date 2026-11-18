@@ -1,0 +1,60 @@
+{
+ "id": "sotto3-air-1118",
+ "who": "multimode",
+ "freq_mhz": 441.85,
+ "minutes": 12,
+ "sources_commit": "2bc44cf",
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:s.wav",
+    "--hz",
+    "441850000",
+    "--seconds",
+    "170"
+   ],
+   "background": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2",
+    "trim -580"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "m17"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "ysf"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "dmr"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "trim 6100"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "s\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 180
+  }
+ ]
+}
