@@ -525,6 +525,31 @@ def test_uv380_ysf_sends_the_checkouts_module_at_power_0(work, monkeypatch):
     assert argv[5:7] == ["--key-file", br.key_path()] and argv[-2:] == ["--run-timeout", "45"]
 
 
+def test_uv380_sotto_checked(work):
+    for air in br.UV380_SOTTO_AIRS:
+        for extra in ([], ["dry"]):
+            assert br.check_job(uv_job({"do": "uv380.sotto", "args": [air] + extra})) == [], (air, extra)
+    for args in ([], ["x"], ["m17", "live"], ["m17", "dry", "dry"], ["../txreq.c"], ["c6sotto_m17.c"]):
+        assert "one of m17" in problems(uv_job({"do": "uv380.sotto", "args": args})), args
+
+
+def test_uv380_sotto_sends_the_checkouts_module_at_power_0(work, monkeypatch):
+    monkeypatch.setattr(br, "command", fake_command({}))
+    ran = []
+    monkeypatch.setattr(br, "run_proc", lambda ctx, argv, cwd, timeout, env: (ran.append(argv), (0, None))[1])
+    monkeypatch.setattr(br, "uv380_port", lambda: "/dev/uv380")
+    j = uv_job({"do": "uv380.sotto", "args": ["ysf"]})
+    monkeypatch.setattr(br, "uv380_probe", Radio(pwr="1000"))
+    res = br.run_job(j, str(work / "rd"), Rig())
+    assert res["status"] == "failed" and "sends only at power 0" in res["reason"] and ran == []
+    monkeypatch.setattr(br, "uv380_probe", Radio())
+    assert br.run_job(j, str(work / "rd2"), Rig())["status"] == "done"
+    assert ran[0][4].endswith("firmware/uv380-openrtx/mod/c6sotto_ysf.c")
+    j = uv_job({"do": "uv380.sotto", "args": ["dmr", "dry"]})
+    assert br.run_job(j, str(work / "rd3"), Rig())["status"] == "done"
+    assert ran[1][4].endswith("firmware/uv380-openrtx/mod/c6sotto_dmr_dry.c")
+
+
 def test_uv380_voice_checked(work):
     for plan in br.UV380_VOICE_PLANS:
         assert br.check_job(uv_job({"do": "uv380.voice", "args": [plan]})) == [], plan

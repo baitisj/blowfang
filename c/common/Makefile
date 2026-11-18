@@ -75,3 +75,21 @@ clean-framers:
 	rm -f framers_host
 
 .PHONY: clean-framers
+
+# the HR_C6000 core (profiles, 4FSK and DMR transmit engines) on a fake chip
+all: c6core_host
+
+c6core_host: c6core_host.c \
+		c6_core.c \
+		c6_core.h \
+		m17_tx.c \
+		m17_tx.h \
+		ysf_tx.c \
+		ysf_tx.h
+	$(CC) $(CFLAGS) -o $@ c6core_host.c c6_core.c m17_tx.c ysf_tx.c
+
+clean: clean-c6core
+clean-c6core:
+	rm -f c6core_host
+
+.PHONY: clean-c6core

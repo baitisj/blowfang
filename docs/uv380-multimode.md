@@ -68,8 +68,8 @@ Estimated flash and RAM per part:
 | C6000 core (bus, slot IRQ, profiles, keying, deviation from cal) | 4 KB | 64 B |
 | raw 4FSK TX engine (M17, YSF, flat FSK 2400/1200) | 2 KB | 120 B (two slot buffers + state) |
 | DMR voice TX engine (bursts, LC, V_SPI) | 3 KB | 100 B |
-| M17 framer TX (C port of modem/m17.py: LSF, LICH, conv, puncture, interleave, decorrelate) | 4 KB | 200 B |
-| YSF framer TX (FICH Golay, CSD, VW sotto payload, PN9) | 5 KB | 300 B |
+| M17 framer TX (C port of modem/m17.py: LSF, LICH, conv, puncture, interleave, decorrelate) | 2.5 KB (measured) | 140 B |
+| YSF framer TX (FICH Golay, CSD, VW sotto payload, PN9) | 2.5 KB (measured) | 160 B |
 | 4FSK tap receiver (split from m17_rx.c) + M17 framer RX | 10 KB | 6.6 KB in `c6_arena` |
 | YSF framer RX | 6 KB | in `c6_arena` |
 | DMR voice RX | 4 KB | 1 KB in `c6_arena` |
@@ -213,17 +213,30 @@ also saves flash there.
 2. **M17 and YSF transmit framers in C** (`c/common/m17_tx.c`, `ysf_tx.c`), streaming one frame
    at a time from sotto superframes, host tests byte exact against modem/m17.py and modem/ysf.py.
    Cloud only, no bench.
-3. **C6000 core in the image** (c6_bus, c6_slot IRQ, c6_profile tables, c6_key, c6_cal) and the
-   fsk4_tx / dmr_tx engines, with module API level 6. First bench check, at 0 W on 441.850 via
-   the runner: thin level 6 modules that send the same M17 BERT, DMR voice and YSF DN the old
-   modules sent, decoded on the Pluto. **Needs one flash** (Jeff's typed line in a hamlet
-   session; the runner inbox refuses flashes by design).
-4. **Sub-modes on the radio**: macro key 4 cycles FSK/RNG/M17/DMR/YSF, PTT sends the recorded
-   sotto message in that mode. Bench: each mode at 0 W to the Pluto, decoded by modem/m17rx.py,
-   modem/dmrvoice.py and modem/ysf.py; the K6 FSK mode still to the K6. **Second flash.**
+3. **The C6000 core as portable C, proven as RAM modules first** (done in PR #187, the RAM
+   module rule: no flash until a module can't do it). `c/common/c6_core.[ch]`: the profile
+   tables (`C6C_FSK4_TX`, `C6C_DMR_VOICE_TX`, `C6C_FMTAP_RX`, flat byte arrays so -fropi modules
+   can hold them), `c6c_apply`/`c6c_restore`, and the engines `c6c_fsk4_tx` and `c6c_dmr_tx`,
+   the proven module loops moved over unchanged, behind a `c6c_bus` of function pointers. Tested
+   on a fake chip (`c6core_host`, tests/test_uv380_c6core.py: whole M17 and YSF sotto streams on
+   the air byte for byte, DMR bursts in order, every register restored). `mod/c6bus_mod.h` fills
+   the bus from the module helpers, and `mod/c6sotto.c` sends **the radio's own recorded sotto
+   message** as M17, YSF or DMR (`c6sotto_m17|ysf|dmr[_dry].c`, 5-7 KB each), so all three
+   modes go on air at 0 W through the runner (new step `uv380.sotto AIR [dry]`) on the image
+   already on the radio. **No flash.**
+4. **The core in the image** (flash 1): the image's own bus (OpenRTX's HR_C6000 driver and
+   chip-select lock, a real EXTI slot interrupt), cal from `calib->sendIrange/sendQrange`,
+   module API level 6 exporting the core, and PAGER sub-modes: macro key 4 cycles
+   FSK/RNG/M17/DMR/YSF, PTT sends the recorded sotto message in that mode, no 5 s key-up cap
+   (the guard deadline follows the stream). Bench: each mode at 0 W to the Pluto, decoded by
+   modem/m17.py, modem/dmrvoice.py and modem/ysf.py; the K6 FSK mode still to the K6. Needs
+   Jeff's typed line in a hamlet session (the runner inbox refuses flashes by design).
 5. **Receive**: fsk4_rx split from m17_rx.c, M17 sotto receive to the speaker, YSF receive (new:
-   Pluto sends modem/ysf.py frames, the radio decodes), DMR voice receive. Jeff's ear for the
-   speaker. **Third flash.**
+   Pluto sends modem/ysf.py frames, the radio decodes), DMR voice receive. As modules first, then
+   in the image with Jeff's ear for the speaker (flash 2).
+
+Measured so far (clang -Os, Thumb-2): m17_tx 2.5 KB, ysf_tx 2.5 KB, about half the estimate
+above; a whole c6sotto module (core + framer + keying + cal) 5.8 KB (DMR) to 6.9 KB (YSF).
 
 Later, not in this plan: live mic streaming (talk while keyed instead of record then send),
 sotto 2400 on the radio, standard Codec2 3200 M17 voice from the unmodded mic path (the I2S3 mic

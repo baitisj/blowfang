@@ -89,7 +89,8 @@ jobs:
             tests/test_uv380_say.py \
             tests/test_uv380_dfu.py \
             tests/test_uv380_m17.py \
-            tests/test_uv380_framers.py
+            tests/test_uv380_framers.py \
+            tests/test_uv380_c6core.py
       - uses: actions/upload-artifact@v4
         with:
           name: uv380-image
