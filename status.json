@@ -4,20 +4,26 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "dmr-uvref1",
-  "who": "c4fm",
-  "since": "2026-11-18T22:38:16Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "uv380-back-1118j",
    "who": "c4fm",
    "not_before": null
+  },
+  {
+   "id": "dmr-uvref2",
+   "who": "c4fm",
+   "not_before": null
+  },
+  {
+   "id": "uv380-back-1118k",
+   "who": "c4fm",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T22:38:09Z",
+ "last_poll": "2026-11-18T22:39:20Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T22:38:16Z"
+ "updated": "2026-11-18T22:39:20Z"
 }
