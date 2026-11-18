@@ -102,3 +102,17 @@ def test_sotto_modules_build_and_fit():
             assert uv380mod.source_level(src) == 4
             code, entry = uv380mod.build(src)
             assert entry == 0 and len(code) < 8192, (src, len(code))
+
+
+def test_sotto_module_is_dry_unless_a_wrapper_says_otherwise():
+    """c6sotto keys only through c6key.h's c6k_key (level 4: ident first, transmit guard), only
+    with TX_DRY 0, which only the three on-air wrappers set"""
+    src = open(os.path.join(MOD, "c6sotto.c")).read()
+    assert "#ifndef TX_DRY\n#define TX_DRY 1\n" in src
+    assert "api->tx_tone(" not in src and src.count("c6k_key(") == 1
+    assert "if (!TX_DRY && c6k_key(" in src
+    key = open(os.path.join(MOD, "c6key.h")).read()
+    assert key.index("api->level < 4u") < key.index("api->tx_tone(")
+    live = sorted(f for f in os.listdir(MOD) if f.startswith("c6sotto_")
+                  and "#define TX_DRY 0" in open(os.path.join(MOD, f)).read())
+    assert live == ["c6sotto_dmr.c", "c6sotto_m17.c", "c6sotto_ysf.c"]
