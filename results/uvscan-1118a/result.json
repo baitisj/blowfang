@@ -1,12 +1,39 @@
 {
  "id": "uvscan-1118a",
- "status": "running",
- "since": "2026-11-18T20:58:05Z",
+ "who": "position",
+ "started": "2026-11-18T20:58:07Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T20:58:07Z",
+   "ended": "2026-11-18T20:58:16Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-18T20:58:16Z",
+   "ended": "2026-11-18T20:58:54Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T20:58:54Z",
+   "ended": "2026-11-18T20:59:00Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be",
+ "head": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "ended": "2026-11-18T20:59:00Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "f33afd467d41780242c9a10f81ebaa07160a170b",
   "path": "jobs/uvscan-1118a"
  },
  "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
- "updated": "2026-11-18T20:58:05Z"
+ "updated": "2026-11-18T20:59:01Z"
 }
