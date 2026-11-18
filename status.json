@@ -4,17 +4,16 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
+ "running": {
+  "id": "c4fm-1118a",
+  "who": "c4fm",
+  "since": "2026-11-18T01:29:54Z"
+ },
  "waiting": [
   {
    "id": "refcal-cool-1118-r2",
    "who": "refcal",
    "not_before": "2026-11-18T01:55:10Z"
-  },
-  {
-   "id": "c4fm-1118a",
-   "who": "c4fm",
-   "not_before": null
   },
   {
    "id": "m17rx-phy-1118a",
@@ -25,5 +24,5 @@
  "last_poll": "2026-11-18T01:29:50Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T01:29:50Z"
+ "updated": "2026-11-18T01:29:54Z"
 }
