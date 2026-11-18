@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "c4fm-1118a",
-  "who": "c4fm",
-  "since": "2026-11-18T01:29:54Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "refcal-cool-1118-r2",
@@ -19,10 +15,15 @@
    "id": "m17rx-phy-1118a",
    "who": "m17rx",
    "not_before": null
+  },
+  {
+   "id": "ysf-dev140-1118",
+   "who": "ysf",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T01:29:50Z",
+ "last_poll": "2026-11-18T01:33:10Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T01:29:54Z"
+ "updated": "2026-11-18T01:33:10Z"
 }
