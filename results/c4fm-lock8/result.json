@@ -1,12 +1,12 @@
 {
  "id": "c4fm-lock8",
- "status": "queued",
- "queued": "2026-11-18T11:26:31Z",
+ "status": "running",
+ "since": "2026-11-18T11:26:38Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "b3effad139a7ad666fc60d5d4b94ef971422a3d7",
   "path": "jobs/c4fm-lock8"
  },
  "runner_commit": "b04eb6b5ba17f441327eec247581a4bbda77d1cd",
- "updated": "2026-11-18T11:26:31Z"
+ "updated": "2026-11-18T11:26:38Z"
 }
