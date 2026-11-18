@@ -1,12 +1,12 @@
 {
  "id": "m17rx-phy-1118a",
- "status": "queued",
- "queued": "2026-11-18T01:29:50Z",
+ "status": "running",
+ "since": "2026-11-18T01:33:14Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "67091557a3cb20a4b22cdcfbb14bf09800c35d83",
   "path": "jobs/m17rx-phy-1118a"
  },
  "runner_commit": "8c2368e53835b12ad13a216b4690cbe2ad761e7f",
- "updated": "2026-11-18T01:29:50Z"
+ "updated": "2026-11-18T01:33:14Z"
 }
