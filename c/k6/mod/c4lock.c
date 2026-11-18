@@ -74,6 +74,9 @@
 #ifndef C4_CHAIN
 #define C4_CHAIN 0          /* 1 (c4ftm.c, with C4_DEMO): calls longer than a packet, packets back to back */
 #endif
+#ifndef C4_DMRS
+#define C4_DMRS 0           /* 1 (c4dmr.c, with C4_CHAIN): the table is a DMR stream (k6c4fm.dmr_frames) */
+#endif
 #include "c4probe_frames.h"   /* C4_PN, C4_YSF_SIGN, C4_YSF_SIZE */
 #ifndef K6_NAME
 #define K6_NAME "C4FM LOCK"
@@ -178,7 +181,11 @@ K6_MODULE_NAME(K6_NAME);
    2 sync bytes) goes out, so that its first frame's sync lands where the call's lattice puts it.
    Its enable goes an exact number of symbols after the call's first packet's: on the chip's
    continuous grid that start comes out the same way the first one's did. */
+#if C4_DMRS
+#define CH_FRAMES 3u                                /* 1440 symbols = 5 DMR frames (k6c4fm.DMR_FRAMES) */
+#else
 #define CH_FRAMES 4u
+#endif
 #define CH_E 3u
 #define CH_CTRL 0x0000u                             /* 1 preamble byte, 2-byte sync, no scrambler */
 #define CH_LEAD 24u
@@ -206,7 +213,11 @@ K6_MODULE_NAME(K6_NAME);
 #define GAP_MS 0u
 #endif
 #define A_FIRST (-6)
-#if C4_CHAIN
+#if C4_DMRS
+#define NB 2
+#define CH_PKTS 8                                   /* packets in the NB calls: 4, 4 */
+#define B_MS 1900u
+#elif C4_CHAIN
 #define NB 3
 #define CH_PKTS 7                                   /* packets in the NB calls: 3, 3, 1 */
 #define B_MS 1700u
@@ -251,7 +262,12 @@ K6_MODULE_NAME(K6_NAME);
 #define UNIT_MS (1200u / ID_WPM)
 #define ID_UNITS 52                                 /* AG7EW: A 8, G 12, 7 16, E 4, W 12 */
 
-#if C4_CHAIN
+#if C4_DMRS
+static const int8_t BQ[NB] = {0, 0};
+static const uint8_t BF0[NB] = {0, 0};              /* the stream twice (k6c4fm.DMR_CALLS) */
+static const uint8_t BNF[NB] = {12, 12};
+static const uint8_t BINV[NB] = {0, 1};             /* the second with every sign flipped (k6c4fm.DMR_INV) */
+#elif C4_CHAIN
 static const int8_t BQ[NB] = {0, 0, 0};
 static const uint8_t BF0[NB] = {4, 4, 0};           /* each call's first frame and frames (k6c4fm.CHAIN_CALLS): */
 static const uint8_t BNF[NB] = {10, 10, 4};         /* DN header, FN 0-7, terminator twice; data */
