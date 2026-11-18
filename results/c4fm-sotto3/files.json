@@ -1,0 +1,65 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/k6-rate.json"
+ },
+ {
+  "name": "c4.cf32.json",
+  "bytes": 133,
+  "sha256": "73ca614e36e62f2411392aef5e2e878d3aef4ae115ef4407a5d9a2273dee4fd0",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/c4.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 196,
+  "sha256": "7227b1dd038a01a381037e7db15aa908d6059f15e8cca8435451df15ac14c9d9",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/pluto.out"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 11832,
+  "sha256": "6bc78f9a305ca6c6d826235f0e6447ecde559be6e319a9841f8142d8caab2964",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/logger.out"
+ },
+ {
+  "name": "uv380.rx.out",
+  "bytes": 15472,
+  "sha256": "ad19104cf4b9b9a2b68c7bb547af622aa7dc08de0e9c293f01f8a2907e60bc7f",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/uv380.rx.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 16662,
+  "sha256": "cdbf50fdcf3a248b3c35d876cd59f41143b9d3243acb87a86676efc4c63be86c",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/k6.log"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 6172675,
+  "sha256": "fce234300ee5a239edda09a8c329d9adfaaa2cbbe9fd9ae366701a2ab97791ee",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/uv380.log"
+ },
+ {
+  "name": "c4.wav",
+  "bytes": 6720044,
+  "sha256": "120bc081668e354f6cbc3a187f7248f81ab50cdf5d8280bf9dffa7e2a95bd9fc",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/c4.wav"
+ },
+ {
+  "name": "c4.cf32",
+  "bytes": 134400000,
+  "sha256": "e8782c60251240cf16588208bedb3bc67fc56d5019f6c6ee5c04d642b1ae8468",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/c4.cf32"
+ }
+]
