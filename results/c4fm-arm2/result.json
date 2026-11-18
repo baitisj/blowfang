@@ -1,12 +1,12 @@
 {
  "id": "c4fm-arm2",
- "status": "queued",
- "queued": "2026-11-18T04:07:24Z",
+ "status": "running",
+ "since": "2026-11-18T04:07:30Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "d07a81eb4b01149d68e98a7b41c6d8dd28cc4e6f",
   "path": "jobs/c4fm-arm2"
  },
  "runner_commit": "9bc3c2d2187fe82a24213f34b431454618165ba3",
- "updated": "2026-11-18T04:07:24Z"
+ "updated": "2026-11-18T04:07:30Z"
 }
