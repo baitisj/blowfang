@@ -73,6 +73,9 @@ K6_MODULE_NAME(K6_NAME);
 #ifndef C4_PPM
 #define C4_PPM (-630)       /* the chip's symbol against the MCU's 20000 cycles, before the fit (run 3) */
 #endif
+#ifndef C4_DEMO
+#define C4_DEMO 0           /* 1 (c4ftm.c): no sweep; DN and data transmissions at the lag, 1 s apart */
+#endif
 #ifndef C4_CFG
 #define C4_CFG 0x00E1
 #endif
@@ -122,7 +125,13 @@ K6_MODULE_NAME(K6_NAME);
 #define FIFO_WORDS 120u                             /* run 2: the FIFO holds 120 words */
 #define CAL_WORDS 4u                                /* a calibration packet's payload: 64 symbols */
 #define NCAL 17
+#if C4_DEMO
+#define NA 0
+#define GAP_MS 1000u                                /* carrier between the demo's transmissions */
+#else
 #define NA 13
+#define GAP_MS 0u
+#endif
 #define A_FIRST (-6)
 #define NB 5
 #define NPKT (NCAL + NA + NB)
@@ -130,7 +139,7 @@ K6_MODULE_NAME(K6_NAME);
 #define SPAN_FIT 2048                               /* symbols spanned before the rate is fitted */
 #define WR_MAX (SYM * 3u / 4u)                      /* a write longer than this can't keep up */
 #define POLL_MAX (96u * 40000u)                     /* 40 ms of TX-done polling */
-#define TX_MS (C4_LEAD_MS + NCAL * 90u + NA * 180u + NB * 490u + 400u + ID_UNITS * UNIT_MS + 1500u)
+#define TX_MS (C4_LEAD_MS + NCAL * 90u + NA * 180u + NB * (490u + GAP_MS) + 400u + ID_UNITS * UNIT_MS + 1500u)
 
 #define R_IRQ 0x02
 #define R_STATUS 0x0C
@@ -152,7 +161,13 @@ K6_MODULE_NAME(K6_NAME);
 #define UNIT_MS (1200u / ID_WPM)
 #define ID_UNITS 52                                 /* AG7EW: A 8, G 12, 7 16, E 4, W 12 */
 
+#if C4_DEMO
+static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
+static const uint8_t BSET[NB] = {1, 0, 1, 0, 1};    /* frame set: 0 data, 1 DN (k6c4fm.DEMO_SETS) */
+#else
 static const int8_t BQ[NB] = {-2, -1, 0, 1, 2};
+static const uint8_t BSET[NB] = {0, 0, 0, 0, 0};
+#endif
 
 /* the registers the module changes, put back on the way out */
 static const uint8_t SAVED[] = {R_CFG, R_CTRL, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, R_AF, R_IRQ_EN, R_DEV};
@@ -621,7 +636,8 @@ static int burst(c4_t *s) {
   }
   for (k = 0; k < NB; k++) {
     if (api->key_down()) return -4;
-    if ((r = data(s, 0, C4_NFRAMES, BQ[k])) != 0) return r;
+    if (GAP_MS && k && (r = until(api, api->ms() + GAP_MS)) != 0) return r;
+    if ((r = data(s, BSET[k] * C4_NFRAMES, C4_NFRAMES, BQ[k])) != 0) return r;
   }
   return 0;
 }

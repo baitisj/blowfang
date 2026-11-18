@@ -352,7 +352,7 @@ def air_grid(ev, fsk, fs=48000, data_lag=1.21):
             mid = t0 + (k + 0.5) * ts
             g = g70[np.searchsorted(t70, mid) - 1][1]
             a, z = int((t0 + k * ts) * 1e-9 * fs), int((t0 + (k + 1) * ts) * 1e-9 * fs)
-            d[a:z] = (2 * int(c) - 1) * g / define("C4_GAIN", LOCK_SRC) * 2700.0
+            d[a:z] = (2 * int(c) - 1) * g / 78 * 2700.0
     return d
 
 
