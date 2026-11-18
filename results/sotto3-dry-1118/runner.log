@@ -1,0 +1,194 @@
+2026-11-18T20:19:11Z job sotto3-dry-1118 by multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4 at 9a35cf6044e4fa190ea598c97f9dc6878055e7f2, module sources /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a at 2bc44cf21d8a2bd2da89af6c0fffdbba19582ff5
+2026-11-18T20:19:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 zero 2 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-dry-1118/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: zero 2
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:19:21Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T20:19:21Z step 1 (uv380.cmd) rc=0
+2026-11-18T20:19:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-dry-1118/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:19:25Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a/firmware/uv380-openrtx/mod/c6sotto_m17_dry.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/sotto3-dry-1118/uv380.log --run-timeout 45
+ok mod begin 5956
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 68
+mod run serial=1795033166 code=5932
+mod say sotto m17 sf=210/250 first=9100475824d1 last=56d3d545aca1 bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=1 dry=1
+mod say tx slots=147 bytes=5184/5184 edges=148 first=23 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4436 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=4445
+2026-11-18T20:19:31Z step 2 (uv380.sotto) rc=0
+2026-11-18T20:19:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-dry-1118/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:19:36Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a/firmware/uv380-openrtx/mod/c6sotto_ysf_dry.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/sotto3-dry-1118/uv380.log --run-timeout 45
+ok mod begin 6223
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 79
+mod run serial=1795033176 code=6199
+mod say sotto ysf sf=205/250 first=9100475824d1 last=d71bc3ed205b bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=140% -> 45=b1 46=4b src=1 dry=1
+mod say tx slots=147 bytes=5184/5184 edges=148 first=15 ms rftx=1 late=0 lost=0 chk=36/24 spi=0 done=1 restored at 4427 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=4435
+2026-11-18T20:19:41Z step 3 (uv380.sotto) rc=0
+2026-11-18T20:19:41Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-dry-1118/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:19:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a/firmware/uv380-openrtx/mod/c6sotto_dmr_dry.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/sotto3-dry-1118/uv380.log --run-timeout 45
+ok mod begin 5209
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 89
+mod run serial=1795033186 code=5185
+mod say sotto dmr sf=85/250 first=9100475824d1 last=1f2604c8257a bytes=720 tx_ms=4600 cal I=7f Q=36 dev=100% -> 45=7f 46=36 src=1 dry=1
+mod say tx hdr=3 voice=60/60 term=1 edges=132 first=21 ms rftx=64 82|=08 late=0 done=1 restored at 3952 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=3960
+2026-11-18T20:19:51Z step 4 (uv380.sotto) rc=0
+2026-11-18T20:19:51Z job sotto3-dry-1118 done
