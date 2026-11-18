@@ -48,6 +48,13 @@
 #define C6_SOUND 3u
 #define C6_CFG 4u
 #define C6_DATA_R 6u            /* write RX RAM, read TX RAM */
+#ifndef C6_BITWAIT
+#define C6_BITWAIT 8u           /* wait-loop turns a half clock: 8 is about 0.9 MHz on the radio
+                                   (c6m17rx 11-18: 7 ms a 512-byte half); 3 about 2 MHz */
+#endif
+#ifndef C6_ON_BUSY
+#define C6_ON_BUSY ((void)0)    /* a module may count the 1 ms waits for OpenRTX's transactions */
+#endif
 
 C6_FN inline uint32_t c6_irq_off(void) {
     uint32_t m;
@@ -64,16 +71,17 @@ C6_FN inline void c6_wait(unsigned n) {
     }
 }
 
-/* one byte out and in, MSB first; about 2 MHz, under the manual's 4 MHz (OpenRTX runs 6.5) */
+/* one byte out and in, MSB first; C6_BITWAIT sets the clock, under the manual's 4 MHz (OpenRTX runs
+   6.5) */
 C6_FN uint8_t c6_byte(uint8_t v) {
     uint8_t in = 0;
     for (unsigned b = 0; b < 8; b++) {
         C6_REG(C6_GPIOE + C6_BSRR) = 1u << C6_CLK;
         C6_REG(C6_GPIOE + C6_BSRR) = (v & 0x80u) ? (1u << C6_MOSI) : (1u << (C6_MOSI + 16u));
         v = (uint8_t)(v << 1);
-        c6_wait(8);
+        c6_wait(C6_BITWAIT);
         C6_REG(C6_GPIOE + C6_BSRR) = 1u << (C6_CLK + 16u);
-        c6_wait(8);
+        c6_wait(C6_BITWAIT);
         in = (uint8_t)((in << 1) | ((C6_REG(C6_GPIOE + C6_IDR) >> C6_MISO) & 1u));
     }
     return in;
@@ -93,6 +101,7 @@ C6_FN int c6_xfer(const ortx_api_t *api, unsigned sp, unsigned a, int read, int 
         uint32_t m = c6_irq_off();
         if (((C6_REG(C6_GPIOE + C6_ODR) >> C6_CS) & 1u) == 0) {
             c6_irq_on(m);
+            C6_ON_BUSY;
             api->sleep_ms(1);
             continue;
         }
