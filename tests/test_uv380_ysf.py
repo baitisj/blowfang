@@ -120,7 +120,7 @@ def test_ysf_keeps_the_transmit_rules():
     assert src.index("c6_save(") < src.index("api->c6000_write(0x60, 0x00)")
     assert src.index("c6_restore(") < src.index("flush_notes(api, &q, 2000u);")
     assert "#error" in src and "TX_MS > 5000u" in src
-    assert "#define TX_DEV 144u" in src
+    assert "#define TX_DEV 140u" in src
     from modem import uv380mod
     for plan in ysf.PLANS:
         w = os.path.join(MOD, f"c6ysftx_{plan}.c")
