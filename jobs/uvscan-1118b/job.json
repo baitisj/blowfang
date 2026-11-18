@@ -1,0 +1,41 @@
+{
+ "id": "uvscan-1118b",
+ "who": "position",
+ "freq_mhz": 432.1,
+ "minutes": 10,
+ "sources_commit": "4a1b346",
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "scan"
+   ],
+   "background": true,
+   "timeout": 260
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:psk.wav",
+    "--hz",
+    "432100000",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "tune"
+   ]
+  }
+ ]
+}
