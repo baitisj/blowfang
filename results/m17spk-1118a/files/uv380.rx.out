@@ -1,0 +1,32 @@
+/home/baitisj/blowfang-work/worktrees/src-1455ca5e484e/firmware/uv380-openrtx/mod/c6m17rx.c:202:18: error: no member named 'c2_start' in 'struct ortx_api'
+  202 |         if (api->c2_start()) {
+      |             ~~~  ^
+/home/baitisj/blowfang-work/worktrees/src-1455ca5e484e/firmware/uv380-openrtx/mod/c6m17rx.c:213:46: error: no member named 'c2_push' in 'struct ortx_api'
+  213 |         while (m->c2_in != m->c2_out && api->c2_push(m->c2q[m->c2_out & (M17RX_C2Q - 1u)]) == 0) {
+      |                                         ~~~  ^
+/home/baitisj/blowfang-work/worktrees/src-1455ca5e484e/firmware/uv380-openrtx/mod/c6m17rx.c:223:14: error: no member named 'c2_stop' in 'struct ortx_api'
+  223 |         api->c2_stop();
+      |         ~~~  ^
+/home/baitisj/blowfang-work/worktrees/src-1455ca5e484e/firmware/uv380-openrtx/mod/c6m17rx.c:334:14: error: no member named 'c2_stop' in 'struct ortx_api'
+  334 |         api->c2_stop();
+      |         ~~~  ^
+4 errors generated.
+Traceback (most recent call last):
+  File "/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/tools/uv380_i2sprobe.py", line 389, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/tools/uv380_i2sprobe.py", line 363, in main
+    img = module_image(a.module, a.key_file)
+  File "/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/tools/uv380_i2sprobe.py", line 261, in module_image
+    code, entry = uv380mod.build(path)
+                  ~~~~~~~~~~~~~~^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/modem/uv380mod.py", line 64, in build
+    return k6mod.build(src, cflags=CFLAGS, link=LINK, entry_sym=ENTRY)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/modem/k6mod.py", line 100, in build
+    subprocess.run([cc, *flags, "-c", src, "-o", obj], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['clang', '--target=thumbv7em-none-eabihf', '-mcpu=cortex-m4', '-mfpu=fpv4-sp-d16', '-mfloat-abi=hard', '-mthumb', '-Os', '-fropi', '-ffreestanding', '-fno-builtin', '-nostdlib', '-ffunction-sections', '-fdata-sections', '-fomit-frame-pointer', '-Wall', '-Werror', '-I/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/radios/uv380/src', '-I/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/firmware/uv380-openrtx', '-c', '/home/baitisj/blowfang-work/worktrees/src-1455ca5e484e/firmware/uv380-openrtx/mod/c6m17rx.c', '-o', '/tmp/tmp7jj_rgnt/m.o']' returned non-zero exit status 1.
