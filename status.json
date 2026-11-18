@@ -5,9 +5,15 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-18T20:18:00Z",
+ "waiting": [
+  {
+   "id": "sotto3-dry-1118",
+   "who": "multimode",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-18T20:19:02Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T20:18:00Z"
+ "updated": "2026-11-18T20:19:02Z"
 }

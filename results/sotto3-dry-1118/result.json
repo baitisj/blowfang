@@ -1,0 +1,12 @@
+{
+ "id": "sotto3-dry-1118",
+ "status": "queued",
+ "queued": "2026-11-18T20:19:02Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "2548ca929a98fde4977c62ee20b6e095398fc9e7",
+  "path": "jobs/sotto3-dry-1118"
+ },
+ "runner_commit": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "updated": "2026-11-18T20:19:02Z"
+}
