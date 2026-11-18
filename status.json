@@ -4,13 +4,12 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
+ "running": {
+  "id": "refcal-c1118-10",
+  "who": "refcal",
+  "since": "2026-11-18T13:30:04Z"
+ },
  "waiting": [
-  {
-   "id": "refcal-c1118-10",
-   "who": "refcal",
-   "not_before": "2026-11-18T13:30:00Z"
-  },
   {
    "id": "refcal-c1118-11",
    "who": "refcal",
@@ -22,8 +21,8 @@
    "not_before": "2026-11-18T15:00:00Z"
   }
  ],
- "last_poll": "2026-11-18T12:48:26Z",
+ "last_poll": "2026-11-18T13:29:54Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T12:48:26Z"
+ "updated": "2026-11-18T13:30:04Z"
 }
