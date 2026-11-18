@@ -5,9 +5,15 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-18T15:46:14Z",
+ "waiting": [
+  {
+   "id": "m17spk-1118e",
+   "who": "m17rx",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-18T15:47:16Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T15:46:27Z"
+ "updated": "2026-11-18T15:47:16Z"
 }
