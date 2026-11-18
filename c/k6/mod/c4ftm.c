@@ -12,7 +12,10 @@
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_OPT z     /* as c4lock.c: -Oz */
 #define C4_DEMO 1
+#define C4_CHAIN 1          /* 11-18: the FTM shows a callsign only for a whole FN 0-7 call (10 frames) */
+#ifndef C4_WAIT_MS
 #define C4_WAIT_MS 2400000  /* armed up to 40 minutes */
+#endif
 #define C4_KEYGO 1          /* armed after the upload: a K6 key press is the go, keyed 5 s later */
 #define K6_NAME "C4FM DEMO"
 #include "c4lock.c"

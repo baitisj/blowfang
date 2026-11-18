@@ -71,6 +71,9 @@
 #ifndef C4_SOTTO
 #define C4_SOTTO 0          /* 1 (c4sotto.c, with C4_DEMO): the sotto clip's data calls in the table */
 #endif
+#ifndef C4_CHAIN
+#define C4_CHAIN 0          /* 1 (c4ftm.c, with C4_DEMO): calls longer than a packet, packets back to back */
+#endif
 #include "c4probe_frames.h"   /* C4_PN, C4_YSF_SIGN, C4_YSF_SIZE */
 #ifndef K6_NAME
 #define K6_NAME "C4FM LOCK"
@@ -122,6 +125,9 @@ K6_MODULE_NAME(K6_NAME);
 #ifndef C4_KEYGO
 #define C4_KEYGO 0          /* 1 (c4ftm.c): armed after the upload, a K6 key press is the go */
 #endif
+#ifndef C4_DTMF
+#define C4_DTMF 1           /* C4_KEYGO: a received DTMF digit (REG_0B code 0-15) is the go too; -1 none */
+#endif
 #ifndef C4_GO_MS
 #define C4_GO_MS 5000       /* C4_KEYGO: the key press to the key-up (the Pluto capture starting) */
 #endif
@@ -166,6 +172,18 @@ K6_MODULE_NAME(K6_NAME);
 #define RATE_MAX 245760                             /* 3000 ppm in Q12 cycles: a rate past it is wrong */
 #define B_FILL 7u                                   /* alternation words before a B packet's frames */
 #define B_MARKS 6u                                  /* the flags timed in them */
+/* a call longer than CH_FRAMES frames (C4_CHAIN) goes out in packets back to back. Each packet
+   but the last stops CH_E words short of its last frame's end, the frame's 5th VCH (AMBE
+   silence: 52 symbols), and in that time the next one is set up and its lead (1 preamble byte,
+   2 sync bytes) goes out, so that its first frame's sync lands where the call's lattice puts it.
+   Its enable goes an exact number of symbols after the call's first packet's: on the chip's
+   continuous grid that start comes out the same way the first one's did. */
+#define CH_FRAMES 4u
+#define CH_E 3u
+#define CH_CTRL 0x0000u                             /* 1 preamble byte, 2-byte sync, no scrambler */
+#define CH_LEAD 24u
+#define CH_PRE 4u                                   /* words in the FIFO at a chained enable */
+#define CH_MAX 8u                                   /* chained packets reported */
 #if C4_FIFOPROBE
 #define NR 2                                        /* rate packets, 1.5 s apart */
 #define NCAL 1                                      /* (not sent: the cal and fit arrays make room) */
@@ -188,11 +206,19 @@ K6_MODULE_NAME(K6_NAME);
 #define GAP_MS 0u
 #endif
 #define A_FIRST (-6)
+#if C4_CHAIN
+#define NB 3
+#define CH_PKTS 7                                   /* packets in the NB calls: 3, 3, 1 */
+#define B_MS 1700u
+#else
 #define NB 5
+#define CH_PKTS NB
+#define B_MS 990u
+#endif
 #if C4_FIFOPROBE
 #define NPKT NR
 #else
-#define NPKT (NR + NCAL + NA + 2 * NB)
+#define NPKT (NR + NCAL + NA + NB + CH_PKTS)
 #define NFIT 16                                     /* packets in the rate and phase fit */
 #endif
 #define SPAN_FIT 2048                               /* symbols spanned before the rate is fitted */
@@ -201,7 +227,7 @@ K6_MODULE_NAME(K6_NAME);
 #if C4_FIFOPROBE
 #define TX_MS (C4_LEAD_MS + NR * (500u + GAP_MS) + 400u + ID_UNITS * UNIT_MS + 1500u)
 #else
-#define TX_MS (C4_LEAD_MS + NR * 500u + NCAL * 90u + NA * 180u + NB * (990u + GAP_MS) + 400u \
+#define TX_MS (C4_LEAD_MS + NR * 500u + NCAL * 90u + NA * 180u + NB * (B_MS + GAP_MS) + 400u \
                + ID_UNITS * UNIT_MS + 1500u)
 #endif
 
@@ -225,7 +251,12 @@ K6_MODULE_NAME(K6_NAME);
 #define UNIT_MS (1200u / ID_WPM)
 #define ID_UNITS 52                                 /* AG7EW: A 8, G 12, 7 16, E 4, W 12 */
 
-#if C4_DEMO && C4_SOTTO
+#if C4_CHAIN
+static const int8_t BQ[NB] = {0, 0, 0};
+static const uint8_t BF0[NB] = {4, 4, 0};           /* each call's first frame and frames (k6c4fm.CHAIN_CALLS): */
+static const uint8_t BNF[NB] = {10, 10, 4};         /* DN header, FN 0-7, terminator twice; data */
+static const uint8_t BINV[NB] = {0, 0, 0};
+#elif C4_DEMO && C4_SOTTO
 static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BSET[NB] = {1, 3, 4, 5, 2};    /* DN, the sotto clip's 3 data calls, DN (k6c4fm.SOTTO_SETS) */
 static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};
@@ -282,6 +313,12 @@ typedef struct {
      place on the mark lattice, plus whole symbols (the mean: dd) */
   int32_t ddsum, ddn, dd;
   uint32_t skip, mkmin;     /* B packets that got too few marks of their own; the fewest marks */
+#if C4_CHAIN
+  uint32_t x0;              /* a call's first packet: its enable, its FIFO word 0's tick, fill */
+  int32_t n00;
+  uint32_t fill0, chn, clate;  /* chained packets sent, enabled late (the slot already gone) */
+  int16_t cdo[CH_MAX];      /* each one's TX done less its tick (% of a symbol) */
+#endif
 #if C4_FIFOPROBE
   int16_t pm[NR][NM];       /* mark k less the first and k nominal periods (C4_PPM), 16 cycles */
   uint32_t px[NR], p0[NR], pe[NR];   /* each packet's enable, first mark and TX done (cycles) */
@@ -667,10 +704,11 @@ static int settle(c4_t *s) {
 }
 
 /* nf frames from f0 in one packet, the size writes q quarter symbols from the lag: 0 or an error */
-static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
+static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int tail) {
   const k6_api_t *api = s->api;
   const uint8_t *sz = C4_YSF_SIZE + f0 * C4_PKT_BYTES;
-  uint32_t nwf = nf * FRAME_WORDS, nw = nwf + PAD_WORDS, pre = nw < FIFO_WORDS ? nw : FIFO_WORDS;
+  uint32_t nwf = nf * FRAME_WORDS, nw = tail ? nwf - CH_E : nwf + PAD_WORDS;
+  uint32_t pre = nw < FIFO_WORDS ? nw : FIFO_WORDS;
   uint32_t fill = 0, ahead, k, k0 = 0, x, sent, e = 0;
   int32_t ne, off, n0;
   unsigned cur = 1;
@@ -746,6 +784,11 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
     sent = pre;
   }
   n0 = ne - (int32_t)(nw * 16u);
+#if C4_CHAIN
+  s->x0 = x;
+  s->n00 = n0;
+  s->fill0 = fill;
+#endif
   off = sixteenths(s, 4 * (C4_LAG4 + q)) - s->ubar;
   for (k = k0; k < nw * 16u; k++) {
     uint32_t kd = k - k0, nfs = nf * FRAME_SYMS;
@@ -771,6 +814,69 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
   }
   return sent < nw ? -9 : 0;
 }
+
+#if C4_CHAIN
+/* a chained packet: nf frames from f0, its FIFO word 0 on tick n0 of the call's grid (data()'s
+   numbering), the lead before it; tail: more packets follow (CH_E words short) */
+static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t q, uint16_t inv) {
+  const k6_api_t *api = s->api;
+  const uint8_t *sz = C4_YSF_SIZE + f0 * C4_PKT_BYTES;
+  uint32_t nwf = nf * FRAME_WORDS, nw = tail ? nwf - CH_E : nwf + PAD_WORDS;
+  uint32_t i, x, k, sent = CH_PRE, nfs = nf * FRAME_SYMS, e = 0;
+  int32_t ne = n0 + (int32_t)(nw * 16u), off = sixteenths(s, 4 * (C4_LAG4 + q)) - s->ubar;
+  unsigned cur = 1;
+  int r;
+  api->fd_write(R_CTRL, CH_CTRL | CTRL_CLR);
+  api->fd_write(R_CTRL, CH_CTRL);
+  api->fd_write(0x5D, (uint16_t)((2u * nw - 1u) << 8));
+  for (i = 0; i < CH_PRE; i++) api->fd_write(R_FIFO, pword(f0, nwf, 0, inv, i));
+  /* the first packet's enable, a whole number of symbols on: its lead starts CH_LEAD before n0 */
+  x = s->x0 + mulp(s, (uint32_t)(n0 - s->n00) + LEAD_SYMS - CH_LEAD);
+  if ((int32_t)(x - s->len - now(&s->c)) < 0) s->clate++;
+  timed(s, x, R_CTRL, CH_CTRL | CTRL_TX_EN);
+  api->fd_write(R_TONE, G(C4_GAIN));    /* the sync's first symbol outer (the lead's don't matter) */
+  for (k = 0; k < nw * 16u; k++) {
+    unsigned want = k < nfs ? bit(sz, k) : 1u;
+    uint32_t at = tick(s, n0 + (int32_t)k) + (uint32_t)off;
+    if (want != cur) {
+      timed(s, at, R_TONE, G(want ? C4_GAIN : C4_INNER));
+      s->w++;
+      cur = want;
+    } else if (sent < nw && sent < (k >> 4) + FIFO_WORDS - 20u && (k + 1 >= nfs || bit(sz, k + 1) == cur)) {
+      if ((int32_t)(at - now(&s->c)) < 0) s->late++;
+      wait_to(api, &s->c, at);
+      api->fd_write(R_FIFO, pword(f0, nwf, 0, inv, sent));
+      sent++;
+    }
+  }
+  if ((r = done(s, tick(s, ne) - mulp(s, 3), &e)) < 0) return r;
+  if (s->chn < CH_MAX) s->cdo[s->chn] = (int16_t)(r ? pct(s, (int32_t)(e - tick(s, ne))) : 9999);
+  s->chn++;
+  if (r) {
+    int32_t d = (int32_t)(e - tick(s, ne)), h = (int32_t)(s->p12 >> 13);
+    if (d > h || d < -h) s->miss++;
+  }
+  if ((r = keyed(api)) != 0) return r;
+  return sent < nw ? -9 : 0;
+}
+
+/* a call: nf frames from f0, its first packet as a B packet (its fill words time it), then
+   chained packets of up to CH_FRAMES frames */
+static int call(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
+  uint32_t c, m;
+  int r;
+  uint32_t skip = s->skip;
+  m = nf < CH_FRAMES ? nf : CH_FRAMES;
+  if ((r = data(s, f0, m, q, inv, m < nf)) != 0) return r;
+  if (s->skip != skip) return 0;          /* the first packet stopped: the call with it */
+  for (c = m; c < nf; c += m) {
+    m = nf - c < CH_FRAMES ? nf - c : CH_FRAMES;
+    r = cont(s, f0 + c, m, s->n00 + (int32_t)(s->fill0 * 16u + c * FRAME_SYMS), c + m < nf, q, inv);
+    if (r) return r;
+  }
+  return 0;
+}
+#endif
 
 /* rate packet j: P_WORDS words, P_PRE of them in the FIFO at the enable, the almost-empty flag at
    P_T words; each flag refills P_CHUNK words, so it comes back every 16 x P_CHUNK chip symbols,
@@ -947,13 +1053,17 @@ static int burst(c4_t *s) {
   s->settled = 1;
   for (k = 0; k < NA; k++) {
     if (api->key_down()) return -4;
-    if ((r = data(s, k & 3u, 1, A_FIRST + (int32_t)k, 0)) != 0) return r;
+    if ((r = data(s, k & 3u, 1, A_FIRST + (int32_t)k, 0, 0)) != 0) return r;
   }
   for (k = 0; k < NB; k++) {
     if (api->key_down()) return -4;
     if (GAP_MS && k && (r = until(api, api->ms() + GAP_MS)) != 0) return r;
     if ((r = resync(s, NR + k)) != 0) return r;
-    if ((r = data(s, BSET[k] * C4_NFRAMES, C4_NFRAMES, BQ[k], BINV[k] ? 0xFFFFu : 0u)) != 0) return r;
+#if C4_CHAIN
+    if ((r = call(s, BF0[k], BNF[k], BQ[k], BINV[k] ? 0xFFFFu : 0u)) != 0) return r;
+#else
+    if ((r = data(s, BSET[k] * C4_NFRAMES, C4_NFRAMES, BQ[k], BINV[k] ? 0xFFFFu : 0u, 0)) != 0) return r;
+#endif
   }
   return 0;
 }
@@ -995,14 +1105,24 @@ static int trigger(const k6_api_t *api, ui_t *ku) {
 }
 
 #else
+/* The tone detector in DTMF mode (Jeff 11-18: a go over the air, so the K6 stays on the bench):
+   REG_09 the 8 DTMF tones and their second harmonics, coefficient 128 cos(2 pi f / 8463 Hz) as in
+   tonedet.h; REG_24 as tonedet's but bit 4 set (DTMF, not single tone) and 14 symbols; REG_21
+   as the stock radio's DTMF set-up. REG_0B: bit 12 a symbol now, [11:8] its code (1 = "1") */
+static const uint8_t DTMF_COEF[16] = {
+    0x6F, 0x6C, 0x67, 0x62, 0x50, 0x46, 0x3A, 0x2D, 0x41, 0x35, 0x27, 0x16, 0xE4, 0xCD, 0xB5, 0xA0};
+
 /* Armed (C4_KEYGO, Jeff 11-18: "go" in seconds): the upload's carrier gone (C4_CLEAR_MS below
-   C4_CLEAR_DBM), then a key pressed and let go is the go. It says "c4 go" at once (the bench job
-   starts its Pluto capture on that line), then keys C4_GO_MS later with the channel clear for
-   C4_CLEAR_MS. A key before the arming, or a second key in the count-down, stops it (-4); no key
-   within C4_WAIT_MS, or the channel busy C4_GO_MS + 30 s after the go, -7. */
-static int trigger(const k6_api_t *api, ui_t *ku) {
+   C4_CLEAR_DBM), then a key pressed and let go, or the DTMF digit C4_DTMF heard for 3 polls in a
+   row (30 ms), is the go. It says "c4 go" at once (the bench job starts its Pluto capture on
+   that line), then keys C4_GO_MS later with the channel clear for C4_CLEAR_MS (the sender's
+   carrier gone). A key before the arming, or a key in the count-down, stops it (-4); no go
+   within C4_WAIT_MS, or the channel busy C4_GO_MS + 30 s after the go, -7. Any other DTMF
+   digit is said ("c4 dtmf N", the first 8), so a run shows the codes. */
+static int armed_go(const k6_api_t *api, ui_t *ku) {
   uint32_t quiet = api->ms(), go = 0;
-  int armed = 0, held = 0;
+  int armed = 0, held = 0, hits = 0, said = 0, last = -1, i;
+  char line[24];
   for (;;) {
     uint32_t t = api->ms();
     int k = api->key_down();
@@ -1011,19 +1131,35 @@ static int trigger(const k6_api_t *api, ui_t *ku) {
       if (k) return -4;
       if (t - quiet >= C4_CLEAR_MS) {
         armed = 1;
-        api->say("c4 armed: a key sends");
+        if (C4_DTMF >= 0) {
+          for (i = 0; i < 16; i++) api->fd_write(0x09, (uint16_t)((i << 12) | DTMF_COEF[i]));
+          api->fd_write(0x21, 0x06D8);
+          api->fd_write(0x24, (uint16_t)(0x8000 | (24 << 7) | 0x40 | 0x20 | 0x10 | 0x0E));
+        }
+        api->say(C4_DTMF >= 0 ? "c4 armed: a key or DTMF sends" : "c4 armed: a key sends");
         ui_text(ku, 1, "ARMED");
-        ui_text(ku, 5, "ANY KEY: SEND");
+        ui_text(ku, 5, C4_DTMF >= 0 ? "KEY OR DTMF 1: SEND" : "ANY KEY: SEND");
         ui_now(ku);
       } else if (t > C4_WAIT_MS) {
         return -7;
       }
     } else if (!go) {
+      int b = C4_DTMF >= 0 ? api->fd_read(0x0B) : 0, code = b & 0x1000 ? (b >> 8) & 15 : -1;
+      if (code >= 0 && code != last && code != C4_DTMF && said < 8) {
+        char *p = put(line, "c4 dtmf ");
+        p = dec(p, (uint32_t)code);
+        *p = 0;
+        api->say(line);
+        said++;
+      }
+      last = code;
+      hits = code == C4_DTMF ? hits + 1 : 0;
       if (k) {
         held = 1;
-      } else if (held) {
+      } else if (held || hits >= 3) {
         go = t | 1;
-        api->say("c4 go");
+        api->fd_write(0x24, 0);           /* the detector off before any key-up */
+        api->say(held ? "c4 go" : "c4 go dtmf");
         ui_text(ku, 1, "GO: KEYING SOON");
         ui_text(ku, 5, "ANY KEY: STOP");
         ui_now(ku);
@@ -1037,6 +1173,15 @@ static int trigger(const k6_api_t *api, ui_t *ku) {
     }
     api->delay_us(10000);
   }
+}
+
+/* armed_go, the tone detector's set-up put back on every way out */
+static int trigger(const k6_api_t *api, ui_t *ku) {
+  uint16_t r21 = api->fd_read(0x21), r24 = api->fd_read(0x24);
+  int r = armed_go(api, ku);
+  api->fd_write(0x24, r24);
+  api->fd_write(0x21, r21);
+  return r;
 }
 #endif
 
@@ -1089,6 +1234,19 @@ static void report(c4_t *s, int cal_done, char *line) {
   }
   *p = 0;
   api->say(line);
+#if C4_CHAIN
+  p = put(line, "c4lock chain n=");
+  p = dec(p, s->chn);
+  p = put(p, " late=");
+  p = dec(p, s->clate);
+  p = put(p, " d=");
+  for (i = 0; i < (int)(s->chn < CH_MAX ? s->chn : CH_MAX); i++) {
+    if (i) *p++ = ',';
+    p = sdec(p, s->cdo[i]);
+  }
+  *p = 0;
+  api->say(line);
+#endif
 #if C4_FIFOPROBE
   for (i = 0; i < NR; i++) {
     int k;
@@ -1170,6 +1328,10 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   s.phi = s.ddsum = s.ddn = s.dd = 0;
   s.skip = 0;
   s.mkmin = B_MARKS;
+#if C4_CHAIN
+  s.chn = s.clate = s.fill0 = s.x0 = 0;
+  s.n00 = 0;
+#endif
   s.rppm = C4_PPM * 10;
   for (i = 0; i < NR + NB; i++) s.rq[i] = 0;
   s.p12 = P12_0;
