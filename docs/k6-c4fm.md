@@ -280,4 +280,17 @@ tail written over while it runs. That broke c4ftm's size table on chain1 and is 
 c4sotto's lost D3. `modem.k6 mod` now turns telemetry off, with a note, for an image over 11,080 B.
 c4ftm is 11,751 B of code, 1 byte under the limit.
 
+## The FTM-300DR shows AG7EW from the K6 (2026-11-18 20:32Z, job c4fm-ftm6)
+
+c4ftm at main 1783e92, uploaded with telemetry off, PA off, 440.850. It armed at 20:30:06Z. Jeff sent
+DTMF 1 from a radio beside the FTM at 20:32:34Z, and the K6 keyed at 20:32:39Z. Jeff: "Yes! Call sign
+was received!" This was the first callsign the FTM-300DR showed from the K6. The 4-frame calls of
+the morning had only blinked its blue bar.
+
+The Pluto capture decoded 24 frames in 3 runs of [10, 10, 4]. Every FICH and DCH was good, both
+long calls had FN 0-7 from AG7EW, and frame spacing was off by at most 0.2 symbol. Chain line:
+`n=4 late=0 lat=-25/17 d=9999,8,9999,-47`. The MCU clock sat about -11,000 ppm from the chip, and
+the rate packets followed it. The capture and K6 log are in the project files under
+`k6-c4fm/ftm6/`.
+
 SPDX-License-Identifier: MIT

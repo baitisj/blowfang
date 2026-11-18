@@ -114,7 +114,8 @@ UV380_SOTTO_AIRS = ("m17", "ysf", "dmr")
 # receive-only modules (docs/uv380-m17-rx.md): plan -> the checkout's module. None of them keys
 # (no tx_tone, no 0x60 = 0x80); a step may run in the background so a Pluto send can come during it
 UV380_RX_PLANS = {"tap": "c6fmtap.c", "tap1c": "c6fmtap_1c.c", "phy": "c6phyrx.c", "m17": "c6m17rx.c",
-                  "m17tap": "c6m17rx_tap.c", "ysf": "c6ysfrx.c", "ysftap": "c6ysfrx_tap.c"}
+                  "m17tap": "c6m17rx_tap.c", "scan": "atscan.c", "ysf": "c6ysfrx.c",
+                  "ysftap": "c6ysfrx_tap.c"}
 UV380_RX_RUN_S = 200                           # Ctrl-C to a receive module still going after this
 
 
