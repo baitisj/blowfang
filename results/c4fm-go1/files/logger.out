@@ -1,0 +1,12 @@
+listening (Ctrl-C to stop) ...
+K6 MOD say c4 trigger heard
+K6 MOD tx on hz=440850000 max=14300 ms
+K6 MOD tx off
+K6 MOD say c4lock w=0 late=0 miss=0 lost=1 wr=11228-11231 rd=11171
+K6 MOD say c4lock fit ppm=-7246 res=26
+K6 MOD ret=-10 (0xfffffff6) in 314294 ms stack_free=156 B
+K6 ARQ tx seq=13 state=1 xfer=218 have=71/71 r=3 parts=4
+K6 ARQ sent seq=13 ms=5236
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=2 rssi=-121 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=2 rssi=-107 batt=8480 build=8a78fb5-20261117T0904Z
