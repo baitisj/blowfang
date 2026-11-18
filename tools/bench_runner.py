@@ -114,7 +114,7 @@ UV380_SOTTO_AIRS = ("m17", "ysf", "dmr")
 # receive-only modules (docs/uv380-m17-rx.md): plan -> the checkout's module. None of them keys
 # (no tx_tone, no 0x60 = 0x80); a step may run in the background so a Pluto send can come during it
 UV380_RX_PLANS = {"tap": "c6fmtap.c", "tap1c": "c6fmtap_1c.c", "phy": "c6phyrx.c", "m17": "c6m17rx.c",
-                  "m17tap": "c6m17rx_tap.c", "scan": "atscan.c"}
+                  "m17tap": "c6m17rx_tap.c", "scan": "atscan.c", "dmr": "c6dmrrx_long.c"}
 UV380_RX_RUN_S = 200                           # Ctrl-C to a receive module still going after this
 
 
@@ -549,7 +549,7 @@ def check_step(job, i, step, rs, problems):
     elif do == "uv380.rx":
         if len(args) != 1 or not isinstance(args[0], str) or args[0] not in UV380_RX_PLANS:
             problems.append(f"{what}: args: one plan, {', '.join(UV380_RX_PLANS)} (the checkout's"
-                            " receive-only c6fmtap.c, c6fmtap_1c.c, c6phyrx.c)")
+                            " receive-only c6fmtap.c, c6fmtap_1c.c, c6phyrx.c, ...)")
         elif not os.path.isfile(os.path.join(job_sources(job), *uv380_rx_module(args[0]))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_rx_module(args[0]))}")
     elif do == "uv380.flash":
