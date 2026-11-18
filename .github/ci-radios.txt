@@ -107,6 +107,8 @@ modem/dmrvoice.py
 modem/c6phy.py
 # M17 through the physical layer mode (tests/test_uv380_m17.py)
 modem/m17.py
+# YSF (C4FM, Yaesu framing) through the physical layer mode (tests/test_uv380_ysf.py)
+modem/ysf.py
 modem/fsk24.py
 sim/k6if/__init__.py
 sim/k6if/dmr.py

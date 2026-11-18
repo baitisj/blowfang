@@ -154,8 +154,11 @@ def test_dmrtx_is_dry_unless_a_wrapper_says_otherwise():
         "c6m17tx_voice.c",
         "c6phytx_live.c",
         "c6phytx_live1200.c",
+        "c6ysftx_data.c",
+        "c6ysftx_dn.c",
     ]
-    # c6dvtx's: tests/test_uv380_dmrvoice.py; c6m17tx's: tests/test_uv380_m17.py
+    # c6dvtx's: tests/test_uv380_dmrvoice.py; c6m17tx's: tests/test_uv380_m17.py;
+    # c6ysftx's: tests/test_uv380_ysf.py
     live = [f for f in live if f.startswith("c6dmrtx")]      # c6phytx's: tests/test_uv380_c6phy.py
     from modem import uv380mod
     for f in live:
