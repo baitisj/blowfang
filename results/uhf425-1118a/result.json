@@ -1,12 +1,12 @@
 {
  "id": "uhf425-1118a",
- "status": "queued",
- "queued": "2026-11-18T21:05:46Z",
+ "status": "running",
+ "since": "2026-11-18T21:13:14Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "501fc608c78df9953f1d21eeccaf133e1a81cf07",
   "path": "jobs/uhf425-1118a"
  },
  "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
- "updated": "2026-11-18T21:05:46Z"
+ "updated": "2026-11-18T21:13:14Z"
 }
