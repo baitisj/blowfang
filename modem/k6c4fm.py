@@ -135,8 +135,9 @@ def packets(plan="probe"):
         if plan == "demo":
             for j, st in enumerate(DEMO_SETS):
                 c, sz = split(np.concatenate(all_frames()[4 * st:4 * st + 4]))
-                c = c ^ DEMO_INV[j]
-                out.append(dict(name=f"D{j}", chip=np.concatenate([c, pad ^ DEMO_INV[j]]), size=np.concatenate([sz, one]),
+                # (the flipped calls keep the plain signs here: the analysis takes either
+                # polarity, and its pol says which one came)
+                out.append(dict(name=f"D{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
                                 mode="size", off=0, frames=[4 * st + f for f in range(4)]))
             return out
         for j, q in enumerate(LOCK3_B if plan == "lock3" else LOCK_B):

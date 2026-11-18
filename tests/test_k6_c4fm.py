@@ -22,8 +22,9 @@ SYM_NS = 1e9 / k6c4fm.BAUD
 
 
 def define(name, src=SRC):
-    m = re.search(rf"#define {name} \(?(-?\d+)\)?", open(src).read())
-    return int(m.group(1))
+    """the last #define of name (c4lock.c's C4_DEMO block comes first)"""
+    m = re.findall(rf"#define {name} \(?(-?\d+)\)?", open(src).read())
+    return int(m[-1])
 
 
 # ---------------------------------------------------------------- host side
@@ -307,6 +308,8 @@ def test_ysf_module_sends_whole_transmissions():
 
 # ---------------------------------------------------------------- c4lock (run 3)
 LOCK_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4lock.c")
+FTM_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4ftm.c")
+LOCK_GAIN = define("C4_GAIN", LOCK_SRC)
 
 
 class FskGrid(FskTx):
@@ -352,15 +355,16 @@ def air_grid(ev, fsk, fs=48000, data_lag=1.21):
             mid = t0 + (k + 0.5) * ts
             g = g70[np.searchsorted(t70, mid) - 1][1]
             a, z = int((t0 + k * ts) * 1e-9 * fs), int((t0 + (k + 1) * ts) * 1e-9 * fs)
-            d[a:z] = (2 * int(c) - 1) * g / 78 * 2700.0
+            d[a:z] = (2 * int(c) - 1) * g / LOCK_GAIN * 2700.0
     return d
 
 
 
-def send_lock(ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, write_us=117, poll_jitter=0.0, **kw):
+def send_lock(ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, write_us=117, poll_jitter=0.0,
+              src=LOCK_SRC, **kw):
     mmio, rcc, tim = k6_clock()
     tx, fsk = kw.pop("tx", {}), FskGrid(ppm, phase, lat_en, done_sym, poll_jitter)
-    ret, said, regs, _ = run({**REGS, **kw.pop("regs", {})}, src=LOCK_SRC, level=3, tx=tx,
+    ret, said, regs, _ = run({**REGS, **kw.pop("regs", {})}, src=src, level=3, tx=tx,
                              mmio=mmio, write_us=write_us, fsk=fsk, count=2_000_000_000, **kw)
     assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1
     ev = [(ns, r, v) for (r, v, _), ns in zip(tx.get("w", []), tx.get("w_ns", []))]
@@ -373,7 +377,7 @@ def test_lock_module_matches_host():
     assert define("A_FIRST", LOCK_SRC) == k6c4fm.LOCK_A[0]
     assert define("C4_LAG4", LOCK_SRC) == k6c4fm.LOCK_LAG4
     src = open(LOCK_SRC).read()
-    bq = re.search(r"BQ\[NB\] = \{([^}]*)\}", src).group(1)
+    bq = re.findall(r"BQ\[NB\] = \{([^}]*)\}", src)[-1]
     assert tuple(int(x) for x in bq.split(",")) == k6c4fm.LOCK_B
 
 
@@ -432,3 +436,17 @@ def test_lock_module_rules():
     ret, said, regs, tx, fsk, ev = send_lock(keys=((t_key, t_key + 5_000_000),))
     assert ret == -4 and tx["log"][-1][0] == "tx_off" and tx["log"][-1][2] < t_key + 600_000
     assert regs[0x70] == 0 and regs[0x40] == REGS[0x40] and regs[0x59] == REGS[0x59]
+
+
+@need_clang
+def test_ftm_demo_alternates_polarity():
+    """c4ftm: five whole calls at the lag (DN x 4, data), the second and fourth with every sign
+    flipped; on air the plain receiver finds all five, in either polarity"""
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC)
+    assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.DEMO_SETS), said
+    lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="demo")
+    for j, inv in enumerate(k6c4fm.DEMO_INV):
+        r = res[f"D{j}"]
+        assert r["fich_n"] == 4 and (r["pol"] < 0) == bool(inv), "\n".join(lines)
+    assert res["plain"]["runs"] == [4] * 5, "\n".join(lines)
