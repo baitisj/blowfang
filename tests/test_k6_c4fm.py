@@ -419,10 +419,16 @@ def test_lock_module_locks_to_the_chip(ppm, phase, lat_en, jit):
     assert not any(p.get("under") for p in fsk.pkts)
     # the data packets' enables half a symbol from the threshold: start - enable the same for all
     gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts[k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL:]
-            if len(p["words"]) != 128]
+            if len(p["words"]) == 31]
     # (coarse polls: the fitted phase wanders about +-0.15 symbol, the noise floor of 16 polls)
     assert max(gaps) - min(gaps) < 0.2 + 0.4 * jit, gaps
     assert min(g - lat_en for g in gaps) > 0.15 and max(g - lat_en for g in gaps) < 0.85, gaps
+    # the B packets' enables from the rate packets' start threshold (the middle of what they
+    # allow): still clear of it
+    gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts if len(p["words"]) == 121]
+    assert min(g - lat_en for g in gaps) > 0.1 and max(g - lat_en for g in gaps) < 0.9, gaps
+    lam = next(s for s in said if s.startswith("c4lock lam="))
+    assert re.match(r"c4lock lam=-?\d+ b=\d+ dd=-?\d+ n=7$", lam), lam
     # the chip's data path set so that Lq 0 lands: the writes aim C4_LAG4 / 4 symbols after the
     # done grid's ticks, less the mean enable-to-start time (lat_en + 0.5) as runs 1 and 2 saw it
     lag = k6c4fm.LOCK_LAG4 / 4 - 0.5 - lat_en
