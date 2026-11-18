@@ -1,12 +1,12 @@
 {
  "id": "m17rx-tap1c-1118b",
- "status": "queued",
- "queued": "2026-11-18T02:09:12Z",
+ "status": "running",
+ "since": "2026-11-18T02:09:18Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "c2423c787f392e011310b6fbcf97048b326f9750",
   "path": "jobs/m17rx-tap1c-1118b"
  },
  "runner_commit": "6d41693cb58a4c10d8181f2466bdeec6f004e9c9",
- "updated": "2026-11-18T02:09:12Z"
+ "updated": "2026-11-18T02:09:18Z"
 }
