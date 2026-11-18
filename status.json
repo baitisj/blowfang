@@ -4,7 +4,11 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
+ "running": {
+  "id": "uv380-back-1118",
+  "who": "c4fm",
+  "since": "2026-11-18T06:06:28Z"
+ },
  "waiting": [
   {
    "id": "refcal-c1118-01",
@@ -67,11 +71,6 @@
    "not_before": "2026-11-18T15:00:00Z"
   },
   {
-   "id": "uv380-back-1118",
-   "who": "c4fm",
-   "not_before": null
-  },
-  {
    "id": "ysf-ftm-1118c",
    "who": "c4fm",
    "not_before": null
@@ -80,5 +79,5 @@
  "last_poll": "2026-11-18T06:06:21Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T06:06:21Z"
+ "updated": "2026-11-18T06:06:28Z"
 }
