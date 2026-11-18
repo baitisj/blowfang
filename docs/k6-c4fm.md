@@ -250,4 +250,34 @@ before the arming, or a second key during the count-down, stops it (-4). No key 
 (40 min), or a channel still busy 30 s after the go, gives -7. On air 11-18: armed at 15:16Z. The
 capture only starts while the K6 is on its cable, because the job reads the go line from the logger.
 
+**DTMF go (`C4_DTMF`, Jeff 11-18: the K6 stays on the bench).** While armed, the module also runs
+the FD6818's tone detector in DTMF mode. REG_09 is loaded with the 8 DTMF tones and their second
+harmonics, as 128 cos(2 pi f / 8463). REG_24 is 0x8000 | 24 << 7 | 0x7E and REG_21 is 0x06D8. A digit
+shows as REG_0B bit 12 with its code in bits 11-8. Three polls in a row of code C4_DTMF (1) are the
+go: the module says `c4 go dtmf` and keys 5 s later, as for a key. Other digits and short blips do
+nothing. The detector is turned off, and REG_21/REG_24 put back, before any key-up. On air 11-18 the
+Pluto sent 697 + 1209 Hz FM for 2 x 0.6 s, and the K6 said `c4 go dtmf`.
+
+**Long calls (`C4_CHAIN`, c4ftm).** The FTM-300DR blinks its blue bar for the 4-frame calls but
+shows no callsign. It shows AG7EW for the UV-380's full calls: header, FN 0-7 and terminator (10
+frames), with the radio-type and position block in DCH 6/7. One chip packet holds at most 128 FIFO
+words, about 4 frames. So c4ftm sends a call as a run of packets with no gap between them. The first
+packet is timed by its fill marks, as before. Each later one is written with a 24-symbol lead
+(REG_59 0x0000) and enabled so that its first frame lands exactly 480 symbols after the last one.
+Each frame ends in 52 symbols of AMBE silence, so a packet drops its last 3 FIFO words (48 symbols)
+and the next one's lead overlaps them.
+
+The chip's 4,800 Bd grid runs on through key-ups. A packet starts on the first tick at or after its
+enable plus a fixed latency. Copying the first packet's enable phase was not enough: on air (chain2)
+call 1 came out whole, but call 2's chained packets were each a symbol late. The module now keeps a
+latency window. Every packet timed from its marks, and every chained packet's TX-done, narrows it, and
+each chained packet is enabled half a symbol inside the window. The report line reads `c4lock chain
+n= late= lat=lo/hi d=...`. If the window is empty, the call stops after its first packet (`late`).
+
+**Telemetry writes over big modules.** With `--telemetry N` set, the K6 keeps the module's say
+lines in the top 696 B of the 11,776 B module block, at offset 11,080 and up. A larger image has its
+tail written over while it runs. That broke c4ftm's size table on chain1 and is the likely cause of
+c4sotto's lost D3. `modem.k6 mod` now turns telemetry off, with a note, for an image over 11,080 B.
+c4ftm is 11,751 B of code, 1 byte under the limit.
+
 SPDX-License-Identifier: MIT

@@ -475,9 +475,10 @@ def test_ftm_demo_calls():
     assert 6_300_000 + 5_000_000 <= t_on < 6_300_000 + 5_200_000, t_on
     # chained: the packets after each call's first one with the short lead, every TX done on its tick
     ch = next(s for s in said if s.startswith("c4lock chain "))
-    m = re.match(r"c4lock chain n=(\d+) late=(\d+) d=([-\d,]+)$", ch)
+    m = re.match(r"c4lock chain n=(\d+) late=(\d+) lat=(-?\d+)/(-?\d+) d=([-\d,]+)$", ch)
     assert m and int(m.group(1)) == sum(chunks) - len(calls) and m.group(2) == "0", ch
-    assert all(abs(int(d)) < 50 for d in m.group(3).split(",")), ch
+    assert int(m.group(3)) < int(m.group(4)), ch          # the latency window: narrowed, not empty
+    assert all(abs(int(d)) < 50 for d in m.group(5).split(",")), ch
     leads = [p["lead"] for p in fsk.pkts[-sum(chunks) - len(calls):]]
     assert leads.count(24) == sum(chunks) - len(calls), leads
     # on air: a 10-frame DN call twice (header, FN 0-7, terminator, the block in 6 and 7: what
@@ -518,12 +519,11 @@ def dtmf_reg(*spans):
 @need_clang
 def test_ftm_demo_dtmf_go():
     """c4ftm armed: a DTMF '1' over the air is the go too (Jeff 11-18: the K6 stays on the bench).
-    Another digit is only said; a 20 ms blip of '1' is too short; the '1' keys it 5 s later"""
+    Another digit does nothing; a 20 ms blip of '1' is too short; the '1' keys it 5 s later"""
     pytest.importorskip("unicorn")
     ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, regs={0x0B: dtmf_reg(
         (8_000_000, 8_150_000, 5), (9_000_000, 9_020_000, 1), (12_000_000, 12_200_000, 1))})
-    assert ret > 0 and "c4 dtmf 5" in said and "c4 go dtmf" in said, said
-    assert said.index("c4 go dtmf") == said.index("c4 dtmf 5") + 1, said
+    assert ret > 0 and said.count("c4 go dtmf") == 1 and "c4 go" not in said, said
     t_on = tx["log"][0][2]
     assert 12_000_000 + 5_000_000 <= t_on < 12_200_000 + 5_200_000, t_on
     assert regs[0x24] == REGS.get(0x24, 0) and regs[0x21] == REGS.get(0x21, 0)

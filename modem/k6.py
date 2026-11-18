@@ -556,6 +556,11 @@ def main(argv=None):
             sys.exit("--page goes into a library slot: add --install SLOT")
         if a.cards and (a.install is None or not a.source.endswith(".bin")):
             sys.exit("--cards: a deck .bin (tools/k6_cards.py deck) into a library slot: add --install SLOT")
+        if a.telemetry and 16 + len(code) + 8 > k6mod.TLM_ROOM:
+            print(f"--telemetry {a.telemetry} off: a {16 + len(code) + 8} B image reaches into the top "
+                  f"{k6mod.TLM_BYTES} B of the module block, where the K6 keeps the say lines "
+                  f"(they would write over the module's tail)", file=sys.stderr)
+            a.telemetry = 0
         img = k6mod.image(code, entry, serial, k6mod.read_key(a.key_file), level, tlm=a.telemetry,
                           lib=a.install, page=a.page, cards=a.cards)
         pk = k6mod.packets(img, a.xfer if a.xfer is not None else serial & 0xFF,

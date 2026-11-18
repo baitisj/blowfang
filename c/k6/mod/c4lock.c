@@ -314,10 +314,12 @@ typedef struct {
   int32_t ddsum, ddn, dd;
   uint32_t skip, mkmin;     /* B packets that got too few marks of their own; the fewest marks */
 #if C4_CHAIN
-  uint32_t x0;              /* a call's first packet: its enable, its FIFO word 0's tick, fill */
-  int32_t n00;
+  int32_t n00;              /* a call's first packet: its FIFO word 0's tick, its fill */
   uint32_t fill0, chn, clate;  /* chained packets sent, enabled late (the slot already gone) */
   int16_t cdo[CH_MAX];      /* each one's TX done less its tick (% of a symbol) */
+  uint32_t a0c;             /* the call's first packet: its FIFO word 0 by its marks */
+  int32_t latlo, lathi;     /* enable to lead start, less the wait for the tick: in (lo, hi] */
+  uint32_t latn;
 #endif
 #if C4_FIFOPROBE
   int16_t pm[NR][NM];       /* mark k less the first and k nominal periods (C4_PPM), 16 cycles */
@@ -703,6 +705,20 @@ static int settle(c4_t *s) {
   return 0;
 }
 
+#if C4_CHAIN
+/* a packet's lead began D cycles after its enable: the first tick at or after the enable plus a
+   fixed latency, so that latency is in (D - a symbol, D]; each packet timed by its marks narrows
+   it (on air 11-18 chain2: copying the first packet's enable phase put a call's chained packets a
+   symbol late, its phase too near that edge) */
+static void lat_add(c4_t *s, int32_t d) {
+  int32_t lo = d - (int32_t)(s->p12 >> 12);
+  if (lo > s->latlo) s->latlo = lo;
+  if (d < s->lathi) s->lathi = d;
+  s->latn++;
+}
+
+#endif
+
 /* nf frames from f0 in one packet, the size writes q quarter symbols from the lag: 0 or an error */
 static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int tail) {
   const k6_api_t *api = s->api;
@@ -719,6 +735,9 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
     pre = P_T + 2u;
   }
   ahead = fill ? FIFO_WORDS - 20u : pre;
+#if C4_CHAIN
+  s->a0c = 0;                             /* set by the fill marks; none: no call to chain */
+#endif
   if ((r = arm(s, nw, pre, f0, nwf, inv, fill)) != 0) return r;
   if (fill) {
     /* the fill words time the packet from the inside, as a rate packet: the almost-empty flag as
@@ -773,6 +792,10 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
     /* the done grid straight from the marks: this packet's done falls dd after its payload, as
        every rate packet's did (the fit's grid, phi, is too noisy now: 0.4 symbol off, emulated) */
     a0 += (uint32_t)sdivq(sa, nm, 0);
+#if C4_CHAIN
+    s->a0c = a0;
+    lat_add(s, (int32_t)(a0 - mulp(s, LEAD_SYMS) - x));
+#endif
     s->ta = a0 + (uint32_t)s->dd;
     s->na = 0;
     k0 = fill * 16u;
@@ -785,7 +808,6 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
   }
   n0 = ne - (int32_t)(nw * 16u);
 #if C4_CHAIN
-  s->x0 = x;
   s->n00 = n0;
   s->fill0 = fill;
 #endif
@@ -822,7 +844,7 @@ static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t
   const k6_api_t *api = s->api;
   const uint8_t *sz = C4_YSF_SIZE + f0 * C4_PKT_BYTES;
   uint32_t nwf = nf * FRAME_WORDS, nw = tail ? nwf - CH_E : nwf + PAD_WORDS;
-  uint32_t i, x, k, sent = CH_PRE, nfs = nf * FRAME_SYMS, e = 0;
+  uint32_t i, x, xl, k, sent = CH_PRE, nfs = nf * FRAME_SYMS, e = 0;
   int32_t ne = n0 + (int32_t)(nw * 16u), off = sixteenths(s, 4 * (C4_LAG4 + q)) - s->ubar;
   unsigned cur = 1;
   int r;
@@ -830,8 +852,13 @@ static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t
   api->fd_write(R_CTRL, CH_CTRL);
   api->fd_write(0x5D, (uint16_t)((2u * nw - 1u) << 8));
   for (i = 0; i < CH_PRE; i++) api->fd_write(R_FIFO, pword(f0, nwf, 0, inv, i));
-  /* the first packet's enable, a whole number of symbols on: its lead starts CH_LEAD before n0 */
-  x = s->x0 + mulp(s, (uint32_t)(n0 - s->n00) + LEAD_SYMS - CH_LEAD);
+  /* its lead to start CH_LEAD before n0: the enable half a symbol inside the latency's window
+     (call() checks there is one) */
+  {
+    uint32_t lead = s->a0c + mulp(s, (uint32_t)(n0 - s->n00) - CH_LEAD);
+    x = lead - (uint32_t)((s->latlo + s->lathi) / 2) - (s->p12 >> 13);
+    xl = lead - x;
+  }
   if ((int32_t)(x - s->len - now(&s->c)) < 0) s->clate++;
   timed(s, x, R_CTRL, CH_CTRL | CTRL_TX_EN);
   api->fd_write(R_TONE, G(C4_GAIN));    /* the sync's first symbol outer (the lead's don't matter) */
@@ -855,6 +882,8 @@ static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t
   if (r) {
     int32_t d = (int32_t)(e - tick(s, ne)), h = (int32_t)(s->p12 >> 13);
     if (d > h || d < -h) s->miss++;
+    /* where its lead really began: whole symbols off the aim, by its TX done */
+    lat_add(s, (int32_t)xl + sdivq(d + (d < 0 ? -h : h), s->p12 >> 12, 0) * (int32_t)(s->p12 >> 12));
   }
   if ((r = keyed(api)) != 0) return r;
   return sent < nw ? -9 : 0;
@@ -868,7 +897,10 @@ static int call(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
   uint32_t skip = s->skip;
   m = nf < CH_FRAMES ? nf : CH_FRAMES;
   if ((r = data(s, f0, m, q, inv, m < nf)) != 0) return r;
-  if (s->skip != skip) return 0;          /* the first packet stopped: the call with it */
+  if (s->skip != skip || !s->a0c || s->latlo >= s->lathi) {
+    s->clate++;                           /* no marks or no window: the call ends there */
+    return 0;
+  }
   for (c = m; c < nf; c += m) {
     m = nf - c < CH_FRAMES ? nf - c : CH_FRAMES;
     r = cont(s, f0 + c, m, s->n00 + (int32_t)(s->fill0 * 16u + c * FRAME_SYMS), c + m < nf, q, inv);
@@ -979,6 +1011,9 @@ static int probe(c4_t *s, uint32_t j) {
     uint32_t pn = (uint32_t)((int32_t)P12_0 + s->rq[j]);
     s->ddsum += (int32_t)(te - s->tc - mulq(pn, 1144u));
     s->ddn++;
+#if C4_CHAIN
+    lat_add(s, (int32_t)(s->tc - mulq(pn, 904u + LEAD_SYMS) - x));
+#endif
     s->rok |= 1u << j;
   }
   return keyed(api);
@@ -1117,12 +1152,10 @@ static const uint8_t DTMF_COEF[16] = {
    row (30 ms), is the go. It says "c4 go" at once (the bench job starts its Pluto capture on
    that line), then keys C4_GO_MS later with the channel clear for C4_CLEAR_MS (the sender's
    carrier gone). A key before the arming, or a key in the count-down, stops it (-4); no go
-   within C4_WAIT_MS, or the channel busy C4_GO_MS + 30 s after the go, -7. Any other DTMF
-   digit is said ("c4 dtmf N", the first 8), so a run shows the codes. */
+   within C4_WAIT_MS, or the channel busy C4_GO_MS + 30 s after the go, -7. */
 static int armed_go(const k6_api_t *api, ui_t *ku) {
   uint32_t quiet = api->ms(), go = 0;
-  int armed = 0, held = 0, hits = 0, said = 0, last = -1, i;
-  char line[24];
+  int armed = 0, held = 0, hits = 0, i;
   for (;;) {
     uint32_t t = api->ms();
     int k = api->key_down();
@@ -1145,14 +1178,6 @@ static int armed_go(const k6_api_t *api, ui_t *ku) {
       }
     } else if (!go) {
       int b = C4_DTMF >= 0 ? api->fd_read(0x0B) : 0, code = b & 0x1000 ? (b >> 8) & 15 : -1;
-      if (code >= 0 && code != last && code != C4_DTMF && said < 8) {
-        char *p = put(line, "c4 dtmf ");
-        p = dec(p, (uint32_t)code);
-        *p = 0;
-        api->say(line);
-        said++;
-      }
-      last = code;
       hits = code == C4_DTMF ? hits + 1 : 0;
       if (k) {
         held = 1;
@@ -1239,6 +1264,10 @@ static void report(c4_t *s, int cal_done, char *line) {
   p = dec(p, s->chn);
   p = put(p, " late=");
   p = dec(p, s->clate);
+  p = put(p, " lat=");
+  p = sdec(p, pct(s, s->latlo));
+  *p++ = '/';
+  p = sdec(p, pct(s, s->lathi));
   p = put(p, " d=");
   for (i = 0; i < (int)(s->chn < CH_MAX ? s->chn : CH_MAX); i++) {
     if (i) *p++ = ',';
@@ -1329,7 +1358,9 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   s.skip = 0;
   s.mkmin = B_MARKS;
 #if C4_CHAIN
-  s.chn = s.clate = s.fill0 = s.x0 = 0;
+  s.chn = s.clate = s.fill0 = s.a0c = s.latn = 0;
+  s.latlo = -2000000;
+  s.lathi = 2000000;
   s.n00 = 0;
 #endif
   s.rppm = C4_PPM * 10;
