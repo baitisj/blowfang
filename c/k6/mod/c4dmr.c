@@ -14,7 +14,7 @@
 #define C4_CHAIN 1
 #define C4_DMRS 1
 #define C4_GAIN 56          /* 78 gave +-2.7 kHz: DMR's +-1944 Hz */
-#define C4_INNER 11         /* the A packets'; the calls' own in BIN (dmr1: 19 gave half the outer) */
+#define C4_INNER 8          /* the A packets'; the calls' own in BIN (dmr1: 19 gave half the outer; dmr2: 8 best) */
 #define C4_WAIT_MS 1200000  /* armed up to 20 minutes: it keys after the job's trigger carrier */
 #define K6_NAME "DMR STREAM"
 #include "c4lock.c"

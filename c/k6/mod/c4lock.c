@@ -264,12 +264,13 @@ K6_MODULE_NAME(K6_NAME);
 
 #if C4_DMRS
 /* the stream five times, a sweep (k6c4fm.DMR_CALLS, DMR_Q, DMR_INNER): dmr1 (11-18) at inner 19
-   came out at half the outer (DMR's is a third), 11% of symbols wrong, mostly inner for outer */
-static const int8_t BQ[NB] = {0, 0, 0, -1, 1};
+   came out at half the outer (DMR's is a third), 11% of symbols wrong, mostly inner for outer;
+   dmr2: inner 8 best (5.6% wrong, whole message), q 0 better than -1 or +1 */
+static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BF0[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BNF[NB] = {12, 12, 12, 12, 12};
 static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};
-static const uint8_t BIN[NB] = {8, 11, 14, 11, 11};
+static const uint8_t BIN[NB] = {4, 5, 6, 7, 8};
 #elif C4_CHAIN
 static const int8_t BQ[NB] = {0, 0, 0};
 static const uint8_t BF0[NB] = {4, 4, 0};           /* each call's first frame and frames (k6c4fm.CHAIN_CALLS): */
