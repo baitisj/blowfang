@@ -5,9 +5,20 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-18T21:04:43Z",
+ "waiting": [
+  {
+   "id": "c4fm-dmr1",
+   "who": "c4fm",
+   "not_before": null
+  },
+  {
+   "id": "uhf425-1118a",
+   "who": "position",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-18T21:05:46Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T21:04:43Z"
+ "updated": "2026-11-18T21:05:46Z"
 }
