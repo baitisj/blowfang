@@ -21,7 +21,9 @@
      st T halves= gaps= frames= lost= rssi= lp= fd= sp= bz=   once a second; lp, fd, sp: that
                                                   second's longest loop pass, half fed, speaker
                                                   step (ms); bz: 1 ms waits for OpenRTX's own
-                                                  C6000 transactions (the speaker's DAC)
+                                                  C6000 transactions (the speaker's DAC); rd,
+                                                  dsp, rep: that second's ms (wall, by the cycle
+                                                  counter) in tap reads, the receiver, lines out
      end halves= gaps= frames= lost= lsf= str= pkt= bert= eot= sms= bert_bits= bert_err=
    sc and m are thousandths (sync score, Viterbi disagreement); g is tap units per level.
    Voice (API level 5 images): stream frames' Codec2 3200 goes to the speaker through the image's
@@ -100,7 +102,12 @@ typedef struct {
     uint32_t spk_last;                  /* ms: the last stream frame (moved back at a call's end) */
     uint32_t spk_prev;                  /* ms: the stream frame before, for the longest gap */
     unsigned spk_frames, spk_gap, spk_drop;
+    uint32_t c_rd, c_dsp, c_rep;        /* this second's CPU cycles: tap reads, receiver, lines */
 } m17_mod;
+
+/* the M4's cycle counter (DWT), for where the loop's time goes (168 MHz) */
+#define CYC (*(volatile uint32_t *)0xE0001004u)
+#define CYC_MHZ 168u
 
 static unsigned rd16(const ortx_api_t *api, unsigned a) {
     uint8_t b[2];
@@ -252,7 +259,10 @@ static void speaker(const ortx_api_t *api, m17_mod *m) {
 static void feed(const ortx_api_t *api, m17_mod *m, unsigned base, uint32_t *seq) {
     uint8_t b[2 * BLK];
     for (unsigned k = 0; k < 4u; k++) {
-        if (c6_read(api, C6_DATA, base + k * 2u * BLK, b, sizeof b)) {
+        uint32_t c0 = CYC;
+        int bad = c6_read(api, C6_DATA, base + k * 2u * BLK, b, sizeof b);
+        m->c_rd += CYC - c0;
+        if (bad) {
             (*seq)++;
             continue;
         }
@@ -270,11 +280,16 @@ static void feed(const ortx_api_t *api, m17_mod *m, unsigned base, uint32_t *seq
             api->usb_write(line, n);
         }
         (*seq)++;
+        uint32_t c1 = CYC;
         for (unsigned i = 0; i < BLK; i++) {
             int16_t s = (int16_t)(((unsigned)b[2 * i] << 8) | b[2 * i + 1]);
-            if (m17_push(&m->rx, s, &m->fr))
+            if (m17_push(&m->rx, s, &m->fr)) {
+                uint32_t c2 = CYC;
                 report(api, m);
+                m->c_rep += CYC - c2;
+            }
         }
+        m->c_dsp += CYC - c1;
     }
 }
 
@@ -313,6 +328,8 @@ int uv_main(const ortx_api_t *api) {
     api->c6000_write(0x81, (uint8_t)(m81 | 0x02u));
     api->c6000_write(0x34, M17RX_V34);
     api->c6000_write(0x83, 0xFF);
+    C6_REG(0xE000EDFCu) |= 1u << 24;    /* DEMCR TRCENA, then DWT CYCCNT on */
+    C6_REG(0xE0001000u) |= 1u;
     api->fmt(line, sizeof line, "m17 start s=%u v34=%02x at=%s scratch=%lu need=%u tap=%d", M17RX_S, M17RX_V34,
              atr ? "err" : "ok", (unsigned long)sz, (unsigned)sizeof(m17_mod), M17RX_TAP);
     api->say(line);
@@ -353,12 +370,14 @@ int uv_main(const ortx_api_t *api) {
         if (t - last_st >= 1000u) {
             last_st = t;
             api->fmt(line, sizeof line, "st %lu halves=%u gaps=%u frames=%lu lost=%lu rssi=%ld lp=%lu fd=%lu sp=%lu "
-                     "bz=%lu", (unsigned long)t, halves, gaps, (unsigned long)m->rx.frames, (unsigned long)m->rx.lost,
-                     (long)api->rssi(), (unsigned long)lp, (unsigned long)fd, (unsigned long)sp,
-                     (unsigned long)m->busy);
+                     "bz=%lu rd=%lu dsp=%lu rep=%lu", (unsigned long)t, halves, gaps, (unsigned long)m->rx.frames,
+                     (unsigned long)m->rx.lost, (long)api->rssi(), (unsigned long)lp, (unsigned long)fd,
+                     (unsigned long)sp, (unsigned long)m->busy, (unsigned long)(m->c_rd / (CYC_MHZ * 1000u)),
+                     (unsigned long)((m->c_dsp - m->c_rep) / (CYC_MHZ * 1000u)),
+                     (unsigned long)(m->c_rep / (CYC_MHZ * 1000u)));
             api->say(line);
             lp = fd = sp = 0;
-            m->busy = 0;
+            m->busy = m->c_rd = m->c_dsp = m->c_rep = 0;
         }
         api->sleep_ms(1);
     }
