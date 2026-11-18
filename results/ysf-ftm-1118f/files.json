@@ -1,0 +1,37 @@
+[
+ {
+  "name": "y.cf32.json",
+  "bytes": 133,
+  "sha256": "675ef8ee775b42030a4fbac6f922b140cc18b085c4e340801380c45c37861f59",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118f/y.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 198,
+  "sha256": "7726d79dc61e8b71cf012bd378522c7a1c0ef6f20f10251a8a3a4421ec191d81",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118f/pluto.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 2811,
+  "sha256": "e5d07d9b8d2b9081524b81dd457d052c3e3021ef58e9357fcb6a1018b02c1f5b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118f/uv380.log"
+ },
+ {
+  "name": "y.wav",
+  "bytes": 9600044,
+  "sha256": "0417e2c8067452f1166534ff60e23b55d99a4f1f682d5f665bb2766679384794",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118f/y.wav"
+ },
+ {
+  "name": "y.cf32",
+  "bytes": 192000000,
+  "sha256": "3272704c5bfa4ff551ff0b6eaa47d60a0a78f10ca263a2c2578be1987efa7074",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118f/y.cf32"
+ }
+]
