@@ -140,5 +140,13 @@ else
   cp "build_cm4/openrtx_${T}_bin" "$OUT/openrtx_$T$SUFFIX.bin"
   cp "build_cm4/openrtx_$T" "$OUT/openrtx_$T$SUFFIX.elf"
   arm-miosix-eabi-size "$OUT/openrtx_$T$SUFFIX.elf" | tee "$OUT/size_$T$SUFFIX.txt"
+  # RAM by section (docs/uv380-multimode.md, "Budget"): .data/.bss are in the 64 KB CCM, .bss2
+  # in the 128 KB SRAM, the heap is what SRAM has left after .bss2; flash is 868,352 bytes from
+  # 0x0800C000. Then the 30 largest symbols in RAM, so a PR shows what its RAM costs.
+  arm-miosix-eabi-size -A -x "$OUT/openrtx_$T$SUFFIX.elf" | tee -a "$OUT/size_$T$SUFFIX.txt"
+  echo "largest RAM symbols (size, type, name):" | tee -a "$OUT/size_$T$SUFFIX.txt"
+  arm-miosix-eabi-nm -S -t d --size-sort "$OUT/openrtx_$T$SUFFIX.elf" \
+    | awk '$3 ~ /^[bBdD]$/ { printf "%8d %s %s\n", $2, $3, $4 }' \
+    | tail -n 30 | tee -a "$OUT/size_$T$SUFFIX.txt"
 fi
 echo "built $TARGET in $OUT"

@@ -26,7 +26,7 @@ docs/bench-runner.md has the job format and the rules.
 A job is a JSON file: who (the thread, one word), a channel to claim, how long, a checkout, and
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, logger, logger.stop, wait, uv380.flash, uv380.cmd,
-uv380.send, uv380.m17, uv380.ysf, uv380.voice), turned into one
+uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -93,7 +93,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "pluto": 1800, "ic7100": 300, "ic7100.tune": 30, "ic7100.power0": 30,
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
-                "uv380.voice": 120, "uv380.rx": 240}
+                "uv380.voice": 120, "uv380.sotto": 120, "uv380.rx": 240}
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24")
 PLUTO_TX = ("send", "steps", "fsk24")
 IC7100_SUBS = ("send", "id", "stop")
@@ -108,6 +108,9 @@ UV380_SEND_HZ = (441_850_000, 440_850_000)    # the image sends only on these (S
 UV380_SEND_MODULE = ("firmware", "uv380-openrtx", "mod", "txreq.c")
 UV380_M17_PLANS = ("bert", "sms", "voice")     # firmware/uv380-openrtx/mod/c6m17tx_PLAN.c
 UV380_YSF_PLANS = ("dn", "data")               # firmware/uv380-openrtx/mod/c6ysftx_PLAN.c
+# the radio's sotto message through the shared C6000 core (docs/uv380-multimode.md): uv380.sotto
+# AIR [dry] -> the checkout's c6sotto_AIR.c or c6sotto_AIR_dry.c (dry never keys)
+UV380_SOTTO_AIRS = ("m17", "ysf", "dmr")
 # receive-only modules (docs/uv380-m17-rx.md): plan -> the checkout's module. None of them keys
 # (no tx_tone, no 0x60 = 0x80); a step may run in the background so a Pluto send can come during it
 UV380_RX_PLANS = {"tap": "c6fmtap.c", "tap1c": "c6fmtap_1c.c", "phy": "c6phyrx.c", "m17": "c6m17rx.c",
@@ -131,6 +134,11 @@ def uv380_ysf_module(plan):
 
 def uv380_voice_module(plan):
     return ("firmware", "uv380-openrtx", "mod", UV380_VOICE_PLANS[plan])
+
+
+def uv380_sotto_module(args):
+    dry = "_dry" if len(args) == 2 else ""
+    return ("firmware", "uv380-openrtx", "mod", f"c6sotto_{args[0]}{dry}.c")
 
 
 def uv380_rx_module(plan):
@@ -532,6 +540,12 @@ def check_step(job, i, step, rs, problems):
                             " c6vcheck.c / c6dvtx*.c)")
         elif not os.path.isfile(os.path.join(job_sources(job), *uv380_voice_module(args[0]))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_voice_module(args[0]))}")
+    elif do == "uv380.sotto":
+        if not (1 <= len(args) <= 2 and args[0] in UV380_SOTTO_AIRS and args[1:] in ([], ["dry"])):
+            problems.append(f"{what}: args: one of {', '.join(UV380_SOTTO_AIRS)}, then \"dry\" or nothing"
+                            " (the checkout's c6sotto_AIR[_dry].c)")
+        elif not os.path.isfile(os.path.join(job_sources(job), *uv380_sotto_module(args))):
+            problems.append(f"{what}: the checkout has no {'/'.join(uv380_sotto_module(args))}")
     elif do == "uv380.rx":
         if len(args) != 1 or not isinstance(args[0], str) or args[0] not in UV380_RX_PLANS:
             problems.append(f"{what}: args: one plan, {', '.join(UV380_RX_PLANS)} (the checkout's"
@@ -986,6 +1000,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 rc, why = uv380_send_step(ctx, step, env, timeout, uv380_ysf_module(step["args"][0]), 45)
             elif step["do"] == "uv380.voice":
                 rc, why = uv380_send_step(ctx, step, env, timeout, uv380_voice_module(step["args"][0]), 45)
+            elif step["do"] == "uv380.sotto":
+                rc, why = uv380_send_step(ctx, step, env, timeout, uv380_sotto_module(step["args"]), 45)
             elif step["do"] == "ic7100.power0":
                 ctx.rig("L", "RFPOWER", "0")
                 p = rig_power(ctx.rig)
@@ -1476,6 +1492,8 @@ def sample_jobs(tmp, co, key):
         ("UV-380 DMR voice test pattern at 0 W on 441.850, the Pluto listening", J("ok-dvoice", {"do": "pluto", "args": ["rx", os.path.join(tmp, "v.cf32"), "--hz", "441900000", "--seconds", "40"], "background": True}, {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2"]}, {"do": "uv380.voice", "args": ["pn"]}, freq_mhz=441.850), True),
         ("UV-380 FM tap receive in the background while the Pluto sends on 441.850", J("ok-uvrx", {"do": "uv380.rx", "args": ["tap"], "background": True}, {"do": "wait", "seconds": 30}, {"do": "pluto", "args": ["send", wav, "--hz", "441850000", "--gain", "-50"]}, freq_mhz=441.850), True),
         ("UV-380 receive with a plan it doesn't have", J("bad-uvrx", {"do": "uv380.rx", "args": ["../c6m17tx_bert.c"]}, freq_mhz=441.850), False),
+        ("UV-380 sotto as YSF through the C6000 core at 0 W on 441.850, the Pluto listening", J("ok-sotto", {"do": "pluto", "args": ["rx", os.path.join(tmp, "s.cf32"), "--hz", "441850000", "--seconds", "40"], "background": True}, {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "trim -580"]}, {"do": "uv380.sotto", "args": ["ysf"]}, {"do": "uv380.cmd", "args": ["trim 6100"]}, freq_mhz=441.850), True),
+        ("UV-380 sotto with a mode it doesn't have", J("bad-sotto", {"do": "uv380.sotto", "args": ["p25"]}, freq_mhz=441.850), False),
         ("UV-380 DMR voice with a module path", J("bad-dvoice", {"do": "uv380.voice", "args": ["../txreq.c"]}, freq_mhz=441.850), False),
         ("Pluto send in the background", J("bad-bgtx", {"do": "pluto", "args": ["send", wav, "--gain", "-60"], "background": True}), False),
         ("UV-380 to 440.850 under a 441.850 claim", J("bad-uvfreq", {"do": "uv380.cmd", "args": ["freq 440850"]}, freq_mhz=441.850), False),
