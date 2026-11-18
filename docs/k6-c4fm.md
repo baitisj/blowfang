@@ -102,6 +102,14 @@ long packet whole. A long packet is what a C4FM radio needs, with frames every 1
 over the capture. In the emulator, with the chip lagging 1.75 symbols, every frame decodes and the plain
 receiver finds three 4-frame runs.
 
+Run 2 on the bench (2026-11-18 01:45Z, job c4fm-1118b, files /mnt/project-files/k6-c4fm/run2/). The
+plain YSF receiver found 9 K6 frames in 3 continuous runs, every one with a good FICH. Levels were
+±2.7 kHz outer and ±1.0 kHz inner. The FIFO holds all 120 words, and timed refills work. Symbol errors
+grow along each long packet: the size pattern slides about 0.25 symbol later per 480-symbol frame. The
+Pluto puts the chip's baud at 4800.0, so the MCU's TIM17 clock is about 520 ppm slow against the chip.
+Each packet also starts at a different phase, about 0.9 symbol of jitter, because the chip starts on
+its own bit clock. Both need the MCU locked to the chip's symbol clock, not open-loop timing.
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto
