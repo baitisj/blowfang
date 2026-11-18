@@ -90,7 +90,8 @@ def test_the_map_is_complete():
     ("radios/uv380/src/main.c", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False}),
     ("radios/rt950/src/surf2.c", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": True}),
     ("firmware/uv380-openrtx/mod/c6dmrrx.c", {"k6": False, "uv380": True, "uv380-openrtx": True, "rt950": False}),
-    ("modem/dmrsotto.py", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False}),
+    ("modem/dmrvoice.py", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False}),
+    ("modem/dmrsotto.py", {"k6": True, "uv380": True, "uv380-openrtx": False, "rt950": False}),   # c4dmr
     ("c/k6/mod/ft8.c", {"k6": True, "uv380": False, "uv380-openrtx": False, "rt950": False}),
     ("c/common/surf_core.inc", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": True}),
     ("sotto", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": False}),
