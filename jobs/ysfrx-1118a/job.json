@@ -1,0 +1,64 @@
+{
+ "id": "ysfrx-1118a",
+ "who": "ysfrx",
+ "freq_mhz": 441.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "ysftap"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "ysf start",
+   "file": "uv380.log",
+   "seconds": 120
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-60",
+    "--offset-hz",
+    "1000"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "mod say end ",
+   "file": "uv380.log",
+   "seconds": 240
+  }
+ ],
+ "sources_commit": "9f63b68"
+}
