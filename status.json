@@ -65,10 +65,15 @@
    "id": "refcal-c1118-12",
    "who": "refcal",
    "not_before": "2026-11-18T15:00:00Z"
+  },
+  {
+   "id": "ftmref-1118a",
+   "who": "c4fm",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T06:09:39Z",
+ "last_poll": "2026-11-18T06:10:42Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T06:09:54Z"
+ "updated": "2026-11-18T06:10:42Z"
 }

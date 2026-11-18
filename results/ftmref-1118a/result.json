@@ -1,0 +1,12 @@
+{
+ "id": "ftmref-1118a",
+ "status": "queued",
+ "queued": "2026-11-18T06:10:42Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "10c4777b0ca570458f493b14bc428c08aa1c15e6",
+  "path": "jobs/ftmref-1118a"
+ },
+ "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "updated": "2026-11-18T06:10:42Z"
+}
