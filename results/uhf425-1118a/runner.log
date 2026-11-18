@@ -1,0 +1,26 @@
+2026-11-18T21:13:15Z job uhf425-1118a by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be at 36dd1f8f20bed4165b7ec5357cf044b057bbd443
+2026-11-18T21:13:15Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425300.cf32 --hz 425300000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425300.cf32: 0.5 s on 425300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425300.cf32), floor -64.3 dBFS, signal on 2%
+2026-11-18T21:13:17Z step 1 (pluto) rc=0
+2026-11-18T21:13:17Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425500.cf32 --hz 425500000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425500.cf32: 0.5 s on 425500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425500.cf32), floor -65.7 dBFS, signal on 3%
+2026-11-18T21:13:18Z step 2 (pluto) rc=0
+2026-11-18T21:13:18Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425700.cf32 --hz 425700000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425700.cf32: 0.5 s on 425700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425700.cf32), floor -66.2 dBFS, signal on 3%
+2026-11-18T21:13:20Z step 3 (pluto) rc=0
+2026-11-18T21:13:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425900.cf32 --hz 425900000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425900.cf32: 0.5 s on 425900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u425900.cf32), floor -65.9 dBFS, signal on 2%
+2026-11-18T21:13:21Z step 4 (pluto) rc=0
+2026-11-18T21:13:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426100.cf32 --hz 426100000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426100.cf32: 0.5 s on 426100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426100.cf32), floor -66.5 dBFS, signal on 3%
+2026-11-18T21:13:23Z step 5 (pluto) rc=0
+2026-11-18T21:13:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426300.cf32 --hz 426300000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426300.cf32: 0.5 s on 426300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426300.cf32), floor -63.7 dBFS, signal on 2%
+2026-11-18T21:13:24Z step 6 (pluto) rc=0
+2026-11-18T21:13:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426500.cf32 --hz 426500000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426500.cf32: 0.5 s on 426500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426500.cf32), floor -64.8 dBFS, signal on 2%
+2026-11-18T21:13:26Z step 7 (pluto) rc=0
+2026-11-18T21:13:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426700.cf32 --hz 426700000 --seconds 0.5 --gain 65
+/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426700.cf32: 0.5 s on 426700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/uhf425-1118a/u426700.cf32), floor -61.2 dBFS, signal on 1%
+2026-11-18T21:13:27Z step 8 (pluto) rc=0
+2026-11-18T21:13:27Z job uhf425-1118a done
