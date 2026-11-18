@@ -1,0 +1,750 @@
+listening (Ctrl-C to stop) ...
+K6 EX t 224 a 761166
+K6 EX t 224 b r=0
+K6 EX t 224 c
+K6 EX t 256 a 763215
+K6 EX t 256 b r=0
+K6 EX t 256 c
+K6 EX t 288 a 765243
+K6 EX t 288 b r=0
+K6 EX t 288 c
+K6 EX t 320 a 767291
+K6 EX t 320 b r=0
+K6 EX t 320 c
+K6 EX t 352 a 769320
+K6 EX t 352 b r=0
+K6 EX t 352 c
+K6 EX t 384 a 771367
+K6 EX t 384 b r=0
+K6 EX t 384 c
+K6 EX t 416 a 773397
+K6 EX t 416 b r=0
+K6 EX t 416 c
+K6 EX t 448 a 775451
+K6 EX t 448 b r=0
+K6 EX t 448 c
+K6 EX t 480 a 777501
+K6 EX t 480 b r=0
+K6 EX t 480 c
+K6 EX t 512 a 779531
+K6 EX t 512 b r=0
+K6 EX t 512 c
+K6 EX t 544 a 781579
+K6 EX t 544 b r=0
+K6 EX t 544 c
+K6 EX t 576 a 783603
+K6 EX t 576 b r=0
+K6 EX t 576 c
+K6 EX t 608 a 785658
+K6 EX t 608 b r=0
+K6 EX t 608 c
+K6 EX t 640 a 787690
+K6 EX t 640 b r=0
+K6 EX t 640 c
+K6 EX t 672 a 789744
+K6 EX t 672 b r=0
+K6 EX t 672 c
+K6 EX t 704 a 791793
+K6 EX t 704 b r=0
+K6 EX t 704 c
+K6 EX t 736 a 793822
+K6 EX t 736 b r=0
+K6 EX t 736 c
+K6 EX t 768 a 795869
+K6 EX t 768 b r=0
+K6 EX t 768 c
+K6 EX t 800 a 797893
+K6 EX t 800 b r=0
+K6 EX t 800 c
+K6 EX t 832 a 799941
+K6 EX t 832 b r=0
+K6 EX t 832 c
+K6 EX t 864 a 801973
+K6 EX t 864 b r=0
+K6 EX t 864 c
+K6 EX t 896 a 804025
+K6 EX t 896 b r=0
+K6 EX t 896 c
+K6 EX t 928 a 806077
+K6 EX t 928 b r=0
+K6 EX t 928 c
+K6 EX t 960 a 808104
+K6 EX t 960 b r=0
+K6 EX t 960 c
+K6 EX t 992 a 810152
+K6 EX t 992 b r=0
+K6 EX t 992 c
+K6 EX t 1024 a 812183
+K6 EX t 1024 b r=0
+K6 EX t 1024 c
+K6 EX t 1056 a 814231
+K6 EX t 1056 b r=0
+K6 EX t 1056 c
+K6 EX t 1088 a 816257
+K6 EX t 1088 b r=0
+K6 EX t 1088 c
+K6 EX t 1120 a 818302
+K6 EX t 1120 b r=0
+K6 EX t 1120 c
+K6 EX t 1152 a 820348
+K6 EX t 1152 b r=0
+K6 EX t 1152 c
+K6 EX t 1184 a 822373
+K6 EX t 1184 b r=0
+K6 EX t 1184 c
+K6 EX t 1216 a 824423
+K6 EX t 1216 b r=0
+K6 EX t 1216 c
+K6 EX t 1248 a 826457
+K6 EX t 1248 b r=0
+K6 EX t 1248 c
+K6 EX t 1280 a 828503
+K6 EX t 1280 b r=0
+K6 EX t 1280 c
+K6 EX t 1312 a 830529
+K6 EX t 1312 b r=0
+K6 EX t 1312 c
+K6 EX t 1344 a 832580
+K6 EX t 1344 b r=0
+K6 EX t 1344 c
+K6 EX t 1376 a 834626
+K6 EX t 1376 b r=0
+K6 EX t 1376 c
+K6 EX t 1408 a 836654
+K6 EX t 1408 b r=0
+K6 EX t 1408 c
+K6 EX t 1440 a 838698
+K6 EX t 1440 b r=0
+K6 EX t 1440 c
+K6 EX t 1472 a 840726
+K6 EX t 1472 b r=0
+K6 EX t 1472 c
+K6 EX t 1504 a 842774
+K6 EX t 1504 b r=0
+K6 EX t 1504 c
+K6 EX t 1536 a 844797
+K6 EX t 1536 b r=0
+K6 EX t 1536 c
+K6 EX t 1568 a 846846
+K6 EX t 1568 b r=0
+K6 EX t 1568 c
+K6 EX t 1600 a 848892
+K6 EX t 1600 b r=0
+K6 EX t 1600 c
+K6 EX t 1632 a 850911
+K6 EX t 1632 b r=0
+K6 EX t 1632 c
+K6 EX t 1664 a 852960
+K6 EX t 1664 b r=0
+K6 EX t 1664 c
+K6 EX t 1696 a 854988
+K6 EX t 1696 b r=0
+K6 EX t 1696 c
+K6 EX t 1728 a 857029
+K6 EX t 1728 b r=0
+K6 EX t 1728 c
+K6 EX t 1760 a 859056
+K6 EX t 1760 b r=0
+K6 EX t 1760 c
+K6 EX t 1792 a 861104
+K6 EX t 1792 b r=0
+K6 EX t 1792 c
+K6 EX t 1824 a 863149
+K6 EX t 1824 b r=0
+K6 EX t 1824 c
+K6 EX t 1856 a 865177
+K6 EX t 1856 b r=0
+K6 EX t 1856 c
+K6 EX t end tone=0 dmr=0
+K6 MOD say DMR end n=0 h=0 lost=2 steps=1874
+K6 MOD say DMR rate busy=37 ks=5670 ctcss=0/0
+K6 MOD say DMR diag e=2 o=0 g=420 clk=999 kx=5666
+K6 EX t stopped
+K6 MOD say CWID end time msgs=0 short=2
+K6 EX t xl stopped
+K6 EX t monitor off
+K6 MOD say F0 -95 q-136: -93 -94 -93 -94 -95 -95 -96 -94
+K6 MOD say H 144.025 0 -80 a746021
+K6 MOD say H 144.050 83 -77 a746037
+K6 MOD say S0 316 1077 c0 h0
+K6 MOD say F1 -99 q-137: -99 -97 -99 -97 -98 -98 -97 -97
+K6 MOD say S1 316 457 c18 h0
+K6 MOD say F2 -111 q-144: -109 -111 -110 -111 -109 -107 -110 -105
+K6 MOD say N 440.850 -67 fl-111 b527
+K6 MOD say S2 316 1562 c16 h1
+K6 MOD say S0 317 1143 c0 h0
+K6 MOD say S1 317 444 c16 h0
+K6 MOD say S2 317 1405 c9 h1
+K6 MOD say S0 318 1073 c1 h0
+K6 MOD say S1 318 294 c9 h0
+K6 MOD say S2 318 1181 c11 h0
+K6 MOD say S0 319 1033 c0 h0
+K6 MOD say S1 319 169 c1 h0
+K6 MOD say S2 319 1057 c2 h0
+K6 MOD say S0 320 1033 c0 h0
+K6 MOD say S1 320 176 c0 h0
+K6 MOD say S2 320 1084 c6 h0
+K6 MOD say S0 321 1052 c0 h0
+K6 MOD say S1 321 239 c7 h0
+K6 MOD say S2 321 1111 c5 h0
+K6 MOD say S0 322 1033 c0 h0
+K6 MOD say S1 322 194 c2 h0
+K6 MOD say S2 322 1033 c0 h0
+K6 MOD say S0 323 1032 c0 h0
+K6 MOD say S1 323 157 c0 h0
+K6 MOD say S2 323 1034 c0 h0
+K6 MOD say S0 324 1044 c1 h0
+K6 MOD say S1 324 156 c0 h0
+K6 MOD say S2 324 1052 c0 h0
+K6 MOD say S0 325 1014 c0 h0
+K6 MOD say S1 325 176 c0 h0
+K6 MOD say S2 325 1033 c0 h0
+K6 EX watch 144025000 gap=40 s
+K6 MOD say CWID listen rx=144025000 th=24 s=120
+K6 MOD say DMR listen lvl=-80 frozen=1 adj=6
+K6 EX t started adj=6 known=0
+K6 EX auto 144025000 listens=0 heard=120 max=120
+K6 EX t 0 a 891413
+K6 EX t 0 b r=0
+K6 EX t 0 c
+K6 EX t 1 a 891479
+K6 EX t 1 b r=0
+K6 EX t 1 c
+K6 EX t 2 a 891544
+K6 EX t 2 b r=0
+K6 EX t 2 c
+K6 EX t 3 a 891610
+K6 EX t 3 b r=0
+K6 EX t 3 c
+K6 EX t 4 a 891675
+K6 EX t 4 b r=0
+K6 EX t 4 c
+K6 EX t 5 a 891740
+K6 EX t 5 b r=0
+K6 EX t 5 c
+K6 EX t 6 a 891827
+K6 EX t 6 b r=0
+K6 EX t 6 c
+K6 EX t 7 a 891893
+K6 EX t 7 b r=0
+K6 EX t 7 c
+K6 EX t 8 a 891958
+K6 EX t 8 b r=0
+K6 EX t 8 c
+K6 EX t 9 a 892023
+K6 EX t 9 b r=0
+K6 EX t 9 c
+K6 EX t 10 a 892089
+K6 EX t 10 b r=0
+K6 EX t 10 c
+K6 EX t 11 a 892154
+K6 EX t 11 b r=0
+K6 EX t 11 c
+K6 EX t 12 a 892242
+K6 EX t 12 b r=0
+K6 EX t 12 c
+K6 EX t 13 a 892309
+K6 EX t 13 b r=0
+K6 EX t 13 c
+K6 EX t 14 a 892375
+K6 EX t 14 b r=0
+K6 EX t 14 c
+K6 EX t 15 a 892440
+K6 EX t 15 b r=0
+K6 EX t 15 c
+K6 EX t 16 a 892505
+K6 EX t 16 b r=0
+K6 EX t 16 c
+K6 EX t 17 a 892570
+K6 EX t 17 b r=0
+K6 EX t 17 c
+K6 EX t 18 a 892656
+K6 EX t 18 b r=0
+K6 EX t 18 c
+K6 EX t 19 a 892721
+K6 EX t 19 b r=0
+K6 EX t 19 c
+K6 EX t 20 a 892786
+K6 EX t 20 b r=0
+K6 EX t 20 c
+K6 EX t 21 a 892851
+K6 EX t 21 b r=0
+K6 EX t 21 c
+K6 EX t 22 a 892916
+K6 EX t 22 b r=0
+K6 EX t 22 c
+K6 EX t 23 a 892981
+K6 EX t 23 b r=0
+K6 EX t 23 c
+K6 EX t 24 a 893068
+K6 EX t 24 b r=0
+K6 EX t 24 c
+K6 EX t 25 a 893134
+K6 EX t 25 b r=0
+K6 EX t 25 c
+K6 EX t 26 a 893200
+K6 EX t 26 b r=0
+K6 EX t 26 c
+K6 EX t 27 a 893266
+K6 EX t 27 b r=0
+K6 EX t 27 c
+K6 EX t 28 a 893332
+K6 EX t 28 b r=0
+K6 EX t 28 c
+K6 EX t 29 a 893398
+K6 EX t 29 b r=0
+K6 EX t 29 c
+K6 EX t 30 a 893485
+K6 EX t 30 b r=0
+K6 EX t 30 c
+K6 EX t 31 a 893551
+K6 EX t 31 b r=0
+K6 EX t 31 c
+K6 EX t 32 a 893617
+K6 EX t 32 b r=0
+K6 EX t 32 c
+K6 EX t 33 a 893684
+K6 EX t 33 b r=0
+K6 EX t 33 c
+K6 EX t 34 a 893749
+K6 EX t 34 b r=0
+K6 EX t 34 c
+K6 EX t 35 a 893815
+K6 EX t 35 b r=0
+K6 EX t 35 c
+K6 EX t 36 a 893902
+K6 EX t 36 b r=0
+K6 EX t 36 c
+K6 EX t 37 a 893968
+K6 EX t 37 b r=0
+K6 EX t 37 c
+K6 EX t 38 a 894033
+K6 EX t 38 b r=0
+K6 EX t 38 c
+K6 EX t 39 a 894098
+K6 EX t 39 b r=0
+K6 EX t 39 c
+K6 EX t 40 a 894163
+K6 EX t 40 b r=0
+K6 EX t 40 c
+K6 EX t 41 a 894228
+K6 EX t 41 b r=0
+K6 EX t 41 c
+K6 EX t 42 a 894314
+K6 EX t 42 b r=0
+K6 EX t 42 c
+K6 EX t 43 a 894380
+K6 EX t 43 b r=0
+K6 EX t 43 c
+K6 EX t 44 a 894445
+K6 EX t 44 b r=0
+K6 EX t 44 c
+K6 EX t 45 a 894511
+K6 EX t 45 b r=0
+K6 EX t 45 c
+K6 EX t 46 a 894578
+K6 EX t 46 b r=0
+K6 EX t 46 c
+K6 EX t 47 a 894644
+K6 EX t 47 b r=0
+K6 EX t 47 c
+K6 EX t 48 a 894731
+K6 EX t 48 b r=0
+K6 EX t 48 c
+K6 EX t 49 a 894798
+K6 EX t 49 b r=0
+K6 EX t 49 c
+K6 EX t 50 a 894864
+K6 EX t 50 b r=0
+K6 EX t 50 c
+K6 EX t 51 a 894931
+K6 EX t 51 b r=0
+K6 EX t 51 c
+K6 EX t 52 a 894996
+K6 EX t 52 b r=0
+K6 EX t 52 c
+K6 EX t 53 a 895062
+K6 EX t 53 b r=0
+K6 EX t 53 c
+K6 EX t 54 a 895149
+K6 EX t 54 b r=0
+K6 EX t 54 c
+K6 EX t 55 a 895214
+K6 EX t 55 b r=0
+K6 EX t 55 c
+K6 EX t 56 a 895280
+K6 EX t 56 b r=0
+K6 EX t 56 c
+K6 EX t 57 a 895345
+K6 EX t 57 b r=0
+K6 EX t 57 c
+K6 EX t 58 a 895411
+K6 EX t 58 b r=0
+K6 EX t 58 c
+K6 EX t 59 a 895477
+K6 EX t 59 b r=0
+K6 EX t 59 c
+K6 EX t 60 a 895563
+K6 EX t 60 b r=0
+K6 EX t 60 c
+K6 EX t 61 a 895628
+K6 EX t 61 b r=0
+K6 EX t 61 c
+K6 EX t 62 a 895693
+K6 EX t 62 b r=0
+K6 EX t 62 c
+K6 EX t 63 a 895759
+K6 EX t 63 b r=0
+K6 EX t 63 c
+K6 EX t 64 a 895825
+K6 EX t 64 b r=0
+K6 EX t 64 c
+K6 EX t 65 a 895891
+K6 EX t 65 b r=0
+K6 EX t 65 c
+K6 EX t 66 a 895978
+K6 EX t 66 b r=0
+K6 EX t 66 c
+K6 EX t 67 a 896044
+K6 EX t 67 b r=0
+K6 EX t 67 c
+K6 EX t 68 a 896110
+K6 EX t 68 b r=0
+K6 EX t 68 c
+K6 EX t 69 a 896176
+K6 EX t 69 b r=0
+K6 EX t 69 c
+K6 EX t 70 a 896242
+K6 EX t 70 b r=0
+K6 EX t 70 c
+K6 EX t 71 a 896309
+K6 EX t 71 b r=0
+K6 EX t 71 c
+K6 EX t 72 a 896396
+K6 EX t 72 b r=0
+K6 EX t 72 c
+K6 EX t 73 a 896462
+K6 EX t 73 b r=0
+K6 EX t 73 c
+K6 EX t 74 a 896528
+K6 EX t 74 b r=0
+K6 EX t 74 c
+K6 EX t 75 a 896595
+K6 EX t 75 b r=0
+K6 EX t 75 c
+K6 EX t 76 a 896660
+K6 EX t 76 b r=0
+K6 EX t 76 c
+K6 EX t 77 a 896726
+K6 EX t 77 b r=0
+K6 EX t 77 c
+K6 EX t 78 a 896813
+K6 EX t 78 b r=0
+K6 EX t 78 c
+K6 EX t 79 a 896879
+K6 EX t 79 b r=0
+K6 EX t 79 c
+K6 EX t 80 a 896944
+K6 EX t 80 b r=0
+K6 EX t 80 c
+K6 EX t 81 a 897009
+K6 EX t 81 b r=0
+K6 EX t 81 c
+K6 EX t 82 a 897075
+K6 EX t 82 b r=0
+K6 EX t 82 c
+K6 EX t 83 a 897141
+K6 EX t 83 b r=0
+K6 EX t 83 c
+K6 EX t 84 a 897227
+K6 EX t 84 b r=0
+K6 EX t 84 c
+K6 EX t 85 a 897292
+K6 EX t 85 b r=0
+K6 EX t 85 c
+K6 EX t 86 a 897357
+K6 EX t 86 b r=0
+K6 EX t 86 c
+K6 EX t 87 a 897422
+K6 EX t 87 b r=0
+K6 EX t 87 c
+K6 EX t 88 a 897488
+K6 EX t 88 b r=0
+K6 EX t 88 c
+K6 EX t 89 a 897554
+K6 EX t 89 b r=0
+K6 EX t 89 c
+K6 EX t 90 a 897641
+K6 EX t 90 b r=0
+K6 EX t 90 c
+K6 EX t 91 a 897707
+K6 EX t 91 b r=0
+K6 EX t 91 c
+K6 EX t 92 a 897773
+K6 EX t 92 b r=0
+K6 EX t 92 c
+K6 EX t 93 a 897839
+K6 EX t 93 b r=0
+K6 EX t 93 c
+K6 EX t 94 a 897906
+K6 EX t 94 b r=0
+K6 EX t 94 c
+K6 EX t 95 a 897972
+K6 EX t 95 b r=0
+K6 EX t 95 c
+K6 EX t 96 a 898059
+K6 EX t 96 b r=0
+K6 EX t 96 c
+K6 EX t 97 a 898125
+K6 EX t 97 b r=0
+K6 EX t 97 c
+K6 EX t 98 a 898190
+K6 EX t 98 b r=0
+K6 EX t 98 c
+K6 EX t 99 a 898256
+K6 EX t 99 b r=0
+K6 EX t 99 c
+K6 EX t 128 a 900103
+K6 EX t 128 b r=0
+K6 EX t 128 c
+K6 EX t 160 a 902156
+K6 EX t 160 b r=0
+K6 EX t 160 c
+K6 EX t 192 a 904183
+K6 EX t 192 b r=0
+K6 EX t 192 c
+K6 EX t 224 a 906232
+K6 EX t 224 b r=0
+K6 EX t 224 c
+K6 EX t 256 a 908284
+K6 EX t 256 b r=0
+K6 EX t 256 c
+K6 EX t 288 a 910311
+K6 EX t 288 b r=0
+K6 EX t 288 c
+K6 EX t 320 a 912362
+K6 EX t 320 b r=0
+K6 EX t 320 c
+K6 EX t 352 a 914394
+K6 EX t 352 b r=0
+K6 EX t 352 c
+K6 EX t 384 a 916446
+K6 EX t 384 b r=0
+K6 EX t 384 c
+K6 EX t 416 a 918474
+K6 EX t 416 b r=0
+K6 EX t 416 c
+K6 EX t 448 a 920522
+K6 EX t 448 b r=0
+K6 EX t 448 c
+K6 EX t 480 a 922566
+K6 EX t 480 b r=0
+K6 EX t 480 c
+K6 EX t 512 a 924595
+K6 EX t 512 b r=0
+K6 EX t 512 c
+K6 EX t 544 a 926646
+K6 EX t 544 b r=0
+K6 EX t 544 c
+K6 EX t 576 a 928676
+K6 EX t 576 b r=0
+K6 EX t 576 c
+K6 EX t 608 a 930727
+K6 EX t 608 b r=0
+K6 EX t 608 c
+K6 EX t 640 a 932757
+K6 EX t 640 b r=0
+K6 EX t 640 c
+K6 EX t 672 a 934805
+K6 EX t 672 b r=0
+K6 EX t 672 c
+K6 EX t 704 a 936856
+K6 EX t 704 b r=0
+K6 EX t 704 c
+K6 EX t 736 a 938882
+K6 EX t 736 b r=0
+K6 EX t 736 c
+K6 EX t 768 a 940928
+K6 EX t 768 b r=0
+K6 EX t 768 c
+K6 EX t 800 a 942950
+K6 EX t 800 b r=0
+K6 EX t 800 c
+K6 EX t 832 a 944999
+K6 EX t 832 b r=0
+K6 EX t 832 c
+K6 EX t 864 a 947028
+K6 EX t 864 b r=0
+K6 EX t 864 c
+K6 EX t 896 a 949079
+K6 EX t 896 b r=0
+K6 EX t 896 c
+K6 EX t 928 a 951130
+K6 EX t 928 b r=0
+K6 EX t 928 c
+K6 EX t 960 a 953155
+K6 EX t 960 b r=0
+K6 EX t 960 c
+K6 EX t 992 a 955203
+K6 EX t 992 b r=0
+K6 EX t 992 c
+K6 EX t 1024 a 957236
+K6 EX t 1024 b r=0
+K6 EX t 1024 c
+K6 EX t 1056 a 959282
+K6 EX t 1056 b r=0
+K6 EX t 1056 c
+K6 EX t 1088 a 961314
+K6 EX t 1088 b r=0
+K6 EX t 1088 c
+K6 EX t 1120 a 963367
+K6 EX t 1120 b r=0
+K6 EX t 1120 c
+K6 EX t 1152 a 965415
+K6 EX t 1152 b r=0
+K6 EX t 1152 c
+K6 EX t 1184 a 967442
+K6 EX t 1184 b r=0
+K6 EX t 1184 c
+K6 EX t 1216 a 969492
+K6 EX t 1216 b r=0
+K6 EX t 1216 c
+K6 EX t 1248 a 971523
+K6 EX t 1248 b r=0
+K6 EX t 1248 c
+K6 EX t 1280 a 973572
+K6 EX t 1280 b r=0
+K6 EX t 1280 c
+K6 EX t 1312 a 975599
+K6 EX t 1312 b r=0
+K6 EX t 1312 c
+K6 EX t 1344 a 977648
+K6 EX t 1344 b r=0
+K6 EX t 1344 c
+K6 EX t 1376 a 979697
+K6 EX t 1376 b r=0
+K6 EX t 1376 c
+K6 EX t 1408 a 981720
+K6 EX t 1408 b r=0
+K6 EX t 1408 c
+K6 EX t 1440 a 983771
+K6 EX t 1440 b r=0
+K6 EX t 1440 c
+K6 EX t 1472 a 985803
+K6 EX t 1472 b r=0
+K6 EX t 1472 c
+K6 EX t 1504 a 987848
+K6 EX t 1504 b r=0
+K6 EX t 1504 c
+K6 EX t 1536 a 989876
+K6 EX t 1536 b r=0
+K6 EX t 1536 c
+K6 EX t 1568 a 991930
+K6 EX t 1568 b r=0
+K6 EX t 1568 c
+K6 EX t 1600 a 993978
+K6 EX t 1600 b r=0
+K6 EX t 1600 c
+K6 EX t 1632 a 996005
+K6 EX t 1632 b r=0
+K6 EX t 1632 c
+K6 EX t 1664 a 998054
+K6 EX t 1664 b r=0
+K6 EX t 1664 c
+K6 EX t 1696 a 1000078
+K6 EX t 1696 b r=0
+K6 EX t 1696 c
+K6 EX t 1728 a 1002121
+K6 EX t 1728 b r=0
+K6 EX t 1728 c
+K6 EX t 1760 a 1004141
+K6 EX t 1760 b r=0
+K6 EX t 1760 c
+K6 EX t 1792 a 1006182
+K6 EX t 1792 b r=0
+K6 EX t 1792 c
+K6 EX t 1824 a 1008233
+K6 EX t 1824 b r=0
+K6 EX t 1824 c
+K6 EX t 1856 a 1010254
+K6 EX t 1856 b r=0
+K6 EX t 1856 c
+K6 EX t end tone=0 dmr=0
+K6 MOD say DMR end n=0 h=0 lost=0 steps=1874
+K6 MOD say DMR rate busy=37 ks=5671 ctcss=0/0
+K6 MOD say DMR diag e=0 o=0 g=243 clk=999 kx=5666
+K6 EX t stopped
+K6 MOD say CWID end time msgs=0 short=0
+K6 EX t xl stopped
+K6 EX t monitor off
+K6 MOD say F0 -96 q-136: -93 -94 -96 -95 -96 -96 -96 -96
+K6 MOD say H 440.850 22672 -67 a868571
+K6 MOD say H 144.025 0 -79 a891319
+K6 MOD say S0 326 1076 c0 h0
+K6 MOD say F1 -99 q-138: -97 -98 -98 -99 -97 -100 -98 -97
+K6 MOD say S1 326 396 c16 h0
+K6 MOD say F2 -111 q-143: -111 -112 -110 -111 -111 -110 -109 -105
+K6 MOD say S2 326 1098 c4 h0
+K6 MOD say S0 327 1033 c0 h0
+K6 MOD say S1 327 157 c0 h0
+K6 MOD say S2 327 1146 c8 h0
+K6 MOD say S0 328 1033 c0 h0
+K6 MOD say S1 328 262 c9 h0
+K6 MOD say S2 328 1113 c4 h0
+K6 MOD say S0 329 1014 c0 h0
+K6 MOD say S1 329 156 c0 h0
+K6 MOD say S2 329 1122 c6 h0
+K6 MOD say S0 330 1033 c0 h0
+K6 MOD say S1 330 215 c5 h0
+K6 MOD say S2 330 1087 c3 h0
+K6 MOD say S0 331 1014 c0 h0
+K6 MOD say S1 331 218 c2 h0
+K6 MOD say S2 331 1056 c2 h0
+K6 MOD say S0 332 1033 c0 h0
+K6 MOD say S1 332 157 c0 h0
+K6 MOD say S2 332 1068 c3 h0
+K6 MOD say S0 333 1033 c0 h0
+K6 MOD say S1 333 171 c0 h0
+K6 MOD say S2 333 1052 c0 h0
+K6 MOD say S0 334 1014 c0 h0
+K6 MOD say S1 334 157 c0 h0
+K6 MOD say S2 334 1052 c0 h0
+K6 MOD say S0 335 1032 c0 h0
+K6 MOD say S1 335 156 c0 h0
+K6 MOD say S2 335 1033 c0 h0
+K6 MOD say S0 336 1032 c0 h0
+K6 MOD say S1 336 156 c0 h0
+K6 MOD say S2 336 1087 c3 h0
+K6 MOD say S0 337 1025 c1 h0
+K6 MOD say S1 337 169 c1 h0
+K6 MOD say S2 337 1181 c11 h0
+K6 MOD say N 146.940 -86 fl-96 b294
+K6 MOD say W 146.940 0 -86 a1040531
+K6 MOD say S0 338 1183 c1 h1
+K6 MOD say S1 338 157 c0 h0
+K6 MOD say S2 338 1052 c0 h0
+K6 MOD say W 146.940 0 -85 a1042785
+K6 MOD say S0 339 1044 c1 h1
+K6 MOD say S1 339 138 c0 h0
+K6 MOD say S2 339 1051 c0 h0
+K6 MOD say S0 340 1013 c0 h0
+K6 MOD say S1 340 156 c0 h0
+K6 MOD say S2 340 1051 c0 h0
+K6 MOD say S0 341 1013 c0 h0
+K6 MOD say S1 341 156 c0 h0
+K6 MOD say S2 341 1140 c6 h0
+K6 MOD say S0 342 1013 c0 h0
+K6 MOD say S1 342 706 c36 h0
+K6 MOD say S2 342 1079 c4 h0
+K6 MOD say S0 343 1032 c0 h0
+K6 MOD say S1 343 156 c0 h0
+K6 MOD say S2 343 1032 c0 h0
+K6 MOD say S0 344 1032 c0 h0
+K6 MOD say S1 344 156 c0 h0
+K6 MOD say S2 344 1051 c0 h0
+K6 MOD say S0 345 1013 c0 h0
+K6 MOD say S1 345 156 c0 h0
+K6 MOD say S2 345 1051 c0 h0
+K6 MOD say H 144.050 141 -80 a1058809
+K6 MOD say S0 346 1088 c0 h0
+K6 MOD say S1 346 485 c22 h0
