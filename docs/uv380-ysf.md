@@ -14,13 +14,13 @@ bytes go to the chip unchanged, as M17's did. Only two things differ from M17:
 | | M17 | YSF |
 |---|---|---|
 | outer deviation | 2.4 kHz | 2.7 kHz (inner 0.9 kHz) |
-| TX_DEV (percent of the DMR pair, 0x45/0x46) | 123 (2300 Hz measured) | 144 (about 2700 Hz expected) |
+| TX_DEV (percent of the DMR pair, 0x45/0x46) | 123 (2300 Hz measured) | 140 (144 measured 2770 Hz on air) |
 | frame | 40 ms, 48 bytes | 100 ms, 120 bytes |
 | tail | EOT `55 5D` | `77` idle after the terminator |
 
 The 2.7 kHz figure agrees with RadioFoundry's C4FM port, which scales the same two-point
-registers by 1.39 from the DMR setting (docs/uv380-c4fm-foundry.md). The decoder prints the outer
-level it measured, so the first on-air run tells us whether 144 is right.
+registers by 1.39 from the DMR setting (docs/uv380-c4fm-foundry.md). The first on-air run (TX_DEV
+144) measured 2770 Hz outer, so the module now uses 140.
 
 ## Frames (modem/ysf.py)
 
@@ -65,9 +65,33 @@ as `uv380.m17`. A job: Pluto `rx run:y.wav --hz 441850000 --seconds 130` in the 
 runner returns files up to 20 MB: the 48 kHz discriminator wav (12 MB) comes back to a cloud
 thread, the 250 MB .cf32 stays on hamlet. `python3 -m modem.ysf decode y.wav` reads it.
 
+## On air (2026-11-18)
+
+Bench runner job `ysf-1118b` (inbox), 00:57-00:59Z: the UV-380 transmitted (0 W, 441.850 MHz, Morse
+ident AG7EW first, `trim -580`) one `dn` and one `data` transmission; the Pluto received on
+441.850 (`rx run:y.wav`, the discriminator wav that comes back to a cloud thread).
+
+| | result |
+|---|---|
+| frames | 78 of 78 found, FICH good 78 (2 headers, 74 comms, 2 terminators) |
+| DN | AG7EW to ALL, data channel 37/37 good, 185/185 AMBE silence frames, 0 voice triplets corrected |
+| data FR | 74/74 blocks good, all 59 text blocks `00 AG7EW YSF DATA` .. `58 ...` |
+| raw channel | 0 wrong bits of 74,880 (hard decisions before any FEC) |
+| deviation | outer 2770 Hz (levels -2762, -959, +893, +2742 Hz) at TX_DEV 144 |
+| carrier | burst +147 Hz from 441.850 with trim -580 |
+
+Module log: `chk 00=36/36`, `tx slots=133 bytes=4704/4704 late=0 lost=0`, registers restored
+4089 ms after key-up, `ysf done` for both. The discriminator wav is in the project files
+(uv380-ysf/ysf-1118b-pluto-discriminator.wav).
+
+Bench note: the runner ends a job without waiting for a background Pluto rx, and returns the run
+folder's files at that moment. The first try (`ysf-1118a`) came back with no wav for that reason.
+End such a job with `{"do": "wait", "pattern": "y\\.wav: ", "file": "pluto.out", "seconds": 120}`
+(pluto_bench prints that line once the wav is written).
+
 ## Next
 
-1. On air at 0 W into the Pluto: every FICH and data block good, outer level near 2700 Hz.
+1. ~~On air at 0 W into the Pluto~~ done 11-18 (above). TX_DEV 140 is not yet measured on air.
 2. FTM-300D (needs Jeff): DN at 0 W, the radio on 441.850 in DN or AMS. Pass = it shows AG7EW
    and opens with silence. If it ignores the call, try FT 7 and the other DCH fill choices
    (`tx_dn(ft=...)`), then data FR.

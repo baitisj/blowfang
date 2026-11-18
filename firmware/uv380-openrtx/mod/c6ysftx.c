@@ -8,8 +8,8 @@
    unchanged, 36 bytes a 30 ms slot (a 120 byte YSF frame spans 3 1/3 slots: the stream is
    continuous, so frames need not line up with slots). YSF wants the outer symbols at +-2.7 kHz
    (inner +-0.9 kHz); the chip's DMR deviation is about +-1870 Hz at 100 percent (M17: 2300 Hz
-   measured at 123), so TX_DEV is 144 percent of the radio's DMR calibration pair (0x45/0x46),
-   close to RadioFoundry's C4FM factor 1.39. The chip's shaping is DMR's RRC alpha 0.2, YSF's own.
+   measured at 123); on air 11-18 TX_DEV 144 gave 2770 Hz, so TX_DEV is 140 percent of the radio's
+   DMR calibration pair (0x45/0x46), RadioFoundry's C4FM factor 1.39 within a percent. The chip's shaping is DMR's RRC alpha 0.2, YSF's own.
 
    Everything else is c6m17tx.c's, which works on air (11-17: BERT 0 bits wrong): the keying
    borrowed from api->tx_tone (the Morse ident AG7EW first, the image's transmit guard, 441.850 or
@@ -36,7 +36,7 @@
 #define TX_DRY 1
 #endif
 #ifndef TX_DEV
-#define TX_DEV 144u             /* percent of the DMR pair: -> 2700 Hz outer */
+#define TX_DEV 140u             /* percent of the DMR pair: 2770 Hz measured at 144 -> 2700 */
 #endif
 #ifndef TX_MODE
 #define TX_MODE 0x66u
