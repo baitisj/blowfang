@@ -12,8 +12,8 @@
    "not_before": "2026-11-18T01:07:26Z"
   }
  ],
- "last_poll": "2026-11-18T00:49:46Z",
+ "last_poll": "2026-11-18T00:49:50Z",
  "error": null,
- "update": "2026-11-18T00:49:48Z installed main 82a30724b78e (bench_runner.py, bench_inbox.py); selftest PASS",
- "updated": "2026-11-18T00:49:48Z"
+ "update": null,
+ "updated": "2026-11-18T00:49:50Z"
 }
