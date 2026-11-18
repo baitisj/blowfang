@@ -16,7 +16,8 @@
        b T sc=SYNC dt=TYPE crc=E cc=CC sy=FAM se=SYNCERR fe=FSKERR new=N d=24 RX RAM bytes (hex)
        r T se= fe= d=36 bytes                     (RX_RAW: the raw burst)
        sf T BASE OFF hex                          soft values of the first RX_SOFT synced bursts
-       st T slots= bursts= nosync= ok= rearm= raw= 42= rssi= 43=  once a second
+       st T slots= bursts= nosync= ok= rearm= raw= 42= rssi= 43= 4e= 4f=  once a second (4e/4f:
+                                                  the ADC's measured DC offset, I and Q)
        end slots= bursts= nosync= ok= rearm= raw=
    T is ms since the start. sc 2 = data sync; crc 0 = the chip's checks passed. new=1: d's
    payload (bytes 0-11) differs from the last b line's.
@@ -55,6 +56,9 @@
 #endif
 #ifndef RX_SLOTCHECK
 #define RX_SLOTCHECK 1
+#endif
+#ifndef RX_RAWSOFT
+#define RX_RAWSOFT 0u           /* RX_RAW: soft values of every Nth raw window too (0: none) */
 #endif
 
 #define GPIOD 0x40020C00u
@@ -193,6 +197,10 @@ int uv_main(const ortx_api_t *api) {
                              s89 & 0x3Fu, s0f, hex);
                     api->say(line);
                 }
+                if (RX_RAWSOFT && raw % RX_RAWSOFT == 0u) {
+                    soft(api, t, 0x0A8, s0);
+                    soft(api, t, 0x1C8, s1);
+                }
             }
             if (f & ~0x09u) {
                 api->fmt(line, sizeof line, "f %lu 82=%02x 84=%02x 86=%02x 90=%02x 98=%02x", (unsigned long)t,
@@ -205,9 +213,9 @@ int uv_main(const ortx_api_t *api) {
         if (t - last_st >= 1000u) {
             last_st = t;
             api->fmt(line, sizeof line, "st %lu slots=%u bursts=%u nosync=%u ok=%u rearm=%u raw=%u 42=%02x "
-                     "rssi=%ld 43=%02x%02x", (unsigned long)t, slots, bursts, nosync, ok, rearm, raw,
-                     api->c6000_read(0x42),
-                     (long)api->rssi(), api->c6000_read(0x43), api->c6000_read(0x44));
+                     "rssi=%ld 43=%02x%02x 4e=%02x 4f=%02x", (unsigned long)t, slots, bursts, nosync, ok,
+                     rearm, raw, api->c6000_read(0x42), (long)api->rssi(), api->c6000_read(0x43),
+                     api->c6000_read(0x44), api->c6000_read(0x4E), api->c6000_read(0x4F));
             api->say(line);
         }
         api->sleep_ms(1);

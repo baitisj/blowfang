@@ -536,6 +536,46 @@ def test_uv380_voice_sends_the_checkouts_module_at_power_0(work, monkeypatch):
         assert argv[5:7] == ["--key-file", br.key_path()] and argv[-2:] == ["--run-timeout", "45"]
 
 
+def test_uv380_rx_checked(work):
+    for plan in br.UV380_RX_PLANS:
+        assert br.check_job(uv_job({"do": "uv380.rx", "args": [plan], "background": True})) == [], plan
+    for args in ([], ["x"], ["tap", "phy"], ["../c6m17tx_bert.c"], ["c6fmtap.c"]):
+        assert "one plan" in problems(uv_job({"do": "uv380.rx", "args": args})), args
+
+
+def test_uv380_rx_modules_never_key():
+    for mod in br.UV380_RX_PLANS.values():
+        src = open(os.path.join(REPO, *br.uv380_rx_module("tap")[:-1], mod)).read()
+        if "#include \"c6dmrrx.c\"" in src:
+            src += open(os.path.join(REPO, "firmware", "uv380-openrtx", "mod", "c6dmrrx.c")).read()
+        for word in ("tx_tone", "tx_mic", "c6key.h", "0x60, 0x80", "0x41, 0x80"):
+            assert word not in src, (mod, word)
+
+
+def test_uv380_rx_runs_the_checkouts_module_in_the_background(work, monkeypatch):
+    monkeypatch.setattr(br, "uv380_port", lambda: "/dev/uv380")
+    j = uv_job({"do": "uv380.rx", "args": ["phy"], "background": True})
+    argv, _, bg = br.command(j, j["steps"][0], str(work / "rd"))
+    assert bg and argv[2:4] == ["mod", "/dev/uv380"]
+    assert argv[4].endswith("firmware/uv380-openrtx/mod/c6phyrx.c")
+    assert argv[5:7] == ["--key-file", br.key_path()] and argv[7:9] == ["--log", str(work / "rd" / "uv380.log")]
+    _, _, bg = br.command(j, {"do": "uv380.rx", "args": ["tap"]}, str(work / "rd"))
+    assert not bg
+
+
+def test_job_waits_for_its_background_receive_module(work, monkeypatch):
+    """the UV-380's port stays the job's until a background uv380.rx ends"""
+    def command(job, step, rd):
+        return [sys.executable, "-c", "import time; time.sleep(4)"], rd, True
+    monkeypatch.setattr(br, "command", command)
+    t0 = time.monotonic()
+    res = br.run_job(uv_job({"do": "uv380.rx", "args": ["tap"], "background": True}), str(work / "rd"), Rig())
+    assert res["status"] == "done", res
+    assert time.monotonic() - t0 >= 3.5
+    for p in br.BACKGROUND:
+        p.wait()
+
+
 def test_pluto_background_only_to_receive(work):
     j = job("a")
     rd = str(work / "rd")
