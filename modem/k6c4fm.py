@@ -150,7 +150,8 @@ def split(dibits):
 
 YSF_OFF = 7                         # c4ysf.c's C4_OFF: run 1's best write timing (quarter symbols)
 YSF_PRE = (120, 64, 32)             # c4ysf.c's B1..B3: FIFO words written before the enable
-LOCK_NR = 2                         # c4lock.c (11-18): rate packets first (128 words, PN9's first 256 signs again)
+LOCK_NR = 2                         # c4lock.c (11-18): rate packets first (128 words, PN9's first 256 signs
+                                    # again), and one before each whole transmission
 LOCK_NCAL = 17                      # c4lock.c (run 3): calibration packets (64 PN9 signs each)
 LOCK_CAL_SYMS = 64
 LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, quarter symbols
@@ -174,8 +175,9 @@ def packets(plan="probe"):
     if plan in ("lock", "lock3", "demo", "sotto"):
         pad = np.tile(np.array([0, 1], np.int8), PAD_SYMS // 2)
         one = np.ones(PAD_SYMS, np.int8)
-        out = [dict(name=f"R{i}", chip=np.tile(pn_signs()[:256], 8), mode="none")
-               for i in range(LOCK_NR if plan != "lock3" else 0)]
+        def rate(i):
+            return dict(name=f"R{i}", chip=np.tile(pn_signs()[:256], 8), mode="none")
+        out = [rate(i) for i in range(LOCK_NR if plan != "lock3" else 0)]
         out += [dict(name=f"C{i:02d}", chip=pn_signs()[:LOCK_CAL_SYMS], mode="none")
                 for i in range(LOCK_NCAL)]
         for i, q in enumerate(LOCK_A):
@@ -188,10 +190,13 @@ def packets(plan="probe"):
                 c, sz = split(np.concatenate(all_frames(plan == "sotto")[4 * st:4 * st + 4]))
                 # (the flipped calls keep the plain signs here: the analysis takes either
                 # polarity, and its pol says which one came)
+                out.append(rate(LOCK_NR + j))
                 out.append(dict(name=f"D{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
                                 mode="size", off=0, frames=[4 * st + f for f in range(4)]))
             return out
         for j, q in enumerate(LOCK3_B if plan == "lock3" else LOCK_B):
+            if plan != "lock3":
+                out.append(rate(LOCK_NR + j))
             out.append(dict(name=f"B{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
                             mode="size", off=q, frames=[0, 1, 2, 3]))
         return out
@@ -553,7 +558,7 @@ def ysf_packet(pay, frame):
 
 
 FIFO_PPM = -630                     # c4fifo.c's nominal (c4lock's C4_PPM)
-FIFO_MARK_SYMS = 32                 # its marks: 2 words a refill
+FIFO_MARK_SYMS = 16                 # its marks: a word a refill
 
 
 def fifo(lines):

@@ -396,13 +396,15 @@ def test_lock_module_locks_to_the_chip(ppm, phase, lat_en, jit):
     11-18 04:24Z, which the fit can't reach from C4_PPM alone: the rate packets find it first"""
     pytest.importorskip("unicorn")
     ret, said, regs, tx, fsk, ev = send_lock(ppm, phase, lat_en, poll_jitter=jit)
-    n = k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.LOCK_B)
+    n = len(k6c4fm.packets("lock"))
     assert ret == n, said
     assert said[0] == f"c4lock n={n} g=78/27 lag=9 ppm=-630 pa=0 rx=440850000"
     assert said[-1].startswith(f"c4lock sent n={n} ")
     rate = next(s for s in said if s.startswith("c4lock rate"))
-    assert rate.startswith("c4lock rate ppm=") and " ok=11 " in rate, said
+    assert rate.startswith("c4lock rate ppm=") and " ok=1111111 " in rate, said
     assert int(re.search(r"ppm=(-?\d+)", rate).group(1)) / 10 == pytest.approx(ppm, abs=40), rate
+    rq = [int(v) / 10 for v in next(s for s in said if s.startswith("c4lock rq ")).split()[2:]]
+    assert len(rq) == 7 and all(v == pytest.approx(ppm, abs=40) for v in rq), said
     w = next(s for s in said if s.startswith("c4lock w="))
     m = re.match(r"c4lock w=(\d+) late=(\d+) miss=(\d+) lost=(\d+) wr=\d+-\d+ rd=(\d+)$", w)
     assert m and m.group(2) == "0" and m.group(3) == "0" and m.group(4) == "0", said
@@ -413,10 +415,11 @@ def test_lock_module_locks_to_the_chip(ppm, phase, lat_en, jit):
     t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
     assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS | {0x5E}   # 5E: rate packets
     assert [len(p["words"]) for p in fsk.pkts] == ([128] * k6c4fm.LOCK_NR + [4] * k6c4fm.LOCK_NCAL
-                                                   + [31] * len(k6c4fm.LOCK_A) + [121] * len(k6c4fm.LOCK_B))
+                                                   + [31] * len(k6c4fm.LOCK_A) + [128, 121] * len(k6c4fm.LOCK_B))
     assert not any(p.get("under") for p in fsk.pkts)
     # the data packets' enables half a symbol from the threshold: start - enable the same for all
-    gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts[k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL:]]
+    gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts[k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL:]
+            if len(p["words"]) != 128]
     # (coarse polls: the fitted phase wanders about +-0.15 symbol, the noise floor of 16 polls)
     assert max(gaps) - min(gaps) < 0.2 + 0.4 * jit, gaps
     assert min(g - lat_en for g in gaps) > 0.15 and max(g - lat_en for g in gaps) < 0.85, gaps
@@ -453,7 +456,7 @@ def test_ftm_demo_calls():
     receiver finds all five"""
     pytest.importorskip("unicorn")
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC)
-    assert ret == k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.DEMO_SETS), said
+    assert ret == len(k6c4fm.packets("demo")), said
     lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="demo")
     for j, inv in enumerate(k6c4fm.DEMO_INV):
         r = res[f"D{j}"]
@@ -468,7 +471,7 @@ def test_sotto_demo_carries_the_clip():
     pytest.importorskip("unicorn")
     from modem import ysf
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=SOTTO_SRC)
-    assert ret == k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.SOTTO_SETS), said
+    assert ret == len(k6c4fm.packets("sotto")), said
     lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="sotto")
     for j in range(len(k6c4fm.SOTTO_SETS)):
         assert res[f"D{j}"]["fich_n"] == 4, "\n".join(lines)
@@ -530,28 +533,28 @@ class FskFifo(FskGrid):
 @need_clang
 @pytest.mark.parametrize("ppm", [-851.0, -524.0])
 def test_fifo_probe_measures_the_rate(ppm):
-    """c4fifo: four 128-word packets, the FIFO refilled 2 words on each almost-empty flag (no
-    underrun), 44 marks each 32 symbols apart; the host fit gives the chip's rate, a straight line"""
+    """c4fifo: two 128-word packets, the FIFO refilled a word on each almost-empty flag (no
+    underrun), 108 marks each 16 symbols apart; the host fit gives the chip's rate, a straight line"""
     pytest.importorskip("unicorn")
     mmio, rcc, tim = k6_clock()
     tx, fsk = {}, FskFifo(ppm, 0.4, 0.3, 0.6, 0.0)
     ret, said, regs, _ = run(REGS, src=FIFO_SRC, level=3, tx=tx, mmio=mmio, write_us=117, fsk=fsk,
                              count=2_000_000_000)
     assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1
-    assert ret == 4, said
-    assert [len(p["words"]) for p in fsk.pkts] == [128] * 4
+    assert ret == 2, said
+    assert [len(p["words"]) for p in fsk.pkts] == [128] * 2
     assert not any(p.get("under") for p in fsk.pkts), [p.get("under") for p in fsk.pkts]
     t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
     assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS | {0x5E}
     assert (t_off - t_on) / 1000 < tx["log"][0][1] <= 120_000
     assert regs[0x5E] == REGS.get(0x5E, 0) and regs[0x3F] == REGS[0x3F]
     pk = k6c4fm.fifo(said)
-    assert sorted(pk) == [0, 1, 2, 3], said
+    assert sorted(pk) == [0, 1], said
     for p in pk.values():
-        assert p["n"] == 44 and p["bad"] == 0 and p["r"] == 0 and p["b"] == 0xC000, p
-        assert len(p["d"]) == 44
+        assert p["n"] == 108 and p["bad"] == 0 and p["r"] == 0 and p["b"] == 0xC000, p
+        assert len(p["d"]) == 108
         # the polls bracket each flag within one read (117 us, 0.56 symbol)
         assert p["ppm"] == pytest.approx(ppm, abs=60), p
         assert p["res"] < 40, p
     lines = k6c4fm.fifo_text(pk)
-    assert len(lines) == 5 and lines[-1].startswith("packet rates over time: 0.0 s")
+    assert len(lines) == 3 and lines[-1].startswith("packet rates over time: 0.0 s")
