@@ -74,6 +74,9 @@
 #ifndef C4_CHAIN
 #define C4_CHAIN 0          /* 1 (c4ftm.c, with C4_DEMO): calls longer than a packet, packets back to back */
 #endif
+#ifndef C4_VOICE
+#define C4_VOICE 0          /* 1 (c4voice.c, with C4_CHAIN): the table is one 14-frame DN voice call */
+#endif
 #ifndef C4_DMRS
 #define C4_DMRS 0           /* 1 (c4dmr.c, with C4_CHAIN): the table is a DMR stream (k6c4fm.dmr_frames) */
 #endif
@@ -217,6 +220,10 @@ K6_MODULE_NAME(K6_NAME);
 #define NB 5
 #define CH_PKTS 20                                  /* packets in the NB calls: 4 each */
 #define B_MS 1900u
+#elif C4_VOICE
+#define NB 3
+#define CH_PKTS 12                                  /* packets in the NB calls: 4 each */
+#define B_MS 2100u
 #elif C4_CHAIN
 #define NB 3
 #define CH_PKTS 7                                   /* packets in the NB calls: 3, 3, 1 */
@@ -271,6 +278,17 @@ static const uint8_t BF0[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BNF[NB] = {12, 12, 12, 12, 12};
 static const uint8_t BINV[NB] = {0, 1, 0, 1, 0};   /* dmr4: the UV-380 never synced on plain calls */
 static const uint8_t BIN[NB] = {8, 8, 8, 8, 8};
+#elif C4_VOICE
+static const int8_t BQ[NB] = {0, 0, 0};
+static const uint8_t BF0[NB] = {0, 0, 0};           /* the voice call three times (k6c4fm.VOICE_CALLS): */
+static const uint8_t BNF[NB] = {14, 14, 14};        /* header, FN 0-7, FN 0-3, terminator */
+static const uint8_t BINV[NB] = {0, 0, 0};
+#ifndef C4_VOICE_INNER
+#define C4_VOICE_INNER 22, 20, 18
+#endif
+static const uint8_t BIN[NB] = {C4_VOICE_INNER};   /* voice1 (11-18): inner 27 came out at 0.45 of the
+                                                       outer (YSF's is a third), 5 of 49 AMBE bits wrong;
+                                                       voice2: 22 gave 2.3, 18 2.5 */
 #elif C4_CHAIN
 static const int8_t BQ[NB] = {0, 0, 0};
 static const uint8_t BF0[NB] = {4, 4, 0};           /* each call's first frame and frames (k6c4fm.CHAIN_CALLS): */
@@ -317,7 +335,7 @@ typedef struct {
   int32_t cn[NCAL];
   uint8_t cok[NCAL];
   uint32_t th;              /* the data packets' enable phase, sixteenths of a symbol */
-#if C4_DMRS
+#if C4_DMRS || C4_VOICE
   uint32_t gin;             /* the inner size's REG_70 gain: the call's BIN */
 #define GIN (s->gin)
 #else
@@ -738,6 +756,17 @@ static int settle(c4_t *s) {
    symbol late, its phase too near that edge) */
 static void lat_add(c4_t *s, int32_t d) {
   int32_t lo = d - (int32_t)(s->p12 >> 12);
+#if C4_VOICE
+  /* voice1-2 (11-18): with every call's rate a few hundred ppm apart, a sample can miss the window
+     altogether; the window emptied and the later calls ended after their first packet. Here a
+     sample outside it starts the window again from itself */
+  if (lo >= s->lathi || d <= s->latlo) {
+    s->latlo = lo;
+    s->lathi = d;
+    s->latn++;
+    return;
+  }
+#endif
   if (lo > s->latlo) s->latlo = lo;
   if (d < s->lathi) s->lathi = d;
   s->latn++;
@@ -1121,7 +1150,7 @@ static int burst(c4_t *s) {
     if (GAP_MS && k && (r = until(api, api->ms() + GAP_MS)) != 0) return r;
     if ((r = resync(s, NR + k)) != 0) return r;
 #if C4_CHAIN
-#if C4_DMRS
+#if C4_DMRS || C4_VOICE
     s->gin = BIN[k];
 #endif
     if ((r = call(s, BF0[k], BNF[k], BQ[k], BINV[k] ? 0xFFFFu : 0u)) != 0) return r;
@@ -1391,7 +1420,7 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   s.latlo = -2000000;
   s.lathi = 2000000;
   s.n00 = 0;
-#if C4_DMRS
+#if C4_DMRS || C4_VOICE
   s.gin = C4_INNER;
 #endif
 #endif
