@@ -264,3 +264,52 @@ def test_a_carrier_outside_the_window_says_where_it_is(tmp_path):
     assert ret == -6 and few, said
     lo, hi = int(field(few[0], "lo")), int(field(few[0], "hi"))
     assert field(few[0], "lost") == "0" and lo <= hi and abs((lo + hi) / 2 - NOMINAL) > 5000, few
+
+
+@need_clang
+def test_the_relay_tail_in_its_own_key_up(tmp_path):
+    # the bench runner's steps (2026-11-18): the upload's carrier for the first 2 s of the module,
+    # 8 s of nothing (the runner starting the Pluto's next send), then the PSK31 tail; REFCAL_WAIT
+    # waits it out and reads 440.850 REFCAL_NREF times at the null; the K6 1.9 ppm slow
+    class Gap(Air):
+        now = 0
+
+        def tune(self, hz, wide, us):
+            self.now = us
+            Air.tune(self, hz, wide, us)
+
+        def rssi(self, us):
+            self.now = us
+            return Air.rssi(self, us)
+
+        def near(self):
+            return (None, FLOOR) if 2_000_000 < self.now < 10_000_000 else Air.near(self)
+    ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1900, dev=600.0,
+                             extra="#define REFCAL_HZ 440850000\n#define REFCAL_WAIT 1\n", air_cls=Gap)
+    assert said[0] == "refcal waiting for a carrier", said[:3]
+    assert [ln for ln in said if ln.startswith("refcal s ")] == ["refcal s 440850.00 -63 -112"], said
+    rs = [ln for ln in said if ln.startswith("refcal r ")]
+    assert len(rs) == 3 and all(ln.split()[2] == "440850.00" for ln in rs), rs
+    assert abs(ret + 1900) <= 8 and field(said[-2], "n") == "3" and said[-2].endswith(" dry"), said[-5:]
+    assert regs[0x3B] == BASE3B
+
+
+@need_clang
+def test_the_relay_wait_gives_up_with_no_tail(tmp_path):
+    class Gone(Air):
+        now = 0
+
+        def tune(self, hz, wide, us):
+            self.now = us
+            Air.tune(self, hz, wide, us)
+
+        def rssi(self, us):
+            self.now = us
+            return Air.rssi(self, us)
+
+        def near(self):
+            return (None, FLOOR) if self.now > 2_000_000 else Air.near(self)
+    ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1900,
+                             extra="#define REFCAL_HZ 440850000\n#define REFCAL_WAIT 1\n", air_cls=Gone)
+    assert ret == -6 and said[:2] == ["refcal waiting for a carrier", "refcal no carrier"], said
+    assert regs[0x3B] == BASE3B

@@ -158,3 +158,15 @@ and a reference failing the probe (the next one taken; all failing keeps nothing
   the curve. This needs Jeff's OK, since it is a new use of SPI flash.
 - Running refcal at boot or on CRC failures would need an image change, which is Jeff's call for
   the flash batch.
+
+## Relay reads through the bench runner (2026-11-18)
+
+The inbox can't run a script or append a tail to the upload's audio, so the relay comes as
+separate runner steps: Pluto pilot captures (RF 14, 26, 35, 0.5 s each), a -30 dB PSK31 wake,
+the upload of refcal built with `-DREFCAL_HZ=440850000 -DREFCAL_WAIT=1` (`--rounds 1 --run-s 0
+--rate F18` and a run-folder `--rate-state`, so the shared rate ladder never sees the upload's
+missing report), then the 40 s PSK31 'AG7EW TEST' tail as its own key-up at -40 dB, and RF 14
+again. REFCAL_WAIT keeps gp0dma's wait for the upload's carrier to go, then waits up to 90 s for
+the tail (15 dB over the floor between them). With REFCAL_HZ the one reference is read
+REFCAL_NREF (4) times at the null, so `refcal ppb=` is the median of 4 reads. The K6's error is
+that ppb less the Pluto's own error from the pilots, as before.
