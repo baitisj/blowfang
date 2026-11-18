@@ -1,0 +1,107 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/k6-rate.json"
+ },
+ {
+  "name": "p14m.cf32.json",
+  "bytes": 132,
+  "sha256": "938528d24a27f99af57ee95fcbb8e98b9e4cc24e893d0698ab578b156370d7a8",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p14m.cf32.json"
+ },
+ {
+  "name": "p14a.cf32.json",
+  "bytes": 133,
+  "sha256": "a88b19f1b3186ce821c5ab42388cea27b5fe9b177da3a1f3690d13ace70b69cf",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p14a.cf32.json"
+ },
+ {
+  "name": "p14b.cf32.json",
+  "bytes": 133,
+  "sha256": "7900a3938cd8b97042c37ce3935f9eed23706879a786b553f629288b14258252",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p14b.cf32.json"
+ },
+ {
+  "name": "p35a.cf32.json",
+  "bytes": 133,
+  "sha256": "0bf06b85d92cc927a77007eccdde09dce7c422333bc3d90e096565c5c5904b37",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p35a.cf32.json"
+ },
+ {
+  "name": "p35b.cf32.json",
+  "bytes": 133,
+  "sha256": "b208c18caf2de549170c6cf49e17a2a7eed0ce43b0883dada66b20c28a190168",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p35b.cf32.json"
+ },
+ {
+  "name": "p35m.cf32.json",
+  "bytes": 133,
+  "sha256": "ddc92ad58a533006ed25a1405c5324af86d97ef0075c2f517303d2378cbf5e07",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p35m.cf32.json"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 6143,
+  "sha256": "e05b933cddd6ec319e0f79c0f4a991ceccfb5d28ff4901d04b312cfbd8364d7a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 8769,
+  "sha256": "f0dd511165f9f0e30aa562d9b42abe1720580adc626de78537a614e4d0844e53",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/k6.log"
+ },
+ {
+  "name": "p14a.cf32",
+  "bytes": 960000,
+  "sha256": "2ac45c29a6cfac585170c921b115822045b12368e70794a316ab4600b7f2c7a0",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p14a.cf32"
+ },
+ {
+  "name": "p14b.cf32",
+  "bytes": 960000,
+  "sha256": "137a663ec870dbf657f4d5915744fadeba79cce8e8fc1e63010130f3b0b7e9c2",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p14b.cf32"
+ },
+ {
+  "name": "p14m.cf32",
+  "bytes": 960000,
+  "sha256": "c1ede754258d4fe4a50373f8aa81b2529efa7fd36aea0d5ad2e78df9308e4a8d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p14m.cf32"
+ },
+ {
+  "name": "p35a.cf32",
+  "bytes": 960000,
+  "sha256": "ce1a990bd57db9431018847e98e85ec1002b056673d5293fe92e4e6fdf19577c",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p35a.cf32"
+ },
+ {
+  "name": "p35b.cf32",
+  "bytes": 960000,
+  "sha256": "20e9a2d3d0628c2dc99741b80331ae552f995c9ca2e737126190c7079af87cdc",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p35b.cf32"
+ },
+ {
+  "name": "p35m.cf32",
+  "bytes": 960000,
+  "sha256": "9d4ec44d7128c777b4f0419922071b7dbb338ccadc19d5368b6a44954f86942a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-06/p35m.cf32"
+ }
+]
