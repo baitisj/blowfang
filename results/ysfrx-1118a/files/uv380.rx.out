@@ -1,0 +1,347 @@
+ok mod begin 8682
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 128
+ok mod hex 1b80 128
+ok mod hex 1c00 128
+ok mod hex 1c80 128
+ok mod hex 1d00 128
+ok mod hex 1d80 128
+ok mod hex 1e00 128
+ok mod hex 1e80 128
+ok mod hex 1f00 128
+ok mod hex 1f80 128
+ok mod hex 2000 128
+ok mod hex 2080 128
+ok mod hex 2100 128
+ok mod hex 2180 106
+mod run serial=1795038522 code=8658
+mod say ysf start s=150 v34=1c at=ok scratch=7696 need=4848 tap=1
+mod say st 1000 halves=31 gaps=0 frames=0 lost=0 bad=0 rssi=-90
+mod say st 2018 halves=63 gaps=0 frames=0 lost=0 bad=0 rssi=-65
+mod say st 3018 halves=94 gaps=0 frames=0 lost=0 bad=0 rssi=-65
+mod say st 4034 halves=126 gaps=0 frames=0 lost=0 bad=0 rssi=-65
+mod say st 5034 halves=157 gaps=0 frames=0 lost=0 bad=0 rssi=-65
+mod say f 5554 hdr ok=3 dst=ALL src=AG7EW sc=987 g=2060 m=0
+mod say f 5654 vw fn=0/6 fich=1 ok=1f sf=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d sc=987 g=2028 m=0
+mod say f 5754 vw fn=1/6 fich=1 ok=1f sf=1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b sc=981 g=2003 m=0
+mod say f 5854 vw fn=2/6 fich=1 ok=1f sf=3c3d3e3f404142434445464748494a4b4c4d4e4f50515253545556575859 sc=984 g=2022 m=0
+mod say st 6047 halves=189 gaps=0 frames=4 lost=0 bad=0 rssi=-65
+mod say f 5954 vw fn=3/6 fich=1 ok=1f sf=5a5b5c5d5e5f606162636465666768696a6b6c6d6e6f7071727374757677 sc=973 g=1960 m=7
+mod say f 6054 vw fn=4/6 fich=1 ok=1f sf=78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495 sc=946 g=1961 m=0
+mod say f 6154 vw fn=5/6 fich=1 ok=1f sf=969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3 sc=982 g=2028 m=0
+mod say f 6254 vw fn=6/6 fich=1 ok=1f sf=b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1 sc=982 g=2105 m=0
+mod say f 6354 vw fn=0/6 fich=1 ok=1f sf=d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef sc=983 g=2027 m=0
+mod say f 6454 term ok=3 dst=ALL src=AG7EW sc=983 g=2057 m=0
+mod say st 7047 halves=220 gaps=0 frames=10 lost=0 bad=0 rssi=-65
+mod say f 7074 hdr ok=3 dst=ALL src=AG7EW sc=985 g=2043 m=0
+mod say f 7174 dfr fn=0/7 ok=3 d=ALL       AG7EW| sc=985 g=2033 m=0
+mod say f 7274 dfr fn=1/7 ok=3 d=|00 AG7EW YSF DATA sc=981 g=2033 m=0
+mod say f 7374 dfr fn=2/7 ok=3 d=01 AG7EW YSF DATA|02 AG7EW YSF DATA sc=984 g=2013 m=0
+mod say f 7474 dfr fn=3/7 ok=3 d=03 AG7EW YSF DATA|04 AG7EW YSF DATA sc=981 g=2032 m=0
+mod say f 7574 dfr fn=4/7 ok=3 d=05 AG7EW YSF DATA|06 AG7EW YSF DATA sc=978 g=2017 m=0
+mod say f 7674 dfr fn=5/7 ok=3 d=07 AG7EW YSF DATA|08 AG7EW YSF DATA sc=981 g=2018 m=0
+mod say f 7774 term ok=3 dst=ALL src=AG7EW sc=983 g=2045 m=0
+(1000 audio lines)
+mod say st 8065 halves=252 gaps=0 frames=18 lost=0 bad=0 rssi=-65
+mod say f 8394 hdr ok=3 dst=ALL src=AG7EW sc=982 g=2049 m=0
+mod say f 8494 vw fn=0/6 fich=1 ok=1f sf=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d sc=980 g=2035 m=0
+mod say f 8594 vw fn=1/6 fich=1 ok=1f sf=1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b sc=974 g=1995 m=0
+mod say f 8694 vw fn=2/6 fich=1 ok=1f sf=3c3d3e3f404142434445464748494a4b4c4d4e4f50515253545556575859 sc=978 g=2031 m=0
+mod say f 8794 vw fn=3/6 fich=1 ok=1f sf=5a5b5c5d5e5f606162636465666768696a6b6c6d6e6f7071727374757677 sc=973 g=1981 m=0
+mod say f 8894 vw fn=4/6 fich=1 ok=1f sf=78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495 sc=978 g=2037 m=0
+mod say st 9072 halves=284 gaps=0 frames=24 lost=0 bad=0 rssi=-65
+mod say f 8994 vw fn=5/6 fich=1 ok=1f sf=969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3 sc=976 g=2028 m=4
+mod say f 9094 vw fn=6/6 fich=1 ok=1f sf=b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1 sc=902 g=1987 m=0
+mod say f 9194 vw fn=0/6 fich=1 ok=1f sf=d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef sc=977 g=2018 m=0
+mod say f 9294 term ok=3 dst=ALL src=AG7EW sc=976 g=2049 m=0
+mod say f 9914 hdr ok=3 dst=ALL src=AG7EW sc=981 g=2046 m=0
+mod say st 10077 halves=315 gaps=0 frames=29 lost=0 bad=0 rssi=-65
+mod say f 10014 dfr fn=0/7 ok=3 d=ALL       AG7EW| sc=979 g=2023 m=0
+mod say f 10114 dfr fn=1/7 ok=3 d=|00 AG7EW YSF DATA sc=977 g=2007 m=0
+mod say f 10214 dfr fn=2/7 ok=3 d=01 AG7EW YSF DATA|02 AG7EW YSF DATA sc=978 g=2023 m=0
+mod say f 10314 dfr fn=3/7 ok=3 d=03 AG7EW YSF DATA|04 AG7EW YSF DATA sc=974 g=2004 m=0
+mod say f 10414 dfr fn=4/7 ok=3 d=05 AG7EW YSF DATA|06 AG7EW YSF DATA sc=972 g=2026 m=0
+mod say f 10514 dfr fn=5/7 ok=3 d=07 AG7EW YSF DATA|08 AG7EW YSF DATA sc=976 g=2025 m=0
+mod say f 10614 term ok=3 dst=ALL src=AG7EW sc=980 g=2051 m=0
+mod say st 11077 halves=346 gaps=0 frames=36 lost=0 bad=0 rssi=-65
+mod say f 11234 hdr ok=3 dst=ALL src=AG7EW sc=977 g=2050 m=0
+mod say f 11334 vw fn=0/6 fich=1 ok=1f sf=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d sc=976 g=2042 m=0
+mod say f 11434 vw fn=1/6 fich=1 ok=1f sf=1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b sc=964 g=1990 m=0
+mod say f 11534 vw fn=2/6 fich=1 ok=1f sf=3c3d3e3f404142434445464748494a4b4c4d4e4f50515253545556575859 sc=971 g=2009 m=0
+mod say f 11634 vw fn=3/6 fich=1 ok=1f sf=5a5b5c5d5e5f606162636465666768696a6b6c6d6e6f7071727374757677 sc=962 g=1969 m=0
+mod say f 11734 vw fn=4/6 fich=1 ok=1f sf=78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495 sc=973 g=2028 m=0
+mod say f 11834 vw fn=5/6 fich=1 ok=1f sf=969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3 sc=971 g=2023 m=0
+mod say f 11934 vw fn=6/6 fich=1 ok=1f sf=b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1 sc=973 g=2089 m=0
+mod say st 12097 halves=378 gaps=0 frames=44 lost=0 bad=0 rssi=-65
+mod say f 12034 vw fn=0/6 fich=1 ok=1f sf=d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef sc=970 g=2016 m=13
+mod say f 12134 term ok=3 dst=ALL src=AG7EW sc=908 g=1944 m=2
+mod say f 12754 hdr ok=3 dst=ALL src=AG7EW sc=974 g=2057 m=0
+mod say f 12854 dfr fn=0/7 ok=3 d=ALL       AG7EW| sc=973 g=2035 m=0
+mod say f 12954 dfr fn=1/7 ok=3 d=|00 AG7EW YSF DATA sc=972 g=2011 m=0
+mod say st 13097 halves=409 gaps=0 frames=49 lost=0 bad=0 rssi=-65
+mod say f 13054 dfr fn=2/7 ok=3 d=01 AG7EW YSF DATA|02 AG7EW YSF DATA sc=972 g=2030 m=0
+mod say f 13154 dfr fn=3/7 ok=3 d=03 AG7EW YSF DATA|04 AG7EW YSF DATA sc=968 g=1993 m=0
+mod say f 13254 dfr fn=4/7 ok=3 d=05 AG7EW YSF DATA|06 AG7EW YSF DATA sc=964 g=2021 m=0
+mod say f 13354 dfr fn=5/7 ok=3 d=07 AG7EW YSF DATA|08 AG7EW YSF DATA sc=966 g=2012 m=0
+mod say f 13454 term ok=3 dst=ALL src=AG7EW sc=972 g=2049 m=0
+mod say st 14114 halves=441 gaps=0 frames=54 lost=0 bad=0 rssi=-65
+mod say st 15114 halves=472 gaps=0 frames=54 lost=0 bad=0 rssi=-65
+(2000 audio lines)
+mod say st 16130 halves=504 gaps=0 frames=54 lost=0 bad=0 rssi=-65
+mod say st 17130 halves=535 gaps=0 frames=54 lost=0 bad=0 rssi=-65
+mod say st 18146 halves=567 gaps=0 frames=54 lost=0 bad=0 rssi=-91
+mod say st 19146 halves=598 gaps=0 frames=54 lost=0 bad=0 rssi=-74
+mod say st 20161 halves=630 gaps=0 frames=54 lost=0 bad=0 rssi=-74
+mod say st 21161 halves=661 gaps=0 frames=54 lost=0 bad=0 rssi=-74
+mod say st 22178 halves=693 gaps=0 frames=54 lost=0 bad=0 rssi=-74
+mod say st 23178 halves=724 gaps=0 frames=54 lost=0 bad=0 rssi=-74
+mod say f 23071 hdr ok=3 dst=ALL src=AG7EW sc=996 g=2037 m=0
+mod say f 23171 vw fn=0/6 fich=1 ok=1f sf=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d sc=996 g=2014 m=0
+mod say f 23271 vw fn=1/6 fich=1 ok=1f sf=1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b sc=600 g=1474 m=0
+mod say f 23371 vw fn=2/6 fich=1 ok=1f sf=3c3d3e3f404142434445464748494a4b4c4d4e4f50515253545556575859 sc=995 g=2007 m=0
+mod say f 23471 vw fn=3/6 fich=1 ok=1f sf=5a5b5c5d5e5f606162636465666768696a6b6c6d6e6f7071727374757677 sc=985 g=1993 m=0
+mod say f 23571 vw fn=4/6 fich=1 ok=1f sf=78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495 sc=995 g=2020 m=0
+mod say f 23671 vw fn=5/6 fich=1 ok=1f sf=969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3 sc=993 g=1983 m=0
+mod say f 23771 vw fn=6/6 fich=1 ok=1f sf=b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1 sc=992 g=2068 m=0
+mod say f 23871 vw fn=0/6 fich=1 ok=1f sf=d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef sc=997 g=2049 m=0
+(3000 audio lines)
+mod say f 23971 term ok=3 dst=ALL src=AG7EW sc=994 g=1995 m=1
+mod say st 24194 halves=756 gaps=0 frames=64 lost=0 bad=0 rssi=-74
+mod say f 24591 hdr ok=3 dst=ALL src=AG7EW sc=997 g=2037 m=0
+mod say f 24691 dfr fn=0/7 ok=3 d=ALL       AG7EW| sc=997 g=2063 m=0
+mod say f 24791 dfr fn=1/7 ok=3 d=|00 AG7EW YSF DATA sc=995 g=2029 m=0
+mod say f 24891 dfr fn=2/7 ok=3 d=01 AG7EW YSF DATA|02 AG7EW YSF DATA sc=994 g=2001 m=0
+mod say f 24991 dfr fn=3/7 ok=3 d=03 AG7EW YSF DATA|04 AG7EW YSF DATA sc=997 g=2041 m=0
+mod say st 25194 halves=787 gaps=0 frames=69 lost=0 bad=0 rssi=-74
+mod say f 25091 dfr fn=4/7 ok=3 d=05 AG7EW YSF DATA|06 AG7EW YSF DATA sc=997 g=2030 m=0
+mod say f 25191 dfr fn=5/7 ok=3 d=07 AG7EW YSF DATA|08 AG7EW YSF DATA sc=996 g=2036 m=0
+mod say f 25291 term ok=3 dst=ALL src=AG7EW sc=997 g=2036 m=0
+mod say f 25911 hdr ok=3 dst=ALL src=AG7EW sc=997 g=2026 m=0
+mod say f 26011 vw fn=0/6 fich=1 ok=1f sf=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d sc=997 g=2036 m=0
+mod say st 26205 halves=819 gaps=0 frames=74 lost=0 bad=0 rssi=-74
+mod say f 26111 vw fn=1/6 fich=1 ok=1f sf=1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b sc=996 g=1989 m=0
+mod say f 26211 vw fn=2/6 fich=1 ok=1f sf=3c3d3e3f404142434445464748494a4b4c4d4e4f50515253545556575859 sc=993 g=2048 m=16
+mod say f 26311 vw fn=3/6 fich=1 ok=1f sf=5a5b5c5d5e5f606162636465666768696a6b6c6d6e6f7071727374757677 sc=805 g=1893 m=0
+mod say f 26411 vw fn=4/6 fich=1 ok=1f sf=78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495 sc=993 g=2012 m=0
+mod say f 26511 vw fn=5/6 fich=1 ok=1f sf=969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3 sc=994 g=2020 m=0
+mod say f 26611 vw fn=6/6 fich=1 ok=1f sf=b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1 sc=992 g=2087 m=0
+mod say f 26711 vw fn=0/6 fich=1 ok=1f sf=d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef sc=996 g=2021 m=0
+mod say f 26811 term ok=3 dst=ALL src=AG7EW sc=993 g=2039 m=0
+mod say st 27205 halves=850 gaps=0 frames=82 lost=0 bad=0 rssi=-74
+mod say f 27431 hdr ok=3 dst=ALL src=AG7EW sc=996 g=2043 m=0
+mod say f 27531 dfr fn=0/7 ok=3 d=ALL       AG7EW| sc=996 g=2052 m=0
+mod say f 27631 dfr fn=1/7 ok=3 d=|00 AG7EW YSF DATA sc=995 g=2044 m=0
+mod say f 27731 dfr fn=2/7 ok=3 d=01 AG7EW YSF DATA|02 AG7EW YSF DATA sc=995 g=2037 m=0
+mod say f 27831 dfr fn=3/7 ok=3 d=03 AG7EW YSF DATA|04 AG7EW YSF DATA sc=997 g=2036 m=0
+mod say f 27931 dfr fn=4/7 ok=3 d=05 AG7EW YSF DATA|06 AG7EW YSF DATA sc=998 g=2041 m=0
+mod say f 28031 dfr fn=5/7 ok=3 d=07 AG7EW YSF DATA|08 AG7EW YSF DATA sc=997 g=2045 m=0
+mod say st 28205 halves=881 gaps=0 frames=89 lost=0 bad=0 rssi=-74
+mod say f 28131 term ok=3 dst=ALL src=AG7EW sc=992 g=2033 m=0
+mod say f 28751 hdr ok=3 dst=ALL src=AG7EW sc=996 g=2022 m=0
+mod say f 28851 vw fn=0/6 fich=1 ok=1f sf=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d sc=996 g=2044 m=0
+mod say f 28951 vw fn=1/6 fich=1 ok=1f sf=1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b sc=994 g=1978 m=0
+mod say f 29051 vw fn=2/6 fich=1 ok=1f sf=3c3d3e3f404142434445464748494a4b4c4d4e4f50515253545556575859 sc=995 g=1991 m=0
+mod say st 29215 halves=913 gaps=0 frames=94 lost=0 bad=0 rssi=-74
+mod say f 29151 vw fn=3/6 fich=1 ok=1f sf=5a5b5c5d5e5f606162636465666768696a6b6c6d6e6f7071727374757677 sc=986 g=1995 m=0
+mod say f 29251 vw fn=4/6 fich=1 ok=1f sf=78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495 sc=994 g=2029 m=5
+mod say f 29351 vw fn=5/6 fich=1 ok=1f sf=969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3 sc=742 g=1666 m=0
+mod say f 29451 vw fn=6/6 fich=1 ok=1f sf=b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1 sc=994 g=2105 m=0
+mod say f 29551 vw fn=0/6 fich=1 ok=1f sf=d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef sc=995 g=2005 m=0
+mod say f 29651 term ok=3 dst=ALL src=AG7EW sc=991 g=2054 m=0
+mod say st 30215 halves=944 gaps=0 frames=100 lost=0 bad=0 rssi=-74
+mod say f 30271 hdr ok=3 dst=ALL src=AG7EW sc=995 g=2011 m=0
+mod say f 30371 dfr fn=0/7 ok=3 d=ALL       AG7EW| sc=997 g=2032 m=0
+mod say f 30471 dfr fn=1/7 ok=3 d=|00 AG7EW YSF DATA sc=994 g=2045 m=0
+mod say f 30571 dfr fn=2/7 ok=3 d=01 AG7EW YSF DATA|02 AG7EW YSF DATA sc=993 g=2029 m=0
+mod say f 30671 dfr fn=3/7 ok=3 d=03 AG7EW YSF DATA|04 AG7EW YSF DATA sc=995 g=2074 m=0
+mod say f 30771 dfr fn=4/7 ok=3 d=05 AG7EW YSF DATA|06 AG7EW YSF DATA sc=993 g=2046 m=0
+mod say f 30871 dfr fn=5/7 ok=3 d=07 AG7EW YSF DATA|08 AG7EW YSF DATA sc=996 g=2030 m=0
+mod say f 30971 term ok=3 dst=ALL src=AG7EW sc=996 g=2051 m=0
+mod say st 31233 halves=976 gaps=0 frames=108 lost=0 bad=0 rssi=-74
+(4000 audio lines)
+mod say st 32233 halves=1007 gaps=0 frames=108 lost=0 bad=0 rssi=-74
+mod say st 33250 halves=1039 gaps=0 frames=108 lost=0 bad=0 rssi=-74
+mod say st 34250 halves=1070 gaps=0 frames=108 lost=0 bad=0 rssi=-74
+mod say st 35266 halves=1102 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 36266 halves=1133 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 37282 halves=1165 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 38282 halves=1196 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 39297 halves=1228 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+(5000 audio lines)
+mod say st 40297 halves=1259 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 41313 halves=1291 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 42313 halves=1322 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 43330 halves=1354 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 44330 halves=1385 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 45346 halves=1417 gaps=0 frames=108 lost=0 bad=0 rssi=-95
+mod say st 46346 halves=1448 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 47362 halves=1480 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+(6000 audio lines)
+mod say st 48362 halves=1511 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 49378 halves=1543 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 50378 halves=1574 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 51393 halves=1606 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 52393 halves=1637 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 53410 halves=1669 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 54410 halves=1700 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 55426 halves=1732 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+(7000 audio lines)
+mod say st 56426 halves=1763 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 57442 halves=1795 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 58442 halves=1826 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 59457 halves=1858 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 60457 halves=1889 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 61473 halves=1921 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 62473 halves=1952 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 63489 halves=1984 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+(8000 audio lines)
+mod say st 64489 halves=2015 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 65505 halves=2047 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 66505 halves=2078 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 67521 halves=2110 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 68521 halves=2141 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 69536 halves=2173 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 70536 halves=2204 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 71552 halves=2236 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+(9000 audio lines)
+mod say st 72552 halves=2267 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 73569 halves=2299 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 74569 halves=2330 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 75585 halves=2362 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 76585 halves=2393 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 77601 halves=2425 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 78601 halves=2456 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 79616 halves=2488 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+(10000 audio lines)
+mod say st 80616 halves=2519 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 81632 halves=2551 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 82632 halves=2582 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 83649 halves=2614 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 84649 halves=2645 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 85665 halves=2677 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 86665 halves=2708 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 87681 halves=2740 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+(11000 audio lines)
+mod say st 88681 halves=2771 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 89697 halves=2803 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 90697 halves=2834 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 91712 halves=2866 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 92712 halves=2897 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 93729 halves=2929 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 94729 halves=2960 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 95745 halves=2992 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+(12000 audio lines)
+mod say st 96745 halves=3023 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 97761 halves=3055 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 98761 halves=3086 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 99776 halves=3118 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 100776 halves=3149 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 101793 halves=3181 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 102793 halves=3212 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 103809 halves=3244 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+(13000 audio lines)
+mod say st 104809 halves=3275 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 105825 halves=3307 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 106825 halves=3338 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 107841 halves=3370 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 108841 halves=3401 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 109856 halves=3433 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 110856 halves=3464 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 111872 halves=3496 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+(14000 audio lines)
+mod say st 112872 halves=3527 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 113889 halves=3559 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 114889 halves=3590 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 115905 halves=3622 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 116905 halves=3653 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 117921 halves=3685 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 118921 halves=3716 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 119936 halves=3748 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+(15000 audio lines)
+mod say st 120936 halves=3779 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 121953 halves=3811 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 122953 halves=3842 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 123969 halves=3874 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 124969 halves=3905 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 125985 halves=3937 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 126985 halves=3968 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+(16000 audio lines)
+mod say st 128001 halves=4000 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 129001 halves=4031 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 130017 halves=4063 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 131017 halves=4094 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 132032 halves=4126 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 133032 halves=4157 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 134049 halves=4189 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 135049 halves=4220 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+(17000 audio lines)
+mod say st 136065 halves=4252 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 137065 halves=4283 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 138081 halves=4315 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+mod say st 139081 halves=4346 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 140096 halves=4378 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 141096 halves=4409 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 142113 halves=4441 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 143113 halves=4472 gaps=0 frames=108 lost=0 bad=0 rssi=-91
+(18000 audio lines)
+mod say st 144129 halves=4504 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 145129 halves=4535 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say st 146145 halves=4567 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 147145 halves=4598 gaps=0 frames=108 lost=0 bad=0 rssi=-94
+mod say st 148161 halves=4630 gaps=0 frames=108 lost=0 bad=0 rssi=-93
+mod say st 149161 halves=4661 gaps=0 frames=108 lost=0 bad=0 rssi=-92
+mod say end halves=4688 gaps=0 frames=108 lost=0 bad=0 hdr=12 vw=48 dfr=36 dn=0 term=12 sf=240/240 first=000102030405 last=eaebecedeeef
+ok mod run ret=0 ms=150026
