@@ -97,14 +97,25 @@ def corners(resp_db):
     return (ok[0], ok[-1]) if ok else (None, None)
 
 
-def tap_bert(x, fs=8000):
-    """M17 BERT frames from tap audio: x6 to 48 kHz, scaled so its rms is a 4FSK's at 2400 Hz"""
+def tap_bert(x, fs=8000, polarity=0):
+    """M17 BERT frames from tap audio: x6 to 48 kHz, scaled so its rms is a 4FSK's at 2400 Hz.
+    polarity 0 tries both and keeps the one with more frames (the UV-380's tap is inverted: +3
+    reads negative, 11-18 run m17rx-tap-1118a); the summary's "polarity" says which"""
     from scipy import signal
     y = signal.resample_poly(x - np.mean(x), FS // fs, 1)
     rms = np.sqrt(np.mean(y ** 2)) or 1.0
     y = y / rms * (m17.OUTER_HZ * np.sqrt(5) / 3)
-    frames = m17.demod(y, FS, 0.5)
-    return m17.summarize(frames), frames
+    best = None
+    for pol in ((polarity,) if polarity else (-1, 1)):
+        frames = m17.demod(pol * y, FS, 0.5)
+        s = m17.summarize(frames)
+        # good frames only: inverted BERT (sync DF55) reads as packet syncs (75FF), all junk
+        good = s["bert_frames"] + s["lsf"] + s["packets"] + s["stream"] - s["lich_bad"]
+        if best is None or good > best[0]:
+            best = (good, pol, frames, s)
+    _, pol, frames, s = best
+    s["polarity"] = pol
+    return s, frames
 
 
 def tap_report(lines, wav=None):
@@ -132,8 +143,9 @@ def tap_report(lines, wav=None):
         s, _ = tap_bert(seg)
         if s["bert_frames"]:
             b0 = d["bert"] or {"bert_frames": 0, "bert_bits": 0, "bert_errors": 0}
-            for key in b0:
+            for key in ("bert_frames", "bert_bits", "bert_errors"):
                 b0[key] += s[key]
+            b0.setdefault("windows", []).append((a / 8000, s["bert_frames"], s["bert_errors"], s["polarity"]))
             d["bert"] = b0
     out.append("tone dB vs 1 kHz: " + " ".join(f"{f}" for f in TONES))
     for v, d in per.items():
@@ -149,6 +161,8 @@ def tap_report(lines, wav=None):
         if b:
             out.append(f"{name} BERT: {b['bert_frames']} frames, {b['bert_errors']} of {b['bert_bits']} bits wrong"
                        f" (BER {b['bert_errors'] / max(1, b['bert_bits']):.2e})")
+            out.append(f"{name} BERT windows (s, frames, bits wrong, polarity): "
+                       + " ".join(f"{t:.0f}:{n}/{e}{'+' if p > 0 else '-'}" for t, n, e, p in b["windows"]))
         else:
             out.append(f"{name} BERT: no frames")
     return out
@@ -251,12 +265,12 @@ def phy_report(lines):
 
 # ---- simulated logs (tests) ---------------------------------------------------------------------
 
-def sim_tap_log(hp_hz=0.0, top_hz=3400.0, tones_s=6.0, bert_s=6.0, v34=(0x1C,), step_s=None):
+def sim_tap_log(hp_hz=0.0, top_hz=3400.0, tones_s=6.0, bert_s=6.0, v34=(0x1C,), step_s=None, invert=False):
     """a c6fmtap log of the test signal through a flat FM receiver, an optional one-pole high pass
     and a low pass, at 8 kHz (scaled like a discriminator, 2400 Hz = 8000)"""
     from scipy import signal
     x, _ = test_signal(tones_s, bert_s, FS)
-    x = x / HALF * 8000
+    x = x / HALF * 8000 * (-1 if invert else 1)
     if hp_hz:
         b, a = signal.butter(1, hp_hz, "high", fs=FS)
         x = signal.lfilter(b, a, x)

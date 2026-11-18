@@ -14,16 +14,18 @@
    - C6000 in FM receive (0x10 = 0x80, 0x60 = 0x00, 0x26 = 0xFD), 0x81 |= 0x02 (unmask bit 1);
    - 0x34 stepped through TAP_V34 every TAP_STEP_MS (bit 7 band-pass, 6 expander, 5 de-emphasis,
      2 RX bandwidth 25 kHz), so one Pluto send measures every setting;
-   - which half to read: every ms it reads sample 0 and sample 255 of both halves. When a half's
-     sample 0 changes the chip has started writing it, so the other half is complete (a
-     progressive fill); if its sample 255 changed at the same moment the half was written as a
-     block and it is the complete one. Each complete half goes out as four rxrec "a" lines.
+   - which half to read (TAP_FLAG 1, the default): 0x82 bit 1 comes as each half completes; the
+     complete one is the half whose sample 255 changed since the last flag ("prog"; neither or
+     both changed: the other half from last time, "alt"). TAP_FLAG 0 (run m17rx-tap-1118a, about
+     one glitch every 2 s): every ms sample 0 and sample 255 of both halves; a half whose sample 0
+     changed has started, so the other is complete (or itself, if its sample 255 changed too,
+     "block"). Each complete half goes out as four rxrec "a" lines.
    Lines (tools/uv380_i2sprobe.py audio LOG OUT.raw reads the "a" lines; a lost half is a gap of
    four sequence numbers, filled with zeros):
      tap start v34=1c,18,3c,9c step=5000 s=120 at=ok
      a SEQ hhhh x64              64 samples, signed 16-bit as hex, SEQ counts lines from 0
      v T idx=I 34=XX seq=SEQ     a new 0x34 setting from line SEQ on
-     d T half=H mode=prog|block  the first TAP_DIAG decisions (which half, how it was found)
+     d T half=H mode=prog|alt|block  the first TAP_DIAG decisions (which half, how found)
      st T halves= gaps= flags= prog= block= rssi= 43= 4e= 4f=   once a second
      end halves= gaps= flags= prog= block=
    SPDX-License-Identifier: MIT */
@@ -42,6 +44,9 @@
 #endif
 #ifndef TAP_AT
 #define TAP_AT 1
+#endif
+#ifndef TAP_FLAG
+#define TAP_FLAG 1              /* 1: halves on 0x82 bit 1; 0: on sample 0 changes (run 11-18a) */
 #endif
 #ifndef TAP_DIAG
 #define TAP_DIAG 12u
@@ -140,16 +145,33 @@ int uv_main(const ortx_api_t *api) {
             api->c6000_write(0x83, f);
         }
         unsigned s0[2], se[2];
-        s0[0] = rd16(api, HALF0), s0[1] = rd16(api, HALF1);
-        se[0] = rd16(api, HALF0 + 510u), se[1] = rd16(api, HALF1 + 510u);
         int done = -1, isblock = 0;
-        for (unsigned h = 0; h < 2u && done < 0; h++) {
-            if (s0[h] != p0[h] && s0[h] <= 0xFFFFu && p0[h] <= 0xFFFFu) {
-                isblock = se[h] != pe[h];
-                done = isblock ? (int)h : (int)(1u - h);
+        if (TAP_FLAG) {
+            /* 0x82 bit 1 comes as a half completes (31.25 a second, 11-18): the complete half is
+               the one whose last sample changed since the last flag; the half now filling still
+               holds what it had 32 ms ago. Neither or both changed: the other half from last */
+            if (f & 0x02u) {
+                se[0] = rd16(api, HALF0 + 510u), se[1] = rd16(api, HALF1 + 510u);
+                unsigned c0 = se[0] != pe[0], c1 = se[1] != pe[1];
+                if (c0 != c1) {
+                    done = c0 ? 0 : 1;
+                } else {
+                    done = last < 2u ? (int)(1u - last) : 0;
+                    isblock = 1;                /* counted as "alt": a guess */
+                }
+                pe[0] = se[0], pe[1] = se[1];
             }
+        } else {
+            s0[0] = rd16(api, HALF0), s0[1] = rd16(api, HALF1);
+            se[0] = rd16(api, HALF0 + 510u), se[1] = rd16(api, HALF1 + 510u);
+            for (unsigned h = 0; h < 2u && done < 0; h++) {
+                if (s0[h] != p0[h] && s0[h] <= 0xFFFFu && p0[h] <= 0xFFFFu) {
+                    isblock = se[h] != pe[h];
+                    done = isblock ? (int)h : (int)(1u - h);
+                }
+            }
+            p0[0] = s0[0], p0[1] = s0[1], pe[0] = se[0], pe[1] = se[1];
         }
-        p0[0] = s0[0], p0[1] = s0[1], pe[0] = se[0], pe[1] = se[1];
         if (done >= 0) {
             if ((unsigned)done == last) {
                 gaps++;
@@ -161,7 +183,7 @@ int uv_main(const ortx_api_t *api) {
             if (diag < TAP_DIAG) {
                 diag++;
                 api->fmt(line, sizeof line, "d %lu half=%d mode=%s f=%02x", (unsigned long)t, done,
-                         isblock ? "block" : "prog", f);
+                         isblock ? (TAP_FLAG ? "alt" : "block") : "prog", f);
                 api->say(line);
             }
             dump(api, done ? HALF1 : HALF0, &seq);
