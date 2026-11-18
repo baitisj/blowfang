@@ -1,12 +1,62 @@
 {
  "id": "ysf-ftm-1118g",
- "status": "running",
- "since": "2026-11-18T07:10:07Z",
+ "who": "c4fm",
+ "started": "2026-11-18T07:10:09Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-18T07:10:09Z",
+   "ended": "2026-11-18T07:10:11Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T07:10:11Z",
+   "ended": "2026-11-18T07:10:26Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.ysf",
+   "started": "2026-11-18T07:10:26Z",
+   "ended": "2026-11-18T07:10:57Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.ysf",
+   "started": "2026-11-18T07:10:57Z",
+   "ended": "2026-11-18T07:11:29Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T07:11:29Z",
+   "ended": "2026-11-18T07:11:35Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T07:11:35Z",
+   "ended": "2026-11-18T07:12:07Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26",
+ "head": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-8ee381027746",
+ "sources_head": "8ee3810277462fac53f84eeadf197b64cc208c19",
+ "ended": "2026-11-18T07:12:07Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "5a08fa32ea1cee9b437c85db4b5fb5eaff7ee1ca",
   "path": "jobs/ysf-ftm-1118g"
  },
  "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
- "updated": "2026-11-18T07:10:07Z"
+ "updated": "2026-11-18T07:12:07Z"
 }
