@@ -1,0 +1,86 @@
+{
+ "id": "c4fm-1118b",
+ "who": "c4fm",
+ "freq_mhz": 440.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 360,
+   "file": "k6.log"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 20,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:c4ysf.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "3",
+    "--rate",
+    "F18",
+    "--rate-state",
+    "run:k6-rate.json"
+   ],
+   "continue_on_error": true,
+   "sha256": "7377dfd520e744c114e943de7e41a2b8f134b292e6e53ba544758673df8fce4d"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c4.wav",
+    "--hz",
+    "440850500",
+    "--seconds",
+    "60"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4ysf (sent|w=)|K6 MOD ret=",
+   "seconds": 120,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 90
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
