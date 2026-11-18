@@ -60,10 +60,20 @@
    "id": "refcal-c1118-10",
    "who": "refcal",
    "not_before": "2026-11-18T13:30:00Z"
+  },
+  {
+   "id": "refcal-c1118-11",
+   "who": "refcal",
+   "not_before": "2026-11-18T14:15:00Z"
+  },
+  {
+   "id": "refcal-c1118-12",
+   "who": "refcal",
+   "not_before": "2026-11-18T15:00:00Z"
   }
  ],
- "last_poll": "2026-11-18T05:19:34Z",
+ "last_poll": "2026-11-18T05:20:35Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T05:19:34Z"
+ "updated": "2026-11-18T05:20:35Z"
 }

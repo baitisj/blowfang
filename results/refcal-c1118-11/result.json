@@ -1,0 +1,12 @@
+{
+ "id": "refcal-c1118-11",
+ "status": "queued",
+ "queued": "2026-11-18T05:20:35Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "a79659eb4011cfaeaabc85886af51cbec540d466",
+  "path": "jobs/refcal-c1118-11"
+ },
+ "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "updated": "2026-11-18T05:20:35Z"
+}
