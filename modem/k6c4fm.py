@@ -147,6 +147,52 @@ def sotto_frames(path=SOTTO_BIT, src=ysf.IDENT, ncalls=3):
     return out
 
 
+DMR_NSF = 6                         # c4dmr.c: the test message's sotto 1200 superframes (36 bytes)
+DMR_CHUNKS = 12                     # its stream (20 frames of 60 ms) as 480-symbol table frames
+DMR_CALLS = ((0, DMR_CHUNKS),) * 5  # c4dmr.c: (first frame, frames) a call, a sweep of five
+DMR_Q = (0, 0, 0, 0, 0)             # their size timing, quarter symbols from the lag (dmr2: 0 best)
+DMR_INNER = (4, 5, 6, 7, 8)         # their inner REG_70 gain (outer 56); dmr1 (11-18): 19 = half the
+                                    # outer; dmr2: 8 best of 8, 11, 14
+DMR_INV = (0, 0, 0, 0, 0)
+DMR_FRAMES = 3                      # table frames a packet: 1440 symbols = 5 DMR frames, so a packet
+                                    # ends on a frame's end and the 48 erased symbols at the splice
+                                    # are the end of slot 2's idle burst
+
+
+def _dmrburst():
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+    import uv380_dmrburst
+    return uv380_dmrburst
+
+
+def dmr_message(nsf=DMR_NSF):
+    """c4dmr's message: the bench's test pattern (nsf superframes counting up) as dmrsotto blocks
+    (head, 'AG7EW' text, data, end)"""
+    from . import dmrsotto
+    ub = _dmrburst()
+    return dmrsotto.pack(ub.test_message(nsf), text=ysf.IDENT)
+
+
+def dmr_symbols(nsf=DMR_NSF):
+    """the message as tools/uv380_dmrburst.py's repeater-style stream (BS data sync, CACH, slot 2
+    idle; lead-in idle frames, CSBK preambles, the rate 1/2 blocks in slot 1, idle frames): what
+    the UV-380's C6000 locked on from the IC-7100, 4800 symbols a second, +-1 +-3"""
+    return _dmrburst().stream_symbols(dmr_message(nsf))
+
+
+def dmr_frames(nsf=DMR_NSF):
+    """c4dmr's frame table (C4_DMRS): the stream cut into 480-symbol frames as 960-bit dibit
+    arrays (YSF's mapping, which is DMR's: +3 01, +1 00, -1 10, -3 11)"""
+    sym = dmr_symbols(nsf)
+    assert len(sym) == DMR_CHUNKS * FRAME_SYMS_480, len(sym)
+    dib = {3: (0, 1), 1: (0, 0), -1: (1, 0), -3: (1, 1)}
+    bits = np.array([b for v in sym for b in dib[int(v)]], np.int8)
+    return [bits[k * 960:(k + 1) * 960] for k in range(DMR_CHUNKS)]
+
+
+FRAME_SYMS_480 = 480
+
+
 def all_frames(sotto=False, chain=False):
     """the module's frame table: the data transmission (0-3), then the DN calls (4-7, 8-11);
     with sotto (c4sotto.c, C4_SOTTO) the three sotto data calls too (12-23); with chain
@@ -280,6 +326,8 @@ def header(path):
         arr("C4_YSF_SIZE", b"".join(sz))
     lines.append("#if C4_SOTTO   /* c4sotto.c: frames 12-23 = the sotto clip (c4sotto.bit) in three data calls */")
     tables(all_frames(sotto=True))
+    lines.append("#elif C4_DMRS   /* c4dmr.c: frames 0-11 = a DMR repeater-style stream, the test message */")
+    tables(dmr_frames())
     lines.append("#elif C4_CHAIN   /* c4ftm.c: frames 4-13 = one DN call, header, FN 0-7, terminator */")
     tables(all_frames(chain=True))
     lines.append("#else")

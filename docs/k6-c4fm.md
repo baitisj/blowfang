@@ -293,4 +293,15 @@ long calls had FN 0-7 from AG7EW, and frame spacing was off by at most 0.2 symbo
 the rate packets followed it. The capture and K6 log are in the project files under
 `k6-c4fm/ftm6/`.
 
+## The whole sotto clip over C4FM (2026-11-18 20:52Z, job c4fm-sotto4)
+
+c4sotto from main, unchanged (11,277 B), uploaded with `--telemetry 0`, to the Pluto only. The
+Pluto's plain YSF receiver (`modem.ysf.demod`) decoded all 20 frames with a good FICH, and all 12
+data blocks of the clip, every one matching `c4sotto.bit`: 240 of 240 bytes. That makes the
+received sotto 400 audio identical to the sent clip. Earlier runs had lost D3 (sotto2: 5 of 12
+blocks; sotto3: 200 of 240 bytes through the UV-380 tap). With telemetry off nothing writes over
+the module's tail, which supports the telemetry-overwrite explanation. Symbol errors per data call:
+D1 260, D2 241, D3 167 of 2048 (the outer FEC carries them); grid starts within 0.2 symbol. The
+capture, K6 log and analysis are in the project files under `k6-c4fm/sotto4/`.
+
 SPDX-License-Identifier: MIT

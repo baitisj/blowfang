@@ -74,6 +74,9 @@
 #ifndef C4_CHAIN
 #define C4_CHAIN 0          /* 1 (c4ftm.c, with C4_DEMO): calls longer than a packet, packets back to back */
 #endif
+#ifndef C4_DMRS
+#define C4_DMRS 0           /* 1 (c4dmr.c, with C4_CHAIN): the table is a DMR stream (k6c4fm.dmr_frames) */
+#endif
 #include "c4probe_frames.h"   /* C4_PN, C4_YSF_SIGN, C4_YSF_SIZE */
 #ifndef K6_NAME
 #define K6_NAME "C4FM LOCK"
@@ -178,7 +181,11 @@ K6_MODULE_NAME(K6_NAME);
    2 sync bytes) goes out, so that its first frame's sync lands where the call's lattice puts it.
    Its enable goes an exact number of symbols after the call's first packet's: on the chip's
    continuous grid that start comes out the same way the first one's did. */
+#if C4_DMRS
+#define CH_FRAMES 3u                                /* 1440 symbols = 5 DMR frames (k6c4fm.DMR_FRAMES) */
+#else
 #define CH_FRAMES 4u
+#endif
 #define CH_E 3u
 #define CH_CTRL 0x0000u                             /* 1 preamble byte, 2-byte sync, no scrambler */
 #define CH_LEAD 24u
@@ -206,7 +213,11 @@ K6_MODULE_NAME(K6_NAME);
 #define GAP_MS 0u
 #endif
 #define A_FIRST (-6)
-#if C4_CHAIN
+#if C4_DMRS
+#define NB 5
+#define CH_PKTS 20                                  /* packets in the NB calls: 4 each */
+#define B_MS 1900u
+#elif C4_CHAIN
 #define NB 3
 #define CH_PKTS 7                                   /* packets in the NB calls: 3, 3, 1 */
 #define B_MS 1700u
@@ -251,7 +262,16 @@ K6_MODULE_NAME(K6_NAME);
 #define UNIT_MS (1200u / ID_WPM)
 #define ID_UNITS 52                                 /* AG7EW: A 8, G 12, 7 16, E 4, W 12 */
 
-#if C4_CHAIN
+#if C4_DMRS
+/* the stream five times, a sweep (k6c4fm.DMR_CALLS, DMR_Q, DMR_INNER): dmr1 (11-18) at inner 19
+   came out at half the outer (DMR's is a third), 11% of symbols wrong, mostly inner for outer;
+   dmr2: inner 8 best (5.6% wrong, whole message), q 0 better than -1 or +1 */
+static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
+static const uint8_t BF0[NB] = {0, 0, 0, 0, 0};
+static const uint8_t BNF[NB] = {12, 12, 12, 12, 12};
+static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};
+static const uint8_t BIN[NB] = {4, 5, 6, 7, 8};
+#elif C4_CHAIN
 static const int8_t BQ[NB] = {0, 0, 0};
 static const uint8_t BF0[NB] = {4, 4, 0};           /* each call's first frame and frames (k6c4fm.CHAIN_CALLS): */
 static const uint8_t BNF[NB] = {10, 10, 4};         /* DN header, FN 0-7, terminator twice; data */
@@ -297,6 +317,12 @@ typedef struct {
   int32_t cn[NCAL];
   uint8_t cok[NCAL];
   uint32_t th;              /* the data packets' enable phase, sixteenths of a symbol */
+#if C4_DMRS
+  uint32_t gin;             /* the inner size's REG_70 gain: the call's BIN */
+#define GIN (s->gin)
+#else
+#define GIN C4_INNER
+#endif
   int32_t ustar, ubar;      /* enable to done less the packet: at th, and on average (cycles) */
   int32_t v[8];
   int32_t cppm;             /* the rate after the calibration, 0.1 ppm */
@@ -817,7 +843,7 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
     unsigned want = kd < nfs ? bit(sz, kd) : 1u;
     uint32_t at = tick(s, n0 + (int32_t)k) + (uint32_t)off;
     if (want != cur) {
-      timed(s, at, R_TONE, G(want ? C4_GAIN : C4_INNER));
+      timed(s, at, R_TONE, G(want ? C4_GAIN : GIN));
       s->w++;
       cur = want;
     } else if (sent < nw && sent < (k >> 4) + ahead && (kd + 1 >= nfs || bit(sz, kd + 1) == cur)) {
@@ -866,7 +892,7 @@ static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t
     unsigned want = k < nfs ? bit(sz, k) : 1u;
     uint32_t at = tick(s, n0 + (int32_t)k) + (uint32_t)off;
     if (want != cur) {
-      timed(s, at, R_TONE, G(want ? C4_GAIN : C4_INNER));
+      timed(s, at, R_TONE, G(want ? C4_GAIN : GIN));
       s->w++;
       cur = want;
     } else if (sent < nw && sent < (k >> 4) + FIFO_WORDS - 20u && (k + 1 >= nfs || bit(sz, k + 1) == cur)) {
@@ -1095,6 +1121,9 @@ static int burst(c4_t *s) {
     if (GAP_MS && k && (r = until(api, api->ms() + GAP_MS)) != 0) return r;
     if ((r = resync(s, NR + k)) != 0) return r;
 #if C4_CHAIN
+#if C4_DMRS
+    s->gin = BIN[k];
+#endif
     if ((r = call(s, BF0[k], BNF[k], BQ[k], BINV[k] ? 0xFFFFu : 0u)) != 0) return r;
 #else
     if ((r = data(s, BSET[k] * C4_NFRAMES, C4_NFRAMES, BQ[k], BINV[k] ? 0xFFFFu : 0u, 0)) != 0) return r;
@@ -1362,6 +1391,9 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   s.latlo = -2000000;
   s.lathi = 2000000;
   s.n00 = 0;
+#if C4_DMRS
+  s.gin = C4_INNER;
+#endif
 #endif
   s.rppm = C4_PPM * 10;
   for (i = 0; i < NR + NB; i++) s.rq[i] = 0;

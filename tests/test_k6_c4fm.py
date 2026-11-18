@@ -315,6 +315,7 @@ def test_ysf_module_sends_whole_transmissions():
 LOCK_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4lock.c")
 FTM_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4ftm.c")
 SOTTO_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4sotto.c")
+DMR_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4dmr.c")
 FIFO_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4fifo.c")
 LOCK_GAIN = define("C4_GAIN", LOCK_SRC)
 
@@ -543,6 +544,39 @@ def test_sotto_demo_carries_the_clip():
     data = b"".join(f["dch"][0] + f["dch"][1] for f in res["plain"]["list"]
                     if f["fich"] is not None and f["fich"].dt == ysf.DT_DATA_FR and f["fich"].fi == ysf.FI_COMMS)
     assert data == open(k6c4fm.SOTTO_BIT, "rb").read()
+
+
+@need_clang
+def test_dmr_stream_carries_the_message():
+    """c4dmr (C4_DMRS): the DMR stream five times as chained calls (4 packets, 5 DMR frames each),
+    a sweep of the inner gain and size timing; on air a DMR receiver (the bench decoder of the
+    UV-380's stream) gets every rate 1/2 block of the test message from each call, and dmrsotto
+    unpacks it; each call's inner symbols at its own gain"""
+    pytest.importorskip("unicorn")
+    from modem import dmrsotto
+    ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=DMR_SRC)
+    calls = k6c4fm.DMR_CALLS
+    chunks = [-(-nf // k6c4fm.DMR_FRAMES) for _, nf in calls]
+    npkt = k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(calls) + sum(chunks)
+    assert ret == npkt, said
+    ch = next(s for s in said if s.startswith("c4lock chain "))
+    m = re.match(r"c4lock chain n=(\d+) late=(\d+) lat=(-?\d+)/(-?\d+) d=([-\d,]+)$", ch)
+    assert m and int(m.group(1)) == sum(chunks) - len(calls) and m.group(2) == "0", ch
+    ub = k6c4fm._dmrburst()
+    d = air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8)
+    want = k6c4fm.dmr_message()
+    pk = fsk.pkts
+    t_calls = [pk[i]["t_start"] for i in range(len(pk) - 1) if pk[i]["lead"] != 24 and pk[i + 1]["lead"] == 24]
+    assert len(t_calls) == len(calls), t_calls
+    for j, t0 in enumerate(t_calls):
+        a = int(t0 * 1e-6 * 48000) - 4800
+        ev_, blocks, msg = ub.decode(d[a:a + 48000 * 3] / 2700.0 * 0.35, 48000)
+        assert blocks == want, (j, len(blocks))
+        assert msg["msg"] == ub.test_message(k6c4fm.DMR_NSF) and msg["text"] == "AG7EW", msg
+        assert msg["lost"] == 0 and msg["bad"] == 0 and msg["end"], msg
+    g70 = [v & 0x7F for _, r, v in ev if r == 0x70 and v & 0x80]
+    for g in k6c4fm.DMR_INNER:
+        assert g in g70, g
 
 
 # ---------------------------------------------------------------- c4fifo (the timing probe)
