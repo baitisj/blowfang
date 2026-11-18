@@ -10,10 +10,15 @@
    "id": "refcal-cool-1118-r4",
    "who": "refcal",
    "not_before": "2026-11-18T03:36:55Z"
+  },
+  {
+   "id": "m17rx-onradio-1118b",
+   "who": "m17rx",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T02:51:56Z",
+ "last_poll": "2026-11-18T02:53:59Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T02:52:12Z"
+ "updated": "2026-11-18T02:54:00Z"
 }
