@@ -1,0 +1,12 @@
+{
+ "id": "ysf-ftm-1118f",
+ "status": "queued",
+ "queued": "2026-11-18T07:03:51Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "27200dd0538ca50dfe9fc2216a6c0a645e5d39a0",
+  "path": "jobs/ysf-ftm-1118f"
+ },
+ "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "updated": "2026-11-18T07:03:51Z"
+}
