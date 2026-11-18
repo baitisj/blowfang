@@ -680,3 +680,12 @@ def test_key_file_is_hex_text(work):
     assert br.read_key() is None
     p, h = stage(work, "k.bin", KEY)
     assert "no module key" in problems(job("a", {"do": "k6.update", "image": p, "sha256": h, "commit": "8a78fb5"}))
+
+
+def test_uv380_scan_never_sets_the_tx_bit():
+    """atscan moves only the AT1846S's receive frequency; register 0x30's tx bit is only ever tested
+    (& R30_TX) or masked off (~R30_TX, ~R30_RXTX)"""
+    src = open(os.path.join(REPO, "firmware", "uv380-openrtx", "mod", "atscan.c")).read()
+    for m in re.finditer(r"R30_(TX|RXTX)\b", src):
+        before = src[max(0, m.start() - 8):m.start()]
+        assert before.endswith(("& ", "~", "#define ")), src[m.start() - 40:m.end() + 10]
