@@ -94,6 +94,7 @@ LOCK_NCAL = 17                      # c4lock.c (run 3): calibration packets (64 
 LOCK_CAL_SYMS = 64
 LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, quarter symbols
 LOCK_B = (-2, -1, 0, 1, 2)          # its whole-transmission packets'
+LOCK3_B = (-4, -2, 0, 2, 4)         # run 3's (plan 'lock3'; its lag was 8)
 LOCK_LAG4 = 9                       # its C4_LAG4
 PAD_SYMS = 16                       # c4lock's outer alternation after the frames (FIFO word 0x5555)
 
@@ -102,9 +103,10 @@ def packets(plan="probe"):
     """every packet in send order: dicts name, chip (the FIFO bits: 480 a frame), size (1 outer,
     0 inner, None = all outer), mode ('none', 'gain', 'dev', 'size'), off (quarter symbols),
     frames (YSF frame indices, one per 480 symbols), r2b (P4), pre (FIFO words first).
-    plan 'probe': c4probe.c's (run 1); 'ysf': c4ysf.c's (run 2); 'lock': c4lock.c's (run 3)"""
+    plan 'probe': c4probe.c's (run 1); 'ysf': c4ysf.c's (run 2); 'lock': c4lock.c's (run 4 on);
+    'lock3': c4lock.c as run 3 sent it"""
     fr = ysf_frames()
-    if plan == "lock":
+    if plan in ("lock", "lock3"):
         pad = np.tile(np.array([0, 1], np.int8), PAD_SYMS // 2)
         one = np.ones(PAD_SYMS, np.int8)
         out = [dict(name=f"C{i:02d}", chip=pn_signs()[:LOCK_CAL_SYMS], mode="none")
@@ -114,7 +116,7 @@ def packets(plan="probe"):
             out.append(dict(name=f"A{i:02d}", chip=np.concatenate([c, pad]),
                             size=np.concatenate([sz, one]), mode="size", off=q, frames=[i % 4]))
         c, sz = split(np.concatenate(fr))
-        for j, q in enumerate(LOCK_B):
+        for j, q in enumerate(LOCK3_B if plan == "lock3" else LOCK_B):
             out.append(dict(name=f"B{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
                             mode="size", off=q, frames=[0, 1, 2, 3]))
         return out
@@ -237,6 +239,7 @@ def segments(disc, fs=48000, quiet_hz=None, pkt_syms=PKT_SYMS):
     its 33 ms of outer symbols); each as (start, end) samples, a packet's length from the start.
     A moving deviation, not a level: the K6's carrier sits off the capture's centre, and the
     noise before and after the key-up is full scale. quiet_hz: default 4 x the steadiest stretch's.
+    700 Hz at least: the carrier between packets reads 180-300 Hz rms (run 4), the lead 2.7 kHz.
     (The MCW ID's dahs qualify too: analyze matches bursts to packets by their signs.)"""
     d = np.asarray(disc, float)
     w = max(2, int(fs * 2 / BAUD))
@@ -244,14 +247,18 @@ def segments(disc, fs=48000, quiet_hz=None, pkt_syms=PKT_SYMS):
     m = np.convolve(d, k, "same")
     sd = np.sqrt(np.maximum(np.convolve(d * d, k, "same") - m * m, 0))
     if quiet_hz is None:
-        quiet_hz = max(300.0, 4 * float(np.percentile(sd, 2)))
+        quiet_hz = max(700.0, 4 * float(np.percentile(sd, 2)))
     on = sd > quiet_hz
     n = int((LEAD_SYMS + pkt_syms) / BAUD * fs)
     quiet, lead = int(0.008 * fs), int(0.025 * fs)
     c = np.concatenate([[0], np.cumsum(on)])
-    segs, i = [], quiet
+    segs, i = [], quiet + 3 * w
     while i < len(on) - lead:
-        if on[i] and not on[i - 1] and c[i] - c[i - quiet] == 0 and c[i + lead] - c[i] >= lead - w:
+        # (the quiet may end up to 6 symbols early and an eighth of it may be noise spikes; the
+        # lead may start with up to 12 ms of ragged preamble, run 4: hence 3/4 of it, and the
+        # window's 100 symbols of slack)
+        if (on[i] and not on[i - 1] and c[i - 3 * w] - c[i - 3 * w - quiet] <= quiet // 8
+                and c[i + lead] - c[i] >= 3 * lead // 4):
             a = max(0, i - int(fs / BAUD))
             segs.append((a, min(len(on), i + n + int(2 * fs / BAUD))))
             i += n
@@ -307,8 +314,8 @@ def analyze(disc, fs=48000, plan="probe"):
         while si < len(segs):
             a, b = segs[si]
             si += 1
-            b = min(len(disc), a + int((LEAD_SYMS + len(p["chip"]) + 3) / BAUD * fs))
-            v, _ = symbols(disc, a, b, fs)
+            b = min(len(disc), a + int((LEAD_SYMS + len(p["chip"]) + 100) / BAUD * fs))  # (+ the start's slack)
+            v, pos0 = symbols(disc, a, b, fs)
             k, pol, corr = locate(v, p["chip"])
             if corr >= 0.6:
                 break
@@ -318,7 +325,7 @@ def analyze(disc, fs=48000, plan="probe"):
             continue
         nsym = len(p["chip"])
         pay = pol * v[k:k + nsym]
-        r = {"t": a / fs, "ms": (b - a) / fs * 1e3, "corr": corr, "pol": pol, "start": k}
+        r = {"t": a / fs, "t_sym0": pos0 / fs + k / BAUD, "ms": (b - a) / fs * 1e3, "corr": corr, "pol": pol, "start": k}
         if len(pay) < nsym:
             lines.append(f"{p['name']}: short ({len(pay)} symbols)")
             res[p["name"]] = r
@@ -395,15 +402,15 @@ def analyze(disc, fs=48000, plan="probe"):
         lines.append(f"YSF: {len(good)} of {len(ys)} frames with a good FICH; best timing {best[0]} "
                      f"({best[1]['sym_err']} of {PKT_SYMS} symbols wrong)")
     cs = [r for n, r in res.items() if n[0] in "CAB" and "t" in r]
-    if plan == "lock" and len(cs) > 2:
+    if plan in ("lock", "lock3") and len(cs) > 2:
         # the packets' starts against one 4800-baud grid (the capture's clock): the chip's grid
         # runs on through the key-up, and the module's enables follow it
-        t = np.array([r["t"] + r["start"] / BAUD for r in cs])
+        t = np.array([r["t_sym0"] for r in cs])
         ph = ((t - t[0]) * BAUD + 0.5) % 1 - 0.5
         lines.append("packet starts against a 4800-baud grid (symbols): "
                      + " ".join(f"{x:+.2f}" for x in ph))
         res["grid"] = [float(x) for x in ph]
-    if plan in ("ysf", "lock"):
+    if plan in ("ysf", "lock", "lock3"):
         # as a plain C4FM receiver sees it: RRC filter, sync search, frames in 100 ms runs
         fr = ysf.demod(disc - np.median(disc), fs) + ysf.demod(np.median(disc) - disc, fs)
         rn = ysf.runs(fr)
@@ -473,21 +480,21 @@ def main(argv=None):
     h = sub.add_parser("header")
     h.add_argument("out")
     pl = sub.add_parser("plan")
-    pl.add_argument("--plan", choices=("probe", "ysf", "lock"), default="probe")
+    pl.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3"), default="probe")
     s = sub.add_parser("sim")
-    s.add_argument("--plan", choices=("probe", "ysf", "lock"), default="probe")
+    s.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3"), default="probe")
     s.add_argument("--delay-us", type=float, default=0.0)
     s.add_argument("--noise-hz", type=float, default=0.0)
     s.add_argument("--latched", action="store_true")
     an = sub.add_parser("analyze")
     an.add_argument("cap")
-    an.add_argument("--plan", choices=("probe", "ysf", "lock"), default="probe",
-                    help="probe: c4probe.c (run 1); ysf: c4ysf.c (run 2); lock: c4lock.c (run 3)")
+    an.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3"), default="probe",
+                    help="probe: c4probe.c (run 1); ysf: c4ysf.c (run 2); lock: c4lock.c (run 4 on); lock3: run 3")
     a = ap.parse_args(argv)
     if a.cmd == "header":
         header(a.out)
         print(f"wrote {a.out}")
-    elif a.cmd == "plan" and a.plan in ("ysf", "lock"):
+    elif a.cmd == "plan" and a.plan in ("ysf", "lock", "lock3"):
         for p in packets(a.plan):
             print(f"{p['name']}: frames {p.get('frames')}, {len(p['chip'])} symbols"
                   + (f", sizes {p['off']:+d}/4" if "off" in p else "")

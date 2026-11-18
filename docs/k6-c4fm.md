@@ -169,6 +169,25 @@ polls more than 3/4 symbol off. Bin the calibration phases by where the final fi
 the prior to -630 ppm, and set C4_LAG4 to 9. Then a C4FM radio test (FTM-300DR) with B packets
 only.
 
+Run 4 on the bench (2026-11-18 02:45Z, job c4fm-1118e, files /mnt/project-files/k6-c4fm/run4/).
+The first try (c4fm-1118d) never reached the module: EXPLORE was in a 2-minute listen and missed
+the wake. The job now wakes it, waits for the listen to end, and wakes it again.
+
+- **The fit:** no misses, no lost polls, and the worst residual was 5 % of a symbol (run 3: 42 %).
+  A poll takes 11,171 cycles (116 µs). The calibration's step was clean: 0 49 99 99 99 99 99 99.
+  The rate read -604 ppm after the calibration and -524 ppm at the end.
+- **Whole transmissions:** all five B packets decoded 4 of 4 frames with a good FICH. B2 (lag 9/4)
+  had 14 of 1,936 symbols wrong (3, 2, 5 and 4 a frame, so no drift is left), and B3 (10/4) had
+  22. A quarter symbol either side costs 61, and half a symbol costs 336-372. The plain YSF
+  receiver found 20 frames in 5 runs, all with a good FICH.
+- **Single frames:** A05 and A06 (-1/4 and 0) had 20 and 17 of 480 wrong.
+- On the Pluto every packet started within 0.2 symbol of one 4800.0-baud grid. That includes the
+  slow slide of the Pluto's clock against the chip.
+
+The analysis needed three fixes for this capture. A packet it can't place no longer swallows the
+rest. The burst finder now accepts the chip's ragged first 12 ms of preamble and noise spikes in
+the gaps. And it now uses each packet's sampling phase for its start time.
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto
