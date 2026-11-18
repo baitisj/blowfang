@@ -83,6 +83,11 @@ def test_sim_latched():
 
 
 # ---------------------------------------------------------------- the module, emulated
+def lead_syms(ctrl):
+    """REG_59's lead: (<7:4> + 1) preamble bytes, then a 4-byte (bit 3) or 2-byte sync word"""
+    return 8 * (((ctrl >> 4) & 15) + 1) + (32 if ctrl & 8 else 16)
+
+
 class FskTx:
     """the FD6818's FSK transmitter as c4probe drives it: REG_59 clears and enables, REG_5F fills
     the FIFO, TX done (REG_0C bit 0) a lead and payload after the enable, REG_02 write clears"""
@@ -103,8 +108,8 @@ class FskTx:
             if v & 0x0800 and not self.ctrl & 0x0800:
                 nsym = ((self.len5d >> 8) + 1) * 8
                 self.pkts.append({"words": list(self.fifo), "pre": len(self.fifo), "late": [],
-                                  "t_en": us})
-                self.done = us + (k6c4fm.LEAD_SYMS + nsym) * SYM_NS / 1000 + 300
+                                  "t_en": us, "lead": lead_syms(v)})
+                self.done = us + (lead_syms(v) + nsym) * SYM_NS / 1000 + 300
             self.ctrl = v
         elif reg == 0x5F:
             if self.ctrl & 0x0800:                  # written while it sends: when, which word
@@ -334,7 +339,7 @@ class FskGrid(FskTx):
             p["t_start"] = self.g0 + n * self.ts
             nsym = ((self.len5d >> 8) + 1) * 8
             p["nsym"] = nsym
-            self.done = p["t_start"] + (k6c4fm.LEAD_SYMS + nsym + self.done_sym) * self.ts
+            self.done = p["t_start"] + (p["lead"] + nsym + self.done_sym) * self.ts
             # the radio's polls: a read is 117 us and the flag shows somewhere inside it
             self.done += self.rng.uniform(0, self.jit) * self.ts
 
@@ -352,7 +357,7 @@ def air_grid(ev, fsk, fs=48000, data_lag=1.21):
     for p in fsk.pkts:
         t0 = p["t_start"] * 1000 + data_lag * ts
         b = np.unpackbits(np.array([[w & 0xFF, w >> 8] for w in p["words"]], np.uint8).reshape(-1))
-        chip = np.concatenate([np.arange(k6c4fm.LEAD_SYMS) % 2, b[:p["nsym"]]])
+        chip = np.concatenate([np.arange(p["lead"]) % 2, b[:p["nsym"]]])
         for k, c in enumerate(chip):
             mid = t0 + (k + 0.5) * ts
             g = g70[np.searchsorted(t70, mid) - 1][1]
@@ -455,16 +460,73 @@ def test_lock_module_rules():
 
 @need_clang
 def test_ftm_demo_calls():
-    """c4ftm: five whole calls at the lag (DN sets 1, 2, 1, 2, data), plain signs; on air the plain
-    receiver finds all five"""
+    """c4ftm (C4_CHAIN): two 10-frame DN calls and a data call at the lag, plain signs, the DN
+    calls in three packets back to back; on air the plain receiver finds each call whole"""
     pytest.importorskip("unicorn")
-    ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC)
-    assert ret == len(k6c4fm.packets("demo")), said
-    lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="demo")
-    for j, inv in enumerate(k6c4fm.DEMO_INV):
-        r = res[f"D{j}"]
-        assert r["fich_n"] == 4 and (r["pol"] < 0) == bool(inv), "\n".join(lines)
-    assert res["plain"]["runs"] == [4] * 5, "\n".join(lines)
+    ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC,
+                                             keys=((6_000_000, 6_300_000),))
+    calls = k6c4fm.CHAIN_CALLS
+    chunks = [-(-nf // k6c4fm.CHAIN_FRAMES) for _, nf in calls]
+    npkt = k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(calls) + sum(chunks)
+    assert ret == npkt, said
+    # pre-armed: armed once the upload's carrier is gone, the key's release the go, keyed 5 s later
+    assert said[1:3] == ["c4 armed: a key or DTMF sends", "c4 go"], said
+    t_on = tx["log"][0][2]
+    assert 6_300_000 + 5_000_000 <= t_on < 6_300_000 + 5_200_000, t_on
+    # chained: the packets after each call's first one with the short lead, every TX done on its tick
+    ch = next(s for s in said if s.startswith("c4lock chain "))
+    m = re.match(r"c4lock chain n=(\d+) late=(\d+) lat=(-?\d+)/(-?\d+) d=([-\d,]+)$", ch)
+    assert m and int(m.group(1)) == sum(chunks) - len(calls) and m.group(2) == "0", ch
+    assert int(m.group(3)) < int(m.group(4)), ch          # the latency window: narrowed, not empty
+    assert all(abs(int(d)) < 50 for d in m.group(5).split(",")), ch
+    leads = [p["lead"] for p in fsk.pkts[-sum(chunks) - len(calls):]]
+    assert leads.count(24) == sum(chunks) - len(calls), leads
+    # on air: a 10-frame DN call twice (header, FN 0-7, terminator, the block in 6 and 7: what
+    # the FTM-300DR showed AG7EW for), then the data call, each a single 100 ms run
+    lines, res = k6c4fm.analyze_chain(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8))
+    assert res["runs"] == [nf for _, nf in calls], "\n".join(lines)
+    for c, (_, nf) in zip(res["calls"], calls):
+        assert c["fich"] == nf and c["dch_ok"] == c["dch"], "\n".join(lines)
+        assert max(abs(x) for x in c["slip"]) < 0.3, "\n".join(lines)
+    assert res["calls"][0]["fn"] == list(range(8)) and "AG7EW" in res["calls"][0]["src"], "\n".join(lines)
+
+
+@need_clang
+def test_ftm_demo_go_rules():
+    """c4ftm armed: a key before the arming stops it, a second key in the count-down stops it, and
+    the go waits for the channel to clear (here the job's trigger carrier, 40-44 s)"""
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, keys=((1_000_000, 1_200_000),))
+    assert ret == -4 and "log" not in tx and "c4 armed: a key or DTMF sends" not in said, said
+    ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, keys=((6_000_000, 6_200_000),
+                                                                 (8_000_000, 8_200_000)))
+    assert ret == -4 and "log" not in tx and "c4 go" in said, said
+    ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, keys=((38_000_000, 38_200_000),))
+    assert ret == len(k6c4fm.packets("demo")) and tx["log"][0][2] >= TRIGGER_US[1] + 900_000, said
+
+
+def dtmf_reg(*spans):
+    """REG_0B as the tone detector in DTMF mode gives it: bit 12 and the code while a digit sounds
+    (spans of (from_us, to_us, code))"""
+    def f(us):
+        for a, b, code in spans:
+            if a <= us < b:
+                return 0x1000 | code << 8
+        return 0
+    return f
+
+
+@need_clang
+def test_ftm_demo_dtmf_go():
+    """c4ftm armed: a DTMF '1' over the air is the go too (Jeff 11-18: the K6 stays on the bench).
+    Another digit does nothing; a 20 ms blip of '1' is too short; the '1' keys it 5 s later"""
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, regs={0x0B: dtmf_reg(
+        (8_000_000, 8_150_000, 5), (9_000_000, 9_020_000, 1), (12_000_000, 12_200_000, 1))})
+    assert ret > 0 and said.count("c4 go dtmf") == 1 and "c4 go" not in said, said
+    t_on = tx["log"][0][2]
+    assert 12_000_000 + 5_000_000 <= t_on < 12_200_000 + 5_200_000, t_on
+    assert regs[0x24] == REGS.get(0x24, 0) and regs[0x21] == REGS.get(0x21, 0)
 
 
 @need_clang
@@ -500,7 +562,7 @@ class FskFifo(FskGrid):
         p = self.pkts[-1]
         if self.done is not None and us >= self.done:
             return False
-        k = (us - p["t_start"]) / self.ts - k6c4fm.LEAD_SYMS
+        k = (us - p["t_start"]) / self.ts - p["lead"]
         gone = 0 if k < 0 else min(len(p["words"]), int(k // 16) + 1)
         return len(p["words"]) - gone <= self.thr
 
@@ -525,7 +587,7 @@ class FskFifo(FskGrid):
             self.thr = (v >> 3) & 0x7F
         elif reg == 0x5F and self.ctrl & 0x0800:
             p = self.pkts[-1]
-            due = p["t_start"] + (k6c4fm.LEAD_SYMS + 16 * len(p["words"])) * self.ts
+            due = p["t_start"] + (p["lead"] + 16 * len(p["words"])) * self.ts
             if us > due:
                 p.setdefault("under", []).append(len(p["words"]))
         if reg == 0x59 and v & 0x0800 and not self.ctrl & 0x0800:

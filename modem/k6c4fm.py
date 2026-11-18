@@ -112,6 +112,18 @@ def dn_frames(rid=ysf.RADIO_ID, src=ysf.IDENT):
     return out
 
 
+def long_dn_frames(rid=ysf.RADIO_ID, src=ysf.IDENT):
+    """c4ftm's chained DN call (C4_CHAIN, 11-18): header, FN 0-7, terminator, = ysf.tx_dn(8)
+    frame for frame. The FTM-300DR showed AG7EW for this 10-frame call from the UV-380 and not
+    for the 4-frame ones (Jeff, 11-18 18:39Z): it wants the whole FN cycle. Frames 4-13 of
+    all_frames(chain=True)"""
+    dest = ysf.dn_dest(rid)
+    out = [dn_frame(ysf.FI_HEADER, 0, dest, src, rid)]
+    out += [dn_frame(ysf.FI_COMMS, fn, dest, src, rid) for fn in range(8)]
+    out.append(dn_frame(ysf.FI_TERMINATOR, 0, dest, src, rid))
+    return out
+
+
 SOTTO_BIT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "c", "k6", "mod",
                          "c4sotto.bit")
 
@@ -135,9 +147,12 @@ def sotto_frames(path=SOTTO_BIT, src=ysf.IDENT, ncalls=3):
     return out
 
 
-def all_frames(sotto=False):
+def all_frames(sotto=False, chain=False):
     """the module's frame table: the data transmission (0-3), then the DN calls (4-7, 8-11);
-    with sotto (c4sotto.c, C4_SOTTO) the three sotto data calls too (12-23)"""
+    with sotto (c4sotto.c, C4_SOTTO) the three sotto data calls too (12-23); with chain
+    (c4ftm.c, C4_CHAIN) the 10-frame DN call instead (4-13)"""
+    if chain:
+        return ysf_frames() + long_dn_frames()
     return ysf_frames() + dn_frames() + (sotto_frames() if sotto else [])
 
 
@@ -161,6 +176,9 @@ LOCK3_B = (-4, -2, 0, 2, 4)         # run 3's (plan 'lock3'; its lag was 8)
 DEMO_SETS = (1, 2, 1, 2, 0)         # c4ftm.c (c4lock with C4_DEMO): DN sets 1, 2 twice, data, at lag 0
 SOTTO_SETS = (1, 3, 4, 5, 2)        # c4sotto.c: DN (callsign), the sotto clip in three data calls, DN
 DEMO_INV = (0, 0, 0, 0, 0)          # calls with every sign flipped (none: plain signs suit the FTM, 11-18)
+CHAIN_CALLS = ((4, 10), (4, 10), (0, 4))   # c4ftm.c with C4_CHAIN: (first frame, frames) a call
+CHAIN_FRAMES = 4                    # frames a packet at most; a longer call goes out in packets
+CHAIN_E = 3                         # words a splice drops: the frame's last 48 symbols (its 5th VCH)
 DEMO_GAP_S = 1.0                    # its carrier between transmissions
 LOCK_LAG4 = 9                       # its C4_LAG4
 PAD_SYMS = 16                       # c4lock's outer alternation after the frames (FIFO word 0x5555)
@@ -262,6 +280,8 @@ def header(path):
         arr("C4_YSF_SIZE", b"".join(sz))
     lines.append("#if C4_SOTTO   /* c4sotto.c: frames 12-23 = the sotto clip (c4sotto.bit) in three data calls */")
     tables(all_frames(sotto=True))
+    lines.append("#elif C4_CHAIN   /* c4ftm.c: frames 4-13 = one DN call, header, FN 0-7, terminator */")
+    tables(all_frames(chain=True))
     lines.append("#else")
     tables(fr)
     lines.append("#endif")
@@ -516,6 +536,37 @@ def analyze(disc, fs=48000, plan="probe"):
     return lines, res
 
 
+def analyze_chain(disc, fs=48000):
+    """c4ftm with C4_CHAIN (11-18): the run as a plain C4FM receiver hears it (the polarity with
+    more frames). For each 100 ms run of frames: how many, good FICHs and DCHs, the FN order, the
+    callsigns, and how far from 100 ms apart its frames came (symbols; a chained packet's start
+    off the call's lattice shows here, at frames 4 and 8)"""
+    disc = np.asarray(disc, float)
+    best = None
+    for pol in (1, -1):
+        fr = ysf.demod(pol * (disc - np.median(disc)), fs)
+        if best is None or len(fr) > len(best[1]):
+            best = (pol, fr)
+    pol, fr = best
+    rn = ysf.runs(fr)
+    lines = [f"{len(disc) / fs:.1f} s of discriminator; plain YSF receiver ({'plain' if pol > 0 else 'flipped'}"
+             f" polarity): {len(fr)} frames in {len(rn)} runs of {[len(r) for r in rn]}"]
+    res = {"pol": pol, "runs": [len(r) for r in rn], "calls": []}
+    for j, r in enumerate(rn):
+        sm = ysf.summarize(r)
+        at = np.array([f["at"] for f in r])
+        slip = (np.diff(at) - 0.1) * BAUD
+        c = {"t": float(at[0]), "frames": len(r), "fich": sm["fich_ok"], "dch": sm["dch"],
+             "dch_ok": sm["dch_ok"], "fn": sm["fn"], "src": sorted(sm["src"]),
+             "fi": sm["fi"], "slip": [round(float(x), 2) for x in slip]}
+        res["calls"].append(c)
+        worst = float(np.max(np.abs(slip))) if len(slip) else 0.0
+        lines.append(f"run {j}: {c['t']:.3f} s, {len(r)} frames, FICH {c['fich']}/{len(r)}, "
+                     f"DCH {c['dch_ok']}/{c['dch']}, FN {c['fn']}, from {c['src']}, "
+                     f"spacing off by up to {worst:.2f} symbols")
+    return lines, res
+
+
 def size_land(pay, size):
     """where the size changes land against the symbols, in symbols (+ late), from the symbols
     beside each lone change: late by d, the first symbol after it carries d of the old size; early
@@ -641,8 +692,9 @@ def main(argv=None):
     s.add_argument("--latched", action="store_true")
     an = sub.add_parser("analyze")
     an.add_argument("cap")
-    an.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo", "sotto"), default="probe",
-                    help="probe: c4probe.c (run 1); ysf: c4ysf.c (run 2); lock: c4lock.c (run 4 on); lock3: run 3; demo: c4ftm.c")
+    an.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo", "sotto", "chain"), default="probe",
+                    help="probe: c4probe.c (run 1); ysf: c4ysf.c (run 2); lock: c4lock.c (run 4 on); lock3: run 3; "
+                         "demo: c4ftm.c's 4-frame calls; chain: c4ftm.c (C4_CHAIN, 11-18 on)")
     fi = sub.add_parser("fifo", help="c4fifo.c's marks from a K6 log: the MCU's rate against the chip per packet")
     fi.add_argument("log")
     a = ap.parse_args(argv)
@@ -670,6 +722,8 @@ def main(argv=None):
         print("\n".join(analyze(d, plan=a.plan)[0]))
     elif a.cmd == "fifo":
         print("\n".join(fifo_text(fifo(open(a.log, errors="replace")))))
+    elif a.cmd == "analyze" and a.plan == "chain":
+        print("\n".join(analyze_chain(read_wav(a.cap))[0]))
     elif a.cmd == "analyze":
         print("\n".join(analyze(read_wav(a.cap), plan=a.plan)[0]))
 
