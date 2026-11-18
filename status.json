@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "c4fm-arm1",
-  "who": "c4fm",
-  "since": "2026-11-18T03:08:43Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "refcal-cool-1118-r4",
@@ -16,8 +12,8 @@
    "not_before": "2026-11-18T03:36:55Z"
   }
  ],
- "last_poll": "2026-11-18T03:08:36Z",
+ "last_poll": "2026-11-18T03:11:23Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T03:08:43Z"
+ "updated": "2026-11-18T03:11:23Z"
 }
