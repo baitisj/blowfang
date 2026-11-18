@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "trunk-scan-1118b",
-  "who": "position",
-  "since": "2026-11-18T20:34:57Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "k6leak-1118a",
@@ -21,8 +17,8 @@
    "not_before": null
   }
  ],
- "last_poll": "2026-11-18T20:34:50Z",
+ "last_poll": "2026-11-18T20:36:00Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T20:34:57Z"
+ "updated": "2026-11-18T20:36:00Z"
 }
