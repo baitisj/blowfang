@@ -45,7 +45,7 @@ and the point is that the runner checks everything before it keys. The checks, i
     the checkout's own M17 modules (c6m17tx_bert/sms/voice.c: tx_tone's ident first), or its YSF
     modules (c6ysftx_dn/data.c: tx_tone's ident first), or one of
     its DMR voice-burst modules (c6vcheck.c and c6dvtx.c, which never key; c6dvtx_pn/live/msg.c:
-    tx_tone's ident first), or its receive-only modules (c6fmtap.c, c6phyrx.c: uv380.rx, which may
+    tx_tone's ident first), or its receive-only modules (c6fmtap.c, c6phyrx.c, c6m17rx.c: uv380.rx, which may
     run in the background while a Pluto send comes; the job waits for it before it ends)
   - a Pluto step may run in the background only to receive (rx)
   - IC-7100: never while Jeff holds it (hold-ic7100), RF power read back at most the job's limit
@@ -110,7 +110,8 @@ UV380_M17_PLANS = ("bert", "sms", "voice")     # firmware/uv380-openrtx/mod/c6m1
 UV380_YSF_PLANS = ("dn", "data")               # firmware/uv380-openrtx/mod/c6ysftx_PLAN.c
 # receive-only modules (docs/uv380-m17-rx.md): plan -> the checkout's module. None of them keys
 # (no tx_tone, no 0x60 = 0x80); a step may run in the background so a Pluto send can come during it
-UV380_RX_PLANS = {"tap": "c6fmtap.c", "tap1c": "c6fmtap_1c.c", "phy": "c6phyrx.c"}
+UV380_RX_PLANS = {"tap": "c6fmtap.c", "tap1c": "c6fmtap_1c.c", "phy": "c6phyrx.c", "m17": "c6m17rx.c",
+                  "m17tap": "c6m17rx_tap.c"}
 UV380_RX_RUN_S = 200                           # Ctrl-C to a receive module still going after this
 
 

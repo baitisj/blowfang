@@ -51,3 +51,11 @@ clean-rt950-sim:
 	rm -f tone_fsk_host
 
 .PHONY: clean-rt950-sim
+
+# M17 receiver for the UV-380's 8 kHz FM tap (docs/uv380-m17-rx.md)
+all: m17_rx_host
+
+m17_rx_host: m17_rx_host.c \
+		m17_rx.c \
+		m17_rx.h
+	$(CC) $(CFLAGS) -o $@ m17_rx_host.c m17_rx.c
