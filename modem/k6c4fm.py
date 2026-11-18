@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 import argparse
 import sys
 
+import os
+
 import numpy as np
 
 from . import ysf
@@ -109,9 +111,33 @@ def dn_frames(rid=ysf.RADIO_ID, src=ysf.IDENT):
     return out
 
 
-def all_frames():
-    """the module's frame table: the data transmission (0-3), then the DN calls (4-7, 8-11)"""
-    return ysf_frames() + dn_frames()
+SOTTO_BIT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "c", "k6", "mod",
+                         "c4sotto.bit")
+
+
+def sotto_frames(path=SOTTO_BIT, src=ysf.IDENT, ncalls=3):
+    """c4sotto's data calls: a sotto 400 clip (240 bytes = 40 superframes, 4.8 s) as YSF data full
+    rate, three calls of header, two comms frames (two 20-byte blocks each: FN 2-3, 4-5, 6-7),
+    terminator. Frames 12-23 of all_frames(sotto=True)"""
+    data = open(path, "rb").read()
+    assert len(data) == ncalls * 80, len(data)
+    mk = dict(cs=2, ft=7, dt=ysf.DT_DATA_FR, dgid=0)
+    hdr = ysf.header_payload("ALL", src)
+    out = []
+    for c in range(ncalls):
+        out.append(ysf.build_frame(ysf.FICH(fi=ysf.FI_HEADER, fn=0, **mk), hdr).astype(np.int8))
+        for k in range(2):
+            b = data[80 * c + 40 * k:80 * c + 40 * k + 40]
+            pl = ysf.data_fr_payload(b[:20], b[20:])
+            out.append(ysf.build_frame(ysf.FICH(fi=ysf.FI_COMMS, fn=2 + 2 * c + k, **mk), pl).astype(np.int8))
+        out.append(ysf.build_frame(ysf.FICH(fi=ysf.FI_TERMINATOR, fn=0, **mk), hdr).astype(np.int8))
+    return out
+
+
+def all_frames(sotto=False):
+    """the module's frame table: the data transmission (0-3), then the DN calls (4-7, 8-11);
+    with sotto (c4sotto.c, C4_SOTTO) the three sotto data calls too (12-23)"""
+    return ysf_frames() + dn_frames() + (sotto_frames() if sotto else [])
 
 
 def split(dibits):
@@ -129,6 +155,7 @@ LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, qua
 LOCK_B = (-2, -1, 0, 1, 2)          # its whole-transmission packets'
 LOCK3_B = (-4, -2, 0, 2, 4)         # run 3's (plan 'lock3'; its lag was 8)
 DEMO_SETS = (1, 2, 1, 2, 0)         # c4ftm.c (c4lock with C4_DEMO): DN sets 1, 2 twice, data, at lag 0
+SOTTO_SETS = (1, 3, 4, 5, 2)        # c4sotto.c: DN (callsign), the sotto clip in three data calls, DN
 DEMO_INV = (0, 0, 0, 0, 0)          # calls with every sign flipped (none: plain signs suit the FTM, 11-18)
 DEMO_GAP_S = 1.0                    # its carrier between transmissions
 LOCK_LAG4 = 9                       # its C4_LAG4
@@ -142,19 +169,19 @@ def packets(plan="probe"):
     plan 'probe': c4probe.c's (run 1); 'ysf': c4ysf.c's (run 2); 'lock': c4lock.c's (run 4 on);
     'lock3': c4lock.c as run 3 sent it"""
     fr = ysf_frames()
-    if plan in ("lock", "lock3", "demo"):
+    if plan in ("lock", "lock3", "demo", "sotto"):
         pad = np.tile(np.array([0, 1], np.int8), PAD_SYMS // 2)
         one = np.ones(PAD_SYMS, np.int8)
         out = [dict(name=f"C{i:02d}", chip=pn_signs()[:LOCK_CAL_SYMS], mode="none")
                for i in range(LOCK_NCAL)]
-        for i, q in enumerate(LOCK_A if plan != "demo" else ()):
+        for i, q in enumerate(LOCK_A if plan not in ("demo", "sotto") else ()):
             c, sz = split(fr[i % 4])
             out.append(dict(name=f"A{i:02d}", chip=np.concatenate([c, pad]),
                             size=np.concatenate([sz, one]), mode="size", off=q, frames=[i % 4]))
         c, sz = split(np.concatenate(fr))
-        if plan == "demo":
-            for j, st in enumerate(DEMO_SETS):
-                c, sz = split(np.concatenate(all_frames()[4 * st:4 * st + 4]))
+        if plan in ("demo", "sotto"):
+            for j, st in enumerate(DEMO_SETS if plan == "demo" else SOTTO_SETS):
+                c, sz = split(np.concatenate(all_frames(plan == "sotto")[4 * st:4 * st + 4]))
                 # (the flipped calls keep the plain signs here: the analysis takes either
                 # polarity, and its pol says which one came)
                 out.append(dict(name=f"D{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
@@ -211,13 +238,19 @@ def header(path):
         lines.append("};")
     arr("C4_PN", fifo_bytes(pk[0]["chip"]))
     arr("C4_DMR", fifo_bytes(pk[5]["chip"]))
-    sg, sz = [], []
-    for f in fr:
-        c, s = split(f)
-        sg.append(fifo_bytes(c))
-        sz.append(fifo_bytes(s))
-    arr("C4_YSF_SIGN", b"".join(sg))
-    arr("C4_YSF_SIZE", b"".join(sz))
+    def tables(frames):
+        sg, sz = [], []
+        for f in frames:
+            c, s = split(f)
+            sg.append(fifo_bytes(c))
+            sz.append(fifo_bytes(s))
+        arr("C4_YSF_SIGN", b"".join(sg))
+        arr("C4_YSF_SIZE", b"".join(sz))
+    lines.append("#if C4_SOTTO   /* c4sotto.c: frames 12-23 = the sotto clip (c4sotto.bit) in three data calls */")
+    tables(all_frames(sotto=True))
+    lines.append("#else")
+    tables(fr)
+    lines.append("#endif")
     open(path, "w").write("\n".join(lines) + "\n")
 
 
@@ -448,7 +481,7 @@ def analyze(disc, fs=48000, plan="probe"):
         lines.append(f"YSF: {len(good)} of {len(ys)} frames with a good FICH; best timing {best[0]} "
                      f"({best[1]['sym_err']} of {PKT_SYMS} symbols wrong)")
     cs = [r for n, r in res.items() if n[0] in "CABD" and "t_sym0" in r]
-    if plan in ("lock", "lock3", "demo") and len(cs) > 2:
+    if plan in ("lock", "lock3", "demo", "sotto") and len(cs) > 2:
         # the packets' starts against one 4800-baud grid (the capture's clock): the chip's grid
         # runs on through the key-up, and the module's enables follow it
         t = np.array([r["t_sym0"] for r in cs])
@@ -456,14 +489,14 @@ def analyze(disc, fs=48000, plan="probe"):
         lines.append("packet starts against a 4800-baud grid (symbols): "
                      + " ".join(f"{x:+.2f}" for x in ph))
         res["grid"] = [float(x) for x in ph]
-    if plan in ("ysf", "lock", "lock3", "demo"):
+    if plan in ("ysf", "lock", "lock3", "demo", "sotto"):
         # as a plain C4FM receiver sees it: RRC filter, sync search, frames in 100 ms runs
         fr = ysf.demod(disc - np.median(disc), fs) + ysf.demod(np.median(disc) - disc, fs)
         rn = ysf.runs(fr)
         lines.append(f"plain YSF receiver (modem.ysf.demod, either polarity): {len(fr)} frames in "
                      f"{len(rn)} runs, {sum(f['fich'] is not None for f in fr)} with a good FICH")
         res["plain"] = {"frames": len(fr), "runs": [len(x) for x in rn],
-                        "fich": sum(f["fich"] is not None for f in fr)}
+                        "fich": sum(f["fich"] is not None for f in fr), "list": fr}
     return lines, res
 
 
@@ -491,7 +524,7 @@ def size_land(pay, size):
 
 def ysf_packet(pay, frame):
     """one YSF frame's symbols (polarity fixed, Hz) -> symbol errors, levels, decode"""
-    fr = all_frames()[frame]
+    fr = all_frames(sotto=True)[frame]
     lv_want = ysf.bits_to_levels(fr)
     g = float(pay[:20] @ ysf.SYNC_LEVELS) / float(ysf.SYNC_LEVELS @ ysf.SYNC_LEVELS)
     if g <= 0:
@@ -526,21 +559,21 @@ def main(argv=None):
     h = sub.add_parser("header")
     h.add_argument("out")
     pl = sub.add_parser("plan")
-    pl.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo"), default="probe")
+    pl.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo", "sotto"), default="probe")
     s = sub.add_parser("sim")
-    s.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo"), default="probe")
+    s.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo", "sotto"), default="probe")
     s.add_argument("--delay-us", type=float, default=0.0)
     s.add_argument("--noise-hz", type=float, default=0.0)
     s.add_argument("--latched", action="store_true")
     an = sub.add_parser("analyze")
     an.add_argument("cap")
-    an.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo"), default="probe",
+    an.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo", "sotto"), default="probe",
                     help="probe: c4probe.c (run 1); ysf: c4ysf.c (run 2); lock: c4lock.c (run 4 on); lock3: run 3; demo: c4ftm.c")
     a = ap.parse_args(argv)
     if a.cmd == "header":
         header(a.out)
         print(f"wrote {a.out}")
-    elif a.cmd == "plan" and a.plan in ("ysf", "lock", "lock3", "demo"):
+    elif a.cmd == "plan" and a.plan in ("ysf", "lock", "lock3", "demo", "sotto"):
         for p in packets(a.plan):
             print(f"{p['name']}: frames {p.get('frames')}, {len(p['chip'])} symbols"
                   + (f", sizes {p['off']:+d}/4" if "off" in p else "")

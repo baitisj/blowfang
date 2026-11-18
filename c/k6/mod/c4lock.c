@@ -49,6 +49,9 @@
 #define K6_MODULE_LEVEL 3
 #include "../k6_mod.h"
 #include "k6ui.h"
+#ifndef C4_SOTTO
+#define C4_SOTTO 0          /* 1 (c4sotto.c, with C4_DEMO): the sotto clip's data calls in the table */
+#endif
 #include "c4probe_frames.h"   /* C4_PN, C4_YSF_SIGN, C4_YSF_SIZE */
 #ifndef K6_NAME
 #define K6_NAME "C4FM LOCK"
@@ -161,7 +164,11 @@ K6_MODULE_NAME(K6_NAME);
 #define UNIT_MS (1200u / ID_WPM)
 #define ID_UNITS 52                                 /* AG7EW: A 8, G 12, 7 16, E 4, W 12 */
 
-#if C4_DEMO
+#if C4_DEMO && C4_SOTTO
+static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
+static const uint8_t BSET[NB] = {1, 3, 4, 5, 2};    /* DN, the sotto clip's 3 data calls, DN (k6c4fm.SOTTO_SETS) */
+static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};
+#elif C4_DEMO
 static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BSET[NB] = {1, 2, 1, 2, 0};    /* frame set: 0 data, 1-2 DN (k6c4fm.DEMO_SETS) */
 static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};    /* 1: every sign flipped (k6c4fm.DEMO_INV) */
