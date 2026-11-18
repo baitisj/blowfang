@@ -45,7 +45,8 @@ and the point is that the runner checks everything before it keys. The checks, i
     the checkout's own M17 modules (c6m17tx_bert/sms/voice.c: tx_tone's ident first), or its YSF
     modules (c6ysftx_dn/data.c: tx_tone's ident first), or one of
     its DMR voice-burst modules (c6vcheck.c and c6dvtx.c, which never key; c6dvtx_pn/live/msg.c:
-    tx_tone's ident first)
+    tx_tone's ident first), or its receive-only modules (c6fmtap.c, c6phyrx.c, c6m17rx.c: uv380.rx, which may
+    run in the background while a Pluto send comes; the job waits for it before it ends)
   - a Pluto step may run in the background only to receive (rx)
   - IC-7100: never while Jeff holds it (hold-ic7100), RF power read back at most the job's limit
     (0 by default, 0.5 at most; the runner only ever lowers it, to 0), rig on 70 cm in the claim
@@ -92,7 +93,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "pluto": 1800, "ic7100": 300, "ic7100.tune": 30, "ic7100.power0": 30,
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
-                "uv380.voice": 120}
+                "uv380.voice": 120, "uv380.rx": 240}
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24")
 PLUTO_TX = ("send", "steps", "fsk24")
 IC7100_SUBS = ("send", "id", "stop")
@@ -107,6 +108,11 @@ UV380_SEND_HZ = (441_850_000, 440_850_000)    # the image sends only on these (S
 UV380_SEND_MODULE = ("firmware", "uv380-openrtx", "mod", "txreq.c")
 UV380_M17_PLANS = ("bert", "sms", "voice")     # firmware/uv380-openrtx/mod/c6m17tx_PLAN.c
 UV380_YSF_PLANS = ("dn", "data")               # firmware/uv380-openrtx/mod/c6ysftx_PLAN.c
+# receive-only modules (docs/uv380-m17-rx.md): plan -> the checkout's module. None of them keys
+# (no tx_tone, no 0x60 = 0x80); a step may run in the background so a Pluto send can come during it
+UV380_RX_PLANS = {"tap": "c6fmtap.c", "tap1c": "c6fmtap_1c.c", "phy": "c6phyrx.c", "m17": "c6m17rx.c",
+                  "m17tap": "c6m17rx_tap.c"}
+UV380_RX_RUN_S = 200                           # Ctrl-C to a receive module still going after this
 
 
 # DMR voice bursts (docs/uv380-c6000-modem.md, "Voice bursts (V0-V2)"): plan -> the checkout's module.
@@ -125,6 +131,10 @@ def uv380_ysf_module(plan):
 
 def uv380_voice_module(plan):
     return ("firmware", "uv380-openrtx", "mod", UV380_VOICE_PLANS[plan])
+
+
+def uv380_rx_module(plan):
+    return ("firmware", "uv380-openrtx", "mod", UV380_RX_PLANS[plan])
 
 UV380_READBACK = {"power": "pwr", "zero": "zero", "trim": "trim", "gain": "gain", "emph": "emph",
                   "freq": "freq"}
@@ -522,6 +532,12 @@ def check_step(job, i, step, rs, problems):
                             " c6vcheck.c / c6dvtx*.c)")
         elif not os.path.isfile(os.path.join(job_sources(job), *uv380_voice_module(args[0]))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_voice_module(args[0]))}")
+    elif do == "uv380.rx":
+        if len(args) != 1 or not isinstance(args[0], str) or args[0] not in UV380_RX_PLANS:
+            problems.append(f"{what}: args: one plan, {', '.join(UV380_RX_PLANS)} (the checkout's"
+                            " receive-only c6fmtap.c, c6fmtap_1c.c, c6phyrx.c)")
+        elif not os.path.isfile(os.path.join(job_sources(job), *uv380_rx_module(args[0]))):
+            problems.append(f"{what}: the checkout has no {'/'.join(uv380_rx_module(args[0]))}")
     elif do == "uv380.flash":
         staged_file(step, "image", rs, what, problems)
         staged_file(step, "radio_tool", rs, what, problems, need_sha=False)
@@ -670,6 +686,11 @@ def command(job, step, rd):
                 "--log", log], co, True
     if do == "logger.stop":
         return [py(), bench_bin(), "serial-release", who], co, False
+    if do == "uv380.rx":
+        return [py(), tool("uv380_i2sprobe.py"), "mod", uv380_port(),
+                os.path.join(job_sources(job), *uv380_rx_module(args[0])), "--key-file", key,
+                "--log", os.path.join(rd, "uv380.log"), "--run-timeout", str(UV380_RX_RUN_S)], co, \
+            bool(step.get("background"))
     if do == "uv380.flash":
         return [py(), tool("uv380_dfu.py"), "flash", uv380_port(),
                 os.path.realpath(os.path.expanduser(step["image"])), "--sha256", step["sha256"],
@@ -930,6 +951,7 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
             + (f", module sources {res['sources']} at {res['sources_head']}" if job.get("sources") else ""))
     env = step_env(job)
     deadline = now() + 60 * float(job["minutes"])
+    mine = []                           # this job's background UV-380 receive modules
     for i, step in enumerate(job["steps"]):
         sr = {"n": i + 1, "do": step["do"], "started": utcnow()}
         res["steps"].append(sr)
@@ -978,11 +1000,13 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                                             stdout=open(os.path.join(rd, out), "a"),
                                             stderr=subprocess.STDOUT, start_new_session=True)
                     BACKGROUND.append(proc)
+                    if step["do"] == "uv380.rx":
+                        mine.append(proc)
                     time.sleep(2.0)
                     if step["do"] == "logger":     # the logger holds the K6 cable for the job
                         o = kb.serial_owner()
                         rc, why = (0, None) if o and o.get("who") == job["who"] else (1, "the logger did not start")
-                    else:                           # a Pluto rx: still capturing (or done cleanly)
+                    else:                           # a Pluto rx or receive module: still going (or done)
                         r = proc.poll()
                         rc, why = (0, None) if r in (None, 0) else (1, f"the background {step['do']} exited {r}")
                 else:
@@ -1000,6 +1024,13 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
             res.update(status="cancelled" if why == "cancelled" or cancelled() else "failed",
                        reason=f"step {i + 1} ({step['do']}): {why or f'exit {rc}'}")
             break
+    for p in mine:                      # the UV-380's USB port stays the job's until they end
+        end = time.monotonic() + STEP_TIMEOUT["uv380.rx"]
+        while p.poll() is None and time.monotonic() < end and not cancelled():
+            time.sleep(0.5)
+        if p.poll() is None:
+            ctx.say("stopping a background uv380.rx still running at the job's end")
+            stop_group(p)
     res["ended"] = utcnow()
     ctx.say(f"job {job['id']} {res['status']}" + (f": {res.get('reason')}" if res.get("reason") else ""))
     return res
@@ -1413,6 +1444,8 @@ def sample_jobs(tmp, co, key):
         ("UV-380 YSF DN at 0 W on 441.850, the Pluto listening", J("ok-ysf", {"do": "pluto", "args": ["rx", os.path.join(tmp, "y.cf32"), "--hz", "441900000", "--seconds", "40"], "background": True}, {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "trim -580"]}, {"do": "uv380.ysf", "args": ["dn"]}, {"do": "uv380.cmd", "args": ["trim 6100"]}, freq_mhz=441.850), True),
         ("UV-380 YSF with a plan it doesn't have", J("bad-ysf", {"do": "uv380.ysf", "args": ["vw"]}, freq_mhz=441.850), False),
         ("UV-380 DMR voice test pattern at 0 W on 441.850, the Pluto listening", J("ok-dvoice", {"do": "pluto", "args": ["rx", os.path.join(tmp, "v.cf32"), "--hz", "441900000", "--seconds", "40"], "background": True}, {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2"]}, {"do": "uv380.voice", "args": ["pn"]}, freq_mhz=441.850), True),
+        ("UV-380 FM tap receive in the background while the Pluto sends on 441.850", J("ok-uvrx", {"do": "uv380.rx", "args": ["tap"], "background": True}, {"do": "wait", "seconds": 30}, {"do": "pluto", "args": ["send", wav, "--hz", "441850000", "--gain", "-50"]}, freq_mhz=441.850), True),
+        ("UV-380 receive with a plan it doesn't have", J("bad-uvrx", {"do": "uv380.rx", "args": ["../c6m17tx_bert.c"]}, freq_mhz=441.850), False),
         ("UV-380 DMR voice with a module path", J("bad-dvoice", {"do": "uv380.voice", "args": ["../txreq.c"]}, freq_mhz=441.850), False),
         ("Pluto send in the background", J("bad-bgtx", {"do": "pluto", "args": ["send", wav, "--gain", "-60"], "background": True}), False),
         ("UV-380 to 440.850 under a 441.850 claim", J("bad-uvfreq", {"do": "uv380.cmd", "args": ["freq 440850"]}, freq_mhz=441.850), False),

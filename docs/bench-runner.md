@@ -100,6 +100,7 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `uv380.m17` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/c6m17tx_PLAN.c` (the checkout's own module, signed by the runner): one M17 transmission through the C6000's physical layer mode, tx_tone's Morse ident first (docs/uv380-m17-scope.md) | args: one plan, `bert`, `sms` or `voice`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim) |
 | `uv380.ysf` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/c6ysftx_PLAN.c` (the checkout's own module, signed by the runner): one YSF (C4FM, Yaesu framing) transmission through the C6000's physical layer mode, tx_tone's Morse ident first (docs/uv380-ysf.md) | args: one plan, `dn` or `data`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim) |
 | `uv380.voice` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/MODULE` (the checkout's own module, signed by the runner): DMR voice bursts over the C6000's voice port (docs/uv380-c6000-modem.md, "Voice bursts (V0-V2)"). `check` = c6vcheck.c and `dry` = c6dvtx.c never key; `pn`, `live`, `msg` = c6dvtx_pn/live/msg.c send one voice call, tx_tone's Morse ident first | args: one plan, `check`, `dry`, `pn`, `live` or `msg`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim), for every plan |
+| `uv380.rx` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/MODULE` (the checkout's own module, signed by the runner): a receive-only module (docs/uv380-m17-rx.md). `tap` = c6fmtap.c (the C6000's 8 kHz FM tap as audio lines, 0x34 stepped), `tap1c` = c6fmtap_1c.c (0x34 held at 0x1C, 150 s), `phy` = c6phyrx.c (the chip's own 4FSK demodulator's windows), `m17` = c6m17rx.c (M17 decoded on the radio from the tap: LSF callsigns, SMS, stream frames, BERT errors, 150 s), `m17tap` = c6m17rx_tap.c (the same plus the tap's audio lines); none keys. `"background": true` lets a Pluto `send` come while it listens; the job waits for it before it ends. Its lines go to the run folder's `uv380.log` | args: one plan, `tap`, `tap1c`, `phy`, `m17` or `m17tap` |
 
 There is no step that runs a script. A script could do anything; the runner's worth is that it
 checks every key-up before it happens. A test that needs a new kind of step gets one here, with
@@ -168,7 +169,7 @@ who can push are not the people with a hamlet shell:
   `~/blowfang-work/worktrees/inbox-<commit>` of main's tip, or of `tools_commit` (a commit on main).
   A branch's tools never run on hamlet.
 - **UV-380 module sources from any pushed commit.** `sources_commit` (with `uv380.send`, `uv380.m17`,
-  `uv380.ysf`, `uv380.voice`) builds the module from a worktree `src-<commit>` of that commit, after a check that
+  `uv380.ysf`, `uv380.voice`, `uv380.rx`) builds the module from a worktree `src-<commit>` of that commit, after a check that
   the module and every file it `#include`s stay inside that tree (no absolute or climbing includes,
   no `#embed`, `.incbin` or asm `.include`: those could put a hamlet file on the air or in the
   public log).
