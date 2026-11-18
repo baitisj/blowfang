@@ -174,7 +174,7 @@ def packets(plan="probe"):
         one = np.ones(PAD_SYMS, np.int8)
         out = [dict(name=f"C{i:02d}", chip=pn_signs()[:LOCK_CAL_SYMS], mode="none")
                for i in range(LOCK_NCAL)]
-        for i, q in enumerate(LOCK_A if plan not in ("demo", "sotto") else ()):
+        for i, q in enumerate(LOCK_A):
             c, sz = split(fr[i % 4])
             out.append(dict(name=f"A{i:02d}", chip=np.concatenate([c, pad]),
                             size=np.concatenate([sz, one]), mode="size", off=q, frames=[i % 4]))

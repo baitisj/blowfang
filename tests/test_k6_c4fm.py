@@ -445,7 +445,7 @@ def test_ftm_demo_calls():
     receiver finds all five"""
     pytest.importorskip("unicorn")
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC)
-    assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.DEMO_SETS), said
+    assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.DEMO_SETS), said
     lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="demo")
     for j, inv in enumerate(k6c4fm.DEMO_INV):
         r = res[f"D{j}"]
@@ -460,7 +460,7 @@ def test_sotto_demo_carries_the_clip():
     pytest.importorskip("unicorn")
     from modem import ysf
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=SOTTO_SRC)
-    assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.SOTTO_SETS), said
+    assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.SOTTO_SETS), said
     lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="sotto")
     for j in range(len(k6c4fm.SOTTO_SETS)):
         assert res[f"D{j}"]["fich_n"] == 4, "\n".join(lines)

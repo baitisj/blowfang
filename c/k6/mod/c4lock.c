@@ -129,7 +129,7 @@ K6_MODULE_NAME(K6_NAME);
 #define CAL_WORDS 4u                                /* a calibration packet's payload: 64 symbols */
 #define NCAL 17
 #if C4_DEMO
-#define NA 0
+#define NA 13                                       /* kept: the fit needs them (11-18 ftm3: miss 5 without) */
 #define GAP_MS 1000u                                /* carrier between the demo's transmissions */
 #else
 #define NA 13
