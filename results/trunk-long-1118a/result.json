@@ -1,0 +1,12 @@
+{
+ "id": "trunk-long-1118a",
+ "status": "queued",
+ "queued": "2026-11-18T20:57:36Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f33afd467d41780242c9a10f81ebaa07160a170b",
+  "path": "jobs/trunk-long-1118a"
+ },
+ "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "updated": "2026-11-18T20:57:36Z"
+}
