@@ -1,12 +1,102 @@
 {
  "id": "c4fm-ftm1",
- "status": "running",
- "since": "2026-11-18T03:01:22Z",
+ "who": "c4fm",
+ "started": "2026-11-18T03:01:27Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T03:01:27Z",
+   "ended": "2026-11-18T03:01:29Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T03:01:29Z",
+   "ended": "2026-11-18T03:01:42Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T03:01:42Z",
+   "ended": "2026-11-18T03:01:42Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T03:01:42Z",
+   "ended": "2026-11-18T03:01:42Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T03:01:42Z",
+   "ended": "2026-11-18T03:01:54Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T03:01:54Z",
+   "ended": "2026-11-18T03:01:54Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "k6.upload",
+   "started": "2026-11-18T03:01:54Z",
+   "ended": "2026-11-18T03:04:05Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-18T03:04:05Z",
+   "ended": "2026-11-18T03:04:18Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-18T03:04:18Z",
+   "ended": "2026-11-18T03:04:20Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-18T03:04:20Z",
+   "ended": "2026-11-18T03:04:40Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-18T03:04:40Z",
+   "ended": "2026-11-18T03:05:29Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "logger.stop",
+   "started": "2026-11-18T03:05:29Z",
+   "ended": "2026-11-18T03:05:29Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f",
+ "head": "9bc3c2d2187fe82a24213f34b431454618165ba3",
+ "ended": "2026-11-18T03:05:29Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "303e262699f9246074a0b753f744ee6e5082572c",
   "path": "jobs/c4fm-ftm1"
  },
  "runner_commit": "9bc3c2d2187fe82a24213f34b431454618165ba3",
- "updated": "2026-11-18T03:01:22Z"
+ "updated": "2026-11-18T03:05:30Z"
 }
