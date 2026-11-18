@@ -46,10 +46,11 @@ extern "C" {
 #endif
 
 #define OM_MAGIC "U3R"
-#define OM_LEVEL 4                      /* 2: sotto 1200 encoder, the message, send (11-13);
+#define OM_LEVEL 5                      /* 2: sotto 1200 encoder, the message, send (11-13);
                                            3: tx_tone (11-14);
                                            4: tx_mic and tx_tone send the ident first, under
-                                              the image's transmit guard (11-16) */
+                                              the image's transmit guard (11-16);
+                                           5: Codec2 3200 to the speaker (11-18) */
 #define OM_ARENA 16384                  /* module image plus scratch (half if the heap is short) */
 #define OM_HEX_MAX 128                  /* image bytes in one "mod hex" line */
 #define OM_LINE 320                     /* the longest command line the image reads */
@@ -102,6 +103,17 @@ typedef struct ortx_api {
        meanwhile, and may switch the C6000's transmit source (E0) and capture I2S3: 0, or -1
        (refused) */
     int (*tx_tone)(unsigned ms, unsigned hz);
+    /* level 5: Codec2 3200 on the speaker through OpenRTX's own decoder thread, as its M17
+       mode plays a call (docs/uv380-m17-rx.md). c2_start opens the MCU -> speaker path (the
+       C6000's DAC) and starts the decoder: 0, or -1 (no path, or no memory for the thread).
+       c2_push queues one 8-byte frame (20 ms) without waiting: 0, or -1 (the queue, 4 frames,
+       is full: push it again later; or not started). The decoder plays silence when the queue
+       runs dry. c2_stop waits up to 1 s for the queue to play out, then stops the decoder and
+       releases the path; the loader also calls it when a module returns. Check api->level >= 5
+       before calling these: older images' tables end at tx_tone. */
+    int (*c2_start)(void);
+    int (*c2_push)(const uint8_t *frame);
+    void (*c2_stop)(void);
 } ortx_api_t;
 
 /* the image's side: what the loader needs from OpenRTX (all of it, or NULL where noted) */
@@ -127,6 +139,10 @@ typedef struct {
     int (*tx_mic)(unsigned ms);
     /* level 3 (NULL: returns -1) */
     int (*tx_tone)(unsigned ms, unsigned hz);
+    /* level 5 (NULL: c2_start and c2_push return -1) */
+    int (*c2_start)(void);
+    int (*c2_push)(const uint8_t *frame);
+    void (*c2_stop)(void);
 } om_host;
 
 /* One "mod ..." command; args is what follows "mod". Returns 0, or -1 after an "err" line. */

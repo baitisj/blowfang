@@ -21,6 +21,14 @@
      st T halves= gaps= frames= lost= rssi=       once a second
      end halves= gaps= frames= lost= lsf= str= pkt= bert= eot= sms= bert_bits= bert_err=
    sc and m are thousandths (sync score, Viterbi disagreement); g is tap units per level.
+   Voice (API level 5 images): stream frames' Codec2 3200 goes to the speaker through the image's
+   own decoder (api->c2_start/c2_push/c2_stop, OpenRTX's M17 playback). The module keeps a
+   jitter buffer (M17RX_C2Q frames), starts the decoder once M17RX_PREBUF frames are in, feeds it
+   as it takes them, and stops it M17RX_TAIL_MS after the last frame went (the last stream frame,
+   an EOT, or no stream frame for M17RX_GAP_MS). Lines:
+     spk start q=N | spk err | spk stop frames=N gap=MS drop=N
+   (gap: the longest wait between stream frames, ms; over about 120 the decoder ran dry; drop:
+   frames the full buffer had no room for). On a level 4 image: "spk none level=4", no sound.
    M17RX_TAP 1 (c6m17rx_tap.c) also sends each half as c6fmtap's four "a" lines, so the host
    receiver (c/common/m17_rx_host) can be run on exactly what the radio's had.
    SPDX-License-Identifier: MIT */
@@ -46,6 +54,19 @@
 #define HALF0 0x030u
 #define HALF1 0x230u
 #define BLK 64u
+#ifndef M17RX_SPK
+#define M17RX_SPK 1
+#endif
+#ifndef M17RX_PREBUF
+#define M17RX_PREBUF 6u                 /* 120 ms of Codec2 before the decoder starts */
+#endif
+#ifndef M17RX_GAP_MS
+#define M17RX_GAP_MS 400u               /* no stream frame this long: the call has ended */
+#endif
+#ifndef M17RX_TAIL_MS
+#define M17RX_TAIL_MS 120u              /* after the last push: the decoder's queue (4) plays out */
+#endif
+#define M17RX_C2Q 32u                   /* frames (power of 2) */
 #define SMS_MAX 256u                    /* an SMS this long (M17 allows 823 bytes; longer is cut) */
 
 typedef struct {
@@ -57,6 +78,12 @@ typedef struct {
     unsigned n[M17_KINDS];
     unsigned sms_ok;
     uint32_t bert_bits, bert_err;
+    uint8_t c2q[M17RX_C2Q][8];
+    unsigned c2_in, c2_out;             /* ring counters */
+    int spk;                            /* -1 none, 0 idle, 1 buffering, 2 playing, 3 ending */
+    uint32_t spk_last;                  /* ms: the last stream frame (moved back at a call's end) */
+    uint32_t spk_prev;                  /* ms: the stream frame before, for the longest gap */
+    unsigned spk_frames, spk_gap, spk_drop;
 } m17_mod;
 
 static unsigned rd16(const ortx_api_t *api, unsigned a) {
@@ -107,6 +134,26 @@ static void report(const ortx_api_t *api, m17_mod *m) {
     case M17_STREAM:
         api->fmt(line, sizeof line, "f %lu str fn=%02x%02x lich=%d sc=%u g=%u m=%u", t, f->data[0], f->data[1],
                  f->ok, sc, g, q);
+        if (m->spk >= 0) {
+            for (unsigned h = 0; h < 2u; h++) {
+                if (m->c2_in - m->c2_out >= M17RX_C2Q) {
+                    m->spk_drop++;
+                    continue;
+                }
+                api->memcpy(m->c2q[m->c2_in & (M17RX_C2Q - 1u)], f->data + 2 + 8 * h, 8);
+                m->c2_in++;
+            }
+            if (m->spk == 0)
+                m->spk = 1;
+            if (m->spk == 3)
+                m->spk = 2;             /* a new call before the old one stopped */
+            uint32_t now = api->ms();
+            if (m->spk == 2 && now - m->spk_prev > m->spk_gap)
+                m->spk_gap = now - m->spk_prev;
+            m->spk_prev = m->spk_last = now;
+            if (f->data[0] & 0x80u)
+                m->spk_last -= M17RX_GAP_MS;    /* the last frame: end once it has played */
+        }
         break;
     case M17_PACKET: {
         unsigned meta = f->data[25], eof = meta >> 7, cnt = (meta >> 2) & 31u;
@@ -140,9 +187,46 @@ static void report(const ortx_api_t *api, m17_mod *m) {
     }
     default:
         api->fmt(line, sizeof line, "f %lu eot", t);
+        if (m->spk >= 1)
+            m->spk_last = api->ms() - M17RX_GAP_MS;
         break;
     }
     api->say(line);
+}
+
+/* the speaker: start the decoder with enough buffered, feed it what it takes, stop after a call */
+static void speaker(const ortx_api_t *api, m17_mod *m) {
+    char line[80];
+    uint32_t now = api->ms();
+    if (m->spk == 1 && (m->c2_in - m->c2_out >= M17RX_PREBUF || now - m->spk_last >= M17RX_GAP_MS)) {
+        if (api->c2_start()) {
+            api->say("spk err");
+            m->spk = -1;
+            return;
+        }
+        api->fmt(line, sizeof line, "spk start q=%u", m->c2_in - m->c2_out);
+        api->say(line);
+        m->spk = 2;
+        m->spk_frames = m->spk_gap = m->spk_drop = 0;
+    }
+    if (m->spk == 2) {
+        while (m->c2_in != m->c2_out && api->c2_push(m->c2q[m->c2_out & (M17RX_C2Q - 1u)]) == 0) {
+            m->c2_out++;
+            m->spk_frames++;
+        }
+        if (m->c2_in == m->c2_out && now - m->spk_last >= M17RX_GAP_MS) {
+            m->spk = 3;                 /* the call is over: let the decoder's queue play out */
+            m->spk_last = now;
+        }
+    }
+    if (m->spk == 3 && now - m->spk_last >= M17RX_TAIL_MS) {
+        api->c2_stop();
+        api->fmt(line, sizeof line, "spk stop frames=%u gap=%u drop=%u", m->spk_frames, m->spk_gap,
+                 m->spk_drop);
+        api->say(line);
+        m->spk = 0;
+        m->c2_in = m->c2_out = 0;
+    }
 }
 
 /* one complete half: to the receiver (and as "a" lines with M17RX_TAP) */
@@ -190,6 +274,11 @@ int uv_main(const ortx_api_t *api) {
         z[i] = 0;
     m17_init(&m->rx);
     m->src[0] = '?';
+    m->spk = (M17RX_SPK && api->level >= 5u) ? 0 : -1;
+    if (M17RX_SPK && m->spk < 0) {
+        api->fmt(line, sizeof line, "spk none level=%u", (unsigned)api->level);
+        api->say(line);
+    }
 
     c6_saved sv;
     at_saved as;
@@ -230,6 +319,8 @@ int uv_main(const ortx_api_t *api) {
             feed(api, m, done ? HALF1 : HALF0, &seq);
             halves++;
         }
+        if (m->spk > 0)
+            speaker(api, m);
         if (t - last_st >= 1000u) {
             last_st = t;
             api->fmt(line, sizeof line, "st %lu halves=%u gaps=%u frames=%lu lost=%lu rssi=%ld", (unsigned long)t,
@@ -239,6 +330,12 @@ int uv_main(const ortx_api_t *api) {
         api->sleep_ms(1);
     }
 
+    if (m->spk > 0) {
+        api->c2_stop();
+        api->fmt(line, sizeof line, "spk stop frames=%u gap=%u drop=%u", m->spk_frames, m->spk_gap,
+                 m->spk_drop);
+        api->say(line);
+    }
     api->c6000_write(0x81, m81);
     c6_restore(api, &sv);
     api->c6000_write(0x83, 0xFF);
