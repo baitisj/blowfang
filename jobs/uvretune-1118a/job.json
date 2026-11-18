@@ -1,0 +1,15 @@
+{
+ "id": "uvretune-1118a",
+ "who": "position",
+ "freq_mhz": 441.85,
+ "minutes": 5,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "power 0",
+    "listen 0"
+   ]
+  }
+ ]
+}
