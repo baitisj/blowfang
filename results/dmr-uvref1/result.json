@@ -1,12 +1,12 @@
 {
  "id": "dmr-uvref1",
- "status": "queued",
- "queued": "2026-11-18T22:38:05Z",
+ "status": "running",
+ "since": "2026-11-18T22:38:16Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "07440d7b5729679ce73dd8bded31703b2a6fc435",
   "path": "jobs/dmr-uvref1"
  },
  "runner_commit": "b3631bbb9347cdb86d79c58d31572c4ec813c87e",
- "updated": "2026-11-18T22:38:05Z"
+ "updated": "2026-11-18T22:38:16Z"
 }
