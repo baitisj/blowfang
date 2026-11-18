@@ -544,6 +544,14 @@ def test_uv380_rx_checked(work):
         assert "one plan" in problems(uv_job({"do": "uv380.rx", "args": args})), args
 
 
+def test_uv380_rx_modules_load_as_openrtx_modules():
+    """uv380_i2sprobe.py mod refuses a file that doesn't include ortx_mod.h itself (11-18: c6m17rx_tap.c)"""
+    from modem import uv380mod
+    for mod in br.UV380_RX_PLANS.values():
+        path = os.path.join(REPO, *br.uv380_rx_module("tap")[:-1], mod)
+        assert uv380mod.source_table(path) == "openrtx", mod
+
+
 def test_uv380_rx_modules_never_key():
     for mod in br.UV380_RX_PLANS.values():
         src = open(os.path.join(REPO, *br.uv380_rx_module("tap")[:-1], mod)).read()
