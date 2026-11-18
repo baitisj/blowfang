@@ -170,6 +170,19 @@ static int api_tx_tone(unsigned ms, unsigned hz) {
     return H->tx_tone ? H->tx_tone(ms, hz) : -1;
 }
 
+static int api_c2_start(void) {
+    return H->c2_start ? H->c2_start() : -1;
+}
+
+static int api_c2_push(const uint8_t *frame) {
+    return H->c2_push ? H->c2_push(frame) : -1;
+}
+
+static void api_c2_stop(void) {
+    if (H->c2_stop)
+        H->c2_stop();
+}
+
 static const ortx_api_t api = {
     .abi = MC_ABI,
     .level = OM_LEVEL,
@@ -196,6 +209,9 @@ static const ortx_api_t api = {
     .tx_request = api_tx_request,
     .tx_mic = api_tx_mic,
     .tx_tone = api_tx_tone,
+    .c2_start = api_c2_start,
+    .c2_push = api_c2_push,
+    .c2_stop = api_c2_stop,
 };
 
 uint8_t *om_arena(void) {
@@ -282,6 +298,7 @@ static int cmd_run(void) {
     outf("mod run serial=%lu code=%u", (unsigned long)mc_serial(), arena[4] | arena[5] << 8);
     t0 = H->now_ms();
     int ret = mc_run(arena, &api);
+    api_c2_stop();                      /* a module that left the speaker decoder running */
     outf("ok mod run ret=%d ms=%lu%s", ret, (unsigned long)(H->now_ms() - t0),
          cancel ? " (Ctrl-C)" : "");
     return 0;

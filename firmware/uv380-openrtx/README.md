@@ -276,6 +276,15 @@ for 100 ms, then key the test, so a carrier a hang leaves up has been identified
 timed their windows from the call (micrec, mictx, micduplex*) now see the ident first. `mod/micduplex_tone.c` switches the C6000's transmit source
 meanwhile and reads I2S3, to see whether the radio can send modem audio and hear the mic at once.
 
+**Codec2 to the speaker (level 5, 11-18).** `api->c2_start()`, `c2_push(frame)` and `c2_stop()`
+hand 8-byte Codec2 3200 frames to OpenRTX's own decoder thread (`core/audio_codec`) on the MCU to
+speaker path, which on the MD-UV380 is the C6000's DAC: what OpenRTX's M17 mode does with a call.
+`c2_push` never waits (the decoder's queue holds 4 frames, 80 ms), so a module keeps its own
+jitter buffer; the loader calls `c2_stop` after every module. `mod/c6m17rx.c` uses it to play M17
+voice received from the C6000's FM tap (docs/uv380-m17-rx.md); on a level 4 image it says
+`spk none level=4` and only decodes. The decoder's thread stack (16 KB) comes from the heap
+beside the 16 KB module arena.
+
 **No writes into a dead USB bus, and "guard" (11-16, PR #127).** At 1 W the UV-380 drops off
 the USB bus at key-up, and a write nobody reads spins 500 ms in OpenRTX's driver. Lines and module
 writes skip a suspended bus, and after a write times out they're dropped until the host writes

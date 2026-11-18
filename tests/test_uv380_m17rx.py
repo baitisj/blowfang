@@ -71,8 +71,9 @@ def test_on_radio_receiver_fits_the_module_arena():
     h = open(os.path.join(os.path.dirname(__file__), "..", "c", "common", "m17_rx.h")).read()
     yn, ntap = (int(re.search(rf"#define {k} (\d+)", h).group(1)) for k in ("M17_YN", "M17_NTAP"))
     state = 4 * ntap + 2 * yn + 32 + 64 + 2 * 248 + 4 * (16 + 488 + 368) + 64    # m17_rx, about
-    sms = int(re.search(r"#define SMS_MAX (\d+)u", open(os.path.join(MOD, "c6m17rx.c")).read()).group(1))
-    assert (len(code) + 7) // 8 * 8 + state + 64 + sms + 128 <= 16384
+    src = open(os.path.join(MOD, "c6m17rx.c")).read()
+    sms, c2q = (int(re.search(rf"#define {k} (\d+)u", src).group(1)) for k in ("SMS_MAX", "M17RX_C2Q"))
+    assert (len(code) + 7) // 8 * 8 + state + 64 + sms + 8 * c2q + 160 <= 16384
 
 
 # ---- the C receiver for the radio (c/common/m17_rx.c) ------------------------------------------
@@ -122,3 +123,31 @@ def test_c_receiver_finds_nothing_in_noise(tmp_path):
     noise = np.clip(np.round(rng.normal(0, 12000, 8000 * 60)), -32768, 32767).astype("<i2")
     frames, end = _c_receive(tmp_path, noise)
     assert frames == [], frames[:5]
+
+
+def test_c6m17rx_plays_a_call_on_the_speaker_without_gaps(tmp_path):
+    """the module's speaker logic (tests/c6m17rx_spk_host.c) on a simulated tap: two calls, every
+    Codec2 frame pushed once, the decoder never dry until the call's end"""
+    import shutil
+    import subprocess
+    from modem import m17
+    cc = shutil.which("cc") or shutil.which("gcc") or shutil.which("clang")
+    if not cc:
+        pytest.skip("no C compiler")
+    here = os.path.dirname(__file__)
+    exe = tmp_path / "spk_host"
+    subprocess.run([cc, "-O1", "-std=gnu99", "-w", "-I" + os.path.join(MOD, ".."), "-I" + MOD, "-o", str(exe),
+                    os.path.join(here, "c6m17rx_spk_host.c")], check=True)
+    c2 = open(os.path.join(here, "data", "uv380", "m17-voice.c2"), "rb").read()
+    rng = np.random.default_rng(3)
+    audio = _tap_audio(m17.tx_voice(c2) + m17.eot() + m17.tx_voice(c2[:400]), rng, invert=True)
+    raw = tmp_path / "tap.raw"
+    raw.write_bytes(audio.tobytes())
+    out = subprocess.run([str(exe), str(raw)], check=True, capture_output=True, text=True).stdout.splitlines()
+    starts = [ln for ln in out if " spk start" in ln]
+    stops = [ln for ln in out if " spk stop" in ln]
+    n1, n2 = len(c2) // 8, (400 + 15) // 16 * 2
+    assert len(starts) == 2 and len(stops) == 2, out[-20:]
+    assert f"frames={n1} " in stops[0] and f"frames={n2} " in stops[1]
+    assert not [ln for ln in out if ln.endswith(" underrun")], out    # silence only after a call's end
+    assert out[-1].startswith(f"end pushes={n1 + n2} played={n1 + n2} ") and out[-1].endswith(" underruns=0")
