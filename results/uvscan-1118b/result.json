@@ -1,12 +1,48 @@
 {
  "id": "uvscan-1118b",
- "status": "running",
- "since": "2026-11-18T21:03:16Z",
+ "who": "position",
+ "started": "2026-11-18T21:03:18Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T21:03:18Z",
+   "ended": "2026-11-18T21:03:26Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-18T21:03:26Z",
+   "ended": "2026-11-18T21:03:28Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-18T21:03:28Z",
+   "ended": "2026-11-18T21:04:36Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T21:04:36Z",
+   "ended": "2026-11-18T21:04:43Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be",
+ "head": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-4a1b3464a79b",
+ "sources_head": "4a1b3464a79b32500d6339b69f8725d65d111e6f",
+ "ended": "2026-11-18T21:04:43Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "b6586d232f055b3f9697a9895a3fe6fbef07cc21",
   "path": "jobs/uvscan-1118b"
  },
  "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
- "updated": "2026-11-18T21:03:16Z"
+ "updated": "2026-11-18T21:04:43Z"
 }

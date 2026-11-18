@@ -1,0 +1,65 @@
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+ok mod begin 2123
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 75
+mod run serial=1795035806 code=2099
+mod say scan start n=801 lo=425000 hi=435000 step=12500 r29=26d7 r2a=e97f r30=7026
+mod say r 425000 QONPOOPRORPOSRQSSPSTPSTQSTQQUQRSORTSQTQPSQQSRPTSQT
+mod say r 425625 SQUTKTURTUTMRSTTSQSSSTSQSQORPPQNOQQPQRPSQRTURUSQVU
+mod say r 426250 TUSTTUTRUTSURSQRRSPPQORQROSRORQSTQQUTTTTRSTSSSQSSP
+mod say r 426875 KQSQRQQLQQRRRSQQSSRTPQPSRSSOQSQRSQRRORRQRQQPRRPRNP
+mod say r 427500 ROPNOOJMOPPONKMPPOPPOPPPPQPPPOOQQOPNPQPPPOORPOPOPQ
+mod say r 428125 QOQQPJOQQPPNJNPQNONOPRPQSRQRTSUSRSRSTSSRQRRRNQQOOP
+mod say r 428750 ONPNPPQQQRPSRRSQRSTSRRQTRQQRRQRPSSPQRQRRQQQOPQPPQO
+mod say r 429375 OIMPQPQPLOQQORQPQRPRQQQQRQQQOPONONONNNONOPOOORQRRO
+mod say r 430000 RQQRRQQKOQRQRQKPRPQRPQRSRRPPQQRRRQRPPQPNPNNNOOOOMO
+mod say r 430625 OOOPPPJNPQPQQKPQQQRNPRRQQQQPPQQPQQQPRPOQOOPQOOONON
+mod say r 431250 ONPPOINQRPQPKORQQRPPRSQPPOQPPROQRQPQRQRRPRTRTTRRSR
+mod say r 431875 RTSSTRSTRSTSSSSRT\fcURSRQTSRTQRRSRRSQRRRQQQQROQQPP
+mod say r 432500 PJNPQPQPKPQOPPOOOPPOPNOOQPNONNOPOMPPONQOQOOOOOPQPO
+mod say r 433125 QOPPOQQJNQPOQOLNQPQQPQPPQPPOOOOOMNNNNNNLNLOOPPOOPQ
+mod say r 433750 PPPPQRJNQQPRQLPRSRSQQSSSRSSRRTSSSSRSTSRSRQRRQPPQPN
+mod say r 434375 NNMNLHLPOPQPKOQQPQOPPQPQPOPNPPNOOOOPOPPPOPRQRQQQQR
+mod say r 435000 S
+mod say p 425350 m=-86 fl=-94
+mod say p 425650 m=-85 fl=-94
+mod say p 425700 m=-85 fl=-94
+mod say p 425737 m=-86 fl=-94
+mod say p 426162 m=-86 fl=-94
+mod say p 426187 m=-86 fl=-94
+mod say p 426225 m=-84 fl=-94
+mod say p 426237 m=-86 fl=-94
+mod say p 426262 m=-85 fl=-94
+mod say p 426312 m=-86 fl=-94
+mod say p 426350 m=-86 fl=-94
+mod say p 426387 m=-86 fl=-94
+mod say p 426687 m=-86 fl=-94
+mod say p 428500 m=-86 fl=-94
+mod say p 432087 m=-72 fl=-94
+mod say p 432100 m=-52 fl=-94
+mod say p 432112 m=-58 fl=-94
+mod say p 432125 m=-85 fl=-94
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+mod say scan end n=801 ms=38020 ret=18
+ok mod run ret=18 ms=38026
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0

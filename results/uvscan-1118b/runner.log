@@ -1,0 +1,30 @@
+2026-11-18T21:03:18Z job uvscan-1118b by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be at 36dd1f8f20bed4165b7ec5357cf044b057bbd443, module sources /home/baitisj/blowfang-work/worktrees/src-4a1b3464a79b at 4a1b3464a79b32500d6339b69f8725d65d111e6f
+2026-11-18T21:03:18Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvscan-1118b/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T21:03:26Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T21:03:26Z step 1 (uv380.cmd) rc=0
+2026-11-18T21:03:26Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-4a1b3464a79b/firmware/uv380-openrtx/mod/atscan.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/uvscan-1118b/uv380.log --run-timeout 200
+2026-11-18T21:03:28Z step 2 (uv380.rx) rc=0
+2026-11-18T21:03:28Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position send /home/baitisj/blowfang-work/runs/inbox/uvscan-1118b/psk.wav --hz 432100000 --gain -30
+send: wav peak 0.300 of full scale -> 900 Hz before pre-emphasis
+send psk.wav: 66.7 s on 432100000 Hz (LO 432100000.0), gain -30.0 dB, rate 2400000, RF on
+start 21:03:29Z
+end 21:04:36Z: 66.7 s of signal in 66.5 s (kept up)
+2026-11-18T21:04:36Z step 3 (pluto) rc=0
+2026-11-18T21:04:36Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvscan-1118b/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T21:04:43Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850 listen=0
+2026-11-18T21:04:43Z step 4 (uv380.cmd) rc=0
+2026-11-18T21:04:43Z job uvscan-1118b done

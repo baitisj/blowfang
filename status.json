@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "uvscan-1118b",
-  "who": "position",
-  "since": "2026-11-18T21:03:16Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-18T21:03:09Z",
+ "last_poll": "2026-11-18T21:04:43Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T21:03:16Z"
+ "updated": "2026-11-18T21:04:43Z"
 }
