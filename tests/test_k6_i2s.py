@@ -33,7 +33,7 @@ PERIOD = 400            # samples between modelled DFS edges
 def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spare=1024,
         mmio=(), level=2, tx=None, rx_hz=440_850_000, keys=(), cal=None, tune=None, count=200_000_000, code=None, gpiob=None,
         flash=None, lcd=None, pb_idr=None, led=None, keypad=None, fsk=None, paint=False, clock=None,
-        write_us=0, settings=None):
+        write_us=0, settings=None, read_us=20):
     """regs: the chip's registers at the start. GP0 drives PB1 only while REG_33 bit 8 is clear
     (else PB1's pull-up reads 1), following REG_34[3:0]: 13 (DFS) toggles every PERIOD reads of
     PB1 once i2s_en's bit is set, 15 (XTAL/2) on every read, others hold 0. gp0_gate: the image
@@ -74,6 +74,7 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
     clock: a dict for level 8's core clock: clock["fix"] = (us, utc ms of day, date, w ms) is the
     fix at that emulated time (None or absent: no clock), kept as the core does (the bound growing
     1 ms in 4 s); each clock_set lands in clock["sets"] as (us, ms, date, w) and becomes the fix.
+    read_us: what an fd_read takes (us; the radio's are about 117).
     write_us: what an fd_write takes (us, or a function of (reg, us) giving it); the write lands
     (in tx["w"], the registers) at its end.
     settings: a dict for level 10's setting call, as the core keeps them: settings["light"] the
@@ -175,7 +176,7 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
             st["us"] += 4000                       # 25 calls (6400 samples) per 100 ms window
             ret = (st["us"] // 100) & 0xFFFF
         elif name == "fd_read":
-            st["us"] += 20
+            st["us"] += read_us
             v = fsk.read(r0, st["us"]) if fsk is not None else None
             if v is None:
                 assert r0 != 0x5F, "read the FSK FIFO"

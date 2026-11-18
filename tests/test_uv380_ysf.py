@@ -77,9 +77,20 @@ def test_plans_decode_from_their_bytes():
     s = ysf.summarize(ysf.decode_bytes(ysf.build("dn")))
     assert s["frames"] == s["fich_ok"] == 39
     assert s["fi"] == {"header": 1, "comms": 37, "terminator": 1}
-    assert s["src"] == {"AG7EW"} and s["dest"] == {"ALL"}
+    assert s["src"] == {"AG7EW"} and s["dest"] == {"*****BLOWF"}
     assert s["dch_ok"] == s["dch"] == 37 and s["silence"] == s["ambe"] == 185
-    assert s["fn"][:9] == [0, 1, 2, 3, 4, 5, 6, 0, 1]
+    assert s["fn"][:10] == [0, 1, 2, 3, 4, 5, 6, 7, 0, 1]
+
+
+def test_dn_copies_the_ftm300dr_layout():
+    """a real FTM-300DR local DN call (capture 11-18): call mode 1, FT 7, destination '*****' and
+    the radio ID, frame 5 = five spaces and the ID"""
+    frames = ysf.decode_bytes(ysf.build("dn"))
+    fi = frames[1]["fich"]
+    assert (fi.cm, fi.ft, fi.dt) == (1, 7, ysf.DT_VD_MODE2)
+    dch = {f["fich"].fn: f["dch"] for f in frames if "dch" in f}
+    assert dch[0] == b"*****BLOWF" and dch[1] == b"AG7EW     " and dch[5] == b"     BLOWF"
+    assert ysf.FICH.from_bytes(bytes.fromhex("640f0200")) == ysf.FICH(fi=1, cm=1, fn=1, ft=7, dt=2)
     s = ysf.summarize(ysf.decode_bytes(ysf.build("data")))
     assert s["dch_ok"] == s["dch"] == 74 and len(s["data"]) == 59
     assert s["data"][0] == b"00 AG7EW YSF DATA   " and s["data"][-1].startswith(b"58 ")
@@ -156,7 +167,7 @@ def test_decode_a_capture(tmp_path):
     iq.tofile(cap)
     open(str(cap) + ".json", "w").write('{"fs": 240000}')
     out = "\n".join(ysf.decode_capture(str(cap)))
-    assert "frames 12, FICH good 12" in out and "from AG7EW to ALL" in out
+    assert "frames 12, FICH good 12" in out and "from AG7EW to *****BLOWF" in out
     off = float(re.search(r"carrier ([-+]\d+) Hz", out).group(1))
     assert abs(off + 50_000) < 1000
 

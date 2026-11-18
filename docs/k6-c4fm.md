@@ -188,6 +188,46 @@ The analysis needed three fixes for this capture. A packet it can't place no lon
 rest. The burst finder now accepts the chip's ragged first 12 ms of preamble and noise spikes in
 the gaps. And it now uses each packet's sampling phase for its start time.
 
+## The clock moved (2026-11-18, after the K6 was re-plugged at 04:24Z)
+
+From 08:00Z every run drifted: size writes slid 0.1-0.5 symbol a frame, differently in each call,
+and the FTM-300DR showed no callsign from the K6. Run 4's own binary, run again (c4fm-ab1), fitted
+-851 ppm with 38 % residuals and then failed its calibration. The refcal module was ruled out (it
+puts REG_3B/73 back, and the crystal held at +0.05 ppm).
+
+**The probe (c/k6/mod/c4fifo.c, 10:05Z).** The FSK FIFO's almost-empty flag gives chip-timed
+marks in the middle of a packet. REG_3F bit 14 enables it. It shows in REG_02 bit 14 (write 0 to
+REG_02, then read it). Its threshold is REG_5E<9:3> in words; <2:0> is the receive almost-full.
+The flag comes up as a word leaves the FIFO with the level at the threshold or below, and stays up
+until a refill. Refilling a word each time brings it back every 16 chip symbols. A poll takes
+117 µs (0.56 symbol), so each mark is only bracketed to that. The polls start at a dithered time,
+because a fixed start brackets every mark at the same phase and biases the line. Inside a packet
+the MCU's clock read **-1,500 ppm** against the chip (run 4 read -520). That is too far for the
+fit to pull in from its -630 ppm prior, so it settled on a wrong line. Later runs read -1,240,
+-970 and -1,150 ppm, and the rate stepped 100-150 ppm between packets a second apart. The MCU
+runs on an RC oscillator, and it wanders.
+
+**The fix, in three runs:**
+
+- **lock5:** two rate packets (R0, R1) come before the calibration. Each is 128 words, with 108
+  marks. Their line gives the rate to about 25 ppm (emulated at 117 µs reads), and the lock
+  starts there. The single frames were clean again (A06: 0 wrong), but whole calls still slid up
+  to 0.9 symbol.
+- **lock6:** a rate packet now comes right before each B packet and sets its rate. Nothing slid
+  inside a call any more. B0 and B3 landed exactly, but B2 and B4 started a whole symbol off the
+  calibration's prediction. Predicting the start from the rate packets' own starts (lock7) did
+  worse.
+- **lock8:** each B packet now times itself. It starts with 7 words of alternation (more
+  preamble; 128 words in all, REG_5D's most), and the FIFO is kept at the threshold through them.
+  Six flags place the payload's first symbol. The done grid then follows from dd, the rate
+  packets' done time after their payload on the same lattice; the fit's phase was 0.4 symbol off
+  when emulated. Result: **B0-B4 all 4 of 4 frames with a good FICH**, and B2 (lag 0) had 5 of
+  2,048 symbols wrong. The plain YSF receiver found 20 frames in 5 runs.
+
+**c4sotto (sotto3, 11:44Z):** the Pluto decoded D0, D1, D2 and D4 with 5-14 symbols wrong each.
+D3's first two frames were damaged. The UV-380's FM tap got 18 frames, all with a good FICH, and
+200 of the clip's 240 bytes. The earlier try (sotto2, before the fix) got 5 of 12 blocks.
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto

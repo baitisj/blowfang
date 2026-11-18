@@ -408,11 +408,47 @@ def decode_dn_payload(llr):
     return dch, voice
 
 
-def dn_dch(fn, dest="ALL", src=IDENT, down="", up="", rem=" " * 20):
-    """the DN data channel's 10 bytes for frame fn"""
+RADIO_ID = "BLOWF"                  # our 5-character radio ID (a Yaesu radio's own is fixed)
+
+
+def dn_dest(rid=RADIO_ID):
+    """the destination a Yaesu radio sends on a local DN call: five stars and its radio ID
+    (FTM-300DR capture 11-18, k6-c4fm/ftmref: '*****' + its ID, call mode 1)"""
+    return "*****" + rid
+
+
+# DCH frames 6 and 7 of a Yaesu radio's DN call: a 20-byte block, radio type then a GPS position
+# (APRS Mic-E style: 6 latitude characters, then longitude degrees, minutes and hundredths + 28),
+# byte 19 = the sum of bytes 0-18. An FTM-300DR shows the caller's callsign only when this block is
+# there (bench, 11-18: frames identical but for it gave a blue bar and no callsign). The first five
+# bytes and bytes 14-18 are as an FTM-300DR sends them; the position is made up (47 00.00 N,
+# 122 00.00 W, the same N / +100 / W flag letters as the radio's).
+GPS_HEAD = bytes.fromhex("5522625f31")
+GPS_TAIL = bytes.fromhex("6c23272003")
+
+
+def gps_block(lat=b"T7PPPP", lon=(22, 0, 0)):
+    b = GPS_HEAD + lat + bytes(28 + v for v in lon) + GPS_TAIL
+    assert len(b) == 19
+    return b + bytes([sum(b) & 0xFF])
+
+
+def gps_block_ok(b):
+    return len(b) == 20 and (sum(b[:19]) & 0xFF) == b[19]
+
+
+def dn_dch(fn, dest="ALL", src=IDENT, down="", up="", rem=" " * 20, rid=None):
+    """the DN data channel's 10 bytes for frame fn (0-7). With rid, the Yaesu layout an FTM-300DR
+    sends: frame 5 carries five spaces and the radio ID, frames 6 and 7 the radio-type and GPS
+    block (frame 4 keeps the first half of rem)"""
     rem = rem.encode("ascii")[:20].ljust(20, b" ")
+    if rid:
+        rem2 = b" " * 5 + rid.encode("ascii")[:5].ljust(5, b" ")
+        r3, r4 = gps_block()[:10], gps_block()[10:]
+    else:
+        rem2, r3, r4 = rem[10:], b" " * 10, b" " * 10
     return [callsign_field(dest), callsign_field(src), callsign_field(down), callsign_field(up),
-            rem[:10], rem[10:], b" " * 10, b" " * 10][fn]
+            rem[:10], rem2, r3, r4][fn]
 
 
 # ---------------------------------------------------------------- frame assembly
@@ -426,16 +462,22 @@ def split_frame(llr960):
     return llr960[SYNC_BITS:PAYLOAD_OFFSET], llr960[PAYLOAD_OFFSET:]
 
 
-def tx_dn(ncomms, dest="ALL", src=IDENT, ft=6, rem="SOTTO UV380 C4FM", dgid=0):
-    """a V/D mode 2 transmission: header, ncomms comms frames of silence (FN 0..ft), terminator"""
+def tx_dn(ncomms, dest=None, src=IDENT, ft=7, rem="", dgid=0, cm=1,
+          rid=RADIO_ID):
+    """a V/D mode 2 transmission: header, ncomms comms frames of silence (FN 0..ft), terminator.
+    The defaults copy a real FTM-300DR's local call (call mode 1 = radio ID, FT 7, destination
+    '*****' + radio ID, the ID again in frame 5); cm=0, ft=6, dest='ALL', rid=None is the
+    11-18 layout the FTM showed a blue bar for but no callsign"""
+    if dest is None:
+        dest = dn_dest(rid) if rid else "ALL"
     out = [bytes([PREAMBLE]) * 24]
     hdr = header_payload(dest, src, csd2=b" " * 20)
-    mk = dict(cs=2, ft=ft, dt=DT_VD_MODE2, dgid=dgid)
+    mk = dict(cs=2, cm=cm, ft=ft, dt=DT_VD_MODE2, dgid=dgid)
     out.append(bits_to_bytes(build_frame(FICH(fi=FI_HEADER, fn=0, **mk), hdr)))
     sil = [ambe_silence()] * 5
     for k in range(ncomms):
         fn = k % (ft + 1)
-        pl = dn_payload(dn_dch(fn, dest, src, rem=rem), sil)
+        pl = dn_payload(dn_dch(fn, dest, src, rem=rem, rid=rid), sil)
         out.append(bits_to_bytes(build_frame(FICH(fi=FI_COMMS, fn=fn, **mk), pl)))
     out.append(bits_to_bytes(build_frame(FICH(fi=FI_TERMINATOR, fn=0, **mk), hdr)))
     return b"".join(out)
