@@ -240,4 +240,14 @@ the module waits for the upload's carrier to go, then for a carrier of the job's
 the uploader's closing ID), then for C4_PRE_MS (10 s) of quiet before it keys (trigger(); -7 if none
 of that happens within 180 s). Then `python3 -m modem.k6c4fm analyze c4.wav`.
 
+**Pre-armed go (c4ftm, `C4_KEYGO`; Jeff 11-18: a go should start the send within seconds).** A typed
+go through the bench inbox takes up to a minute plus the job's wake and upload steps. So the demo job
+uploads first and leaves the module armed. Once the upload's carrier is gone (C4_CLEAR_MS), it says
+`c4 armed: a key sends` and shows ARMED / ANY KEY: SEND. A K6 key pressed and let go is the go: it
+says `c4 go` and keys C4_GO_MS (5 s) later, with the channel clear for C4_CLEAR_MS. The job waits for
+`K6 MOD say c4 go` and then starts its background Pluto capture, which needs about 2 s to start. A key
+before the arming, or a second key during the count-down, stops it (-4). No key within C4_WAIT_MS
+(40 min), or a channel still busy 30 s after the go, gives -7. On air 11-18: armed at 15:16Z. The
+capture only starts while the K6 is on its cable, because the job reads the go line from the logger.
+
 SPDX-License-Identifier: MIT
