@@ -1,0 +1,49 @@
+{
+ "id": "c4fm-go1",
+ "who": "c4fm",
+ "freq_mhz": 440.85,
+ "minutes": 4,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 120,
+   "file": "k6.log"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c4.wav",
+    "--hz",
+    "440850500",
+    "--seconds",
+    "45"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4lock (sent|w=)|K6 MOD ret=",
+   "seconds": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 60
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
