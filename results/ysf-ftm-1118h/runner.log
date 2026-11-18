@@ -1,0 +1,265 @@
+2026-11-18T15:43:52Z job ysf-ftm-1118h by c4fm, checkout /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794 at a7074a21a7949de86c16dd707b004c265e160ebe, module sources /home/baitisj/blowfang-work/worktrees/src-d96ace3cd3e2 at d96ace3cd3e21d754562a619880fb22fd01b24c9
+2026-11-18T15:43:52Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/pluto_bench.py --as c4fm rx /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/y.wav --hz 440850000 --seconds 120
+2026-11-18T15:43:54Z step 1 (pluto) rc=0
+2026-11-18T15:43:54Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 zero 2 trim -580 freq 440850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: zero 2
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: trim -580
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: freq 440850
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T15:44:09Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+2026-11-18T15:44:09Z step 2 (uv380.cmd) rc=0
+2026-11-18T15:44:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T15:44:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-d96ace3cd3e2/firmware/uv380-openrtx/mod/c6ysftx_dn.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log --run-timeout 45
+ok mod begin 4496
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 16
+mod run serial=1795016654 code=4472
+mod say ysf dn bytes=504 frames=4 tx_ms=1070 cal I=7f Q=36 dev=140% -> 45=b1 46=4b mode=66 dry=0
+mod say tx_tone ok
+mod say ident keyed after 129 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say chk 00=36/36 24=24/36 spi=0 write=1 half=0
+mod say tx slots=16 bytes=504/504 edges=17 first=3 ms rftx=1 late=0 lost=0 restored at 565 ms
+mod say ysf done
+mod say end
+ok mod run ret=95 ms=5735
+2026-11-18T15:44:20Z step 3 (uv380.ysf) rc=0
+2026-11-18T15:44:24Z step 4 (wait) rc=0
+2026-11-18T15:44:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T15:44:28Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-d96ace3cd3e2/firmware/uv380-openrtx/mod/c6ysftx_data.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log --run-timeout 45
+ok mod begin 5218
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 98
+mod run serial=1795016668 code=5194
+mod say ysf data bytes=1224 frames=10 tx_ms=1670 cal I=7f Q=36 dev=140% -> 45=b1 46=4b mode=66 dry=0
+mod say tx_tone ok
+mod say ident keyed after 27 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say chk 00=36/36 24=24/36 spi=0 write=1 half=0
+mod say tx slots=36 bytes=1224/1224 edges=37 first=23 ms rftx=1 late=0 lost=0 restored at 1185 ms
+mod say ysf done
+mod say end
+ok mod run ret=95 ms=6233
+2026-11-18T15:44:35Z step 5 (uv380.ysf) rc=0
+2026-11-18T15:44:39Z step 6 (wait) rc=0
+2026-11-18T15:44:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T15:44:43Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-d96ace3cd3e2/firmware/uv380-openrtx/mod/c6ysftx_dn.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log --run-timeout 45
+ok mod begin 4496
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 16
+mod run serial=1795016684 code=4472
+mod say ysf dn bytes=504 frames=4 tx_ms=1070 cal I=7f Q=36 dev=140% -> 45=b1 46=4b mode=66 dry=0
+mod say tx_tone ok
+mod say ident keyed after 29 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say chk 00=36/36 24=24/36 spi=0 write=1 half=0
+mod say tx slots=16 bytes=504/504 edges=17 first=13 ms rftx=1 late=0 lost=0 restored at 575 ms
+mod say ysf done
+mod say end
+ok mod run ret=95 ms=5635
+2026-11-18T15:44:50Z step 7 (uv380.ysf) rc=0
+2026-11-18T15:44:54Z step 8 (wait) rc=0
+2026-11-18T15:44:54Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T15:44:58Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-d96ace3cd3e2/firmware/uv380-openrtx/mod/c6ysftx_data.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log --run-timeout 45
+ok mod begin 5218
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 98
+mod run serial=1795016698 code=5194
+mod say ysf data bytes=1224 frames=10 tx_ms=1670 cal I=7f Q=36 dev=140% -> 45=b1 46=4b mode=66 dry=0
+mod say tx_tone ok
+mod say ident keyed after 7 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say chk 00=36/36 24=24/36 spi=0 write=1 half=0
+mod say tx slots=36 bytes=1224/1224 edges=37 first=3 ms rftx=1 late=0 lost=0 restored at 1165 ms
+mod say ysf done
+mod say end
+ok mod run ret=95 ms=6213
+2026-11-18T15:45:05Z step 9 (uv380.ysf) rc=0
+2026-11-18T15:45:05Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 trim 6100 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: trim 6100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T15:45:12Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850 listen=0
+2026-11-18T15:45:12Z step 10 (uv380.cmd) rc=0
+2026-11-18T15:46:14Z seen /y\.wav: / in /home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/pluto.out
+2026-11-18T15:46:14Z step 11 (wait) rc=0
+2026-11-18T15:46:14Z job ysf-ftm-1118h done

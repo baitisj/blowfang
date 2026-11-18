@@ -1,12 +1,97 @@
 {
  "id": "ysf-ftm-1118h",
- "status": "running",
- "since": "2026-11-18T15:43:51Z",
+ "who": "c4fm",
+ "started": "2026-11-18T15:43:52Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-18T15:43:52Z",
+   "ended": "2026-11-18T15:43:54Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T15:43:54Z",
+   "ended": "2026-11-18T15:44:09Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.ysf",
+   "started": "2026-11-18T15:44:09Z",
+   "ended": "2026-11-18T15:44:20Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T15:44:20Z",
+   "ended": "2026-11-18T15:44:24Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "uv380.ysf",
+   "started": "2026-11-18T15:44:24Z",
+   "ended": "2026-11-18T15:44:35Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T15:44:35Z",
+   "ended": "2026-11-18T15:44:39Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "uv380.ysf",
+   "started": "2026-11-18T15:44:39Z",
+   "ended": "2026-11-18T15:44:50Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-18T15:44:50Z",
+   "ended": "2026-11-18T15:44:54Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "uv380.ysf",
+   "started": "2026-11-18T15:44:54Z",
+   "ended": "2026-11-18T15:45:05Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T15:45:05Z",
+   "ended": "2026-11-18T15:45:12Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-18T15:45:12Z",
+   "ended": "2026-11-18T15:46:14Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794",
+ "head": "a7074a21a7949de86c16dd707b004c265e160ebe",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-d96ace3cd3e2",
+ "sources_head": "d96ace3cd3e21d754562a619880fb22fd01b24c9",
+ "ended": "2026-11-18T15:46:14Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "d243a9386fa61a3cc9205f092c2ac2d0d425e875",
   "path": "jobs/ysf-ftm-1118h"
  },
  "runner_commit": "a7074a21a7949de86c16dd707b004c265e160ebe",
- "updated": "2026-11-18T15:43:51Z"
+ "updated": "2026-11-18T15:46:14Z"
 }
