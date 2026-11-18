@@ -67,6 +67,28 @@ real sender: a continuous YSF transmission with FIFO refills in symbols that nee
 reads LATCHED, the gain only takes effect per packet. Then the tone oscillator is the next try, and DMR
 syncs (P5) are the most this path gives.
 
+## Run 1 (2026-11-18 01:32Z, job c4fm-1118a): the K6 sends C4FM
+
+The module ran on the radio (main 8a78fb5, keyed). It returned 38 packets with 7,856 size writes, none
+started late, each write 11,223 cycles (117 µs). The Pluto at 440.849 MHz heard the K6's carrier
++1.55 kHz off its centre, about 180 Hz rms in the gaps (good SNR with the PA off). Files:
+/mnt/project-files/k6-c4fm/run1/.
+
+- **The gain is live mid-packet.** P1's levels were 3425, 2437, 1434, 973 and 731 Hz at gains 96, 72, 48, 32
+  and 16, close to linear with a small offset. REG_40 (P2) moves the level too, but only to 0.70 at a sixth.
+- **4800-baud FSK:** P0 outer about 3.5 kHz at gain 96 (YSF wants 2.7 kHz: gain about 74), 0 sign errors.
+  No droop: P3 and P4 both kept 100 %, so the REG_2B bits don't matter.
+- **DMR:** P5's three BS data syncs were found at exactly 54, 198 and 342.
+- **YSF:** 8 of 32 frames decoded with a good FICH, every frame type among them. That covers the header and
+  terminator (dest ALL, src AG7EW), data FN 0 (callsigns) and FN 1 ("00 AG7EW K6 C4FM"). Y13-Y17
+  (+1.25 to +2.25 symbols) had 2-13 of 480 symbols wrong. The best was Y15, writes +1.75 symbols late:
+  the chip's FSK path runs about 365 µs behind the register write. The leftover errors look like the
+  wav's clipping: full scale is 5 kHz, and +1.55 kHz of offset plus 3.5 kHz of deviation passes it.
+
+Next: centre the capture on the K6 (440.8505), set gain about 74 and inner about 25, and make the
+offset +7/4 the default. Then a continuous YSF transmission (header, comms frames, terminator back to
+back), with FIFO refills in symbols that need no size write, so a real C4FM radio can decode it.
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto

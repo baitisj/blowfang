@@ -196,21 +196,27 @@ def simulate(delay_us=0.0, outer_hz=1944.0 * 1.39, noise_hz=0.0, latched=False, 
 
 
 # ---------------------------------------------------------------- analysis
-def segments(disc, fs=48000):
-    """packet starts: a modulated stretch (moving RMS over two symbols above 20 % of the loudest)
-    after at least 8 ms without, lasting through the chip's lead (25 ms of it: the lead is 33 ms
-    of outer symbols); each as (start, end) samples, a packet's length from the start (the MCW
-    ID's dahs qualify too: analyze matches bursts to packets by their signs)"""
-    d = disc - np.median(disc)
-    w = max(1, int(fs * 2 / BAUD))
-    env = np.sqrt(np.convolve(d * d, np.ones(w) / w, "same"))
-    on = env > 0.2 * np.percentile(env, 99)
+def segments(disc, fs=48000, quiet_hz=None):
+    """packet starts: modulation (a moving standard deviation over two symbols above quiet_hz)
+    after at least 8 ms of steady carrier (below it), lasting through the chip's lead (25 ms of
+    its 33 ms of outer symbols); each as (start, end) samples, a packet's length from the start.
+    A moving deviation, not a level: the K6's carrier sits off the capture's centre, and the
+    noise before and after the key-up is full scale. quiet_hz: default 4 x the steadiest stretch's.
+    (The MCW ID's dahs qualify too: analyze matches bursts to packets by their signs.)"""
+    d = np.asarray(disc, float)
+    w = max(2, int(fs * 2 / BAUD))
+    k = np.ones(w) / w
+    m = np.convolve(d, k, "same")
+    sd = np.sqrt(np.maximum(np.convolve(d * d, k, "same") - m * m, 0))
+    if quiet_hz is None:
+        quiet_hz = max(300.0, 4 * float(np.percentile(sd, 2)))
+    on = sd > quiet_hz
     n = int((LEAD_SYMS + PKT_SYMS) / BAUD * fs)
     quiet, lead = int(0.008 * fs), int(0.025 * fs)
     c = np.concatenate([[0], np.cumsum(on)])
     segs, i = [], quiet
     while i < len(on) - lead:
-        if on[i] and not on[i - 1] and c[i] - c[i - quiet] == 0 and c[i + lead] - c[i] == lead:
+        if on[i] and not on[i - 1] and c[i] - c[i - quiet] == 0 and c[i + lead] - c[i] >= lead - w:
             a = max(0, i - int(fs / BAUD))
             segs.append((a, min(len(on), i + n + int(2 * fs / BAUD))))
             i += n
