@@ -1,0 +1,12 @@
+{
+ "id": "c4fm-chain2",
+ "status": "queued",
+ "queued": "2026-11-18T19:14:19Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "0b4a3eeec6d67e5af12de658b30f8c7f2d35e108",
+  "path": "jobs/c4fm-chain2"
+ },
+ "runner_commit": "a7074a21a7949de86c16dd707b004c265e160ebe",
+ "updated": "2026-11-18T19:14:19Z"
+}
