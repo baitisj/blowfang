@@ -1,0 +1,16 @@
+[
+ {
+  "name": "pluto.out",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-1118a/pluto.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 4746,
+  "sha256": "e0a062f9bf9c54efb70f2e56a5176bd0ae402efc064d653aa414a443a1b761d4",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-1118a/uv380.log"
+ }
+]

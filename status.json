@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "ysf-1118a",
-  "who": "ysf",
-  "since": "2026-11-18T00:54:00Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "refcal-cool-1118-r1",
@@ -16,8 +12,8 @@
    "not_before": "2026-11-18T01:07:26Z"
   }
  ],
- "last_poll": "2026-11-18T00:53:54Z",
+ "last_poll": "2026-11-18T00:55:26Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T00:54:00Z"
+ "updated": "2026-11-18T00:55:26Z"
 }
