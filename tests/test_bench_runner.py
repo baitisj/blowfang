@@ -3,6 +3,7 @@ fake rig and stand-in commands (no rigctld, no radios, no serial port)."""
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -546,8 +547,8 @@ def test_uv380_rx_checked(work):
 def test_uv380_rx_modules_never_key():
     for mod in br.UV380_RX_PLANS.values():
         src = open(os.path.join(REPO, *br.uv380_rx_module("tap")[:-1], mod)).read()
-        if "#include \"c6dmrrx.c\"" in src:
-            src += open(os.path.join(REPO, "firmware", "uv380-openrtx", "mod", "c6dmrrx.c")).read()
+        for inc in re.findall(r'#include "(\w+\.c)"', src):
+            src += open(os.path.join(REPO, "firmware", "uv380-openrtx", "mod", inc)).read()
         for word in ("tx_tone", "tx_mic", "c6key.h", "0x60, 0x80", "0x41, 0x80"):
             assert word not in src, (mod, word)
 

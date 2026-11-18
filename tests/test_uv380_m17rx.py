@@ -26,6 +26,12 @@ def test_dc_coupled_tap_reads_flat_and_decodes():
     assert " 0 of " in out and "BERT: no frames" not in out
 
 
+def test_inverted_tap_decodes():
+    """the UV-380's tap reads +3 negative (11-18): the reader tries both polarities"""
+    out = "\n".join(m17rx.tap_report(m17rx.sim_tap_log(tones_s=1.0, bert_s=2.0, invert=True)))
+    assert "BERT: no frames" not in out and "/0-" in out
+
+
 def test_300hz_high_pass_closes_the_eye():
     out = "\n".join(m17rx.tap_report(m17rx.sim_tap_log(hp_hz=300.0, tones_s=2.0, bert_s=2.0)))
     assert "within 3 dB: 300-" in out and "BERT: no frames" in out
@@ -51,6 +57,6 @@ def test_phy_lost_window_splits_the_run_and_inverted_polarity_is_found():
 
 def test_receive_modules_build():
     from modem import uv380mod
-    for name, most in (("c6fmtap.c", 5120), ("c6phyrx.c", 5120), ("c6dmrrx.c", 5120)):
+    for name, most in (("c6fmtap.c", 5120), ("c6fmtap_1c.c", 5120), ("c6phyrx.c", 5120), ("c6dmrrx.c", 5120)):
         code, entry = uv380mod.build(os.path.join(MOD, name))
         assert entry == 0 and len(code) < most, (name, len(code))
