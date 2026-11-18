@@ -1,0 +1,91 @@
+{
+ "id": "m17rx-phy-1118a",
+ "who": "m17rx",
+ "freq_mhz": 441.85,
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "phy"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "listening raw",
+   "file": "uv380.log",
+   "seconds": 120
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:bert10.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:bert10.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "3888",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:bert10.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50",
+    "--offset-hz",
+    "500"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:bert10.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50",
+    "--offset-hz",
+    "-500"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "end slots",
+   "file": "uv380.log",
+   "seconds": 240
+  }
+ ]
+}
