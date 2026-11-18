@@ -325,7 +325,7 @@ static uint32_t at_phase(const c4_t *s, uint32_t t, uint32_t th) {
 
 /* a TX-done time into the fit, on tick n (want: a data packet's, placed on the grid) or else the
    nearest so far; then the line through the last NFIT (phase only until they span SPAN_FIT
-   symbols). A time more than 3/4 symbol off its tick stays out (a poll held up). -> its tick */
+   symbols). A time more than 3/8 symbol off its tick stays out (a poll held up). -> its tick */
 static int32_t fit_add(c4_t *s, uint32_t e, int32_t want, int have) {
   int32_t n, nl, dm, rm, sdr = 0, sdd = 0, db = 0, lo, worst = 0, sd = 0, sr = 0;
   uint32_t k, cnt;
@@ -337,7 +337,7 @@ static int32_t fit_add(c4_t *s, uint32_t e, int32_t want, int have) {
     int32_t r, q = (int32_t)(s->p12 >> 14);              /* a quarter symbol */
     n = have ? want : idx(s, e);
     r = (int32_t)(e - tick(s, n));
-    if (r > 3 * q || r < -3 * q) {
+    if (r > 3 * q / 2 || r < -3 * q / 2) {                 /* 3/8 symbol: a poll held up */
       s->odd++;
       return n;
     }

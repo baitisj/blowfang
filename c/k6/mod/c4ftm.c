@@ -7,5 +7,6 @@
    Build: python -m modem.k6 mod out.wav c/k6/mod/c4ftm.c --api-level 3 --key-file KEY.
    SPDX-License-Identifier: MIT */
 #define C4_DEMO 1
+#define C4_WAIT_MS 1200000  /* armed up to 20 minutes: it keys after the go job's trigger carrier */
 #define K6_NAME "C4FM DEMO"
 #include "c4lock.c"
