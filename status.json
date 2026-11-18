@@ -6,8 +6,8 @@
  "ic7100_held": null,
  "running": null,
  "waiting": [],
- "last_poll": "2026-11-18T20:17:54Z",
+ "last_poll": "2026-11-18T20:18:00Z",
  "error": null,
- "update": "2026-11-18T20:17:57Z installed main 9a35cf6044e4 (bench_runner.py, bench_inbox.py); selftest PASS",
- "updated": "2026-11-18T20:17:57Z"
+ "update": null,
+ "updated": "2026-11-18T20:18:00Z"
 }
