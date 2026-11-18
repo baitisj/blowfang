@@ -282,10 +282,10 @@ index 9d4901c1..f4245aca 100644
  
 diff --git a/openrtx/src/rtx/OpMode_Pager.cpp b/openrtx/src/rtx/OpMode_Pager.cpp
 new file mode 100644
-index 00000000..6ed765c5
+index 00000000..b2040737
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1701 @@
+@@ -0,0 +1,1713 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -298,6 +298,7 @@ index 00000000..6ed765c5
 +#include "interfaces/radio.h"
 +#include "core/audio_stream.h"
 +#include "core/audio_codec.h"
++#include "core/threads.h"
 +#include "core/state.h"
 +#include "rtx/OpMode_Pager.hpp"
 +#include "rtx/pager.h"
@@ -1386,11 +1387,22 @@ index 00000000..6ed765c5
 +// path through the C6000's DAC, as OpMode_M17 plays a call. The module pushes
 +// 8-byte frames without waiting; the decoder plays silence when it runs dry.
 +static pathId c2Path = -1;
++static constexpr size_t C2_HEAP_SPARE = 8192;   // Codec2 past the arena, 6 KB measured
 +
 +static int omC2Start()
 +{
 +    if(c2Path >= 0)
 +        return 0;
++    // OpenRTX's decoder thread takes its 16 KB stack from the heap, and
++    // Codec2 the part of its 31 KB that the encoder's arena can't hold
++    // (c2_alloc.h). Neither checks its malloc: see that both fit first, so a
++    // short heap is an error here, not a reset (11-18 10:33Z).
++    void *stk = malloc(CODEC2_THREAD_STKSIZE);
++    void *c2  = malloc(C2_HEAP_SPARE);
++    free(c2);
++    free(stk);
++    if((stk == NULL) || (c2 == NULL))
++        return -1;
 +    codec_init();
 +    pathId p = audioPath_request(SOURCE_MCU, SINK_SPK, PRIO_RX);
 +    if(p < 0)
@@ -2359,3 +2371,16 @@ index 14377e0b..74c8d290 100644
              return -1;
          }
      }
+diff --git a/subprojects/packagefiles/codec2/meson.build b/subprojects/packagefiles/codec2/meson.build
+index 628f8770..50c3ffc3 100644
+--- a/subprojects/packagefiles/codec2/meson.build
++++ b/subprojects/packagefiles/codec2/meson.build
+@@ -28,6 +28,8 @@ add_project_arguments('-DCODEC2_MODE_3200_EN=1'   , language : 'c')
+ add_project_arguments('-DCODEC2_MODE_1600_EN=1'   , language : 'c')
+ add_project_arguments('-DFREEDV_MODE_EN_DEFAULT=0', language : 'c')
+ add_project_arguments('-w'                        , language : 'c')
++# blowfang: Codec2's malloc from a static arena first (c2_alloc.h, which build.sh puts here)
++add_project_arguments('-include', meson.current_source_dir() / 'c2_alloc.h', language : 'c')
+ 
+ codec2 = static_library('codec2',
+                         codec2_src,

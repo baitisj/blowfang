@@ -283,7 +283,12 @@ speaker path, which on the MD-UV380 is the C6000's DAC: what OpenRTX's M17 mode 
 jitter buffer; the loader calls `c2_stop` after every module. `mod/c6m17rx.c` uses it to play M17
 voice received from the C6000's FM tap (docs/uv380-m17-rx.md); on a level 4 image it says
 `spk none level=4` and only decodes. The decoder's thread stack (16 KB) comes from the heap
-beside the 16 KB module arena.
+beside the 16 KB module arena. Codec2's own state (about 31 KB, 11 blocks) didn't fit there too:
+the first call reset the radio right after `spk start` (11-18 10:33Z, software reset, heap at most
+38 KB above the module arena). Codec2's malloc, calloc and free now go to the sotto encoder's
+static arena first (`c2_alloc.h`, 25 KB in CCM, idle while a module runs; the speaker is fed by
+the CPU, so no DMA needs the state) and the heap after: about 25 KB in the arena, 6 KB on the heap.
+`c2_start` checks that the thread's stack and 8 KB more fit in the heap and returns -1 if not.
 
 **No writes into a dead USB bus, and "guard" (11-16, PR #127).** At 1 W the UV-380 drops off
 the USB bus at key-up, and a write nobody reads spins 500 ms in OpenRTX's driver. Lines and module

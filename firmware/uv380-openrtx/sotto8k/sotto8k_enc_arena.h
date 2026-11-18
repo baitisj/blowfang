@@ -18,9 +18,14 @@
 
 void *sotto8k_enc_calloc(size_t n, size_t size);
 void sotto8k_enc_free(void *p);
+/* Codec2's allocator (c2_alloc.h) shares the arena: defined with it below */
+void *c2_malloc(size_t n);
+void *c2_calloc(size_t n, size_t size);
+void c2_free(void *p);
 
 #ifdef SOTTO8K_ENC_ARENA_IMPL
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 static uint8_t enc_arena[SOTTO8K_ENC_ARENA] __attribute__((aligned(8)));
@@ -46,6 +51,31 @@ void sotto8k_enc_free(void *p) {
         return;
     if (--enc_live == 0)
         enc_used = 0;
+}
+
+/* Codec2's malloc, calloc and free (c2_alloc.h, 11-18): this arena first, the heap when it is
+   full or taken. A block goes back to wherever it came from. */
+static int enc_owns(const void *p) {
+    return (const uint8_t *)p >= enc_arena && (const uint8_t *)p < enc_arena + SOTTO8K_ENC_ARENA;
+}
+
+void *c2_calloc(size_t n, size_t size) {
+    void *p = sotto8k_enc_calloc(n, size);
+    return p ? p : calloc(n, size);
+}
+
+void *c2_malloc(size_t n) {
+    void *p = sotto8k_enc_calloc(1, n);
+    return p ? p : malloc(n);
+}
+
+void c2_free(void *p) {
+    if (p == NULL)
+        return;
+    if (enc_owns(p))
+        sotto8k_enc_free(p);
+    else
+        free(p);
 }
 #endif
 
