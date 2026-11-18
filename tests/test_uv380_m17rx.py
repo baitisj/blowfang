@@ -58,7 +58,7 @@ def test_phy_lost_window_splits_the_run_and_inverted_polarity_is_found():
 def test_receive_modules_build():
     from modem import uv380mod
     for name, most in (("c6fmtap.c", 5120), ("c6fmtap_1c.c", 5120), ("c6phyrx.c", 5120), ("c6dmrrx.c", 5120),
-                       ("c6m17rx.c", 9216), ("c6m17rx_tap.c", 9216)):
+                       ("c6m17rx.c", 9472), ("c6m17rx_tap.c", 9472)):     # + speaker, timing (11-18)
         code, entry = uv380mod.build(os.path.join(MOD, name))
         assert entry == 0 and len(code) < most, (name, len(code))
 

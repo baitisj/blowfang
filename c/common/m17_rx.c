@@ -56,17 +56,37 @@ static float m17_score(const m17_rx *r, uint32_t start, int kind, float *gain) {
     return c < 0.0f ? -s : s;
 }
 
+/* the best of the five syncs at `start` and its m17_score, run for every 24 kHz sample while
+   hunting. Every sync symbol is +-3 (pp = 72 for all five) and STREAM, BERT are LSF, PACKET
+   negated, so three signed sums of the 8 samples rank all five (by c|c|, the score times the
+   common energy) and one division gives the score. */
 static int m17_best(const m17_rx *r, uint32_t start, float *score) {
+    float v[8], e = 0.0f;
+    for (unsigned k = 0; k < 8u; k++) {
+        v[k] = m17_yat(r, start + M17_SPS * k);
+        e += v[k] * v[k];
+    }
+    if (e <= 0.0f) {
+        *score = 0.0f;
+        return 0;
+    }
+    float a = v[0] + v[2] + v[3] - v[4] - v[5], c[M17_KINDS];
+    c[M17_LSF] = 3.0f * (a + v[1] + v[6] - v[7]);                /* 55F7: + + + + - - + - */
+    c[M17_STREAM] = -c[M17_LSF];                                 /* FF5D */
+    c[M17_PACKET] = 3.0f * (a - v[1] - v[6] - v[7]);             /* 75FF: + - + + - - - - */
+    c[M17_BERT] = -c[M17_PACKET];                                /* DF55 */
+    c[M17_EOT] = 3.0f * (v[0] + v[1] + v[2] + v[3] + v[4] + v[5] - v[6] + v[7]);  /* 555D */
     int best = 0;
-    float bs = -2.0f;
-    for (int k = 0; k < M17_KINDS; k++) {
-        float s = m17_score(r, start, k, 0);
-        if (s > bs) {
-            bs = s;
-            best = k;
+    float bt = c[0] * (c[0] < 0.0f ? -c[0] : c[0]);
+    for (int kd = 1; kd < M17_KINDS; kd++) {
+        float t = c[kd] * (c[kd] < 0.0f ? -c[kd] : c[kd]);
+        if (t > bt) {
+            bt = t;
+            best = kd;
         }
     }
-    *score = bs;
+    float s = c[best] * c[best] / (e * 72.0f);
+    *score = c[best] < 0.0f ? -s : s;
     return best;
 }
 

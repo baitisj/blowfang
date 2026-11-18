@@ -13,7 +13,8 @@
    Lines ("mod say ..."; T is ms from the first sample the receiver had, AT/24):
      m17 start s=150 v34=1c at=ok scratch=N need=N
      f T lsf ok=1 sc=993 g=2570 m=0 src=AG7EW dst=ALL type=0002
-     f T str fn=0005 lich=1 sc= g= m=             fn's bit 15 is the last frame
+     f T str fn=0005 lich=1 sc= g= m=             fn's bit 15 is the last frame; while the
+                                                  speaker plays, only every 25th and the last
      f T pkt n=1 eof=0 sc= g= m=                  n: the frame number, or on EOF the bytes used
      f T bert err=0 sc= g= m=                     err: bits failing the PRBS9 check, over 3
      f T eot
@@ -45,6 +46,9 @@
         uint32_t z_;                                                                               \
         (*(uint32_t *)api->scratch(&z_))++;                                                        \
     } while (0)
+#ifndef C6_BITWAIT
+#define C6_BITWAIT 3u   /* the tap's 512 bytes a half at about 2 MHz: 0.9 MHz took 23% of the CPU */
+#endif
 #include "c6spi.h"
 #include "at1846.h"
 
@@ -82,6 +86,9 @@
 #endif
 #ifndef M17RX_TAIL_MS
 #define M17RX_TAIL_MS 120u              /* after the last push: the decoder's queue (4) plays out */
+#endif
+#ifndef M17RX_QUIET
+#define M17RX_QUIET 1                   /* stream frame lines: every 25th (1 s) while playing */
 #endif
 #define M17RX_C2Q 32u                   /* frames (power of 2) */
 #define SMS_MAX 256u                    /* an SMS this long (M17 allows 823 bytes; longer is cut) */
@@ -141,6 +148,7 @@ static unsigned bert_check(const uint8_t *d, unsigned nbits, unsigned *checked) 
 static void report(const ortx_api_t *api, m17_mod *m) {
     m17_frame *f = &m->fr;
     char line[200];
+    int quiet = 0;
     unsigned long t = (unsigned long)(f->at / 24u);
     unsigned sc = milli(f->score), g = f->gain > 0.0f ? (unsigned)f->gain : 0u, q = milli(f->metric);
     m->n[f->kind]++;
@@ -176,6 +184,9 @@ static void report(const ortx_api_t *api, m17_mod *m) {
             m->spk_prev = m->spk_last = now;
             if (f->data[0] & 0x80u)
                 m->spk_last -= M17RX_GAP_MS;    /* the last frame: end once it has played */
+            /* a line takes about 5 ms of the radio's USB: while the speaker plays, one in 25 */
+            unsigned fn = ((unsigned)(f->data[0] & 0x7Fu) << 8) | f->data[1];
+            quiet = M17RX_QUIET && m->spk >= 1 && fn % 25u != 0u && !(f->data[0] & 0x80u);
         }
         break;
     case M17_PACKET: {
@@ -217,7 +228,8 @@ static void report(const ortx_api_t *api, m17_mod *m) {
         }
         break;
     }
-    api->say(line);
+    if (!quiet)
+        api->say(line);
 }
 
 /* the speaker: start the decoder with enough buffered, feed it what it takes, stop after a call */
