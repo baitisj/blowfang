@@ -1,0 +1,242 @@
+{
+ "id": "k6leak-1118a",
+ "who": "position",
+ "freq_mhz": 440.85,
+ "minutes": 30,
+ "wait_bench_min": 240,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 1500,
+   "file": "k6.log"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:rxmap_h800.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "8bb99e0dd30fff89c416df7684b7380e8dbce84df5bb0d6ab5e6adc69e1a3aec"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:rxmap_t800.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "02690195d2ee7fae139591ec48e7e0f17a43d8eab04bb4998937622935cbcdbe"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:rxmap_d800.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "997d539ff8a9a61ade2159a1dc7ae37b72c537dd9715b2a507df56d2fe6b2e1d"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:rxmap_h700.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "cdb5d2c5fc70986779635735002e6c6615b85c7404dd135852fd6e18007f6270"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:rxmap_t700.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "915b122e369fb4b62e0dcf6b043b5e3d96ce2a3559bff5f06a44e7bc6eb3b4cc"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
