@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "m17rx-onradio-1118a",
-  "who": "m17rx",
-  "since": "2026-11-18T02:51:57Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "refcal-cool-1118-r4",
@@ -19,5 +15,5 @@
  "last_poll": "2026-11-18T02:51:56Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T02:51:57Z"
+ "updated": "2026-11-18T02:52:12Z"
 }

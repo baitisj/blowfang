@@ -1,12 +1,34 @@
 {
  "id": "m17rx-onradio-1118a",
- "status": "running",
- "since": "2026-11-18T02:51:57Z",
+ "who": "m17rx",
+ "started": "2026-11-18T02:51:59Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T02:51:59Z",
+   "ended": "2026-11-18T02:52:10Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-18T02:52:10Z",
+   "ended": "2026-11-18T02:52:12Z",
+   "rc": 1,
+   "why": "the background uv380.rx exited 1"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f",
+ "head": "9bc3c2d2187fe82a24213f34b431454618165ba3",
+ "reason": "step 2 (uv380.rx): the background uv380.rx exited 1",
+ "ended": "2026-11-18T02:52:12Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "22ad53641d4505c0901849f2be259ea58584c4c3",
   "path": "jobs/m17rx-onradio-1118a"
  },
  "runner_commit": "9bc3c2d2187fe82a24213f34b431454618165ba3",
- "updated": "2026-11-18T02:51:57Z"
+ "updated": "2026-11-18T02:52:12Z"
 }
