@@ -1,12 +1,12 @@
 {
  "id": "c4fm-ftm2",
- "status": "queued",
- "queued": "2026-11-18T05:53:58Z",
+ "status": "running",
+ "since": "2026-11-18T05:54:05Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "52491ddf1508bc2710fa9ef83c07396ed8580b0a",
   "path": "jobs/c4fm-ftm2"
  },
  "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
- "updated": "2026-11-18T05:53:58Z"
+ "updated": "2026-11-18T05:54:05Z"
 }
