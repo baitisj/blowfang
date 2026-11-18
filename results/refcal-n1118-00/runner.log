@@ -1,0 +1,53 @@
+2026-11-18T05:06:04Z job refcal-n1118-00 by refcal, checkout /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26 at 46b5e93deb267056b3a7a449b9ae09b4daf96b28
+2026-11-18T05:06:04Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold refcal -- timeout -s INT --kill-after=10 600 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/k6.log
+2026-11-18T05:06:06Z step 1 (logger) rc=0
+2026-11-18T05:06:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14a.cf32 --hz 470249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14a.cf32: 0.5 s on 470249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14a.cf32), floor -85.4 dBFS, signal on 0%
+2026-11-18T05:06:08Z step 2 (pluto) rc=0
+2026-11-18T05:06:08Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35a.cf32 --hz 596249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35a.cf32: 0.5 s on 596249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35a.cf32), floor -84.7 dBFS, signal on 0%
+2026-11-18T05:06:09Z step 3 (pluto) rc=0
+2026-11-18T05:06:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal send /home/baitisj/blowfang-work/runs/inbox/refcal-n1118-00/wake.wav --gain -30
+send: wav peak 0.500 of full scale -> 1500 Hz before pre-emphasis
+send wake.wav: 29.3 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 05:06:10Z
+end 05:06:40Z: 29.3 s of signal in 29.2 s (kept up)
+2026-11-18T05:06:40Z step 4 (pluto) rc=0
+2026-11-18T05:07:00Z step 5 (wait) rc=1 (no /EX beacon|VOICE MSG/ in /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/k6.log)
+2026-11-18T05:07:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/refcal-n1118-00/refcal_wait.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 4 --rate F18 --rate-state /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/k6-rate.json
+21:07:03 send 1: 40 of 40 XL chunks at F/1800 (serial 1794978422, xfer 118); module /home/baitisj/blowfang-work/runs/inbox/refcal-n1118-00/refcal_wait.bin: 4852 B code, entry +0, API level 4, serial 1794978422, xfer 118, 4876 B image in 40 XL chunks; 80 packets, 51.7 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 59.1 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 05:07:04Z
+end 05:08:03Z: 59.1 s of signal in 59.0 s (kept up)
+21:08:03 listening for the K6's report
+21:08:29 no report heard
+21:08:29 no report after a whole send: the K6 may be set to L packets, so the next send is 85 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 40 chunks sent were lost
+21:08:29 CW ID
+2026-11-18T05:08:29Z step 6 (k6.upload) rc=0
+2026-11-18T05:08:29Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14m.cf32 --hz 470249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14m.cf32: 0.5 s on 470249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14m.cf32), floor -85.6 dBFS, signal on 0%
+2026-11-18T05:08:31Z step 7 (pluto) rc=0
+2026-11-18T05:08:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35m.cf32 --hz 596249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35m.cf32: 0.5 s on 596249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35m.cf32), floor -84.8 dBFS, signal on 0%
+2026-11-18T05:08:32Z step 8 (pluto) rc=0
+2026-11-18T05:08:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal send /home/baitisj/blowfang-work/runs/inbox/refcal-n1118-00/tail.wav --gain -40
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send tail.wav: 47.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 05:08:33Z
+end 05:09:20Z: 47.0 s of signal in 46.8 s (kept up)
+2026-11-18T05:09:20Z step 9 (pluto) rc=0
+2026-11-18T05:09:20Z seen /refcal (ppb=|no |done)/ in /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/k6.log
+2026-11-18T05:09:20Z step 10 (wait) rc=0
+2026-11-18T05:09:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14b.cf32 --hz 470249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14b.cf32: 0.5 s on 470249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p14b.cf32), floor -85.4 dBFS, signal on 0%
+2026-11-18T05:09:22Z step 11 (pluto) rc=0
+2026-11-18T05:09:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35b.cf32 --hz 596249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35b.cf32: 0.5 s on 596249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-n1118-00/p35b.cf32), floor -84.6 dBFS, signal on 0%
+2026-11-18T05:09:23Z step 12 (pluto) rc=0
+2026-11-18T05:09:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release refcal
+the port is free (refcal let go)
+2026-11-18T05:09:24Z step 13 (logger.stop) rc=0
+2026-11-18T05:09:24Z job refcal-n1118-00 done
