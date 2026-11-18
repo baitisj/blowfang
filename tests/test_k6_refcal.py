@@ -286,7 +286,7 @@ def test_the_relay_tail_in_its_own_key_up(tmp_path):
             return (None, FLOOR) if 2_000_000 < self.now < 10_000_000 else Air.near(self)
     ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1900, dev=600.0,
                              extra="#define REFCAL_HZ 440850000\n#define REFCAL_WAIT 1\n", air_cls=Gap)
-    assert said[0] == "refcal waiting for a carrier", said[:3]
+    assert said[0] == "refcal waiting for a steady carrier", said[:3]
     assert [ln for ln in said if ln.startswith("refcal s ")] == ["refcal s 440850.00 -63 -112"], said
     rs = [ln for ln in said if ln.startswith("refcal r ")]
     assert len(rs) == 3 and all(ln.split()[2] == "440850.00" for ln in rs), rs
@@ -311,5 +311,60 @@ def test_the_relay_wait_gives_up_with_no_tail(tmp_path):
             return (None, FLOOR) if self.now > 2_000_000 else Air.near(self)
     ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1900,
                              extra="#define REFCAL_HZ 440850000\n#define REFCAL_WAIT 1\n", air_cls=Gone)
-    assert ret == -6 and said[:2] == ["refcal waiting for a carrier", "refcal no carrier"], said
+    assert ret == -6 and said[:2] == ["refcal waiting for a steady carrier", "refcal no steady carrier"], said
     assert regs[0x3B] == BASE3B
+
+
+@need_clang
+def test_the_relay_wait_lets_the_transmitter_come_up(tmp_path):
+    # the Pluto's tail starts with its LO alone (-95 dBm at the K6 for a second, 2026-11-18:
+    # the scan read -100..-120 and once found no reference) before the stream (-63)
+    class Weak(Air):
+        now = 0
+
+        def tune(self, hz, wide, us):
+            self.now = us
+            Air.tune(self, hz, wide, us)
+
+        def rssi(self, us):
+            self.now = us
+            return Air.rssi(self, us)
+
+        def near(self):
+            if 2_000_000 < self.now < 10_000_000:
+                return None, FLOOR
+            if 10_000_000 <= self.now < 11_000_000:
+                return 440_850_000, -95
+            return Air.near(self)
+    ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1900, dev=600.0,
+                             extra="#define REFCAL_HZ 440850000\n#define REFCAL_WAIT 1\n", air_cls=Weak)
+    assert [ln for ln in said if ln.startswith("refcal s ")] == ["refcal s 440850.00 -63 -112"], said
+    assert abs(ret + 1900) <= 8, said[-5:]
+
+
+@need_clang
+def test_the_relay_wait_skips_the_pluto_cw_id(tmp_path):
+    # k6_upload's MCW ID some 26 s after the upload (here 10-13 s: 100 ms on, 100 ms off), a gap,
+    # then the tail from 16 s (2026-11-18: refcal took the ID for the tail and scanned the gap)
+    class Cw(Air):
+        now = 0
+
+        def tune(self, hz, wide, us):
+            self.now = us
+            Air.tune(self, hz, wide, us)
+
+        def rssi(self, us):
+            self.now = us
+            return Air.rssi(self, us)
+
+        def near(self):
+            t = self.now
+            if 10_000_000 <= t < 13_000_000 and (t // 100_000) % 2 == 0:
+                return Air.near(self)
+            if 2_000_000 < t < 16_000_000:
+                return None, FLOOR
+            return Air.near(self)
+    ret, said, regs, *_ = go(tmp_path, {440_850_000: (-63, 0.0)}, e_ppb=-1900, dev=600.0,
+                             extra="#define REFCAL_HZ 440850000\n#define REFCAL_WAIT 1\n", air_cls=Cw)
+    assert [ln for ln in said if ln.startswith("refcal s ")] == ["refcal s 440850.00 -63 -112"], said
+    assert abs(ret + 1900) <= 8, said[-5:]
