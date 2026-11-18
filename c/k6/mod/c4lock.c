@@ -163,10 +163,12 @@ K6_MODULE_NAME(K6_NAME);
 
 #if C4_DEMO
 static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
-static const uint8_t BSET[NB] = {1, 0, 1, 0, 1};    /* frame set: 0 data, 1 DN (k6c4fm.DEMO_SETS) */
+static const uint8_t BSET[NB] = {1, 1, 1, 1, 0};    /* frame set: 0 data, 1 DN (k6c4fm.DEMO_SETS) */
+static const uint8_t BINV[NB] = {0, 1, 0, 1, 0};    /* 1: every sign flipped (k6c4fm.DEMO_INV) */
 #else
 static const int8_t BQ[NB] = {-2, -1, 0, 1, 2};
 static const uint8_t BSET[NB] = {0, 0, 0, 0, 0};
+static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};
 #endif
 
 /* the registers the module changes, put back on the way out */
@@ -461,7 +463,7 @@ static uint16_t fword(uint32_t f0, uint32_t nwf, uint32_t i) {
 }
 
 /* a packet of nw words set up, pre of them in the FIFO, the 20 ms settle: 0 or an error */
-static int arm(c4_t *s, uint32_t nw, uint32_t pre, uint32_t f0, uint32_t nwf) {
+static int arm(c4_t *s, uint32_t nw, uint32_t pre, uint32_t f0, uint32_t nwf, uint16_t inv) {
   const k6_api_t *api = s->api;
   uint32_t i;
   int r;
@@ -469,7 +471,7 @@ static int arm(c4_t *s, uint32_t nw, uint32_t pre, uint32_t f0, uint32_t nwf) {
   api->fd_write(R_CTRL, CTRL_BASE | CTRL_CLR);
   api->fd_write(R_CTRL, CTRL_BASE);
   api->fd_write(0x5D, (uint16_t)((2u * nw - 1u) << 8));
-  for (i = 0; i < pre; i++) api->fd_write(R_FIFO, fword(f0, nwf, i));
+  for (i = 0; i < pre; i++) api->fd_write(R_FIFO, fword(f0, nwf, i) ^ inv);
   if ((r = until(api, api->ms() + 20)) != 0) return r;        /* as the stock MDC path */
   return keyed(api);
 }
@@ -508,7 +510,7 @@ static int done(c4_t *s, uint32_t from, uint32_t *e) {
 static int cal(c4_t *s, uint32_t k) {
   uint32_t x, e = 0, nsym = LEAD_SYMS + CAL_WORDS * 16u, from;
   int r, phased = s->nfit != 0;
-  if ((r = arm(s, CAL_WORDS, CAL_WORDS, 0, 0)) != 0) return r;
+  if ((r = arm(s, CAL_WORDS, CAL_WORDS, 0, 0, 0)) != 0) return r;
   x = now(&s->c) + s->len + 96u * 50u;
   if (phased) x = at_phase(s, x, ((k - 1u) & 7u) * 2u);
   timed(s, x, R_CTRL, CTRL_BASE | CTRL_TX_EN);
@@ -543,9 +545,17 @@ static int settle(c4_t *s) {
     sum += u;
     n++;
   }
-  for (i = 0; i < 8; i++) {
-    if (!cnt[i]) return -10;
-    v8[i] = sdivq(v8[i], (uint32_t)cnt[i], 0);
+  if (n < 8) return -10;
+  for (i = 0; i < 8; i++)
+    if (cnt[i]) v8[i] = sdivq(v8[i], (uint32_t)cnt[i], 0);
+  /* a bin the enables happened to miss takes the one before (the step is one whole symbol: a
+     filled bin on either side of it is enough) */
+  for (k = 0; k < 16; k++) {
+    i = k & 7;
+    if (!cnt[i] && cnt[(i + 7) & 7]) {
+      v8[i] = v8[(i + 7) & 7] - (i == 0 ? pc : 0);
+      cnt[i] = 1;
+    }
   }
   for (i = 0; i < 8; i++) {
     int32_t dv = (i < 7 ? v8[i + 1] : v8[0] + pc) - v8[i];
@@ -563,7 +573,7 @@ static int settle(c4_t *s) {
 }
 
 /* nf frames from f0 in one packet, the size writes q quarter symbols from the lag: 0 or an error */
-static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q) {
+static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
   const k6_api_t *api = s->api;
   const uint8_t *sz = C4_YSF_SIZE + f0 * C4_PKT_BYTES;
   uint32_t nwf = nf * FRAME_WORDS, nw = nwf + PAD_WORDS, pre = nw < FIFO_WORDS ? nw : FIFO_WORDS;
@@ -571,7 +581,7 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q) {
   int32_t ne, off, n0;
   unsigned cur = 1;
   int r;
-  if ((r = arm(s, nw, pre, f0, nwf)) != 0) return r;
+  if ((r = arm(s, nw, pre, f0, nwf, inv)) != 0) return r;
   x = at_phase(s, now(&s->c) + s->len + 96u * 50u, s->th);
   timed(s, x, R_CTRL, CTRL_BASE | CTRL_TX_EN);
   ne = idx(s, x + mulp(s, LEAD_SYMS + pay) + (uint32_t)s->ustar);
@@ -589,7 +599,7 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q) {
       /* a word in the slack after this edge (it ends before the next one's write would start) */
       if ((int32_t)(at - now(&s->c)) < 0) s->late++;
       wait_to(api, &s->c, at);
-      api->fd_write(R_FIFO, fword(f0, nwf, sent));
+      api->fd_write(R_FIFO, fword(f0, nwf, sent) ^ inv);
       sent++;
     }
   }
@@ -632,12 +642,12 @@ static int burst(c4_t *s) {
   s->settled = 1;
   for (k = 0; k < NA; k++) {
     if (api->key_down()) return -4;
-    if ((r = data(s, k & 3u, 1, A_FIRST + (int32_t)k)) != 0) return r;
+    if ((r = data(s, k & 3u, 1, A_FIRST + (int32_t)k, 0)) != 0) return r;
   }
   for (k = 0; k < NB; k++) {
     if (api->key_down()) return -4;
     if (GAP_MS && k && (r = until(api, api->ms() + GAP_MS)) != 0) return r;
-    if ((r = data(s, BSET[k] * C4_NFRAMES, C4_NFRAMES, BQ[k])) != 0) return r;
+    if ((r = data(s, BSET[k] * C4_NFRAMES, C4_NFRAMES, BQ[k], BINV[k] ? 0xFFFFu : 0u)) != 0) return r;
   }
   return 0;
 }

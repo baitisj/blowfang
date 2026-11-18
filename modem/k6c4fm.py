@@ -108,7 +108,8 @@ LOCK_CAL_SYMS = 64
 LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, quarter symbols
 LOCK_B = (-2, -1, 0, 1, 2)          # its whole-transmission packets'
 LOCK3_B = (-4, -2, 0, 2, 4)         # run 3's (plan 'lock3'; its lag was 8)
-DEMO_SETS = (1, 0, 1, 0, 1)         # c4ftm.c (c4lock with C4_DEMO): DN, data, DN, data, DN at lag 0
+DEMO_SETS = (1, 1, 1, 1, 0)         # c4ftm.c (c4lock with C4_DEMO): DN x 4, data, at lag 0
+DEMO_INV = (0, 1, 0, 1, 0)          # its calls with every sign flipped (polarity test for a radio)
 DEMO_GAP_S = 1.0                    # its carrier between transmissions
 LOCK_LAG4 = 9                       # its C4_LAG4
 PAD_SYMS = 16                       # c4lock's outer alternation after the frames (FIFO word 0x5555)
@@ -134,7 +135,8 @@ def packets(plan="probe"):
         if plan == "demo":
             for j, st in enumerate(DEMO_SETS):
                 c, sz = split(np.concatenate(all_frames()[4 * st:4 * st + 4]))
-                out.append(dict(name=f"D{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
+                c = c ^ DEMO_INV[j]
+                out.append(dict(name=f"D{j}", chip=np.concatenate([c, pad ^ DEMO_INV[j]]), size=np.concatenate([sz, one]),
                                 mode="size", off=0, frames=[4 * st + f for f in range(4)]))
             return out
         for j, q in enumerate(LOCK3_B if plan == "lock3" else LOCK_B):
