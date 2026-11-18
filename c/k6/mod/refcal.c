@@ -55,11 +55,15 @@
 #define K6_MODULE_LEVEL 4
 #define K6_MODULE_OPT z /* the DMA ring needs 516 B of the store past the code */
 #define GP0_SWEEP 1
-#ifdef REFCAL_HZ
+#if defined(REFCAL_HZ) && !defined(REFCAL_WAIT)
 /* the Pluto relay: the carrier to measure follows the upload in the same key-up, so no waiting
    for the upload's carrier to go (bench 2026-11-17 05:06-05:14Z: that wait outlasted the tail) */
 #define GP0_NO_WAIT 1
 #endif
+/* REFCAL_WAIT (with REFCAL_HZ): the carrier comes in a key-up of its own after the upload (the
+   bench runner's steps, 2026-11-18): wait for the upload's carrier to go, then up to 90 s for
+   the next one (gp0dma's carrier(): 15 dB over the floor between them). REFCAL_HZ also reads
+   the one reference REFCAL_NREF times at the null (a median of the reads, not of references) */
 #define GP0_NO_MAIN 1
 #define TAG "refcal"
 #include "gp0dma.c"
@@ -273,10 +277,12 @@ int k6_main(const k6_api_t *api) {
   uint32_t t, v, g, rx = api->rx_hz();
   int32_t m0, m1, d, e, ppb[REFCAL_NREF], x;
   int8_t lvl[NREFS], side[NREFS];
-  int ret, i, j, best = -1, k = 0, sign = 0, n = 0, bad = 0, w0;
+  int ret, i, j, best = -1, k = 0, sign = 0, n = 0, bad = 0, miss = 0, w0;
   uint16_t r73;
   char *p;
+#ifndef REFCAL_WAIT
   (void)carrier;                                           /* (gp0dma's: refcal scans instead) */
+#endif
   if (api->level < 4) return -3;
   c.api = api;
   ret = setup(api, &sv, &c.ring);
@@ -287,6 +293,10 @@ int k6_main(const k6_api_t *api) {
   r73 = api->fd_read(0x73);
   w0 = api->fd_read(0x43) == 0x3028;                       /* (ifcal's test for wide) */
   c.wide = 0;                                              /* the scan: narrow */
+#ifdef REFCAL_WAIT
+  ret = carrier(api, sv.floor);                            /* the tail's own key-up */
+  if (ret) goto out;
+#endif
   temp(api, &t, &v);
   p = kv(c.line, TAG " t=", t);
   p = kv(p, " v=", v);
@@ -333,7 +343,9 @@ int k6_main(const k6_api_t *api) {
       if (lvl[i] - side[i] >= REFCAL_SNR && (best < 0 || lvl[i] - side[i] > lvl[best] - side[best]))
         best = i;
     if (best < 0) break;
+#ifndef REFCAL_HZ
     lvl[best] = side[best];                                /* (read) */
+#endif
     hz = ref_hz(best);
     g = step_mhz(&c, hz);
     if (!sign) {
@@ -385,6 +397,7 @@ int k6_main(const k6_api_t *api) {
           ret = -2;
           goto out;
         }
+        if (++miss >= REFCAL_NREF) break;                  /* (REFCAL_HZ: the same one again) */
         continue;
       }
       r -= NOM_DHZ;
