@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "trunk-scan-1118d",
-  "who": "position",
-  "since": "2026-11-18T20:53:54Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "trunk-scan-1118e",
@@ -16,8 +12,8 @@
    "not_before": null
   }
  ],
- "last_poll": "2026-11-18T20:53:48Z",
+ "last_poll": "2026-11-18T20:55:11Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T20:53:54Z"
+ "updated": "2026-11-18T20:55:11Z"
 }
