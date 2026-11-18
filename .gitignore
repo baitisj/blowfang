@@ -60,6 +60,7 @@ c/common/fsk_rx_host
 c/common/ssb_polar_host
 c/common/tone_fsk_host
 c/common/m17_rx_host
+c/common/framers_host
 firmware/uv380-openrtx/build/
 firmware/uv380-openrtx/out/
 

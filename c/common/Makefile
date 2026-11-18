@@ -59,3 +59,19 @@ m17_rx_host: m17_rx_host.c \
 		m17_rx.c \
 		m17_rx.h
 	$(CC) $(CFLAGS) -o $@ m17_rx_host.c m17_rx.c
+
+# M17 and YSF transmit framers for the UV-380's multi-mode image (docs/uv380-multimode.md)
+all: framers_host
+
+framers_host: framers_host.c \
+		m17_tx.c \
+		m17_tx.h \
+		ysf_tx.c \
+		ysf_tx.h
+	$(CC) $(CFLAGS) -o $@ framers_host.c m17_tx.c ysf_tx.c
+
+clean: clean-framers
+clean-framers:
+	rm -f framers_host
+
+.PHONY: clean-framers

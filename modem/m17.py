@@ -60,6 +60,12 @@ NBITS = 368
 
 TYPE_PACKET_DATA = 0x0002               # packet mode, data
 TYPE_STREAM_VOICE = 0x0005              # stream mode, voice (Codec2 3200)
+TYPE_STREAM_DATA = 0x0003               # stream mode, data: sotto (stock M17 radios show the call
+                                        # and don't play it as Codec2)
+SOTTO_META = b"SOTTO 1200".ljust(14, b"\x00")   # provisional tag in the LSF's META field
+SOTTO_SF = 6                            # bytes in a sotto 1200 superframe (40 ms)
+SOTTO_RATE_1200 = 0x10                  # stream payload byte 14, bits 7-4: the rate
+SOTTO_REPEAT = 0x01                     # byte 14 bit 0: b repeats the superframe before a
 SMS = 0x05                              # packet protocol: text message
 
 IDENT = "AG7EW"
@@ -294,6 +300,39 @@ def tx_voice(c2, src=IDENT):
 def tx_bert(nframes):
     prbs = Prbs9()
     return preamble(PRE_BERT) + b"".join(frame_bert(prbs)[0] for _ in range(nframes)) + eot()
+
+
+def sotto_payload(a, b, repeat=False):
+    """a stream frame's 16 bytes for sotto 1200 (docs/uv380-multimode.md): superframes a and b
+    (6 bytes each), M17's CRC-16 of those 12 (big endian), the control byte (rate in bits 7-4;
+    bit 0 set: b is the superframe before a, sent again for a receiver that lost the last frame;
+    clear: b is the one after a, two new superframes a frame), then 0"""
+    body = bytes(a) + bytes(b)
+    assert len(body) == 2 * SOTTO_SF
+    ctrl = SOTTO_RATE_1200 | (SOTTO_REPEAT if repeat else 0)
+    return body + crc16(body).to_bytes(2, "big") + bytes([ctrl, 0])
+
+
+def tx_sotto(sotto, src=IDENT, dst="", repeat=False):
+    """sotto 1200 (6 bytes a superframe) as an M17 stream: preamble, LSF (TYPE stream data, META
+    the sotto tag), stream frames, EOT. repeat=False (a stored message): two new superframes a
+    40 ms frame, so it goes out in half its length. repeat=True (real time): one new superframe a
+    frame plus the one before it again. The last superframe repeats to fill the last frame."""
+    sotto = bytes(sotto)
+    n = len(sotto) // SOTTO_SF
+    if n == 0:
+        raise ValueError("no sotto superframes")
+    sf = [sotto[SOTTO_SF * k:SOTTO_SF * k + SOTTO_SF] for k in range(n)]
+    if repeat:
+        pays = [sotto_payload(sf[k], sf[k - 1] if k else sf[0], True) for k in range(n)]
+    else:
+        sf += [sf[-1]] * (n % 2)
+        pays = [sotto_payload(sf[2 * k], sf[2 * k + 1]) for k in range(len(sf) // 2)]
+    l30 = lsf(src, dst, TYPE_STREAM_DATA, SOTTO_META)
+    out = preamble(PRE_LSF) + frame_lsf(l30)
+    for fn, p in enumerate(pays):
+        out += frame_stream(l30, fn, p, fn == len(pays) - 1)
+    return out + eot()
 
 
 def build(plan, c2=None):

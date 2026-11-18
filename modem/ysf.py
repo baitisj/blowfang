@@ -513,6 +513,61 @@ def tx_data(ncomms, dest="ALL", src=IDENT, ft=7, text=f"{IDENT} YSF DATA", dgid=
     return b"".join(out)
 
 
+# ---------------------------------------------------------------- sotto VW (sotto docs/softmodem.md)
+# The sotto softmodem's voice payload (sotto modem/payload.py SottoVW, MIT, same author): five
+# 48-bit frames, each + CRC-8, tail-biting K=7 (133, 171, 165) punctured to rate 7/18 = 720 bits,
+# coded bit i to payload bit (i % 24) * 30 + i // 24, XOR PN9 seeded 0x1FF. FICH DT = voice FR with
+# the (provisional) sotto flag. On the UV-380 the five frames are sotto 1200 superframes.
+SOTTO_NF = 5
+SOTTO_SF = 6
+_SOTTO_I = np.arange(PAYLOAD_BITS)
+SOTTO_PERM = (_SOTTO_I % 24) * (PAYLOAD_BITS // 24) + _SOTTO_I // 24
+SOTTO_PN = _pn9(PAYLOAD_BITS, seed=0x1FF)
+
+
+def sotto_vw_payload(frames):
+    """five 6-byte frames (30 bytes) -> the 720 payload bits"""
+    from . import fec
+    frames = bytes(frames)
+    assert len(frames) == SOTTO_NF * SOTTO_SF
+    f = bytes_to_bits(frames).reshape(SOTTO_NF, 8 * SOTTO_SF)
+    u = np.concatenate([np.concatenate([x, fec.crc8(x)]) for x in f])
+    c = fec.RATE_7_18.encode(u)
+    out = np.zeros(PAYLOAD_BITS, np.int8)
+    out[SOTTO_PERM] = c
+    return out ^ SOTTO_PN
+
+
+def decode_sotto_vw_payload(llr):
+    """-> (30 bytes, five CRC flags)"""
+    from . import fec
+    llr = np.where(SOTTO_PN == 1, -1.0, 1.0) * np.asarray(llr, float)
+    u = fec.RATE_7_18.decode(llr[SOTTO_PERM], SOTTO_NF * (8 * SOTTO_SF + 8)).reshape(SOTTO_NF, -1)
+    ok = [bool((fec.crc8(x[:48]) == x[48:]).all()) for x in u]
+    return bits_to_bytes(u[:, :48].reshape(-1)), ok
+
+
+def tx_sotto(sotto, dest="ALL", src=IDENT, dgid=0):
+    """sotto 1200 as the sotto softmodem's YSF: a 0x77 preamble, header (CSD dest+src), comms
+    frames FN 0-6 of five superframes each (the last superframe repeats to fill the last
+    frame), terminator. FICH as sotto's link.Transmitter: FT 6, DT voice FR, sotto flag."""
+    sotto = bytes(sotto)
+    n = len(sotto) // SOTTO_SF
+    if n == 0:
+        raise ValueError("no sotto superframes")
+    sotto = sotto[:n * SOTTO_SF]
+    sotto += sotto[-SOTTO_SF:] * (-n % SOTTO_NF)
+    mk = dict(ft=6, dt=DT_VOICE_FR, dgid=dgid, sotto=True)
+    hdr = header_payload(dest, src)
+    out = [bytes([PREAMBLE]) * 24, bits_to_bytes(build_frame(FICH(fi=FI_HEADER, **mk), hdr))]
+    per = SOTTO_NF * SOTTO_SF
+    for k in range(len(sotto) // per):
+        pl = sotto_vw_payload(sotto[per * k:per * k + per])
+        out.append(bits_to_bytes(build_frame(FICH(fi=FI_COMMS, fn=k % 7, **mk), pl)))
+    out.append(bits_to_bytes(build_frame(FICH(fi=FI_TERMINATOR, **mk), hdr)))
+    return b"".join(out)
+
+
 PLANS = ("dn", "data")
 
 
