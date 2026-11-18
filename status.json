@@ -60,10 +60,15 @@
    "id": "refcal-c1118-12",
    "who": "refcal",
    "not_before": "2026-11-18T15:00:00Z"
+  },
+  {
+   "id": "uv380-back-1118d",
+   "who": "c4fm",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T07:12:07Z",
+ "last_poll": "2026-11-18T07:16:14Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T07:12:07Z"
+ "updated": "2026-11-18T07:16:14Z"
 }

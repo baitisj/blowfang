@@ -1,0 +1,12 @@
+{
+ "id": "uv380-back-1118d",
+ "status": "queued",
+ "queued": "2026-11-18T07:16:14Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "0429a641863e075bed17f37b3ce2df82158d7fc1",
+  "path": "jobs/uv380-back-1118d"
+ },
+ "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "updated": "2026-11-18T07:16:14Z"
+}
