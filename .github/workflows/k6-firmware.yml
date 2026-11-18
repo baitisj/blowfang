@@ -120,6 +120,7 @@ jobs:
             tests/test_k6_aprsclk.py \
             tests/test_k6_arq.py \
             tests/test_k6_bench.py \
+            tests/test_k6_c4fm.py \
             tests/test_k6_cb.py \
             tests/test_k6_cwid.py \
             tests/test_k6_cwkey.py \
