@@ -251,6 +251,21 @@ also saves flash there.
      `fsk4_rx` when both go into the image, not before (the M17 one is proven on air and stays as
      it is until then).
 
+**On air (11-18 20:21-20:22Z, job sotto3-air-1118, main 2bc44cf, 0 W on 441.850, the Pluto
+listening):** the c6sotto modules sent the radio's own recorded message (250 superframes) in all
+three modes from the image already on the radio, no flash. The dry run (sotto3-dry-1118) first:
+every mode streamed with no late or lost slot.
+
+| mode | sent | Pluto decode | check |
+|---|---|---|---|
+| M17 | 105 stream frames, 210 superframes | 101 frames found, 101/101 CRC good, LSF src AG7EW | 4 frames not found by the Python demod (3 gaps); first 9100475824d1 and last 56d3d545aca1 as sent |
+| YSF | 43 frames, 205 superframes | 43/43 FICH good, 205/205 sotto VW CRC-8 good, AG7EW to ALL | first and last as sent; outer 2691 Hz (YSF wants 2700) |
+| DMR | 3 headers, 60 voice bursts, terminator, 85 superframes | 60/60 blocks CRC good, text AG7EW, 510 bytes | first 9100475824d1, last 1f2604c8257a as sent |
+
+The transmit side reported no late slots for M17, so the 4 missing M17 frames look like the
+Pluto decoder missing a sync at 0 W rather than gaps on air; the M17 voice run of 11-17 also
+found 73 of 74.
+
 Measured so far (clang -Os, Thumb-2): m17_tx 2.5 KB, ysf_tx 2.5 KB, about half the estimate
 above; a whole c6sotto module (core + framer + keying + cal) 5.8 KB (DMR) to 6.9 KB (YSF).
 
