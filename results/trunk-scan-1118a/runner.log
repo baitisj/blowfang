@@ -1,0 +1,152 @@
+2026-11-18T20:33:35Z job trunk-scan-1118a by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4 at 9a35cf6044e4fa190ea598c97f9dc6878055e7f2
+2026-11-18T20:33:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851100.cf32 --hz 851100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851100.cf32: 0.1 s on 851100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851100.cf32), floor -77.0 dBFS, signal on 3%
+2026-11-18T20:33:36Z step 1 (pluto) rc=0
+2026-11-18T20:33:36Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851300.cf32 --hz 851300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851300.cf32: 0.1 s on 851300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851300.cf32), floor -78.1 dBFS, signal on 4%
+2026-11-18T20:33:38Z step 2 (pluto) rc=0
+2026-11-18T20:33:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851500.cf32 --hz 851500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851500.cf32: 0.1 s on 851500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851500.cf32), floor -78.7 dBFS, signal on 4%
+2026-11-18T20:33:39Z step 3 (pluto) rc=0
+2026-11-18T20:33:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851700.cf32 --hz 851700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851700.cf32: 0.1 s on 851700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851700.cf32), floor -78.3 dBFS, signal on 6%
+2026-11-18T20:33:41Z step 4 (pluto) rc=0
+2026-11-18T20:33:41Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851900.cf32 --hz 851900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851900.cf32: 0.1 s on 851900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c851900.cf32), floor -78.4 dBFS, signal on 5%
+2026-11-18T20:33:42Z step 5 (pluto) rc=0
+2026-11-18T20:33:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852100.cf32 --hz 852100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852100.cf32: 0.1 s on 852100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852100.cf32), floor -77.7 dBFS, signal on 3%
+2026-11-18T20:33:44Z step 6 (pluto) rc=0
+2026-11-18T20:33:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852300.cf32 --hz 852300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852300.cf32: 0.1 s on 852300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852300.cf32), floor -78.1 dBFS, signal on 4%
+2026-11-18T20:33:45Z step 7 (pluto) rc=0
+2026-11-18T20:33:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852500.cf32 --hz 852500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852500.cf32: 0.1 s on 852500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852500.cf32), floor -78.2 dBFS, signal on 4%
+2026-11-18T20:33:47Z step 8 (pluto) rc=0
+2026-11-18T20:33:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852700.cf32 --hz 852700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852700.cf32: 0.1 s on 852700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852700.cf32), floor -78.0 dBFS, signal on 3%
+2026-11-18T20:33:48Z step 9 (pluto) rc=0
+2026-11-18T20:33:48Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852900.cf32 --hz 852900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852900.cf32: 0.1 s on 852900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c852900.cf32), floor -77.9 dBFS, signal on 4%
+2026-11-18T20:33:50Z step 10 (pluto) rc=0
+2026-11-18T20:33:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853100.cf32 --hz 853100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853100.cf32: 0.1 s on 853100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853100.cf32), floor -77.4 dBFS, signal on 3%
+2026-11-18T20:33:51Z step 11 (pluto) rc=0
+2026-11-18T20:33:51Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853300.cf32 --hz 853300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853300.cf32: 0.1 s on 853300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853300.cf32), floor -78.6 dBFS, signal on 5%
+2026-11-18T20:33:53Z step 12 (pluto) rc=0
+2026-11-18T20:33:53Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853500.cf32 --hz 853500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853500.cf32: 0.1 s on 853500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853500.cf32), floor -78.2 dBFS, signal on 4%
+2026-11-18T20:33:54Z step 13 (pluto) rc=0
+2026-11-18T20:33:54Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853700.cf32 --hz 853700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853700.cf32: 0.1 s on 853700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853700.cf32), floor -78.6 dBFS, signal on 5%
+2026-11-18T20:33:56Z step 14 (pluto) rc=0
+2026-11-18T20:33:56Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853900.cf32 --hz 853900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853900.cf32: 0.1 s on 853900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c853900.cf32), floor -78.5 dBFS, signal on 4%
+2026-11-18T20:33:57Z step 15 (pluto) rc=0
+2026-11-18T20:33:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854100.cf32 --hz 854100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854100.cf32: 0.1 s on 854100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854100.cf32), floor -77.5 dBFS, signal on 4%
+2026-11-18T20:33:59Z step 16 (pluto) rc=0
+2026-11-18T20:33:59Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854300.cf32 --hz 854300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854300.cf32: 0.1 s on 854300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854300.cf32), floor -77.8 dBFS, signal on 5%
+2026-11-18T20:34:00Z step 17 (pluto) rc=0
+2026-11-18T20:34:00Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854500.cf32 --hz 854500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854500.cf32: 0.1 s on 854500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854500.cf32), floor -77.9 dBFS, signal on 4%
+2026-11-18T20:34:02Z step 18 (pluto) rc=0
+2026-11-18T20:34:02Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854700.cf32 --hz 854700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854700.cf32: 0.1 s on 854700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854700.cf32), floor -79.3 dBFS, signal on 6%
+2026-11-18T20:34:03Z step 19 (pluto) rc=0
+2026-11-18T20:34:03Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854900.cf32 --hz 854900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854900.cf32: 0.1 s on 854900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c854900.cf32), floor -77.8 dBFS, signal on 3%
+2026-11-18T20:34:05Z step 20 (pluto) rc=0
+2026-11-18T20:34:05Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855100.cf32 --hz 855100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855100.cf32: 0.1 s on 855100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855100.cf32), floor -78.4 dBFS, signal on 4%
+2026-11-18T20:34:06Z step 21 (pluto) rc=0
+2026-11-18T20:34:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855300.cf32 --hz 855300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855300.cf32: 0.1 s on 855300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855300.cf32), floor -76.7 dBFS, signal on 3%
+2026-11-18T20:34:08Z step 22 (pluto) rc=0
+2026-11-18T20:34:08Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855500.cf32 --hz 855500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855500.cf32: 0.1 s on 855500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855500.cf32), floor -77.7 dBFS, signal on 4%
+2026-11-18T20:34:09Z step 23 (pluto) rc=0
+2026-11-18T20:34:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855700.cf32 --hz 855700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855700.cf32: 0.1 s on 855700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855700.cf32), floor -77.8 dBFS, signal on 3%
+2026-11-18T20:34:11Z step 24 (pluto) rc=0
+2026-11-18T20:34:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855900.cf32 --hz 855900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855900.cf32: 0.1 s on 855900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c855900.cf32), floor -78.0 dBFS, signal on 3%
+2026-11-18T20:34:12Z step 25 (pluto) rc=0
+2026-11-18T20:34:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856100.cf32 --hz 856100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856100.cf32: 0.1 s on 856100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856100.cf32), floor -77.7 dBFS, signal on 3%
+2026-11-18T20:34:14Z step 26 (pluto) rc=0
+2026-11-18T20:34:14Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856300.cf32 --hz 856300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856300.cf32: 0.1 s on 856300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856300.cf32), floor -79.0 dBFS, signal on 5%
+2026-11-18T20:34:15Z step 27 (pluto) rc=0
+2026-11-18T20:34:15Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856500.cf32 --hz 856500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856500.cf32: 0.1 s on 856500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856500.cf32), floor -77.3 dBFS, signal on 3%
+2026-11-18T20:34:17Z step 28 (pluto) rc=0
+2026-11-18T20:34:17Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856700.cf32 --hz 856700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856700.cf32: 0.1 s on 856700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856700.cf32), floor -77.6 dBFS, signal on 4%
+2026-11-18T20:34:18Z step 29 (pluto) rc=0
+2026-11-18T20:34:18Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856900.cf32 --hz 856900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856900.cf32: 0.1 s on 856900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c856900.cf32), floor -77.8 dBFS, signal on 5%
+2026-11-18T20:34:20Z step 30 (pluto) rc=0
+2026-11-18T20:34:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857100.cf32 --hz 857100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857100.cf32: 0.1 s on 857100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857100.cf32), floor -78.1 dBFS, signal on 4%
+2026-11-18T20:34:21Z step 31 (pluto) rc=0
+2026-11-18T20:34:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857300.cf32 --hz 857300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857300.cf32: 0.1 s on 857300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857300.cf32), floor -76.8 dBFS, signal on 3%
+2026-11-18T20:34:23Z step 32 (pluto) rc=0
+2026-11-18T20:34:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857500.cf32 --hz 857500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857500.cf32: 0.1 s on 857500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857500.cf32), floor -78.6 dBFS, signal on 6%
+2026-11-18T20:34:24Z step 33 (pluto) rc=0
+2026-11-18T20:34:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857700.cf32 --hz 857700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857700.cf32: 0.1 s on 857700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857700.cf32), floor -76.9 dBFS, signal on 3%
+2026-11-18T20:34:26Z step 34 (pluto) rc=0
+2026-11-18T20:34:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857900.cf32 --hz 857900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857900.cf32: 0.1 s on 857900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c857900.cf32), floor -76.3 dBFS, signal on 3%
+2026-11-18T20:34:27Z step 35 (pluto) rc=0
+2026-11-18T20:34:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858100.cf32 --hz 858100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858100.cf32: 0.1 s on 858100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858100.cf32), floor -76.9 dBFS, signal on 3%
+2026-11-18T20:34:29Z step 36 (pluto) rc=0
+2026-11-18T20:34:29Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858300.cf32 --hz 858300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858300.cf32: 0.1 s on 858300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858300.cf32), floor -77.0 dBFS, signal on 3%
+2026-11-18T20:34:30Z step 37 (pluto) rc=0
+2026-11-18T20:34:30Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858500.cf32 --hz 858500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858500.cf32: 0.1 s on 858500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858500.cf32), floor -77.8 dBFS, signal on 4%
+2026-11-18T20:34:32Z step 38 (pluto) rc=0
+2026-11-18T20:34:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858700.cf32 --hz 858700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858700.cf32: 0.1 s on 858700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858700.cf32), floor -77.9 dBFS, signal on 4%
+2026-11-18T20:34:33Z step 39 (pluto) rc=0
+2026-11-18T20:34:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858900.cf32 --hz 858900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858900.cf32: 0.1 s on 858900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c858900.cf32), floor -76.4 dBFS, signal on 3%
+2026-11-18T20:34:35Z step 40 (pluto) rc=0
+2026-11-18T20:34:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859100.cf32 --hz 859100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859100.cf32: 0.1 s on 859100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859100.cf32), floor -76.5 dBFS, signal on 3%
+2026-11-18T20:34:36Z step 41 (pluto) rc=0
+2026-11-18T20:34:36Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859300.cf32 --hz 859300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859300.cf32: 0.1 s on 859300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859300.cf32), floor -77.9 dBFS, signal on 5%
+2026-11-18T20:34:38Z step 42 (pluto) rc=0
+2026-11-18T20:34:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859500.cf32 --hz 859500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859500.cf32: 0.1 s on 859500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859500.cf32), floor -77.4 dBFS, signal on 3%
+2026-11-18T20:34:39Z step 43 (pluto) rc=0
+2026-11-18T20:34:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859700.cf32 --hz 859700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859700.cf32: 0.1 s on 859700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859700.cf32), floor -78.0 dBFS, signal on 4%
+2026-11-18T20:34:41Z step 44 (pluto) rc=0
+2026-11-18T20:34:41Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859900.cf32 --hz 859900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859900.cf32: 0.1 s on 859900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c859900.cf32), floor -78.1 dBFS, signal on 4%
+2026-11-18T20:34:42Z step 45 (pluto) rc=0
+2026-11-18T20:34:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860100.cf32 --hz 860100000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860100.cf32: 0.1 s on 860100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860100.cf32), floor -77.8 dBFS, signal on 4%
+2026-11-18T20:34:44Z step 46 (pluto) rc=0
+2026-11-18T20:34:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860300.cf32 --hz 860300000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860300.cf32: 0.1 s on 860300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860300.cf32), floor -76.9 dBFS, signal on 3%
+2026-11-18T20:34:45Z step 47 (pluto) rc=0
+2026-11-18T20:34:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860500.cf32 --hz 860500000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860500.cf32: 0.1 s on 860500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860500.cf32), floor -76.7 dBFS, signal on 3%
+2026-11-18T20:34:47Z step 48 (pluto) rc=0
+2026-11-18T20:34:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860700.cf32 --hz 860700000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860700.cf32: 0.1 s on 860700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860700.cf32), floor -77.3 dBFS, signal on 3%
+2026-11-18T20:34:48Z step 49 (pluto) rc=0
+2026-11-18T20:34:48Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860900.cf32 --hz 860900000 --seconds 0.1 --gain 40
+/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860900.cf32: 0.1 s on 860900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-scan-1118a/c860900.cf32), floor -76.9 dBFS, signal on 3%
+2026-11-18T20:34:50Z step 50 (pluto) rc=0
+2026-11-18T20:34:50Z job trunk-scan-1118a done
