@@ -1,0 +1,13 @@
+2026-11-18T21:01:13Z job uvretune-1118a by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be at 36dd1f8f20bed4165b7ec5357cf044b057bbd443
+2026-11-18T21:01:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 power 0 listen 0 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvretune-1118a/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T21:01:21Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850 listen=0
+2026-11-18T21:01:21Z step 1 (uv380.cmd) rc=0
+2026-11-18T21:01:21Z job uvretune-1118a done
