@@ -140,9 +140,34 @@ static int q_tx_request(void) {
     return -1;
 }
 
+/* level 5: frames counted, nothing played */
+static unsigned q_c2 = 0, q_c2_on = 0;
+
+static int q_c2_start(void) {
+    q_c2_on = 1;
+    q_c2 = 0;
+    q_line("c2 start");
+    return 0;
+}
+
+static int q_c2_push(const uint8_t *f) {
+    (void)f;
+    if (!q_c2_on)
+        return -1;
+    q_c2++;
+    return 0;
+}
+
+static void q_c2_stop(void) {
+    if (!q_c2_on)
+        return;
+    q_c2_on = 0;
+    q_line(q_c2 ? "c2 stop (frames)" : "c2 stop (none)");
+}
+
 static const om_host host = {q_line, q_write, q_read, q_now, q_stop, q_sleep, q_c6r, q_c6w, NULL, q_rssi,
                              q_probe, q_enc_begin, q_enc_push, q_enc_end, q_msg, q_preview,
-                             q_tx_request, NULL, NULL};
+                             q_tx_request, NULL, NULL, q_c2_start, q_c2_push, q_c2_stop};
 
 int main(void) {
     int n = host_read_file("in.txt", (uint8_t *)in, sizeof in - 1);
