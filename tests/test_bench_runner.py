@@ -360,6 +360,21 @@ def test_pause_cancel_not_before_and_repeat(work):
     assert br.parse_utc(nxt["not_before"]) - time.time() == pytest.approx(45 * 60, abs=10)
 
 
+def test_repeat_gets_its_own_run_folder(work):
+    rd = br.run_dir("cap")
+    j = job("cap", {"do": "pluto", "args": ["rx", os.path.join(rd, "m.cf32"), f"--out={rd}/m.json", "--hz", "441900000"]},
+            {"do": "wait", "seconds": 0, "file": "k6.log"})
+    nj = br.retarget(j, rd, br.run_dir("cap-r1"))
+    assert nj["steps"][0]["args"] == ["rx", os.path.join(br.run_dir("cap-r1"), "m.cf32"),
+                                      f"--out={br.run_dir('cap-r1')}/m.json", "--hz", "441900000"]
+    assert j["steps"][0]["args"][1] == os.path.join(rd, "m.cf32")          # the first run's job unchanged
+    assert br.retarget(j, br.run_dir("cap-r1"), br.run_dir("cap-r2")) == j  # nothing of r1's in it
+    until = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 3 * 3600))
+    br.finish(dict(nj, id="cap-r1", repeat={"every_min": 45, "until": until}), {"id": "cap-r1", "status": "done"}, "done")
+    r2 = json.load(open(os.path.join(br.qdir("incoming"), "cap-r2.json")))
+    assert r2["steps"][0]["args"][1] == os.path.join(br.run_dir("cap-r2"), "m.cf32")
+
+
 def test_stale_running_job_marked_failed(work, capsys, monkeypatch):
     br.ensure_dirs()
     br.put_json(br.qdir("running.json"), {"id": "x", "who": "t1", "since": "?", "job": job("x", {"do": "wait"})})
