@@ -48,6 +48,9 @@
 #define C6_SOUND 3u
 #define C6_CFG 4u
 #define C6_DATA_R 6u            /* write RX RAM, read TX RAM */
+#ifndef C6_ON_BUSY
+#define C6_ON_BUSY ((void)0)    /* a module may count the 1 ms waits for OpenRTX's transactions */
+#endif
 
 C6_FN inline uint32_t c6_irq_off(void) {
     uint32_t m;
@@ -93,6 +96,7 @@ C6_FN int c6_xfer(const ortx_api_t *api, unsigned sp, unsigned a, int read, int 
         uint32_t m = c6_irq_off();
         if (((C6_REG(C6_GPIOE + C6_ODR) >> C6_CS) & 1u) == 0) {
             c6_irq_on(m);
+            C6_ON_BUSY;
             api->sleep_ms(1);
             continue;
         }

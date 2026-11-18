@@ -18,14 +18,17 @@
      f T bert err=0 sc= g= m=                     err: bits failing the PRBS9 check, over 3
      f T eot
      sms T AG7EW: TEXT                            a packet SMS whose CRC checks
-     st T halves= gaps= frames= lost= rssi=       once a second
+     st T halves= gaps= frames= lost= rssi= lp= fd= sp= bz=   once a second; lp, fd, sp: that
+                                                  second's longest loop pass, half fed, speaker
+                                                  step (ms); bz: 1 ms waits for OpenRTX's own
+                                                  C6000 transactions (the speaker's DAC)
      end halves= gaps= frames= lost= lsf= str= pkt= bert= eot= sms= bert_bits= bert_err=
    sc and m are thousandths (sync score, Viterbi disagreement); g is tap units per level.
    Voice (API level 5 images): stream frames' Codec2 3200 goes to the speaker through the image's
    own decoder (api->c2_start/c2_push/c2_stop, OpenRTX's M17 playback). The module keeps a
    jitter buffer (M17RX_C2Q frames), starts the decoder once M17RX_PREBUF frames are in, feeds it
    as it takes them, and stops it M17RX_TAIL_MS after the last frame went (the last stream frame,
-   an EOT, or no stream frame for M17RX_GAP_MS). Lines:
+   an EOT with no stream frame M17RX_END_MS after it, or no stream frame for M17RX_GAP_MS). Lines:
      spk start q=N | spk err | spk stop frames=N gap=MS drop=N
    (gap: the longest wait between stream frames, ms; over about 120 the decoder ran dry; drop:
    frames the full buffer had no room for). On a level 4 image: "spk none level=4", no sound.
@@ -33,6 +36,13 @@
    receiver (c/common/m17_rx_host) can be run on exactly what the radio's had.
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
+/* the waits for OpenRTX's own C6000 transactions (the speaker's DAC writes share the port): the
+   first word of scratch (m17_mod.busy) counts them */
+#define C6_ON_BUSY                                                                                 \
+    do {                                                                                           \
+        uint32_t z_;                                                                               \
+        (*(uint32_t *)api->scratch(&z_))++;                                                        \
+    } while (0)
 #include "c6spi.h"
 #include "at1846.h"
 
@@ -63,6 +73,11 @@
 #ifndef M17RX_GAP_MS
 #define M17RX_GAP_MS 400u               /* no stream frame this long: the call has ended */
 #endif
+#ifndef M17RX_END_MS
+#define M17RX_END_MS 120u               /* an EOT ends the call only if no stream frame follows
+                                           this soon (a lost tap half can fake one: 11-18 14:56Z,
+                                           11 false EOTs mid-call) */
+#endif
 #ifndef M17RX_TAIL_MS
 #define M17RX_TAIL_MS 120u              /* after the last push: the decoder's queue (4) plays out */
 #endif
@@ -70,6 +85,7 @@
 #define SMS_MAX 256u                    /* an SMS this long (M17 allows 823 bytes; longer is cut) */
 
 typedef struct {
+    uint32_t busy;                      /* first: C6_ON_BUSY counts here */
     m17_rx rx;
     m17_frame fr;
     uint8_t sms[SMS_MAX];
@@ -187,8 +203,11 @@ static void report(const ortx_api_t *api, m17_mod *m) {
     }
     default:
         api->fmt(line, sizeof line, "f %lu eot", t);
-        if (m->spk >= 1)
-            m->spk_last = api->ms() - M17RX_GAP_MS;
+        if (m->spk >= 1) {
+            uint32_t end = api->ms() - (M17RX_GAP_MS - M17RX_END_MS);
+            if ((int32_t)(end - m->spk_last) < 0)
+                m->spk_last = end;      /* never later than a last-frame flag put it */
+        }
         break;
     }
     api->say(line);
@@ -300,9 +319,13 @@ int uv_main(const ortx_api_t *api) {
 
     uint32_t seq = 0, t0 = api->ms(), last_st = 0;
     unsigned halves = 0, gaps = 0, last = 2, pe[2];
+    uint32_t lp = 0, fd = 0, sp = 0, prev = api->ms();  /* this second's longest loop, feed, speaker */
     pe[0] = rd16(api, HALF0 + 510u), pe[1] = rd16(api, HALF1 + 510u);
     while (api->ms() - t0 < M17RX_S * 1000u && !api->stop()) {
-        uint32_t t = api->ms() - t0;
+        uint32_t now = api->ms(), t = now - t0;
+        if (now - prev > lp)
+            lp = now - prev;
+        prev = now;
         uint8_t f = api->c6000_read(0x82);
         if (f)
             api->c6000_write(0x83, f);
@@ -318,14 +341,24 @@ int uv_main(const ortx_api_t *api) {
             last = (unsigned)done;
             feed(api, m, done ? HALF1 : HALF0, &seq);
             halves++;
+            if (api->ms() - now > fd)
+                fd = api->ms() - now;
         }
-        if (m->spk > 0)
+        if (m->spk > 0) {
+            uint32_t s0 = api->ms();
             speaker(api, m);
+            if (api->ms() - s0 > sp)
+                sp = api->ms() - s0;
+        }
         if (t - last_st >= 1000u) {
             last_st = t;
-            api->fmt(line, sizeof line, "st %lu halves=%u gaps=%u frames=%lu lost=%lu rssi=%ld", (unsigned long)t,
-                     halves, gaps, (unsigned long)m->rx.frames, (unsigned long)m->rx.lost, (long)api->rssi());
+            api->fmt(line, sizeof line, "st %lu halves=%u gaps=%u frames=%lu lost=%lu rssi=%ld lp=%lu fd=%lu sp=%lu "
+                     "bz=%lu", (unsigned long)t, halves, gaps, (unsigned long)m->rx.frames, (unsigned long)m->rx.lost,
+                     (long)api->rssi(), (unsigned long)lp, (unsigned long)fd, (unsigned long)sp,
+                     (unsigned long)m->busy);
             api->say(line);
+            lp = fd = sp = 0;
+            m->busy = 0;
         }
         api->sleep_ms(1);
     }

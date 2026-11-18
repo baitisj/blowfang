@@ -151,3 +151,41 @@ def test_c6m17rx_plays_a_call_on_the_speaker_without_gaps(tmp_path):
     assert f"frames={n1} " in stops[0] and f"frames={n2} " in stops[1]
     assert not [ln for ln in out if ln.endswith(" underrun")], out    # silence only after a call's end
     assert out[-1].startswith(f"end pushes={n1 + n2} played={n1 + n2} ") and out[-1].endswith(" underruns=0")
+
+
+def test_c6m17rx_keeps_playing_through_a_false_eot(tmp_path):
+    """an EOT that stream frames follow at once (on the radio, a lost tap half faked 11 of them
+    mid-call, 11-18 14:56Z, and each stopped and restarted the speaker) doesn't end the call:
+    one start, one stop, every frame played, the decoder never dry mid-call"""
+    import shutil
+    import subprocess
+    from modem import m17
+    cc = shutil.which("cc") or shutil.which("gcc") or shutil.which("clang")
+    if not cc:
+        pytest.skip("no C compiler")
+    here = os.path.dirname(__file__)
+    exe = tmp_path / "spk_host"
+    subprocess.run([cc, "-O1", "-std=gnu99", "-w", "-I" + os.path.join(MOD, ".."), "-I" + MOD, "-o", str(exe),
+                    os.path.join(here, "c6m17rx_spk_host.c")], check=True)
+    c2 = open(os.path.join(here, "data", "uv380", "m17-voice.c2"), "rb").read()
+    c2 = c2[:len(c2) // 16 * 16]
+    l30 = m17.lsf(m17.IDENT, "", m17.TYPE_STREAM_VOICE)
+    n = len(c2) // 16
+    data = m17.preamble(m17.PRE_LSF) + m17.frame_lsf(l30)
+    for fn in range(n):
+        data += m17.frame_stream(l30, fn, c2[16 * fn:16 * fn + 16], fn == n - 1)
+        if fn in (n // 3, 2 * n // 3):
+            data += m17.eot()
+    data += m17.eot()
+    rng = np.random.default_rng(4)
+    raw = tmp_path / "tap.raw"
+    raw.write_bytes(_tap_audio(data, rng, invert=True).tobytes())
+    out = subprocess.run([str(exe), str(raw)], check=True, capture_output=True, text=True).stdout.splitlines()
+    assert len([ln for ln in out if ln.endswith(" eot")]) == 3, out[-20:]
+    starts = [ln for ln in out if " spk start" in ln]
+    stops = [ln for ln in out if " spk stop" in ln]
+    assert len(starts) == 1 and len(stops) == 1, out[-20:]
+    # the receiver re-finds the stream after each EOT a frame late: those two frames are lost
+    assert f"frames={2 * (n - 2)} " in stops[0], stops
+    # each hole (the EOT and the lost frame, 80 ms) is at most 80 ms of silence, not a restart
+    assert len([ln for ln in out if ln.endswith(" underrun")]) <= 8, out
