@@ -14,29 +14,31 @@
        each eighth of a symbol in turn. The start moves a whole symbol where the enable crosses the
        chip's threshold; the data packets put their enable half a symbol from it, so they all start
        on a known tick;
-     - the size writes at that tick's grid plus a lag: C4_LAG4 quarter symbols (run 1's 1.75 plus
-       run 2's drift) less the mean enable-to-done time over the eight phases, which is what runs
-       1 and 2 saw on average.
+     - the size writes at that tick's grid plus a lag: C4_LAG4 quarter symbols (run 3's best)
+       less the mean enable-to-done time over the eight phases, which is what runs 1 and 2 saw on
+       average.
    Then it sends
      A00..A12  one frame a packet (header, data FN 0, FN 1 "AG7EW K6 C4FM", terminator in turn),
                size writes at -6..+6 quarter symbols from that lag
-     B0..B4    the whole transmission (four frames back to back) in one packet, at -4, -2, 0, +2,
-               +4 quarter symbols
+     B0..B4    the whole transmission (four frames back to back) in one packet, at -2..+2 quarter
+               symbols
    Every data packet ends with 16 outer symbols, so the TX-done poll has room after the last size
    write. Like c4ysf it keys C4_PRE_MS after the bench job's trigger carrier, on 440.850 only, the
    PA off by default, and ends with AG7EW in MCW. A Pluto capture goes to
    python3 -m modem.k6c4fm analyze CAP.wav --plan lock.
 
    It says
-     K6 MOD say c4lock n=35 g=78/27 lag=8 ppm=-520 pa=0 rx=440850000
+     K6 MOD say c4lock n=35 g=78/27 lag=9 ppm=-630 pa=0 rx=440850000
      K6 MOD say c4 trigger heard
      K6 MOD say c4lock cal ppm=... th=.../16 u=... ub=...     the fitted rate (0.1 ppm, chip
                                     against MCU), the data packets' enable phase, the enable-to-done
                                     time at that phase and on average (% of a symbol)
      K6 MOD say c4lock v=...        each phase's enable-to-done time plus its phase (% of a symbol,
                                     against C1's): one step of 100 where the start jumps a symbol
-     K6 MOD say c4lock w=... late=... miss=... lost=... wr=...-...   size writes, late, data packets
-                                    that ended off their predicted tick, polls that missed the rise
+     K6 MOD say c4lock w=... late=... miss=... lost=... wr=...-... rd=...   size writes, late, data
+                                    packets that ended over half a symbol off their tick, polls that
+                                    missed the rise or came in 3/4 symbol off, a write's length and
+                                    the longest poll (cycles at 96 MHz)
      K6 MOD say c4lock fit ppm=... res=...    the final rate and the last fit's worst residual
      K6 MOD say c4lock sent n=35 ms=... id=52
    and returns the packets sent, or a negative error as c4ysf's (-8 writes too slow, -9 a packet
@@ -66,10 +68,10 @@ K6_MODULE_NAME(K6_NAME);
 #define C4_INNER 27         /* +-0.9 kHz (run 2: 1.0 kHz) */
 #endif
 #ifndef C4_LAG4
-#define C4_LAG4 8           /* the size writes' lag, quarter symbols (run 1 +7, run 2's drift +1) */
+#define C4_LAG4 9           /* the size writes' lag, quarter symbols (run 3: best between 8 and 10) */
 #endif
 #ifndef C4_PPM
-#define C4_PPM (-520)       /* the chip's symbol against the MCU's 20000 cycles, before the fit */
+#define C4_PPM (-630)       /* the chip's symbol against the MCU's 20000 cycles, before the fit (run 3) */
 #endif
 #ifndef C4_CFG
 #define C4_CFG 0x00E1
@@ -150,7 +152,7 @@ K6_MODULE_NAME(K6_NAME);
 #define UNIT_MS (1200u / ID_WPM)
 #define ID_UNITS 52                                 /* AG7EW: A 8, G 12, 7 16, E 4, W 12 */
 
-static const int8_t BQ[NB] = {-4, -2, 0, 2, 4};
+static const int8_t BQ[NB] = {-2, -1, 0, 1, 2};
 
 /* the registers the module changes, put back on the way out */
 static const uint8_t SAVED[] = {R_CFG, R_CTRL, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, R_AF, R_IRQ_EN, R_DEV};
@@ -167,7 +169,7 @@ typedef struct {
 typedef struct {
   const k6_api_t *api;
   clk_t c;
-  uint32_t w, late, wmin, wmax, len, miss, lost;
+  uint32_t w, late, wmin, wmax, len, miss, lost, odd, rmax;
   /* the chip's grid in MCU cycles: tick(n) = ta + (n - na) x p12 / 4096 */
   uint32_t p12, ta;
   int32_t na;
@@ -306,9 +308,10 @@ static uint32_t at_phase(const c4_t *s, uint32_t t, uint32_t th) {
   return x;
 }
 
-/* a TX-done time into the fit: its tick (the nearest to the grid so far), then the line through
-   the last NFIT (phase only until they span SPAN_FIT symbols) */
-static int32_t fit_add(c4_t *s, uint32_t e) {
+/* a TX-done time into the fit, on tick n (want: a data packet's, placed on the grid) or else the
+   nearest so far; then the line through the last NFIT (phase only until they span SPAN_FIT
+   symbols). A time more than 3/4 symbol off its tick stays out (a poll held up). -> its tick */
+static int32_t fit_add(c4_t *s, uint32_t e, int32_t want, int have) {
   int32_t n, nl, dm, rm, sdr = 0, sdd = 0, db = 0, lo, worst = 0, sd = 0, sr = 0;
   uint32_t k, cnt;
   if (!s->nfit) {
@@ -316,7 +319,13 @@ static int32_t fit_add(c4_t *s, uint32_t e) {
     s->na = 0;
     n = 0;
   } else {
-    n = idx(s, e);
+    int32_t r, q = (int32_t)(s->p12 >> 14);              /* a quarter symbol */
+    n = have ? want : idx(s, e);
+    r = (int32_t)(e - tick(s, n));
+    if (r > 3 * q || r < -3 * q) {
+      s->odd++;
+      return n;
+    }
   }
   s->fe[s->put] = e;
   s->fn[s->put] = n;
@@ -464,6 +473,7 @@ static int done(c4_t *s, uint32_t from, uint32_t *e) {
   } else {
     for (;;) {
       t = now(&s->c);
+      if (t - prev > s->rmax) s->rmax = t - prev;
       if (api->fd_read(R_STATUS) & 1) {
         *e = prev + ((t - prev) >> 1);
         r = 1;
@@ -493,36 +503,47 @@ static int cal(c4_t *s, uint32_t k) {
   s->cok[k] = (uint8_t)(r ? 1 + phased : 0);
   if (r) {
     if (!s->nfit) s->ustar = (int32_t)(e - x - mulp(s, nsym));
-    s->cn[k] = fit_add(s, e);
+    s->cn[k] = fit_add(s, e, 0, 0);
   }
   return 0;
 }
 
-/* from the calibration: each phase's enable to done, the start's jump, the data packets' phase */
+/* from the calibration: each enable's phase on the final fit, its enable to done (u) plus that
+   phase (v: flat but for one whole-symbol step where the start jumps a tick), by eighths; the data
+   packets' phase half a symbol from the step, their u there, and the mean u */
 static int settle(c4_t *s) {
-  int32_t u[8], cnt[8], i, k, bi = 0, best = -0x7FFFFFFF, sum = 0, j;
+  int32_t v8[8], cnt[8], i, k, bi = 0, best = -0x7FFFFFFF, sum = 0, n = 0, j, th, va, vb;
+  int32_t pc = (int32_t)(s->p12 >> 12);
   uint32_t nsym = LEAD_SYMS + CAL_WORDS * 16u;
-  for (i = 0; i < 8; i++) u[i] = cnt[i] = 0;
+  for (i = 0; i < 8; i++) v8[i] = cnt[i] = 0;
   for (k = 1; k < NCAL; k++) {
+    int32_t u, d;
     if (s->cok[k] != 2) continue;
-    i = (k - 1) & 7;
-    u[i] += (int32_t)(tick(s, s->cn[k]) - s->cx[k] - mulp(s, nsym));
+    u = (int32_t)(tick(s, s->cn[k]) - s->cx[k] - mulp(s, nsym));
+    d = (int32_t)(s->cx[k] - tick(s, idx(s, s->cx[k])));  /* -P/2..P/2 */
+    if (d < -pc / 16) d += pc;                            /* the phase: -P/16..15P/16 */
+    i = sdivq(d * 8 + pc / 2, (uint32_t)pc, 0) & 7;
+    v8[i] += u + d;
     cnt[i]++;
+    sum += u;
+    n++;
   }
   for (i = 0; i < 8; i++) {
     if (!cnt[i]) return -10;
-    u[i] = sdivq(u[i], (uint32_t)cnt[i], 0);
-    s->v[i] = u[i] + sixteenths(s, 2 * i);
-    sum += u[i];
+    v8[i] = sdivq(v8[i], (uint32_t)cnt[i], 0);
   }
   for (i = 0; i < 8; i++) {
-    int32_t dv = (i < 7 ? s->v[i + 1] : s->v[0] + sixteenths(s, 16)) - s->v[i];
+    int32_t dv = (i < 7 ? v8[i + 1] : v8[0] + pc) - v8[i];
     if (dv > best) best = dv, bi = i;
   }
-  s->th = (uint32_t)(2 * bi + 9) & 15u;
-  j = (bi + 4) & 7;
-  s->ustar = sdivq(u[j] + u[(j + 1) & 7], 2, 0);
-  s->ubar = sdivq(sum, 8, 0);
+  for (i = 0; i < 8; i++) s->v[i] = v8[i];
+  th = 2 * bi + 9;
+  j = bi + 4;
+  va = j < 8 ? v8[j] : v8[j - 8] + pc;
+  vb = j + 1 < 8 ? v8[j + 1] : v8[j + 1 - 8] + pc;
+  s->ustar = sdivq(va + vb, 2, 0) - sixteenths(s, th);
+  s->th = (uint32_t)th & 15u;
+  s->ubar = sdivq(sum, (uint32_t)n, 0);
   return 0;
 }
 
@@ -558,7 +579,11 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q) {
     }
   }
   if ((r = done(s, tick(s, ne) - mulp(s, 3), &e)) < 0) return r;
-  if (r && fit_add(s, e) != ne) s->miss++;
+  if (r) {
+    int32_t d = (int32_t)(e - tick(s, ne)), h = (int32_t)(s->p12 >> 13);
+    if (d > h || d < -h) s->miss++;                       /* off by more than half a symbol */
+    fit_add(s, e, ne, 1);
+  }
   return sent < nw ? -9 : 0;
 }
 
@@ -636,9 +661,9 @@ static int trigger(const k6_api_t *api) {
 }
 
 /* the reports, after the key-up (nothing is said while keyed) */
-static void report(c4_t *s, int cal_done) {
+static void report(c4_t *s, int cal_done, char *line) {
   const k6_api_t *api = s->api;
-  char line[64], *p;
+  char *p;
   int i;
   if (cal_done) {
     p = put(line, "c4lock cal ppm=");
@@ -666,11 +691,13 @@ static void report(c4_t *s, int cal_done) {
   p = put(p, " miss=");
   p = dec(p, s->miss);
   p = put(p, " lost=");
-  p = dec(p, s->lost);
+  p = dec(p, s->lost + s->odd);
   p = put(p, " wr=");
   p = dec(p, s->wmin);
   p = put(p, "-");
   p = dec(p, s->wmax);
+  p = put(p, " rd=");
+  p = dec(p, s->rmax);
   *p = 0;
   api->say(line);
   if (s->nfit) {
@@ -690,7 +717,8 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   int r = 0, id = 0;
   s.api = api;
   /* (an initialiser calls memclr) */
-  s.w = s.late = s.wmin = s.wmax = s.len = s.miss = s.lost = s.nfit = s.put = s.th = 0;
+  s.w = s.late = s.wmin = s.wmax = s.len = s.miss = s.lost = s.odd = s.rmax = s.nfit = s.put = 0;
+  s.th = 0;
   s.res = s.ustar = s.ubar = s.cppm = 0;
   s.settled = 0;
   s.p12 = P12_0;
@@ -748,7 +776,7 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
       api->fd_write(SAVED[i], s.sv[i]);
     }
   }
-  report(&s, (int)s.settled);
+  report(&s, (int)s.settled, line);
   if (r) return r;
   p = put(line, "c4lock sent n=");
   p = dec(p, NPKT);

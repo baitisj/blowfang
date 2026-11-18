@@ -93,8 +93,8 @@ YSF_PRE = (120, 64, 32)             # c4ysf.c's B1..B3: FIFO words written befor
 LOCK_NCAL = 17                      # c4lock.c (run 3): calibration packets (64 PN9 signs each)
 LOCK_CAL_SYMS = 64
 LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, quarter symbols
-LOCK_B = (-4, -2, 0, 2, 4)          # its whole-transmission packets'
-LOCK_LAG4 = 8                       # its C4_LAG4
+LOCK_B = (-2, -1, 0, 1, 2)          # its whole-transmission packets'
+LOCK_LAG4 = 9                       # its C4_LAG4
 PAD_SYMS = 16                       # c4lock's outer alternation after the frames (FIFO word 0x5555)
 
 

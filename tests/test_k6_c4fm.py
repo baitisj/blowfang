@@ -314,8 +314,9 @@ class FskGrid(FskTx):
     (ppm against the MCU, a random phase) that runs on through the key-up. A packet starts on the
     first tick at least lat_en after its enable; TX done rises done_sym after its last symbol."""
 
-    def __init__(self, ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6):
+    def __init__(self, ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, poll_jitter=0.0):
         super().__init__()
+        self.jit, self.rng = poll_jitter, np.random.default_rng(7)
         self.ts = SYM_NS / 1000 * (1 + ppm * 1e-6)          # the chip's symbol, us of MCU time
         self.g0, self.lat_en, self.done_sym = phase * self.ts, lat_en, done_sym
 
@@ -329,6 +330,8 @@ class FskGrid(FskTx):
             nsym = ((self.len5d >> 8) + 1) * 8
             p["nsym"] = nsym
             self.done = p["t_start"] + (k6c4fm.LEAD_SYMS + nsym + self.done_sym) * self.ts
+            # the radio's polls: a read is 117 us and the flag shows somewhere inside it
+            self.done += self.rng.uniform(0, self.jit) * self.ts
 
 
 def air_grid(ev, fsk, fs=48000, data_lag=1.21):
@@ -354,9 +357,9 @@ def air_grid(ev, fsk, fs=48000, data_lag=1.21):
 
 
 
-def send_lock(ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, write_us=117, **kw):
+def send_lock(ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, write_us=117, poll_jitter=0.0, **kw):
     mmio, rcc, tim = k6_clock()
-    tx, fsk = kw.pop("tx", {}), FskGrid(ppm, phase, lat_en, done_sym)
+    tx, fsk = kw.pop("tx", {}), FskGrid(ppm, phase, lat_en, done_sym, poll_jitter)
     ret, said, regs, _ = run({**REGS, **kw.pop("regs", {})}, src=LOCK_SRC, level=3, tx=tx,
                              mmio=mmio, write_us=write_us, fsk=fsk, count=2_000_000_000, **kw)
     assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1
@@ -375,33 +378,35 @@ def test_lock_module_matches_host():
 
 
 @need_clang
-@pytest.mark.parametrize("ppm,phase,lat_en", [(-520.0, 0.37, 0.3), (-380.0, 0.81, 0.9),
-                                              (-650.0, 0.05, 0.55)])
-def test_lock_module_locks_to_the_chip(ppm, phase, lat_en):
-    """the chip's clock off the MCU's by ppm (the prior says -520), its grid at any phase, its
+@pytest.mark.parametrize("ppm,phase,lat_en,jit", [(-520.0, 0.37, 0.3, 0.0), (-760.0, 0.81, 0.9, 0.0),
+                                                  (-650.0, 0.05, 0.55, 0.5), (-630.0, 0.6, 0.02, 0.5)])
+def test_lock_module_locks_to_the_chip(ppm, phase, lat_en, jit):
+    """the chip's clock off the MCU's by ppm (the prior says -630), its grid at any phase, its
     enable threshold anywhere: the fitted rate, every data packet on its predicted tick, and the
-    frames whole on air with the chip's gain path (data_lag) set where Lq 0 should land"""
+    frames whole on air with the chip's gain path (data_lag) set where Lq 0 should land; jit: the
+    TX-done polls as coarse as on the radio (run 3's 0.42-symbol residuals)"""
     pytest.importorskip("unicorn")
-    ret, said, regs, tx, fsk, ev = send_lock(ppm, phase, lat_en)
+    ret, said, regs, tx, fsk, ev = send_lock(ppm, phase, lat_en, poll_jitter=jit)
     n = k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.LOCK_B)
     assert ret == n, said
-    assert said[0] == f"c4lock n={n} g=78/27 lag=8 ppm=-520 pa=0 rx=440850000"
+    assert said[0] == f"c4lock n={n} g=78/27 lag=9 ppm=-630 pa=0 rx=440850000"
     assert said[-1].startswith(f"c4lock sent n={n} ")
     w = next(s for s in said if s.startswith("c4lock w="))
-    m = re.match(r"c4lock w=(\d+) late=(\d+) miss=(\d+) lost=(\d+)", w)
+    m = re.match(r"c4lock w=(\d+) late=(\d+) miss=(\d+) lost=(\d+) wr=\d+-\d+ rd=(\d+)$", w)
     assert m and m.group(2) == "0" and m.group(3) == "0" and m.group(4) == "0", said
     fit = next(s for s in said if s.startswith("c4lock fit"))
     got = int(re.search(r"ppm=(-?\d+)", fit).group(1)) / 10
     # the module's ppm is the chip's symbol in MCU cycles: the chip fast = fewer cycles
-    assert got == pytest.approx(ppm, abs=3), said
+    assert got == pytest.approx(ppm, abs=3 + 20 * jit), said
     t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
     assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS
     assert [len(p["words"]) for p in fsk.pkts] == ([4] * k6c4fm.LOCK_NCAL + [31] * len(k6c4fm.LOCK_A)
                                                    + [121] * len(k6c4fm.LOCK_B))
     # the data packets' enables half a symbol from the threshold: start - enable the same for all
     gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts[k6c4fm.LOCK_NCAL:]]
-    assert max(gaps) - min(gaps) < 0.2, gaps
-    assert min(g - lat_en for g in gaps) > 0.2 and max(g - lat_en for g in gaps) < 0.8, gaps
+    # (coarse polls: the fitted phase wanders about +-0.15 symbol, the noise floor of 16 polls)
+    assert max(gaps) - min(gaps) < 0.2 + 0.4 * jit, gaps
+    assert min(g - lat_en for g in gaps) > 0.15 and max(g - lat_en for g in gaps) < 0.85, gaps
     # the chip's data path set so that Lq 0 lands: the writes aim C4_LAG4 / 4 symbols after the
     # done grid's ticks, less the mean enable-to-start time (lat_en + 0.5) as runs 1 and 2 saw it
     lag = k6c4fm.LOCK_LAG4 / 4 - 0.5 - lat_en
