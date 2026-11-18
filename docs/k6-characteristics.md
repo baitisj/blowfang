@@ -53,9 +53,11 @@ one of them changes.
   carrier near 16.9 kHz (26 MHz / 1536) only with the wide filter; with the narrow one the same
   carrier read 8.9-9.8 kHz (M, 06:10Z). One REG_3B step moved it 81 Hz at 440.850 (95 % of 5 Hz of
   26 MHz) (M).
-- Overnight 2026-11-17 09:10-17:25Z (12 relay reads, t 29976-30134): the crystal -1.87 +- 0.17 ppm
-  (824 Hz low at 440.850), single reads +-0.25 ppm, no clear temperature trend over that small
-  span (M, docs/k6-drift-cal.md).
+- Night of 2026-11-18 05:16-15:00Z (14 clean relay reads, t 29950-30055 as the garage cooled): the
+  crystal +0.054 +- 0.015 ppm (about 24 Hz high at 440.850), no trend with t over that span; each
+  read is 4 IF reads at the null within about 20 ppb (M, docs/k6-drift-cal.md). The 2026-11-17
+  overnight series (-1.87 ppm) is withdrawn: its IF reads spread 450-770 Hz against 7-12 Hz clean,
+  so refcal was measuring a keyed or modulated signal, not the steady tail.
 
 ## Memory and code
 
