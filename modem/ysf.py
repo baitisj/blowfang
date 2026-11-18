@@ -10,6 +10,9 @@ codec started as sotto's modem/ysf.py (MIT, same author); modem/c4fm.py imports 
   python3 -m modem.ysf decode CAP.cf32|.wav   a Pluto capture: frames, FICH, callsigns, DN voice
                                               frames (silence), data text, deviation per level
   python3 -m modem.ysf sim PLAN [--noise-hz N] the chip's shape at 2.7 kHz, decoded
+  python3 -m modem.ysf wav OUT.wav [--sotto N] [--repeat R] [--data N]
+                                              a Pluto test transmission for the UV-380's YSF
+                                              receiver (c6ysfrx): send it with --dev 5400
 
 One YSF frame is 100 ms = 480 symbols at 4800 a second = 960 bits = 120 bytes:
   sync (40 bits) | FICH (200 bits) | payload (720 bits = 5 sections of 144 bits, 20 ms each)
@@ -804,6 +807,30 @@ def _demod(disc, fs=48000, alpha=0.2):
     return out
 
 
+WAV_HALF = 0.5                         # wav: the outer symbol's level (RRC overshoot stays under 1)
+WAV_DEV = 5400.0                       # pluto_bench.py send --dev for it: outer at 2700 Hz
+
+
+def sotto_test(n):
+    """c6sotto's test message (SOTTO_SRC 0): superframe k is bytes 6k..6k+5 counting up"""
+    return bytes(i & 0xFF for i in range(n * SOTTO_SF))
+
+
+def test_wav(path, nsotto=40, repeat=3, ndata=0, gap_s=0.5, fs=48000):
+    """repeat x (the sotto test message as sotto VW, then ndata data FR frames), each after gap_s of
+    silence, as a discriminator wav with the outer symbol at WAV_HALF"""
+    from . import m17
+    gap = np.zeros(int(gap_s * fs))
+    parts = []
+    for _ in range(repeat):
+        parts += [gap, modulate(tx_sotto(sotto_test(nsotto)), fs=fs, outer_hz=WAV_HALF)]
+        if ndata:
+            parts += [gap, modulate(tx_data(ndata), fs=fs, outer_hz=WAV_HALF)]
+    x = np.concatenate(parts + [gap])
+    m17.write_wav(path, np.round(x * 32767), fs)
+    return len(x) / fs
+
+
 WAV_FULL_DEV = 5000.0                  # pluto_bench.py rx OUT.wav: this deviation = full scale
 
 
@@ -872,7 +899,18 @@ def main(argv=None):
     s.add_argument("--outer-hz", type=float, default=OUTER_HZ)
     s.add_argument("--noise-hz", type=float, default=0.0)
     s.add_argument("--dc-hz", type=float, default=0.0)
+    w = sub.add_parser("wav")
+    w.add_argument("out")
+    w.add_argument("--sotto", type=int, default=40, help="superframes of c6sotto's test message")
+    w.add_argument("--repeat", type=int, default=3)
+    w.add_argument("--data", type=int, default=0, help="then a data FR transmission of N comms frames")
     a = ap.parse_args(argv)
+    if a.cmd == "wav":
+        secs = test_wav(a.out, a.sotto, a.repeat, a.data)
+        print(f"{a.out}: {secs:.1f} s at 48000 Hz, {a.repeat} x sotto VW ({a.sotto} superframes, first "
+              f"{sotto_test(a.sotto)[:6].hex()}, last {sotto_test(a.sotto)[-6:].hex()})"
+              f"{f' + data FR ({a.data} frames)' if a.data else ''}; send with --dev {WAV_DEV:.0f}")
+        return 0
     if a.cmd == "header":
         data = build(a.plan)
         with open(a.out, "w") as f:
