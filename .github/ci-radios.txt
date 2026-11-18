@@ -58,6 +58,7 @@ tests/test_k6*
 tests/k6_live_emu.py
 tests/test_nwr_watch.py
 tests/test_pluto_bench.py
+tests/test_sdr.py
 tests/test_bench_runner.py
 tests/test_bench_inbox.py
 tests/test_psk31.py

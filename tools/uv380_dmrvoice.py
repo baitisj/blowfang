@@ -5,6 +5,9 @@ learner for its raw test pattern, and a voice call as audio for the tests and th
 receiver.
 
   python3 tools/uv380_dmrvoice.py voice IN.wav [--out MSG.bit] [--map MAP.json] [--preemph]
+  python3 tools/uv380_dmrvoice.py voice CAP.cf32 ...  a pluto_bench rx capture (240 kHz complex64):
+                                                      the carrier followed to 0 Hz first (the C6000's
+                                                      DMR sits ~7 kHz high at 0 W), then a 12 kHz channel
   python3 tools/uv380_dmrvoice.py voice IN.wav --learn MAP.json
   python3 tools/uv380_dmrvoice.py vwav OUT.wav [--msg MSG.bit] [--pn N] [--map MAP.json]
 
@@ -36,6 +39,7 @@ from sim.k6if import dmr, dmrdec as dd  # noqa: E402
 import uv380_dmrburst as burst  # noqa: E402
 
 symbols_audio = burst.symbols_audio
+CF32_FULL_DEV = 5000.0      # a .cf32's discriminator (Hz) scaled as pluto_bench rx scales its wav
 
 
 def voice_soft(u144):
@@ -97,17 +101,48 @@ def voice_payloads(blocks):
     return pay
 
 
+def follow_carrier(iq, fs, win_s=0.1, bw_hz=20000.0):
+    """iq with its carrier mixed to 0 Hz as the carrier moves: a wide discriminator's running mean
+    over win_s is the carrier track, and its phase is taken off. The UV-380 keys its FM ident near
+    +0.8 kHz and the C6000's DMR near +7.1 kHz at 0 W (11-17): fm_demod's +-8 kHz channel filter cut
+    the DMR's top half off until it was mixed down first, and nothing decoded"""
+    from scipy import signal
+    x = signal.lfilter(signal.firwin(255, bw_hz, fs=fs), 1.0, np.asarray(iq, np.complex64))
+    d = np.concatenate([[0.0], np.angle(x[1:] * np.conj(x[:-1])) * fs / (2 * np.pi)])
+    n = max(1, int(win_s * fs))
+    c = np.convolve(d, np.ones(n) / n, "same")
+    c = np.concatenate([c[127:], np.full(127, c[-1])])          # the filter's delay
+    ph = 2 * np.pi * np.cumsum(c) / fs
+    return (np.asarray(iq, np.complex64) * np.exp(-1j * ph)).astype(np.complex64)
+
+
+def dmr_disc(iq, fs, fs_out=48_000):
+    """a C6000 DMR capture -> its discriminator (Hz) at fs_out: the carrier followed to 0 Hz, then
+    a +-12 kHz channel (V1b and V1c, 11-17: 0 bit errors in 12,960 this way, none decoded without)"""
+    from modem import c6phy
+    return c6phy.fm_demod(follow_carrier(iq, fs), fs, fs_out, bw_hz=12000.0)
+
+
 def voice_bursts(y, pol, ev, sps=dd.SPS):
     """matched-filtered samples and decode_stream's events -> [(burst index from the first burst A
-    heard, 216 soft payload values in air order)]: each A and the B-F found after it. A voice sync
-    off the 60 ms grid of the first, or inside a superframe already taken, is a false one (a
-    burst's payload can look like a sync) and is dropped"""
-    out, t0, taken = [], None, set()
+    heard, 216 soft payload values in air order)]: each A and the B-F found after it. The grid is
+    the 60 ms one the most voice syncs agree with (a false sync in the noise before the call, as
+    in V2's 45 s capture on 11-17, took the time zero and lost every burst); a voice sync off it,
+    or inside a superframe already taken, is a false one (a burst's payload can look like a sync)
+    and is dropped"""
+    out, taken = [], set()
+    ts = [e["t"] for e in ev if e.get("kind") == "voice"]
+    if not ts:
+        return out
+
+    def on_grid(t, c):
+        f = (t - c) / 0.060
+        return abs(f - round(f)) <= 0.1
+    best = max(ts, key=lambda c: (sum(on_grid(t, c) for t in ts), -c))
+    t0 = min(t for t in ts if on_grid(t, best))
     for e in ev:
-        if e.get("kind") != "voice":
+        if e.get("kind") != "voice" or e["t"] < t0:
             continue
-        if t0 is None:
-            t0 = e["t"]
         f = (e["t"] - t0) / 0.060
         k0 = int(round(f))
         if abs(f - k0) > 0.1 or k0 in taken:
@@ -180,7 +215,13 @@ def main():
         burst.write_wav(a.out, x, a.fs)
         print(f"{a.out}: {len(pay)} voice bursts, {len(x) / a.fs:.2f} s")
         return 0
-    x, fs = burst.read_wav(a.wav)
+    if a.wav.endswith(".cf32"):
+        from modem import c6phy
+        iq, meta = c6phy.read_capture(a.wav)
+        fs = 48000
+        x = dmr_disc(iq, int(meta.get("fs", 240000)), fs) / CF32_FULL_DEV
+    else:
+        x, fs = burst.read_wav(a.wav)
     if a.preemph:
         x = burst.preemphasis(x, fs)
     mp = [tuple(m) for m in json.load(open(a.map))] if a.map else None
@@ -190,7 +231,7 @@ def main():
         if e.get("kind") == "data":
             kinds[e["dtype"]] = kinds.get(e["dtype"], 0) + 1
     n_a = sum(e.get("kind") == "voice" for e in ev)
-    print(f"bursts {len(ev)} data types {dict(sorted(kinds.items()))} (1 LC header, 2 terminator) "
+    print(f"bursts {len(ev)} data types {dict(sorted(kinds.items()))} (type 1 = LC header, 2 = terminator, 9 = idle) "
           f"voice syncs {n_a} payloads {len(vb)}")
     if a.learn:
         if not vb:
