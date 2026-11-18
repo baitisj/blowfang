@@ -127,8 +127,9 @@ def long_dn_frames(rid=ysf.RADIO_ID, src=ysf.IDENT):
 
 VOICE_FNS = tuple(range(8)) + tuple(range(4))   # c4voice.c: 12 comms frames = 60 AMBE frames, 1.2 s
 VOICE_CALLS = ((0, len(VOICE_FNS) + 2),) * 3   # c4voice.c: (first frame, frames) a call: the call, 3 times
-VOICE_INNER = (22, 20, 18)          # their inner REG_70 gain (outer 78): voice1 (11-18) at 27 came out at
-                                    # 0.45 of the outer, 5 of 49 AMBE bits wrong; voice2: 22 2.3, 18 2.5
+VOICE_INNER = (20, 20, 20)          # their inner REG_70 gain (outer 78): voice1 (11-18) at 27 came out at
+                                    # 0.45 of the outer, 5 of 49 AMBE bits wrong; voice2: 22 2.3, 18 2.5;
+                                    # voice3: 22 4.4, 20 1.5, 18 2.8
 
 
 def voice_frames(ambe=None, rid=ysf.RADIO_ID, src=ysf.IDENT):

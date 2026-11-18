@@ -284,11 +284,13 @@ static const uint8_t BF0[NB] = {0, 0, 0};           /* the voice call three time
 static const uint8_t BNF[NB] = {14, 14, 14};        /* header, FN 0-7, FN 0-3, terminator */
 static const uint8_t BINV[NB] = {0, 0, 0};
 #ifndef C4_VOICE_INNER
-#define C4_VOICE_INNER 22, 20, 18
+#define C4_VOICE_INNER 20, 20, 20
 #endif
 static const uint8_t BIN[NB] = {C4_VOICE_INNER};   /* voice1 (11-18): inner 27 came out at 0.45 of the
                                                        outer (YSF's is a third), 5 of 49 AMBE bits wrong;
-                                                       voice2: 22 gave 2.3, 18 2.5 */
+                                                       voice2: 22 gave 2.3, 18 2.5; voice3: 22 4.4,
+                                                       20 1.5, 18 2.8 (the packet's timing matters
+                                                       more than the level) */
 #elif C4_CHAIN
 static const int8_t BQ[NB] = {0, 0, 0};
 static const uint8_t BF0[NB] = {4, 4, 0};           /* each call's first frame and frames (k6c4fm.CHAIN_CALLS): */
