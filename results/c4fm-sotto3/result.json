@@ -1,0 +1,12 @@
+{
+ "id": "c4fm-sotto3",
+ "status": "queued",
+ "queued": "2026-11-18T11:35:46Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "33374a3c00b1ee9596ea2d0cf52aad8f34ebb218",
+  "path": "jobs/c4fm-sotto3"
+ },
+ "runner_commit": "b04eb6b5ba17f441327eec247581a4bbda77d1cd",
+ "updated": "2026-11-18T11:35:46Z"
+}
