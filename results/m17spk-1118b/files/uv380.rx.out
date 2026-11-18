@@ -1,0 +1,92 @@
+ok mod begin 8268
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 128
+ok mod hex 1b80 128
+ok mod hex 1c00 128
+ok mod hex 1c80 128
+ok mod hex 1d00 128
+ok mod hex 1d80 128
+ok mod hex 1e00 128
+ok mod hex 1e80 128
+ok mod hex 1f00 128
+ok mod hex 1f80 128
+ok mod hex 2000 76
+mod run serial=1794998024 code=8244
+mod say m17 start s=150 v34=1c at=ok scratch=8112 need=6928 tap=0
+mod say st 1000 halves=31 gaps=0 frames=0 lost=0 rssi=-94
+mod say st 2000 halves=62 gaps=0 frames=0 lost=0 rssi=-66
+mod say st 3019 halves=94 gaps=0 frames=0 lost=0 rssi=-66
+mod say st 4019 halves=125 gaps=0 frames=0 lost=0 rssi=-66
+mod say st 5022 halves=157 gaps=0 frames=0 lost=0 rssi=-66
+mod say f 5836 lsf ok=1 sc=995 g=1754 m=0 src=AG7EW dst=ALL type=0005
+mod say f 5876 str fn=0000 lich=1 sc=995 g=1774 m=0
+mod say f 5916 str fn=0001 lich=1 sc=991 g=1739 m=0
+mod say f 5956 str fn=0002 lich=1 sc=995 g=1776 m=0
+mod say spk start q=6
+ctrl-c: mod run still running after 200 s
+Traceback (most recent call last):
+  File "/home/baitisj/blowfang-work/worktrees/inbox-b04eb6b5ba17/tools/uv380_i2sprobe.py", line 389, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-b04eb6b5ba17/tools/uv380_i2sprobe.py", line 364, in main
+    return 1 if command(a.dev, mod_lines(img), a.log, pass_timeout=a.run_timeout,
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        out=quiet(), stop_on_err=True) else 0
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-b04eb6b5ba17/tools/uv380_i2sprobe.py", line 182, in command
+    os.write(fd, b"\x03")
+    ~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 5] Input/output error
