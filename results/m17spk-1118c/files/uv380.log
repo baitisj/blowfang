@@ -1,0 +1,1343 @@
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+ok mod begin 8268
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 128
+ok mod hex 1b80 128
+ok mod hex 1c00 128
+ok mod hex 1c80 128
+ok mod hex 1d00 128
+ok mod hex 1d80 128
+ok mod hex 1e00 128
+ok mod hex 1e80 128
+ok mod hex 1f00 128
+ok mod hex 1f80 128
+ok mod hex 2000 76
+mod run serial=1795013775 code=8244
+mod say m17 start s=150 v34=1c at=ok scratch=8112 need=6928 tap=0
+mod say st 1023 halves=32 gaps=0 frames=0 lost=0 rssi=-91
+mod say st 2045 halves=64 gaps=0 frames=0 lost=0 rssi=-66
+mod say st 3045 halves=95 gaps=0 frames=0 lost=0 rssi=-66
+mod say st 4061 halves=127 gaps=0 frames=0 lost=0 rssi=-66
+mod say st 5061 halves=158 gaps=0 frames=0 lost=0 rssi=-66
+mod say f 5995 lsf ok=1 sc=997 g=1808 m=0 src=AG7EW dst=ALL type=0005
+mod say f 6035 str fn=0000 lich=1 sc=997 g=1795 m=0
+mod say st 6070 halves=190 gaps=0 frames=2 lost=0 rssi=-66
+mod say f 6075 str fn=0001 lich=1 sc=993 g=1804 m=0
+mod say f 6115 str fn=0002 lich=1 sc=996 g=1815 m=0
+mod say spk start q=6
+mod say f 6155 str fn=0003 lich=1 sc=997 g=1799 m=0
+mod say f 6195 str fn=0004 lich=1 sc=998 g=1809 m=0
+mod say f 6235 str fn=0005 lich=1 sc=997 g=1818 m=0
+mod say f 6275 str fn=0006 lich=1 sc=997 g=1811 m=0
+mod say f 6315 str fn=0007 lich=1 sc=998 g=1819 m=0
+mod say f 6355 str fn=0008 lich=1 sc=998 g=1802 m=0
+mod say f 6395 str fn=0009 lich=1 sc=996 g=1806 m=0
+mod say f 6555 lsf ok=0 sc=392 g=509 m=51 src=EQSXRN LG dst=P-MTGFNN6 type=7613
+mod say f 6635 str fn=c2f8 lich=0 sc=480 g=913 m=56
+mod say f 6676 lsf ok=0 sc=472 g=811 m=39 src=EJS2YMSP/ dst=GB4IRVXB type=0e16
+mod say f 6715 lsf ok=0 sc=508 g=749 m=38 src=A/XJA9RZA dst=9W4Z3D5MF type=7fdb
+mod say f 6755 eot
+mod say spk stop frames=22 gap=284 drop=0
+mod say f 6811 str fn=0015 lich=1 sc=997 g=1786 m=0
+mod say f 6851 str fn=0016 lich=1 sc=997 g=1800 m=0
+mod say f 6891 str fn=0017 lich=1 sc=996 g=1787 m=0
+mod say spk start q=6
+mod say f 6931 str fn=0018 lich=1 sc=993 g=1765 m=0
+mod say st 7074 halves=219 gaps=0 frames=20 lost=0 rssi=-66
+mod say f 6971 str fn=0019 lich=1 sc=995 g=1799 m=0
+mod say f 7011 str fn=001a lich=1 sc=996 g=1776 m=0
+mod say f 7051 str fn=001b lich=1 sc=998 g=1797 m=0
+mod say f 7091 str fn=001c lich=1 sc=996 g=1786 m=0
+mod say f 7131 str fn=001d lich=1 sc=998 g=1824 m=0
+mod say f 7171 str fn=001e lich=1 sc=996 g=1853 m=0
+mod say f 7211 str fn=001f lich=1 sc=998 g=1814 m=0
+mod say f 7251 str fn=0020 lich=1 sc=998 g=1801 m=0
+mod say f 7291 str fn=0021 lich=1 sc=998 g=1804 m=0
+mod say f 7331 str fn=0022 lich=1 sc=997 g=1780 m=0
+mod say f 7787 str fn=002f lich=1 sc=998 g=1818 m=0
+mod say f 7827 str fn=0030 lich=1 sc=997 g=1844 m=0
+mod say f 7867 str fn=0031 lich=1 sc=998 g=1796 m=0
+mod say f 7907 str fn=0032 lich=1 sc=997 g=1782 m=0
+mod say st 8077 halves=249 gaps=2 frames=34 lost=1 rssi=-66
+mod say f 7947 str fn=0033 lich=1 sc=997 g=1798 m=0
+mod say f 7987 str fn=0034 lich=1 sc=997 g=1779 m=0
+mod say f 8027 str fn=0035 lich=1 sc=995 g=1775 m=0
+mod say f 8067 str fn=0036 lich=1 sc=997 g=1799 m=0
+mod say f 8107 str fn=0037 lich=1 sc=998 g=1805 m=0
+mod say f 8147 str fn=0038 lich=1 sc=997 g=1811 m=0
+mod say f 8187 str fn=0039 lich=1 sc=997 g=1815 m=0
+mod say f 8227 str fn=003a lich=1 sc=997 g=1840 m=0
+mod say f 8267 str fn=003b lich=1 sc=996 g=1829 m=0
+mod say f 8307 str fn=003c lich=1 sc=998 g=1828 m=0
+mod say f 8347 str fn=003d lich=1 sc=998 g=1828 m=0
+mod say f 8387 str fn=003e lich=1 sc=997 g=1815 m=0
+mod say f 8427 str fn=003f lich=1 sc=996 g=1798 m=0
+mod say f 8467 str fn=0040 lich=1 sc=996 g=1807 m=0
+mod say f 8507 str fn=0041 lich=1 sc=996 g=1828 m=0
+mod say f 8547 str fn=0042 lich=1 sc=998 g=1821 m=0
+mod say f 8587 str fn=0043 lich=1 sc=998 g=1821 m=0
+mod say f 8627 str fn=0044 lich=1 sc=996 g=1773 m=0
+mod say f 8667 str fn=0045 lich=1 sc=996 g=1778 m=0
+mod say f 8707 str fn=0046 lich=1 sc=998 g=1780 m=0
+mod say f 8747 str fn=0047 lich=1 sc=996 g=1820 m=0
+mod say f 8787 str fn=0048 lich=1 sc=998 g=1807 m=0
+mod say st 9077 halves=279 gaps=3 frames=56 lost=1 rssi=-66
+mod say f 8947 eot
+mod say f 8995 str fn=004e lich=1 sc=996 g=1772 m=0
+mod say f 9035 str fn=004f lich=1 sc=995 g=1794 m=0
+mod say f 9075 str fn=0050 lich=1 sc=996 g=1775 m=0
+mod say f 9115 str fn=0051 lich=1 sc=997 g=1796 m=0
+mod say f 9155 str fn=0052 lich=1 sc=996 g=1783 m=0
+mod say f 9195 str fn=0053 lich=1 sc=997 g=1805 m=0
+mod say f 9235 str fn=0054 lich=1 sc=997 g=1805 m=0
+mod say f 9275 str fn=0055 lich=1 sc=996 g=1816 m=0
+mod say f 9315 str fn=0056 lich=1 sc=997 g=1795 m=0
+mod say f 9355 str fn=0057 lich=1 sc=998 g=1798 m=0
+mod say f 9395 str fn=0058 lich=1 sc=996 g=1771 m=0
+mod say f 9435 str fn=0059 lich=1 sc=998 g=1809 m=0
+mod say f 9475 str fn=005a lich=1 sc=998 g=1810 m=0
+mod say f 9515 str fn=005b lich=1 sc=998 g=1822 m=0
+mod say f 9555 str fn=005c lich=1 sc=997 g=1828 m=0
+mod say f 9595 str fn=005d lich=1 sc=997 g=1796 m=0
+mod say f 9635 str fn=005e lich=1 sc=997 g=1821 m=0
+mod say f 9675 str fn=005f lich=1 sc=997 g=1804 m=0
+mod say f 9715 str fn=0060 lich=1 sc=997 g=1821 m=0
+mod say f 9755 str fn=0061 lich=1 sc=998 g=1809 m=49
+mod say f 9795 eot
+mod say st 10077 halves=309 gaps=4 frames=78 lost=1 rssi=-66
+mod say spk stop frames=120 gap=488 drop=0
+mod say f 9963 str fn=0067 lich=1 sc=997 g=1815 m=0
+mod say f 10003 str fn=0068 lich=1 sc=997 g=1821 m=0
+mod say f 10043 str fn=0069 lich=1 sc=997 g=1797 m=0
+mod say spk start q=6
+mod say f 10083 str fn=006a lich=1 sc=997 g=1799 m=0
+mod say f 10123 str fn=006b lich=1 sc=997 g=1813 m=0
+mod say f 10163 str fn=006c lich=1 sc=998 g=1811 m=0
+mod say f 10203 str fn=006d lich=1 sc=998 g=1842 m=0
+mod say f 10243 str fn=006e lich=1 sc=998 g=1802 m=0
+mod say f 10283 str fn=006f lich=1 sc=997 g=1802 m=0
+mod say f 10323 str fn=0070 lich=1 sc=997 g=1810 m=0
+mod say f 10363 str fn=0071 lich=1 sc=998 g=1828 m=0
+mod say f 10403 str fn=0072 lich=1 sc=996 g=1832 m=0
+mod say f 10443 str fn=0073 lich=1 sc=997 g=1814 m=0
+mod say f 10483 str fn=0074 lich=1 sc=996 g=1773 m=0
+mod say f 10523 str fn=0075 lich=1 sc=995 g=1778 m=0
+mod say f 10563 str fn=0076 lich=1 sc=996 g=1794 m=0
+mod say f 10603 str fn=0077 lich=1 sc=995 g=1793 m=0
+mod say f 10643 str fn=0078 lich=1 sc=996 g=1806 m=0
+mod say f 10683 str fn=0079 lich=1 sc=995 g=1797 m=0
+mod say f 10723 str fn=007a lich=1 sc=996 g=1813 m=0
+mod say f 10763 str fn=007b lich=1 sc=997 g=1785 m=0
+mod say f 10803 str fn=007c lich=1 sc=996 g=1789 m=0
+mod say st 11077 halves=340 gaps=4 frames=100 lost=1 rssi=-66
+mod say f 10843 str fn=007d lich=1 sc=996 g=1787 m=0
+mod say f 10883 str fn=007e lich=1 sc=996 g=1779 m=0
+mod say f 10923 str fn=007f lich=1 sc=995 g=1788 m=0
+mod say f 10963 str fn=0080 lich=1 sc=994 g=1786 m=0
+mod say f 11003 str fn=0081 lich=1 sc=996 g=1782 m=0
+mod say f 11043 str fn=0082 lich=1 sc=997 g=1818 m=0
+mod say f 11083 str fn=0083 lich=1 sc=997 g=1811 m=0
+mod say f 11123 str fn=0084 lich=1 sc=997 g=1834 m=0
+mod say f 11163 str fn=0085 lich=1 sc=998 g=1804 m=0
+mod say f 11203 str fn=0086 lich=1 sc=998 g=1794 m=0
+mod say f 11243 str fn=0087 lich=1 sc=997 g=1797 m=0
+mod say f 11283 str fn=0088 lich=1 sc=996 g=1779 m=0
+mod say f 11323 str fn=0089 lich=1 sc=998 g=1798 m=0
+mod say f 11363 str fn=008a lich=1 sc=998 g=1806 m=0
+mod say f 11403 str fn=008b lich=1 sc=997 g=1807 m=0
+mod say f 11443 str fn=008c lich=1 sc=996 g=1772 m=0
+mod say f 11483 str fn=008d lich=1 sc=995 g=1776 m=0
+mod say f 11523 str fn=008e lich=1 sc=992 g=1752 m=0
+mod say f 11563 str fn=008f lich=1 sc=996 g=1774 m=0
+mod say f 11603 str fn=0090 lich=1 sc=998 g=1799 m=0
+mod say f 11643 str fn=0091 lich=1 sc=997 g=1837 m=0
+mod say f 11683 str fn=0092 lich=1 sc=996 g=1836 m=0
+mod say f 11723 str fn=0093 lich=1 sc=997 g=1822 m=0
+mod say f 11763 str fn=0094 lich=1 sc=997 g=1810 m=0
+mod say f 11803 str fn=0095 lich=1 sc=996 g=1792 m=0
+mod say f 11843 str fn=0096 lich=1 sc=997 g=1813 m=0
+mod say st 12100 halves=372 gaps=4 frames=126 lost=1 rssi=-66
+mod say f 11883 str fn=0097 lich=1 sc=997 g=1804 m=0
+mod say f 11923 str fn=0098 lich=1 sc=997 g=1833 m=0
+mod say f 11963 str fn=0099 lich=1 sc=997 g=1793 m=0
+mod say f 12003 str fn=009a lich=1 sc=997 g=1798 m=0
+mod say f 12043 str fn=009b lich=1 sc=998 g=1811 m=0
+mod say f 12083 str fn=009c lich=1 sc=992 g=1777 m=0
+mod say f 12123 str fn=009d lich=1 sc=995 g=1802 m=0
+mod say f 12323 eot
+mod say f 12379 str fn=00a5 lich=1 sc=995 g=1779 m=0
+mod say f 12419 str fn=00a6 lich=1 sc=997 g=1806 m=0
+mod say f 12459 str fn=00a7 lich=1 sc=996 g=1820 m=0
+mod say f 12499 str fn=00a8 lich=1 sc=997 g=1832 m=0
+mod say f 12539 str fn=00a9 lich=1 sc=997 g=1827 m=0
+mod say f 12579 str fn=00aa lich=1 sc=995 g=1776 m=0
+mod say f 12619 str fn=00ab lich=1 sc=995 g=1797 m=0
+mod say f 12659 str fn=00ac lich=1 sc=995 g=1789 m=0
+mod say f 12699 str fn=00ad lich=1 sc=997 g=1821 m=0
+mod say f 12739 str fn=00ae lich=1 sc=994 g=1773 m=0
+mod say f 12779 str fn=00af lich=1 sc=994 g=1794 m=0
+mod say f 12819 str fn=00b0 lich=1 sc=993 g=1779 m=0
+mod say st 13100 halves=402 gaps=4 frames=146 lost=1 rssi=-66
+mod say f 12859 str fn=00b1 lich=1 sc=990 g=1784 m=12
+mod say f 12899 str fn=d7b2 lich=1 sc=985 g=1759 m=49
+mod say f 12939 str fn=00b3 lich=1 sc=988 g=1744 m=0
+mod say f 12979 str fn=00b4 lich=1 sc=991 g=1777 m=0
+mod say f 13019 str fn=00b5 lich=1 sc=993 g=1779 m=0
+mod say f 13059 str fn=00b6 lich=1 sc=997 g=1811 m=0
+mod say f 13099 str fn=00b7 lich=1 sc=998 g=1829 m=0
+mod say f 13139 str fn=00b8 lich=1 sc=997 g=1787 m=0
+mod say f 13179 str fn=00b9 lich=1 sc=997 g=1833 m=0
+mod say f 13219 str fn=00ba lich=1 sc=996 g=1799 m=0
+mod say f 13259 str fn=00bb lich=1 sc=997 g=1806 m=0
+mod say f 13299 str fn=00bc lich=1 sc=996 g=1815 m=0
+mod say f 13339 str fn=00bd lich=1 sc=996 g=1798 m=0
+mod say f 13379 str fn=00be lich=1 sc=992 g=1767 m=0
+mod say f 13419 str fn=00bf lich=1 sc=993 g=1770 m=0
+mod say f 13459 str fn=00c0 lich=1 sc=996 g=1783 m=0
+mod say f 13499 str fn=00c1 lich=1 sc=993 g=1781 m=0
+mod say f 13539 str fn=00c2 lich=1 sc=996 g=1813 m=0
+mod say f 13579 str fn=00c3 lich=1 sc=995 g=1782 m=0
+mod say f 13619 str fn=00c4 lich=1 sc=993 g=1753 m=0
+mod say f 13659 str fn=00c5 lich=1 sc=997 g=1786 m=0
+mod say f 13699 str fn=00c6 lich=1 sc=997 g=1793 m=0
+mod say f 13739 str fn=00c7 lich=1 sc=996 g=1814 m=0
+mod say f 13779 str fn=00c8 lich=1 sc=994 g=1799 m=0
+mod say st 14110 halves=433 gaps=4 frames=170 lost=1 rssi=-66
+mod say f 13819 str fn=00c9 lich=1 sc=994 g=1779 m=0
+mod say f 13859 str fn=00ca lich=1 sc=996 g=1794 m=0
+mod say f 13899 str fn=00cb lich=1 sc=997 g=1822 m=0
+mod say f 13939 str fn=00cc lich=1 sc=997 g=1827 m=0
+mod say f 13979 str fn=00cd lich=1 sc=991 g=1777 m=0
+mod say f 14019 str fn=00ce lich=1 sc=993 g=1747 m=0
+mod say f 14059 str fn=00cf lich=1 sc=996 g=1789 m=0
+mod say f 14099 str fn=00d0 lich=1 sc=994 g=1783 m=0
+mod say f 14139 str fn=00d1 lich=1 sc=995 g=1818 m=0
+mod say f 14179 str fn=00d2 lich=1 sc=996 g=1818 m=0
+mod say f 14219 str fn=00d3 lich=1 sc=988 g=1772 m=0
+mod say f 14259 str fn=00d4 lich=1 sc=995 g=1769 m=0
+mod say f 14299 str fn=00d5 lich=1 sc=990 g=1758 m=0
+mod say f 14339 str fn=00d6 lich=1 sc=996 g=1786 m=0
+mod say f 14379 str fn=00d7 lich=1 sc=996 g=1771 m=0
+mod say f 14419 str fn=00d8 lich=1 sc=994 g=1768 m=0
+mod say f 14459 str fn=00d9 lich=1 sc=991 g=1786 m=0
+mod say f 14499 str fn=00da lich=1 sc=996 g=1800 m=0
+mod say f 14539 str fn=00db lich=1 sc=995 g=1800 m=4
+mod say f 14707 str fn=00e0 lich=1 sc=996 g=1797 m=0
+mod say f 14747 str fn=00e1 lich=1 sc=997 g=1815 m=0
+mod say f 14787 str fn=00e2 lich=1 sc=996 g=1827 m=0
+mod say st 15113 halves=464 gaps=5 frames=192 lost=2 rssi=-66
+mod say f 14827 str fn=00e3 lich=1 sc=996 g=1820 m=0
+mod say f 14867 str fn=00e4 lich=1 sc=997 g=1789 m=0
+mod say f 14907 str fn=00e5 lich=1 sc=993 g=1800 m=0
+mod say f 14947 str fn=00e6 lich=1 sc=990 g=1771 m=0
+mod say f 14987 str fn=00e7 lich=1 sc=991 g=1762 m=0
+mod say f 15027 str fn=00e8 lich=1 sc=990 g=1753 m=0
+mod say f 15067 str fn=00e9 lich=1 sc=993 g=1773 m=0
+mod say f 15107 str fn=00ea lich=1 sc=994 g=1811 m=0
+mod say f 15147 str fn=00eb lich=1 sc=990 g=1788 m=0
+mod say f 15187 str fn=00ec lich=1 sc=996 g=1774 m=0
+mod say f 15227 str fn=00ed lich=1 sc=997 g=1777 m=0
+mod say f 15267 str fn=00ee lich=1 sc=998 g=1793 m=0
+mod say f 15307 str fn=00ef lich=1 sc=996 g=1783 m=0
+mod say f 15347 str fn=00f0 lich=1 sc=998 g=1839 m=0
+mod say f 15387 str fn=00f1 lich=1 sc=997 g=1798 m=0
+mod say f 15427 str fn=00f2 lich=1 sc=996 g=1799 m=0
+mod say f 15467 str fn=00f3 lich=1 sc=997 g=1818 m=0
+mod say f 15507 str fn=00f4 lich=1 sc=997 g=1792 m=0
+mod say f 15547 str fn=00f5 lich=1 sc=996 g=1778 m=0
+mod say f 15587 str fn=00f6 lich=1 sc=995 g=1785 m=0
+mod say f 15627 str fn=00f7 lich=1 sc=994 g=1784 m=0
+mod say f 15667 str fn=00f8 lich=1 sc=996 g=1795 m=0
+mod say f 15707 str fn=00f9 lich=1 sc=996 g=1779 m=0
+mod say f 15747 str fn=00fa lich=1 sc=997 g=1799 m=0
+mod say f 15787 str fn=00fb lich=1 sc=997 g=1795 m=0
+mod say f 15827 str fn=00fc lich=1 sc=998 g=1812 m=0
+mod say st 16140 halves=496 gaps=5 frames=218 lost=2 rssi=-66
+mod say f 15867 str fn=00fd lich=1 sc=998 g=1830 m=0
+mod say f 15907 str fn=00fe lich=1 sc=997 g=1787 m=0
+mod say f 15947 str fn=00ff lich=1 sc=995 g=1850 m=0
+mod say f 15987 str fn=0100 lich=1 sc=995 g=1858 m=0
+mod say f 16027 str fn=0101 lich=1 sc=997 g=1834 m=0
+mod say f 16067 str fn=0102 lich=1 sc=998 g=1829 m=0
+mod say f 16107 str fn=0103 lich=1 sc=994 g=1784 m=0
+mod say f 16147 str fn=0104 lich=1 sc=994 g=1799 m=0
+mod say f 16187 str fn=0105 lich=1 sc=994 g=1783 m=0
+mod say f 16227 str fn=0106 lich=1 sc=995 g=1803 m=0
+mod say f 16267 str fn=0107 lich=1 sc=996 g=1812 m=0
+mod say f 16307 str fn=0108 lich=1 sc=995 g=1780 m=0
+mod say f 16347 str fn=0109 lich=1 sc=998 g=1824 m=0
+mod say f 16387 str fn=010a lich=1 sc=996 g=1785 m=0
+mod say f 16427 str fn=010b lich=1 sc=998 g=1838 m=0
+mod say f 16467 str fn=010c lich=1 sc=997 g=1783 m=0
+mod say f 16507 str fn=010d lich=1 sc=998 g=1817 m=0
+mod say f 16547 str fn=010e lich=1 sc=997 g=1801 m=0
+mod say f 16587 str fn=010f lich=1 sc=997 g=1809 m=0
+mod say f 16627 str fn=0110 lich=1 sc=992 g=1768 m=0
+mod say f 16667 str fn=0111 lich=1 sc=997 g=1806 m=0
+mod say f 16707 str fn=0112 lich=1 sc=998 g=1802 m=0
+mod say f 16747 str fn=0113 lich=1 sc=995 g=1774 m=0
+mod say f 16787 str fn=0114 lich=1 sc=991 g=1748 m=9
+mod say st 17174 halves=527 gaps=5 frames=242 lost=2 rssi=-66
+mod say f 16867 lsf ok=0 sc=753 g=1330 m=41 src=1S51J WN. dst=QGR/5YQQ type=b438
+mod say f 16947 eot
+mod say f 17035 str fn=011b lich=1 sc=998 g=1845 m=0
+mod say f 17075 str fn=011c lich=1 sc=996 g=1837 m=0
+mod say f 17115 str fn=011d lich=1 sc=996 g=1823 m=0
+mod say f 17155 str fn=011e lich=1 sc=997 g=1793 m=0
+mod say f 17195 str fn=011f lich=1 sc=996 g=1821 m=0
+mod say f 17235 str fn=0120 lich=1 sc=998 g=1820 m=0
+mod say f 17275 str fn=0121 lich=1 sc=995 g=1799 m=0
+mod say f 17315 str fn=0122 lich=1 sc=995 g=1800 m=0
+mod say f 17355 str fn=0123 lich=1 sc=995 g=1776 m=0
+mod say f 17395 str fn=0124 lich=1 sc=993 g=1782 m=0
+mod say f 17435 str fn=0125 lich=1 sc=984 g=1764 m=0
+mod say f 17475 str fn=0126 lich=1 sc=992 g=1789 m=0
+mod say f 17515 str fn=0127 lich=1 sc=995 g=1788 m=0
+mod say f 17555 str fn=0128 lich=1 sc=997 g=1812 m=0
+mod say f 17595 str fn=0129 lich=1 sc=997 g=1793 m=0
+mod say f 17635 str fn=012a lich=1 sc=997 g=1818 m=0
+mod say f 17675 str fn=812b lich=1 sc=997 g=1782 m=0
+mod say f 17715 eot
+mod say spk stop frames=360 gap=286 drop=0
+mod say st 18174 halves=557 gaps=7 frames=262 lost=2 rssi=-66
+mod say f 17803 str fn=0000 lich=1 sc=971 g=1906 m=0
+mod say f 17843 str fn=0001 lich=1 sc=989 g=1858 m=0
+mod say f 17883 str fn=0002 lich=1 sc=991 g=1840 m=0
+mod say spk start q=6
+mod say f 17923 str fn=0003 lich=1 sc=993 g=1843 m=0
+mod say f 17963 str fn=0004 lich=1 sc=996 g=1815 m=0
+mod say f 18003 str fn=0005 lich=1 sc=997 g=1792 m=0
+mod say f 18043 str fn=0006 lich=1 sc=992 g=1788 m=0
+mod say f 18083 str fn=0007 lich=1 sc=994 g=1802 m=0
+mod say f 18123 str fn=0008 lich=1 sc=995 g=1785 m=0
+mod say f 18163 str fn=0009 lich=1 sc=996 g=1792 m=0
+mod say f 18203 str fn=000a lich=1 sc=995 g=1786 m=0
+mod say f 18243 str fn=000b lich=1 sc=995 g=1811 m=0
+mod say f 18283 str fn=000c lich=1 sc=997 g=1806 m=0
+mod say f 18323 str fn=000d lich=1 sc=996 g=1817 m=0
+mod say f 18363 str fn=000e lich=1 sc=996 g=1798 m=0
+mod say f 18403 str fn=000f lich=1 sc=991 g=1767 m=0
+mod say f 18443 str fn=0010 lich=1 sc=995 g=1787 m=0
+mod say f 18483 str fn=0011 lich=1 sc=996 g=1815 m=0
+mod say f 18523 str fn=0012 lich=1 sc=997 g=1819 m=0
+mod say f 18563 str fn=0013 lich=1 sc=998 g=1836 m=0
+mod say f 18603 str fn=0014 lich=1 sc=998 g=1815 m=0
+mod say f 18643 str fn=0015 lich=1 sc=997 g=1802 m=0
+mod say f 18683 str fn=0016 lich=1 sc=997 g=1817 m=0
+mod say f 18723 str fn=0017 lich=1 sc=997 g=1833 m=0
+mod say f 18763 str fn=0018 lich=1 sc=997 g=1785 m=0
+mod say f 18803 str fn=0019 lich=1 sc=997 g=1810 m=0
+mod say st 19179 halves=589 gaps=7 frames=288 lost=2 rssi=-66
+mod say f 18843 str fn=001a lich=1 sc=996 g=1763 m=0
+mod say f 18883 str fn=001b lich=1 sc=996 g=1782 m=0
+mod say f 18923 str fn=001c lich=1 sc=996 g=1807 m=0
+mod say f 18963 str fn=001d lich=1 sc=997 g=1799 m=0
+mod say f 19003 str fn=001e lich=1 sc=997 g=1850 m=0
+mod say f 19043 str fn=001f lich=1 sc=995 g=1805 m=0
+mod say f 19083 str fn=0020 lich=1 sc=990 g=1745 m=0
+mod say f 19123 str fn=0021 lich=1 sc=995 g=1780 m=0
+mod say f 19163 str fn=0022 lich=1 sc=993 g=1765 m=0
+mod say f 19203 str fn=0023 lich=1 sc=996 g=1801 m=0
+mod say f 19243 str fn=0024 lich=1 sc=997 g=1848 m=0
+mod say f 19283 str fn=0025 lich=1 sc=994 g=1784 m=0
+mod say f 19323 str fn=0026 lich=1 sc=994 g=1784 m=0
+mod say f 19363 str fn=0027 lich=1 sc=994 g=1839 m=0
+mod say f 19403 str fn=0028 lich=1 sc=996 g=1818 m=0
+mod say f 19443 str fn=0029 lich=1 sc=996 g=1803 m=0
+mod say f 19483 str fn=002a lich=1 sc=994 g=1784 m=0
+mod say f 19523 str fn=002b lich=1 sc=990 g=1783 m=0
+mod say f 19563 str fn=002c lich=1 sc=996 g=1777 m=0
+mod say f 19603 str fn=002d lich=1 sc=998 g=1808 m=0
+mod say f 19643 str fn=002e lich=1 sc=997 g=1790 m=0
+mod say f 19683 str fn=002f lich=1 sc=998 g=1820 m=0
+mod say f 19723 str fn=0030 lich=1 sc=998 g=1824 m=0
+mod say f 19763 str fn=0031 lich=1 sc=997 g=1830 m=0
+mod say st 20180 halves=620 gaps=7 frames=312 lost=2 rssi=-66
+mod say f 19803 str fn=0032 lich=1 sc=995 g=1773 m=0
+mod say f 19843 str fn=0033 lich=1 sc=996 g=1805 m=0
+mod say f 19883 str fn=0034 lich=1 sc=995 g=1768 m=0
+mod say f 19923 str fn=0035 lich=1 sc=989 g=1756 m=0
+mod say f 19963 str fn=0036 lich=1 sc=996 g=1808 m=0
+mod say f 20003 str fn=0037 lich=1 sc=993 g=1801 m=0
+mod say f 20043 str fn=0038 lich=1 sc=995 g=1782 m=0
+mod say f 20083 str fn=0039 lich=1 sc=998 g=1797 m=0
+mod say f 20123 str fn=003a lich=1 sc=996 g=1827 m=0
+mod say f 20163 str fn=003b lich=1 sc=997 g=1820 m=0
+mod say f 20203 str fn=003c lich=1 sc=996 g=1819 m=0
+mod say f 20243 str fn=003d lich=1 sc=992 g=1792 m=0
+mod say f 20283 str fn=003e lich=1 sc=996 g=1808 m=0
+mod say f 20323 str fn=003f lich=1 sc=997 g=1790 m=0
+mod say f 20363 str fn=0040 lich=1 sc=996 g=1824 m=0
+mod say f 20403 str fn=0041 lich=1 sc=997 g=1814 m=0
+mod say f 20443 str fn=0042 lich=1 sc=998 g=1798 m=0
+mod say f 20483 str fn=0043 lich=1 sc=997 g=1817 m=0
+mod say f 20523 str fn=0044 lich=1 sc=997 g=1811 m=0
+mod say f 20563 str fn=0045 lich=1 sc=997 g=1809 m=0
+mod say f 20603 str fn=0046 lich=1 sc=997 g=1830 m=0
+mod say f 20643 str fn=0047 lich=1 sc=996 g=1819 m=0
+mod say f 20683 str fn=0048 lich=1 sc=996 g=1785 m=0
+mod say f 20723 str fn=0049 lich=1 sc=993 g=1784 m=0
+mod say f 20763 str fn=004a lich=1 sc=996 g=1795 m=0
+mod say f 20803 str fn=004b lich=1 sc=997 g=1810 m=0
+mod say st 21191 halves=652 gaps=7 frames=338 lost=2 rssi=-66
+mod say f 20843 str fn=004c lich=1 sc=998 g=1821 m=0
+mod say f 20883 str fn=004d lich=1 sc=998 g=1807 m=0
+mod say f 20923 str fn=004e lich=1 sc=998 g=1809 m=0
+mod say f 20963 str fn=004f lich=1 sc=997 g=1795 m=0
+mod say f 21003 str fn=0050 lich=1 sc=996 g=1814 m=0
+mod say f 21043 str fn=0051 lich=1 sc=995 g=1784 m=0
+mod say f 21083 str fn=0052 lich=1 sc=996 g=1817 m=0
+mod say f 21123 str fn=0053 lich=1 sc=996 g=1800 m=0
+mod say f 21163 str fn=0054 lich=1 sc=996 g=1818 m=0
+mod say f 21203 str fn=0055 lich=1 sc=993 g=1823 m=0
+mod say f 21243 str fn=0056 lich=1 sc=997 g=1791 m=0
+mod say f 21283 str fn=0057 lich=1 sc=996 g=1804 m=0
+mod say f 21323 str fn=0058 lich=1 sc=995 g=1773 m=0
+mod say f 21363 str fn=0059 lich=1 sc=997 g=1811 m=0
+mod say f 21403 str fn=005a lich=1 sc=997 g=1810 m=0
+mod say f 21443 str fn=005b lich=1 sc=993 g=1779 m=0
+mod say f 21483 str fn=005c lich=1 sc=996 g=1773 m=0
+mod say f 21523 str fn=005d lich=1 sc=994 g=1770 m=0
+mod say f 21563 str fn=005e lich=1 sc=996 g=1812 m=0
+mod say f 21603 str fn=005f lich=1 sc=996 g=1837 m=0
+mod say f 21643 str fn=0060 lich=1 sc=996 g=1851 m=0
+mod say f 21683 str fn=0061 lich=1 sc=997 g=1842 m=0
+mod say f 21723 str fn=0062 lich=1 sc=996 g=1825 m=0
+mod say f 21763 str fn=0063 lich=1 sc=996 g=1808 m=0
+mod say f 21803 str fn=0064 lich=1 sc=996 g=1811 m=0
+mod say st 22196 halves=683 gaps=7 frames=363 lost=2 rssi=-66
+mod say f 21843 str fn=0065 lich=1 sc=996 g=1806 m=0
+mod say f 21883 str fn=0066 lich=1 sc=996 g=1783 m=0
+mod say f 21923 str fn=0067 lich=1 sc=994 g=1795 m=0
+mod say f 21963 str fn=0068 lich=1 sc=994 g=1801 m=0
+mod say f 22003 str fn=0069 lich=1 sc=990 g=1769 m=0
+mod say f 22043 str fn=006a lich=1 sc=994 g=1789 m=0
+mod say f 22083 str fn=006b lich=1 sc=993 g=1796 m=0
+mod say f 22123 str fn=006c lich=1 sc=997 g=1821 m=0
+mod say f 22163 str fn=006d lich=1 sc=993 g=1796 m=0
+mod say f 22203 str fn=006e lich=1 sc=996 g=1788 m=0
+mod say f 22243 str fn=006f lich=1 sc=997 g=1825 m=0
+mod say f 22283 str fn=0070 lich=1 sc=995 g=1817 m=0
+mod say f 22323 str fn=0071 lich=1 sc=994 g=1792 m=0
+mod say f 22363 str fn=0072 lich=1 sc=997 g=1800 m=0
+mod say f 22403 str fn=0073 lich=1 sc=995 g=1806 m=0
+mod say f 22443 str fn=0074 lich=1 sc=996 g=1805 m=0
+mod say f 22483 str fn=0075 lich=1 sc=994 g=1782 m=0
+mod say f 22523 str fn=0076 lich=1 sc=985 g=1753 m=0
+mod say f 22563 str fn=0077 lich=1 sc=984 g=1727 m=0
+mod say f 22603 str fn=0078 lich=1 sc=994 g=1793 m=0
+mod say f 22643 str fn=0079 lich=1 sc=997 g=1835 m=0
+mod say f 22683 str fn=007a lich=1 sc=993 g=1757 m=0
+mod say f 22723 str fn=007b lich=1 sc=996 g=1813 m=0
+mod say f 22763 str fn=007c lich=1 sc=996 g=1773 m=0
+mod say f 22803 str fn=007d lich=1 sc=997 g=1804 m=0
+mod say st 23199 halves=714 gaps=7 frames=388 lost=2 rssi=-66
+mod say f 22843 str fn=007e lich=1 sc=996 g=1841 m=0
+mod say f 22883 str fn=007f lich=1 sc=995 g=1802 m=0
+mod say f 22923 str fn=0080 lich=1 sc=996 g=1805 m=0
+mod say f 22963 str fn=0081 lich=1 sc=996 g=1793 m=0
+mod say f 23003 str fn=0082 lich=1 sc=996 g=1828 m=0
+mod say f 23043 str fn=0083 lich=1 sc=997 g=1775 m=0
+mod say f 23083 str fn=0084 lich=1 sc=995 g=1786 m=0
+mod say f 23123 str fn=0085 lich=1 sc=993 g=1786 m=0
+mod say f 23163 str fn=0086 lich=1 sc=996 g=1800 m=0
+mod say f 23203 str fn=0087 lich=1 sc=996 g=1803 m=0
+mod say f 23243 str fn=0088 lich=1 sc=995 g=1783 m=0
+mod say f 23283 str fn=0089 lich=1 sc=988 g=1742 m=0
+mod say f 23323 str fn=008a lich=1 sc=994 g=1778 m=0
+mod say f 23363 str fn=008b lich=1 sc=993 g=1788 m=0
+mod say f 23403 str fn=008c lich=1 sc=994 g=1774 m=0
+mod say f 23443 str fn=008d lich=1 sc=997 g=1802 m=0
+mod say f 23483 str fn=008e lich=1 sc=995 g=1808 m=0
+mod say f 23523 str fn=008f lich=1 sc=998 g=1816 m=0
+mod say f 23563 str fn=0090 lich=1 sc=996 g=1812 m=0
+mod say f 23603 str fn=0091 lich=1 sc=997 g=1820 m=0
+mod say f 23643 str fn=0092 lich=1 sc=997 g=1798 m=0
+mod say f 23683 str fn=0093 lich=1 sc=996 g=1791 m=0
+mod say f 23723 str fn=0094 lich=1 sc=995 g=1793 m=0
+mod say f 23763 str fn=0095 lich=1 sc=994 g=1770 m=0
+mod say f 23803 str fn=0096 lich=1 sc=992 g=1775 m=0
+mod say f 23843 str fn=0097 lich=1 sc=995 g=1803 m=0
+mod say st 24233 halves=747 gaps=7 frames=414 lost=2 rssi=-66
+mod say f 23883 str fn=0098 lich=1 sc=993 g=1779 m=0
+mod say f 23923 str fn=0099 lich=1 sc=989 g=1758 m=0
+mod say f 23963 str fn=009a lich=1 sc=989 g=1752 m=0
+mod say f 24003 str fn=009b lich=1 sc=993 g=1789 m=0
+mod say f 24043 str fn=009c lich=1 sc=996 g=1824 m=0
+mod say f 24083 str fn=009d lich=1 sc=996 g=1789 m=0
+mod say f 24123 str fn=009e lich=1 sc=996 g=1820 m=0
+mod say f 24163 str fn=009f lich=1 sc=997 g=1832 m=0
+mod say f 24203 str fn=00a0 lich=1 sc=996 g=1786 m=0
+mod say f 24243 str fn=00a1 lich=1 sc=997 g=1799 m=0
+mod say f 24283 str fn=00a2 lich=1 sc=995 g=1825 m=0
+mod say f 24323 str fn=00a3 lich=1 sc=996 g=1826 m=0
+mod say f 24363 str fn=00a4 lich=1 sc=994 g=1798 m=0
+mod say f 24403 str fn=00a5 lich=1 sc=996 g=1779 m=0
+mod say f 24443 str fn=00a6 lich=1 sc=996 g=1816 m=0
+mod say f 24483 str fn=00a7 lich=1 sc=996 g=1808 m=0
+mod say f 24523 str fn=00a8 lich=1 sc=997 g=1811 m=0
+mod say f 24563 str fn=00a9 lich=1 sc=993 g=1784 m=0
+mod say f 24723 eot
+mod say st 25244 halves=777 gaps=8 frames=433 lost=2 rssi=-66
+mod say f 24851 str fn=00b1 lich=1 sc=996 g=1806 m=0
+mod say f 24891 str fn=00b2 lich=1 sc=995 g=1790 m=0
+mod say f 24931 str fn=00b3 lich=1 sc=997 g=1794 m=0
+mod say f 24971 str fn=00b4 lich=1 sc=995 g=1790 m=0
+mod say f 25011 str fn=00b5 lich=1 sc=994 g=1805 m=0
+mod say f 25051 str fn=00b6 lich=1 sc=995 g=1800 m=0
+mod say f 25091 str fn=00b7 lich=1 sc=998 g=1807 m=0
+mod say f 25131 str fn=00b8 lich=1 sc=995 g=1826 m=0
+mod say f 25171 str fn=00b9 lich=1 sc=996 g=1813 m=0
+mod say f 25211 str fn=00ba lich=1 sc=994 g=1819 m=0
+mod say f 25251 str fn=00bb lich=1 sc=994 g=1805 m=0
+mod say f 25291 str fn=00bc lich=1 sc=997 g=1807 m=0
+mod say f 25331 str fn=00bd lich=1 sc=995 g=1796 m=0
+mod say f 25371 str fn=00be lich=1 sc=993 g=1792 m=0
+mod say f 25411 str fn=00bf lich=1 sc=996 g=1779 m=0
+mod say f 25451 str fn=00c0 lich=1 sc=996 g=1796 m=0
+mod say f 25491 str fn=00c1 lich=1 sc=996 g=1802 m=0
+mod say f 25531 str fn=00c2 lich=1 sc=997 g=1821 m=0
+mod say f 25571 str fn=00c3 lich=1 sc=996 g=1789 m=0
+mod say f 25611 str fn=00c4 lich=1 sc=996 g=1814 m=0
+mod say f 25651 str fn=00c5 lich=1 sc=997 g=1810 m=0
+mod say f 25691 str fn=00c6 lich=1 sc=995 g=1802 m=0
+mod say f 25731 str fn=00c7 lich=1 sc=997 g=1829 m=0
+mod say f 25771 str fn=00c8 lich=1 sc=997 g=1794 m=0
+mod say f 25811 str fn=00c9 lich=1 sc=996 g=1789 m=0
+mod say st 26249 halves=809 gaps=8 frames=458 lost=2 rssi=-66
+mod say f 25851 str fn=00ca lich=1 sc=997 g=1815 m=0
+mod say f 25891 str fn=00cb lich=1 sc=997 g=1794 m=0
+mod say f 25931 str fn=00cc lich=1 sc=996 g=1785 m=0
+mod say f 25971 str fn=00cd lich=1 sc=997 g=1812 m=0
+mod say f 26011 str fn=00ce lich=1 sc=996 g=1813 m=0
+mod say f 26051 str fn=00cf lich=1 sc=996 g=1800 m=0
+mod say f 26091 str fn=00d0 lich=1 sc=998 g=1795 m=0
+mod say f 26131 str fn=00d1 lich=1 sc=997 g=1826 m=0
+mod say f 26171 str fn=00d2 lich=1 sc=997 g=1799 m=0
+mod say f 26211 str fn=00d3 lich=1 sc=996 g=1805 m=0
+mod say f 26251 str fn=00d4 lich=1 sc=985 g=1732 m=0
+mod say f 26291 str fn=00d5 lich=1 sc=996 g=1779 m=0
+mod say f 26331 str fn=00d6 lich=0 sc=997 g=1795 m=41
+mod say f 26571 eot
+mod say f 26699 str fn=00e0 lich=1 sc=996 g=1835 m=0
+mod say f 26739 str fn=00e1 lich=1 sc=996 g=1802 m=0
+mod say f 26779 str fn=00e2 lich=1 sc=995 g=1812 m=0
+mod say st 27253 halves=839 gaps=9 frames=475 lost=2 rssi=-66
+mod say f 26819 str fn=00e3 lich=1 sc=991 g=1783 m=0
+mod say f 26859 str fn=00e4 lich=1 sc=991 g=1766 m=0
+mod say f 26899 str fn=00e5 lich=1 sc=991 g=1801 m=0
+mod say f 26939 str fn=00e6 lich=1 sc=984 g=1745 m=0
+mod say f 26979 str fn=00e7 lich=1 sc=994 g=1790 m=0
+mod say f 27019 str fn=00e8 lich=1 sc=995 g=1770 m=0
+mod say f 27059 str fn=00e9 lich=1 sc=995 g=1813 m=0
+mod say f 27099 str fn=00ea lich=1 sc=995 g=1804 m=0
+mod say f 27139 str fn=00eb lich=1 sc=996 g=1804 m=0
+mod say f 27179 str fn=00ec lich=1 sc=997 g=1807 m=0
+mod say f 27219 str fn=00ed lich=1 sc=996 g=1788 m=0
+mod say f 27259 str fn=00ee lich=1 sc=996 g=1808 m=0
+mod say f 27299 str fn=00ef lich=1 sc=996 g=1831 m=0
+mod say f 27339 str fn=00f0 lich=1 sc=996 g=1839 m=0
+mod say f 27379 str fn=00f1 lich=1 sc=996 g=1805 m=0
+mod say f 27419 str fn=00f2 lich=1 sc=992 g=1766 m=0
+mod say f 27459 str fn=00f3 lich=1 sc=997 g=1816 m=0
+mod say f 27499 str fn=00f4 lich=1 sc=996 g=1767 m=0
+mod say f 27539 str fn=00f5 lich=1 sc=993 g=1793 m=0
+mod say f 27579 str fn=00f6 lich=1 sc=995 g=1784 m=0
+mod say f 27619 str fn=00f7 lich=1 sc=990 g=1778 m=0
+mod say f 27659 str fn=00f8 lich=1 sc=996 g=1775 m=0
+mod say f 27699 str fn=00f9 lich=1 sc=995 g=1779 m=0
+mod say f 27739 str fn=00fa lich=1 sc=994 g=1791 m=0
+mod say f 27779 str fn=00fb lich=1 sc=995 g=1773 m=0
+mod say st 28256 halves=870 gaps=9 frames=500 lost=2 rssi=-66
+mod say f 27819 str fn=00fc lich=1 sc=997 g=1843 m=0
+mod say f 27859 str fn=00fd lich=1 sc=997 g=1827 m=0
+mod say f 27899 str fn=00fe lich=1 sc=997 g=1782 m=0
+mod say f 27939 str fn=00ff lich=1 sc=995 g=1788 m=0
+mod say f 27979 str fn=0100 lich=1 sc=995 g=1812 m=0
+mod say f 28019 str fn=0101 lich=1 sc=996 g=1803 m=0
+mod say f 28059 str fn=0102 lich=1 sc=995 g=1801 m=0
+mod say f 28099 str fn=0103 lich=1 sc=994 g=1786 m=0
+mod say f 28139 str fn=0104 lich=1 sc=993 g=1796 m=0
+mod say f 28179 str fn=0105 lich=1 sc=991 g=1771 m=0
+mod say f 28219 str fn=0106 lich=1 sc=989 g=1779 m=0
+mod say f 28259 str fn=0107 lich=1 sc=983 g=1761 m=0
+mod say f 28299 str fn=0108 lich=1 sc=981 g=1729 m=0
+mod say f 28339 str fn=0109 lich=1 sc=994 g=1797 m=0
+mod say f 28379 str fn=010a lich=1 sc=994 g=1771 m=0
+mod say f 28419 str fn=010b lich=1 sc=993 g=1779 m=0
+mod say f 28459 str fn=010c lich=1 sc=996 g=1801 m=0
+mod say f 28499 str fn=010d lich=1 sc=995 g=1774 m=0
+mod say f 28539 str fn=010e lich=1 sc=996 g=1823 m=0
+mod say f 28579 str fn=010f lich=1 sc=990 g=1792 m=0
+mod say f 28619 str fn=0110 lich=1 sc=994 g=1798 m=0
+mod say f 28659 str fn=0111 lich=1 sc=995 g=1781 m=0
+mod say f 28699 str fn=0112 lich=1 sc=997 g=1776 m=0
+mod say f 28739 str fn=0113 lich=1 sc=994 g=1806 m=0
+mod say f 28779 str fn=0114 lich=1 sc=997 g=1856 m=0
+mod say f 28819 str fn=0115 lich=1 sc=996 g=1796 m=0
+mod say st 29278 halves=902 gaps=9 frames=526 lost=2 rssi=-66
+mod say f 28859 str fn=0116 lich=1 sc=996 g=1785 m=0
+mod say f 28899 str fn=0117 lich=1 sc=996 g=1794 m=0
+mod say f 28939 str fn=0118 lich=1 sc=996 g=1807 m=0
+mod say f 28979 str fn=0119 lich=1 sc=995 g=1814 m=0
+mod say f 29019 str fn=011a lich=1 sc=996 g=1809 m=0
+mod say f 29059 str fn=011b lich=1 sc=997 g=1817 m=0
+mod say f 29099 str fn=011c lich=1 sc=997 g=1834 m=0
+mod say f 29139 str fn=011d lich=1 sc=996 g=1787 m=0
+mod say f 29179 str fn=011e lich=1 sc=996 g=1823 m=0
+mod say f 29219 str fn=011f lich=1 sc=997 g=1791 m=0
+mod say f 29259 str fn=0120 lich=1 sc=998 g=1815 m=0
+mod say f 29299 str fn=0121 lich=1 sc=997 g=1830 m=0
+mod say f 29339 str fn=0122 lich=1 sc=997 g=1788 m=0
+mod say f 29379 str fn=0123 lich=1 sc=996 g=1792 m=0
+mod say f 29419 str fn=0124 lich=1 sc=996 g=1804 m=0
+mod say f 29459 str fn=0125 lich=1 sc=996 g=1830 m=0
+mod say f 29499 str fn=0126 lich=1 sc=994 g=1779 m=0
+mod say f 29539 str fn=0127 lich=1 sc=992 g=1779 m=0
+mod say f 29579 str fn=0128 lich=1 sc=995 g=1804 m=0
+mod say f 29619 str fn=0129 lich=1 sc=991 g=1781 m=0
+mod say f 29659 str fn=012a lich=1 sc=990 g=1780 m=0
+mod say f 29699 str fn=812b lich=1 sc=985 g=1748 m=0
+mod say f 29739 eot
+mod say spk stop frames=568 gap=351 drop=0
+mod say st 30278 halves=933 gaps=10 frames=549 lost=2 rssi=-65
+mod say st 31293 halves=964 gaps=10 frames=549 lost=2 rssi=-66
+mod say st 32293 halves=995 gaps=10 frames=549 lost=2 rssi=-66
+mod say st 33309 halves=1027 gaps=10 frames=549 lost=2 rssi=-66
+mod say st 34309 halves=1058 gaps=10 frames=549 lost=2 rssi=-92
+mod say st 35325 halves=1090 gaps=10 frames=549 lost=2 rssi=-93
+mod say st 36325 halves=1121 gaps=10 frames=549 lost=2 rssi=-66
+mod say st 37341 halves=1153 gaps=10 frames=549 lost=2 rssi=-66
+mod say st 38341 halves=1184 gaps=10 frames=549 lost=2 rssi=-66
+mod say st 39357 halves=1216 gaps=10 frames=549 lost=2 rssi=-66
+mod say f 39558 lsf ok=1 sc=997 g=1775 m=0 src=AG7EW dst=ALL type=0005
+mod say f 39598 str fn=0000 lich=1 sc=997 g=1788 m=0
+mod say f 39638 str fn=0001 lich=1 sc=994 g=1770 m=0
+mod say f 39678 str fn=0002 lich=1 sc=997 g=1780 m=0
+mod say spk start q=6
+mod say f 39718 str fn=0003 lich=1 sc=997 g=1779 m=0
+mod say f 39758 str fn=0004 lich=1 sc=998 g=1769 m=0
+mod say f 39798 str fn=0005 lich=1 sc=998 g=1813 m=0
+mod say f 39838 str fn=0006 lich=1 sc=997 g=1788 m=0
+mod say f 39878 str fn=0007 lich=1 sc=998 g=1792 m=0
+mod say st 40379 halves=1248 gaps=10 frames=558 lost=2 rssi=-66
+mod say f 39918 str fn=0008 lich=1 sc=998 g=1775 m=9
+mod say f 40094 str fn=000e lich=1 sc=993 g=1743 m=0
+mod say f 40134 str fn=000f lich=1 sc=995 g=1759 m=0
+mod say f 40174 str fn=0010 lich=1 sc=998 g=1778 m=0
+mod say f 40214 str fn=0011 lich=1 sc=998 g=1804 m=0
+mod say f 40254 str fn=0012 lich=1 sc=997 g=1823 m=0
+mod say f 40294 str fn=0013 lich=1 sc=998 g=1797 m=0
+mod say f 40334 str fn=0014 lich=1 sc=996 g=1810 m=0
+mod say f 40374 str fn=0015 lich=1 sc=998 g=1779 m=0
+mod say f 40414 str fn=0016 lich=1 sc=998 g=1769 m=0
+mod say f 40454 str fn=0017 lich=1 sc=995 g=1749 m=0
+mod say f 40494 str fn=0018 lich=1 sc=995 g=1763 m=0
+mod say f 40534 str fn=0019 lich=1 sc=996 g=1765 m=0
+mod say f 40574 str fn=001a lich=1 sc=997 g=1771 m=0
+mod say f 40614 str fn=001b lich=1 sc=998 g=1782 m=0
+mod say f 40654 str fn=001c lich=1 sc=997 g=1757 m=0
+mod say f 40694 str fn=001d lich=1 sc=998 g=1784 m=0
+mod say f 40734 str fn=001e lich=1 sc=996 g=1821 m=0
+mod say f 40774 str fn=001f lich=1 sc=998 g=1783 m=0
+mod say f 40814 str fn=0020 lich=1 sc=998 g=1780 m=0
+mod say f 40854 str fn=0021 lich=1 sc=999 g=1782 m=0
+mod say st 41385 halves=1278 gaps=12 frames=579 lost=3 rssi=-66
+mod say f 40894 str fn=0022 lich=1 sc=998 g=1769 m=0
+mod say f 40934 str fn=0023 lich=1 sc=996 g=1797 m=0
+mod say f 40974 str fn=0024 lich=1 sc=998 g=1791 m=0
+mod say f 41014 str fn=0025 lich=1 sc=997 g=1791 m=0
+mod say f 41054 str fn=0026 lich=1 sc=998 g=1787 m=0
+mod say f 41094 str fn=0027 lich=1 sc=995 g=1825 m=0
+mod say f 41134 str fn=0028 lich=1 sc=996 g=1816 m=0
+mod say f 41174 str fn=0029 lich=1 sc=997 g=1759 m=0
+mod say f 41214 str fn=002a lich=1 sc=996 g=1761 m=0
+mod say f 41254 str fn=002b lich=1 sc=997 g=1778 m=0
+mod say f 41294 str fn=002c lich=1 sc=995 g=1759 m=0
+mod say f 41334 str fn=002d lich=1 sc=998 g=1771 m=0
+mod say f 41374 str fn=002e lich=1 sc=998 g=1799 m=0
+mod say f 41414 str fn=002f lich=1 sc=998 g=1800 m=0
+mod say f 41454 str fn=0030 lich=1 sc=996 g=1812 m=0
+mod say f 41494 str fn=0031 lich=1 sc=998 g=1769 m=0
+mod say f 41534 str fn=0032 lich=1 sc=997 g=1776 m=0
+mod say f 41574 str fn=0033 lich=1 sc=997 g=1776 m=0
+mod say f 41614 str fn=0034 lich=1 sc=998 g=1768 m=0
+mod say f 41654 str fn=0035 lich=1 sc=996 g=1765 m=0
+mod say f 41694 str fn=0036 lich=1 sc=997 g=1785 m=0
+mod say f 41734 str fn=0037 lich=1 sc=998 g=1776 m=0
+mod say f 41774 str fn=0038 lich=1 sc=998 g=1775 m=0
+mod say f 41814 str fn=0039 lich=1 sc=997 g=1802 m=0
+mod say st 42401 halves=1309 gaps=12 frames=603 lost=3 rssi=-66
+mod say f 41854 str fn=003a lich=1 sc=996 g=1826 m=0
+mod say f 41894 str fn=003b lich=1 sc=997 g=1817 m=0
+mod say f 41934 str fn=003c lich=1 sc=996 g=1791 m=0
+mod say f 41974 str fn=003d lich=1 sc=998 g=1803 m=0
+mod say f 42014 str fn=003e lich=1 sc=998 g=1798 m=0
+mod say f 42054 str fn=003f lich=1 sc=997 g=1781 m=0
+mod say f 42094 str fn=0040 lich=1 sc=998 g=1798 m=0
+mod say f 42134 str fn=0041 lich=1 sc=997 g=1806 m=0
+mod say f 42174 str fn=0042 lich=1 sc=997 g=1784 m=0
+mod say f 42214 str fn=0043 lich=1 sc=998 g=1791 m=0
+mod say f 42254 str fn=0044 lich=1 sc=996 g=1761 m=0
+mod say f 42294 str fn=0045 lich=1 sc=997 g=1770 m=0
+mod say f 42334 str fn=0046 lich=1 sc=997 g=1773 m=0
+mod say f 42374 str fn=0047 lich=1 sc=997 g=1801 m=0
+mod say f 42414 str fn=0048 lich=1 sc=996 g=1799 m=0
+mod say f 42454 str fn=0049 lich=1 sc=997 g=1791 m=9
+mod say f 42574 eot
+mod say f 42622 str fn=004e lich=1 sc=996 g=1750 m=0
+mod say f 42662 str fn=004f lich=1 sc=994 g=1760 m=0
+mod say f 42702 str fn=0050 lich=1 sc=996 g=1764 m=0
+mod say f 42742 str fn=0051 lich=1 sc=997 g=1779 m=0
+mod say f 42782 str fn=0052 lich=1 sc=997 g=1764 m=0
+mod say f 42822 str fn=0053 lich=1 sc=997 g=1794 m=0
+mod say st 43422 halves=1340 gaps=13 frames=626 lost=3 rssi=-66
+mod say f 42862 str fn=0054 lich=1 sc=997 g=1768 m=0
+mod say f 42902 str fn=0055 lich=1 sc=998 g=1792 m=0
+mod say f 42942 str fn=0056 lich=1 sc=998 g=1795 m=0
+mod say f 42982 str fn=0057 lich=1 sc=998 g=1782 m=0
+mod say f 43022 str fn=0058 lich=1 sc=997 g=1759 m=0
+mod say f 43062 str fn=0059 lich=1 sc=998 g=1804 m=0
+mod say f 43102 str fn=005a lich=1 sc=996 g=1807 m=0
+mod say f 43142 str fn=005b lich=1 sc=998 g=1795 m=0
+mod say f 43182 str fn=005c lich=1 sc=998 g=1817 m=0
+mod say f 43222 str fn=005d lich=1 sc=998 g=1787 m=0
+mod say f 43262 str fn=005e lich=1 sc=998 g=1806 m=0
+mod say f 43302 str fn=005f lich=1 sc=998 g=1783 m=0
+mod say f 43342 str fn=0060 lich=1 sc=998 g=1816 m=0
+mod say f 43382 str fn=0061 lich=1 sc=997 g=1782 m=0
+mod say f 43422 str fn=0062 lich=1 sc=997 g=1777 m=0
+mod say f 43462 str fn=0063 lich=1 sc=997 g=1803 m=0
+mod say f 43502 str fn=0064 lich=1 sc=997 g=1801 m=0
+mod say f 43542 str fn=0065 lich=1 sc=997 g=1818 m=0
+mod say f 43582 str fn=0066 lich=1 sc=997 g=1827 m=0
+mod say f 43622 str fn=0067 lich=1 sc=998 g=1787 m=0
+mod say f 43662 str fn=0068 lich=1 sc=998 g=1796 m=0
+mod say f 43702 str fn=0069 lich=1 sc=997 g=1775 m=0
+mod say f 43742 str fn=006a lich=1 sc=997 g=1757 m=0
+mod say f 43782 str fn=006b lich=1 sc=998 g=1782 m=0
+mod say f 43822 str fn=006c lich=1 sc=998 g=1772 m=0
+mod say f 43862 str fn=006d lich=1 sc=998 g=1818 m=0
+mod say st 44428 halves=1372 gaps=13 frames=652 lost=3 rssi=-66
+mod say f 43902 str fn=006e lich=1 sc=998 g=1801 m=0
+mod say f 43942 str fn=006f lich=1 sc=998 g=1790 m=0
+mod say f 43982 str fn=0070 lich=1 sc=997 g=1788 m=0
+mod say f 44022 str fn=0071 lich=1 sc=998 g=1802 m=0
+mod say f 44062 str fn=0072 lich=1 sc=998 g=1800 m=0
+mod say f 44102 str fn=0073 lich=1 sc=997 g=1806 m=0
+mod say f 44142 str fn=0074 lich=1 sc=997 g=1760 m=0
+mod say f 44182 str fn=0075 lich=1 sc=997 g=1767 m=0
+mod say f 44222 str fn=0076 lich=1 sc=997 g=1778 m=0
+mod say f 44262 str fn=0077 lich=1 sc=995 g=1773 m=0
+mod say f 44302 str fn=0078 lich=1 sc=997 g=1774 m=0
+mod say f 44342 str fn=0079 lich=1 sc=995 g=1765 m=0
+mod say f 44382 str fn=007a lich=1 sc=996 g=1786 m=0
+mod say f 44422 str fn=007b lich=1 sc=997 g=1758 m=0
+mod say f 44462 str fn=007c lich=1 sc=996 g=1775 m=0
+mod say f 44502 str fn=007d lich=1 sc=996 g=1782 m=0
+mod say f 44542 str fn=007e lich=1 sc=996 g=1776 m=0
+mod say f 44582 str fn=007f lich=1 sc=996 g=1784 m=0
+mod say f 44622 str fn=0080 lich=1 sc=995 g=1752 m=0
+mod say f 44662 str fn=0081 lich=1 sc=996 g=1763 m=0
+mod say f 44702 str fn=0082 lich=1 sc=998 g=1807 m=0
+mod say f 44742 str fn=0083 lich=1 sc=998 g=1791 m=0
+mod say f 44782 str fn=0084 lich=1 sc=996 g=1808 m=0
+mod say f 44822 str fn=0085 lich=1 sc=998 g=1783 m=0
+mod say st 45440 halves=1403 gaps=13 frames=676 lost=3 rssi=-66
+mod say f 44862 str fn=0086 lich=1 sc=998 g=1783 m=0
+mod say f 44902 str fn=0087 lich=1 sc=998 g=1773 m=0
+mod say f 44942 str fn=0088 lich=1 sc=997 g=1782 m=0
+mod say f 44982 str fn=0089 lich=1 sc=997 g=1782 m=0
+mod say f 45022 str fn=008a lich=1 sc=997 g=1803 m=0
+mod say f 45062 str fn=008b lich=1 sc=997 g=1796 m=0
+mod say f 45102 str fn=008c lich=1 sc=997 g=1757 m=0
+mod say f 45142 str fn=008d lich=1 sc=997 g=1763 m=0
+mod say f 45182 str fn=008e lich=1 sc=993 g=1749 m=0
+mod say f 45222 str fn=008f lich=1 sc=997 g=1775 m=0
+mod say f 45262 str fn=0090 lich=1 sc=997 g=1793 m=0
+mod say f 45302 str fn=0091 lich=1 sc=996 g=1826 m=0
+mod say f 45342 str fn=0092 lich=1 sc=995 g=1815 m=0
+mod say f 45382 str fn=0093 lich=1 sc=997 g=1792 m=0
+mod say f 45422 str fn=0094 lich=1 sc=998 g=1784 m=0
+mod say f 45462 str fn=0095 lich=1 sc=998 g=1782 m=0
+mod say f 45502 str fn=0096 lich=1 sc=998 g=1781 m=0
+mod say f 45542 str fn=0097 lich=1 sc=997 g=1781 m=0
+mod say f 45582 str fn=0098 lich=1 sc=996 g=1810 m=0
+mod say f 45622 str fn=0099 lich=1 sc=997 g=1787 m=0
+mod say f 45662 str fn=009a lich=1 sc=997 g=1782 m=0
+mod say f 45702 str fn=009b lich=1 sc=997 g=1787 m=0
+mod say f 45742 str fn=009c lich=1 sc=994 g=1760 m=0
+mod say st 46440 halves=1434 gaps=14 frames=699 lost=3 rssi=-66
+mod say f 45902 eot
+mod say f 45950 str fn=00a2 lich=1 sc=997 g=1785 m=0
+mod say f 45990 str fn=00a3 lich=1 sc=996 g=1764 m=0
+mod say f 46030 str fn=00a4 lich=1 sc=996 g=1764 m=0
+mod say f 46070 str fn=00a5 lich=1 sc=997 g=1764 m=0
+mod say f 46110 str fn=00a6 lich=1 sc=997 g=1772 m=0
+mod say f 46150 str fn=00a7 lich=1 sc=998 g=1800 m=0
+mod say f 46190 str fn=00a8 lich=1 sc=998 g=1805 m=0
+mod say f 46230 str fn=00a9 lich=1 sc=997 g=1794 m=0
+mod say f 46270 str fn=00aa lich=1 sc=997 g=1777 m=0
+mod say f 46310 str fn=00ab lich=1 sc=996 g=1783 m=0
+mod say f 46350 str fn=00ac lich=1 sc=996 g=1763 m=0
+mod say f 46390 str fn=00ad lich=1 sc=998 g=1790 m=0
+mod say f 46430 str fn=00ae lich=1 sc=996 g=1751 m=0
+mod say f 46470 str fn=00af lich=1 sc=995 g=1763 m=0
+mod say f 46510 str fn=00b0 lich=1 sc=995 g=1754 m=0
+mod say f 46550 str fn=00b1 lich=1 sc=991 g=1742 m=0
+mod say st 47444 halves=1464 gaps=15 frames=716 lost=3 rssi=-66
+mod say f 46998 str fn=00bd lich=1 sc=998 g=1789 m=0
+mod say f 47038 str fn=00be lich=1 sc=995 g=1758 m=0
+mod say f 47078 str fn=00bf lich=1 sc=995 g=1777 m=0
+mod say f 47118 str fn=00c0 lich=1 sc=997 g=1763 m=0
+mod say f 47158 str fn=00c1 lich=1 sc=995 g=1763 m=0
+mod say f 47198 str fn=00c2 lich=1 sc=998 g=1798 m=0
+mod say f 47238 str fn=00c3 lich=1 sc=996 g=1759 m=0
+mod say f 47278 str fn=00c4 lich=1 sc=994 g=1757 m=0
+mod say f 47318 str fn=00c5 lich=1 sc=997 g=1800 m=0
+mod say f 47358 str fn=00c6 lich=1 sc=997 g=1777 m=0
+mod say f 47398 str fn=00c7 lich=1 sc=996 g=1786 m=0
+mod say f 47438 str fn=00c8 lich=1 sc=996 g=1780 m=0
+mod say f 47478 str fn=00c9 lich=1 sc=995 g=1772 m=0
+mod say f 47518 str fn=00ca lich=1 sc=998 g=1775 m=0
+mod say f 47558 str fn=00cb lich=1 sc=998 g=1792 m=0
+mod say f 47598 str fn=00cc lich=1 sc=997 g=1806 m=0
+mod say f 47638 str fn=00cd lich=1 sc=994 g=1748 m=0
+mod say f 47678 str fn=00ce lich=1 sc=994 g=1743 m=0
+mod say f 47718 str fn=00cf lich=1 sc=998 g=1778 m=0
+mod say f 47758 str fn=00d0 lich=1 sc=996 g=1778 m=0
+mod say f 47798 str fn=00d1 lich=1 sc=997 g=1791 m=0
+mod say st 48448 halves=1495 gaps=15 frames=737 lost=4 rssi=-66
+mod say f 47838 str fn=00d2 lich=1 sc=996 g=1785 m=0
+mod say f 47878 str fn=00d3 lich=1 sc=989 g=1747 m=0
+mod say f 47918 str fn=00d4 lich=1 sc=996 g=1764 m=0
+mod say f 47958 str fn=00d5 lich=1 sc=993 g=1731 m=0
+mod say f 47998 str fn=00d6 lich=1 sc=996 g=1759 m=0
+mod say f 48038 str fn=00d7 lich=1 sc=997 g=1781 m=0
+mod say f 48078 str fn=00d8 lich=1 sc=995 g=1754 m=0
+mod say f 48118 str fn=00d9 lich=1 sc=992 g=1766 m=0
+mod say f 48158 str fn=00da lich=1 sc=997 g=1789 m=0
+mod say f 48198 str fn=00db lich=1 sc=997 g=1776 m=0
+mod say f 48238 str fn=00dc lich=1 sc=994 g=1760 m=0
+mod say f 48278 str fn=00dd lich=1 sc=997 g=1778 m=0
+mod say f 48318 str fn=00de lich=1 sc=998 g=1801 m=0
+mod say f 48358 str fn=00df lich=1 sc=998 g=1817 m=0
+mod say f 48398 str fn=00e0 lich=1 sc=997 g=1772 m=0
+mod say f 48558 eot
+mod say f 48694 str fn=00e9 lich=1 sc=993 g=1772 m=0
+mod say f 48734 str fn=00ea lich=1 sc=994 g=1775 m=0
+mod say st 49461 halves=1525 gaps=15 frames=755 lost=4 rssi=-66
+mod say f 48774 str fn=00eb lich=1 sc=992 g=1744 m=0
+mod say f 48814 str fn=00ec lich=1 sc=997 g=1781 m=0
+mod say f 48854 str fn=00ed lich=1 sc=998 g=1784 m=0
+mod say f 48894 str fn=00ee lich=1 sc=997 g=1792 m=0
+mod say f 48934 str fn=00ef lich=1 sc=998 g=1765 m=0
+mod say f 48974 str fn=00f0 lich=1 sc=998 g=1812 m=0
+mod say f 49014 str fn=00f1 lich=1 sc=998 g=1781 m=0
+mod say f 49054 str fn=00f2 lich=1 sc=997 g=1767 m=0
+mod say f 49094 str fn=00f3 lich=1 sc=997 g=1804 m=0
+mod say f 49134 str fn=00f4 lich=1 sc=998 g=1794 m=0
+mod say f 49174 str fn=00f5 lich=1 sc=996 g=1786 m=0
+mod say f 49214 str fn=00f6 lich=1 sc=997 g=1754 m=0
+mod say f 49254 str fn=00f7 lich=1 sc=993 g=1753 m=0
+mod say f 49294 str fn=00f8 lich=1 sc=997 g=1776 m=0
+mod say f 49334 str fn=00f9 lich=1 sc=997 g=1758 m=0
+mod say f 49374 str fn=00fa lich=1 sc=998 g=1787 m=0
+mod say f 49414 str fn=00fb lich=1 sc=997 g=1791 m=0
+mod say f 49454 str fn=00fc lich=1 sc=995 g=1811 m=0
+mod say f 49494 str fn=00fd lich=1 sc=997 g=1807 m=0
+mod say f 49534 str fn=00fe lich=1 sc=998 g=1799 m=0
+mod say f 49574 str fn=00ff lich=1 sc=993 g=1838 m=0
+mod say f 49614 str fn=0100 lich=1 sc=995 g=1833 m=0
+mod say f 49654 str fn=0101 lich=1 sc=997 g=1818 m=0
+mod say f 49694 str fn=0102 lich=1 sc=998 g=1783 m=0
+mod say f 49734 str fn=0103 lich=1 sc=996 g=1766 m=0
+mod say st 50466 halves=1556 gaps=15 frames=780 lost=4 rssi=-66
+mod say f 49774 str fn=0104 lich=1 sc=995 g=1769 m=0
+mod say f 49814 str fn=0105 lich=1 sc=996 g=1775 m=0
+mod say f 49854 str fn=0106 lich=1 sc=997 g=1791 m=0
+mod say f 49894 str fn=0107 lich=1 sc=997 g=1793 m=0
+mod say f 49934 str fn=0108 lich=1 sc=996 g=1777 m=0
+mod say f 49974 str fn=0109 lich=1 sc=998 g=1808 m=0
+mod say f 50014 str fn=010a lich=1 sc=998 g=1792 m=0
+mod say f 50054 str fn=010b lich=1 sc=997 g=1813 m=0
+mod say f 50094 str fn=010c lich=1 sc=998 g=1792 m=0
+mod say f 50134 str fn=010d lich=1 sc=997 g=1774 m=0
+mod say f 50174 str fn=010e lich=1 sc=997 g=1793 m=0
+mod say f 50214 str fn=010f lich=1 sc=997 g=1772 m=0
+mod say f 50254 str fn=0110 lich=1 sc=995 g=1773 m=0
+mod say f 50294 str fn=0111 lich=1 sc=998 g=1782 m=0
+mod say f 50334 str fn=0112 lich=1 sc=997 g=1796 m=0
+mod say f 50374 str fn=0113 lich=1 sc=997 g=1773 m=0
+mod say f 50414 str fn=0114 lich=1 sc=993 g=1751 m=0
+mod say f 50454 str fn=0115 lich=1 sc=997 g=1786 m=16
+mod say f 50494 str fn=0116 lich=1 sc=997 g=1768 m=0
+mod say f 50534 str fn=0117 lich=1 sc=993 g=1759 m=0
+mod say f 50574 str fn=0118 lich=1 sc=998 g=1769 m=6
+mod say f 50702 str fn=011c lich=1 sc=998 g=1810 m=0
+mod say f 50742 str fn=011d lich=1 sc=998 g=1817 m=0
+mod say st 51488 halves=1587 gaps=16 frames=803 lost=5 rssi=-66
+mod say f 50782 str fn=011e lich=1 sc=997 g=1796 m=0
+mod say f 50822 str fn=011f lich=1 sc=997 g=1799 m=0
+mod say f 50862 str fn=0120 lich=1 sc=996 g=1810 m=0
+mod say f 50902 str fn=0121 lich=1 sc=996 g=1775 m=0
+mod say f 50942 str fn=0122 lich=1 sc=998 g=1785 m=0
+mod say f 50982 str fn=0123 lich=1 sc=997 g=1780 m=0
+mod say f 51022 str fn=0124 lich=1 sc=993 g=1750 m=0
+mod say f 51062 str fn=0125 lich=1 sc=988 g=1755 m=0
+mod say f 51102 str fn=0126 lich=1 sc=994 g=1752 m=0
+mod say f 51142 str fn=0127 lich=1 sc=998 g=1768 m=0
+mod say f 51182 str fn=0128 lich=1 sc=997 g=1797 m=0
+mod say f 51222 str fn=0129 lich=1 sc=998 g=1772 m=0
+mod say f 51262 str fn=012a lich=1 sc=998 g=1804 m=0
+mod say f 51302 str fn=812b lich=1 sc=997 g=1786 m=0
+mod say f 51342 eot
+mod say spk stop frames=528 gap=431 drop=0
+mod say f 51470 str fn=0001 lich=1 sc=986 g=1851 m=0
+mod say f 51510 str fn=0002 lich=1 sc=990 g=1832 m=0
+mod say f 51550 str fn=0003 lich=1 sc=992 g=1831 m=0
+mod say spk start q=6
+mod say f 51590 str fn=0004 lich=1 sc=995 g=1806 m=0
+mod say f 51630 str fn=0005 lich=1 sc=989 g=1735 m=0
+mod say f 51670 str fn=0006 lich=1 sc=996 g=1782 m=0
+mod say f 51710 str fn=0007 lich=1 sc=995 g=1785 m=0
+mod say f 51750 str fn=0008 lich=1 sc=996 g=1763 m=0
+mod say st 52522 halves=1619 gaps=17 frames=826 lost=5 rssi=-66
+mod say f 51790 str fn=0009 lich=1 sc=998 g=1792 m=0
+mod say f 51830 str fn=000a lich=1 sc=997 g=1777 m=0
+mod say f 51870 str fn=000b lich=1 sc=997 g=1789 m=0
+mod say f 51910 str fn=000c lich=1 sc=998 g=1776 m=0
+mod say f 51950 str fn=000d lich=1 sc=998 g=1789 m=0
+mod say f 51990 str fn=000e lich=1 sc=997 g=1794 m=0
+mod say f 52030 str fn=000f lich=1 sc=993 g=1738 m=0
+mod say f 52070 str fn=0010 lich=1 sc=995 g=1774 m=0
+mod say f 52110 str fn=0011 lich=1 sc=998 g=1809 m=0
+mod say f 52150 str fn=0012 lich=1 sc=998 g=1786 m=0
+mod say f 52190 str fn=0013 lich=1 sc=997 g=1822 m=0
+mod say f 52230 str fn=0014 lich=1 sc=997 g=1801 m=0
+mod say f 52270 str fn=0015 lich=1 sc=997 g=1792 m=0
+mod say f 52310 str fn=0016 lich=1 sc=998 g=1800 m=0
+mod say f 52350 str fn=0017 lich=1 sc=997 g=1814 m=0
+mod say f 52390 str fn=0018 lich=1 sc=997 g=1772 m=0
+mod say f 52430 str fn=0019 lich=1 sc=997 g=1791 m=0
+mod say f 52470 str fn=001a lich=1 sc=996 g=1768 m=0
+mod say f 52510 str fn=001b lich=1 sc=997 g=1763 m=0
+mod say f 52550 str fn=001c lich=1 sc=998 g=1780 m=0
+mod say f 52590 str fn=001d lich=1 sc=998 g=1805 m=0
+mod say f 52630 str fn=001e lich=1 sc=997 g=1800 m=0
+mod say f 52670 str fn=001f lich=1 sc=997 g=1764 m=0
+mod say f 52710 str fn=0020 lich=1 sc=992 g=1741 m=0
+mod say f 52750 str fn=0021 lich=1 sc=996 g=1779 m=0
+mod say f 52790 str fn=0022 lich=1 sc=993 g=1745 m=0
+mod say st 53542 halves=1651 gaps=17 frames=852 lost=5 rssi=-66
+mod say f 52830 str fn=0023 lich=1 sc=999 g=1795 m=0
+mod say f 52870 str fn=0024 lich=1 sc=997 g=1791 m=0
+mod say f 52910 str fn=0025 lich=1 sc=994 g=1756 m=0
+mod say f 52950 str fn=0026 lich=1 sc=996 g=1764 m=0
+mod say f 52990 str fn=0027 lich=1 sc=996 g=1813 m=0
+mod say f 53030 str fn=0028 lich=1 sc=996 g=1801 m=0
+mod say f 53070 str fn=0029 lich=1 sc=998 g=1776 m=0
+mod say f 53110 str fn=002a lich=1 sc=995 g=1768 m=0
+mod say f 53150 str fn=002b lich=1 sc=991 g=1751 m=0
+mod say f 53190 str fn=002c lich=1 sc=995 g=1796 m=0
+mod say f 53230 str fn=002d lich=1 sc=997 g=1805 m=0
+mod say f 53270 str fn=002e lich=1 sc=998 g=1802 m=0
+mod say f 53310 str fn=002f lich=1 sc=997 g=1802 m=0
+mod say f 53350 str fn=0030 lich=1 sc=994 g=1822 m=0
+mod say f 53390 str fn=0031 lich=1 sc=998 g=1817 m=0
+mod say f 53430 str fn=0032 lich=1 sc=997 g=1762 m=0
+mod say f 53470 str fn=0033 lich=1 sc=998 g=1784 m=0
+mod say f 53510 str fn=0034 lich=1 sc=997 g=1763 m=0
+mod say f 53550 str fn=0035 lich=1 sc=990 g=1750 m=0
+mod say f 53590 str fn=0036 lich=1 sc=998 g=1793 m=0
+mod say f 53630 str fn=0037 lich=1 sc=996 g=1777 m=0
+mod say f 53670 str fn=0038 lich=1 sc=997 g=1766 m=0
+mod say f 53710 str fn=0039 lich=1 sc=998 g=1780 m=0
+mod say f 53750 str fn=003a lich=1 sc=997 g=1812 m=0
+mod say st 54542 halves=1682 gaps=17 frames=876 lost=5 rssi=-66
+mod say f 53790 str fn=003b lich=1 sc=998 g=1791 m=0
+mod say f 53830 str fn=003c lich=1 sc=998 g=1790 m=0
+mod say f 53870 str fn=003d lich=1 sc=994 g=1762 m=0
+mod say f 53910 str fn=003e lich=1 sc=998 g=1784 m=0
+mod say f 53950 str fn=003f lich=1 sc=998 g=1782 m=0
+mod say f 53990 str fn=0040 lich=1 sc=998 g=1814 m=0
+mod say f 54030 str fn=0041 lich=1 sc=998 g=1772 m=0
+mod say f 54070 str fn=0042 lich=1 sc=998 g=1787 m=0
+mod say f 54110 str fn=0043 lich=1 sc=998 g=1784 m=0
+mod say f 54150 str fn=0044 lich=1 sc=998 g=1775 m=0
+mod say f 54190 str fn=0045 lich=1 sc=997 g=1795 m=0
+mod say f 54230 str fn=0046 lich=1 sc=997 g=1806 m=0
+mod say f 54270 str fn=0047 lich=1 sc=998 g=1808 m=0
+mod say f 54310 str fn=0048 lich=1 sc=997 g=1776 m=0
+mod say f 54350 str fn=0049 lich=1 sc=996 g=1766 m=0
+mod say f 54390 str fn=004a lich=1 sc=997 g=1762 m=0
+mod say f 54430 str fn=004b lich=1 sc=998 g=1798 m=0
+mod say f 54470 str fn=004c lich=1 sc=997 g=1807 m=0
+mod say f 54510 str fn=004d lich=1 sc=997 g=1801 m=0
+mod say f 54550 str fn=004e lich=1 sc=997 g=1794 m=0
+mod say f 54590 str fn=004f lich=1 sc=998 g=1779 m=0
+mod say f 54630 str fn=0050 lich=1 sc=998 g=1798 m=0
+mod say f 54670 str fn=0051 lich=1 sc=997 g=1758 m=0
+mod say f 54710 str fn=0052 lich=1 sc=998 g=1813 m=0
+mod say f 54750 str fn=0053 lich=1 sc=998 g=1780 m=0
+mod say f 54790 str fn=0054 lich=1 sc=996 g=1779 m=0
+mod say st 55559 halves=1714 gaps=17 frames=902 lost=5 rssi=-66
+mod say f 54830 str fn=0055 lich=1 sc=995 g=1786 m=0
+mod say f 54870 str fn=0056 lich=1 sc=997 g=1793 m=0
+mod say f 54910 str fn=0057 lich=1 sc=998 g=1802 m=0
+mod say f 54950 str fn=0058 lich=1 sc=997 g=1769 m=0
+mod say f 54990 str fn=0059 lich=1 sc=998 g=1796 m=0
+mod say f 55030 str fn=005a lich=1 sc=997 g=1787 m=0
+mod say f 55070 str fn=005b lich=1 sc=996 g=1757 m=0
+mod say f 55110 str fn=005c lich=1 sc=997 g=1760 m=0
+mod say f 55150 str fn=005d lich=1 sc=995 g=1755 m=0
+mod say f 55190 str fn=005e lich=1 sc=998 g=1783 m=0
+mod say f 55230 str fn=005f lich=1 sc=997 g=1808 m=0
+mod say f 55270 str fn=0060 lich=1 sc=995 g=1839 m=0
+mod say f 55310 str fn=0061 lich=1 sc=996 g=1821 m=0
+mod say f 55350 str fn=0062 lich=1 sc=997 g=1802 m=0
+mod say f 55390 str fn=0063 lich=1 sc=997 g=1797 m=0
+mod say f 55430 str fn=0064 lich=1 sc=998 g=1782 m=0
+mod say f 55470 str fn=0065 lich=1 sc=997 g=1793 m=0
+mod say f 55510 str fn=0066 lich=1 sc=997 g=1768 m=0
+mod say f 55550 str fn=0067 lich=1 sc=995 g=1752 m=0
+mod say f 55590 str fn=0068 lich=1 sc=995 g=1763 m=0
+mod say f 55630 str fn=0069 lich=1 sc=995 g=1763 m=0
+mod say f 55670 str fn=006a lich=1 sc=996 g=1775 m=0
+mod say f 55710 str fn=006b lich=1 sc=997 g=1780 m=0
+mod say f 55750 str fn=006c lich=1 sc=998 g=1794 m=0
+mod say f 55790 str fn=006d lich=1 sc=995 g=1774 m=0
+mod say st 56581 halves=1745 gaps=17 frames=927 lost=5 rssi=-66
+mod say f 55830 str fn=006e lich=1 sc=997 g=1774 m=0
+mod say f 55870 str fn=006f lich=1 sc=998 g=1810 m=0
+mod say f 55910 str fn=0070 lich=1 sc=998 g=1812 m=0
+mod say f 55950 str fn=0071 lich=1 sc=997 g=1778 m=0
+mod say f 55990 str fn=0072 lich=1 sc=997 g=1790 m=0
+mod say f 56030 str fn=0073 lich=1 sc=997 g=1762 m=0
+mod say f 56070 str fn=0074 lich=1 sc=998 g=1793 m=0
+mod say f 56110 str fn=0075 lich=1 sc=996 g=1771 m=0
+mod say f 56150 str fn=0076 lich=1 sc=991 g=1749 m=0
+mod say f 56190 str fn=0077 lich=1 sc=986 g=1732 m=0
+mod say f 56230 str fn=0078 lich=1 sc=996 g=1748 m=0
+mod say f 56270 str fn=0079 lich=1 sc=997 g=1796 m=0
+mod say f 56310 str fn=007a lich=1 sc=996 g=1765 m=0
+mod say f 56350 str fn=007b lich=1 sc=997 g=1810 m=0
+mod say f 56390 str fn=007c lich=1 sc=997 g=1754 m=0
+mod say f 56430 str fn=007d lich=1 sc=997 g=1810 m=0
+mod say f 56470 str fn=007e lich=1 sc=997 g=1806 m=0
+mod say f 56510 str fn=007f lich=1 sc=996 g=1795 m=0
+mod say f 56550 str fn=0080 lich=1 sc=996 g=1773 m=0
+mod say f 56590 str fn=0081 lich=1 sc=997 g=1793 m=0
+mod say f 56630 str fn=0082 lich=1 sc=998 g=1809 m=0
+mod say f 56670 str fn=0083 lich=1 sc=998 g=1773 m=0
+mod say f 56710 str fn=0084 lich=1 sc=997 g=1772 m=0
+mod say f 56750 str fn=0085 lich=1 sc=994 g=1754 m=0
+mod say f 56790 str fn=0086 lich=1 sc=998 g=1788 m=0
+mod say st 57588 halves=1777 gaps=17 frames=952 lost=5 rssi=-66
+mod say f 56830 str fn=0087 lich=1 sc=997 g=1796 m=0
+mod say f 56870 str fn=0088 lich=1 sc=996 g=1763 m=0
+mod say f 56910 str fn=0089 lich=1 sc=993 g=1749 m=0
+mod say f 56950 str fn=008a lich=1 sc=995 g=1774 m=0
+mod say f 56990 str fn=008b lich=1 sc=996 g=1762 m=0
+mod say f 57030 str fn=008c lich=1 sc=995 g=1759 m=0
+mod say f 57070 str fn=008d lich=1 sc=997 g=1780 m=0
+mod say f 57110 str fn=008e lich=1 sc=998 g=1774 m=0
+mod say f 57150 str fn=008f lich=1 sc=997 g=1802 m=0
+mod say f 57190 str fn=0090 lich=1 sc=998 g=1793 m=0
+mod say f 57230 str fn=0091 lich=1 sc=998 g=1803 m=0
+mod say f 57270 str fn=0092 lich=1 sc=997 g=1798 m=0
+mod say f 57310 str fn=0093 lich=1 sc=998 g=1788 m=0
+mod say f 57350 str fn=0094 lich=1 sc=998 g=1785 m=0
+mod say f 57390 str fn=0095 lich=1 sc=995 g=1764 m=0
+mod say f 57430 str fn=0096 lich=1 sc=994 g=1755 m=0
+mod say f 57470 str fn=0097 lich=1 sc=997 g=1763 m=0
+mod say f 57510 str fn=0098 lich=1 sc=994 g=1757 m=0
+mod say f 57550 str fn=0099 lich=1 sc=994 g=1742 m=0
+mod say f 57590 str fn=009a lich=1 sc=991 g=1750 m=0
+mod say f 57630 str fn=009b lich=1 sc=997 g=1776 m=0
+mod say f 57670 str fn=009c lich=1 sc=997 g=1782 m=0
+mod say f 57710 str fn=009d lich=1 sc=997 g=1765 m=0
+mod say f 57750 str fn=009e lich=1 sc=997 g=1802 m=0
+mod say f 57790 str fn=009f lich=1 sc=997 g=1802 m=0
+mod say f 57830 str fn=00a0 lich=1 sc=997 g=1789 m=0
+mod say st 58599 halves=1809 gaps=17 frames=978 lost=5 rssi=-66
+mod say f 57870 str fn=00a1 lich=1 sc=997 g=1800 m=0
+mod say f 57910 str fn=00a2 lich=1 sc=996 g=1808 m=0
+mod say f 57950 str fn=00a3 lich=1 sc=996 g=1787 m=0
+mod say f 57990 str fn=00a4 lich=1 sc=995 g=1770 m=0
+mod say f 58030 str fn=00a5 lich=1 sc=997 g=1765 m=0
+mod say f 58070 str fn=00a6 lich=1 sc=998 g=1798 m=0
+mod say f 58110 str fn=00a7 lich=1 sc=998 g=1789 m=0
+mod say f 58150 str fn=00a8 lich=1 sc=998 g=1790 m=0
+mod say f 58190 str fn=00a9 lich=1 sc=996 g=1770 m=0
+mod say f 58470 lsf ok=0 sc=392 g=763 m=44 src=8BF2FOGCJ dst=.HB/.7CF7 type=aec6
+mod say f 58630 eot
+mod say spk stop frames=338 gap=62 drop=0
+mod say f 58726 str fn=00b8 lich=1 sc=997 g=1808 m=0
+mod say f 58766 str fn=00b9 lich=1 sc=998 g=1782 m=0
+mod say st 59605 halves=1838 gaps=19 frames=991 lost=5 rssi=-66
+mod say f 58806 str fn=00ba lich=1 sc=995 g=1781 m=0
+mod say spk start q=6
+mod say f 58846 str fn=00bb lich=1 sc=996 g=1791 m=0
+mod say f 58886 str fn=00bc lich=1 sc=998 g=1779 m=0
+mod say f 58926 str fn=00bd lich=1 sc=997 g=1780 m=0
+mod say f 58966 str fn=00be lich=1 sc=996 g=1776 m=0
+mod say f 59006 str fn=00bf lich=1 sc=996 g=1778 m=0
+mod say f 59046 str fn=00c0 lich=1 sc=997 g=1776 m=0
+mod say f 59086 str fn=00c1 lich=1 sc=997 g=1762 m=0
+mod say f 59126 str fn=00c2 lich=1 sc=998 g=1798 m=0
+mod say f 59166 str fn=00c3 lich=1 sc=996 g=1751 m=0
+mod say f 59206 str fn=00c4 lich=1 sc=998 g=1794 m=0
+mod say f 59246 str fn=00c5 lich=1 sc=997 g=1800 m=0
+mod say f 59286 str fn=00c6 lich=1 sc=997 g=1769 m=0
+mod say f 59326 str fn=00c7 lich=1 sc=997 g=1796 m=0
+mod say f 59366 str fn=00c8 lich=1 sc=997 g=1800 m=0
+mod say f 59406 str fn=00c9 lich=1 sc=998 g=1780 m=0
+mod say f 59446 str fn=00ca lich=1 sc=998 g=1806 m=0
+mod say f 59486 str fn=00cb lich=1 sc=998 g=1788 m=0
+mod say f 59526 str fn=00cc lich=1 sc=996 g=1767 m=0
+mod say f 59566 str fn=00cd lich=1 sc=997 g=1806 m=0
+mod say f 59606 str fn=00ce lich=1 sc=998 g=1799 m=0
+mod say f 59646 str fn=00cf lich=1 sc=997 g=1791 m=0
+mod say f 59686 str fn=00d0 lich=1 sc=998 g=1789 m=0
+mod say f 59726 str fn=00d1 lich=1 sc=998 g=1803 m=0
+mod say f 59766 str fn=00d2 lich=1 sc=998 g=1782 m=0
+mod say st 60615 halves=1870 gaps=19 frames=1016 lost=5 rssi=-66
+mod say f 59806 str fn=00d3 lich=1 sc=995 g=1776 m=0
+mod say f 59846 str fn=00d4 lich=1 sc=987 g=1731 m=0
+mod say f 59886 str fn=00d5 lich=1 sc=997 g=1760 m=0
+mod say f 59926 str fn=00d6 lich=1 sc=997 g=1792 m=0
+mod say f 59966 str fn=00d7 lich=1 sc=996 g=1788 m=0
+mod say f 60006 str fn=00d8 lich=1 sc=996 g=1778 m=0
+mod say f 60046 str fn=00d9 lich=1 sc=992 g=1760 m=0
+mod say f 60086 str fn=00da lich=1 sc=994 g=1749 m=0
+mod say f 60126 str fn=00db lich=1 sc=996 g=1764 m=0
+mod say f 60166 str fn=00dc lich=1 sc=996 g=1764 m=0
+mod say f 60206 str fn=00dd lich=1 sc=995 g=1791 m=0
+mod say f 60246 str fn=00de lich=1 sc=998 g=1798 m=0
+mod say f 60286 str fn=00df lich=1 sc=998 g=1808 m=0
+mod say f 60326 str fn=00e0 lich=1 sc=996 g=1813 m=0
+mod say f 60366 str fn=00e1 lich=1 sc=998 g=1788 m=0
+mod say f 60406 str fn=00e2 lich=1 sc=997 g=1788 m=0
+mod say f 60446 str fn=00e3 lich=1 sc=993 g=1757 m=0
+mod say f 60486 str fn=00e4 lich=1 sc=993 g=1776 m=0
+mod say f 60526 str fn=00e5 lich=1 sc=993 g=1755 m=0
+mod say f 60566 str fn=00e6 lich=1 sc=990 g=1743 m=0
+mod say f 60606 str fn=00e7 lich=1 sc=996 g=1781 m=0
+mod say f 60646 str fn=00e8 lich=1 sc=996 g=1774 m=0
+mod say f 60686 str fn=00e9 lich=1 sc=998 g=1787 m=0
+mod say f 60726 str fn=00ea lich=1 sc=998 g=1769 m=0
+mod say f 60766 str fn=00eb lich=1 sc=997 g=1790 m=0
+mod say st 61637 halves=1901 gaps=19 frames=1041 lost=5 rssi=-66
+mod say f 60806 str fn=00ec lich=1 sc=997 g=1773 m=0
+mod say f 60846 str fn=00ed lich=1 sc=997 g=1764 m=0
+mod say f 60886 str fn=00ee lich=1 sc=998 g=1790 m=0
+mod say f 60926 str fn=00ef lich=1 sc=997 g=1804 m=0
+mod say f 60966 str fn=00f0 lich=1 sc=997 g=1803 m=0
+mod say f 61006 str fn=00f1 lich=1 sc=998 g=1782 m=0
+mod say f 61046 str fn=00f2 lich=1 sc=994 g=1752 m=0
+mod say f 61086 str fn=00f3 lich=1 sc=997 g=1796 m=0
+mod say f 61126 str fn=00f4 lich=1 sc=997 g=1771 m=0
+mod say f 61166 str fn=00f5 lich=1 sc=993 g=1762 m=0
+mod say f 61206 str fn=00f6 lich=1 sc=997 g=1756 m=0
+mod say f 61246 str fn=00f7 lich=1 sc=994 g=1751 m=0
+mod say f 61286 str fn=00f8 lich=1 sc=997 g=1776 m=0
+mod say f 61326 str fn=00f9 lich=1 sc=997 g=1778 m=0
+mod say f 61366 str fn=00fa lich=1 sc=996 g=1771 m=0
+mod say f 61406 str fn=00fb lich=1 sc=998 g=1807 m=0
+mod say f 61446 str fn=00fc lich=1 sc=998 g=1799 m=0
+mod say f 61486 str fn=00fd lich=1 sc=998 g=1802 m=0
+mod say f 61526 str fn=00fe lich=1 sc=997 g=1781 m=0
+mod say f 61566 str fn=00ff lich=1 sc=997 g=1785 m=0
+mod say f 61606 str fn=0100 lich=1 sc=998 g=1801 m=0
+mod say f 61646 str fn=0101 lich=1 sc=997 g=1768 m=0
+mod say f 61686 str fn=0102 lich=1 sc=996 g=1755 m=0
+mod say f 61726 str fn=0103 lich=1 sc=995 g=1758 m=0
+mod say f 61766 str fn=0104 lich=1 sc=996 g=1774 m=0
+mod say f 61806 str fn=0105 lich=1 sc=994 g=1767 m=0
+mod say st 62658 halves=1933 gaps=19 frames=1067 lost=5 rssi=-66
+mod say f 61846 str fn=0106 lich=1 sc=990 g=1745 m=0
+mod say f 61886 str fn=0107 lich=1 sc=990 g=1751 m=0
+mod say f 61926 str fn=0108 lich=1 sc=985 g=1729 m=0
+mod say f 61966 str fn=0109 lich=1 sc=996 g=1776 m=0
+mod say f 62006 str fn=010a lich=1 sc=996 g=1784 m=0
+mod say f 62046 str fn=010b lich=1 sc=996 g=1757 m=0
+mod say f 62086 str fn=010c lich=1 sc=998 g=1797 m=0
+mod say f 62126 str fn=010d lich=1 sc=998 g=1772 m=0
+mod say f 62166 str fn=010e lich=1 sc=998 g=1775 m=0
+mod say f 62206 str fn=010f lich=1 sc=995 g=1764 m=0
+mod say f 62246 str fn=0110 lich=1 sc=996 g=1777 m=0
+mod say f 62286 str fn=0111 lich=1 sc=997 g=1761 m=0
+mod say f 62326 str fn=0112 lich=1 sc=998 g=1759 m=0
+mod say f 62366 str fn=0113 lich=1 sc=997 g=1788 m=0
+mod say f 62406 str fn=0114 lich=1 sc=997 g=1819 m=0
+mod say f 62446 str fn=0115 lich=1 sc=997 g=1777 m=0
+mod say f 62486 str fn=0116 lich=1 sc=997 g=1778 m=0
+mod say f 62526 str fn=0117 lich=1 sc=997 g=1785 m=0
+mod say f 62566 str fn=0118 lich=1 sc=998 g=1777 m=0
+mod say f 62606 str fn=0119 lich=1 sc=998 g=1809 m=0
+mod say f 62646 str fn=011a lich=1 sc=997 g=1782 m=0
+mod say f 62686 str fn=011b lich=1 sc=997 g=1784 m=0
+mod say f 62726 str fn=011c lich=1 sc=998 g=1801 m=0
+mod say f 62766 str fn=011d lich=1 sc=998 g=1764 m=0
+mod say f 62806 str fn=011e lich=1 sc=997 g=1805 m=0
+mod say st 63679 halves=1965 gaps=19 frames=1092 lost=5 rssi=-66
+mod say f 62846 str fn=011f lich=1 sc=997 g=1787 m=0
+mod say f 62886 str fn=0120 lich=1 sc=997 g=1812 m=0
+mod say f 62926 str fn=0121 lich=1 sc=998 g=1800 m=0
+mod say f 62966 str fn=0122 lich=1 sc=997 g=1781 m=0
+mod say f 63006 str fn=0123 lich=1 sc=998 g=1788 m=0
+mod say f 63046 str fn=0124 lich=1 sc=998 g=1789 m=0
+mod say f 63086 str fn=0125 lich=1 sc=998 g=1798 m=0
+mod say f 63126 str fn=0126 lich=1 sc=995 g=1774 m=0
+mod say f 63166 str fn=0127 lich=1 sc=995 g=1762 m=0
+mod say f 63206 str fn=0128 lich=1 sc=997 g=1774 m=0
+mod say f 63246 str fn=0129 lich=1 sc=995 g=1771 m=0
+mod say f 63286 str fn=012a lich=1 sc=992 g=1751 m=0
+mod say f 63326 str fn=812b lich=1 sc=989 g=1741 m=0
+mod say f 63366 eot
+mod say spk stop frames=232 gap=66 drop=0
+mod say st 64688 halves=1996 gaps=20 frames=1106 lost=5 rssi=-66
+mod say st 65693 halves=2027 gaps=20 frames=1106 lost=5 rssi=-66
+mod say st 66693 halves=2058 gaps=20 frames=1106 lost=5 rssi=-66
+mod say st 67709 halves=2090 gaps=20 frames=1106 lost=5 rssi=-66
+mod say st 68709 halves=2121 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 69712 halves=2153 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 70717 halves=2184 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 71717 halves=2215 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 72728 halves=2247 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 73728 halves=2278 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 74745 halves=2310 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 75745 halves=2341 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 76752 halves=2373 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 77757 halves=2404 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 78757 halves=2435 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 79773 halves=2467 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 80773 halves=2498 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 81784 halves=2530 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 82784 halves=2561 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 83805 halves=2593 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 84805 halves=2624 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 85821 halves=2656 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 86821 halves=2687 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 87830 halves=2719 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 88830 halves=2750 gaps=20 frames=1106 lost=5 rssi=-90
+mod say st 89830 halves=2782 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 90836 halves=2813 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 91836 halves=2844 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 92836 halves=2875 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 93840 halves=2907 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 94840 halves=2938 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 95840 halves=2969 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 96856 halves=3001 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 97856 halves=3032 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 98866 halves=3064 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 99866 halves=3095 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 100866 halves=3126 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 101874 halves=3158 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 102877 halves=3189 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 103877 halves=3220 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 104887 halves=3252 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 105887 halves=3283 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 106900 halves=3315 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 107921 halves=3347 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 108921 halves=3378 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 109921 halves=3409 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 110931 halves=3441 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 111931 halves=3472 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 112931 halves=3503 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 113949 halves=3535 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 114949 halves=3566 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 115964 halves=3598 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 116964 halves=3629 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 117980 halves=3661 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 118980 halves=3692 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 119996 halves=3724 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 120996 halves=3755 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 121999 halves=3787 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 122999 halves=3818 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 123999 halves=3849 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 125018 halves=3881 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 126018 halves=3912 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 127024 halves=3944 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 128028 halves=3975 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 129028 halves=4006 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 130044 halves=4038 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 131044 halves=4069 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 132060 halves=4101 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 133060 halves=4132 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 134076 halves=4164 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 135076 halves=4195 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 136080 halves=4227 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 137095 halves=4259 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 138095 halves=4290 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 139100 halves=4321 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 140100 halves=4352 gaps=20 frames=1106 lost=5 rssi=-91
+mod say st 141103 halves=4384 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 142108 halves=4415 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 143108 halves=4446 gaps=20 frames=1106 lost=5 rssi=-92
+mod say st 144111 halves=4478 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 145111 halves=4509 gaps=20 frames=1106 lost=5 rssi=-91
+mod say st 146124 halves=4541 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 147128 halves=4572 gaps=20 frames=1106 lost=5 rssi=-93
+mod say st 148128 halves=4603 gaps=20 frames=1106 lost=5 rssi=-94
+mod say st 149136 halves=4635 gaps=20 frames=1106 lost=5 rssi=-94
+mod say end halves=4662 gaps=20 frames=1106 lost=5 lsf=7 str=1084 pkt=0 bert=0 eot=15 sms=0 bert_bits=0 bert_err=0
+ok mod run ret=0 ms=150015
