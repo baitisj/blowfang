@@ -119,6 +119,9 @@ mkdir -p "$WORK/openrtx/src/blowfang/sotto/fixed"
 cp "$SOTTO"/*.h "$SOTTO"/*.inc "$WORK/openrtx/src/blowfang/sotto/"
 cp "$SOTTO"/fixed/*.h "$SOTTO"/fixed/*.inc "$SOTTO"/fixed/*.c "$WORK/openrtx/src/blowfang/sotto/fixed/"
 cp "$HERE"/sotto8k/*.c "$HERE"/sotto8k/*.h "$WORK/openrtx/src/blowfang/"
+# Codec2's malloc goes to the sotto encoder's arena first (c2_alloc.h): meson puts packagefiles
+# over the codec2 checkout at setup, and the patch's codec2 meson.build includes it everywhere
+cp "$HERE/c2_alloc.h" "$WORK/subprojects/packagefiles/codec2/"
 
 cd "$WORK"
 if [ "$TARGET" = linux ]; then

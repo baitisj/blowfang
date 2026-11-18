@@ -102,6 +102,11 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   40 KB. The sotto 1200 encoder (24.4 KB state plus a 16 KB thread stack) didn't fit: the radio
   reset at the encoder's start (M, 11-14 01:27Z), so its state now comes from a 25 KB arena in CCM
   .bss (PR #101; CCM has about 37 KB free).
+- Codec2 (OpenRTX's decoder for M17 voice, module API level 5) didn't fit either: codec2_create's
+  31 KB plus its thread's 16 KB stack against at most 38 KB above the module arena reset the radio
+  at `spk start` (11-18 10:33Z). Its malloc now goes to the encoder's CCM arena first
+  (`c2_alloc.h`: 25 KB there, 6 KB on the heap). CCM after that: .data 1,744 + .bss 52,368, about
+  11 KB free (Plus probe and range image, 11-18).
 - OpenRTX's RTX thread has a 512 B stack, and the pager's send runs on it. The CW ident fits;
   the range send's packet coder needs about 460 B more, and the radio reset half a second after
   key-up, at the end of the lead (M, 11-14 01:59Z). The patch raises it to 2 KB (PR #101).
