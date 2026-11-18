@@ -4,14 +4,21 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "c4fm-ftm5",
-  "who": "c4fm",
-  "since": "2026-11-18T15:10:45Z"
- },
- "waiting": [],
- "last_poll": "2026-11-18T15:10:38Z",
+ "running": null,
+ "waiting": [
+  {
+   "id": "m17spk-1118d",
+   "who": "m17rx",
+   "not_before": null
+  },
+  {
+   "id": "ysf-ftm-1118h",
+   "who": "c4fm",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-18T15:41:03Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T15:10:45Z"
+ "updated": "2026-11-18T15:41:03Z"
 }
