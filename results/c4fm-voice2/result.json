@@ -1,12 +1,12 @@
 {
  "id": "c4fm-voice2",
- "status": "queued",
- "queued": "2026-11-18T23:09:25Z",
+ "status": "running",
+ "since": "2026-11-18T23:09:32Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "912aa6f1377411abf2a6183eb2f0043be034505b",
   "path": "jobs/c4fm-voice2"
  },
  "runner_commit": "b3631bbb9347cdb86d79c58d31572c4ec813c87e",
- "updated": "2026-11-18T23:09:25Z"
+ "updated": "2026-11-18T23:09:32Z"
 }
