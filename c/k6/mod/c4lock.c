@@ -269,8 +269,8 @@ K6_MODULE_NAME(K6_NAME);
 static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BF0[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BNF[NB] = {12, 12, 12, 12, 12};
-static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};
-static const uint8_t BIN[NB] = {4, 5, 6, 7, 8};
+static const uint8_t BINV[NB] = {0, 1, 0, 1, 0};   /* dmr4: the UV-380 never synced on plain calls */
+static const uint8_t BIN[NB] = {8, 8, 8, 8, 8};
 #elif C4_CHAIN
 static const int8_t BQ[NB] = {0, 0, 0};
 static const uint8_t BF0[NB] = {4, 4, 0};           /* each call's first frame and frames (k6c4fm.CHAIN_CALLS): */

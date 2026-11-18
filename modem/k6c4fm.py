@@ -151,9 +151,9 @@ DMR_NSF = 6                         # c4dmr.c: the test message's sotto 1200 sup
 DMR_CHUNKS = 12                     # its stream (20 frames of 60 ms) as 480-symbol table frames
 DMR_CALLS = ((0, DMR_CHUNKS),) * 5  # c4dmr.c: (first frame, frames) a call, a sweep of five
 DMR_Q = (0, 0, 0, 0, 0)             # their size timing, quarter symbols from the lag (dmr2: 0 best)
-DMR_INNER = (4, 5, 6, 7, 8)         # their inner REG_70 gain (outer 56); dmr1 (11-18): 19 = half the
+DMR_INNER = (8, 8, 8, 8, 8)         # their inner REG_70 gain (outer 56); dmr1 (11-18): 19 = half the
                                     # outer; dmr2: 8 best of 8, 11, 14
-DMR_INV = (0, 0, 0, 0, 0)
+DMR_INV = (0, 1, 0, 1, 0)           # every other call inverted (dmr4: the UV-380 never synced on plain)
 DMR_FRAMES = 3                      # table frames a packet: 1440 symbols = 5 DMR frames, so a packet
                                     # ends on a frame's end and the 48 erased symbols at the splice
                                     # are the end of slot 2's idle burst

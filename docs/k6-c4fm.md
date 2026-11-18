@@ -304,4 +304,35 @@ the module's tail, which supports the telemetry-overwrite explanation. Symbol er
 D1 260, D2 241, D3 167 of 2048 (the outer FEC carries them); grid starts within 0.2 symbol. The
 capture, K6 log and analysis are in the project files under `k6-c4fm/sotto4/`.
 
+## DMR from the K6 (c4dmr, 2026-11-18)
+
+`c/k6/mod/c4dmr.c` runs c4lock's chained calls with `C4_DMRS`. The table
+(`k6c4fm.dmr_frames`) is the repeater-style DMR stream from `tools/uv380_dmrburst.py`: BS data
+sync, CACH, slot 1 rate 1/2 data, slot 2 idle. It carries a dmrsotto test message (head, the
+`AG7EW` text, 36 bytes counting up, end). That is 20 frames of 60 ms, cut into 12 table frames
+of 480 symbols. A packet holds 3 table frames, which is 5 DMR frames (1440 symbols), so each
+splice's 48 erased symbols fall at the end of a slot 2 idle burst. Each call is one 1.2 s run
+of 4 packets. The module sends 5 calls, each with its own inner gain (`BIN`) and size timing
+(`BQ`). The outer gain is 56, about +-1944 Hz.
+
+Pluto runs, PA off, 440.850 (analysis: `tools/uv380_dmrburst.py decode`, and per call by
+correlation against `k6c4fm.dmr_symbols()`):
+
+| run | calls | result |
+|---|---|---|
+| dmr1 21:10Z | inner 19, plain and inverted | syncs, slot types, CSBKs; 5 of 7 data blocks; 11% of symbols wrong, the inner level at half the outer |
+| dmr2 21:24Z | inner 8, 11, 14; q -1, +1 | inner 8 and 11 at q 0: the whole message (nothing lost, no bad block, end seen); 5.6% wrong at 8 |
+| dmr3 21:33Z | inner 4-8 | below 8 the inner level stays near 1.25 of 3; inner 8 whole again; 5-16% wrong call to call |
+
+Most wrong symbols are ones whose size changes at their start, and moving the size writes a
+quarter symbol either way doesn't remove them. The last table frame of each packet is worse. A
+half-symbol boxcar in place of the receiver's RRC halves the errors, so the K6's pulses are not
+RRC-shaped and a real receiver's filter matters.
+
+The UV-380's C6000 (`uv380.rx dmr`, c6dmrrx_long) did not sync on the K6 in dmr4 or dmr5, with
+plain or inverted calls, although it heard them at -39 dBm. It did not sync on the Pluto's own
+FM copy of the bench stream either (dmr-uvref2, 22:39Z: plain and inverted, -54 dBm). So today
+the UV-380's DMR receiver is the open question, not the K6. With the UV-380 tuned to 440.850,
+the Pluto's decode of the K6 got worse (dmr4), as in the 11-16 sweep.
+
 SPDX-License-Identifier: MIT
