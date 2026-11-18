@@ -1,12 +1,25 @@
 {
  "id": "uv380-back-1118",
- "status": "running",
- "since": "2026-11-18T06:06:28Z",
+ "who": "c4fm",
+ "started": "2026-11-18T06:06:30Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T06:06:30Z",
+   "ended": "2026-11-18T06:06:36Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26",
+ "head": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "ended": "2026-11-18T06:06:36Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "279065eea2802fc7550bdecf32ea7ff8917f8451",
   "path": "jobs/uv380-back-1118"
  },
  "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
- "updated": "2026-11-18T06:06:28Z"
+ "updated": "2026-11-18T06:06:36Z"
 }
