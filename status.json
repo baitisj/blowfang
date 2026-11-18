@@ -40,10 +40,15 @@
    "id": "refcal-c1118-12",
    "who": "refcal",
    "not_before": "2026-11-18T15:00:00Z"
+  },
+  {
+   "id": "m17spk-1118a",
+   "who": "m17rx",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T10:06:35Z",
+ "last_poll": "2026-11-18T10:16:18Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T10:06:35Z"
+ "updated": "2026-11-18T10:16:18Z"
 }
