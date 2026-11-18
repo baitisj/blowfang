@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "uv380-back-1118c",
-  "who": "c4fm",
-  "since": "2026-11-18T06:31:47Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "refcal-c1118-01",
@@ -74,5 +70,5 @@
  "last_poll": "2026-11-18T06:31:40Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T06:31:47Z"
+ "updated": "2026-11-18T06:31:55Z"
 }
