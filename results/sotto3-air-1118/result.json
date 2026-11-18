@@ -1,0 +1,12 @@
+{
+ "id": "sotto3-air-1118",
+ "status": "queued",
+ "queued": "2026-11-18T20:21:04Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "3742f0d4026a328f28b3c8f715514096f0f4d9ce",
+  "path": "jobs/sotto3-air-1118"
+ },
+ "runner_commit": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "updated": "2026-11-18T20:21:04Z"
+}
