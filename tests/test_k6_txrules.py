@@ -28,10 +28,13 @@ INTERACTIVE = {
     "gw.c",
     "morse.c",
 }
+# c4probe.c and c4ysf.c key the chip's FSK modem (its registers change while keyed) and waits for the bench
+# job's trigger carrier: tests/test_k6_c4fm.py checks the same rules with a modelled FSK transmitter
+FSK_TX = {"c4probe.c", "c4ysf.c"}
 # dogtx.c tests the core's stuck key-up backstop: it hangs keyed on purpose (PA off), bench only
 BACKSTOP = {"dogtx.c"}
 MODS = sorted(p for p in glob.glob(os.path.join(ROOT, "c", "k6", "mod", "*.c"))
-              if re.search(r"->\s*tx_on\s*\(", open(p).read()) and os.path.basename(p) not in INTERACTIVE | BACKSTOP)
+              if re.search(r"->\s*tx_on\s*\(", open(p).read()) and os.path.basename(p) not in INTERACTIVE | BACKSTOP | FSK_TX)
 IDS = [os.path.basename(p)[:-2] for p in MODS]
 MORSE = {"A": ".-", "G": "--.", "7": "--...", "E": ".", "W": ".--", "S": "...", "O": "---", "T": "-",
          "K": "-.-", "N": "-.", "C": "-.-.", "Q": "--.-", "D": "-..", "I": "..", "R": ".-.", "M": "--"}
