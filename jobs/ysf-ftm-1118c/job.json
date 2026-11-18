@@ -1,0 +1,54 @@
+{
+ "id": "ysf-ftm-1118c",
+ "who": "c4fm",
+ "freq_mhz": 440.85,
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:y.wav",
+    "--hz",
+    "440850000",
+    "--seconds",
+    "100"
+   ],
+   "background": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2",
+    "trim -580",
+    "freq 440850"
+   ]
+  },
+  {
+   "do": "uv380.ysf",
+   "args": [
+    "dn"
+   ]
+  },
+  {
+   "do": "uv380.ysf",
+   "args": [
+    "dn"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "trim 6100"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "y\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 120
+  }
+ ]
+}
