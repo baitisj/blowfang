@@ -59,9 +59,11 @@ idle-half writes at each 30 ms slot edge, nothing said over USB while keyed, reg
 350 ms before key-down. `c6ysftx_dn.c` and `c6ysftx_data.c` transmit; `c6ysftx.c` is dry.
 
 The bench runner's `uv380.ysf` step (`dn` or `data`) sends one, under the same power-0 read-back
-as `uv380.m17`. A job, as the M17 runs did: Pluto rx in the background at 441.900 MHz, UV-380
+as `uv380.m17`. A job: Pluto `rx run:y.wav --hz 441850000 --seconds 130` in the background, UV-380
 `listen 0`, `power 0`, `zero 2`, `trim -580` (the FM trim 6100 less the raw mode's 6680 offset),
-the send, then `trim 6100` back.
+`uv380.ysf dn`, `uv380.ysf data`, then `trim 6100` back. The Pluto sits on the channel because the
+runner returns files up to 20 MB: the 48 kHz discriminator wav (12 MB) comes back to a cloud
+thread, the 250 MB .cf32 stays on hamlet. `python3 -m modem.ysf decode y.wav` reads it.
 
 ## Next
 

@@ -159,3 +159,19 @@ def test_decode_a_capture(tmp_path):
     assert "frames 12, FICH good 12" in out and "from AG7EW to ALL" in out
     off = float(re.search(r"carrier ([-+]\d+) Hz", out).group(1))
     assert abs(off + 50_000) < 1000
+
+
+def test_decode_a_runner_wav(tmp_path):
+    """pluto_bench.py rx OUT.wav as the runner returns it: 48 kHz PCM_16, 5 kHz = full scale,
+    an FM ident before the burst some kHz below it"""
+    pytest.importorskip("scipy")
+    from scipy.io import wavfile
+    data = bytes([ysf.PREAMBLE]) * 60 + ysf.build("data") + bytes([ysf.PREAMBLE]) * 60
+    t = np.arange(48000) / 48000
+    ident = -2500.0 + 2000 * np.sin(2 * np.pi * 800 * t)
+    disc = np.concatenate([np.zeros(4800), ident, ysf.modulate(data) + 120.0, np.zeros(4800)])
+    disc += np.random.default_rng(4).normal(0, 200, len(disc))
+    path = str(tmp_path / "y.wav")
+    wavfile.write(path, 48000, np.clip(disc / ysf.WAV_FULL_DEV * 32767, -32768, 32767).astype(np.int16))
+    out = "\n".join(ysf.decode_capture(path))
+    assert "frames 39, FICH good 39" in out and "data channel blocks good 74/74" in out

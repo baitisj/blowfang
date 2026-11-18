@@ -7,7 +7,7 @@ codec started as sotto's modem/ysf.py (MIT, same author); modem/c4fm.py imports 
 
   python3 -m modem.ysf header PLAN OUT.h      a module's bytes (ysftx_PLAN.h): dn, data
   python3 -m modem.ysf plan PLAN              frames, air time, and the plan decoded back
-  python3 -m modem.ysf decode CAP.cf32        a Pluto capture: frames, FICH, callsigns, DN voice
+  python3 -m modem.ysf decode CAP.cf32|.wav   a Pluto capture: frames, FICH, callsigns, DN voice
                                               frames (silence), data text, deviation per level
   python3 -m modem.ysf sim PLAN [--noise-hz N] the chip's shape at 2.7 kHz, decoded
 
@@ -697,7 +697,43 @@ def _demod(disc, fs=48000, alpha=0.2):
     return out
 
 
+WAV_FULL_DEV = 5000.0                  # pluto_bench.py rx OUT.wav: this deviation = full scale
+
+
+def read_wav_disc(path):
+    """pluto_bench.py rx OUT.wav (the flat FM discriminator, 48 kHz, 5 kHz = full scale) -> Hz"""
+    from scipy.io import wavfile
+    fs, x = wavfile.read(path)
+    integer = np.issubdtype(x.dtype, np.integer)
+    x = np.asarray(x, float)
+    if x.ndim > 1:
+        x = x[:, 0]
+    if integer:
+        x = x / 32768.0
+    if fs != 48000:
+        from scipy import signal
+        x = signal.resample_poly(x, 48000, fs)
+    return x * WAV_FULL_DEV
+
+
+def decode_wav(path):
+    """the bench runner returns files up to 20 MB: a capture's .wav (12 MB for 130 s) comes back,
+    its .cf32 (250 MB) stays on hamlet. Tune the Pluto onto the channel (--hz 441850000): the wav
+    is the discriminator about the capture's centre, 8 kHz wide"""
+    disc = read_wav_disc(path)
+    frames = demod(disc)
+    lines = [f"{path}: {len(disc) / 48000:.1f} s of discriminator"]
+    if frames:
+        burst = np.concatenate([disc[int(f["at"] * 48000):int((f["at"] + 0.1) * 48000)] for f in frames])
+        lines.append(f"YSF burst {float(np.mean(burst)):+.0f} Hz from the capture's centre")
+        for r in runs(frames):
+            lines.append(f"run {r[0]['at']:.2f}..{r[-1]['at'] + 0.1:.2f} s: {len(r)} frames")
+    return lines + report(frames, summarize(frames))
+
+
 def decode_capture(cap):
+    if cap.endswith(".wav"):
+        return decode_wav(cap)
     from . import c6phy
     iq, meta = c6phy.read_capture(cap)
     fs = int(meta.get("fs", 240_000))
