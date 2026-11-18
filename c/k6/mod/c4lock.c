@@ -127,8 +127,26 @@ K6_MODULE_NAME(K6_NAME);
 #define PAD_WORDS 1u                                /* 16 outer symbols after the frames */
 #define FIFO_WORDS 120u                             /* run 2: the FIFO holds 120 words */
 #define CAL_WORDS 4u                                /* a calibration packet's payload: 64 symbols */
+#ifndef C4_FIFOPROBE
+#define C4_FIFOPROBE 0      /* 1 (c4fifo.c): no YSF; NP packets timed by the FIFO almost-empty flag */
+#endif
+#if C4_FIFOPROBE
+#define NCAL 1                                      /* (not sent: the cal and fit arrays make room) */
+#define NA 0
+#define GAP_MS 1500u                                /* carrier between the probe packets */
+#define NFIT 2
+#define NP 4                                        /* probe packets */
+#define NM 44                                       /* marks a packet: a refill each */
+#define P_WORDS 128u                                /* REG_5D's longest packet */
+#define P_PRE 40u                                   /* words in the FIFO at the enable */
+#define P_T 16u                                     /* almost-empty threshold, REG_5E<9:3> */
+#define P_CHUNK 2u                                  /* words a refill: a mark every 32 symbols */
+#define IRQ_AE 0x4000
+#else
 #define NCAL 17
-#if C4_DEMO
+#endif
+#if C4_FIFOPROBE
+#elif C4_DEMO
 #define NA 13                                       /* kept: the fit needs them (11-18 ftm3: miss 5 without) */
 #define GAP_MS 1000u                                /* carrier between the demo's transmissions */
 #else
@@ -137,12 +155,20 @@ K6_MODULE_NAME(K6_NAME);
 #endif
 #define A_FIRST (-6)
 #define NB 5
+#if C4_FIFOPROBE
+#define NPKT NP
+#else
 #define NPKT (NCAL + NA + NB)
 #define NFIT 16                                     /* packets in the rate and phase fit */
+#endif
 #define SPAN_FIT 2048                               /* symbols spanned before the rate is fitted */
 #define WR_MAX (SYM * 3u / 4u)                      /* a write longer than this can't keep up */
 #define POLL_MAX (96u * 40000u)                     /* 40 ms of TX-done polling */
+#if C4_FIFOPROBE
+#define TX_MS (C4_LEAD_MS + NP * (400u + GAP_MS) + 400u + ID_UNITS * UNIT_MS + 1500u)
+#else
 #define TX_MS (C4_LEAD_MS + NCAL * 90u + NA * 180u + NB * (490u + GAP_MS) + 400u + ID_UNITS * UNIT_MS + 1500u)
+#endif
 
 #define R_IRQ 0x02
 #define R_STATUS 0x0C
@@ -211,6 +237,13 @@ typedef struct {
   uint32_t settled;
   uint16_t sv[NSAVED];
   uint16_t r40;
+#if C4_FIFOPROBE
+  int16_t pm[NP][NM];       /* mark k less the first and k nominal periods (C4_PPM), 16 cycles */
+  uint32_t px[NP], p0[NP], pe[NP];   /* each packet's enable, first mark and TX done (cycles) */
+  uint16_t pb[NP];          /* the REG_02 bits seen, ORed */
+  uint8_t pn[NP], pbad[NP]; /* marks; flags with neither bit, or a mark past NM */
+  int8_t pr[NP];            /* 0, or -9: a flag never came (the packet stopped) */
+#endif
 } c4_t;
 
 static uint32_t now(clk_t *c) {
@@ -619,6 +652,81 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
   return sent < nw ? -9 : 0;
 }
 
+#if C4_FIFOPROBE
+/* probe packet j: P_WORDS words, P_PRE of them in the FIFO at the enable, the almost-empty flag at
+   P_T words; each flag refills P_CHUNK words, so it comes back every 16 x P_CHUNK chip symbols,
+   on the chip's clock. Polled back to back like done(): each flag's time between the last read
+   that saw REG_0C low and the first that saw it high (a read is 0.56 symbol on the radio, so the
+   polls start at a dithered time and the host's fit averages the brackets). After the last
+   refill only TX done. */
+static int probe(c4_t *s, uint32_t j) {
+  const k6_api_t *api = s->api;
+  uint32_t sent = P_PRE, x, prev, t, lim, i, rl;
+  uint32_t per = mulp(s, 16u * P_CHUNK);
+  int r, n = 0;
+  if ((r = arm(s, P_WORDS, P_PRE, 0, 0, 0)) != 0) return r;
+  api->fd_write(R_IRQ_EN, IRQ_TX_DONE | IRQ_AE);
+  x = now(&s->c) + s->len + 96u * 50u;
+  timed(s, x, R_CTRL, CTRL_BASE | CTRL_TX_EN);
+  s->px[j] = x;
+  s->pn[j] = s->pbad[j] = 0;
+  s->pb[j] = 0;
+  s->pr[j] = -9;
+  s->p0[j] = s->pe[j] = x;
+  lim = x + mulp(s, LEAD_SYMS + 16u * (P_PRE - P_T) + 64u);
+  rl = s->len;                          /* a poll's length, until one is timed */
+  prev = now(&s->c);
+  for (;;) {
+    t = now(&s->c);
+    if (t - prev > s->rmax) s->rmax = t - prev;
+    if (api->fd_read(R_STATUS) & 1) {
+      uint32_t mk = prev + ((t - prev) >> 1);
+      uint16_t b;
+      api->fd_write(R_IRQ, 0);
+      b = api->fd_read(R_IRQ);
+      s->pb[j] |= b;
+      if (sent < P_WORDS && !(b & IRQ_TX_DONE)) {
+        for (i = 0; i < P_CHUNK && sent < P_WORDS; i++, sent++)
+          api->fd_write(R_FIFO, fword(0, 0, sent & 15u));
+        if (sent >= P_WORDS) api->fd_write(R_IRQ_EN, IRQ_TX_DONE);
+        api->fd_write(R_IRQ, 0);          /* a flag that came back before the refill */
+      }
+      if (b & IRQ_TX_DONE) {
+        s->pe[j] = mk;
+        s->pr[j] = 0;
+        break;
+      }
+      if (!(b & IRQ_AE) || n >= NM) {
+        s->pbad[j]++;
+      } else {
+        int32_t d;
+        if (!n) s->p0[j] = mk;
+        d = (int32_t)(mk - s->p0[j] - mulp(s, 16u * P_CHUNK * (uint32_t)n)) >> 4;
+        s->pm[j][n] = (int16_t)(d > 32767 ? 32767 : d < -32768 ? -32768 : d);
+        n++;
+        s->pn[j] = (uint8_t)n;
+      }
+      lim = mk + (sent < P_WORDS ? 2u * per : mulp(s, 16u * (P_T + P_CHUNK) + 64u));
+      if (sent < P_WORDS) {
+        /* the next flag's polls start 2 to 3 reads early, by eighths of a read in a scrambled
+           turn: a fixed start would bracket every flag at the same phase (the refill takes the
+           same time each), and the fit would keep that bias instead of averaging it away */
+        uint32_t ahead = 3u * rl - (((uint32_t)n * 5u & 7u) * rl >> 3);
+        if ((int32_t)(mk + per - ahead - now(&s->c)) > 0) wait_to(api, &s->c, mk + per - ahead);
+      }
+      prev = now(&s->c);
+      continue;
+    }
+    rl = t - prev;
+    prev = t;
+    if ((int32_t)(t - lim) > 0) break;
+  }
+  api->fd_write(R_IRQ, 0);
+  api->fd_write(R_CTRL, CTRL_BASE);
+  return keyed(api);
+}
+#endif
+
 /* every packet in turn: 0, or a negative error */
 static int burst(c4_t *s) {
   const k6_api_t *api = s->api;
@@ -640,6 +748,18 @@ static int burst(c4_t *s) {
   }
   s->wmin = s->wmax = s->len;
   if (s->len > WR_MAX) return -8;
+#if C4_FIFOPROBE
+  {
+    uint16_t v5e = api->fd_read(0x5E);
+    api->fd_write(0x5E, (uint16_t)((v5e & ~0x03F8u) | (P_T << 3)));
+  }
+  for (k = 0; k < NP; k++) {
+    if (api->key_down()) return -4;
+    if (k && (r = until(api, api->ms() + GAP_MS)) != 0) return r;
+    if ((r = probe(s, k)) != 0) return r;
+  }
+  return 0;
+#endif
   for (k = 0; k < NCAL; k++) {
     if (api->key_down()) return -4;
     if ((r = cal(s, k)) != 0) return r;
@@ -717,6 +837,46 @@ static void report(c4_t *s, int cal_done, char *line) {
     *p = 0;
     api->say(line);
   }
+#if C4_FIFOPROBE
+  for (i = 0; i < NP; i++) {
+    int k;
+    p = put(line, "c4fifo p=");
+    p = dec(p, (uint32_t)i);
+    p = put(p, " x=");
+    p = dec(p, s->px[i]);
+    p = put(p, " m0=");
+    p = sdec(p, (int32_t)(s->p0[i] - s->px[i]));
+    p = put(p, " e=");
+    p = sdec(p, (int32_t)(s->pe[i] - s->px[i]));
+    *p = 0;
+    api->say(line);
+    p = put(line, "c4fifo p=");
+    p = dec(p, (uint32_t)i);
+    p = put(p, " n=");
+    p = dec(p, s->pn[i]);
+    p = put(p, " bad=");
+    p = dec(p, s->pbad[i]);
+    p = put(p, " b=");
+    p = dec(p, s->pb[i]);
+    p = put(p, " r=");
+    p = sdec(p, s->pr[i]);
+    *p = 0;
+    api->say(line);
+    for (k = 0; k < s->pn[i]; k += 7) {   /* 7 a line: "c4fifo d3.42" and 7 x " -32768" fit the 60-char say */
+      int m;
+      p = put(line, "c4fifo d");
+      p = dec(p, (uint32_t)i);
+      p = put(p, ".");
+      p = dec(p, (uint32_t)k);
+      for (m = k; m < k + 7 && m < s->pn[i]; m++) {
+        *p++ = ' ';
+        p = sdec(p, s->pm[i][m]);
+      }
+      *p = 0;
+      api->say(line);
+    }
+  }
+#endif
   p = put(line, "c4lock w=");
   p = dec(p, s->w);
   p = put(p, " late=");

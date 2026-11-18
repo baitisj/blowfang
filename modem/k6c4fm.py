@@ -19,6 +19,7 @@ All bit arrays are numpy int8 arrays of 0/1, most significant bit first.
 SPDX-License-Identifier: MIT
 """
 import argparse
+import re
 import sys
 
 import os
@@ -548,6 +549,64 @@ def ysf_packet(pay, frame):
     return {"sym_err": err, "levels": means, "fich": fich, "decode": dec, "text": text}
 
 
+FIFO_PPM = -630                     # c4fifo.c's nominal (c4lock's C4_PPM)
+FIFO_MARK_SYMS = 32                 # its marks: 2 words a refill
+
+
+def fifo(lines):
+    """c4fifo's say lines -> per packet {x, m0, e, n, bad, b, r, d (16-cycle units)} plus the fit:
+    ppm (chip symbol against the MCU's 20000 cycles, as c4lock's fit), res (worst residual, % of a
+    symbol), bend (each third's own rate less the whole packet's, ppm)"""
+    pk = {}
+    for ln in lines:
+        m = re.search(r"c4fifo p=(\d+) x=(\d+) m0=(-?\d+) e=(-?\d+)", ln)
+        if m:
+            pk[int(m.group(1))] = dict(zip(("x", "m0", "e"), map(int, m.groups()[1:])), d=[])
+            continue
+        m = re.search(r"c4fifo p=(\d+) n=(\d+) bad=(\d+) b=(\d+) r=(-?\d+)", ln)
+        if m and int(m.group(1)) in pk:
+            pk[int(m.group(1))].update(zip(("n", "bad", "b", "r"), map(int, m.groups()[1:])))
+            continue
+        m = re.search(r"c4fifo d(\d+)\.(\d+)((?: -?\d+)+)", ln)
+        if m and int(m.group(1)) in pk:
+            p = pk[int(m.group(1))]
+            if len(p["d"]) == int(m.group(2)):
+                p["d"] += [int(v) for v in m.group(3).split()]
+    sym0 = 20000 * (1 + FIFO_PPM * 1e-6)
+    per0 = FIFO_MARK_SYMS * sym0
+    for p in pk.values():
+        d = np.array(p["d"], float) * 16
+        if len(d) < 4:
+            continue
+        k = np.arange(len(d))
+        a, b0 = np.polyfit(k, d, 1)
+        p["ppm"] = FIFO_PPM + a / per0 * 1e6
+        p["res"] = float(np.max(np.abs(d - (a * k + b0)))) / sym0 * 100
+        thirds = np.array_split(k, 3)
+        p["bend"] = [float(np.polyfit(t, d[t], 1)[0] - a) / per0 * 1e6 for t in thirds if len(t) >= 3]
+        p["rms"] = float(np.std(d - (a * k + b0))) / sym0 * 100
+        p["tail"] = (p["e"] - p["m0"] - (len(d) - 1) * per0 - d[-1]) / sym0     # TX done after the last mark
+    return pk
+
+
+def fifo_text(pk):
+    out = []
+    for j in sorted(pk):
+        p = pk[j]
+        head = (f"p{j}: {p['n']} marks, first {p['m0'] / 96e3:.2f} ms after the enable, done "
+                f"{p['e'] / 96e3:.1f} ms, REG_02 bits {p['b']:#06x}, bad {p['bad']}, r {p['r']}")
+        if "ppm" in p:
+            head += (f"; rate {p['ppm']:+.0f} ppm, worst residual {p['res']:.0f}% (rms {p['rms']:.0f}%) of a "
+                     f"symbol, thirds " + " ".join(f"{b:+.0f}" for b in p["bend"]) + " ppm, done "
+                     f"{p['tail']:.2f} symbols after the last mark")
+        out.append(head)
+    xs = [(pk[j]["x"] + pk[j]["m0"]) / 96e6 for j in sorted(pk) if "ppm" in pk[j]]
+    if len(xs) > 1:
+        out.append("packet rates over time: " + ", ".join(f"{t - xs[0]:.1f} s {pk[j]['ppm']:+.0f}"
+                                                         for t, j in zip(xs, sorted(j for j in pk if "ppm" in pk[j]))))
+    return out
+
+
 def read_wav(path):
     return ysf.read_wav_disc(path)
 
@@ -569,6 +628,8 @@ def main(argv=None):
     an.add_argument("cap")
     an.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo", "sotto"), default="probe",
                     help="probe: c4probe.c (run 1); ysf: c4ysf.c (run 2); lock: c4lock.c (run 4 on); lock3: run 3; demo: c4ftm.c")
+    fi = sub.add_parser("fifo", help="c4fifo.c's marks from a K6 log: the MCU's rate against the chip per packet")
+    fi.add_argument("log")
     a = ap.parse_args(argv)
     if a.cmd == "header":
         header(a.out)
@@ -592,6 +653,8 @@ def main(argv=None):
     elif a.cmd == "sim":
         d = simulate(a.delay_us, noise_hz=a.noise_hz, latched=a.latched, plan=a.plan)
         print("\n".join(analyze(d, plan=a.plan)[0]))
+    elif a.cmd == "fifo":
+        print("\n".join(fifo_text(fifo(open(a.log, errors="replace")))))
     elif a.cmd == "analyze":
         print("\n".join(analyze(read_wav(a.cap), plan=a.plan)[0]))
 

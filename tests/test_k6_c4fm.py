@@ -310,6 +310,7 @@ def test_ysf_module_sends_whole_transmissions():
 LOCK_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4lock.c")
 FTM_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4ftm.c")
 SOTTO_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4sotto.c")
+FIFO_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4fifo.c")
 LOCK_GAIN = define("C4_GAIN", LOCK_SRC)
 
 
@@ -467,3 +468,83 @@ def test_sotto_demo_carries_the_clip():
     data = b"".join(f["dch"][0] + f["dch"][1] for f in res["plain"]["list"]
                     if f["fich"] is not None and f["fich"].dt == ysf.DT_DATA_FR and f["fich"].fi == ysf.FI_COMMS)
     assert data == open(k6c4fm.SOTTO_BIT, "rb").read()
+
+
+# ---------------------------------------------------------------- c4fifo (the timing probe)
+class FskFifo(FskGrid):
+    """FskGrid with the FIFO's level: word j leaves at its first symbol (the packet's start, the
+    lead, then 16 symbols a word); the almost-empty flag (REG_3F bit 14) is up while the level is
+    at or under REG_5E<9:3>, live; TX done latches until a REG_02 write after it; a REG_02 read
+    gives both bits"""
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.irq_en, self.thr, self.acked = 0, 64, False
+
+    def _ae(self, us):
+        if not self.pkts or not self.irq_en & 0x4000 or not self.ctrl & 0x0800 or "t_start" not in self.pkts[-1]:
+            return False
+        p = self.pkts[-1]
+        if self.done is not None and us >= self.done:
+            return False
+        k = (us - p["t_start"]) / self.ts - k6c4fm.LEAD_SYMS
+        gone = 0 if k < 0 else min(len(p["words"]), int(k // 16) + 1)
+        return len(p["words"]) - gone <= self.thr
+
+    def _done(self, us):
+        return self.done is not None and us >= self.done
+
+    def read(self, reg, us):
+        if reg == 0x0C:
+            return int((self._done(us) and not self.acked) or self._ae(us))
+        if reg == 0x02:
+            return (0x8000 if self._done(us) else 0) | (0x4000 if self._ae(us) else 0)
+        return None
+
+    def write(self, reg, v, us):
+        if reg == 0x02:
+            if self._done(us):
+                self.acked = True
+            return
+        if reg == 0x3F:
+            self.irq_en = v
+        elif reg == 0x5E:
+            self.thr = (v >> 3) & 0x7F
+        elif reg == 0x5F and self.ctrl & 0x0800:
+            p = self.pkts[-1]
+            due = p["t_start"] + (k6c4fm.LEAD_SYMS + 16 * len(p["words"])) * self.ts
+            if us > due:
+                p.setdefault("under", []).append(len(p["words"]))
+        if reg == 0x59 and v & 0x0800 and not self.ctrl & 0x0800:
+            self.acked = False
+        super().write(reg, v, us)
+
+
+@need_clang
+@pytest.mark.parametrize("ppm", [-851.0, -524.0])
+def test_fifo_probe_measures_the_rate(ppm):
+    """c4fifo: four 128-word packets, the FIFO refilled 2 words on each almost-empty flag (no
+    underrun), 44 marks each 32 symbols apart; the host fit gives the chip's rate, a straight line"""
+    pytest.importorskip("unicorn")
+    mmio, rcc, tim = k6_clock()
+    tx, fsk = {}, FskFifo(ppm, 0.4, 0.3, 0.6, 0.0)
+    ret, said, regs, _ = run(REGS, src=FIFO_SRC, level=3, tx=tx, mmio=mmio, write_us=117, fsk=fsk,
+                             count=2_000_000_000)
+    assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1
+    assert ret == 4, said
+    assert [len(p["words"]) for p in fsk.pkts] == [128] * 4
+    assert not any(p.get("under") for p in fsk.pkts), [p.get("under") for p in fsk.pkts]
+    t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
+    assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS | {0x5E}
+    assert (t_off - t_on) / 1000 < tx["log"][0][1] <= 120_000
+    assert regs[0x5E] == REGS.get(0x5E, 0) and regs[0x3F] == REGS[0x3F]
+    pk = k6c4fm.fifo(said)
+    assert sorted(pk) == [0, 1, 2, 3], said
+    for p in pk.values():
+        assert p["n"] == 44 and p["bad"] == 0 and p["r"] == 0 and p["b"] == 0xC000, p
+        assert len(p["d"]) == 44
+        # the polls bracket each flag within one read (117 us, 0.56 symbol)
+        assert p["ppm"] == pytest.approx(ppm, abs=60), p
+        assert p["res"] < 40, p
+    lines = k6c4fm.fifo_text(pk)
+    assert len(lines) == 5 and lines[-1].startswith("packet rates over time: 0.0 s")
