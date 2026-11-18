@@ -16,12 +16,13 @@ sys.path.insert(0, ROOT)
 from modem import k6c4fm, ysf  # noqa: E402
 
 SRC = os.path.join(ROOT, "c", "k6", "mod", "c4probe.c")
+YSF_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4ysf.c")
 HDR = os.path.join(ROOT, "c", "k6", "mod", "c4probe_frames.h")
 SYM_NS = 1e9 / k6c4fm.BAUD
 
 
-def define(name):
-    m = re.search(rf"#define {name} \(?(-?\d+)\)?", open(SRC).read())
+def define(name, src=SRC):
+    m = re.search(rf"#define {name} \(?(-?\d+)\)?", open(src).read())
     return int(m.group(1))
 
 
@@ -87,6 +88,7 @@ class FskTx:
 
     def __init__(self):
         self.fifo, self.pkts, self.done, self.ctrl = [], [], None, 0
+        self.len5d = (k6c4fm.PKT_BYTES - 1) << 8
 
     def read(self, reg, us):
         if reg == 0x0C:
@@ -98,11 +100,20 @@ class FskTx:
             if v & 0xC000:
                 self.fifo = []
             if v & 0x0800 and not self.ctrl & 0x0800:
-                self.pkts.append({"words": list(self.fifo)})
-                self.done = us + (k6c4fm.LEAD_SYMS + k6c4fm.PKT_SYMS) * SYM_NS / 1000 + 300
+                nsym = ((self.len5d >> 8) + 1) * 8
+                self.pkts.append({"words": list(self.fifo), "pre": len(self.fifo), "late": [],
+                                  "t_en": us})
+                self.done = us + (k6c4fm.LEAD_SYMS + nsym) * SYM_NS / 1000 + 300
             self.ctrl = v
         elif reg == 0x5F:
-            self.fifo.append(v)
+            if self.ctrl & 0x0800:                  # written while it sends: when, which word
+                p = self.pkts[-1]
+                p["late"].append((us, len(p["words"])))
+                p["words"].append(v)
+            else:
+                self.fifo.append(v)
+        elif reg == 0x5D:
+            self.len5d = v
         elif reg == 0x02:
             self.done = None
 
@@ -126,18 +137,18 @@ REGS = {0x40: 0x3060, 0x2B: 0xC000, 0x58: 0x3F01, 0x59: 0x10F8, 0x72: 0x4898, 0x
 KEYED_REGS = {0x02, 0x2B, 0x3F, 0x40, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5F, 0x70, 0x71, 0x72}
 
 
-def send(write_us=94, **kw):
+def send(write_us=94, src=SRC, **kw):
     mmio, rcc, tim = k6_clock()
     tx, fsk = kw.pop("tx", {}), FskTx()
     regs0 = {**REGS, **kw.pop("regs", {})}
-    ret, said, regs, _ = run(regs0, src=SRC, level=kw.pop("level", 3), tx=tx, mmio=mmio,
+    ret, said, regs, _ = run(regs0, src=src, level=kw.pop("level", 3), tx=tx, mmio=mmio,
                              write_us=write_us, fsk=fsk, count=2_000_000_000, **kw)
     assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1          # TIM17 and its clock put back
     ev = [(ns, r, v) for (r, v, _), ns in zip(tx.get("w", []), tx.get("w_ns", []))]
     return ret, said, regs, tx, fsk, ev
 
 
-def air(ev, fsk, fs=48000):
+def air(ev, fsk, fs=48000, lag_ns=0.0):
     """the discriminator (in units of the outer level x 2700 Hz) the writes make: each packet's
     symbols from its FIFO words at 4800 baud from its enable, each symbol's size from REG_70's
     gain in force at its middle (REG_40 likewise for P2), the chip's latency 0"""
@@ -152,6 +163,7 @@ def air(ev, fsk, fs=48000):
     v40 = np.array([b for _, b in g40]) if g40 else np.array([0x60])
     r40 = REGS[0x40] & 0xFF
     for t0, p in zip(en, fsk.pkts):
+        t0 = t0 + lag_ns
         b = np.unpackbits(np.array([[w & 0xFF, w >> 8] for w in p["words"]], np.uint8).reshape(-1))
         chip = np.concatenate([np.arange(k6c4fm.LEAD_SYMS) % 2, b])
         for k, c in enumerate(chip):
@@ -256,3 +268,38 @@ def test_every_way_out_keys_down():
     ret, said, regs, tx, fsk, ev = send(keys=((t_key, t_key + 5_000_000),))
     assert ret == -4 and tx["log"][-1][0] == "tx_off" and tx["log"][-1][2] < t_key + 250_000
     assert regs[0x70] == 0 and regs[0x40] == REGS[0x40]
+
+
+# ---------------------------------------------------------------- c4ysf (run 2)
+def test_ysf_module_matches_host():
+    assert define("C4_OFF", YSF_SRC) == k6c4fm.YSF_OFF
+
+
+@need_clang
+def test_ysf_module_sends_whole_transmissions():
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send(src=YSF_SRC, write_us=117)
+    assert ret == 7, said
+    assert said[0] == "c4ysf n=7 g=78/27 off=7 pa=0 rx=440850000"
+    m = re.match(r"c4ysf w=(\d+) f=(\d+) late=(\d+)", said[2])
+    assert m and int(m.group(3)) == 0, said
+    assert int(m.group(2)) == (120 - 64) + (120 - 32)     # B2's and B3's words written while sending
+    assert [p["pre"] for p in fsk.pkts] == [30, 30, 30, 30, 120, 64, 32]
+    assert all(len(p["words"]) == 30 for p in fsk.pkts[:4])
+    assert all(len(p["words"]) == 120 for p in fsk.pkts[4:])
+    t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
+    assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS
+    for p in fsk.pkts[5:]:
+        for us, j in p["late"]:
+            # the chip takes word j at payload symbol 16 j (lagging 1.75 symbols): in well before,
+            # and never more than pre words in the FIFO
+            need = p["t_en"] + (k6c4fm.LEAD_SYMS + 16 * j) * SYM_NS / 1000
+            assert us < need - 16 * SYM_NS / 1000, (j, us, need)
+            taken = max(0, int((us - p["t_en"]) * 1000 / SYM_NS) - k6c4fm.LEAD_SYMS) // 16
+            assert j - taken <= p["pre"]
+    lines, res = k6c4fm.analyze(air(ev, fsk, lag_ns=1.75 * SYM_NS), plan="ysf")
+    for n in ("A0", "A1", "A2", "A3"):
+        assert res[n]["fich"] and res[n]["sym_err"] == 0, "\n".join(lines)
+    for n in ("B1", "B2", "B3"):
+        assert res[n]["fich_n"] == 4 and res[n]["sym_err"] == 0, "\n".join(lines)
+    assert res["plain"]["runs"] == [4, 4, 4], "\n".join(lines)

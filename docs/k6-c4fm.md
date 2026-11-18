@@ -89,6 +89,19 @@ Next: centre the capture on the K6 (440.8505), set gain about 74 and inner about
 offset +7/4 the default. Then a continuous YSF transmission (header, comms frames, terminator back to
 back), with FIFO refills in symbols that need no size write, so a real C4FM radio can decode it.
 
+## Run 2 (c/k6/mod/c4ysf.c): whole transmissions
+
+This run uses run 1's numbers: gain 78 for ±2.7 kHz, inner 27 for ±0.9 kHz, and size writes +7/4
+symbols late. It sends four single-frame packets (A0-A3). Then it sends the whole transmission back
+to back in one 240-byte packet (B1-B3): header, data FN 0, FN 1, terminator. B1 preloads all 120 FIFO
+words. B2 and B3 preload 64 and 32 words, then write the rest as the chip takes them. Each refill goes
+in a symbol whose edge, and the next one's, needs no size write. A 117 µs write then ends before the
+next size write must start. These packets answer the FIFO's size, and whether timed refills keep a
+long packet whole. A long packet is what a C4FM radio needs, with frames every 100 ms and no gaps.
+`analyze --plan ysf` also runs the plain YSF receiver (modem.ysf.demod: RRC, sync search, 100 ms runs)
+over the capture. In the emulator, with the chip lagging 1.75 symbols, every frame decodes and the plain
+receiver finds three 4-frame runs.
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto

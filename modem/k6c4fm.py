@@ -88,10 +88,26 @@ def split(dibits):
     return (1 - d[:, 0]).astype(np.int8), d[:, 1].astype(np.int8)
 
 
-def packets():
-    """every packet in send order: dicts name, chip (the 480 FIFO bits), size (480: 1 outer, 0
-    inner, None = all outer), mode ('none', 'gain', 'dev', 'size'), off (quarter symbols), frame
-    (YSF frame index), r2b (P4)"""
+YSF_OFF = 7                         # c4ysf.c's C4_OFF: run 1's best write timing (quarter symbols)
+YSF_PRE = (120, 64, 32)             # c4ysf.c's B1..B3: FIFO words written before the enable
+
+
+def packets(plan="probe"):
+    """every packet in send order: dicts name, chip (the FIFO bits: 480 a frame), size (1 outer,
+    0 inner, None = all outer), mode ('none', 'gain', 'dev', 'size'), off (quarter symbols),
+    frames (YSF frame indices, one per 480 symbols), r2b (P4), pre (FIFO words first).
+    plan 'probe': c4probe.c's (run 1); 'ysf': c4ysf.c's (run 2)"""
+    fr = ysf_frames()
+    if plan == "ysf":
+        out = []
+        for i in range(4):
+            c, sz = split(fr[i])
+            out.append(dict(name=f"A{i}", chip=c, size=sz, mode="size", off=YSF_OFF, frames=[i]))
+        c, sz = split(np.concatenate(fr))
+        for j, pre in enumerate(YSF_PRE):
+            out.append(dict(name=f"B{j + 1}", chip=c, size=sz, mode="size", off=YSF_OFF,
+                            frames=[0, 1, 2, 3], pre=pre))
+        return out
     out = [dict(name="P0", chip=pn_signs(), mode="none"),
            dict(name="P1", chip=pn_signs(), mode="gain"),
            dict(name="P2", chip=pn_signs(), mode="dev"),
@@ -99,10 +115,9 @@ def packets():
            dict(name="P4", chip=run_signs(), mode="none", r2b=True)]
     c, _ = split(dmr_dibits())
     out.append(dict(name="P5", chip=c, mode="none"))
-    fr = ysf_frames()
     for i, off in enumerate(OFFSETS):
         c, s = split(fr[i % 4])
-        out.append(dict(name=f"Y{i:02d}", chip=c, size=s, mode="size", off=off, frame=i % 4))
+        out.append(dict(name=f"Y{i:02d}", chip=c, size=s, mode="size", off=off, frames=[i % 4]))
     return out
 
 
@@ -146,7 +161,7 @@ def packet_levels(p, delay_q=0.0, latched=False, inner_share=None, dev_gain=None
     them). latched: the gain is read once per packet (the changes do nothing)"""
     q = 4
     inner_share = INNER / GAIN if inner_share is None else inner_share
-    n = LEAD_SYMS + PKT_SYMS
+    n = LEAD_SYMS + len(p["chip"])
     chip = np.concatenate([np.arange(LEAD_SYMS) % 2, p["chip"]]).astype(float)
     sign = np.repeat(2 * chip - 1, q)
     size = np.ones(n * q)
@@ -172,14 +187,14 @@ def packet_levels(p, delay_q=0.0, latched=False, inner_share=None, dev_gain=None
 
 
 def simulate(delay_us=0.0, outer_hz=1944.0 * 1.39, noise_hz=0.0, latched=False, fs=48000, seed=1,
-             lpf_hz=3500.0, droop_tau=None, dev_live=True):
+             lpf_hz=3500.0, droop_tau=None, dev_live=True, plan="probe"):
     """the Pluto's discriminator (Hz) for the whole run: lead, packets with gaps, no ID.
     delay_us: where the size changes land, late against the module's aim (chip latency)"""
     from scipy import signal
     rng = np.random.default_rng(seed)
     q = 4
     out = [np.zeros(int(0.3 * fs))]
-    for p in packets():
+    for p in packets(plan):
         lv = packet_levels(p, delay_q=delay_us * BAUD * q / 1e6, latched=latched,
                            dev_gain=None if dev_live else [1.0] * len(STEPS))
         x = np.interp(np.arange(int(len(lv) / (BAUD * q) * fs)) * BAUD * q / fs, np.arange(len(lv)), lv)
@@ -257,9 +272,9 @@ def locate(v, chip):
     return best[1], best[2], best[0]
 
 
-def analyze(disc, fs=48000):
+def analyze(disc, fs=48000, plan="probe"):
     """the whole run -> (report lines, results by packet name)"""
-    pk = packets()
+    pk = packets(plan)
     segs = segments(disc, fs)
     lines = [f"{len(disc) / fs:.1f} s of discriminator, {len(segs)} packet-length bursts "
              f"(want {len(pk)})"]
@@ -271,6 +286,7 @@ def analyze(disc, fs=48000):
         while si < len(segs):
             a, b = segs[si]
             si += 1
+            b = min(len(disc), a + int((LEAD_SYMS + len(p["chip"]) + 3) / BAUD * fs))
             v, _ = symbols(disc, a, b, fs)
             k, pol, corr = locate(v, p["chip"])
             if corr >= 0.6:
@@ -278,9 +294,10 @@ def analyze(disc, fs=48000):
         else:
             lines.append(f"{p['name']}: not found")
             continue
-        pay = pol * v[k:k + PKT_SYMS]
+        nsym = len(p["chip"])
+        pay = pol * v[k:k + nsym]
         r = {"t": a / fs, "ms": (b - a) / fs * 1e3, "corr": corr, "pol": pol, "start": k}
-        if len(pay) < PKT_SYMS:
+        if len(pay) < nsym:
             lines.append(f"{p['name']}: short ({len(pay)} symbols)")
             res[p["name"]] = r
             continue
@@ -324,9 +341,18 @@ def analyze(disc, fs=48000):
             r["dmr_syncs"] = hits
             r["outer_hz"] = float(np.median(mag))
             lines.append(f"{p['name']}: DMR syncs at {hits} (want 54 198 342), outer {r['outer_hz']:.0f} Hz")
-        elif p["mode"] == "size":
-            r.update(ysf_packet(pay, p))
+        elif p["mode"] == "size" and len(p["frames"]) == 1:
+            r.update(ysf_packet(pay, p["frames"][0]))
             lines.append(f"{p['name']} off {p['off']:+d}/4: " + r["text"])
+        elif p["mode"] == "size":
+            subs = [ysf_packet(pay[j * PKT_SYMS:(j + 1) * PKT_SYMS], f) for j, f in enumerate(p["frames"])]
+            r["frames"] = subs
+            r["sym_err"] = sum(x["sym_err"] for x in subs)
+            r["fich_n"] = sum(x["fich"] for x in subs)
+            lines.append(f"{p['name']} ({p.get('pre')} words first): {r['fich_n']} of {len(subs)} frames "
+                         f"with a good FICH, {r['sym_err']} of {nsym} symbols wrong")
+            for j, x in enumerate(subs):
+                lines.append(f"  frame {j}: " + x["text"])
         else:
             r["outer_hz"] = float(np.median(mag))
             r["eye"] = float(np.std(mag) / np.mean(mag))
@@ -334,18 +360,26 @@ def analyze(disc, fs=48000):
                          f"{r['sign_err']} sign errors, {r['ms']:.1f} ms burst (want "
                          f"{(LEAD_SYMS + PKT_SYMS) / BAUD * 1e3:.1f})")
         res[p["name"]] = r
-    ys = [(n, r) for n, r in res.items() if n.startswith("Y") and "sym_err" in r]
+    ys = [(n, r) for n, r in res.items() if n[0] in "YA" and "sym_err" in r]
     if ys:
         best = min(ys, key=lambda x: x[1]["sym_err"])
         good = [n for n, r in ys if r.get("fich")]
         lines.append(f"YSF: {len(good)} of {len(ys)} frames with a good FICH; best timing {best[0]} "
                      f"({best[1]['sym_err']} of {PKT_SYMS} symbols wrong)")
+    if plan == "ysf":
+        # as a plain C4FM receiver sees it: RRC filter, sync search, frames in 100 ms runs
+        fr = ysf.demod(disc - np.median(disc), fs) + ysf.demod(np.median(disc) - disc, fs)
+        rn = ysf.runs(fr)
+        lines.append(f"plain YSF receiver (modem.ysf.demod, either polarity): {len(fr)} frames in "
+                     f"{len(rn)} runs, {sum(f['fich'] is not None for f in fr)} with a good FICH")
+        res["plain"] = {"frames": len(fr), "runs": [len(x) for x in rn],
+                        "fich": sum(f["fich"] is not None for f in fr)}
     return lines, res
 
 
-def ysf_packet(pay, p):
-    """a YSF packet's payload symbols (polarity fixed, Hz) -> symbol errors, levels, decode"""
-    fr = ysf_frames()[p["frame"]]
+def ysf_packet(pay, frame):
+    """one YSF frame's symbols (polarity fixed, Hz) -> symbol errors, levels, decode"""
+    fr = ysf_frames()[frame]
     lv_want = ysf.bits_to_levels(fr)
     g = float(pay[:20] @ ysf.SYNC_LEVELS) / float(ysf.SYNC_LEVELS @ ysf.SYNC_LEVELS)
     if g <= 0:
@@ -379,17 +413,25 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     h = sub.add_parser("header")
     h.add_argument("out")
-    sub.add_parser("plan")
+    pl = sub.add_parser("plan")
+    pl.add_argument("--plan", choices=("probe", "ysf"), default="probe")
     s = sub.add_parser("sim")
+    s.add_argument("--plan", choices=("probe", "ysf"), default="probe")
     s.add_argument("--delay-us", type=float, default=0.0)
     s.add_argument("--noise-hz", type=float, default=0.0)
     s.add_argument("--latched", action="store_true")
     an = sub.add_parser("analyze")
     an.add_argument("cap")
+    an.add_argument("--plan", choices=("probe", "ysf"), default="probe",
+                    help="probe: c4probe.c (run 1); ysf: c4ysf.c (run 2)")
     a = ap.parse_args(argv)
     if a.cmd == "header":
         header(a.out)
         print(f"wrote {a.out}")
+    elif a.cmd == "plan" and a.plan == "ysf":
+        for p in packets("ysf"):
+            print(f"{p['name']}: frames {p['frames']}, {len(p['chip'])} symbols"
+                  + (f", {p['pre']} FIFO words first" if "pre" in p else ""))
     elif a.cmd == "plan":
         pk = packets()
         t = 0.3 + len(pk) * ((LEAD_SYMS + PKT_SYMS) / BAUD + GAP_S)
@@ -402,10 +444,10 @@ def main(argv=None):
             d = ysf.decode_frame(1.0 - 2.0 * f)
             print(f"frame {i}: {d['fich']!r} {d.get('csd') or d.get('dch')!r}"[:110])
     elif a.cmd == "sim":
-        d = simulate(a.delay_us, noise_hz=a.noise_hz, latched=a.latched)
-        print("\n".join(analyze(d)[0]))
+        d = simulate(a.delay_us, noise_hz=a.noise_hz, latched=a.latched, plan=a.plan)
+        print("\n".join(analyze(d, plan=a.plan)[0]))
     elif a.cmd == "analyze":
-        print("\n".join(analyze(read_wav(a.cap))[0]))
+        print("\n".join(analyze(read_wav(a.cap), plan=a.plan)[0]))
 
 
 if __name__ == "__main__":

@@ -28,9 +28,9 @@ INTERACTIVE = {
     "gw.c",
     "morse.c",
 }
-# c4probe.c keys the chip's FSK modem (its registers change while keyed) and waits for the bench
+# c4probe.c and c4ysf.c key the chip's FSK modem (its registers change while keyed) and waits for the bench
 # job's trigger carrier: tests/test_k6_c4fm.py checks the same rules with a modelled FSK transmitter
-FSK_TX = {"c4probe.c"}
+FSK_TX = {"c4probe.c", "c4ysf.c"}
 # dogtx.c tests the core's stuck key-up backstop: it hangs keyed on purpose (PA off), bench only
 BACKSTOP = {"dogtx.c"}
 MODS = sorted(p for p in glob.glob(os.path.join(ROOT, "c", "k6", "mod", "*.c"))
