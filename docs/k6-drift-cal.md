@@ -116,7 +116,12 @@ residual of -25.8 Hz, and refcal said `ppb=+251 n=1 k=+1 t=30039 dry`. The Pluto
 module started 0.2 s before the upload audio ended and took 9.4 s; the 60 s tail had 48 s to spare.
 The off-air run's 3.1 kHz at 470 MHz was the narrow filter too, not the crystal.
 
-### Overnight relay (2026-11-17 09:10-17:25Z, every 45 min, 12 of 12)
+### Overnight relay (2026-11-17 09:10-17:25Z, every 45 min, 12 of 12): WITHDRAWN
+
+These reads are not the crystal. Their IF spreads (450-770 Hz) show refcal measured a keyed or
+modulated signal, not the steady tail; the clean series of 2026-11-18 (below) has spreads of 7-12
+Hz and puts the crystal at +0.054 ppm, which agrees with the 06:18Z read here (-0.066 ppm, spreads
+150-240 Hz) that this table called an outlier. Kept for the record.
 
 | UTC | refcal ppb | Pluto ppm | K6 ppm | t | v |
 |---|---|---|---|---|---|
@@ -170,3 +175,40 @@ again. REFCAL_WAIT keeps gp0dma's wait for the upload's carrier to go, then wait
 the tail (15 dB over the floor between them). With REFCAL_HZ the one reference is read
 REFCAL_NREF (4) times at the null, so `refcal ppb=` is the median of 4 reads. The K6's error is
 that ppb less the Pluto's own error from the pilots, as before.
+
+The first runs this way (2026-11-18 00:20-02:47Z) still measured the wrong thing: gp0dma's
+`carrier()` fired on the MCW ID that k6_upload has the Pluto send about 26 s after the upload,
+and the scan then caught the ID or the gap before the tail (-100 to -127 dBm against -65 that the
+pager heard; IF spreads 400-700 Hz; twice no reference). PR #180 replaced it with `steady()`: a
+carrier 15 dB over the floor without a break for REFCAL_HOLD_MS (2 s), then REFCAL_SETTLE_MS
+(0.5 s). The job also reads the pilots (RF 14 and 35, 0.5 s each) before the wake, between the
+upload and the tail, and after the tail; the Pluto's error during the tail is the mean of the
+middle and after reads (it warms 0.1-0.2 ppm over the run). A pilot reading more than 0.3 ppm
+from the others is dropped (RF 35 faded at 14:15Z). The runner's own `repeat` reuses the first
+run's `run:` folder, so the series is separate jobs with `not_before` times.
+
+### Clean series (2026-11-18 05:16-15:00Z, every 45 min, 14 of 14)
+
+| UTC | refcal ppb (4 reads) | Pluto ppm | K6 ppm | t | IF spread Hz |
+|---|---|---|---|---|---|
+| 05:16 | +341 (337..358) | +0.304 | +0.037 | 29950 | 9 |
+| 06:01 | +779 (767..786) | +0.713 | +0.066 | 29965 | 9 |
+| 06:46 | +693 (687..703) | +0.619 | +0.074 | 29976 | 8 |
+| 07:31 | +577 (570..589) | +0.511 | +0.066 | 29990 | 7 |
+| 08:21 | +955 (948..968) | +0.901 | +0.054 | 29981 | 8 |
+| 09:01 | +387 (377..404) | +0.341 | +0.046 | 29997 | 9 |
+| 09:46 | +239 (228..253) | +0.201 | +0.038 | 30021 | 9 |
+| 10:31 | +446 (438..456) | +0.384 | +0.062 | 30018 | 8 |
+| 11:16 | +395 (388..411) | +0.342 | +0.053 | 30032 | 9 |
+| 12:01 | +306 (300..317) | +0.236 | +0.070 | 30035 | 12 |
+| 12:46 | +232 (223..249) | +0.192 | +0.040 | 30054 | 10 |
+| 13:31 | +314 (305..328) | +0.248 | +0.066 | 30055 | 10 |
+| 14:16 | +318 (309..332) | +0.296 (RF 14 only) | +0.022 | 30048 | 9 |
+| 15:01 | +410 (401..421) | +0.346 | +0.064 | 30049 | 8 |
+
+The K6's crystal: +0.054 +- 0.015 ppm, about 24 Hz high at 440.850. refcal's own ppb moved with
+the Pluto (+0.19 to +0.90 ppm) and taking the Pluto's pilot reading off leaves 0.015 ppm of
+scatter, so the relay is good to about 0.02 ppm per run. The garage cooled 105 counts of t over
+the night with no trend in the crystal (a slope under 0.0003 ppm per count), so a drift table
+needs a larger temperature span than one night in the garage gives. One REG_3B step is 0.19 ppm,
+so the K6 needs no trim at these temperatures.
