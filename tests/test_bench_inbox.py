@@ -211,6 +211,60 @@ def test_refusals_come_back(env, monkeypatch):
     assert br.waiting() == []
 
 
+def test_repeats_bring_their_own_outputs_back_and_cancel(env, monkeypatch):
+    import time
+    until = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 3 * 3600))
+    j = J("rc", {"do": "pluto", "args": ["rx", "run:cap.cf32", "--hz", "441900000"]},
+          repeat={"every_min": 10, "until": until})
+    assert submit(env, monkeypatch, j) == 0
+    ib = bi.Inbox()
+    ib.tick(idle=False)
+
+    def command(job, step, rd):
+        out = step["args"][1]
+        return [sys.executable, "-c", f"open({out!r}, 'w').write({job['id']!r})"], rd, False
+    monkeypatch.setattr(br, "command", command)
+    monkeypatch.setattr(br, "checkout_clean", lambda co: (True, "abc1234"))
+    run = lambda: br.serve_once(claim=lambda *a, **k: None, release=lambda *a: None,
+                                now=lambda: time.time() + 3600)    # past the repeat's not_before
+    for n in ("rc", "rc-r1"):
+        assert run()
+        ib.tick(idle=False)
+        assert result(env, n)["status"] == "done"
+        out = env["tmp"] / ("got-" + n)
+        monkeypatch.chdir(env["client"])
+        assert bi.main(["get", n, str(out)]) == 0
+        assert (out / "files" / "cap.cf32").read_text() == n            # each run's own capture came back
+    # cancel a repeat by its own id: it has only results/rc-r2 in the branch
+    assert result(env, "rc-r2")["status"] == "queued"
+    assert bi.main(["cancel", "rc-r2"]) == 0
+    ib.next_poll = 0
+    ib.tick(idle=False)
+    assert os.path.exists(br.cancel_path("rc-r2"))
+    assert br.waiting()[0]["id"] == "rc-r2"                           # still the queued repeat, not refused
+    assert not run() and result(env, "rc-r2") and not os.path.exists(os.path.join(br.qdir("refused"), "rc-r2.json"))
+    ib.tick(idle=False)
+    assert result(env, "rc-r2")["status"] == "cancelled"
+
+
+def test_cancel_by_first_id_stops_the_series(env, monkeypatch):
+    import time
+    until = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 3 * 3600))
+    assert submit(env, monkeypatch, J("sr", {"do": "wait", "seconds": 0}, repeat={"every_min": 10, "until": until})) == 0
+    ib = bi.Inbox()
+    ib.tick(idle=False)
+    monkeypatch.setattr(br, "checkout_clean", lambda co: (True, "abc1234"))
+    assert br.serve_once(claim=lambda *a, **k: None, release=lambda *a: None)
+    ib.tick(idle=False)
+    assert [j["id"] for j in br.waiting()] == ["sr-r1"]
+    monkeypatch.chdir(env["client"])
+    assert bi.main(["cancel", "sr"]) == 0
+    ib.next_poll = 0
+    ib.tick(idle=False)
+    assert os.path.exists(br.cancel_path("sr-r1"))
+    assert bi.cancel_folders("sr-r1", br.waiting()[0]) == {"sr-r1", "sr"}
+
+
 def test_taken_id_and_cancel(env, monkeypatch):
     br.submit(dict(J("local1", {"do": "wait", "seconds": 0}), checkout=REPO))
     assert submit(env, monkeypatch, J("local1", {"do": "wait", "seconds": 0})) == 0

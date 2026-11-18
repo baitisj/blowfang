@@ -1105,11 +1105,41 @@ def finish(job, res, where):
             base = re.sub(r"-r\d+$", "", job["id"])
             n = int((re.search(r"-r(\d+)$", job["id"]) or [0, 0])[1]) + 1
             nj = {k: v for k, v in job.items() if k not in ("result", "submitted", "submitted_at")}
-            nj.update(id=f"{base}-r{n}"[:64], not_before=datetime.datetime.fromtimestamp(
+            nid = f"{base}-r{n}"[:64]
+            nj = retarget(nj, run_dir(job["id"]), run_dir(nid))
+            nj.update(id=nid, not_before=datetime.datetime.fromtimestamp(
                 nb, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
             probs = submit(nj)
             if probs:
                 note(f"repeat of {job['id']} not queued: {'; '.join(probs)}")
+
+
+def retarget(job, old_rd, new_rd):
+    """a repeat's copy of a job: paths inside the last run's folder (an inbox job's run:NAME, or a
+    local job naming its own run folder) moved to the new run's folder, so each run keeps its own
+    outputs (and an inbox job's come back in its results)"""
+    job = json.loads(json.dumps(job))
+    olds = {os.path.abspath(old_rd), os.path.realpath(old_rd)}   # as written, and with links resolved
+
+    def fix(v):
+        if not isinstance(v, str):
+            return v
+        pre, x = "", v
+        if v.startswith("--") and "=" in v:
+            pre, x = v.split("=", 1)
+            pre += "="
+        for o in olds:
+            if x == o or x.startswith(o + os.sep):
+                return pre + new_rd + x[len(o):]
+        return v
+
+    for s in job.get("steps") or []:
+        for f in ("bundle", "image", "module", "radio_tool"):
+            if f in s:
+                s[f] = fix(s[f])
+        if isinstance(s.get("args"), list):
+            s["args"] = [fix(a) for a in s["args"]]
+    return job
 
 
 def cancel_path(job_id):

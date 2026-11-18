@@ -12,7 +12,9 @@ For threads (from any blowfang checkout, cloud or hamlet):
   bench_inbox.py show ID                its result.json, the files that came back, the log's tail
   bench_inbox.py get ID DEST            copy the files that came back into DEST
   bench_inbox.py status                 the runner's status.json and the last results
-  bench_inbox.py cancel ID              ask the runner to drop a waiting job or stop a running one
+  bench_inbox.py cancel ID              ask the runner to drop a waiting job or stop a running one;
+                                        a repeat's own id (ID-rN) stops that run, the first id stops
+                                        the whole series
 
 The branch:
 
@@ -395,14 +397,17 @@ class Inbox:
         for e in ls_tree(tip, "jobs", gd=self.gd()):
             if "/" in e[4]:
                 jobs.setdefault(e[4].split("/")[0], []).append(e)
-        local = self.inbox_jobs()
-        for jid, ents in sorted(jobs.items()):
-            if any(e[4] == f"{jid}/cancel" for e in ents) and local.get(jid, ("",))[0] in ("queued", "running"):
+        cancels = {jid for jid, ents in jobs.items() if any(e[4] == f"{jid}/cancel" for e in ents)}
+        for jid, (status, job) in self.inbox_jobs().items():
+            if status in ("queued", "running") and cancel_folders(jid, job) & cancels:
                 if not os.path.exists(_br().cancel_path(jid)):
                     open(_br().cancel_path(jid), "w").write("inbox")
                     _br().note(f"inbox: cancel {jid} asked in the branch")
+        for jid, ents in sorted(jobs.items()):
             if jid in st["seen"] or jid in done:
                 continue
+            if not any(e[4] == f"{jid}/job.json" for e in ents):
+                continue                      # only a cancel (a repeat's, jobs/ID-rN/cancel): not a job
             if not _br().ID_RE.match(jid):
                 _br().note(f"inbox: skipped jobs/{jid}: not a job id")
                 st["seen"][jid] = "skipped"
@@ -648,22 +653,24 @@ class Inbox:
             except (InboxError, OSError, subprocess.TimeoutExpired) as e:
                 self.fail(e)
         self.cancel_watch = threading.Event()
-        threading.Thread(target=self.watch_cancel, args=(job["id"], self.cancel_watch), daemon=True).start()
+        threading.Thread(target=self.watch_cancel, args=(job["id"], self.cancel_watch, cancel_folders(job["id"], job)),
+                         daemon=True).start()
 
     def finished(self):
         if self.cancel_watch:
             self.cancel_watch.set()
             self.cancel_watch = None
 
-    def watch_cancel(self, jid, stop):
+    def watch_cancel(self, jid, stop, folders=None):
+        folders = folders or {jid}
         while not stop.wait(CANCEL_POLL_S):
             if not self.lock.acquire(blocking=False):
                 continue
             try:
                 git("fetch", "--quiet", "origin", f"+refs/heads/{BRANCH}:refs/heads/{BRANCH}", gd=self.gd(),
                     timeout=120)
-                if git("cat-file", "-e", f"refs/heads/{BRANCH}:jobs/{jid}/cancel", gd=self.gd(),
-                       check=False).returncode == 0:
+                if any(git("cat-file", "-e", f"refs/heads/{BRANCH}:jobs/{f}/cancel", gd=self.gd(),
+                           check=False).returncode == 0 for f in sorted(folders)):
                     open(_br().cancel_path(jid), "w").write("inbox")
                     _br().note(f"inbox: cancel {jid} asked in the branch")
                     return
@@ -777,6 +784,16 @@ class Inbox:
             run(["systemctl", "--user", "daemon-reload"], capture_output=True, timeout=60)
             return "restart"
         return "exec"
+
+
+def cancel_folders(jid, job):
+    """the jobs/ folders whose cancel stops this job: its own, and for a repeat (ID-rN) the folder it
+    was pushed in, which stops the whole series"""
+    out = {jid}
+    p = ((job or {}).get("inbox") or {}).get("path", "")
+    if p.startswith("jobs/"):
+        out.add(p[len("jobs/"):])
+    return out
 
 
 def module_rel(br, step):
@@ -987,10 +1004,11 @@ def cmd_cancel(a):
         wt = os.path.join(td, "inbox")
         for attempt in range(5):
             tip = fetch_branch(root)
-            if not ls_tree(tip, f"jobs/{a.id}", cwd=root):
-                raise SystemExit(f"no job {a.id} in the inbox")
+            if not ls_tree(tip, f"jobs/{a.id}", cwd=root) and not ls_tree(tip, f"results/{a.id}", cwd=root):
+                raise SystemExit(f"no job {a.id} in the inbox")   # a repeat (ID-rN) has only results/ID-rN
             git("worktree", "add", "--detach", "--quiet", wt, tip, cwd=root)
             try:
+                os.makedirs(os.path.join(wt, "jobs", a.id), exist_ok=True)
                 open(os.path.join(wt, "jobs", a.id, "cancel"), "w").write(f"{utcnow()}\n")
                 git("add", f"jobs/{a.id}/cancel", cwd=wt)
                 git("commit", "--quiet", "-m", f"bench job {a.id}: cancel", cwd=wt)

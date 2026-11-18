@@ -152,7 +152,7 @@ The branch is `claude/bench-jobs` (an orphan branch; it never merges):
 |---|---|---|
 | `jobs/ID/job.json` | the thread | the job, as above, with the inbox's differences below |
 | `jobs/ID/NAME` | the thread | a file the job names as `job:NAME` (WAVs, built modules), ≤ 16 MB, ≤ 64 files, ≤ 32 MB in all |
-| `jobs/ID/cancel` | the thread | drop a waiting job, or stop a running one within about a minute |
+| `jobs/ID/cancel` | the thread | drop a waiting job, or stop a running one within about a minute. For a `repeat`, `cancel ID-rN` stops that run (it has only `results/ID-rN`), and `cancel ID` (the first id) stops the whole series |
 | `results/ID/result.json` | the runner | `queued`, `refused` (with `problems`), `running`, then `done` / `failed` / `cancelled`, as `show` prints it locally |
 | `results/ID/runner.log` | the runner | the run's log (its last 512 KB) |
 | `results/ID/files/…`, `files.json` | the runner | the run folder's files up to 20 MB each (40 MB a job); `files.json` lists every file with its size and sha256, and where a big one stays on hamlet |
@@ -178,7 +178,7 @@ who can push are not the people with a hamlet shell:
 - `submit` fills in a `job:` module's or image's `sha256` and lints the job before it pushes; the
   runner's checks still decide.
 
-An id already used on hamlet is refused in the branch, untouched locally. The results are public
+Each run of a `repeat` gets its own run folder (`run:NAME` moves to `runs/queue/ID-rN`), so every run's outputs come back in its own `results/ID-rN`. An id already used on hamlet is refused in the branch, untouched locally. The results are public
 (the repository is): runner logs carry commands, paths and rig readings, never keys.
 
 Jeff's switches: `bench_runner.py inbox off|on` (state/inbox.off; the runner stops fetching and
