@@ -41,7 +41,6 @@ c/k6/
 firmware/k6-aura/
 sim/
 modem/
-!modem/dmrsotto.py
 !modem/dmrvoice.py
 tools/k6_*
 tools/k6-*
@@ -54,6 +53,7 @@ tools/gen_ft8_tables.py
 tools/midi_songs/
 tools/nwr_watch.py
 tools/uv380_i2sprobe.py
+tools/uv380_dmrburst.py
 tests/test_k6*
 tests/k6_live_emu.py
 tests/test_nwr_watch.py
