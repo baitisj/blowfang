@@ -548,9 +548,10 @@ def test_sotto_demo_carries_the_clip():
 
 @need_clang
 def test_dmr_stream_carries_the_message():
-    """c4dmr (C4_DMRS): the DMR stream twice as chained calls (4 packets, 5 DMR frames each), the
-    second inverted; on air a DMR receiver (the bench decoder of the UV-380's stream) gets every
-    rate 1/2 block of the test message from each call, and dmrsotto unpacks it"""
+    """c4dmr (C4_DMRS): the DMR stream five times as chained calls (4 packets, 5 DMR frames each),
+    a sweep of the inner gain and size timing; on air a DMR receiver (the bench decoder of the
+    UV-380's stream) gets every rate 1/2 block of the test message from each call, and dmrsotto
+    unpacks it; each call's inner symbols at its own gain"""
     pytest.importorskip("unicorn")
     from modem import dmrsotto
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=DMR_SRC)
@@ -573,6 +574,9 @@ def test_dmr_stream_carries_the_message():
         assert blocks == want, (j, len(blocks))
         assert msg["msg"] == ub.test_message(k6c4fm.DMR_NSF) and msg["text"] == "AG7EW", msg
         assert msg["lost"] == 0 and msg["bad"] == 0 and msg["end"], msg
+    g70 = [v & 0x7F for _, r, v in ev if r == 0x70 and v & 0x80]
+    for g in k6c4fm.DMR_INNER:
+        assert g in g70, g
 
 
 # ---------------------------------------------------------------- c4fifo (the timing probe)
