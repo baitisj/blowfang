@@ -1,0 +1,6 @@
+2026-11-18T06:10:50Z job ftmref-1118a by c4fm, checkout /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26 at 46b5e93deb267056b3a7a449b9ae09b4daf96b28
+2026-11-18T06:10:50Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as c4fm rx /home/baitisj/blowfang-work/runs/queue/ftmref-1118a/ftm.wav --hz 440850000 --seconds 180
+2026-11-18T06:10:52Z step 1 (pluto) rc=0
+2026-11-18T06:14:21Z seen /ftm\.wav: / in /home/baitisj/blowfang-work/runs/queue/ftmref-1118a/pluto.out
+2026-11-18T06:14:21Z step 2 (wait) rc=0
+2026-11-18T06:14:21Z job ftmref-1118a done

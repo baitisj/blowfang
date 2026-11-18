@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "ftmref-1118a",
-  "who": "c4fm",
-  "since": "2026-11-18T06:10:48Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "refcal-c1118-01",
@@ -71,8 +67,8 @@
    "not_before": "2026-11-18T15:00:00Z"
   }
  ],
- "last_poll": "2026-11-18T06:10:42Z",
+ "last_poll": "2026-11-18T06:14:21Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T06:10:48Z"
+ "updated": "2026-11-18T06:14:22Z"
 }
