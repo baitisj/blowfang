@@ -1,12 +1,12 @@
 {
  "id": "uvretune-1118a",
- "status": "queued",
- "queued": "2026-11-18T21:01:04Z",
+ "status": "running",
+ "since": "2026-11-18T21:01:11Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "f88c3fcc3a07daed235672b09d7e73491f4f9bee",
   "path": "jobs/uvretune-1118a"
  },
  "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
- "updated": "2026-11-18T21:01:04Z"
+ "updated": "2026-11-18T21:01:11Z"
 }
