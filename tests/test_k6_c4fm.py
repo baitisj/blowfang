@@ -365,7 +365,7 @@ def air_grid(ev, fsk, fs=48000, data_lag=1.21):
 def send_lock(ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, write_us=117, poll_jitter=0.0,
               src=LOCK_SRC, **kw):
     mmio, rcc, tim = k6_clock()
-    tx, fsk = kw.pop("tx", {}), FskGrid(ppm, phase, lat_en, done_sym, poll_jitter)
+    tx, fsk = kw.pop("tx", {}), FskFifo(ppm, phase, lat_en, done_sym, poll_jitter)
     ret, said, regs, _ = run({**REGS, **kw.pop("regs", {})}, src=src, level=3, tx=tx,
                              mmio=mmio, write_us=write_us, fsk=fsk, count=2_000_000_000, **kw)
     assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1
@@ -375,6 +375,7 @@ def send_lock(ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, write_us=117, po
 
 def test_lock_module_matches_host():
     assert define("NCAL", LOCK_SRC) == k6c4fm.LOCK_NCAL
+    assert define("NR", LOCK_SRC) == k6c4fm.LOCK_NR
     assert define("NA", LOCK_SRC) == len(k6c4fm.LOCK_A)
     assert define("A_FIRST", LOCK_SRC) == k6c4fm.LOCK_A[0]
     assert define("C4_LAG4", LOCK_SRC) == k6c4fm.LOCK_LAG4
@@ -385,18 +386,23 @@ def test_lock_module_matches_host():
 
 @need_clang
 @pytest.mark.parametrize("ppm,phase,lat_en,jit", [(-520.0, 0.37, 0.3, 0.0), (-760.0, 0.81, 0.9, 0.0),
-                                                  (-650.0, 0.05, 0.55, 0.5), (-630.0, 0.6, 0.02, 0.5)])
+                                                  (-650.0, 0.05, 0.55, 0.5), (-630.0, 0.6, 0.02, 0.5),
+                                                  (-1500.0, 0.2, 0.4, 0.5), (+300.0, 0.7, 0.3, 0.3)])
 def test_lock_module_locks_to_the_chip(ppm, phase, lat_en, jit):
     """the chip's clock off the MCU's by ppm (the prior says -630), its grid at any phase, its
     enable threshold anywhere: the fitted rate, every data packet on its predicted tick, and the
     frames whole on air with the chip's gain path (data_lag) set where Lq 0 should land; jit: the
-    TX-done polls as coarse as on the radio (run 3's 0.42-symbol residuals)"""
+    TX-done polls as coarse as on the radio (run 3's 0.42-symbol residuals). -1500: the K6 after
+    11-18 04:24Z, which the fit can't reach from C4_PPM alone: the rate packets find it first"""
     pytest.importorskip("unicorn")
     ret, said, regs, tx, fsk, ev = send_lock(ppm, phase, lat_en, poll_jitter=jit)
-    n = k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.LOCK_B)
+    n = k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.LOCK_B)
     assert ret == n, said
     assert said[0] == f"c4lock n={n} g=78/27 lag=9 ppm=-630 pa=0 rx=440850000"
     assert said[-1].startswith(f"c4lock sent n={n} ")
+    rate = next(s for s in said if s.startswith("c4lock rate"))
+    assert rate.startswith("c4lock rate ppm=") and " ok=11 " in rate, said
+    assert int(re.search(r"ppm=(-?\d+)", rate).group(1)) / 10 == pytest.approx(ppm, abs=40), rate
     w = next(s for s in said if s.startswith("c4lock w="))
     m = re.match(r"c4lock w=(\d+) late=(\d+) miss=(\d+) lost=(\d+) wr=\d+-\d+ rd=(\d+)$", w)
     assert m and m.group(2) == "0" and m.group(3) == "0" and m.group(4) == "0", said
@@ -405,11 +411,12 @@ def test_lock_module_locks_to_the_chip(ppm, phase, lat_en, jit):
     # the module's ppm is the chip's symbol in MCU cycles: the chip fast = fewer cycles
     assert got == pytest.approx(ppm, abs=3 + 20 * jit), said
     t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
-    assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS
-    assert [len(p["words"]) for p in fsk.pkts] == ([4] * k6c4fm.LOCK_NCAL + [31] * len(k6c4fm.LOCK_A)
-                                                   + [121] * len(k6c4fm.LOCK_B))
+    assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS | {0x5E}   # 5E: rate packets
+    assert [len(p["words"]) for p in fsk.pkts] == ([128] * k6c4fm.LOCK_NR + [4] * k6c4fm.LOCK_NCAL
+                                                   + [31] * len(k6c4fm.LOCK_A) + [121] * len(k6c4fm.LOCK_B))
+    assert not any(p.get("under") for p in fsk.pkts)
     # the data packets' enables half a symbol from the threshold: start - enable the same for all
-    gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts[k6c4fm.LOCK_NCAL:]]
+    gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts[k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL:]]
     # (coarse polls: the fitted phase wanders about +-0.15 symbol, the noise floor of 16 polls)
     assert max(gaps) - min(gaps) < 0.2 + 0.4 * jit, gaps
     assert min(g - lat_en for g in gaps) > 0.15 and max(g - lat_en for g in gaps) < 0.85, gaps
@@ -446,7 +453,7 @@ def test_ftm_demo_calls():
     receiver finds all five"""
     pytest.importorskip("unicorn")
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC)
-    assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.DEMO_SETS), said
+    assert ret == k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.DEMO_SETS), said
     lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="demo")
     for j, inv in enumerate(k6c4fm.DEMO_INV):
         r = res[f"D{j}"]
@@ -461,7 +468,7 @@ def test_sotto_demo_carries_the_clip():
     pytest.importorskip("unicorn")
     from modem import ysf
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=SOTTO_SRC)
-    assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.SOTTO_SETS), said
+    assert ret == k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.SOTTO_SETS), said
     lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="sotto")
     for j in range(len(k6c4fm.SOTTO_SETS)):
         assert res[f"D{j}"]["fich_n"] == 4, "\n".join(lines)

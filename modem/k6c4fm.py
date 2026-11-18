@@ -150,6 +150,7 @@ def split(dibits):
 
 YSF_OFF = 7                         # c4ysf.c's C4_OFF: run 1's best write timing (quarter symbols)
 YSF_PRE = (120, 64, 32)             # c4ysf.c's B1..B3: FIFO words written before the enable
+LOCK_NR = 2                         # c4lock.c (11-18): rate packets first (128 words, PN9's first 256 signs again)
 LOCK_NCAL = 17                      # c4lock.c (run 3): calibration packets (64 PN9 signs each)
 LOCK_CAL_SYMS = 64
 LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, quarter symbols
@@ -173,8 +174,10 @@ def packets(plan="probe"):
     if plan in ("lock", "lock3", "demo", "sotto"):
         pad = np.tile(np.array([0, 1], np.int8), PAD_SYMS // 2)
         one = np.ones(PAD_SYMS, np.int8)
-        out = [dict(name=f"C{i:02d}", chip=pn_signs()[:LOCK_CAL_SYMS], mode="none")
-               for i in range(LOCK_NCAL)]
+        out = [dict(name=f"R{i}", chip=np.tile(pn_signs()[:256], 8), mode="none")
+               for i in range(LOCK_NR if plan != "lock3" else 0)]
+        out += [dict(name=f"C{i:02d}", chip=pn_signs()[:LOCK_CAL_SYMS], mode="none")
+                for i in range(LOCK_NCAL)]
         for i, q in enumerate(LOCK_A):
             c, sz = split(fr[i % 4])
             out.append(dict(name=f"A{i:02d}", chip=np.concatenate([c, pad]),
