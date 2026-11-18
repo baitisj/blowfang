@@ -147,6 +147,28 @@ each other against the chip's symbols across a 2,100-symbol packet, and the fram
 symbol errors. `analyze --plan lock` adds where each packet starts against a 4800.0 grid, and
 where the size changes land (fraction of a symbol, frame by frame).
 
+Run 3 on the bench (2026-11-18 02:21Z, job c4fm-1118c, files /mnt/project-files/k6-c4fm/run3/).
+The module returned 35 packets, none late. It fitted the chip at -617 ppm against the MCU after
+the calibration and -647 ppm at the end (run 2's -520 was a rough figure). The worst fit residual
+was 0.42 symbol, so a TX-done poll on the radio is coarser than in the emulator, and three data
+packets' polls rounded to the wrong tick. On the Pluto every packet started within 0.2 symbol of
+one 4800.0-baud grid. So the enables now follow the chip: run 2 spread over 0.9 symbol.
+
+- **Whole transmissions:** all of B1-B4 decoded 4 of 4 frames with a good FICH. B3 (+2/4) had
+  35 of 1,936 symbols wrong and B2 (0) 48, against hundreds along run 2's long packets. Levels
+  were ±2.7 / ±1.0 kHz. The plain YSF receiver found 15 frames in 4 runs, all with a good FICH.
+- **Drift:** mostly gone. A small slope is left: errors grow along B1 (early) and shrink along B4
+  (late), so the fitted symbol is a little short. The three mis-rounded polls likely pulled the
+  fit.
+- **Timing:** best between 0 and +2/4, so C4_LAG4 9. The single frames swept from A05 to A07
+  (57-167 errors), a narrower window than the long packets show. Each A packet carries a
+  different frame, so they don't compare one to one.
+
+Next (run 4): fit data packets against the tick they were placed on, not a rounded one, and drop
+polls more than 3/4 symbol off. Bin the calibration phases by where the final fit puts them, set
+the prior to -630 ppm, and set C4_LAG4 to 9. Then a C4FM radio test (FTM-300DR) with B packets
+only.
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto

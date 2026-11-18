@@ -303,6 +303,7 @@ def analyze(disc, fs=48000, plan="probe"):
         lines.append("fewer bursts than packets: matching them in order from the first anyway")
     si = 0
     for p in pk:
+        si0 = si
         while si < len(segs):
             a, b = segs[si]
             si += 1
@@ -313,6 +314,7 @@ def analyze(disc, fs=48000, plan="probe"):
                 break
         else:
             lines.append(f"{p['name']}: not found")
+            si = si0                            # the next packet may still be there
             continue
         nsym = len(p["chip"])
         pay = pol * v[k:k + nsym]
