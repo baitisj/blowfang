@@ -1,12 +1,74 @@
 {
  "id": "m17rx-phy-1118a",
- "status": "running",
- "since": "2026-11-18T01:33:14Z",
+ "who": "m17rx",
+ "started": "2026-11-18T01:33:16Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T01:33:16Z",
+   "ended": "2026-11-18T01:33:26Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-18T01:33:26Z",
+   "ended": "2026-11-18T01:33:28Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T01:33:28Z",
+   "ended": "2026-11-18T01:33:35Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-18T01:33:35Z",
+   "ended": "2026-11-18T01:33:54Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T01:33:54Z",
+   "ended": "2026-11-18T01:34:12Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-18T01:34:12Z",
+   "ended": "2026-11-18T01:34:31Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "pluto",
+   "started": "2026-11-18T01:34:31Z",
+   "ended": "2026-11-18T01:34:49Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-18T01:34:49Z",
+   "ended": "2026-11-18T01:36:05Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-8c2368e53835",
+ "head": "8c2368e53835b12ad13a216b4690cbe2ad761e7f",
+ "ended": "2026-11-18T01:36:05Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "67091557a3cb20a4b22cdcfbb14bf09800c35d83",
   "path": "jobs/m17rx-phy-1118a"
  },
  "runner_commit": "8c2368e53835b12ad13a216b4690cbe2ad761e7f",
- "updated": "2026-11-18T01:33:14Z"
+ "updated": "2026-11-18T01:36:06Z"
 }

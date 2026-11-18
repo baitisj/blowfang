@@ -1,0 +1,194 @@
+
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+ok mod begin 4172
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 76
+mod run serial=1794965606 code=4148
+mod say at1846 dmr rx ok (3 regs)
+mod say listening raw
+mod say st 1000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-92 43=0000 4e=03 4f=00
+mod say st 2000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 3000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 4000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 5000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 6000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 7000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 8000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 9000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 10000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 11000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 12000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 13000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 14000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 15000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 16000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 17000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 18000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 19000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-88 43=0000 4e=03 4f=00
+mod say st 20000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 21000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 22000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 23000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 24000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 25000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 26000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 27000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 28000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 29000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 30000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 31000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 32000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 33000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 34000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 35000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 36000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 37000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 38000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-91 43=0000 4e=03 4f=00
+mod say st 39000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 40000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 41000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 42000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 43000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 44000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 45000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 46000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 47000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 48000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 49000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 50000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 51000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 52000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 53000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 54000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 55000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 56000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 57000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 58000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 59000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 60000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 61000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 62000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 63000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 64000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 65000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 66000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 67000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 68000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 69000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 70000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 71000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 72000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 73000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 74000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-68 43=0000 4e=03 4f=00
+mod say st 75000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-92 43=0000 4e=03 4f=00
+mod say st 76000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 77000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 78000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 79000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 80000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 81000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 82000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 83000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 84000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 85000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 86000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 87000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 88000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 89000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 90000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 91000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 92000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 93000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 94000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 95000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 96000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 97000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 98000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 99000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 100000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 101000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 102000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 103000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 104000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 105000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 106000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 107000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 108000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 109000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 110000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 111000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 112000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 113000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-91 43=0000 4e=03 4f=00
+mod say st 114000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 115000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 116000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 117000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 118000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 119000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 120000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 121000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 122000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 123000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 124000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 125000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 126000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 127000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 128000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 129000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 130000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 131000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 132000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 133000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 134000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 135000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 136000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 137000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-93 43=0000 4e=03 4f=00
+mod say st 138000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 139000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 140000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 141000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 142000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 143000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-90 43=0000 4e=03 4f=00
+mod say st 144000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-89 43=0000 4e=03 4f=00
+mod say st 145000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 146000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say st 147000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 148000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-94 43=0000 4e=03 4f=00
+mod say st 149000 slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0 42=60 rssi=-95 43=0000 4e=03 4f=00
+mod say end slots=0 bursts=0 nosync=0 ok=0 rearm=0 raw=0
+ok mod run ret=0 ms=150011
