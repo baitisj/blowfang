@@ -2,7 +2,7 @@ diff --git a/meson.build b/meson.build
 index 6bb1adec..ecb6f812 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,23 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,24 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -17,6 +17,7 @@ index 6bb1adec..ecb6f812 100644
 +               'openrtx/src/blowfang/pager_listen.c',
 +               'openrtx/src/blowfang/pager_rx.c',
 +               'openrtx/src/blowfang/mod_core.c',
++               'openrtx/src/blowfang/mod/c6air_img.c',
 +               'openrtx/src/blowfang/sotto8k_fx_math.c',
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
 +               'openrtx/src/blowfang/sotto8k_fx_dec.c',
@@ -26,7 +27,7 @@ index 6bb1adec..ecb6f812 100644
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +86,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +87,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -108,7 +109,7 @@ new file mode 100644
 index 00000000..bad9388c
 --- /dev/null
 +++ b/openrtx/include/rtx/pager.h
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,49 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -137,6 +138,14 @@ index 00000000..bad9388c
 + */
 +int pager_phyFsk(void);
 +void pager_togglePhy(void);
++
++/**
++ * blowfang PAGER mode: what PTT sends, as the screen shows it: "K6 RNG",
++ * "K6 FSK", or in the bench image (the range probe build) also "M17", "YSF"
++ * and "DMR", the radio's message through the HR_C6000's own modem
++ * (docs/uv380-multimode.md); macro key 4 steps through them.
++ */
++const char *pager_phyName(void);
 +
 +/**
 + * blowfang PAGER mode: the UI reports whether FUNC (the side button above PTT)
@@ -285,7 +294,7 @@ new file mode 100644
 index 00000000..b2040737
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1713 @@
+@@ -0,0 +1,1832 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -515,6 +524,20 @@ index 00000000..b2040737
 +static rg_air  rair;    // the range build: PHY R (docs/k6-range.md) in place of the pager's PHY F
 +static volatile bool phyF = false;  // "phy f": the pager's PHY F instead, until power-off
 +#endif
++#if defined(BLOWFANG_RANGE) && defined(BLOWFANG_I2SPROBE) && defined(PLATFORM_MDUV3x0)
++// The bench image's M17, YSF and DMR sub-modes (docs/uv380-multimode.md,
++// milestone 4): PTT sends the message through the HR_C6000's own modem, the
++// code the c6sotto RAM modules proved on air (11-18), now in flash
++// (mod/c6air.h). 0: none (RNG or FSK as phyF says), else 1 M17, 2 YSF, 3 DMR.
++#define BLOWFANG_AIR 1
++static volatile unsigned phyAir  = 0;
++static volatile unsigned airPend = 0;  // PTT asked for this air send: the probe thread runs it
++// The raw 4FSK and DMR modes sit 6.68 kHz above the FM carrier (11-18: the
++// bench sent them at trim FM - 6680): an air send's keyed tone takes this
++// offset, its Morse ident not
++static constexpr int32_t AIR_TRIM_HZ = -6680;
++static volatile int32_t toneTrimOfs = 0;
++#endif
 +static ffsk_tx ffsk;
 +static cw_tx   cw;
 +static char    ident[12];
@@ -586,6 +609,16 @@ index 00000000..b2040737
 +#endif
 +}
 +
++const char *pager_phyName()
++{
++#ifdef BLOWFANG_AIR
++    static const char *const air[4] = {"", "M17", "YSF", "DMR"};
++    if((phyAir >= 1) && (phyAir <= 3))
++        return air[phyAir];
++#endif
++    return pager_phyFsk() ? "K6 FSK" : "K6 RNG";
++}
++
 +void pager_setFunc(int held)
 +{
 +    fnHeld = (held != 0);
@@ -593,7 +626,19 @@ index 00000000..b2040737
 +
 +void pager_togglePhy()
 +{
-+#ifdef BLOWFANG_RANGE
++#ifdef BLOWFANG_AIR
++    // RNG -> FSK -> M17 -> YSF -> DMR -> RNG
++    if(phyAir != 0)
++    {
++        phyAir = (phyAir + 1) % 4;
++        if(phyAir == 0)
++            phyF = false;
++    }
++    else if(phyF)
++        phyAir = 1;
++    else
++        phyF = true;
++#elif defined(BLOWFANG_RANGE)
 +    phyF = !phyF;
 +#endif
 +}
@@ -1018,17 +1063,33 @@ index 00000000..b2040737
 +// "phy fsk" / "phy rng" (USB or a module's probe line; the first letter is
 +// enough): what PTT and tx_request send in the range build, FSK, the pager's
 +// PHY F (FFSK 1200/1800 Hz at 1800 baud, which the K6's VOICE MSG plays as it
-+// arrives), or RNG, PHY R (the default); macro key 4 switches it too
++// arrives), or RNG, PHY R (the default); macro key 4 switches it too. The
++// bench image also takes "phy m17", "phy ysf", "phy dmr": PTT's sub-mode
++// (tx_request still sends RNG or FSK)
 +static int phyCommand(const char *line)
 +{
 +#ifdef BLOWFANG_RANGE
 +    if(strncmp(line, "phy ", 4) != 0)
 +        return 0;
++#ifdef BLOWFANG_AIR
++    unsigned a = phyAir;
++    if(line[4] == 'm')
++        a = 1;
++    else if(line[4] == 'y')
++        a = 2;
++    else if(line[4] == 'd')
++        a = 3;
++    else if((line[4] == 'f') || (line[4] == 'r'))
++        a = 0;
++    phyAir = a;
++#endif
 +    if(line[4] == 'f')
 +        phyF = true;
 +    else if(line[4] == 'r')
 +        phyF = false;
-+    pbSay(NULL, phyF ? "phy FSK" : "phy RNG");
++    char out[24];
++    snprintf(out, sizeof(out), "phy %s", pager_phyName());
++    pbSay(NULL, out);
 +    return 1;
 +#else
 +    (void) line;
@@ -1448,6 +1509,41 @@ index 00000000..b2040737
 +                               omTxTone, omC2Start, omC2Push, omC2Stop};
 +#endif
 +
++#ifdef BLOWFANG_AIR
++// An air send from flash (mod/c6air.h through c6air_img.c, what the c6sotto
++// RAM modules proved on air 11-18): the message (src 1) or the test message
++// (src 0) as M17, YSF or DMR, under tx_tone's ident, transmit guard, channels
++// and 5 s; its lines go to USB serial as a module's ("mod say ...")
++static int airSend(unsigned a, unsigned src, unsigned dry)
++{
++    toneTrimOfs = AIR_TRIM_HZ;
++    int r = c6air_send(om_api(&omHost), a, src, dry);
++    toneTrimOfs = 0;
++    return r;
++}
++
++// "air m17|ysf|dmr [test] [dry]" (USB serial): the same with no PTT
++static int airCommand(const char *line)
++{
++    if(strncmp(line, "air ", 4) != 0)
++        return 0;
++    unsigned a = (line[4] == 'm') ? 1 : (line[4] == 'y') ? 2 : (line[4] == 'd') ? 3 : 0;
++    unsigned src = (strstr(line + 4, "test") != NULL) ? 0 : 1;
++    unsigned dry = (strstr(line + 4, "dry") != NULL) ? 1 : 0;
++    int r = airSend(a, src, dry);
++    char out[32];
++    snprintf(out, sizeof(out), "ok air ret=%d", r);
++    pbSay(NULL, out);
++    return 1;
++}
++#else
++__attribute__((unused)) static int airCommand(const char *line)
++{
++    (void) line;
++    return 0;
++}
++#endif
++
 +// The receiver (pager_listen.h, Jeff 11-14: "get the synthesizer ported to
 +// the HT"): while PAGER mode sits idle in receive, PHY R packets heard on the
 +// air are put back together into a message, which then becomes the message
@@ -1629,7 +1725,7 @@ index 00000000..b2040737
 +                omEncEnd();
 +        }
 +        else if((phyCommand(pbCmd) == 0) && (tuneCommand(pbCmd) == 0) &&
-+                (listenCommand(pbCmd) == 0))
++                (listenCommand(pbCmd) == 0) && (airCommand(pbCmd) == 0))
 +            r = i2sp_command(ops, pbCmd);
 +        pbBusy = false;
 +        if(r == I2SP_AUTO_ON)
@@ -1657,6 +1753,19 @@ index 00000000..b2040737
 +        for(unsigned t = 0; (t < PB_PAUSE_MS) && pbRun; )
 +        {
 +            pbPoll(&ops);
++#ifdef BLOWFANG_AIR
++            // PTT in M17, YSF or DMR: sent once PTT is let go (tx_tone keys
++            // only then)
++            if((airPend != 0) && (pbStop(NULL) == false))
++            {
++                unsigned a = airPend;
++                airPend = 0;
++                listenOff();
++                pbBusy = true;
++                airSend(a, 1, 0);
++                pbBusy = false;
++            }
++#endif
 +            listenStep();
 +            unsigned ms = lsOn ? 10 : 50;   // the ring holds 128 ms
 +            sleepFor(0, ms);
@@ -1811,7 +1920,14 @@ index 00000000..b2040737
 +            send(status);
 +            sendIdentOnly = false;
 +            sleepFor(0, IDENT_GAP_MS);  // unkeyed: a module sees the ident end
++#ifdef BLOWFANG_AIR
++            int32_t trimKeep = blowfang_txTrimHz;
++            blowfang_txTrimHz = trimKeep + toneTrimOfs;
++#endif
 +            toneTest(status, ms, toneHz);
++#ifdef BLOWFANG_AIR
++            blowfang_txTrimHz = trimKeep;
++#endif
 +            blowfang_txLow = false;
 +        }
 +    }
@@ -1840,17 +1956,29 @@ index 00000000..b2040737
 +    if(ptt && armed && (status->txDisable == 0))
 +    {
 +        armed = false;
-+        holdProbe();            // the probe never runs during TX
-+        joinPreview(true);      // the speaker preview never runs during TX
-+        if((status->txFrequency >= TX_MIN_HZ) && (status->txFrequency <= TX_MAX_HZ))
++#ifdef BLOWFANG_AIR
++        if(phyAir != 0)
 +        {
-+#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
-+            blowfang_txLow = true;  // the bench image: 1 W, as every send it makes (11-14:
-+#endif                              // pulling the USB cable presses PTT)
-+            send(status);
-+#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
-+            blowfang_txLow = false;
++            // M17, YSF or DMR: the probe thread sends when PTT is let go
++            joinPreview(true);
++            if(sendHere(status->txFrequency))
++                airPend = phyAir;
++        }
++        else
 +#endif
++        {
++            holdProbe();            // the probe never runs during TX
++            joinPreview(true);      // the speaker preview never runs during TX
++            if((status->txFrequency >= TX_MIN_HZ) && (status->txFrequency <= TX_MAX_HZ))
++            {
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++                blowfang_txLow = true;  // the bench image: 1 W, as every send it makes (11-14:
++#endif                              // pulling the USB cable presses PTT)
++                send(status);
++#if defined(BLOWFANG_I2SPROBE) && !defined(PLATFORM_LINUX)
++                blowfang_txLow = false;
++#endif
++            }
 +        }
 +    }
 +
@@ -2045,7 +2173,7 @@ index 679be118..88534ba3 100644
              }
 +            else if(state.channel.mode == OPMODE_PAGER)
 +            {
-+                pager_togglePhy();      // blowfang: RNG <-> FSK (range build)
++                pager_togglePhy();      // blowfang: RNG, FSK (range build), M17, YSF, DMR (bench image)
 +            }
              break;
          case 5:
@@ -2115,7 +2243,7 @@ index eed473aa..06389293 100644
 +            // blowfang: PTT sends the stored sotto message to a K6, # plays
 +            // it on the speaker
 +            gfx_print(layout.line2_pos, layout.line2_font, TEXT_ALIGN_CENTER,
-+                    color_white, pager_phyFsk() ? "K6 FSK PTT #" : "K6 RNG PTT #");
++                    color_white, "%s PTT #", pager_phyName());
 +            break;
 +
          #ifdef CONFIG_M17
@@ -2133,20 +2261,21 @@ index d71444c6..15c6e2b2 100644
  
  #ifdef PLATFORM_TTWRPLUS
  #include "drivers/baseband/SA8x8.h"
-@@ -1263,6 +1264,12 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+@@ -1263,6 +1264,13 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
          gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
                    color_white, bw_str);
      }
 +    else if (last_state.channel.mode == OPMODE_PAGER)
 +    {
-+        // blowfang: what PTT sends, RNG or FSK
++        // blowfang: what PTT sends, RNG, FSK, M17, YSF or DMR
++        const char *phy = pager_phyName();
 +        gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
-+                  color_white, pager_phyFsk() ? "  FSK" : "  RNG");
++                  color_white, "  %s", (phy[0] == 'K') ? phy + 3 : phy);
 +    }
  #ifdef CONFIG_M17
      else if (last_state.channel.mode == OPMODE_M17)
      {
-@@ -1292,6 +1299,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+@@ -1292,6 +1300,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
              gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "          M17");
              break;
  #endif

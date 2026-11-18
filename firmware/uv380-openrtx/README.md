@@ -185,6 +185,16 @@ decodes and plays as it arrives, and back; the macro menu and the main screen sh
 (or a module's `api->probe()`), `phy fsk` and `phy rng` do the same and answer with the one in use.
 The plain build always sends FSK.
 
+**M17, YSF or DMR (the probe and range image, docs/uv380-multimode.md milestone 4).** In the
+image with both, macro key 4 goes on from FSK to M17, YSF and DMR, then back to RNG (`phy m17`,
+`phy ysf`, `phy dmr` over USB). In those three, PTT sends the same message through the HR_C6000's
+own modem when PTT is let go: the Morse ident, then the message as an M17 stream, YSF sotto VW
+frames or a DMR voice call carrying sotto, cut to one 5 s key-up. It is the c6sotto RAM modules'
+code (`mod/c6air.h`, built in by `c6air_img.c`), keyed the same way. The image moves the keyed
+tone 6680 Hz down for these modes by itself, so leave the trim at the FM value. Over USB, `air
+m17|ysf|dmr [test] [dry]` does the same with no PTT and ends with `ok air ret=80` (the whole
+message sent); the bench runner's step is `uv380.air`.
+
 **FUNC: hold to record, let go to send (probe image).** In PAGER mode on 441.850 or 440.850 MHz, holding FUNC
 (the black side button above PTT) records the mic as sotto 1200 from the C6000's codec input
 (I2S3, `pager_rec.c`, gain 5), LED orange, WITHOUT transmitting: only the C6000 runs its analog

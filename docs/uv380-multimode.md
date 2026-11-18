@@ -183,8 +183,9 @@ PAGER mode already owns everything around a send: FUNC records sotto from the mi
 hardware mod, PTT sends, # plays, idle receive plays what it hears, the IWDG guard, the bench USB
 commands. So the new modes are **sub-modes of PAGER**, not new OpenRTX opmodes:
 
-- Macro key 4 (hold MONI, 4), which toggles RNG / FSK today, cycles **FSK, RNG, M17, DMR, YSF**.
-  The main screen shows which. USB `phy m17|dmr|ysf|fsk|rng` does the same for the bench runner.
+- Macro key 4 (hold MONI, 4), which toggled RNG / FSK, cycles **RNG, FSK, M17, YSF, DMR** in
+  the bench image (built in milestone 4). The main screen shows which ("M17 PTT #"), and so does
+  the macro menu. USB `phy m17|ysf|dmr|fsk|rng` does the same for the bench runner.
 - PTT sends the message in that sub-mode; idle receive listens in that sub-mode (FSK and RNG on
   I2S3 as now; M17 and YSF on the FM tap; DMR on the chip's DMR receiver) and plays received
   sotto on the speaker through the existing preview decoder.
@@ -225,13 +226,33 @@ also saves flash there.
    message** as M17, YSF or DMR (`c6sotto_m17|ysf|dmr[_dry].c`, 5-7 KB each), so all three
    modes go on air at 0 W through the runner (new step `uv380.sotto AIR [dry]`) on the image
    already on the radio. **No flash.**
-4. **The core in the image** (flash 1): the image's own bus (OpenRTX's HR_C6000 driver and
-   chip-select lock, a real EXTI slot interrupt), cal from `calib->sendIrange/sendQrange`,
-   module API level 6 exporting the core, and PAGER sub-modes: macro key 4 cycles
-   FSK/RNG/M17/DMR/YSF, PTT sends the recorded sotto message in that mode, no 5 s key-up cap
-   (the guard deadline follows the stream). Bench: each mode at 0 W to the Pluto, decoded by
-   modem/m17.py, modem/dmrvoice.py and modem/ysf.py; the K6 FSK mode still to the K6. Needs
-   Jeff's typed line in a hamlet session (the runner inbox refuses flashes by design).
+4. **The core in the image** (flash 1). Built in two steps, the first one now:
+   - **Step 1, built (this PR): the proven module path, from flash.** `mod/c6air.h` is the
+     c6sotto modules' body, with the mode picked at run time (`c6air_run(api, air, src, dry)`);
+     `mod/c6sotto.c` is now a thin wrapper around it, and `c6air_img.c` builds the same body into
+     the bench image (BLOWFANG_RANGE + BLOWFANG_I2SPROBE, the image on the radio). The image
+     calls it with its own module API table (`om_api()` in ortx_mod.c), so it keys exactly as the
+     modules did on air: tx_tone, the Morse ident first, the IWDG transmit guard, 441.850 or
+     440.850 only, the 5 s key-up cap (about 8 s of sotto as M17 or YSF, 4 s as DMR).
+     - Macro key 4 cycles RNG, FSK, M17, YSF, DMR; the screen shows "M17 PTT #" and so on.
+     - In M17, YSF or DMR, a PTT press queues the send and it goes out when PTT is let go
+       (tx_tone keys only with PTT up). The message is the same one PTT sends in RNG and FSK
+       (the last recording or message heard, else the stored one).
+     - The raw modes sit 6.68 kHz above the FM carrier, so the image moves the keyed tone down by
+       6680 Hz itself and puts the trim back after; the Morse ident stays on the channel. The bench
+       keeps the FM trim (6100) for these sends; the runner refuses `uv380.air` with a negative
+       trim, which would put it 6.7 kHz off.
+     - USB `air m17|ysf|dmr [test] [dry]` runs the same with no PTT (test: the test message; dry:
+       never keys), its lines as a module's, then `ok air ret=80` when the whole message went out.
+       Runner step `uv380.air AIR [test] [dry]`, at power 0 like every send.
+     - Cost: about 13 KB of flash (core, both framers, the DMR voice call), no new RAM beyond the
+       stack: the message is read in place.
+   - **Step 2, later:** the image's own bus (OpenRTX's HR_C6000 driver and chip-select lock, a
+     real EXTI slot interrupt), cal from `calib->sendIrange/sendQrange`, module API level 6
+     exporting the core, and no 5 s key-up cap (the guard deadline follows the stream).
+   - Bench after the flash: each mode at 0 W to the Pluto (`uv380.air`), decoded by
+     modem/m17.py, modem/dmrvoice.py and modem/ysf.py; the K6 FSK mode still to the K6. The flash
+     needs Jeff's typed line in a hamlet session (the runner inbox refuses flashes by design).
 5. **Receive**: YSF receive, M17 sotto receive to the speaker, DMR voice receive. As modules
    first, then in the image with Jeff's ear for the speaker (flash 2).
    - **YSF receive, step 1 (works on the radio, 11-18 21:49Z)**: `c/common/ysf_rx.[ch]`,

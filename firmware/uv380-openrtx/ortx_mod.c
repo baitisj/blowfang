@@ -219,6 +219,15 @@ uint8_t *om_arena(void) {
     return arena;
 }
 
+const ortx_api_t *om_api(const om_host *h) {
+    H = h;
+    get_arena();                        /* scratch: the test message */
+    t0 = h->now_ms();
+    cancel = 0;
+    rx_n = 0;
+    return &api;
+}
+
 static int has_key(void) {
     /* a well-formed header with 2 bytes of code: MC_NO_KEY comes before the tag check fails */
     static const uint8_t probe[MC_HDR + 2 + MC_TAG] = {'U', '3', 'R', MC_ABI, 2};

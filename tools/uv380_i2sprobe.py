@@ -132,12 +132,15 @@ def ends(c):
     if w[:1] == ["mod"]:
         sub = w[1] if len(w) > 1 else "info"
         return (f"ok mod {sub}", f"err mod {sub}", "err busy")
+    if w[:1] == ["air"]:                # the image's M17/YSF/DMR send: its lines are "mod say ..."
+        return ("ok air", "err busy")
     return ("ok ", "err ")
 
 
 def long_command(c):
-    """a pass, a module run, or "mod begin" (the radio reads it once a pass in progress ends)"""
-    return c.split()[:1] == ["pass"] or c.split()[:2] in (["mod", "run"], ["mod", "begin"])
+    """a pass, a module run, an air send, or "mod begin" (the radio reads it once a pass in
+    progress ends)"""
+    return c.split()[:1] in (["pass"], ["air"]) or c.split()[:2] in (["mod", "run"], ["mod", "begin"])
 
 
 def command(dev, cmds, log=None, timeout=10.0, pass_timeout=240.0, out=print, stop_on_err=False,
