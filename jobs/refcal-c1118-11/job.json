@@ -1,0 +1,148 @@
+{
+ "id": "refcal-c1118-11",
+ "who": "refcal",
+ "freq_mhz": 440.85,
+ "minutes": 15,
+ "wait_bench_min": 40,
+ "not_before": "2026-11-18T14:15:00Z",
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 600,
+   "file": "k6.log"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p14a.cf32",
+    "--hz",
+    "470249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p35a.cf32",
+    "--hz",
+    "596249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon|VOICE MSG",
+   "seconds": 20,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:refcal_wait.bin",
+   "sha256": "f5242b4ba5d45541289434c4566b767d3109ce86277cd036f9ad06fc73421f85",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "4",
+    "--rate",
+    "F18",
+    "--rate-state",
+    "run:k6-rate.json"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p14m.cf32",
+    "--hz",
+    "470249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p35m.cf32",
+    "--hz",
+    "596249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tail.wav",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "refcal (ppb=|no |done)",
+   "seconds": 120,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p14b.cf32",
+    "--hz",
+    "470249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:p35b.cf32",
+    "--hz",
+    "596249441",
+    "--seconds",
+    "0.5",
+    "--gain",
+    "30"
+   ]
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
