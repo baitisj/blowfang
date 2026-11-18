@@ -10,10 +10,15 @@
    "id": "refcal-cool-1118-r2",
    "who": "refcal",
    "not_before": "2026-11-18T01:55:10Z"
+  },
+  {
+   "id": "m17rx-tap-1118a",
+   "who": "m17rx",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T01:26:15Z",
+ "last_poll": "2026-11-18T01:27:18Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T01:26:15Z"
+ "updated": "2026-11-18T01:27:18Z"
 }
