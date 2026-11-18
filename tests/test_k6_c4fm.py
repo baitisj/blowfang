@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from test_k6_i2s import ROOT, START, k6_clock, need_clang, run  # noqa: E402
+from test_k6_i2s import ROOT, START, k6_clock, need_clang, rssi_reg, run  # noqa: E402
 
 sys.path.insert(0, ROOT)
 from modem import k6c4fm, ysf  # noqa: E402
@@ -110,17 +110,30 @@ class FskTx:
         return 0
 
 
+TRIGGER_US = (40_000_000, 44_000_000)
+
+
+def bench_rssi(us):
+    """the channel as the bench job leaves it: the upload's last 3 s, the uploader's report wait,
+    the job's 4 s PSK31 trigger, then quiet"""
+    busy = us < 3_000_000 or TRIGGER_US[0] <= us < TRIGGER_US[1]
+    return rssi_reg(-65 if busy else -120)
+
+
 REGS = {0x40: 0x3060, 0x2B: 0xC000, 0x58: 0x3F01, 0x59: 0x10F8, 0x72: 0x4898, 0x3F: 0x3000,
-        0x67: 0x00}
+        0x67: bench_rssi}
+# what c4probe may write while keyed: the FSK modem, its gain and deviation, the tone oscillator
+KEYED_REGS = {0x02, 0x2B, 0x3F, 0x40, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5F, 0x70, 0x71, 0x72}
 
 
-def send(write_us=94):
+def send(write_us=94, **kw):
     mmio, rcc, tim = k6_clock()
-    tx, fsk = {}, FskTx()
-    ret, said, regs, _ = run(dict(REGS), src=SRC, level=3, tx=tx, mmio=mmio, write_us=write_us,
-                             fsk=fsk, count=2_000_000_000)
+    tx, fsk = kw.pop("tx", {}), FskTx()
+    regs0 = {**REGS, **kw.pop("regs", {})}
+    ret, said, regs, _ = run(regs0, src=SRC, level=kw.pop("level", 3), tx=tx, mmio=mmio,
+                             write_us=write_us, fsk=fsk, count=2_000_000_000, **kw)
     assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1          # TIM17 and its clock put back
-    ev = [(ns, r, v) for (r, v, _), ns in zip(tx["w"], tx["w_ns"])]
+    ev = [(ns, r, v) for (r, v, _), ns in zip(tx.get("w", []), tx.get("w_ns", []))]
     return ret, said, regs, tx, fsk, ev
 
 
@@ -158,11 +171,16 @@ def test_module_sends_and_decodes():
     n = 6 + len(k6c4fm.OFFSETS)
     assert ret == n, said
     assert said[0] == "c4 n=38 g=96/32 pa=0 rx=440850000"
-    m = re.match(r"c4 w=(\d+) late=(\d+) wr=(\d+)-(\d+)", said[1])
+    m = re.match(r"c4 w=(\d+) late=(\d+) wr=(\d+)-(\d+)", said[2])
     assert m and int(m.group(2)) == 0, said
-    assert said[-1].startswith(f"c4 sent n={n} ")
+    assert said[-1].startswith(f"c4 sent n={n} ") and "c4 trigger heard" in said
     names = [x[0] for x in tx["log"]]
     assert names[0] == "tx_on" and names[-1] == "tx_off" and ("tx_pa", 0) == tx["log"][1][:2]
+    assert names.count("tx_on") == 1
+    t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
+    assert t_on >= TRIGGER_US[1] + 9_900_000             # the capture's start after the trigger
+    assert (t_off - t_on) / 1000 < tx["log"][0][1] <= 120_000
+    assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS
     assert len(fsk.pkts) == n and all(len(p["words"]) == 30 for p in fsk.pkts)
     # the 4800-baud set-up, and every register put back
     w = {r: v for _, r, v in ev}
@@ -196,3 +214,45 @@ def test_module_refuses_slow_writes():
     assert not fsk.pkts
     assert tx["log"][-1][0] == "tx_off"
     assert regs[0x40] == REGS[0x40]
+
+
+@need_clang
+@pytest.mark.parametrize("hz", [146_520_000, 446_000_000, 440_800_000])
+def test_only_on_440_850(hz):
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send(rx_hz=hz)
+    assert ret == -2 and "log" not in tx
+
+
+@need_clang
+def test_never_on_a_busy_channel_or_without_a_trigger():
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send(regs={0x67: lambda us: rssi_reg(-40)})
+    assert ret == -7 and "log" not in tx
+    ret, said, regs, tx, fsk, ev = send(regs={0x67: rssi_reg(-120)})     # no trigger: no key-up
+    assert ret == -7 and "log" not in tx
+
+
+@need_clang
+def test_needs_level_3():
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send(level=2)
+    assert ret == -1 and "log" not in tx
+
+
+@need_clang
+def test_every_way_out_keys_down():
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send(tx={"on_ret": -1})
+    assert ret == -3 and [n for n, *_ in tx["log"]] == ["tx_on"]
+    t_on = send()[3]["log"][0][2]
+    # the core's time limit 1.5 s into the key-up: down within one packet
+    dead = t_on + 1_500_000
+    ret, said, regs, tx, fsk, ev = send(tx={"dead_us": dead})
+    assert ret == -5 and tx["log"][-1][0] == "tx_off" and tx["log"][-1][2] < dead + 250_000
+    assert regs[0x70] == 0 and regs[0x40] == REGS[0x40]
+    # a key press 1 s in
+    t_key = t_on + 1_000_000
+    ret, said, regs, tx, fsk, ev = send(keys=((t_key, t_key + 5_000_000),))
+    assert ret == -4 and tx["log"][-1][0] == "tx_off" and tx["log"][-1][2] < t_key + 250_000
+    assert regs[0x70] == 0 and regs[0x40] == REGS[0x40]

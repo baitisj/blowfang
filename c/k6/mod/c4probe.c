@@ -5,7 +5,9 @@
    chip applies a write at once, the MCU can make each symbol outer or inner by rewriting it on
    the symbol edges, timed on TIM17 (as rangetx times its tone changes).
 
-   One key-up on RT_HZ (440.850 MHz, the pager's own frequency: tx_on refuses any other), the PA
+   It keys C4_PRE_MS after the bench job's trigger carrier (trigger(): the upload's carrier
+   gone, then a carrier, then quiet), so a Pluto capture started after the trigger hears it all.
+   One key-up on C4_HZ (440.850 MHz, the pager's own frequency: tx_on refuses any other), the PA
    off by default (C4_PA 0: only the chip's leak, about 40 dB down at bench range), then 38
    packets of 480 symbols at 4800 baud (the chip's 16 preamble bytes and 4-byte sync word first,
    all alternating outer symbols), 20 ms of carrier between them, then AG7EW in MCW:
@@ -23,13 +25,14 @@
 
    It says
      K6 MOD say c4 n=38 g=96/32 pa=0 rx=440850000
+     K6 MOD say c4 trigger heard
      K6 MOD say c4 w=4810 late=0 wr=9000-9100              size writes, writes started late, a
                                                           write's length (cycles at 96 MHz)
      K6 MOD say c4 sent n=38 ms=6150 id=52
    and returns the packets sent, or a negative error:
      -1  the image has no level-3 transmitter      -2  not on C4_HZ
      -3  tx_on refused                             -4  a key was pressed (keyed down at once)
-     -5  the core keyed down partway (time up)      -7  the channel stayed busy (C4_WAIT_MS)
+     -5  the core keyed down partway (time up)      -7  no trigger and quiet after it (C4_WAIT_MS)
      -8  a register write takes too long for 4800 baud (it IDs and keys down)
      -9  a packet never finished (no TX done)
 
@@ -69,7 +72,7 @@ K6_MODULE_NAME(K6_NAME);
 #define C4_NOFF 32          /* YSF packets, each a quarter symbol later than the one before */
 #endif
 #ifndef C4_PRE_MS
-#define C4_PRE_MS 6000      /* after the channel clears: the Pluto's capture starts */
+#define C4_PRE_MS 10000     /* quiet after the job's trigger carrier: the Pluto's capture starts */
 #endif
 #ifndef C4_LEAD_MS
 #define C4_LEAD_MS 300
@@ -81,7 +84,7 @@ K6_MODULE_NAME(K6_NAME);
 #define C4_CLEAR_MS 1000
 #endif
 #ifndef C4_WAIT_MS
-#define C4_WAIT_MS 30000
+#define C4_WAIT_MS 180000   /* the upload's carrier gone, the trigger heard and the quiet after */
 #endif
 #ifndef ID_TEXT
 #define ID_TEXT "AG7EW"
@@ -379,6 +382,31 @@ static void quiet(const k6_api_t *api) {
   api->fd_write(R_TONE1, 0);
 }
 
+/* When to key: the upload's carrier gone (C4_CLEAR_MS below C4_CLEAR_DBM), then at least one
+   carrier of the job's own (its trigger: the Pluto's short PSK31 send, or the uploader's closing
+   ID), then C4_PRE_MS with none, the time the Pluto's capture takes to start (a capture can't run
+   while the Pluto sends, and the uploader holds it until its report wait is over). 0, -4 a key,
+   -7 none of it within C4_WAIT_MS. */
+static int trigger(const k6_api_t *api) {
+  uint32_t quiet = api->ms();
+  int gone = 0, heard = 0;
+  for (;;) {
+    uint32_t t = api->ms();
+    if (KM_RSSI_DBM(api->fd_read(0x67)) >= C4_CLEAR_DBM) {
+      if (gone && !heard) {
+        heard = 1;
+        api->say("c4 trigger heard");
+      }
+      quiet = t;
+    }
+    if (!gone && t - quiet >= C4_CLEAR_MS) gone = 1;
+    if (heard && t - quiet >= C4_PRE_MS) return 0;
+    if (t > C4_WAIT_MS) return -7;
+    if (api->key_down()) return -4;
+    api->delay_us(10000);
+  }
+}
+
 static int tx_main(const k6_api_t *api, ui_t *ku) {
   char line[64], *p;
   c4_t s;
@@ -400,16 +428,7 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   *p = 0;
   api->say(line);
   if (api->rx_hz() != C4_HZ) return -2;
-  {                                           /* the upload's sender must have unkeyed */
-    uint32_t clear = api->ms();
-    while (api->ms() - clear < C4_CLEAR_MS) {
-      if (KM_RSSI_DBM(api->fd_read(0x67)) >= C4_CLEAR_DBM) clear = api->ms();
-      if (api->ms() > C4_WAIT_MS) return -7;
-      if (api->key_down()) return -4;
-      api->delay_us(10000);
-    }
-  }
-  if ((r = until(api, api->ms() + C4_PRE_MS)) != 0) return r;
+  if ((r = trigger(api)) != 0) return r;
   for (i = 0; i < NSAVED; i++) s.sv[i] = api->fd_read(SAVED[i]);
   s.r40 = s.sv[NSAVED - 1];
   ui_text(ku, 1, "ON THE AIR");

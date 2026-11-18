@@ -69,9 +69,14 @@ syncs (P5) are the most this path gives.
 
 ## Bench
 
-Inbox job: wake, `k6.upload` of the built `c4probe.bin` over the Pluto (level 3), then a background
-`pluto rx run:c4.wav --hz 440849000 --seconds 45`. The Pluto is tuned 1 kHz low because the K6 sits about
--1.9 ppm and the Pluto about +1 ppm. The module waits for the channel to clear, then waits C4_PRE_MS (6 s)
-so the capture is running before it keys.
+The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto
+(level 3), and sends `trigger.wav`: about 4 s of PSK31 "AG7EW TEST", with the Pluto's own MCW ID first.
+Then it starts a background `pluto rx run:c4.wav --hz 440849000 --seconds 60`. The Pluto is tuned 1 kHz
+low because the K6 sits about -1.9 ppm and the Pluto about +1 ppm.
+
+The Pluto can't capture while it sends, and the uploader holds it through its 27 s report wait. So
+the module waits for the upload's carrier to go, then for a carrier of the job's own (the trigger, or
+the uploader's closing ID), then for C4_PRE_MS (10 s) of quiet before it keys (trigger(); -7 if none
+of that happens within 180 s). Then `python3 -m modem.k6c4fm analyze c4.wav`.
 
 SPDX-License-Identifier: MIT
