@@ -234,7 +234,7 @@ also saves flash there.
    Jeff's typed line in a hamlet session (the runner inbox refuses flashes by design).
 5. **Receive**: YSF receive, M17 sotto receive to the speaker, DMR voice receive. As modules
    first, then in the image with Jeff's ear for the speaker (flash 2).
-   - **YSF receive, step 1 (built, host tested, not yet on the bench)**: `c/common/ysf_rx.[ch]`,
+   - **YSF receive, step 1 (works on the radio, 11-18 21:49Z)**: `c/common/ysf_rx.[ch]`,
      the C version of modem/ysf.py's demodulator and decoder on m17_rx.c's front end (DC follower,
      x3 RRC interpolator at 24 kHz, here alpha 0.2 over +-6 symbols). It keeps the frame's 480
      symbols as 16-bit samples (not soft bits) and makes soft bits from them as each decoder asks,
@@ -247,6 +247,14 @@ also saves flash there.
      runs it on the radio's FM tap exactly as c6m17rx does; runner plans `uv380.rx ysf|ysftap`;
      `python3 -m modem.ysf wav` makes the Pluto's test transmission (c6sotto's test message as
      sotto VW, `--dev 5400` puts the outer symbol at 2700 Hz).
+   - **On the bench (job ysfrx-1118a, main 9f63b68, 21:49-21:51Z):** c6ysfrx_tap on the radio's
+     FM tap (no mod, nothing keyed on the UV-380), the Pluto sending `modem.ysf wav` (three
+     sotto VW calls of 40 superframes, three data FR calls) on 441.850, at -50 dB, then at -60 dB
+     with a 1 kHz offset (RSSI about -92 dBm). The radio decoded **108/108 frames, 240/240
+     superframes CRC good, every callsign and data block**, no FICH lost, no lock lost, 0 tap
+     half gaps; first 000102030405 and last eaebecedeeef as sent. The host receiver
+     (`ysf_rx_host`) on the same tap samples agrees: 108 frames. Sync scores 0.90-0.997 but for
+     two frames (0.60, 0.81), which still decoded.
    - The two receivers' front ends are the same code twice (about 40 lines); they become one
      `fsk4_rx` when both go into the image, not before (the M17 one is proven on air and stays as
      it is until then).
