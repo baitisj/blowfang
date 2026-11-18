@@ -10,10 +10,20 @@
    "id": "refcal-cool-1118-r3",
    "who": "refcal",
    "not_before": "2026-11-18T02:42:56Z"
+  },
+  {
+   "id": "c4fm-1118c",
+   "who": "c4fm",
+   "not_before": null
+  },
+  {
+   "id": "m17rx-tap1c-1118c",
+   "who": "m17rx",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T02:12:09Z",
+ "last_poll": "2026-11-18T02:18:18Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T02:12:09Z"
+ "updated": "2026-11-18T02:18:18Z"
 }
