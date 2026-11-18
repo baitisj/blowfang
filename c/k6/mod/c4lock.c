@@ -26,12 +26,13 @@
      A00..A12  one frame a packet (header, data FN 0, FN 1 "AG7EW K6 C4FM", terminator in turn),
                size writes at -6..+6 quarter symbols from that lag
      B0..B4    the whole transmission (four frames back to back) in one packet, at -2..+2 quarter
-               symbols, each just after a rate packet of its own (R2..R6): its marks set the rate
-               and phase for the B packet (11-18 lock5: the clock wanders a few hundred ppm
-               within seconds, and the B packets slid up to 0.9 symbol on the fit's grid). The
-               rate packets also time their own starts (marks against the enable): the B enable
-               goes half a symbol before the start threshold they agree on (lock6: two B
-               packets of five started a symbol off the cal's prediction)
+               symbols, each just after a rate packet of its own (R2..R6) that sets its rate
+               (11-18 lock5: the clock wanders a few hundred ppm within seconds, and the B
+               packets slid up to 0.9 symbol on the fit's grid). Each B packet starts with 7
+               words of alternation (more preamble) and times itself from the inside: six
+               almost-empty flags as those words leave fix where its payload starts, and its
+               done grid is dd on (lock6, lock7: B packets started a symbol off any prediction
+               from outside)
    Every data packet ends with 16 outer symbols, so the TX-done poll has room after the last size
    write. Like c4ysf it keys C4_PRE_MS after the bench job's trigger carrier, on 440.850 only, the
    PA off by default, and ends with AG7EW in MCW. A Pluto capture goes to
@@ -48,9 +49,9 @@
      K6 MOD say c4lock rate ppm=... ok=1111111 phi=...   R0 and R1's mean (0.1 ppm, as fit=),
                                     the rate packets that ran whole, and the done grid against
                                     R2's centre mark (% of a symbol)
-     K6 MOD say c4lock lam=... b=... dd=... n=...   the start threshold after the enable, how far
-                                    apart the rate packets put it (both % of a symbol: under 100
-                                    agrees), their done after the payload, and how many
+     K6 MOD say c4lock dd=... n=... marks>=... skip=...   the rate packets' done after their
+                                    payload (% of a symbol, on their marks' lattice), how many,
+                                    the fewest marks a B packet got, B packets stopped for too few
      K6 MOD say c4lock rq ...       each rate packet's rate (0.1 ppm)
      K6 MOD say c4lock w=... late=... miss=... lost=... wr=...-... rd=...   size writes, late, data
                                     packets that ended over half a symbol off their tick, polls that
@@ -157,6 +158,8 @@ K6_MODULE_NAME(K6_NAME);
 #define P_CHUNK 1u                                  /* words a refill: a mark every 16 symbols */
 #define IRQ_AE 0x4000
 #define RATE_MAX 245760                             /* 3000 ppm in Q12 cycles: a rate past it is wrong */
+#define B_FILL 7u                                   /* alternation words before a B packet's frames */
+#define B_MARKS 6u                                  /* the flags timed in them */
 #if C4_FIFOPROBE
 #define NR 2                                        /* rate packets, 1.5 s apart */
 #define NCAL 1                                      /* (not sent: the cal and fit arrays make room) */
@@ -269,10 +272,10 @@ typedef struct {
   uint32_t tc;              /* the last rate packet's centre mark (its line's, at mark 53.5) */
   int32_t phi;              /* a done tick less the centre mark's time, mod a symbol (cycles) */
   uint32_t rsync;           /* 1: the grid from the rate packets (phi set), not the fit */
-  /* where a packet starts against its enable, from the rate packets' marks: each one's start on
-     its centre mark's lattice less its enable (b, in [lam, lam + P)), and its done less that
-     start and the lead and payload (dd) */
-  int32_t bmin, bmax, ddsum, ddn, lam, dd;
+  /* each rate packet's done less its marks' payload symbol 0 and the payload: the done grid's
+     place on the mark lattice, plus whole symbols (the mean: dd) */
+  int32_t ddsum, ddn, dd;
+  uint32_t skip, mkmin;     /* B packets that got too few marks of their own; the fewest marks */
 #if C4_FIFOPROBE
   int16_t pm[NR][NM];       /* mark k less the first and k nominal periods (C4_PPM), 16 cycles */
   uint32_t px[NR], p0[NR], pe[NR];   /* each packet's enable, first mark and TX done (cycles) */
@@ -542,8 +545,13 @@ static uint16_t fword(uint32_t f0, uint32_t nwf, uint32_t i) {
   return (uint16_t)(b[2 * i] | b[2 * i + 1] << 8);
 }
 
+/* word i of a packet that starts with fill words of alternation (more preamble) */
+static uint16_t pword(uint32_t f0, uint32_t nwf, uint32_t fill, uint16_t inv, uint32_t i) {
+  return i < fill ? 0x5555 : fword(f0, nwf, i - fill) ^ inv;
+}
+
 /* a packet of nw words set up, pre of them in the FIFO, the 20 ms settle: 0 or an error */
-static int arm(c4_t *s, uint32_t nw, uint32_t pre, uint32_t f0, uint32_t nwf, uint16_t inv) {
+static int arm(c4_t *s, uint32_t nw, uint32_t pre, uint32_t f0, uint32_t nwf, uint16_t inv, uint32_t fill) {
   const k6_api_t *api = s->api;
   uint32_t i;
   int r;
@@ -551,7 +559,7 @@ static int arm(c4_t *s, uint32_t nw, uint32_t pre, uint32_t f0, uint32_t nwf, ui
   api->fd_write(R_CTRL, CTRL_BASE | CTRL_CLR);
   api->fd_write(R_CTRL, CTRL_BASE);
   api->fd_write(0x5D, (uint16_t)((2u * nw - 1u) << 8));
-  for (i = 0; i < pre; i++) api->fd_write(R_FIFO, fword(f0, nwf, i) ^ inv);
+  for (i = 0; i < pre; i++) api->fd_write(R_FIFO, pword(f0, nwf, fill, inv, i));
   if ((r = until(api, api->ms() + 20)) != 0) return r;        /* as the stock MDC path */
   return keyed(api);
 }
@@ -590,7 +598,7 @@ static int done(c4_t *s, uint32_t from, uint32_t *e) {
 static int cal(c4_t *s, uint32_t k) {
   uint32_t x, e = 0, nsym = LEAD_SYMS + CAL_WORDS * 16u, from;
   int r, phased = s->nfit != 0;
-  if ((r = arm(s, CAL_WORDS, CAL_WORDS, 0, 0, 0)) != 0) return r;
+  if ((r = arm(s, CAL_WORDS, CAL_WORDS, 0, 0, 0, 0)) != 0) return r;
   x = now(&s->c) + s->len + 96u * 50u;
   if (phased) x = at_phase(s, x, ((k - 1u) & 7u) * 2u);
   timed(s, x, R_CTRL, CTRL_BASE | CTRL_TX_EN);
@@ -657,44 +665,95 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
   const k6_api_t *api = s->api;
   const uint8_t *sz = C4_YSF_SIZE + f0 * C4_PKT_BYTES;
   uint32_t nwf = nf * FRAME_WORDS, nw = nwf + PAD_WORDS, pre = nw < FIFO_WORDS ? nw : FIFO_WORDS;
-  uint32_t pay = nw * 16u, nfs = nf * FRAME_SYMS, k, x, sent, e = 0;
+  uint32_t fill = 0, ahead, k, k0 = 0, x, sent, e = 0;
   int32_t ne, off, n0;
   unsigned cur = 1;
   int r;
-  if ((r = arm(s, nw, pre, f0, nwf, inv)) != 0) return r;
-  if (s->rsync) {
-    /* the enable half a symbol before a start threshold on the centre marks' lattice (the done
-       grid less phi), so the packet starts on that tick; its done dd on from the payload's end */
-    int32_t pc = (int32_t)(s->p12 >> 12), o = -(s->phi + s->lam + pc / 2);
-    uint32_t a = now(&s->c) + s->len + 96u * 50u;
-    int32_t n;
-    o -= sdivq(o, (uint32_t)pc, 0) * pc;
-    if (o < 0) o += pc;
-    n = idx(s, a - (uint32_t)o);
-    while ((int32_t)(tick(s, n) + (uint32_t)o - a) < 0) n++;
-    x = tick(s, n) + (uint32_t)o;
+  if (s->rsync && nw + B_FILL <= P_WORDS) {
+    fill = B_FILL;
+    nw += fill;
+    pre = P_T + 2u;
+  }
+  ahead = fill ? FIFO_WORDS - 20u : pre;
+  if ((r = arm(s, nw, pre, f0, nwf, inv, fill)) != 0) return r;
+  if (fill) {
+    /* the fill words time the packet from the inside, as a rate packet: the almost-empty flag as
+       words 1..B_MARKS leave (payload symbols 16, 32, ...), a word back each time. Their line at
+       the rate packet's rate puts payload symbol 0 (a0), and the done dd after the payload. No
+       start to predict, no extrapolation from the rate packet. */
+    uint32_t prev, t, lim, rl = s->len, per = mulp(s, 16u), a0 = 0;
+    int32_t sa = 0;
+    uint32_t nm = 0;
+    api->fd_write(R_IRQ_EN, IRQ_TX_DONE | IRQ_AE);
+    x = now(&s->c) + s->len + 96u * 50u;
     timed(s, x, R_CTRL, CTRL_BASE | CTRL_TX_EN);
-    ne = idx(s, x + (uint32_t)(s->lam + pc / 2) + mulp(s, LEAD_SYMS + pay) + (uint32_t)s->dd);
+    sent = pre;
+    lim = x + mulp(s, LEAD_SYMS + 16u + 64u);
+    prev = now(&s->c);
+    for (;;) {
+      t = now(&s->c);
+      if (api->fd_read(R_STATUS) & 1) {
+        uint32_t mk = prev + ((t - prev) >> 1), an;
+        uint16_t b;
+        api->fd_write(R_IRQ, 0);
+        b = api->fd_read(R_IRQ);
+        if (!(b & IRQ_AE) || (b & IRQ_TX_DONE)) break;
+        api->fd_write(R_FIFO, pword(f0, nwf, fill, inv, sent));
+        sent++;
+        api->fd_write(R_IRQ, 0);
+        an = mk - mulp(s, 16u * (nm + 1u));
+        if (!nm) a0 = an;
+        sa += (int32_t)(an - a0);
+        nm++;
+        if (nm >= B_MARKS) break;
+        {
+          uint32_t back = 3u * rl - ((nm * 5u & 7u) * rl >> 3);
+          if ((int32_t)(mk + per - back - now(&s->c)) > 0) wait_to(api, &s->c, mk + per - back);
+        }
+        lim = mk + 2u * per;
+        prev = now(&s->c);
+        continue;
+      }
+      rl = t - prev;
+      prev = t;
+      if ((int32_t)(t - lim) > 0) break;
+    }
+    api->fd_write(R_IRQ_EN, IRQ_TX_DONE);
+    api->fd_write(R_IRQ, 0);
+    if (nm < s->mkmin) s->mkmin = nm;
+    if (nm < 3u) {                          /* too few to place it: stop the packet */
+      s->skip++;
+      api->fd_write(R_CTRL, CTRL_BASE);
+      return keyed(api);
+    }
+    /* the done grid straight from the marks: this packet's done falls dd after its payload, as
+       every rate packet's did (the fit's grid, phi, is too noisy now: 0.4 symbol off, emulated) */
+    a0 += (uint32_t)sdivq(sa, nm, 0);
+    s->ta = a0 + (uint32_t)s->dd;
+    s->na = 0;
+    k0 = fill * 16u;
+    ne = (int32_t)(nw * 16u);
   } else {
     x = at_phase(s, now(&s->c) + s->len + 96u * 50u, s->th);
     timed(s, x, R_CTRL, CTRL_BASE | CTRL_TX_EN);
-    ne = idx(s, x + mulp(s, LEAD_SYMS + pay) + (uint32_t)s->ustar);
+    ne = idx(s, x + mulp(s, LEAD_SYMS + nw * 16u) + (uint32_t)s->ustar);
+    sent = pre;
   }
-  n0 = ne - (int32_t)pay;
+  n0 = ne - (int32_t)(nw * 16u);
   off = sixteenths(s, 4 * (C4_LAG4 + q)) - s->ubar;
-  sent = pre;
-  for (k = 0; k < pay; k++) {
-    unsigned want = k < nfs ? bit(sz, k) : 1u;
+  for (k = k0; k < nw * 16u; k++) {
+    uint32_t kd = k - k0, nfs = nf * FRAME_SYMS;
+    unsigned want = kd < nfs ? bit(sz, kd) : 1u;
     uint32_t at = tick(s, n0 + (int32_t)k) + (uint32_t)off;
     if (want != cur) {
       timed(s, at, R_TONE, G(want ? C4_GAIN : C4_INNER));
       s->w++;
       cur = want;
-    } else if (sent < nw && sent < (k >> 4) + pre && (k + 1 >= nfs || bit(sz, k + 1) == cur)) {
+    } else if (sent < nw && sent < (k >> 4) + ahead && (kd + 1 >= nfs || bit(sz, kd + 1) == cur)) {
       /* a word in the slack after this edge (it ends before the next one's write would start) */
       if ((int32_t)(at - now(&s->c)) < 0) s->late++;
       wait_to(api, &s->c, at);
-      api->fd_write(R_FIFO, fword(f0, nwf, sent) ^ inv);
+      api->fd_write(R_FIFO, pword(f0, nwf, fill, inv, sent));
       sent++;
     }
   }
@@ -721,7 +780,7 @@ static int probe(c4_t *s, uint32_t j) {
   uint32_t per = mulp(s, 16u * P_CHUNK);
   int32_t sxy = 0, sy = 0, q;
   int r, n = 0, whole = 0;
-  if ((r = arm(s, P_WORDS, P_PRE, 0, 0, 0)) != 0) return r;
+  if ((r = arm(s, P_WORDS, P_PRE, 0, 0, 0, 0)) != 0) return r;
   api->fd_write(R_IRQ_EN, IRQ_TX_DONE | IRQ_AE);
   x = now(&s->c) + s->len + 96u * 50u;
   timed(s, x, R_CTRL, CTRL_BASE | CTRL_TX_EN);
@@ -803,13 +862,10 @@ static int probe(c4_t *s, uint32_t j) {
   s->rq[j] = (int32_t)(s->p12 - P12_0) + q;
   s->tc = m0 + mulp(s, 856u) + (uint32_t)sdivq(sy, NM, 0);
   if (whole && q < RATE_MAX && q > -RATE_MAX) {
-    /* the start: 1080 symbols (lead, the 4 words before the first flag, 856) before the centre;
-       the done: 160 + 2048 after the start, plus dd */
+    /* a flag comes as a word leaves (level P_T): the first as word 3 does, at payload symbol 48,
+       so the centre (mark 53.5) is payload symbol 904, and the payload ends 1144 later */
     uint32_t pn = (uint32_t)((int32_t)P12_0 + s->rq[j]);
-    int32_t b = (int32_t)(s->tc - mulq(pn, 1080u) - x), dd = (int32_t)(te - s->tc - mulq(pn, 1128u));
-    if (!s->ddn || b < s->bmin) s->bmin = b;
-    if (!s->ddn || b > s->bmax) s->bmax = b;
-    s->ddsum += dd;
+    s->ddsum += (int32_t)(te - s->tc - mulq(pn, 1144u));
     s->ddn++;
     s->rok |= 1u << j;
   }
@@ -831,8 +887,6 @@ static int resync(c4_t *s, uint32_t j) {
   s->p12 = (uint32_t)((int32_t)P12_0 + s->rq[j]);
   s->ta = s->tc + (uint32_t)s->phi;
   s->na = 0;
-  /* the start threshold: the middle of what every rate packet so far allows */
-  s->lam = sdivq(s->bmin + s->bmax - (int32_t)(s->p12 >> 12), 2, 0);
   s->dd = sdivq(s->ddsum, (uint32_t)s->ddn, 0);
   return 0;
 }
@@ -964,14 +1018,14 @@ static void report(c4_t *s, int cal_done, char *line) {
   p = sdec(p, pct(s, s->phi));
   *p = 0;
   api->say(line);
-  p = put(line, "c4lock lam=");
-  p = sdec(p, pct(s, s->lam));
-  p = put(p, " b=");
-  p = sdec(p, pct(s, s->bmax - s->bmin));
-  p = put(p, " dd=");
+  p = put(line, "c4lock dd=");
   p = sdec(p, pct(s, s->dd));
   p = put(p, " n=");
   p = sdec(p, s->ddn);
+  p = put(p, " marks>=");
+  p = dec(p, s->mkmin);
+  p = put(p, " skip=");
+  p = dec(p, s->skip);
   *p = 0;
   api->say(line);
   p = put(line, "c4lock rq");
@@ -1059,7 +1113,9 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   s.res = s.ustar = s.ubar = s.cppm = 0;
   s.settled = 0;
   s.rok = s.rsync = s.tc = 0;
-  s.phi = s.bmin = s.bmax = s.ddsum = s.ddn = s.lam = s.dd = 0;
+  s.phi = s.ddsum = s.ddn = s.dd = 0;
+  s.skip = 0;
+  s.mkmin = B_MARKS;
   s.rppm = C4_PPM * 10;
   for (i = 0; i < NR + NB; i++) s.rq[i] = 0;
   s.p12 = P12_0;

@@ -153,6 +153,7 @@ YSF_PRE = (120, 64, 32)             # c4ysf.c's B1..B3: FIFO words written befor
 LOCK_NR = 2                         # c4lock.c (11-18): rate packets first (128 words, PN9's first 256 signs
                                     # again), and one before each whole transmission
 LOCK_NCAL = 17                      # c4lock.c (run 3): calibration packets (64 PN9 signs each)
+LOCK_FILL = 7                       # c4lock.c (11-18): alternation words before each whole transmission
 LOCK_CAL_SYMS = 64
 LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, quarter symbols
 LOCK_B = (-2, -1, 0, 1, 2)          # its whole-transmission packets'
@@ -177,6 +178,9 @@ def packets(plan="probe"):
         one = np.ones(PAD_SYMS, np.int8)
         def rate(i):
             return dict(name=f"R{i}", chip=np.tile(pn_signs()[:256], 8), mode="none")
+        fill = 16 * LOCK_FILL if plan != "lock3" else 0
+        alt = np.tile(np.array([0, 1], np.int8), fill // 2)
+        ones = np.ones(fill, np.int8)
         out = [rate(i) for i in range(LOCK_NR if plan != "lock3" else 0)]
         out += [dict(name=f"C{i:02d}", chip=pn_signs()[:LOCK_CAL_SYMS], mode="none")
                 for i in range(LOCK_NCAL)]
@@ -191,14 +195,15 @@ def packets(plan="probe"):
                 # (the flipped calls keep the plain signs here: the analysis takes either
                 # polarity, and its pol says which one came)
                 out.append(rate(LOCK_NR + j))
-                out.append(dict(name=f"D{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
-                                mode="size", off=0, frames=[4 * st + f for f in range(4)]))
+                out.append(dict(name=f"D{j}", chip=np.concatenate([alt, c, pad]),
+                                size=np.concatenate([ones, sz, one]), mode="size", off=0,
+                                frames=[4 * st + f for f in range(4)], fill=fill))
             return out
         for j, q in enumerate(LOCK3_B if plan == "lock3" else LOCK_B):
             if plan != "lock3":
                 out.append(rate(LOCK_NR + j))
-            out.append(dict(name=f"B{j}", chip=np.concatenate([c, pad]), size=np.concatenate([sz, one]),
-                            mode="size", off=q, frames=[0, 1, 2, 3]))
+            out.append(dict(name=f"B{j}", chip=np.concatenate([alt, c, pad]), size=np.concatenate([ones, sz, one]),
+                            mode="size", off=q, frames=[0, 1, 2, 3], fill=fill))
         return out
     if plan == "ysf":
         out = []
@@ -463,12 +468,14 @@ def analyze(disc, fs=48000, plan="probe"):
             r["land"] = size_land(pay, p["size"])
             lines.append(f"{p['name']} off {p['off']:+d}/4: " + r["text"] + f", sizes land {r['land']:+.2f}")
         elif p["mode"] == "size":
-            subs = [ysf_packet(pay[j * PKT_SYMS:(j + 1) * PKT_SYMS], f) for j, f in enumerate(p["frames"])]
+            f0 = p.get("fill", 0)                  # the alternation words before the frames
+            fp, fs_ = pay[f0:], p["size"][f0:]
+            subs = [ysf_packet(fp[j * PKT_SYMS:(j + 1) * PKT_SYMS], f) for j, f in enumerate(p["frames"])]
             r["frames"] = subs
             r["sym_err"] = sum(x["sym_err"] for x in subs)
             r["fich_n"] = sum(x["fich"] for x in subs)
-            r["land"] = size_land(pay, p["size"])
-            r["land_frames"] = [size_land(pay[j * PKT_SYMS:(j + 1) * PKT_SYMS], p["size"][j * PKT_SYMS:(j + 1) * PKT_SYMS])
+            r["land"] = size_land(fp, fs_)
+            r["land_frames"] = [size_land(fp[j * PKT_SYMS:(j + 1) * PKT_SYMS], fs_[j * PKT_SYMS:(j + 1) * PKT_SYMS])
                                 for j in range(len(p["frames"]))]
             what = f"{p.get('pre')} words first" if "pre" in p else f"off {p['off']:+d}/4"
             lines.append(f"{p['name']} ({what}): {r['fich_n']} of {len(subs)} frames "
