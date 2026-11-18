@@ -1,0 +1,12 @@
+{
+ "id": "c4fm-dmr2",
+ "status": "queued",
+ "queued": "2026-11-18T21:17:14Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "d87aada6568ed02afdd46a16a5120c29c756b84c",
+  "path": "jobs/c4fm-dmr2"
+ },
+ "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "updated": "2026-11-18T21:17:14Z"
+}
