@@ -1,12 +1,69 @@
 {
  "id": "sotto3-air-1118",
- "status": "running",
- "since": "2026-11-18T20:21:11Z",
+ "who": "multimode",
+ "started": "2026-11-18T20:21:12Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-18T20:21:12Z",
+   "ended": "2026-11-18T20:21:14Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T20:21:14Z",
+   "ended": "2026-11-18T20:21:27Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.sotto",
+   "started": "2026-11-18T20:21:27Z",
+   "ended": "2026-11-18T20:21:42Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.sotto",
+   "started": "2026-11-18T20:21:42Z",
+   "ended": "2026-11-18T20:21:56Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "uv380.sotto",
+   "started": "2026-11-18T20:21:56Z",
+   "ended": "2026-11-18T20:22:11Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T20:22:11Z",
+   "ended": "2026-11-18T20:22:17Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-18T20:22:17Z",
+   "ended": "2026-11-18T20:24:32Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4",
+ "head": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a",
+ "sources_head": "2bc44cf21d8a2bd2da89af6c0fffdbba19582ff5",
+ "ended": "2026-11-18T20:24:32Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "3742f0d4026a328f28b3c8f715514096f0f4d9ce",
   "path": "jobs/sotto3-air-1118"
  },
  "runner_commit": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
- "updated": "2026-11-18T20:21:11Z"
+ "updated": "2026-11-18T20:24:33Z"
 }

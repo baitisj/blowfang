@@ -1,0 +1,12 @@
+{
+ "id": "trunk-scan-1118a",
+ "status": "queued",
+ "queued": "2026-11-18T20:24:33Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "2218920165c2ba395fbe530169ea42e5a04c36ce",
+  "path": "jobs/trunk-scan-1118a"
+ },
+ "runner_commit": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "updated": "2026-11-18T20:24:33Z"
+}

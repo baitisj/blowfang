@@ -1,0 +1,37 @@
+[
+ {
+  "name": "s.cf32.json",
+  "bytes": 133,
+  "sha256": "c61313d5990fdcae2ef18f0193da33c0497e35ce5c8029bb448e0dba0f9aa818",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/s.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 203,
+  "sha256": "87f58d17e4604f270c799ebf79502ab205f28368ff8f19eb48b483ae1007888f",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/pluto.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 5707,
+  "sha256": "b1e92c04cd40efdf297df906d5ece46fc5c1a7158be086ef4963d345bc8e3edf",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log"
+ },
+ {
+  "name": "s.wav",
+  "bytes": 16320044,
+  "sha256": "f47bb448a3351d69f8c65cb54d905d6dff168202d3fc3d69a2a9ee11cf507c65",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/s.wav"
+ },
+ {
+  "name": "s.cf32",
+  "bytes": 326400000,
+  "sha256": "3a9f618cc8c47f4ebbbaec9e8ab54d28441e5b2b3a20315551e25d8276a9980e",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/s.cf32"
+ }
+]

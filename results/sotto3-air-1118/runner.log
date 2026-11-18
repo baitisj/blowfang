@@ -1,0 +1,237 @@
+2026-11-18T20:21:12Z job sotto3-air-1118 by multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4 at 9a35cf6044e4fa190ea598c97f9dc6878055e7f2, module sources /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a at 2bc44cf21d8a2bd2da89af6c0fffdbba19582ff5
+2026-11-18T20:21:12Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as multimode rx /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/s.wav --hz 441850000 --seconds 170
+2026-11-18T20:21:14Z step 1 (pluto) rc=0
+2026-11-18T20:21:14Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 zero 2 trim -580 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: zero 2
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: trim -580
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:21:27Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T20:21:27Z step 2 (uv380.cmd) rc=0
+2026-11-18T20:21:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:21:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a/firmware/uv380-openrtx/mod/c6sotto_m17.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log --run-timeout 45
+ok mod begin 6652
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 124
+mod run serial=1795033291 code=6628
+mod say sotto m17 sf=210/250 first=9100475824d1 last=56d3d545aca1 bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=1 dry=0
+mod say tx_tone ok
+mod say ident keyed after 8 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=2 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4494 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=9514
+2026-11-18T20:21:42Z step 3 (uv380.sotto) rc=0
+2026-11-18T20:21:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:21:46Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a/firmware/uv380-openrtx/mod/c6sotto_ysf.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log --run-timeout 45
+ok mod begin 6948
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 36
+mod run serial=1795033306 code=6924
+mod say sotto ysf sf=205/250 first=9100475824d1 last=d71bc3ed205b bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=140% -> 45=b1 46=4b src=1 dry=0
+mod say tx_tone ok
+mod say ident keyed after 15 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=22 ms rftx=1 late=0 lost=0 chk=36/24 spi=0 done=1 restored at 4514 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=9520
+2026-11-18T20:21:56Z step 4 (uv380.sotto) rc=0
+2026-11-18T20:21:56Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:22:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a/firmware/uv380-openrtx/mod/c6sotto_dmr.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log --run-timeout 45
+ok mod begin 5850
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 90
+mod run serial=1795033321 code=5826
+mod say sotto dmr sf=85/250 first=9100475824d1 last=1f2604c8257a bytes=720 tx_ms=4600 cal I=7f Q=36 dev=100% -> 45=7f 46=36 src=1 dry=0
+mod say tx_tone ok
+mod say ident keyed after 7 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx hdr=3 voice=60/60 term=1 edges=132 first=13 ms rftx=64 82|=00 late=0 done=1 restored at 4023 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=9141
+2026-11-18T20:22:11Z step 5 (uv380.sotto) rc=0
+2026-11-18T20:22:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 trim 6100 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: trim 6100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:22:17Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850 listen=0
+2026-11-18T20:22:17Z step 6 (uv380.cmd) rc=0
+2026-11-18T20:24:32Z seen /s\.wav: / in /home/baitisj/blowfang-work/runs/queue/sotto3-air-1118/pluto.out
+2026-11-18T20:24:32Z step 7 (wait) rc=0
+2026-11-18T20:24:32Z job sotto3-air-1118 done
