@@ -1,0 +1,29 @@
+{
+ "id": "uvscan-1118a",
+ "who": "position",
+ "freq_mhz": 441.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "scan"
+   ],
+   "timeout": 260,
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "tune"
+   ]
+  }
+ ]
+}
