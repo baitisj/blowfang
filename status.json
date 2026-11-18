@@ -4,20 +4,31 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "k6leak-1118a",
-  "who": "position",
-  "since": "2026-11-18T20:36:06Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "trunk-scan-1118c",
    "who": "position",
    "not_before": null
+  },
+  {
+   "id": "c4fm-sotto4",
+   "who": "c4fm",
+   "not_before": null
+  },
+  {
+   "id": "trunk-scan-1118d",
+   "who": "position",
+   "not_before": null
+  },
+  {
+   "id": "trunk-scan-1118e",
+   "who": "position",
+   "not_before": null
   }
  ],
- "last_poll": "2026-11-18T20:36:00Z",
+ "last_poll": "2026-11-18T20:45:35Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T20:36:06Z"
+ "updated": "2026-11-18T20:45:35Z"
 }

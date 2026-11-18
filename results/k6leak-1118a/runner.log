@@ -1,0 +1,115 @@
+2026-11-18T20:36:07Z job k6leak-1118a by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4 at 9a35cf6044e4fa190ea598c97f9dc6878055e7f2
+2026-11-18T20:36:07Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold position -- timeout -s INT --kill-after=10 1500 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log
+2026-11-18T20:36:09Z step 1 (logger) rc=0
+2026-11-18T20:36:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position send /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 20:36:10Z
+end 20:36:22Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T20:36:22Z step 2 (pluto) rc=0
+2026-11-18T20:36:34Z step 3 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log)
+2026-11-18T20:36:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_h800.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6-rate.json --telemetry 0
+12:36:37 send 1: 37 of 37 XL chunks at F/1800 (serial 1795034196, xfer 84); module /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_h800.bin: 4456 B code, entry +16, API level 2, serial 1795034196, xfer 84, 4480 B image in 37 XL chunks; 74 packets, 47.9 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 55.3 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 20:36:38Z
+end 20:37:33Z: 55.3 s of signal in 55.2 s (kept up)
+12:37:34 listening for the K6's report
+12:38:01 no report heard
+12:38:01 no report after a whole send: the K6 may be set to L packets, so the next send is 78 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 37 chunks sent were lost
+12:38:01 CW ID
+2026-11-18T20:38:01Z step 4 (k6.upload) rc=0
+2026-11-18T20:38:06Z seen /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log
+2026-11-18T20:38:06Z step 5 (wait) rc=0
+2026-11-18T20:38:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position send /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 20:38:07Z
+end 20:38:18Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T20:38:19Z step 6 (pluto) rc=0
+2026-11-18T20:38:31Z step 7 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log)
+2026-11-18T20:38:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_t800.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6-rate.json --telemetry 0
+12:38:34 send 1: 37 of 37 XL chunks at F/1800 (serial 1795034313, xfer 201); module /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_t800.bin: 4456 B code, entry +16, API level 2, serial 1795034313, xfer 201, 4480 B image in 37 XL chunks; 74 packets, 47.9 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 55.3 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 20:38:35Z
+end 20:39:30Z: 55.3 s of signal in 55.2 s (kept up)
+12:39:30 listening for the K6's report
+12:39:57 no report heard
+12:39:57 no report after a whole send: the K6 may be set to L packets, so the next send is 78 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 37 chunks sent were lost
+12:39:57 CW ID
+2026-11-18T20:39:57Z step 8 (k6.upload) rc=0
+2026-11-18T20:39:57Z seen /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log
+2026-11-18T20:39:57Z step 9 (wait) rc=0
+2026-11-18T20:39:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position send /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 20:39:59Z
+end 20:40:10Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T20:40:11Z step 10 (pluto) rc=0
+2026-11-18T20:40:23Z step 11 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log)
+2026-11-18T20:40:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_d800.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6-rate.json --telemetry 0
+12:40:26 send 1: 37 of 37 XL chunks at F/1800 (serial 1795034425, xfer 57); module /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_d800.bin: 4456 B code, entry +16, API level 2, serial 1795034425, xfer 57, 4480 B image in 37 XL chunks; 74 packets, 47.9 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 55.3 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 20:40:27Z
+end 20:41:22Z: 55.3 s of signal in 55.2 s (kept up)
+12:41:22 listening for the K6's report
+12:41:49 no report heard
+12:41:49 no report after a whole send: the K6 may be set to L packets, so the next send is 78 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 37 chunks sent were lost
+12:41:49 CW ID
+2026-11-18T20:41:50Z step 12 (k6.upload) rc=0
+2026-11-18T20:41:50Z seen /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log
+2026-11-18T20:41:50Z step 13 (wait) rc=0
+2026-11-18T20:41:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position send /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 20:41:51Z
+end 20:42:02Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T20:42:03Z step 14 (pluto) rc=0
+2026-11-18T20:42:15Z step 15 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log)
+2026-11-18T20:42:16Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_h700.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6-rate.json --telemetry 0
+12:42:18 send 1: 37 of 37 XL chunks at F/1800 (serial 1795034537, xfer 169); module /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_h700.bin: 4456 B code, entry +16, API level 2, serial 1795034537, xfer 169, 4480 B image in 37 XL chunks; 74 packets, 47.9 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 55.3 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 20:42:19Z
+end 20:43:14Z: 55.3 s of signal in 55.2 s (kept up)
+12:43:14 listening for the K6's report
+12:43:45 K6: ran, 37/37 chunks, r=3 (ready), rates F12,F18,D24 on F18
+ran: returned 0 in 43608 ms, 260 B stack free
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': True}, 0% of 37 chunks sent were lost
+12:43:45 CW ID
+2026-11-18T20:43:45Z step 16 (k6.upload) rc=0
+2026-11-18T20:43:45Z seen /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log
+2026-11-18T20:43:45Z step 17 (wait) rc=0
+2026-11-18T20:43:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/pluto_bench.py --as position send /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 20:43:46Z
+end 20:43:58Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T20:43:58Z step 18 (pluto) rc=0
+2026-11-18T20:44:10Z step 19 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log)
+2026-11-18T20:44:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_t700.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6-rate.json --telemetry 0
+12:44:15 send 1: 37 of 37 XL chunks at D/2400 (serial 1795034652, xfer 28); module /home/baitisj/blowfang-work/runs/inbox/k6leak-1118a/rxmap_t700.bin: 4456 B code, entry +16, API level 2, serial 1795034652, xfer 28, 4480 B image in 37 XL chunks; 74 packets, 36.0 s on air; reply asked
+send: wav peak 0.980 of full scale -> 4849 Hz before pre-emphasis
+send up1.wav: 46.5 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 20:44:16Z
+end 20:45:02Z: 46.5 s of signal in 46.4 s (kept up)
+12:45:02 listening for the K6's report
+12:45:33 K6: ran, 37/37 chunks, r=3 (ready), rates F12,F18,D24 on D24
+ran: returned 0 in 40503 ms, 260 B stack free
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': True}, 0% of 37 chunks sent were lost
+12:45:33 CW ID
+2026-11-18T20:45:34Z step 20 (k6.upload) rc=0
+2026-11-18T20:45:34Z seen /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log
+2026-11-18T20:45:34Z step 21 (wait) rc=0
+2026-11-18T20:45:34Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release position
+the port is free (position let go)
+2026-11-18T20:45:34Z step 22 (logger.stop) rc=0
+2026-11-18T20:45:34Z job k6leak-1118a done
