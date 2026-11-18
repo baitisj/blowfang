@@ -458,13 +458,32 @@ def test_ftm_demo_calls():
     """c4ftm: five whole calls at the lag (DN sets 1, 2, 1, 2, data), plain signs; on air the plain
     receiver finds all five"""
     pytest.importorskip("unicorn")
-    ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC)
+    ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC,
+                                             keys=((6_000_000, 6_300_000),))
     assert ret == len(k6c4fm.packets("demo")), said
+    # pre-armed: armed once the upload's carrier is gone, the key's release the go, keyed 5 s later
+    assert said[1:3] == ["c4 armed: a key sends", "c4 go"], said
+    t_on = tx["log"][0][2]
+    assert 6_300_000 + 5_000_000 <= t_on < 6_300_000 + 5_200_000, t_on
     lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8), plan="demo")
     for j, inv in enumerate(k6c4fm.DEMO_INV):
         r = res[f"D{j}"]
         assert r["fich_n"] == 4 and (r["pol"] < 0) == bool(inv), "\n".join(lines)
     assert res["plain"]["runs"] == [4] * 5, "\n".join(lines)
+
+
+@need_clang
+def test_ftm_demo_go_rules():
+    """c4ftm armed: a key before the arming stops it, a second key in the count-down stops it, and
+    the go waits for the channel to clear (here the job's trigger carrier, 40-44 s)"""
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, keys=((1_000_000, 1_200_000),))
+    assert ret == -4 and "log" not in tx and "c4 armed: a key sends" not in said, said
+    ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, keys=((6_000_000, 6_200_000),
+                                                                 (8_000_000, 8_200_000)))
+    assert ret == -4 and "log" not in tx and "c4 go" in said, said
+    ret, said, regs, tx, fsk, ev = send_lock(src=FTM_SRC, keys=((38_000_000, 38_200_000),))
+    assert ret == len(k6c4fm.packets("demo")) and tx["log"][0][2] >= TRIGGER_US[1] + 900_000, said
 
 
 @need_clang

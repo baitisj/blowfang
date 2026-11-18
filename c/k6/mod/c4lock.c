@@ -119,6 +119,12 @@ K6_MODULE_NAME(K6_NAME);
 #ifndef C4_WAIT_MS
 #define C4_WAIT_MS 180000
 #endif
+#ifndef C4_KEYGO
+#define C4_KEYGO 0          /* 1 (c4ftm.c): armed after the upload, a K6 key press is the go */
+#endif
+#ifndef C4_GO_MS
+#define C4_GO_MS 5000       /* C4_KEYGO: the key press to the key-up (the Pluto capture starting) */
+#endif
 #ifndef ID_TEXT
 #define ID_TEXT "AG7EW"
 #endif
@@ -961,12 +967,14 @@ static void quiet(const k6_api_t *api) {
   api->fd_write(R_TONE1, 0);
 }
 
+#if !C4_KEYGO
 /* When to key: the upload's carrier gone (C4_CLEAR_MS below C4_CLEAR_DBM), then at least one
    carrier of the job's own (its trigger: the Pluto's short PSK31 send, or the uploader's closing
    ID), then C4_PRE_MS with none, the time the Pluto's capture takes to start (a capture can't run
    while the Pluto sends, and the uploader holds it until its report wait is over). 0, -4 a key,
    -7 none of it within C4_WAIT_MS. */
-static int trigger(const k6_api_t *api) {
+static int trigger(const k6_api_t *api, ui_t *ku) {
+  (void)ku;
   uint32_t quiet = api->ms();
   int gone = 0, heard = 0;
   for (;;) {
@@ -985,6 +993,52 @@ static int trigger(const k6_api_t *api) {
     api->delay_us(10000);
   }
 }
+
+#else
+/* Armed (C4_KEYGO, Jeff 11-18: "go" in seconds): the upload's carrier gone (C4_CLEAR_MS below
+   C4_CLEAR_DBM), then a key pressed and let go is the go. It says "c4 go" at once (the bench job
+   starts its Pluto capture on that line), then keys C4_GO_MS later with the channel clear for
+   C4_CLEAR_MS. A key before the arming, or a second key in the count-down, stops it (-4); no key
+   within C4_WAIT_MS, or the channel busy C4_GO_MS + 30 s after the go, -7. */
+static int trigger(const k6_api_t *api, ui_t *ku) {
+  uint32_t quiet = api->ms(), go = 0;
+  int armed = 0, held = 0;
+  for (;;) {
+    uint32_t t = api->ms();
+    int k = api->key_down();
+    if (KM_RSSI_DBM(api->fd_read(0x67)) >= C4_CLEAR_DBM) quiet = t;
+    if (!armed) {
+      if (k) return -4;
+      if (t - quiet >= C4_CLEAR_MS) {
+        armed = 1;
+        api->say("c4 armed: a key sends");
+        ui_text(ku, 1, "ARMED");
+        ui_text(ku, 5, "ANY KEY: SEND");
+        ui_now(ku);
+      } else if (t > C4_WAIT_MS) {
+        return -7;
+      }
+    } else if (!go) {
+      if (k) {
+        held = 1;
+      } else if (held) {
+        go = t | 1;
+        api->say("c4 go");
+        ui_text(ku, 1, "GO: KEYING SOON");
+        ui_text(ku, 5, "ANY KEY: STOP");
+        ui_now(ku);
+      } else if (t > C4_WAIT_MS) {
+        return -7;
+      }
+    } else {
+      if (k) return -4;
+      if (t - go >= C4_GO_MS && t - quiet >= C4_CLEAR_MS) return 0;
+      if (t - go > C4_GO_MS + 30000) return -7;
+    }
+    api->delay_us(10000);
+  }
+}
+#endif
 
 /* the reports, after the key-up (nothing is said while keyed) */
 static void report(c4_t *s, int cal_done, char *line) {
@@ -1140,7 +1194,7 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   *p = 0;
   api->say(line);
   if (api->rx_hz() != C4_HZ) return -2;
-  if ((r = trigger(api)) != 0) return r;
+  if ((r = trigger(api, ku)) != 0) return r;
   for (i = 0; i < NSAVED; i++) s.sv[i] = api->fd_read(SAVED[i]);
   s.r40 = s.sv[NSAVED - 1];
   ui_text(ku, 1, "ON THE AIR");
