@@ -1,0 +1,68 @@
+{
+ "id": "dmr-uvref2",
+ "who": "c4fm",
+ "freq_mhz": 440.85,
+ "minutes": 6,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 440850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "dmr"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 3
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_inv.wav",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 3
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--peak",
+    "2500",
+    "--gain",
+    "-40"
+   ]
+  }
+ ]
+}
