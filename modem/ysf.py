@@ -417,13 +417,38 @@ def dn_dest(rid=RADIO_ID):
     return "*****" + rid
 
 
+# DCH frames 6 and 7 of a Yaesu radio's DN call: a 20-byte block, radio type then a GPS position
+# (APRS Mic-E style: 6 latitude characters, then longitude degrees, minutes and hundredths + 28),
+# byte 19 = the sum of bytes 0-18. An FTM-300DR shows the caller's callsign only when this block is
+# there (bench, 11-18: frames identical but for it gave a blue bar and no callsign). The first five
+# bytes and bytes 14-18 are as an FTM-300DR sends them; the position is made up (47 00.00 N,
+# 122 00.00 W, the same N / +100 / W flag letters as the radio's).
+GPS_HEAD = bytes.fromhex("5522625f31")
+GPS_TAIL = bytes.fromhex("6c23272003")
+
+
+def gps_block(lat=b"T7PPPP", lon=(22, 0, 0)):
+    b = GPS_HEAD + lat + bytes(28 + v for v in lon) + GPS_TAIL
+    assert len(b) == 19
+    return b + bytes([sum(b) & 0xFF])
+
+
+def gps_block_ok(b):
+    return len(b) == 20 and (sum(b[:19]) & 0xFF) == b[19]
+
+
 def dn_dch(fn, dest="ALL", src=IDENT, down="", up="", rem=" " * 20, rid=None):
-    """the DN data channel's 10 bytes for frame fn (0-7). With rid, frame 5 carries five spaces
-    and the radio ID, as the FTM-300DR sends it (frame 4 keeps the first half of rem)"""
+    """the DN data channel's 10 bytes for frame fn (0-7). With rid, the Yaesu layout an FTM-300DR
+    sends: frame 5 carries five spaces and the radio ID, frames 6 and 7 the radio-type and GPS
+    block (frame 4 keeps the first half of rem)"""
     rem = rem.encode("ascii")[:20].ljust(20, b" ")
-    rem2 = (b" " * 5 + rid.encode("ascii")[:5].ljust(5, b" ")) if rid else rem[10:]
+    if rid:
+        rem2 = b" " * 5 + rid.encode("ascii")[:5].ljust(5, b" ")
+        r3, r4 = gps_block()[:10], gps_block()[10:]
+    else:
+        rem2, r3, r4 = rem[10:], b" " * 10, b" " * 10
     return [callsign_field(dest), callsign_field(src), callsign_field(down), callsign_field(up),
-            rem[:10], rem2, b" " * 10, b" " * 10][fn]
+            rem[:10], rem2, r3, r4][fn]
 
 
 # ---------------------------------------------------------------- frame assembly

@@ -439,9 +439,9 @@ def test_lock_module_rules():
 
 
 @need_clang
-def test_ftm_demo_alternates_polarity():
-    """c4ftm: five whole calls at the lag (DN x 4, data), the second and fourth with every sign
-    flipped; on air the plain receiver finds all five, in either polarity"""
+def test_ftm_demo_calls():
+    """c4ftm: five whole calls at the lag (DN sets 1, 2, 1, 2, data), plain signs; on air the plain
+    receiver finds all five"""
     pytest.importorskip("unicorn")
     ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=FTM_SRC)
     assert ret == k6c4fm.LOCK_NCAL + len(k6c4fm.DEMO_SETS), said

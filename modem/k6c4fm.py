@@ -81,16 +81,36 @@ def ysf_frames():
     return [ysf.bytes_to_bits(data[i * 120:(i + 1) * 120]) for i in range(4)]
 
 
-def dn_frames():
-    """a V/D mode 2 (DN voice) transmission for a C4FM radio: header, two comms frames of AMBE
-    silence (DCH remarks TEXT), terminator, as 960-bit arrays (frames 4-7 of all_frames)"""
-    data = ysf.tx_dn(2, rem=TEXT)[24:]
-    assert len(data) == 4 * ysf.FRAME_BYTES
-    return [ysf.bytes_to_bits(data[i * 120:(i + 1) * 120]) for i in range(4)]
+def dn_frame(fi, fn, dest, src, rid):
+    """one V/D mode 2 frame (header/terminator: CSD; comms: DCH frame fn + AMBE silence) in the
+    Yaesu layout an FTM-300DR sends (call mode 1, FT 7), as 960 bits"""
+    mk = dict(cs=2, cm=1, ft=7, dt=ysf.DT_VD_MODE2, dgid=0)
+    if fi == ysf.FI_COMMS:
+        pl = ysf.dn_payload(ysf.dn_dch(fn, dest, src, rid=rid), [ysf.ambe_silence()] * 5)
+    else:
+        pl = ysf.header_payload(dest, src, csd2=b" " * 20)
+    return ysf.build_frame(ysf.FICH(fi=fi, fn=fn, **mk), pl).astype(np.int8)
+
+
+DN_SETS = ((None, 6, 7, None), (5, 6, 7, None))    # frames 4-7 and 8-11: None = header / terminator
+
+
+def dn_frames(rid=ysf.RADIO_ID, src=ysf.IDENT):
+    """the DN (V/D mode 2) calls for a C4FM radio, four frames each (a K6 packet's most): the
+    FTM-300DR shows a callsign only when DCH frames 6 and 7 (the radio-type and GPS block) come
+    (bench 11-18), so: header, FN 6, FN 7, terminator; then FN 5 (radio ID), FN 6, FN 7,
+    terminator. Frames 4-11 of all_frames"""
+    dest = ysf.dn_dest(rid)
+    out = []
+    for st in DN_SETS:
+        for k, fn in enumerate(st):
+            fi = ysf.FI_COMMS if fn is not None else (ysf.FI_HEADER if k == 0 else ysf.FI_TERMINATOR)
+            out.append(dn_frame(fi, fn or 0, dest, src, rid))
+    return out
 
 
 def all_frames():
-    """the module's frame table: the data transmission (0-3), then the DN one (4-7)"""
+    """the module's frame table: the data transmission (0-3), then the DN calls (4-7, 8-11)"""
     return ysf_frames() + dn_frames()
 
 
@@ -108,8 +128,8 @@ LOCK_CAL_SYMS = 64
 LOCK_A = tuple(range(-6, 7))        # its single-frame packets' size timing, quarter symbols
 LOCK_B = (-2, -1, 0, 1, 2)          # its whole-transmission packets'
 LOCK3_B = (-4, -2, 0, 2, 4)         # run 3's (plan 'lock3'; its lag was 8)
-DEMO_SETS = (1, 1, 1, 1, 0)         # c4ftm.c (c4lock with C4_DEMO): DN x 4, data, at lag 0
-DEMO_INV = (0, 1, 0, 1, 0)          # its calls with every sign flipped (polarity test for a radio)
+DEMO_SETS = (1, 2, 1, 2, 0)         # c4ftm.c (c4lock with C4_DEMO): DN sets 1, 2 twice, data, at lag 0
+DEMO_INV = (0, 0, 0, 0, 0)          # calls with every sign flipped (none: plain signs suit the FTM, 11-18)
 DEMO_GAP_S = 1.0                    # its carrier between transmissions
 LOCK_LAG4 = 9                       # its C4_LAG4
 PAD_SYMS = 16                       # c4lock's outer alternation after the frames (FIFO word 0x5555)
@@ -178,8 +198,9 @@ def header(path):
     lines = ["/* c4probe_frames.h: written by python3 -m modem.k6c4fm header; do not edit.",
              f"   The probe's payloads (60 bytes = 480 symbols each, chip bit 1 = +deviation) and the",
              f"   YSF frames' signs and sizes (1 = outer): header, data FN 0, FN 1 ('{TEXT}'),",
-             "   terminator; then a DN (V/D mode 2) transmission: header, two comms frames of AMBE",
-             "   silence, terminator. SPDX-License-Identifier: MIT */",
+             "   terminator; then two DN (V/D mode 2) calls in the FTM-300DR's layout: header, FN 6,",
+             "   FN 7 (radio type + GPS block), terminator; FN 5, FN 6, FN 7, terminator.",
+             "   SPDX-License-Identifier: MIT */",
              f"#define C4_PKT_BYTES {PKT_BYTES}u",
              f"#define C4_NFRAMES 4u"]
 

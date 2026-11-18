@@ -163,8 +163,8 @@ K6_MODULE_NAME(K6_NAME);
 
 #if C4_DEMO
 static const int8_t BQ[NB] = {0, 0, 0, 0, 0};
-static const uint8_t BSET[NB] = {1, 1, 1, 1, 0};    /* frame set: 0 data, 1 DN (k6c4fm.DEMO_SETS) */
-static const uint8_t BINV[NB] = {0, 1, 0, 1, 0};    /* 1: every sign flipped (k6c4fm.DEMO_INV) */
+static const uint8_t BSET[NB] = {1, 2, 1, 2, 0};    /* frame set: 0 data, 1-2 DN (k6c4fm.DEMO_SETS) */
+static const uint8_t BINV[NB] = {0, 0, 0, 0, 0};    /* 1: every sign flipped (k6c4fm.DEMO_INV) */
 #else
 static const int8_t BQ[NB] = {-2, -1, 0, 1, 2};
 static const uint8_t BSET[NB] = {0, 0, 0, 0, 0};
