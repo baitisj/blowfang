@@ -1,12 +1,12 @@
 {
  "id": "k6leak-1118a",
- "status": "queued",
- "queued": "2026-11-18T20:33:30Z",
+ "status": "running",
+ "since": "2026-11-18T20:36:06Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "b0513a4448db117b6550102b48a24de5c14b70e0",
   "path": "jobs/k6leak-1118a"
  },
  "runner_commit": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
- "updated": "2026-11-18T20:33:30Z"
+ "updated": "2026-11-18T20:36:06Z"
 }
