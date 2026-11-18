@@ -1,12 +1,12 @@
 {
  "id": "m17rx-onradio-1118b",
- "status": "queued",
- "queued": "2026-11-18T02:54:00Z",
+ "status": "running",
+ "since": "2026-11-18T02:54:06Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "7abbb550a696600a6474df3a72194530745ea2f2",
   "path": "jobs/m17rx-onradio-1118b"
  },
  "runner_commit": "9bc3c2d2187fe82a24213f34b431454618165ba3",
- "updated": "2026-11-18T02:54:00Z"
+ "updated": "2026-11-18T02:54:06Z"
 }

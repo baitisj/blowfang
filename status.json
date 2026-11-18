@@ -4,21 +4,20 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
+ "running": {
+  "id": "m17rx-onradio-1118b",
+  "who": "m17rx",
+  "since": "2026-11-18T02:54:06Z"
+ },
  "waiting": [
   {
    "id": "refcal-cool-1118-r4",
    "who": "refcal",
    "not_before": "2026-11-18T03:36:55Z"
-  },
-  {
-   "id": "m17rx-onradio-1118b",
-   "who": "m17rx",
-   "not_before": null
   }
  ],
  "last_poll": "2026-11-18T02:53:59Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T02:54:00Z"
+ "updated": "2026-11-18T02:54:06Z"
 }
