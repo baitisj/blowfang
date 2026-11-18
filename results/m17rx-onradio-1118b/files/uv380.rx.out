@@ -1,0 +1,653 @@
+ok mod begin 7740
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 128
+ok mod hex 1b80 128
+ok mod hex 1c00 128
+ok mod hex 1c80 128
+ok mod hex 1d00 128
+ok mod hex 1d80 128
+ok mod hex 1e00 60
+mod run serial=1794970459 code=7716
+mod say m17 start s=150 v34=1c at=ok scratch=8640 need=6640 tap=1
+mod say st 1004 halves=32 gaps=0 frames=0 lost=0 rssi=-92
+mod say st 2022 halves=63 gaps=0 frames=0 lost=0 rssi=-68
+mod say st 3044 halves=95 gaps=0 frames=0 lost=0 rssi=-68
+mod say st 4066 halves=127 gaps=0 frames=0 lost=0 rssi=-68
+mod say st 5066 halves=158 gaps=0 frames=0 lost=0 rssi=-68
+mod say f 5719 lsf ok=1 sc=998 g=1801 m=0 src=AG7EW dst=ALL type=0002
+mod say f 5759 pkt n=0 eof=0 sc=999 g=1771 m=0
+mod say f 5799 pkt n=3 eof=1 sc=996 g=1759 m=0
+mod say sms 5799 AG7EW: M17 RX ON UV380 DE AG7EW
+mod say f 5839 eot
+mod say f 5919 lsf ok=1 sc=931 g=1664 m=0 src=AG7EW dst=ALL type=0002
+mod say f 5959 pkt n=13 eof=1 sc=983 g=1836 m=0
+mod say sms 5959 AG7EW: NO MOD 73
+mod say f 5999 eot
+mod say st 6078 halves=190 gaps=0 frames=7 lost=0 rssi=-68
+mod say f 6079 lsf ok=1 sc=949 g=1708 m=0 src=AG7EW dst=ALL type=0005
+mod say f 6119 str fn=0000 lich=1 sc=987 g=1871 m=0
+mod say f 6159 str fn=0001 lich=1 sc=990 g=1738 m=0
+mod say f 6199 str fn=0002 lich=1 sc=992 g=1768 m=0
+mod say f 6239 str fn=0003 lich=1 sc=997 g=1765 m=0
+mod say f 6279 str fn=0004 lich=1 sc=993 g=1766 m=0
+mod say f 6319 str fn=0005 lich=1 sc=993 g=1743 m=0
+mod say f 6359 str fn=0006 lich=1 sc=985 g=1742 m=0
+mod say f 6399 str fn=0007 lich=1 sc=990 g=1749 m=0
+mod say f 6439 str fn=0008 lich=1 sc=990 g=1703 m=0
+mod say f 6479 str fn=0009 lich=1 sc=995 g=1732 m=0
+mod say f 6519 str fn=000a lich=1 sc=995 g=1784 m=0
+mod say f 6559 str fn=000b lich=1 sc=999 g=1796 m=0
+mod say f 6599 str fn=000c lich=1 sc=997 g=1775 m=0
+mod say f 6639 str fn=000d lich=1 sc=999 g=1823 m=0
+mod say f 6679 str fn=000e lich=1 sc=998 g=1767 m=0
+mod say f 6719 str fn=000f lich=1 sc=997 g=1806 m=0
+mod say f 6759 str fn=0010 lich=1 sc=996 g=1824 m=0
+mod say f 6799 str fn=0011 lich=1 sc=998 g=1785 m=0
+mod say f 6839 str fn=0012 lich=1 sc=997 g=1767 m=0
+mod say f 6879 str fn=0013 lich=1 sc=997 g=1796 m=0
+mod say f 6919 str fn=0014 lich=1 sc=992 g=1751 m=0
+mod say f 6959 str fn=0015 lich=1 sc=989 g=1726 m=0
+mod say f 6999 str fn=0016 lich=1 sc=985 g=1759 m=0
+mod say st 7078 halves=221 gaps=0 frames=31 lost=0 rssi=-68
+mod say f 7039 str fn=0017 lich=1 sc=993 g=1776 m=0
+mod say f 7079 str fn=0018 lich=1 sc=993 g=1788 m=0
+mod say f 7119 str fn=0019 lich=1 sc=997 g=1756 m=0
+mod say f 7159 str fn=001a lich=1 sc=997 g=1773 m=0
+mod say f 7199 str fn=001b lich=1 sc=997 g=1782 m=0
+mod say f 7239 str fn=001c lich=1 sc=998 g=1787 m=0
+mod say f 7279 str fn=001d lich=1 sc=998 g=1772 m=0
+mod say f 7319 str fn=001e lich=1 sc=997 g=1774 m=0
+mod say f 7359 str fn=001f lich=1 sc=997 g=1776 m=0
+mod say f 7399 str fn=0020 lich=1 sc=995 g=1753 m=0
+mod say f 7439 str fn=0021 lich=1 sc=999 g=1812 m=0
+mod say f 7479 str fn=0022 lich=1 sc=997 g=1764 m=0
+mod say f 7519 str fn=0023 lich=1 sc=994 g=1748 m=0
+mod say f 7559 str fn=0024 lich=1 sc=995 g=1796 m=0
+mod say f 7599 str fn=0025 lich=1 sc=992 g=1760 m=0
+mod say f 7639 str fn=0026 lich=1 sc=997 g=1771 m=0
+mod say f 7679 str fn=0027 lich=1 sc=998 g=1773 m=0
+mod say f 7719 str fn=0028 lich=1 sc=997 g=1795 m=0
+mod say f 7759 str fn=0029 lich=1 sc=997 g=1826 m=0
+mod say f 7799 str fn=002a lich=1 sc=998 g=1803 m=0
+mod say f 7839 str fn=002b lich=1 sc=998 g=1791 m=0
+mod say f 7879 str fn=002c lich=1 sc=998 g=1825 m=0
+mod say f 7919 str fn=002d lich=1 sc=998 g=1767 m=0
+(1000 audio lines)
+mod say f 7959 str fn=002e lich=1 sc=998 g=1748 m=0
+mod say f 7999 str fn=002f lich=1 sc=997 g=1763 m=0
+mod say f 8039 str fn=0030 lich=1 sc=998 g=1798 m=0
+mod say st 8094 halves=253 gaps=0 frames=57 lost=0 rssi=-68
+mod say f 8079 str fn=0031 lich=1 sc=996 g=1756 m=0
+mod say f 8119 str fn=0032 lich=1 sc=997 g=1770 m=0
+mod say f 8159 str fn=0033 lich=1 sc=998 g=1794 m=0
+mod say f 8199 str fn=0034 lich=1 sc=997 g=1793 m=0
+mod say f 8239 str fn=0035 lich=1 sc=997 g=1781 m=0
+mod say f 8279 str fn=0036 lich=1 sc=999 g=1814 m=0
+mod say f 8319 str fn=0037 lich=1 sc=998 g=1803 m=0
+mod say f 8359 str fn=0038 lich=1 sc=994 g=1745 m=0
+mod say f 8399 str fn=0039 lich=1 sc=997 g=1757 m=0
+mod say f 8439 str fn=003a lich=1 sc=999 g=1789 m=0
+mod say f 8479 str fn=003b lich=1 sc=998 g=1802 m=0
+mod say f 8519 str fn=003c lich=1 sc=996 g=1827 m=0
+mod say f 8559 str fn=003d lich=1 sc=998 g=1814 m=0
+mod say f 8599 str fn=003e lich=1 sc=999 g=1802 m=0
+mod say f 8639 str fn=003f lich=1 sc=997 g=1813 m=0
+mod say f 8679 str fn=0040 lich=1 sc=997 g=1821 m=0
+mod say f 8719 str fn=0041 lich=1 sc=998 g=1773 m=0
+mod say f 8759 str fn=0042 lich=1 sc=997 g=1788 m=0
+mod say f 8799 str fn=0043 lich=1 sc=996 g=1797 m=0
+mod say f 8839 str fn=0044 lich=1 sc=994 g=1760 m=0
+mod say f 8879 str fn=0045 lich=1 sc=997 g=1811 m=0
+mod say f 8919 str fn=0046 lich=1 sc=995 g=1765 m=0
+mod say f 8959 str fn=0047 lich=1 sc=998 g=1806 m=0
+mod say f 8999 str fn=0048 lich=1 sc=998 g=1815 m=0
+mod say f 9039 str fn=8049 lich=1 sc=993 g=1752 m=0
+mod say st 9094 halves=284 gaps=0 frames=82 lost=0 rssi=-68
+mod say f 9079 eot
+mod say st 10118 halves=316 gaps=0 frames=83 lost=0 rssi=-68
+mod say st 11142 halves=348 gaps=0 frames=83 lost=0 rssi=-68
+mod say st 12166 halves=380 gaps=0 frames=83 lost=0 rssi=-68
+mod say st 13177 halves=412 gaps=0 frames=83 lost=0 rssi=-93
+mod say st 14177 halves=443 gaps=0 frames=83 lost=0 rssi=-89
+mod say st 15177 halves=474 gaps=0 frames=83 lost=0 rssi=-68
+(2000 audio lines)
+mod say st 16198 halves=506 gaps=0 frames=83 lost=0 rssi=-68
+mod say st 17222 halves=538 gaps=0 frames=83 lost=0 rssi=-68
+mod say st 18244 halves=570 gaps=0 frames=83 lost=0 rssi=-68
+mod say f 18233 bert err=0 sc=988 g=1829 m=0
+mod say f 18273 bert err=0 sc=984 g=1804 m=0
+mod say f 18313 bert err=0 sc=988 g=1784 m=0
+mod say f 18353 bert err=0 sc=983 g=1761 m=0
+mod say f 18393 bert err=0 sc=986 g=1799 m=0
+mod say f 18433 bert err=0 sc=988 g=1807 m=0
+mod say f 18473 bert err=0 sc=982 g=1773 m=0
+mod say f 18513 bert err=0 sc=978 g=1769 m=0
+mod say f 18553 bert err=0 sc=982 g=1776 m=0
+mod say f 18593 bert err=0 sc=988 g=1794 m=0
+mod say f 18633 bert err=0 sc=989 g=1771 m=0
+mod say f 18673 bert err=0 sc=979 g=1740 m=0
+mod say f 18713 bert err=0 sc=985 g=1767 m=0
+mod say f 18753 bert err=0 sc=982 g=1780 m=0
+mod say f 18793 bert err=0 sc=988 g=1776 m=0
+mod say f 18833 bert err=0 sc=982 g=1750 m=0
+mod say f 18873 bert err=0 sc=981 g=1774 m=0
+mod say f 18913 bert err=0 sc=981 g=1742 m=0
+mod say f 18953 bert err=0 sc=982 g=1742 m=0
+mod say f 18993 bert err=0 sc=987 g=1773 m=0
+mod say f 19033 bert err=0 sc=981 g=1730 m=0
+mod say f 19073 bert err=0 sc=985 g=1796 m=0
+mod say f 19113 bert err=0 sc=986 g=1817 m=0
+mod say f 19153 bert err=0 sc=985 g=1781 m=0
+mod say f 19193 bert err=0 sc=988 g=1804 m=0
+mod say st 19263 halves=602 gaps=0 frames=108 lost=0 rssi=-68
+mod say f 19233 bert err=0 sc=985 g=1773 m=0
+mod say f 19273 bert err=0 sc=983 g=1802 m=0
+mod say f 19313 bert err=0 sc=985 g=1754 m=0
+mod say f 19353 bert err=0 sc=989 g=1825 m=0
+mod say f 19393 bert err=0 sc=982 g=1768 m=0
+mod say f 19433 bert err=0 sc=985 g=1802 m=0
+mod say f 19473 bert err=0 sc=990 g=1753 m=0
+mod say f 19513 bert err=0 sc=989 g=1768 m=0
+mod say f 19553 bert err=0 sc=984 g=1738 m=0
+mod say f 19593 bert err=0 sc=985 g=1790 m=0
+mod say f 19633 bert err=0 sc=985 g=1770 m=0
+mod say f 19673 bert err=0 sc=987 g=1774 m=0
+mod say f 19713 bert err=0 sc=985 g=1765 m=0
+mod say f 19753 bert err=0 sc=987 g=1783 m=0
+mod say f 19793 bert err=0 sc=987 g=1793 m=0
+mod say f 19833 bert err=0 sc=988 g=1828 m=0
+mod say f 19873 bert err=0 sc=985 g=1750 m=0
+mod say f 19913 bert err=0 sc=986 g=1793 m=0
+mod say f 19953 bert err=0 sc=986 g=1773 m=0
+mod say f 19993 bert err=0 sc=987 g=1828 m=0
+mod say f 20033 bert err=0 sc=981 g=1791 m=0
+mod say f 20073 bert err=0 sc=988 g=1759 m=0
+mod say f 20113 bert err=0 sc=984 g=1794 m=0
+mod say f 20153 bert err=0 sc=985 g=1768 m=0
+mod say f 20193 bert err=0 sc=989 g=1798 m=0
+mod say st 20263 halves=633 gaps=0 frames=133 lost=0 rssi=-68
+mod say f 20233 bert err=0 sc=986 g=1791 m=0
+mod say f 20273 bert err=0 sc=987 g=1782 m=0
+mod say f 20313 bert err=0 sc=988 g=1769 m=0
+mod say f 20353 bert err=0 sc=991 g=1788 m=0
+mod say f 20393 bert err=0 sc=981 g=1755 m=0
+mod say f 20433 bert err=0 sc=988 g=1793 m=0
+mod say f 20473 bert err=0 sc=986 g=1761 m=0
+mod say f 20513 bert err=0 sc=984 g=1762 m=0
+mod say f 20553 bert err=0 sc=984 g=1779 m=0
+mod say f 20593 bert err=0 sc=988 g=1737 m=0
+mod say f 20633 bert err=0 sc=982 g=1783 m=0
+mod say f 20673 bert err=0 sc=987 g=1838 m=0
+mod say f 20713 bert err=0 sc=984 g=1732 m=0
+mod say f 20753 bert err=0 sc=984 g=1732 m=0
+mod say f 20793 bert err=0 sc=984 g=1784 m=0
+mod say f 20833 bert err=0 sc=985 g=1812 m=0
+mod say f 20873 bert err=0 sc=986 g=1774 m=0
+mod say f 20913 bert err=0 sc=983 g=1771 m=0
+mod say f 20953 bert err=0 sc=992 g=1771 m=0
+mod say f 20993 bert err=0 sc=986 g=1774 m=0
+mod say f 21033 bert err=0 sc=988 g=1737 m=0
+mod say f 21073 bert err=0 sc=981 g=1742 m=0
+mod say f 21113 bert err=0 sc=983 g=1749 m=0
+mod say f 21153 bert err=0 sc=981 g=1783 m=0
+mod say f 21193 bert err=0 sc=989 g=1780 m=0
+mod say f 21233 bert err=0 sc=990 g=1747 m=0
+mod say st 21279 halves=665 gaps=0 frames=159 lost=0 rssi=-68
+mod say f 21273 bert err=0 sc=990 g=1777 m=0
+mod say f 21313 bert err=0 sc=985 g=1748 m=0
+mod say f 21353 bert err=0 sc=983 g=1759 m=0
+mod say f 21393 bert err=0 sc=990 g=1791 m=0
+mod say f 21433 bert err=0 sc=979 g=1768 m=0
+mod say f 21473 bert err=0 sc=988 g=1796 m=0
+mod say f 21513 bert err=0 sc=989 g=1758 m=0
+mod say f 21553 bert err=0 sc=991 g=1778 m=0
+mod say f 21593 bert err=0 sc=989 g=1751 m=0
+mod say f 21633 bert err=0 sc=991 g=1804 m=0
+mod say f 21673 bert err=0 sc=987 g=1799 m=0
+mod say f 21713 bert err=0 sc=989 g=1788 m=0
+mod say f 21753 bert err=0 sc=991 g=1774 m=0
+mod say f 21793 bert err=0 sc=989 g=1798 m=0
+mod say f 21833 bert err=0 sc=987 g=1781 m=0
+mod say f 21873 bert err=0 sc=992 g=1744 m=0
+mod say f 21913 bert err=0 sc=987 g=1775 m=0
+mod say f 21953 bert err=0 sc=989 g=1815 m=0
+mod say f 21993 bert err=0 sc=988 g=1787 m=0
+mod say f 22033 bert err=0 sc=992 g=1760 m=0
+mod say f 22073 bert err=0 sc=987 g=1758 m=0
+mod say f 22113 bert err=0 sc=983 g=1817 m=0
+mod say f 22153 bert err=0 sc=979 g=1881 m=0
+mod say f 22193 bert err=0 sc=989 g=1800 m=0
+mod say st 22279 halves=696 gaps=0 frames=183 lost=0 rssi=-68
+mod say f 22233 bert err=0 sc=985 g=1760 m=0
+mod say f 22273 bert err=0 sc=988 g=1825 m=0
+mod say f 22313 bert err=0 sc=990 g=1776 m=0
+mod say f 22353 bert err=0 sc=991 g=1818 m=0
+mod say f 22393 bert err=0 sc=988 g=1790 m=0
+mod say f 22433 bert err=0 sc=988 g=1777 m=0
+mod say f 22473 bert err=0 sc=992 g=1799 m=0
+mod say f 22513 bert err=0 sc=991 g=1788 m=0
+mod say f 22553 bert err=0 sc=988 g=1786 m=0
+mod say f 22593 bert err=0 sc=989 g=1745 m=0
+mod say f 22633 bert err=0 sc=982 g=1756 m=0
+mod say f 22673 bert err=0 sc=988 g=1803 m=0
+mod say f 22713 bert err=0 sc=987 g=1802 m=0
+mod say f 22753 bert err=0 sc=989 g=1787 m=0
+mod say f 22793 bert err=0 sc=991 g=1795 m=0
+mod say f 22833 bert err=0 sc=990 g=1777 m=0
+mod say f 22873 bert err=0 sc=987 g=1788 m=0
+mod say f 22913 bert err=0 sc=987 g=1744 m=0
+mod say f 22953 bert err=0 sc=989 g=1747 m=0
+mod say f 22993 bert err=0 sc=986 g=1773 m=0
+mod say f 23033 bert err=0 sc=989 g=1791 m=0
+mod say f 23073 bert err=0 sc=992 g=1774 m=0
+mod say f 23113 bert err=0 sc=992 g=1804 m=0
+mod say f 23153 bert err=0 sc=991 g=1799 m=0
+mod say f 23193 bert err=0 sc=987 g=1794 m=0
+mod say f 23233 bert err=0 sc=986 g=1768 m=0
+mod say st 23295 halves=728 gaps=0 frames=209 lost=0 rssi=-68
+mod say f 23273 bert err=0 sc=989 g=1818 m=0
+mod say f 23313 bert err=0 sc=978 g=1762 m=0
+mod say f 23353 bert err=0 sc=991 g=1798 m=0
+mod say f 23393 bert err=0 sc=988 g=1791 m=0
+mod say f 23433 bert err=0 sc=985 g=1745 m=0
+mod say f 23473 bert err=0 sc=993 g=1751 m=0
+mod say f 23513 bert err=0 sc=988 g=1742 m=0
+mod say f 23553 bert err=0 sc=988 g=1723 m=0
+mod say f 23593 bert err=0 sc=987 g=1728 m=0
+mod say f 23633 bert err=0 sc=988 g=1789 m=0
+mod say f 23673 bert err=0 sc=991 g=1811 m=0
+mod say f 23713 bert err=0 sc=989 g=1810 m=0
+mod say f 23753 bert err=0 sc=988 g=1765 m=0
+mod say f 23793 bert err=0 sc=992 g=1785 m=0
+mod say f 23833 bert err=0 sc=989 g=1777 m=0
+mod say f 23873 bert err=0 sc=990 g=1808 m=0
+mod say f 23913 bert err=0 sc=991 g=1785 m=0
+(3000 audio lines)
+mod say f 23953 bert err=0 sc=992 g=1770 m=0
+mod say f 23993 bert err=0 sc=987 g=1772 m=0
+mod say f 24033 bert err=0 sc=990 g=1816 m=0
+mod say f 24073 bert err=0 sc=983 g=1804 m=0
+mod say f 24113 bert err=0 sc=978 g=1822 m=0
+mod say f 24153 bert err=0 sc=992 g=1815 m=0
+mod say f 24193 bert err=0 sc=980 g=1751 m=0
+mod say f 24233 bert err=0 sc=984 g=1768 m=0
+mod say st 24295 halves=759 gaps=0 frames=234 lost=0 rssi=-68
+mod say f 24273 bert err=0 sc=988 g=1785 m=0
+mod say f 24313 bert err=0 sc=988 g=1808 m=0
+mod say f 24353 bert err=0 sc=990 g=1804 m=0
+mod say f 24393 bert err=0 sc=992 g=1778 m=0
+mod say f 24433 bert err=0 sc=986 g=1783 m=0
+mod say f 24473 bert err=0 sc=988 g=1769 m=0
+mod say f 24513 bert err=0 sc=992 g=1786 m=0
+mod say f 24553 bert err=0 sc=986 g=1733 m=0
+mod say f 24593 bert err=0 sc=986 g=1739 m=0
+mod say f 24633 bert err=0 sc=993 g=1798 m=0
+mod say f 24673 bert err=0 sc=994 g=1810 m=0
+mod say f 24713 bert err=0 sc=991 g=1787 m=0
+mod say f 24753 bert err=0 sc=993 g=1805 m=0
+mod say f 24793 bert err=0 sc=991 g=1774 m=0
+mod say f 24833 bert err=0 sc=987 g=1756 m=0
+mod say f 24873 bert err=0 sc=990 g=1773 m=0
+mod say f 24913 bert err=0 sc=993 g=1801 m=0
+mod say f 24953 bert err=0 sc=991 g=1828 m=0
+mod say f 24993 bert err=0 sc=994 g=1761 m=0
+mod say f 25033 bert err=0 sc=991 g=1782 m=0
+mod say f 25073 bert err=0 sc=985 g=1782 m=0
+mod say f 25113 bert err=0 sc=990 g=1800 m=0
+mod say f 25153 bert err=0 sc=993 g=1821 m=0
+mod say f 25193 bert err=0 sc=992 g=1780 m=0
+mod say f 25233 bert err=0 sc=992 g=1826 m=0
+mod say st 25305 halves=791 gaps=0 frames=259 lost=0 rssi=-68
+mod say f 25273 bert err=0 sc=993 g=1833 m=0
+mod say f 25313 bert err=0 sc=989 g=1808 m=0
+mod say f 25353 bert err=0 sc=985 g=1750 m=0
+mod say f 25393 bert err=0 sc=992 g=1772 m=0
+mod say f 25433 bert err=0 sc=985 g=1822 m=0
+mod say f 25473 bert err=0 sc=990 g=1784 m=0
+mod say f 25513 bert err=0 sc=989 g=1770 m=0
+mod say f 25553 bert err=0 sc=991 g=1793 m=0
+mod say f 25593 bert err=0 sc=991 g=1781 m=0
+mod say f 25633 bert err=0 sc=992 g=1775 m=0
+mod say f 25673 bert err=0 sc=994 g=1785 m=0
+mod say f 25713 bert err=0 sc=987 g=1783 m=0
+mod say f 25753 bert err=0 sc=993 g=1817 m=0
+mod say f 25793 bert err=0 sc=992 g=1776 m=0
+mod say f 25833 bert err=0 sc=982 g=1765 m=0
+mod say f 25873 bert err=0 sc=992 g=1783 m=0
+mod say f 25913 bert err=0 sc=992 g=1770 m=0
+mod say f 25953 bert err=0 sc=988 g=1742 m=0
+mod say f 25993 bert err=0 sc=992 g=1784 m=0
+mod say f 26033 bert err=0 sc=992 g=1760 m=0
+mod say f 26073 bert err=0 sc=992 g=1821 m=0
+mod say f 26113 bert err=0 sc=988 g=1824 m=0
+mod say f 26153 bert err=0 sc=993 g=1831 m=0
+mod say f 26193 bert err=0 sc=991 g=1776 m=0
+mod say f 26233 bert err=0 sc=986 g=1819 m=0
+mod say st 26305 halves=822 gaps=0 frames=284 lost=0 rssi=-68
+mod say f 26273 bert err=0 sc=987 g=1805 m=0
+mod say f 26313 bert err=0 sc=991 g=1793 m=0
+mod say f 26353 bert err=0 sc=991 g=1788 m=0
+mod say f 26393 bert err=0 sc=988 g=1782 m=0
+mod say f 26433 bert err=0 sc=991 g=1830 m=0
+mod say f 26473 bert err=0 sc=991 g=1780 m=0
+mod say f 26513 bert err=0 sc=991 g=1814 m=0
+mod say f 26553 bert err=0 sc=993 g=1784 m=0
+mod say f 26593 bert err=0 sc=993 g=1806 m=0
+mod say f 26633 bert err=0 sc=987 g=1761 m=0
+mod say f 26673 bert err=0 sc=994 g=1833 m=0
+mod say f 26713 bert err=0 sc=990 g=1834 m=0
+mod say f 26753 bert err=0 sc=994 g=1815 m=0
+mod say f 26793 bert err=0 sc=993 g=1771 m=0
+mod say f 26833 bert err=0 sc=990 g=1814 m=0
+mod say f 26873 bert err=0 sc=994 g=1795 m=0
+mod say f 26913 bert err=0 sc=991 g=1762 m=0
+mod say f 26953 bert err=0 sc=989 g=1819 m=0
+mod say f 26993 bert err=0 sc=988 g=1748 m=0
+mod say f 27033 bert err=0 sc=993 g=1804 m=0
+mod say f 27073 bert err=0 sc=993 g=1752 m=0
+mod say f 27113 bert err=0 sc=995 g=1756 m=0
+mod say f 27153 bert err=0 sc=987 g=1768 m=0
+mod say f 27193 bert err=0 sc=993 g=1827 m=0
+mod say f 27233 bert err=0 sc=990 g=1784 m=0
+mod say st 27305 halves=853 gaps=0 frames=309 lost=0 rssi=-68
+mod say f 27273 bert err=0 sc=990 g=1805 m=0
+mod say f 27313 bert err=0 sc=993 g=1784 m=0
+mod say f 27353 bert err=0 sc=989 g=1795 m=0
+mod say f 27393 bert err=0 sc=991 g=1802 m=0
+mod say f 27433 bert err=0 sc=992 g=1800 m=0
+mod say f 27473 bert err=0 sc=990 g=1781 m=0
+mod say f 27513 bert err=0 sc=994 g=1835 m=0
+mod say f 27553 bert err=0 sc=990 g=1795 m=0
+mod say f 27593 bert err=0 sc=993 g=1778 m=0
+mod say f 27633 bert err=0 sc=993 g=1789 m=0
+mod say f 27673 bert err=0 sc=990 g=1753 m=0
+mod say f 27713 bert err=0 sc=995 g=1776 m=0
+mod say f 27753 bert err=0 sc=994 g=1805 m=0
+mod say f 27793 bert err=0 sc=993 g=1830 m=0
+mod say f 27833 bert err=0 sc=990 g=1765 m=0
+mod say f 27873 bert err=0 sc=990 g=1813 m=0
+mod say f 27913 bert err=0 sc=993 g=1795 m=0
+mod say f 27953 bert err=0 sc=992 g=1799 m=0
+mod say f 27993 bert err=0 sc=994 g=1830 m=0
+mod say f 28033 bert err=0 sc=994 g=1835 m=0
+mod say f 28073 bert err=0 sc=991 g=1774 m=0
+mod say f 28113 bert err=0 sc=994 g=1794 m=0
+mod say f 28153 bert err=0 sc=994 g=1833 m=0
+mod say f 28193 bert err=0 sc=987 g=1791 m=0
+mod say f 28233 eot
+mod say st 28317 halves=885 gaps=0 frames=334 lost=0 rssi=-68
+mod say st 29318 halves=916 gaps=0 frames=334 lost=0 rssi=-68
+mod say st 30342 halves=948 gaps=0 frames=334 lost=0 rssi=-68
+mod say st 31366 halves=980 gaps=0 frames=334 lost=0 rssi=-68
+(4000 audio lines)
+mod say st 32385 halves=1012 gaps=0 frames=334 lost=0 rssi=-91
+mod say st 33385 halves=1043 gaps=0 frames=334 lost=0 rssi=-76
+mod say st 34406 halves=1075 gaps=0 frames=334 lost=0 rssi=-75
+mod say st 35426 halves=1107 gaps=0 frames=334 lost=0 rssi=-76
+mod say st 36426 halves=1138 gaps=0 frames=334 lost=0 rssi=-76
+mod say f 37257 lsf ok=1 sc=997 g=1834 m=0 src=AG7EW dst=ALL type=0002
+mod say f 37297 pkt n=0 eof=0 sc=996 g=1750 m=0
+mod say f 37337 pkt n=3 eof=1 sc=996 g=1766 m=0
+mod say sms 37337 AG7EW: M17 RX ON UV380 DE AG7EW
+mod say f 37377 eot
+mod say st 37436 halves=1170 gaps=0 frames=338 lost=0 rssi=-77
+mod say f 37457 lsf ok=1 sc=918 g=1698 m=1 src=AG7EW dst=ALL type=0002
+mod say f 37497 pkt n=13 eof=1 sc=963 g=1754 m=0
+mod say sms 37497 AG7EW: NO MOD 73
+mod say f 37537 eot
+mod say f 37617 lsf ok=1 sc=932 g=1650 m=2 src=AG7EW dst=ALL type=0005
+mod say f 37657 str fn=0000 lich=1 sc=990 g=1891 m=0
+mod say f 37697 str fn=0001 lich=1 sc=973 g=1679 m=0
+mod say f 37737 str fn=0002 lich=1 sc=983 g=1786 m=0
+mod say f 37777 str fn=0003 lich=1 sc=994 g=1788 m=0
+mod say f 37817 str fn=0004 lich=1 sc=993 g=1794 m=0
+mod say f 37857 str fn=0005 lich=1 sc=977 g=1625 m=0
+mod say f 37897 str fn=0006 lich=1 sc=985 g=1759 m=0
+mod say f 37937 str fn=0007 lich=1 sc=988 g=1759 m=0
+mod say f 37977 str fn=0008 lich=1 sc=982 g=1746 m=0
+mod say f 38017 str fn=0009 lich=1 sc=994 g=1738 m=0
+mod say f 38057 str fn=000a lich=1 sc=989 g=1749 m=0
+mod say f 38097 str fn=000b lich=1 sc=998 g=1795 m=0
+mod say f 38137 str fn=000c lich=1 sc=992 g=1779 m=0
+mod say f 38177 str fn=000d lich=1 sc=995 g=1782 m=0
+mod say f 38217 str fn=000e lich=1 sc=993 g=1754 m=0
+mod say f 38257 str fn=000f lich=1 sc=997 g=1817 m=0
+mod say f 38297 str fn=0010 lich=1 sc=993 g=1822 m=0
+mod say f 38337 str fn=0011 lich=1 sc=992 g=1755 m=0
+mod say f 38377 str fn=0012 lich=1 sc=995 g=1736 m=0
+mod say st 38436 halves=1201 gaps=0 frames=361 lost=0 rssi=-76
+mod say f 38417 str fn=0013 lich=1 sc=994 g=1741 m=0
+mod say f 38457 str fn=0014 lich=1 sc=993 g=1700 m=0
+mod say f 38497 str fn=0015 lich=1 sc=983 g=1717 m=0
+mod say f 38537 str fn=0016 lich=1 sc=983 g=1799 m=0
+mod say f 38577 str fn=0017 lich=1 sc=991 g=1735 m=0
+mod say f 38617 str fn=0018 lich=1 sc=987 g=1703 m=0
+mod say f 38657 str fn=0019 lich=1 sc=994 g=1750 m=0
+mod say f 38697 str fn=001a lich=1 sc=996 g=1762 m=0
+mod say f 38737 str fn=001b lich=1 sc=993 g=1756 m=0
+mod say f 38777 str fn=001c lich=1 sc=993 g=1783 m=0
+mod say f 38817 str fn=001d lich=1 sc=996 g=1826 m=0
+mod say f 38857 str fn=001e lich=1 sc=997 g=1803 m=0
+mod say f 38897 str fn=001f lich=1 sc=997 g=1786 m=0
+mod say f 38937 str fn=0020 lich=1 sc=991 g=1712 m=0
+mod say f 38977 str fn=0021 lich=1 sc=996 g=1770 m=0
+mod say f 39017 str fn=0022 lich=1 sc=994 g=1836 m=0
+mod say f 39057 str fn=0023 lich=1 sc=993 g=1746 m=0
+mod say f 39097 str fn=0024 lich=1 sc=990 g=1697 m=0
+mod say f 39137 str fn=0025 lich=1 sc=986 g=1745 m=0
+mod say f 39177 str fn=0026 lich=1 sc=995 g=1831 m=0
+mod say f 39217 str fn=0027 lich=1 sc=997 g=1818 m=0
+mod say f 39257 str fn=0028 lich=1 sc=994 g=1860 m=0
+mod say f 39297 str fn=0029 lich=1 sc=995 g=1755 m=0
+mod say f 39337 str fn=002a lich=1 sc=994 g=1731 m=0
+mod say f 39377 str fn=002b lich=1 sc=994 g=1808 m=0
+mod say st 39449 halves=1233 gaps=0 frames=386 lost=0 rssi=-76
+mod say f 39417 str fn=002c lich=1 sc=996 g=1836 m=0
+mod say f 39457 str fn=002d lich=1 sc=996 g=1749 m=0
+mod say f 39497 str fn=002e lich=1 sc=993 g=1728 m=0
+mod say f 39537 str fn=002f lich=1 sc=985 g=1820 m=0
+mod say f 39577 str fn=0030 lich=1 sc=989 g=1811 m=0
+mod say f 39617 str fn=0031 lich=1 sc=991 g=1760 m=0
+mod say f 39657 str fn=0032 lich=1 sc=994 g=1797 m=0
+mod say f 39697 str fn=0033 lich=1 sc=991 g=1822 m=0
+mod say f 39737 str fn=0034 lich=1 sc=996 g=1779 m=0
+mod say f 39777 str fn=0035 lich=1 sc=993 g=1727 m=0
+mod say f 39817 str fn=0036 lich=1 sc=995 g=1862 m=0
+mod say f 39857 str fn=0037 lich=1 sc=997 g=1790 m=0
+mod say f 39897 str fn=0038 lich=1 sc=995 g=1776 m=0
+mod say f 39937 str fn=0039 lich=1 sc=992 g=1851 m=0
+(5000 audio lines)
+mod say f 39977 str fn=003a lich=1 sc=998 g=1847 m=0
+mod say f 40017 str fn=003b lich=1 sc=990 g=1776 m=0
+mod say f 40057 str fn=003c lich=1 sc=993 g=1836 m=0
+mod say f 40097 str fn=003d lich=1 sc=997 g=1840 m=0
+mod say f 40137 str fn=003e lich=1 sc=993 g=1829 m=0
+mod say f 40177 str fn=003f lich=1 sc=995 g=1779 m=0
+mod say f 40217 str fn=0040 lich=1 sc=996 g=1827 m=0
+mod say f 40257 str fn=0041 lich=1 sc=996 g=1823 m=0
+mod say f 40297 str fn=0042 lich=1 sc=997 g=1853 m=0
+mod say f 40337 str fn=0043 lich=1 sc=995 g=1813 m=0
+mod say f 40377 str fn=0044 lich=1 sc=993 g=1732 m=0
+mod say st 40449 halves=1264 gaps=0 frames=411 lost=0 rssi=-76
+mod say f 40417 str fn=0045 lich=1 sc=996 g=1802 m=0
+mod say f 40457 str fn=0046 lich=1 sc=989 g=1712 m=0
+mod say f 40497 str fn=0047 lich=1 sc=996 g=1840 m=0
+mod say f 40537 str fn=0048 lich=1 sc=998 g=1867 m=0
+mod say f 40577 str fn=8049 lich=1 sc=988 g=1773 m=0
+mod say f 40617 eot
+mod say st 41449 halves=1295 gaps=0 frames=417 lost=0 rssi=-76
+mod say st 42470 halves=1327 gaps=0 frames=417 lost=0 rssi=-76
+mod say st 43494 halves=1359 gaps=0 frames=417 lost=0 rssi=-75
+mod say st 44516 halves=1391 gaps=0 frames=417 lost=0 rssi=-76
+mod say st 45529 halves=1423 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 46529 halves=1454 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 47529 halves=1485 gaps=0 frames=417 lost=0 rssi=-90
+(6000 audio lines)
+mod say st 48541 halves=1517 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 49541 halves=1548 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 50554 halves=1580 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 51554 halves=1611 gaps=0 frames=417 lost=0 rssi=-92
+mod say st 52554 halves=1642 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 53573 halves=1674 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 54585 halves=1706 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 55585 halves=1737 gaps=0 frames=417 lost=0 rssi=-92
+(7000 audio lines)
+mod say st 56585 halves=1768 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 57585 halves=1800 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 58590 halves=1831 gaps=0 frames=417 lost=0 rssi=-92
+mod say st 59590 halves=1862 gaps=0 frames=417 lost=0 rssi=-88
+mod say st 60605 halves=1894 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 61605 halves=1925 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 62618 halves=1957 gaps=0 frames=417 lost=0 rssi=-92
+mod say st 63618 halves=1988 gaps=0 frames=417 lost=0 rssi=-96
+(8000 audio lines)
+mod say st 64618 halves=2019 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 65625 halves=2051 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 66625 halves=2082 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 67625 halves=2113 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 68636 halves=2145 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 69636 halves=2176 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 70657 halves=2208 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 71657 halves=2239 gaps=0 frames=417 lost=0 rssi=-90
+(9000 audio lines)
+mod say st 72670 halves=2271 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 73670 halves=2302 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 74687 halves=2334 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 75687 halves=2365 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 76702 halves=2397 gaps=0 frames=417 lost=0 rssi=-96
+mod say st 77702 halves=2428 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 78713 halves=2460 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 79713 halves=2491 gaps=0 frames=417 lost=0 rssi=-93
+(10000 audio lines)
+mod say st 80713 halves=2522 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 81725 halves=2554 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 82725 halves=2585 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 83736 halves=2617 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 84736 halves=2648 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 85736 halves=2679 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 86746 halves=2711 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 87746 halves=2742 gaps=0 frames=417 lost=0 rssi=-94
+(11000 audio lines)
+mod say st 88746 halves=2774 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 89756 halves=2805 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 90756 halves=2836 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 91769 halves=2868 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 92769 halves=2899 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 93769 halves=2930 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 94785 halves=2962 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 95785 halves=2993 gaps=0 frames=417 lost=0 rssi=-93
+(12000 audio lines)
+mod say st 96793 halves=3025 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 97810 halves=3057 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 98818 halves=3088 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 99818 halves=3120 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 100828 halves=3151 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 101828 halves=3182 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 102841 halves=3214 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 103841 halves=3245 gaps=0 frames=417 lost=0 rssi=-95
+(13000 audio lines)
+mod say st 104841 halves=3276 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 105849 halves=3308 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 106849 halves=3339 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 107849 halves=3370 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 108861 halves=3402 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 109861 halves=3433 gaps=0 frames=417 lost=0 rssi=-96
+mod say st 110875 halves=3465 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 111875 halves=3496 gaps=0 frames=417 lost=0 rssi=-90
+(14000 audio lines)
+mod say st 112887 halves=3528 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 113888 halves=3559 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 114888 halves=3590 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 115896 halves=3622 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 116896 halves=3653 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 117896 halves=3684 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 118906 halves=3716 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 119906 halves=3747 gaps=0 frames=417 lost=0 rssi=-90
+(15000 audio lines)
+mod say st 120906 halves=3779 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 121914 halves=3810 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 122914 halves=3841 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 123914 halves=3873 gaps=0 frames=417 lost=0 rssi=-91
+mod say st 124920 halves=3904 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 125920 halves=3935 gaps=0 frames=417 lost=0 rssi=-91
+mod say st 126920 halves=3966 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 127932 halves=3998 gaps=0 frames=417 lost=0 rssi=-95
+(16000 audio lines)
+mod say st 128932 halves=4029 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 129947 halves=4061 gaps=0 frames=417 lost=0 rssi=-92
+mod say st 130947 halves=4092 gaps=0 frames=417 lost=0 rssi=-96
+mod say st 131961 halves=4124 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 132961 halves=4155 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 133961 halves=4186 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 134970 halves=4218 gaps=0 frames=417 lost=0 rssi=-89
+mod say st 135970 halves=4249 gaps=0 frames=417 lost=0 rssi=-89
+(17000 audio lines)
+mod say st 136970 halves=4281 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 137985 halves=4312 gaps=0 frames=417 lost=0 rssi=-96
+mod say st 138985 halves=4343 gaps=0 frames=417 lost=0 rssi=-97
+mod say st 139995 halves=4375 gaps=0 frames=417 lost=0 rssi=-95
+mod say st 140995 halves=4406 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 141997 halves=4438 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 143000 halves=4469 gaps=0 frames=417 lost=0 rssi=-90
+(18000 audio lines)
+mod say st 144000 halves=4500 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 145001 halves=4531 gaps=0 frames=417 lost=0 rssi=-90
+mod say st 146011 halves=4563 gaps=0 frames=417 lost=0 rssi=-93
+mod say st 147011 halves=4594 gaps=0 frames=417 lost=0 rssi=-94
+mod say st 148028 halves=4626 gaps=0 frames=417 lost=0 rssi=-96
+mod say st 149028 halves=4657 gaps=0 frames=417 lost=0 rssi=-90
+mod say end halves=4688 gaps=0 frames=417 lost=0 lsf=6 str=148 pkt=6 bert=250 eot=7 sms=4 bert_bits=47000 bert_err=0
+ok mod run ret=0 ms=150019
