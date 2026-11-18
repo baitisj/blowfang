@@ -22,7 +22,8 @@
    The raw mode sits about 6.7 kHz above the FM carrier: the bench sets the transmit trim first
    (uv380.cmd "trim", FM trim - 6680) and back after, as for c6m17tx and c6ysftx.
 
-   Lines: "sotto AIR sf=N/M bytes=B tx_ms=T cal I= Q= -> 45= 46= dry=", the keying's lines, "tx
+   Lines: "sotto AIR sf=N/M first=HEX last=HEX bytes=B tx_ms=T cal I= Q= -> 45= 46= dry=" (the
+   first and last superframe sent, to check a capture's decode against), the keying's lines, "tx
    slots= bytes= edges= first= late= lost= chk= done=" (or for DMR "tx hdr= voice=/ term= ..."),
    "sotto done" or "sotto short", "end".
    SPDX-License-Identifier: MIT */
@@ -168,8 +169,11 @@ int uv_main(const ortx_api_t *api) {
         nsf--;
     }
 #endif
-    api->fmt(line, sizeof line, "sotto %s sf=%u/%u bytes=%lu tx_ms=%lu cal I=%02x Q=%02x dev=%u%% -> 45=%02x 46=%02x src=%d dry=%d",
-             AIR_NAME, nsf, have, (unsigned long)bytes, (unsigned long)tx_ms, ig, qg, TX_DEV, i45, q46,
+    char h0[2 * SF + 1], h1[2 * SF + 1];
+    c6_hex(h0, msg, SF);
+    c6_hex(h1, msg + SF * (nsf - 1u), SF);
+    api->fmt(line, sizeof line, "sotto %s sf=%u/%u first=%s last=%s bytes=%lu tx_ms=%lu cal I=%02x Q=%02x dev=%u%% -> 45=%02x 46=%02x src=%d dry=%d",
+             AIR_NAME, nsf, have, h0, h1, (unsigned long)bytes, (unsigned long)tx_ms, ig, qg, TX_DEV, i45, q46,
              SOTTO_SRC, TX_DRY);
     api->say(line);
 

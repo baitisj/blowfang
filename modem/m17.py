@@ -556,7 +556,8 @@ def decode_bytes(data):
 def summarize(frames):
     """what a run's frames add up to: LSFs, packets (CRC checked), stream frames, BERT errors"""
     s = {"lsf": 0, "lsf_bad": 0, "packets": 0, "packets_bad": 0, "texts": [], "stream": 0,
-         "lich_bad": 0, "bert_frames": 0, "bert_bits": 0, "bert_errors": 0, "payload": b""}
+         "lich_bad": 0, "bert_frames": 0, "bert_bits": 0, "bert_errors": 0, "payload": b"",
+         "sotto": b"", "sotto_ok": 0, "sotto_frames": 0}
     pkt = b""
     for f in frames:
         if f["kind"] == "lsf":
@@ -564,6 +565,7 @@ def summarize(frames):
             s["lsf_bad"] += not f["ok"]
             if f["ok"]:
                 s["src"] = f["src"]
+                s["type"] = f["type"]
         elif f["kind"] == "packet":
             pkt += f["data"][:f["counter"]] if f["eof"] else f["data"]
             if f["eof"]:
@@ -576,7 +578,14 @@ def summarize(frames):
         elif f["kind"] == "stream":
             s["stream"] += 1
             s["lich_bad"] += not f["lich_ok"]
-            s["payload"] += f["payload"]
+            p = f["payload"]
+            if s.get("type") == TYPE_STREAM_DATA and p[14] & 0xF0 == SOTTO_RATE_1200:
+                s["sotto_frames"] += 1
+                if crc16(p[:12]) == int.from_bytes(p[12:14], "big"):
+                    s["sotto_ok"] += 1
+                    s["sotto"] += p[:6] if p[14] & SOTTO_REPEAT else p[:12]
+            else:
+                s["payload"] += p
         elif f["kind"] == "bert":
             bits = np.array(f["bits"], np.uint8)
             errs = int(np.min([(np.roll(_PRBS_SEQ2, -k)[:197] != bits).sum() for k in range(511)]))
@@ -769,6 +778,9 @@ def report(frames, s):
         lines.append(f"packets {s['packets']} CRC good, {s['packets_bad']} bad: " + "; ".join(s["texts"]))
     if s["stream"]:
         lines.append(f"stream frames {s['stream']}, LICH bad {s['lich_bad']}")
+    if s["sotto_frames"]:
+        lines.append(f"sotto frames CRC good {s['sotto_ok']}/{s['sotto_frames']}, superframes "
+                     f"{len(s['sotto']) // SOTTO_SF}, first {s['sotto'][:6].hex()}, last {s['sotto'][-6:].hex()}")
     if s["bert_frames"]:
         ber = s["bert_errors"] / max(1, s["bert_bits"])
         lines.append(f"BERT {s['bert_frames']} frames, {s['bert_errors']} of {s['bert_bits']} bits wrong (BER {ber:.2e})")

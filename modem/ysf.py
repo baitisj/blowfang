@@ -611,6 +611,8 @@ def decode_frame(llr960):
         fr["vch_bad"] = sum(b for _, b in voice)
     elif fich.dt == DT_DATA_FR:
         fr["dch"] = decode_data_fr_payload(p_llr)
+    elif fich.dt == DT_VOICE_FR and fich.sotto:
+        fr["sotto"], fr["sotto_ok"] = decode_sotto_vw_payload(p_llr)
     return fr
 
 
@@ -647,7 +649,8 @@ def decode_bytes(data):
 
 def summarize(frames):
     s = {"frames": len(frames), "fich_ok": 0, "fi": {}, "dt": {}, "dest": set(), "src": set(),
-         "dch_ok": 0, "dch": 0, "silence": 0, "ambe": 0, "vch_bad": 0, "data": [], "fn": []}
+         "dch_ok": 0, "dch": 0, "silence": 0, "ambe": 0, "vch_bad": 0, "data": [], "fn": [],
+         "sotto": b"", "sotto_ok": 0, "sotto_n": 0}
     for f in frames:
         fi = f["fich"]
         if fi is None:
@@ -668,6 +671,10 @@ def summarize(frames):
             s["ambe"] += 5
             s["silence"] += sum(ambe_b0(a) in (124, 125) for a in f["ambe"])
             s["vch_bad"] += f["vch_bad"]
+        elif "sotto" in f:
+            s["sotto"] += f["sotto"]
+            s["sotto_ok"] += sum(f["sotto_ok"])
+            s["sotto_n"] += len(f["sotto_ok"])
         elif fi.dt == DT_DATA_FR and fi.fi == FI_COMMS:
             for k, d in enumerate(f["dch"]):
                 s["dch"] += 1
@@ -691,6 +698,9 @@ def report(frames, s):
                      f"{s['vch_bad']}")
     if s["data"]:
         lines.append(f"data blocks {len(s['data'])}: first {s['data'][0]!r}, last {s['data'][-1]!r}")
+    if s["sotto_n"]:
+        lines.append(f"sotto VW superframes CRC good {s['sotto_ok']}/{s['sotto_n']}, "
+                     f"first {s['sotto'][:6].hex()}, last {s['sotto'][-6:].hex()}")
     if frames and "outer_hz" in frames[0]:
         o = np.array([f["outer_hz"] for f in frames])
         lines.append(f"outer level {np.median(o):.0f} Hz (YSF wants 2700), frames at "
