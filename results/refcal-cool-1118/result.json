@@ -1,0 +1,12 @@
+{
+ "id": "refcal-cool-1118",
+ "status": "queued",
+ "queued": "2026-11-18T00:19:36Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "59b9d4cf9d17d564db352185d5d4430330c63556",
+  "path": "jobs/refcal-cool-1118"
+ },
+ "runner_commit": "37b8b1bc74120a6f18b59208141c031c885d5157",
+ "updated": "2026-11-18T00:19:36Z"
+}
