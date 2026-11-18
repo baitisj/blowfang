@@ -110,6 +110,43 @@ Pluto puts the chip's baud at 4800.0, so the MCU's TIM17 clock is about 520 ppm 
 Each packet also starts at a different phase, about 0.9 symbol of jitter, because the chip starts on
 its own bit clock. Both need the MCU locked to the chip's symbol clock, not open-loop timing.
 
+## Run 3 (c/k6/mod/c4lock.c): the MCU locked to the chip's symbol clock
+
+Run 2's captures hold one more fact. Measured against a single 4800.0-baud grid from the first
+packet, every packet of a key-up starts within 0.08 symbol of a grid tick: the chip's bit clock
+runs on unbroken from packet to packet. The 0.9 symbol start jitter is the enable landing at a
+random point in the chip's symbol, and the drift is the MCU's clock. So the MCU can learn the
+grid once and time everything on it.
+
+- **The grid in MCU cycles.** After every packet the module polls the TX-done flag (REG_0C bit 0)
+  and takes the rise as the midpoint between the last read that saw it low and the first that saw
+  it high. The rises fall on the chip's grid. A least-squares line through the last 16 gives the
+  chip's symbol in MCU cycles (Q12) and its phase. The rate is fitted only once the points span
+  2,048 symbols. Until then the module uses the prior C4_PPM (-520, from run 2) and fits the
+  phase only.
+- **Where a packet starts.** C00 finds the grid. C01..C16 (64 PN9 symbols each) put the enable
+  at each eighth of a symbol in turn, twice. The enable-to-done time, plus the enable's phase, is
+  flat except for one step of a whole symbol where the enable crosses the chip's threshold. Every
+  data packet puts its enable half a symbol away from that step, so it starts on a known tick.
+- **The size writes** go on that tick's grid plus a lag. The lag is C4_LAG4 quarter symbols
+  (8: run 1's +7, plus run 2's drift at mid-frame), less the mean enable-to-done time over the
+  eight phases. That mean is what runs 1 and 2 saw on average with random enables.
+- **The packets.** A00..A12 are single frames with the size writes at -6..+6 quarter symbols from
+  that lag. B0..B4 are the whole transmission (four frames in one 242-byte packet) at -4, -2, 0,
+  +2 and +4. Every data packet ends with 16 outer symbols, so the done poll starts after the last
+  size write.
+
+Nothing is said while keyed. After the key-down the module reports the calibrated rate, the
+enable phase, each phase's enable-to-done time (one step of about 100 % shows the threshold),
+misses (a packet that ended off its predicted tick), lost polls, and the final fit.
+
+In the emulator (tests/test_k6_c4fm.py, FskGrid) the chip runs on its own grid at -380, -520 or
+-650 ppm against the MCU, at any phase and enable threshold. The module fits the rate to within
+3 ppm, every data packet ends on its predicted tick, the size writes sit within 0.005 symbol of
+each other against the chip's symbols across a 2,100-symbol packet, and the frames decode with 0
+symbol errors. `analyze --plan lock` adds where each packet starts against a 4800.0 grid, and
+where the size changes land (fraction of a symbol, frame by frame).
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto

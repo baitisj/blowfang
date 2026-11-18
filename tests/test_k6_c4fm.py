@@ -303,3 +303,127 @@ def test_ysf_module_sends_whole_transmissions():
     for n in ("B1", "B2", "B3"):
         assert res[n]["fich_n"] == 4 and res[n]["sym_err"] == 0, "\n".join(lines)
     assert res["plain"]["runs"] == [4, 4, 4], "\n".join(lines)
+
+
+# ---------------------------------------------------------------- c4lock (run 3)
+LOCK_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4lock.c")
+
+
+class FskGrid(FskTx):
+    """the FSK transmitter on its own bit clock, as runs 1 and 2 heard it: one 4800-baud grid
+    (ppm against the MCU, a random phase) that runs on through the key-up. A packet starts on the
+    first tick at least lat_en after its enable; TX done rises done_sym after its last symbol."""
+
+    def __init__(self, ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6):
+        super().__init__()
+        self.ts = SYM_NS / 1000 * (1 + ppm * 1e-6)          # the chip's symbol, us of MCU time
+        self.g0, self.lat_en, self.done_sym = phase * self.ts, lat_en, done_sym
+
+    def write(self, reg, v, us):
+        en = reg == 0x59 and v & 0x0800 and not self.ctrl & 0x0800
+        super().write(reg, v, us)
+        if en:
+            p = self.pkts[-1]
+            n = int(np.ceil((us + self.lat_en * self.ts - self.g0) / self.ts))
+            p["t_start"] = self.g0 + n * self.ts
+            nsym = ((self.len5d >> 8) + 1) * 8
+            p["nsym"] = nsym
+            self.done = p["t_start"] + (k6c4fm.LEAD_SYMS + nsym + self.done_sym) * self.ts
+
+
+def air_grid(ev, fsk, fs=48000, data_lag=1.21):
+    """the discriminator from FskGrid's packets: symbols on the chip's grid (from each packet's
+    start, delayed data_lag symbols on the way out), each symbol's size the REG_70 gain in force
+    at its middle; sampled on the chip's clock, as the Pluto heard it (4800.0 baud, the MCU off)"""
+    g70 = [(ns, v & 0x7F) for ns, r, v in ev if r == 0x70 and v & 0x80]
+    t70 = np.array([a for a, _ in g70])
+    ts = fsk.ts * 1000
+    fs = fs * SYM_NS / ts
+    t_end = (fsk.pkts[-1]["t_start"] * 1000 + 1e9) / 1e9
+    d = np.zeros(int(t_end * fs))
+    for p in fsk.pkts:
+        t0 = p["t_start"] * 1000 + data_lag * ts
+        b = np.unpackbits(np.array([[w & 0xFF, w >> 8] for w in p["words"]], np.uint8).reshape(-1))
+        chip = np.concatenate([np.arange(k6c4fm.LEAD_SYMS) % 2, b[:p["nsym"]]])
+        for k, c in enumerate(chip):
+            mid = t0 + (k + 0.5) * ts
+            g = g70[np.searchsorted(t70, mid) - 1][1]
+            a, z = int((t0 + k * ts) * 1e-9 * fs), int((t0 + (k + 1) * ts) * 1e-9 * fs)
+            d[a:z] = (2 * int(c) - 1) * g / define("C4_GAIN", LOCK_SRC) * 2700.0
+    return d
+
+
+
+def send_lock(ppm=-520.0, phase=0.37, lat_en=0.3, done_sym=0.6, write_us=117, **kw):
+    mmio, rcc, tim = k6_clock()
+    tx, fsk = kw.pop("tx", {}), FskGrid(ppm, phase, lat_en, done_sym)
+    ret, said, regs, _ = run({**REGS, **kw.pop("regs", {})}, src=LOCK_SRC, level=3, tx=tx,
+                             mmio=mmio, write_us=write_us, fsk=fsk, count=2_000_000_000, **kw)
+    assert rcc[0x18] == 0 and not tim.get(0x00, 0) & 1
+    ev = [(ns, r, v) for (r, v, _), ns in zip(tx.get("w", []), tx.get("w_ns", []))]
+    return ret, said, regs, tx, fsk, ev
+
+
+def test_lock_module_matches_host():
+    assert define("NCAL", LOCK_SRC) == k6c4fm.LOCK_NCAL
+    assert define("NA", LOCK_SRC) == len(k6c4fm.LOCK_A)
+    assert define("A_FIRST", LOCK_SRC) == k6c4fm.LOCK_A[0]
+    assert define("C4_LAG4", LOCK_SRC) == k6c4fm.LOCK_LAG4
+    src = open(LOCK_SRC).read()
+    bq = re.search(r"BQ\[NB\] = \{([^}]*)\}", src).group(1)
+    assert tuple(int(x) for x in bq.split(",")) == k6c4fm.LOCK_B
+
+
+@need_clang
+@pytest.mark.parametrize("ppm,phase,lat_en", [(-520.0, 0.37, 0.3), (-380.0, 0.81, 0.9),
+                                              (-650.0, 0.05, 0.55)])
+def test_lock_module_locks_to_the_chip(ppm, phase, lat_en):
+    """the chip's clock off the MCU's by ppm (the prior says -520), its grid at any phase, its
+    enable threshold anywhere: the fitted rate, every data packet on its predicted tick, and the
+    frames whole on air with the chip's gain path (data_lag) set where Lq 0 should land"""
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send_lock(ppm, phase, lat_en)
+    n = k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(k6c4fm.LOCK_B)
+    assert ret == n, said
+    assert said[0] == f"c4lock n={n} g=78/27 lag=8 ppm=-520 pa=0 rx=440850000"
+    assert said[-1].startswith(f"c4lock sent n={n} ")
+    w = next(s for s in said if s.startswith("c4lock w="))
+    m = re.match(r"c4lock w=(\d+) late=(\d+) miss=(\d+) lost=(\d+)", w)
+    assert m and m.group(2) == "0" and m.group(3) == "0" and m.group(4) == "0", said
+    fit = next(s for s in said if s.startswith("c4lock fit"))
+    got = int(re.search(r"ppm=(-?\d+)", fit).group(1)) / 10
+    # the module's ppm is the chip's symbol in MCU cycles: the chip fast = fewer cycles
+    assert got == pytest.approx(ppm, abs=3), said
+    t_on, t_off = tx["log"][0][2], tx["log"][-1][2]
+    assert {r for r, v, us in tx["w"] if t_on <= us <= t_off} <= KEYED_REGS
+    assert [len(p["words"]) for p in fsk.pkts] == ([4] * k6c4fm.LOCK_NCAL + [31] * len(k6c4fm.LOCK_A)
+                                                   + [121] * len(k6c4fm.LOCK_B))
+    # the data packets' enables half a symbol from the threshold: start - enable the same for all
+    gaps = [(p["t_start"] - p["t_en"]) / fsk.ts for p in fsk.pkts[k6c4fm.LOCK_NCAL:]]
+    assert max(gaps) - min(gaps) < 0.2, gaps
+    assert min(g - lat_en for g in gaps) > 0.2 and max(g - lat_en for g in gaps) < 0.8, gaps
+    # the chip's data path set so that Lq 0 lands: the writes aim C4_LAG4 / 4 symbols after the
+    # done grid's ticks, less the mean enable-to-start time (lat_en + 0.5) as runs 1 and 2 saw it
+    lag = k6c4fm.LOCK_LAG4 / 4 - 0.5 - lat_en
+    lines, res = k6c4fm.analyze(air_grid(ev, fsk, data_lag=lag), plan="lock")
+    a0 = k6c4fm.LOCK_A.index(0)
+    assert res[f"A{a0:02d}"]["fich"] and res[f"A{a0:02d}"]["sym_err"] == 0, "\n".join(lines)
+    b0 = k6c4fm.LOCK_B.index(0)
+    assert res[f"B{b0}"]["fich_n"] == 4 and res[f"B{b0}"]["sym_err"] == 0, "\n".join(lines)
+    assert abs(res[f"B{b0}"]["land"]) < 0.1, "\n".join(lines)
+    assert 4 in res["plain"]["runs"], "\n".join(lines)
+
+
+@need_clang
+def test_lock_module_rules():
+    pytest.importorskip("unicorn")
+    ret, said, regs, tx, fsk, ev = send_lock(write_us=170)
+    assert ret == -8 and not fsk.pkts and tx["log"][-1][0] == "tx_off"
+    ret, said, regs, tx, fsk, ev = send_lock(rx_hz=446_000_000)
+    assert ret == -2 and "log" not in tx
+    ret, said, regs, tx, fsk, ev = send_lock(regs={0x67: rssi_reg(-120)})
+    assert ret == -7 and "log" not in tx
+    t_key = send_lock()[3]["log"][0][2] + 1_500_000
+    ret, said, regs, tx, fsk, ev = send_lock(keys=((t_key, t_key + 5_000_000),))
+    assert ret == -4 and tx["log"][-1][0] == "tx_off" and tx["log"][-1][2] < t_key + 600_000
+    assert regs[0x70] == 0 and regs[0x40] == REGS[0x40] and regs[0x59] == REGS[0x59]
