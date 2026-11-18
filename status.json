@@ -4,11 +4,7 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "dmr-uvref2",
-  "who": "c4fm",
-  "since": "2026-11-18T22:39:21Z"
- },
+ "running": null,
  "waiting": [
   {
    "id": "uv380-back-1118k",
@@ -16,8 +12,8 @@
    "not_before": null
   }
  ],
- "last_poll": "2026-11-18T22:39:20Z",
+ "last_poll": "2026-11-18T22:40:44Z",
  "error": null,
  "update": null,
- "updated": "2026-11-18T22:39:21Z"
+ "updated": "2026-11-18T22:40:44Z"
 }
