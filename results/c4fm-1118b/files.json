@@ -1,0 +1,51 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-1118b/k6-rate.json"
+ },
+ {
+  "name": "c4.cf32.json",
+  "bytes": 132,
+  "sha256": "ab7b4b8cbb66eda7807a3cc77a01648dd5ac0cf6f3319d81cdd8b0c44969ad01",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-1118b/c4.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 194,
+  "sha256": "0c5666ca3d5696dd7521256ef52ca652aac5625108ccd084f45683f6430f0a87",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-1118b/pluto.out"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 6034,
+  "sha256": "616e1d5c300d5facddbeaf49ac5e8911a5376351be2eb31b7ff305beb0af2c45",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-1118b/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 8634,
+  "sha256": "689765923c7629a6518896007536a866f00d9fce2bad97053bf0c68364635912",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-1118b/k6.log"
+ },
+ {
+  "name": "c4.wav",
+  "bytes": 5760044,
+  "sha256": "1e91965711fe633067524a82188543af07992dcc6b6868e1d2d55af6750e1e12",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-1118b/c4.wav"
+ },
+ {
+  "name": "c4.cf32",
+  "bytes": 115200000,
+  "sha256": "2a4b29eb3f1b28c203de2dd424b102d95f0db021a397744c848c5e495bed4f06",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-1118b/c4.cf32"
+ }
+]
