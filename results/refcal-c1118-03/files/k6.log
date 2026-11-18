@@ -1,0 +1,70 @@
+1794990034.166	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-115 batt=8480 build=8a78fb5-20261117T0904Z
+1794990046.043	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-58 batt=8460 build=8a78fb5-20261117T0904Z
+1794990057.912	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-58 batt=8460 build=8a78fb5-20261117T0904Z
+1794990069.783	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-115 batt=8460 build=8a78fb5-20261117T0904Z
+1794990081.657	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-117 batt=8460 build=8a78fb5-20261117T0904Z
+1794990092.879	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=0 have=1/41 rssi=-64 noise=18
+1794990093.480	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=1 have=2/41 rssi=-64 noise=18
+1794990094.081	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=2 have=3/41 rssi=-64 noise=17
+1794990094.882	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=3 have=4/41 rssi=-64 noise=17
+1794990095.484	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=4 have=5/41 rssi=-64 noise=17
+1794990096.085	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=5 have=6/41 rssi=-64 noise=15
+1794990096.686	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=6 have=7/41 rssi=-64 noise=16
+1794990097.287	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=7 have=8/41 rssi=-64 noise=17
+1794990098.089	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=8 have=9/41 rssi=-64 noise=16
+1794990098.690	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=9 have=10/41 rssi=-64 noise=17
+1794990099.291	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=10 have=11/41 rssi=-64 noise=17
+1794990099.892	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=11 have=12/41 rssi=-64 noise=17
+1794990100.493	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=12 have=13/41 rssi=-64 noise=16
+1794990101.295	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=13 have=14/41 rssi=-64 noise=16
+1794990101.896	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=14 have=15/41 rssi=-64 noise=17
+1794990102.497	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=15 have=16/41 rssi=-64 noise=16
+1794990103.098	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=16 have=17/41 rssi=-64 noise=17
+1794990103.699	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=17 have=18/41 rssi=-64 noise=15
+1794990104.300	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=18 have=19/41 rssi=-64 noise=17
+1794990105.102	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=19 have=20/41 rssi=-64 noise=16
+1794990105.703	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=20 have=21/41 rssi=-64 noise=16
+1794990106.304	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=21 have=22/41 rssi=-64 noise=15
+1794990106.905	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=22 have=23/41 rssi=-64 noise=16
+1794990107.506	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=23 have=24/41 rssi=-64 noise=16
+1794990108.307	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=24 have=25/41 rssi=-64 noise=16
+1794990108.908	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=25 have=26/41 rssi=-64 noise=17
+1794990109.509	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=26 have=27/41 rssi=-64 noise=16
+1794990110.111	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=27 have=28/41 rssi=-64 noise=15
+1794990110.712	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=28 have=29/41 rssi=-64 noise=16
+1794990111.513	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=29 have=30/41 rssi=-64 noise=17
+1794990112.114	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=30 have=31/41 rssi=-64 noise=16
+1794990112.715	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=31 have=32/41 rssi=-64 noise=17
+1794990113.316	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=32 have=33/41 rssi=-64 noise=15
+1794990113.918	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=33 have=34/41 rssi=-64 noise=17
+1794990114.719	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=34 have=35/41 rssi=-64 noise=17
+1794990115.320	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=35 have=36/41 rssi=-64 noise=16
+1794990115.921	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=36 have=37/41 rssi=-64 noise=16
+1794990116.522	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=37 have=38/41 rssi=-64 noise=17
+1794990117.123	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=38 have=39/41 rssi=-64 noise=16
+1794990117.925	8a78fb5-20261117T0904Z	K6 MOD r=1 xfer=6 chunk=39 have=40/41 rssi=-64 noise=17
+1794990118.526	8a78fb5-20261117T0904Z	K6 MOD r=3 xfer=6 chunk=40 have=41/41 rssi=-64 noise=17
+1794990118.526	8a78fb5-20261117T0904Z	K6 MOD run serial=1794990086 code=4932 B at 0x200020a4 stack=2028 B scratch=6820 B
+1794990148.780	8a78fb5-20261117T0904Z	K6 MOD say R 00005201 004e0015 0000 0000 0000 0000 00000000 00000000
+1794990148.780	8a78fb5-20261117T0904Z	K6 MOD say refcal waiting for a steady carrier
+1794990181.841	8a78fb5-20261117T0904Z	K6 MOD say refcal t=29981 v=24083 3b=5880 3c=4f88
+1794990182.041	8a78fb5-20261117T0904Z	K6 MOD say refcal s 440850.00 -78 -129
+1794990183.844	8a78fb5-20261117T0904Z	K6 MOD say refcal m 440850.00 if=16514.2 n=32 sp=13.0 k=+0
+1794990185.046	8a78fb5-20261117T0904Z	K6 MOD say refcal m 440850.00 if=17019.3 n=16 sp=7.0 k=+6
+1794990185.046	8a78fb5-20261117T0904Z	K6 MOD say refcal step 440850.00 d=+505.1 g=+508.7
+1794990187.051	8a78fb5-20261117T0904Z	K6 MOD say refcal m 440850.00 if=16932.9 n=32 sp=8.0 k=+5
+1794990187.051	8a78fb5-20261117T0904Z	K6 MOD say refcal r 440850.00 ppb=+948 res=+5.8 k=+5
+1794990188.854	8a78fb5-20261117T0904Z	K6 MOD say refcal m 440850.00 if=16930.0 n=32 sp=6.0 k=+5
+1794990188.854	8a78fb5-20261117T0904Z	K6 MOD say refcal r 440850.00 ppb=+955 res=+2.9 k=+5
+1794990190.858	8a78fb5-20261117T0904Z	K6 MOD say refcal m 440850.00 if=16927.8 n=32 sp=5.0 k=+5
+1794990190.858	8a78fb5-20261117T0904Z	K6 MOD say refcal r 440850.00 ppb=+960 res=+0.7 k=+5
+1794990192.762	8a78fb5-20261117T0904Z	K6 MOD say refcal m 440850.00 if=16924.3 n=32 sp=8.0 k=+5
+1794990192.763	8a78fb5-20261117T0904Z	K6 MOD say refcal r 440850.00 ppb=+968 res=-2.8 k=+5
+1794990192.763	8a78fb5-20261117T0904Z	K6 MOD say refcal ppb=+955 n=4 k=+5 t=29981 dry
+1794990192.763	8a78fb5-20261117T0904Z	K6 MOD say R 00045201 004e0015 0000 0000 0000 0000 00000000 00000000
+1794990192.763	8a78fb5-20261117T0904Z	K6 MOD say refcal done
+1794990192.963	8a78fb5-20261117T0904Z	K6 MOD ret=955 (0x3bb) in 74281 ms stack_free=556 B
+1794990195.540	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-65 batt=8460 build=8a78fb5-20261117T0904Z
+1794990207.103	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-65 batt=8460 build=8a78fb5-20261117T0904Z
+1794990218.665	8a78fb5-20261117T0904Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-65 batt=8460 build=8a78fb5-20261117T0904Z
+1794990226.079	8a78fb5-20261117T0904Z	K6 ARQ tx seq=8 state=1 xfer=6 have=41/41 r=3 parts=5
