@@ -102,6 +102,92 @@ long packet whole. A long packet is what a C4FM radio needs, with frames every 1
 over the capture. In the emulator, with the chip lagging 1.75 symbols, every frame decodes and the plain
 receiver finds three 4-frame runs.
 
+Run 2 on the bench (2026-11-18 01:45Z, job c4fm-1118b, files /mnt/project-files/k6-c4fm/run2/). The
+plain YSF receiver found 9 K6 frames in 3 continuous runs, every one with a good FICH. Levels were
+±2.7 kHz outer and ±1.0 kHz inner. The FIFO holds all 120 words, and timed refills work. Symbol errors
+grow along each long packet: the size pattern slides about 0.25 symbol later per 480-symbol frame. The
+Pluto puts the chip's baud at 4800.0, so the MCU's TIM17 clock is about 520 ppm slow against the chip.
+Each packet also starts at a different phase, about 0.9 symbol of jitter, because the chip starts on
+its own bit clock. Both need the MCU locked to the chip's symbol clock, not open-loop timing.
+
+## Run 3 (c/k6/mod/c4lock.c): the MCU locked to the chip's symbol clock
+
+Run 2's captures hold one more fact. Measured against a single 4800.0-baud grid from the first
+packet, every packet of a key-up starts within 0.08 symbol of a grid tick: the chip's bit clock
+runs on unbroken from packet to packet. The 0.9 symbol start jitter is the enable landing at a
+random point in the chip's symbol, and the drift is the MCU's clock. So the MCU can learn the
+grid once and time everything on it.
+
+- **The grid in MCU cycles.** After every packet the module polls the TX-done flag (REG_0C bit 0)
+  and takes the rise as the midpoint between the last read that saw it low and the first that saw
+  it high. The rises fall on the chip's grid. A least-squares line through the last 16 gives the
+  chip's symbol in MCU cycles (Q12) and its phase. The rate is fitted only once the points span
+  2,048 symbols. Until then the module uses the prior C4_PPM (-520, from run 2) and fits the
+  phase only.
+- **Where a packet starts.** C00 finds the grid. C01..C16 (64 PN9 symbols each) put the enable
+  at each eighth of a symbol in turn, twice. The enable-to-done time, plus the enable's phase, is
+  flat except for one step of a whole symbol where the enable crosses the chip's threshold. Every
+  data packet puts its enable half a symbol away from that step, so it starts on a known tick.
+- **The size writes** go on that tick's grid plus a lag. The lag is C4_LAG4 quarter symbols
+  (8: run 1's +7, plus run 2's drift at mid-frame), less the mean enable-to-done time over the
+  eight phases. That mean is what runs 1 and 2 saw on average with random enables.
+- **The packets.** A00..A12 are single frames with the size writes at -6..+6 quarter symbols from
+  that lag. B0..B4 are the whole transmission (four frames in one 242-byte packet) at -4, -2, 0,
+  +2 and +4. Every data packet ends with 16 outer symbols, so the done poll starts after the last
+  size write.
+
+Nothing is said while keyed. After the key-down the module reports the calibrated rate, the
+enable phase, each phase's enable-to-done time (one step of about 100 % shows the threshold),
+misses (a packet that ended off its predicted tick), lost polls, and the final fit.
+
+In the emulator (tests/test_k6_c4fm.py, FskGrid) the chip runs on its own grid at -380, -520 or
+-650 ppm against the MCU, at any phase and enable threshold. The module fits the rate to within
+3 ppm, every data packet ends on its predicted tick, the size writes sit within 0.005 symbol of
+each other against the chip's symbols across a 2,100-symbol packet, and the frames decode with 0
+symbol errors. `analyze --plan lock` adds where each packet starts against a 4800.0 grid, and
+where the size changes land (fraction of a symbol, frame by frame).
+
+Run 3 on the bench (2026-11-18 02:21Z, job c4fm-1118c, files /mnt/project-files/k6-c4fm/run3/).
+The module returned 35 packets, none late. It fitted the chip at -617 ppm against the MCU after
+the calibration and -647 ppm at the end (run 2's -520 was a rough figure). The worst fit residual
+was 0.42 symbol, so a TX-done poll on the radio is coarser than in the emulator, and three data
+packets' polls rounded to the wrong tick. On the Pluto every packet started within 0.2 symbol of
+one 4800.0-baud grid. So the enables now follow the chip: run 2 spread over 0.9 symbol.
+
+- **Whole transmissions:** all of B1-B4 decoded 4 of 4 frames with a good FICH. B3 (+2/4) had
+  35 of 1,936 symbols wrong and B2 (0) 48, against hundreds along run 2's long packets. Levels
+  were ±2.7 / ±1.0 kHz. The plain YSF receiver found 15 frames in 4 runs, all with a good FICH.
+- **Drift:** mostly gone. A small slope is left: errors grow along B1 (early) and shrink along B4
+  (late), so the fitted symbol is a little short. The three mis-rounded polls likely pulled the
+  fit.
+- **Timing:** best between 0 and +2/4, so C4_LAG4 9. The single frames swept from A05 to A07
+  (57-167 errors), a narrower window than the long packets show. Each A packet carries a
+  different frame, so they don't compare one to one.
+
+Next (run 4): fit data packets against the tick they were placed on, not a rounded one, and drop
+polls more than 3/4 symbol off. Bin the calibration phases by where the final fit puts them, set
+the prior to -630 ppm, and set C4_LAG4 to 9. Then a C4FM radio test (FTM-300DR) with B packets
+only.
+
+Run 4 on the bench (2026-11-18 02:45Z, job c4fm-1118e, files /mnt/project-files/k6-c4fm/run4/).
+The first try (c4fm-1118d) never reached the module: EXPLORE was in a 2-minute listen and missed
+the wake. The job now wakes it, waits for the listen to end, and wakes it again.
+
+- **The fit:** no misses, no lost polls, and the worst residual was 5 % of a symbol (run 3: 42 %).
+  A poll takes 11,171 cycles (116 µs). The calibration's step was clean: 0 49 99 99 99 99 99 99.
+  The rate read -604 ppm after the calibration and -524 ppm at the end.
+- **Whole transmissions:** all five B packets decoded 4 of 4 frames with a good FICH. B2 (lag 9/4)
+  had 14 of 1,936 symbols wrong (3, 2, 5 and 4 a frame, so no drift is left), and B3 (10/4) had
+  22. A quarter symbol either side costs 61, and half a symbol costs 336-372. The plain YSF
+  receiver found 20 frames in 5 runs, all with a good FICH.
+- **Single frames:** A05 and A06 (-1/4 and 0) had 20 and 17 of 480 wrong.
+- On the Pluto every packet started within 0.2 symbol of one 4800.0-baud grid. That includes the
+  slow slide of the Pluto's clock against the chip.
+
+The analysis needed three fixes for this capture. A packet it can't place no longer swallows the
+rest. The burst finder now accepts the chip's ragged first 12 ms of preamble and noise spikes in
+the gaps. And it now uses each packet's sampling phase for its start time.
+
 ## Bench
 
 The inbox job runs four steps. It wakes the K6, sends `k6.upload` of the built `c4probe.bin` over the Pluto
