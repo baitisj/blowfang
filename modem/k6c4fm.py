@@ -84,12 +84,13 @@ def ysf_frames():
     return [ysf.bytes_to_bits(data[i * 120:(i + 1) * 120]) for i in range(4)]
 
 
-def dn_frame(fi, fn, dest, src, rid):
-    """one V/D mode 2 frame (header/terminator: CSD; comms: DCH frame fn + AMBE silence) in the
-    Yaesu layout an FTM-300DR sends (call mode 1, FT 7), as 960 bits"""
+def dn_frame(fi, fn, dest, src, rid, ambe=None):
+    """one V/D mode 2 frame (header/terminator: CSD; comms: DCH frame fn + five AMBE frames, ambe
+    or silence) in the Yaesu layout an FTM-300DR sends (call mode 1, FT 7), as 960 bits"""
     mk = dict(cs=2, cm=1, ft=7, dt=ysf.DT_VD_MODE2, dgid=0)
     if fi == ysf.FI_COMMS:
-        pl = ysf.dn_payload(ysf.dn_dch(fn, dest, src, rid=rid), [ysf.ambe_silence()] * 5)
+        pl = ysf.dn_payload(ysf.dn_dch(fn, dest, src, rid=rid),
+                            [ysf.ambe_silence()] * 5 if ambe is None else ambe)
     else:
         pl = ysf.header_payload(dest, src, csd2=b" " * 20)
     return ysf.build_frame(ysf.FICH(fi=fi, fn=fn, **mk), pl).astype(np.int8)
@@ -124,6 +125,29 @@ def long_dn_frames(rid=ysf.RADIO_ID, src=ysf.IDENT):
     return out
 
 
+VOICE_FNS = tuple(range(8)) + tuple(range(4))   # c4voice.c: 12 comms frames = 60 AMBE frames, 1.2 s
+VOICE_CALLS = ((0, len(VOICE_FNS) + 2),) * 3   # c4voice.c: (first frame, frames) a call: the call, 3 times
+VOICE_INNER = (20, 20, 20)          # their inner REG_70 gain (outer 78): voice1 (11-18) at 27 came out at
+                                    # 0.45 of the outer, 5 of 49 AMBE bits wrong; voice2: 22 2.3, 18 2.5;
+                                    # voice3: 22 4.4, 20 1.5, 18 2.8
+
+
+def voice_frames(ambe=None, rid=ysf.RADIO_ID, src=ysf.IDENT):
+    """c4voice's frame table (C4_VOICE): one DN voice call in the FTM-300DR's layout, header,
+    FN 0-7, FN 0-3, terminator (the 6/7 block twice, made-up position), carrying ambe: 60 AMBE+2
+    frames of 49 bits (AMBE silence if None). The repo's header holds silence; a real voice goes
+    in a local header (header --voice FRAMES.npy) and is never committed. A splice drops the
+    5th VCH of frames 4, 8 and 12 (CH_E), so 3 of the 60 come out garbled"""
+    n = 5 * len(VOICE_FNS)
+    ambe = [ysf.ambe_silence()] * n if ambe is None else [np.asarray(a, np.int8) for a in ambe]
+    assert len(ambe) == n and all(len(a) == 49 for a in ambe), len(ambe)
+    dest = ysf.dn_dest(rid)
+    out = [dn_frame(ysf.FI_HEADER, 0, dest, src, rid)]
+    out += [dn_frame(ysf.FI_COMMS, fn, dest, src, rid, ambe[5 * k:5 * k + 5]) for k, fn in enumerate(VOICE_FNS)]
+    out.append(dn_frame(ysf.FI_TERMINATOR, 0, dest, src, rid))
+    return out
+
+
 SOTTO_BIT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "c", "k6", "mod",
                          "c4sotto.bit")
 
@@ -151,9 +175,9 @@ DMR_NSF = 6                         # c4dmr.c: the test message's sotto 1200 sup
 DMR_CHUNKS = 12                     # its stream (20 frames of 60 ms) as 480-symbol table frames
 DMR_CALLS = ((0, DMR_CHUNKS),) * 5  # c4dmr.c: (first frame, frames) a call, a sweep of five
 DMR_Q = (0, 0, 0, 0, 0)             # their size timing, quarter symbols from the lag (dmr2: 0 best)
-DMR_INNER = (4, 5, 6, 7, 8)         # their inner REG_70 gain (outer 56); dmr1 (11-18): 19 = half the
+DMR_INNER = (8, 8, 8, 8, 8)         # their inner REG_70 gain (outer 56); dmr1 (11-18): 19 = half the
                                     # outer; dmr2: 8 best of 8, 11, 14
-DMR_INV = (0, 0, 0, 0, 0)
+DMR_INV = (0, 1, 0, 1, 0)           # every other call inverted (dmr4: the UV-380 never synced on plain)
 DMR_FRAMES = 3                      # table frames a packet: 1440 symbols = 5 DMR frames, so a packet
                                     # ends on a frame's end and the 48 erased symbols at the splice
                                     # are the end of slot 2's idle burst
@@ -296,7 +320,7 @@ def fifo_bytes(chip):
     return ysf.bits_to_bytes(chip)
 
 
-def header(path):
+def header(path, voice=None):
     """c4probe_frames.h: the FIFO bytes (MSB first on air; the module pairs them low byte first)"""
     fr = all_frames()
     pk = packets()
@@ -328,6 +352,9 @@ def header(path):
     tables(all_frames(sotto=True))
     lines.append("#elif C4_DMRS   /* c4dmr.c: frames 0-11 = a DMR repeater-style stream, the test message */")
     tables(dmr_frames())
+    lines.append("#elif C4_VOICE   /* c4voice.c: frames 0-13 = one DN voice call, header, FN 0-7, FN 0-3,"
+                 + (" terminator; AMBE silence */" if voice is None else " terminator; LOCAL VOICE: do not commit */"))
+    tables(voice_frames(voice))
     lines.append("#elif C4_CHAIN   /* c4ftm.c: frames 4-13 = one DN call, header, FN 0-7, terminator */")
     tables(all_frames(chain=True))
     lines.append("#else")
@@ -606,7 +633,8 @@ def analyze_chain(disc, fs=48000):
         slip = (np.diff(at) - 0.1) * BAUD
         c = {"t": float(at[0]), "frames": len(r), "fich": sm["fich_ok"], "dch": sm["dch"],
              "dch_ok": sm["dch_ok"], "fn": sm["fn"], "src": sorted(sm["src"]),
-             "fi": sm["fi"], "slip": [round(float(x), 2) for x in slip]}
+             "fi": sm["fi"], "slip": [round(float(x), 2) for x in slip],
+             "ambe": [a for f in r if f["fich"] is not None and "ambe" in f for a in f["ambe"]]}
         res["calls"].append(c)
         worst = float(np.max(np.abs(slip))) if len(slip) else 0.0
         lines.append(f"run {j}: {c['t']:.3f} s, {len(r)} frames, FICH {c['fich']}/{len(r)}, "
@@ -731,6 +759,8 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     h = sub.add_parser("header")
     h.add_argument("out")
+    h.add_argument("--voice", help="c4voice's 60 AMBE frames (.npy, 60 x 49 bits) instead of silence: "
+                                   "for a local header only, never committed")
     pl = sub.add_parser("plan")
     pl.add_argument("--plan", choices=("probe", "ysf", "lock", "lock3", "demo", "sotto"), default="probe")
     s = sub.add_parser("sim")
@@ -747,7 +777,7 @@ def main(argv=None):
     fi.add_argument("log")
     a = ap.parse_args(argv)
     if a.cmd == "header":
-        header(a.out)
+        header(a.out, None if a.voice is None else np.load(a.voice))
         print(f"wrote {a.out}")
     elif a.cmd == "plan" and a.plan in ("ysf", "lock", "lock3", "demo", "sotto"):
         for p in packets(a.plan):

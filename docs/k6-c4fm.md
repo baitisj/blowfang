@@ -304,4 +304,70 @@ the module's tail, which supports the telemetry-overwrite explanation. Symbol er
 D1 260, D2 241, D3 167 of 2048 (the outer FEC carries them); grid starts within 0.2 symbol. The
 capture, K6 log and analysis are in the project files under `k6-c4fm/sotto4/`.
 
+## DMR from the K6 (c4dmr, 2026-11-18)
+
+`c/k6/mod/c4dmr.c` runs c4lock's chained calls with `C4_DMRS`. The table
+(`k6c4fm.dmr_frames`) is the repeater-style DMR stream from `tools/uv380_dmrburst.py`: BS data
+sync, CACH, slot 1 rate 1/2 data, slot 2 idle. It carries a dmrsotto test message (head, the
+`AG7EW` text, 36 bytes counting up, end). That is 20 frames of 60 ms, cut into 12 table frames
+of 480 symbols. A packet holds 3 table frames, which is 5 DMR frames (1440 symbols), so each
+splice's 48 erased symbols fall at the end of a slot 2 idle burst. Each call is one 1.2 s run
+of 4 packets. The module sends 5 calls, each with its own inner gain (`BIN`) and size timing
+(`BQ`). The outer gain is 56, about +-1944 Hz.
+
+Pluto runs, PA off, 440.850 (analysis: `tools/uv380_dmrburst.py decode`, and per call by
+correlation against `k6c4fm.dmr_symbols()`):
+
+| run | calls | result |
+|---|---|---|
+| dmr1 21:10Z | inner 19, plain and inverted | syncs, slot types, CSBKs; 5 of 7 data blocks; 11% of symbols wrong, the inner level at half the outer |
+| dmr2 21:24Z | inner 8, 11, 14; q -1, +1 | inner 8 and 11 at q 0: the whole message (nothing lost, no bad block, end seen); 5.6% wrong at 8 |
+| dmr3 21:33Z | inner 4-8 | below 8 the inner level stays near 1.25 of 3; inner 8 whole again; 5-16% wrong call to call |
+
+Most wrong symbols are ones whose size changes at their start, and moving the size writes a
+quarter symbol either way doesn't remove them. The last table frame of each packet is worse. A
+half-symbol boxcar in place of the receiver's RRC halves the errors, so the K6's pulses are not
+RRC-shaped and a real receiver's filter matters.
+
+The UV-380's C6000 (`uv380.rx dmr`, c6dmrrx_long) did not sync on the K6 in dmr4 or dmr5, with
+plain or inverted calls, although it heard them at -39 dBm. It did not sync on the Pluto's own
+FM copy of the bench stream either (dmr-uvref2, 22:39Z: plain and inverted, -54 dBm). So today
+the UV-380's DMR receiver is the open question, not the K6. With the UV-380 tuned to 440.850,
+the Pluto's decode of the K6 got worse (dmr4), as in the 11-16 sweep.
+
+## A voice call from the K6 (c4voice, 2026-11-18)
+
+`c/k6/mod/c4voice.c` runs c4lock's chained calls with `C4_VOICE`. The table
+(`k6c4fm.voice_frames`) is one DN call in the FTM-300DR's layout: header, FN 0-7, FN 0-3,
+terminator, with the radio-type and GPS block (the made-up position) in FN 6 and 7, and 60
+AMBE+2 frames (1.2 s) in the twelve comms frames. It goes out three times, each in four packets
+back to back. The splices drop the 5th VCH of frames 4, 8 and 12, so 3 of the 60 voice frames
+come out garbled.
+
+There is no AMBE+2 encoder here, so the voice has to be a real radio's frames. The repo's table
+holds AMBE silence. For a real voice, write a local header with
+`python3 -m modem.k6c4fm header c/k6/mod/c4probe_frames.h --voice FRAMES.npy` (60 x 49 bits)
+and never commit it. A built module still reaches hamlet through the public job branch. The
+11-18 06:10Z FTM capture (ftmref) looks like background rather than speech: low gain, unvoiced,
+repeating frames.
+
+Pluto checks with random test frames, PA off, sizes timed at the lag (voice1-3, 11-18):
+
+| run | inner gain (outer 78) | frames heard | AMBE bits wrong a frame |
+| --- | --- | --- | --- |
+| voice1 | 27 x3 | 10, 14, 3 | 5 (whole call); calls cut short |
+| voice2 | 27, 22, 18 | 14, 12, 4 | 5, 2.3, 2.5 |
+| voice3 | 22, 20, 18 | 14, 12, 14 | 4.4, 1.5, 2.8 |
+
+At 27 the inner symbols came out at 0.45 of the outer (YSF wants a third), and lowering it
+helped. In voice3 the errors bunch by packet, so a packet's size-write timing matters more than
+the level. Every FICH and DCH decoded. In voice1 and voice2 the later calls ended early because
+c4lock's latency window had emptied. Under `C4_VOICE` a sample that misses the window now
+starts the window again (voice3: all 9 chained packets sent). The module now uses inner 20 for
+all three calls.
+
+`c/k6/mod/rxtrig.c` is a receive-only carrier trigger. It says `rxtrig on DBM` when a carrier
+comes up and `rxtrig off MS DBM` when it goes. A job can then start a Pluto capture on another
+radio's key-up, such as the FTM-300DR's own voice call.
+
 SPDX-License-Identifier: MIT

@@ -316,6 +316,7 @@ LOCK_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4lock.c")
 FTM_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4ftm.c")
 SOTTO_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4sotto.c")
 DMR_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4dmr.c")
+VOICE_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4voice.c")
 FIFO_SRC = os.path.join(ROOT, "c", "k6", "mod", "c4fifo.c")
 LOCK_GAIN = define("C4_GAIN", LOCK_SRC)
 
@@ -493,6 +494,32 @@ def test_ftm_demo_calls():
 
 
 @need_clang
+def test_voice_call():
+    """c4voice (C4_VOICE): one 14-frame DN call three times, each in four packets back to back;
+    on air the plain receiver finds each call whole (header, FN 0-7, FN 0-3, terminator, AG7EW)
+    and its AMBE frames are the table's, but for the 5th VCH of frames 4, 8 and 12 (the splices)"""
+    pytest.importorskip("unicorn")
+    from modem import ysf
+    ret, said, regs, tx, fsk, ev = send_lock(-604.0, 0.4, 0.3, poll_jitter=0.3, src=VOICE_SRC,
+                                             keys=((6_000_000, 6_300_000),))
+    calls = k6c4fm.VOICE_CALLS
+    chunks = [-(-nf // k6c4fm.CHAIN_FRAMES) for _, nf in calls]
+    npkt = k6c4fm.LOCK_NR + k6c4fm.LOCK_NCAL + len(k6c4fm.LOCK_A) + len(calls) + sum(chunks)
+    assert ret == npkt, said
+    assert said[1:3] == ["c4 armed: a key or DTMF sends", "c4 go"], said
+    lines, res = k6c4fm.analyze_chain(air_grid(ev, fsk, data_lag=k6c4fm.LOCK_LAG4 / 4 - 0.8))
+    assert res["runs"] == [nf for _, nf in calls], "\n".join(lines)
+    want = [a for f in k6c4fm.voice_frames()[1:-1] for a in ysf.decode_frame(1.0 - 2.0 * f)["ambe"]]
+    for c in res["calls"]:
+        assert c["fich"] == 14 and c["dch_ok"] == c["dch"], "\n".join(lines)
+        assert c["fn"] == list(k6c4fm.VOICE_FNS) and "AG7EW" in c["src"], "\n".join(lines)
+        same = [i for i, (a, b) in enumerate(zip(c["ambe"], want)) if np.array_equal(a, b)]
+        assert len(c["ambe"]) == 60 and len(same) >= 57, (len(same), "\n".join(lines))
+    g70 = [v & 0x7F for _, r, v in ev if r == 0x70 and v & 0x80]
+    assert all(g in g70 for g in k6c4fm.VOICE_INNER), g70
+
+
+@need_clang
 def test_ftm_demo_go_rules():
     """c4ftm armed: a key before the arming stops it, a second key in the count-down stops it, and
     the go waits for the channel to clear (here the job's trigger carrier, 40-44 s)"""
@@ -657,3 +684,23 @@ def test_fifo_probe_measures_the_rate(ppm):
         assert p["res"] < 40, p
     lines = k6c4fm.fifo_text(pk)
     assert len(lines) == 3 and lines[-1].startswith("packet rates over time: 0.0 s")
+
+
+@need_clang
+def test_rxtrig_says_each_carrier():
+    """rxtrig: armed once the upload's carrier is gone, then a line as each carrier comes up and
+    goes; a 30 ms blip is no carrier; it returns after RT_N carriers"""
+    pytest.importorskip("unicorn")
+    spans = ((6_000_000, 6_030_000), (8_000_000, 13_000_000), (15_000_000, 16_000_000), (18_000_000, 19_000_000))
+
+    def rssi(us):
+        return rssi_reg(-60 if us < 3_000_000 or any(a <= us < b for a, b in spans) else -120)
+    src = os.path.join(ROOT, "c", "k6", "mod", "rxtrig.c")
+    ret, said, regs, _ = run({0x67: rssi}, src=src, level=2, count=2_000_000_000)
+    assert ret == 3, said
+    lines = [s for s in said if s.startswith("rxtrig")]
+    assert lines[0] == "rxtrig armed f=440850000", said
+    assert lines[1::2] == ["rxtrig on -60"] * 3, said
+    offs = [re.match(r"rxtrig off (\d+) (-?\d+)$", s) for s in lines[2::2]]
+    assert all(m and m.group(2) == "-60" for m in offs) and len(offs) == 3, said
+    assert all(abs(int(m.group(1)) - (b - a) / 1000) < 30 for m, (a, b) in zip(offs, spans[1:])), said
