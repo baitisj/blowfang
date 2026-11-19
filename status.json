@@ -5,9 +5,15 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-19T04:30:28Z",
+ "waiting": [
+  {
+   "id": "parrot1",
+   "who": "uv380-multimode",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-19T04:31:31Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T04:30:28Z"
+ "updated": "2026-11-19T04:31:31Z"
 }
