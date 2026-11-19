@@ -293,7 +293,7 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
 #ifdef DMR_DECODE
       if (!dx_locked(s->x, &s->d)) /* while DMR's own slots time the grid, they set its step */
 #elif defined(YSF_DECODE)
-      if (!s->y->rlock)            /* once YSF's frames have timed the grid, they set its step */
+      if (!s->y->timed)            /* once YSF's frames have timed the grid, they set its step */
 #endif
       ds_rate(&s->d, s->cps8);
     }

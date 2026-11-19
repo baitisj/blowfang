@@ -390,8 +390,10 @@ SPI library module).
   - **The symbol clock.** The grid's rate comes from the DMA's, which runs by the MCU's clock, and on the
     radio that was 1.4% off the signal's (bench run 6). Until the grid is timed, the next sync is looked for
     ±96 quarter points (2.5%) from where it is due, and the miss sets the grid's step. After that each sync
-    moves it 1/8 of the way, as dmrrx's slots do. A good FICH's frame number places the message's first
-    frame, so the frames lost while the grid is timed still leave the rest in place.
+    moves it 1/8 of the way, as dmrrx's slots do. Each call times the grid again, a missed sync is looked
+    for wide again, and only a strong sync (rho² 0.65) sets the step the whole way (bench run 12). A good
+    FICH's frame number places the message's first frame, so the frames lost while the grid is timed still
+    leave the rest in place.
 - **Decoders** (c/k6/ysfdec.h, integer and divide-free).
   - FICH: dibit deinterleave, K=5 Viterbi, Golay data halves, CRC-16.
   - Sotto VW: PN9, K=7 rate 7/18 tail-biting Viterbi with a 24-step wrap, CRC-8 per superframe.
@@ -405,9 +407,11 @@ SPI library module).
   get the superframe before them (`srx_conceal`), so sotto holds the sound over a gap.
 - **Carrier.** RSSI 10 dB over a floor. The floor moves only while there is no carrier: a quarter of
   the way down to a lower reading, 1 dB up for a higher one (see bench run 1 and 2 below).
-- **Room.** 7.6 KB of code. The scratch holds the filter ring (256 B), the receiver (1.9 KB: two payload
+- **Room.** 7.6 KB of code (8.0 KB with the `YX_TRACE` frame trace, on for the bench; `YX_NO_TRACE`
+  leaves it out). The scratch holds the filter ring (256 B), the receiver (1.9 KB: two payload
   buffers, the decoders), the DMA ring (1,024 B since bench run 2) and then the message buffer, which
-  takes whatever the block has left: 151 superframes (6 s of sotto 1200) in the 11,776-byte block.
+  takes whatever the block has left: 151 superframes (6 s of sotto 1200) in the 11,776-byte block, 82
+  (3.3 s) with the trace.
   Under 64 superframes, the module returns -6. Bench builds: `YX_BENCH` adds the time and level lines
   and `YX_SNAP` the snapshot lines; on the radio (scratch ~3.8 KB with telemetry 0) YX_BENCH no longer
   fits with the grid timing in (it returns -6), and YX_SNAP fits only with `YX_MSG_MIN 40`.
@@ -479,5 +483,13 @@ ID; the K6 runs ysfrx):
   FICH after a sync was sliced at the wrong times. The emulator and host model had the grid exactly on
   time. Fixed: the grid is timed by the frames' syncs. The host model now runs with the grid 1.4% off
   both ways (tests/test_k6_ysfrx.py).
+- **Runs 8-11.** Spoiled on the bench: a failed job left its serial logger running, so the next job
+  of the same name had no K6 log (the runner fix is its own PR).
+- **Run 12, 06:52Z.** The first superframes decoded on the radio, byte-correct: one VW frame (5 of 5)
+  in each of the six Pluto calls. But each call broke into pieces of 2 to 4 frames and the frame
+  decoded was always one of the call's last two. The grid's step, once timed, was kept for every
+  later call with only ±3 quarter points tried, so a step timed wrong (or a rate that moved) lost the
+  next syncs. Fixed: each call and each missed sync time it again wide, and the `Y t` trace gives each
+  frame's sync, offset and decodes, so the next run shows where the syncs fall.
 
 SPDX-License-Identifier: MIT

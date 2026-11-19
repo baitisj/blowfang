@@ -154,6 +154,10 @@ def test_ysfrx_module_on_the_emulated_k6():
     # (frame 6 lost whole and frame 10's payload: 10 superframes filled in)
     assert any(ln.startswith("Y call fr=17 ") and " vw=70/80 sf=80 miss=10 " in ln for ln in e.said), txt
     assert stored(e.said) == want(NSF_LONG, lose), txt
+    # the trace: the grid's step, then 3 bytes a frame (the call's frame 5, frame 6 sent: no sync
+    # and no superframe good; frame 9's payload lost: its FICH good, no superframe)
+    tr = "".join(ln.split()[3] for ln in e.said if ln.startswith("Y t ") and not ln.startswith("Y t w="))
+    assert len(tr) == 6 * 17 and tr[6 * 5 + 4:6 * 5 + 6] == "20" and tr[6 * 9 + 4:6 * 9 + 6] == "a0", txt
     assert ret == 17, txt
     lost = [int(ln.split("lost=")[1].split()[0]) for ln in e.said if ln.startswith("s ")]
     assert lost and lost[-1] == 0, txt
