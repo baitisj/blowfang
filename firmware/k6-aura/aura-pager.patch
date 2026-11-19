@@ -98,10 +98,10 @@ index 34078b1..6009ff4 100644
      watch_git_dir();
  }
 diff --git a/memory.x b/memory.x
-index 4fe73cb..2f04c37 100644
+index 4fe73cb..7345e9c 100644
 --- a/memory.x
 +++ b/memory.x
-@@ -7,7 +7,14 @@
+@@ -7,7 +7,31 @@
   */
  MEMORY
  {
@@ -109,11 +109,28 @@ index 4fe73cb..2f04c37 100644
 -  RAM   : ORIGIN = 0x20001028, LENGTH = 17720
 +  FLASH : ORIGIN = 0x08002000, LENGTH = 1024K
 +  RAM   : ORIGIN = 0x20001028, LENGTH = 20424
++  /* The bootloader's own RAM below UserVectors (0x20001000-0x20001027, never touched), idle once
++   * Aura runs: hal::ram0. 0x20000000-0x200000FF stays out (hal::txdog's vector table, 0-0xBF). */
++  RAM0  : ORIGIN = 0x20000100, LENGTH = 0xF00
  }
+ 
++/* Core buffers that never need to survive a reset (Aura's App, the serial rings, the module
++ * screen): their 3.2 KB of RAM went to the shared block, hal::arena (2026-11-19). NOLOAD: the
++ * startup code doesn't touch it; hal::ram0::clear zeroes it first thing in main. */
++SECTIONS
++{
++  .ram0 (NOLOAD) : ALIGN(4)
++  {
++    __sram0 = .;
++    *(.ram0 .ram0.*);
++    . = ALIGN(4);
++    __eram0 = .;
++  } > RAM0
++} INSERT AFTER .uninit;
 +/* LENGTH was 17720 (end 0x20005560). The KD32F328's SRAM is 24 KB, to 0x20006000: sotto's
 + * ramprobe module wrote, read and held every word of 0x20005560-0x20005FFF on the radio
 + * (2026-11-07, docs/k6-modules.md), so the application has those 2720 bytes too. */
- 
++
 +/* 20440 less 16: 0x20005FF0-0x20005FFF is hal::txdog's note, kept across a reset. The stack starts
 + * below it. Neither the bootloader (its stack starts at 0x20004028 and grows down) nor Aura's
 + * startup touches it. The bootloader clears its own RAM, 0x20000000-0x20001027, at every reset:
@@ -321,10 +338,10 @@ index 5f006e4..371e81e 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..98265ae
+index 0000000..011ef37
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,5102 @@
+@@ -0,0 +1,5104 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -714,7 +731,7 @@ index 0000000..98265ae
 +/// through MOD_CTX, set only while a module runs.
 +static MOD_API: ffi::K6Api = ffi::K6Api {
 +    abi: 1,
-+    level: 11,
++    level: 12,
 +    say: mod_say,
 +    ticks: mod_ticks,
 +    fd_read: mod_fd_read,
@@ -753,14 +770,14 @@ index 0000000..98265ae
 +// the module's code, so run_module moves it there (sp_put) once the module returns, and the
 +// main loop plays it as any message (play_pending). KM_PLAY_RERUN: the library slot the module
 +// ran from runs again after playback (not a RAM module from the air: the store took its place).
-+// msg_mem: where a receiver keeps the message while it listens, outside the arena: SRAM
-+// 0x2000_0100-0x2000_0FFF, the bootloader's own RAM, idle once Aura runs (docs/k6-modules.md,
-+// `loram`; 0x2000_0000-0x2000_00BF is hal::txdog's vector table). Nothing else uses it.
++// msg_mem: where a receiver kept the message while it listened, outside the arena, at level 11:
++// SRAM 0x2000_0100-0x2000_0FFF. From level 12 (2026-11-19) the core's own buffers live there
++// (hal::ram0) and their 3.2 KB went to the arena, so msg_mem returns nothing (null, 0 bytes) and
++// a receiver keeps its message in its scratch, which is that much bigger (ysfrx: 21 s of sotto
++// 1200, up from 18.4 s in msg_mem).
 +
 +/// sotto_play's flag: listen again after playback (c/k6/k6_mod.h KM_PLAY_RERUN)
 +const KM_PLAY_RERUN: u32 = 1;
-+const MSG_MEM: usize = 0x2000_0100;
-+const MSG_MEM_BYTES: usize = 0x0F00;
 +/// characters of the caller's callsign kept (KM_FROM_MAX)
 +pub const FROM_MAX: usize = 10;
 +
@@ -788,7 +805,7 @@ index 0000000..98265ae
 +    let (a, len) = (sf as usize, 6 * n as usize);
 +    let c = unsafe { &*addr_of!(MOD_CTX) };
 +    let inside = |lo: usize, hi: usize| a >= lo && a <= hi && len <= hi - a;
-+    if !inside(c.scratch, scratch_end()) && !inside(MSG_MEM, MSG_MEM + MSG_MEM_BYTES) {
++    if !inside(c.scratch, scratch_end()) {
 +        return -1;
 +    }
 +    let (app, _) = unsafe { mod_ctx() };
@@ -814,9 +831,9 @@ index 0000000..98265ae
 +
 +unsafe extern "C" fn mod_msg_mem(bytes: *mut u32) -> *mut u8 {
 +    if !bytes.is_null() {
-+        unsafe { *bytes = MSG_MEM_BYTES as u32 };
++        unsafe { *bytes = 0 };
 +    }
-+    MSG_MEM as *mut u8
++    core::ptr::null_mut()
 +}
 +
 +/// After a module returned: its sotto_play's message into the store, to play (true), or false
@@ -1512,6 +1529,7 @@ index 0000000..98265ae
 +    pub gl: *const u16,
 +    pub gl_n: i32,
 +}
++#[link_section = ".ram0"] // hal::ram0
 +pub static mut MOD_SCREEN: ModScreen = ModScreen {
 +    text: [[0; MOD_COLS]; MOD_LINES],
 +    bar: [(0, 0); MOD_LINES],
@@ -2487,9 +2505,10 @@ index 0000000..98265ae
 +        let need = unsafe { ffi::sp_dec_need() };
 +        #[cfg(not(feature = "lean"))]
 +        rl!(
-+            "K6 ARENA bytes={} at {:#010x} store={} ring={} dec={} need={}{}",
++            "K6 ARENA bytes={} at {:#010x} ram0={} store={} ring={} dec={} need={}{}",
 +            arena::ARENA_BYTES,
 +            arena::base() as usize,
++            crate::hal::ram0::used(),
 +            STORE_BYTES,
 +            arena::RING_BYTES,
 +            arena::DEC_BYTES,
@@ -5429,10 +5448,10 @@ index 0000000..98265ae
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..daaded3
+index 0000000..6973295
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2400 @@
+@@ -0,0 +1,2401 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5896,6 +5915,7 @@ index 0000000..daaded3
 +}
 +/// the saved table's frequencies, for the new / known rule on the list (more stay unmarked)
 +const KNOWN_N: usize = 64;
++#[link_section = ".ram0"] // hal::ram0
 +static mut KNOWN: [u32; KNOWN_N] = [0; KNOWN_N];
 +const RT_F_CALL_USER: u16 = 0x0010;
 +const RT_F_DMR: u16 = 0x0020;
@@ -8405,10 +8425,10 @@ index 73a6de2..6407ded 100644
              side1_long: buf[20].min(11),
 diff --git a/src/hal/arena.rs b/src/hal/arena.rs
 new file mode 100644
-index 0000000..27c00a6
+index 0000000..70929e8
 --- /dev/null
 +++ b/src/hal/arena.rs
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,106 @@
 +//! One block of RAM shared by the things that never run at the same time.
 +//!
 +//! A voice message needs the message store, the PWM audio ring and the decoder's working
@@ -8433,7 +8453,12 @@ index 0000000..27c00a6
 +//! while a message plays or streams. A running module has the ring, so its screen goes out a
 +//! page (128 bytes of stack) at a time. Before, the buffer sat in main's stack frame for good.
 +//!
-+//! Size: the same 11,776 bytes in every image that reads its codebooks from SPI flash and plays
++//! 2026-11-19: 14,976 bytes, 3,200 more. The core's buffers that never need to survive a reset
++//! (Aura's App 2,164, the serial rings 864, the module screen 196: 3,224 bytes in every image)
++//! moved to the bootloader's idle RAM below UserVectors (hal::ram0), and the block took their
++//! place in Aura's region; the stack keeps what it had (24 bytes more). Module API level 12.
++//!
++//! Size until then: the same 11,776 bytes in every image that reads its codebooks from SPI flash and plays
 +//! voice, so a module that fits one fits all. In the hiss band image that is store 4,096 + ring
 +//! 2,560 + decoder 2,240 (sotto_pager.c SP_DEC_MAX 2,232) + the 864 bytes the pager-only build
 +//! takes out of Aura's `App` (MAX_SATELLITES 1, the spectrum's MAX_BINS 1: screens it never
@@ -8452,7 +8477,7 @@ index 0000000..27c00a6
 +/// the PWM audio ring (hal::pwm_audio)
 +pub const RING_BYTES: usize = super::pwm_audio::RING_BYTES;
 +#[cfg(not(small_arena))]
-+pub const ARENA_BYTES: usize = 11776;
++pub const ARENA_BYTES: usize = 14976;
 +#[cfg(small_arena)]
 +pub const ARENA_BYTES: usize = STORE_BYTES + RING_BYTES;
 +/// the decoder's pool: what is left after the store and the ring
@@ -8622,10 +8647,10 @@ index 0000000..27f81a9
 +    }
 +}
 diff --git a/src/hal/mod.rs b/src/hal/mod.rs
-index 57e9999..2f83ec0 100644
+index 57e9999..13c0ee9 100644
 --- a/src/hal/mod.rs
 +++ b/src/hal/mod.rs
-@@ -1,12 +1,16 @@
+@@ -1,12 +1,17 @@
  pub mod adc;
 +pub mod arena;
  pub mod clock;
@@ -8635,6 +8660,7 @@ index 57e9999..2f83ec0 100644
  pub mod i2c;
 +pub mod light;
 +pub mod pwm_audio;
++pub mod ram0;
  pub mod scheduler;
  pub mod spi;
  pub mod timer;
@@ -8816,6 +8842,63 @@ index 0000000..37404d9
 +        modify(GPIOA_MODER, 0b11 << 22, 0b00 << 22); // input (hi-Z), as at reset
 +        self.running = false;
 +    }
++}
+diff --git a/src/hal/ram0.rs b/src/hal/ram0.rs
+new file mode 100644
+index 0000000..892ebef
+--- /dev/null
++++ b/src/hal/ram0.rs
+@@ -0,0 +1,51 @@
++//! The bootloader's idle RAM, 0x2000_0100-0x2000_0FFF (memory.x `RAM0`, section `.ram0`).
++//!
++//! SRAM 0x2000_0000-0x2000_1027 lies below Aura's region. The bootloader uses it before it
++//! starts Aura (its own data in 0x2000_0000-0x2000_046F) and clears all of it at every reset.
++//! Once Aura runs, only two parts are live: hal::txdog's vector table (0x2000_0000-0x2000_00BF,
++//! while it is mapped) and the bootloader's UserVectors (0x2000_1000-0x2000_1027, through which
++//! SysTick and USART1 reach Aura). The rest is idle (sotto's ram0soak module, on the radio
++//! 2026-11-19: every 256-byte block filled and held for a minute with interrupts running,
++//! nothing changed, nothing hung; docs/k6-ram0.md).
++//!
++//! So the core's buffers that never have to survive a reset live there: Aura's `App` (main.rs
++//! APP_SLOT), the serial rings (hal::uart), the module screen (app::pager MOD_SCREEN) and
++//! EXPLORE's known-station list. Their 3.2 KB went to the shared block (hal::arena), which grew
++//! from 11,776 to 14,976 bytes in every image that plays voice from SPI codebooks: every RAM
++//! module gets that much more. Module API level 12 says so (msg_mem returns nothing: a
++//! receiver keeps its message in its scratch).
++//!
++//! The section is NOLOAD: the startup code doesn't zero it. `clear` does, first thing in main,
++//! so everything here starts out as it would in .bss.
++
++extern "C" {
++    static mut __sram0: u32;
++    static mut __eram0: u32;
++}
++
++/// RAM0's first byte, as memory.x places it
++pub const BASE: usize = 0x2000_0100;
++/// RAM0's size: up to the bootloader's UserVectors at 0x2000_1000
++pub const BYTES: usize = 0x0F00;
++
++/// Zeroes the `.ram0` section. Call it before anything in it is used: first thing in main.
++#[inline(always)]
++pub fn clear() {
++    let (mut p, end) = unsafe {
++        (
++            core::ptr::addr_of_mut!(__sram0),
++            core::ptr::addr_of_mut!(__eram0) as *const u32,
++        )
++    };
++    while (p as *const u32) < end {
++        unsafe {
++            core::ptr::write_volatile(p, 0);
++            p = p.add(1);
++        }
++    }
++}
++
++/// Bytes of RAM0 in use (the `.ram0` section)
++pub fn used() -> usize {
++    unsafe { core::ptr::addr_of!(__eram0) as usize - core::ptr::addr_of!(__sram0) as usize }
 +}
 diff --git a/src/hal/txdog.rs b/src/hal/txdog.rs
 new file mode 100644
@@ -9233,11 +9316,14 @@ index 0000000..88a7412
 +    cortex_m::peripheral::SCB::sys_reset()
 +}
 diff --git a/src/hal/uart.rs b/src/hal/uart.rs
-index 131f932..f57cbf0 100644
+index 131f932..c39f8a6 100644
 --- a/src/hal/uart.rs
 +++ b/src/hal/uart.rs
-@@ -53,7 +53,62 @@ impl RxRing {
+@@ -51,9 +51,66 @@ impl RxRing {
+     }
+ }
  
++#[link_section = ".ram0"] // hal::ram0
  static RX_RING: Mutex<RefCell<RxRing>> = Mutex::new(RefCell::new(RxRing::new()));
  
 -/// USART1 IRQ handler: drains RDR into `RX_RING` on every received byte
@@ -9293,6 +9379,7 @@ index 131f932..f57cbf0 100644
 +}
 +
 +#[cfg(not(feature = "lean"))]
++#[link_section = ".ram0"] // hal::ram0
 +static TX_RING: Mutex<RefCell<TxRing>> = Mutex::new(RefCell::new(TxRing::new()));
 +
 +/// USART1 IRQ handler: drains RDR into `RX_RING` on every received byte, and feeds TDR from
@@ -9300,7 +9387,7 @@ index 131f932..f57cbf0 100644
  #[no_mangle]
  pub unsafe extern "C" fn USART1() {
      let regs = &*kd32f328_pac::Usart1::ptr();
-@@ -65,6 +120,77 @@ pub unsafe extern "C" fn USART1() {
+@@ -65,6 +122,77 @@ pub unsafe extern "C" fn USART1() {
          let byte = regs.rdr().read().rdr().bits() as u8;
          cortex_m::interrupt::free(|cs| RX_RING.borrow(cs).borrow_mut().push(byte));
      }
@@ -9378,7 +9465,7 @@ index 131f932..f57cbf0 100644
  }
  
  /// Pull one byte received on USART1 since the last call, if any.
-@@ -116,6 +242,18 @@ impl<'a> DebugUart<'a> {
+@@ -116,6 +244,18 @@ impl<'a> DebugUart<'a> {
      }
  }
  
@@ -9398,7 +9485,7 @@ index 131f932..f57cbf0 100644
      #[cfg(debug_assertions)]
      fn write_str(&mut self, s: &str) -> core::fmt::Result {
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..e4d72fe 100644
+index 9d2b0c0..7786118 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -1,6 +1,8 @@
@@ -9423,10 +9510,13 @@ index 9d2b0c0..e4d72fe 100644
  
  use app::satellite;
  use device::display::{Backlight, Display};
-@@ -30,6 +33,36 @@ use hal_shim::{ClosurePin, SystDelay};
+@@ -30,8 +33,43 @@ use hal_shim::{ClosurePin, SystDelay};
  
  const DEFAULT_FREQ_HZ: u32 = 439_500_000;
  
++// in the bootloader's idle RAM (hal::ram0): its 2.1 KB went to the shared block. Not in all of
++// Aura (the size report build), whose App is bigger than the room left there
++#[cfg_attr(feature = "pager-only", link_section = ".ram0")]
 +static mut APP_SLOT: core::mem::MaybeUninit<app::App> = core::mem::MaybeUninit::uninit();
 +
 +#[inline(never)]
@@ -9459,8 +9549,12 @@ index 9d2b0c0..e4d72fe 100644
 +
  #[entry]
  fn main() -> ! {
++    // first: the core buffers in the bootloader's idle RAM start out zero, as in .bss
++    hal::ram0::clear();
      let _dp = unsafe { Peripherals::steal() };
-@@ -78,9 +111,26 @@ fn main() -> ! {
+ 
+     let rcc = unsafe { &*kd32f328_pac::Rcc::ptr() };
+@@ -78,9 +116,26 @@ fn main() -> ! {
      let mut dbg = uart::DebugUart::new(usart1, clock::SYSCLK_HZ, 115_200);
      uart::install_bootloader_trampoline();
      unsafe { cortex_m::peripheral::NVIC::unmask(kd32f328_pac::Interrupt::USART1) };
@@ -9488,7 +9582,7 @@ index 9d2b0c0..e4d72fe 100644
      unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
      // Enabled this early (rather than just before the main loop, as before)
      // so UART RX -- hence CPS handshake detection -- already works during
-@@ -98,63 +148,82 @@ fn main() -> ! {
+@@ -98,63 +153,82 @@ fn main() -> ! {
          .unwrap_or_else(|_| unreachable!());
      let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
  
@@ -9585,7 +9679,7 @@ index 9d2b0c0..e4d72fe 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -163,11 +232,11 @@ fn main() -> ! {
+@@ -163,11 +237,11 @@ fn main() -> ! {
          .ok();
          rfic.set_squelch_cal(sql_cal);
      } else {
@@ -9599,7 +9693,7 @@ index 9d2b0c0..e4d72fe 100644
  
      rfic.set_audio_calibration(cal_buf[0], cal_buf[1], cal_buf[2], cal_buf[3], cal_buf[4]);
      rfic.apply_af_calibration(
-@@ -177,18 +246,17 @@ fn main() -> ! {
+@@ -177,18 +251,17 @@ fn main() -> ! {
          cal_buf[13],
          cal_buf[14],
      );
@@ -9621,7 +9715,7 @@ index 9d2b0c0..e4d72fe 100644
  
      let ani_raw = storage.read_ani_raw();
      let ani = AniConfig::from_raw(
-@@ -219,9 +287,8 @@ fn main() -> ! {
+@@ -219,9 +292,8 @@ fn main() -> ! {
      let fm_radio = FmRadio::new(gpioa);
  
      if radio.ptt_asserted() || keypad.any_pressed(&mut cp.SYST) {
@@ -9633,7 +9727,7 @@ index 9d2b0c0..e4d72fe 100644
          let mut released_ticks = 0u32;
          while released_ticks < 50 {
              delay::ms(&mut cp.SYST, 10);
-@@ -234,7 +301,11 @@ fn main() -> ! {
+@@ -234,7 +306,11 @@ fn main() -> ! {
      }
  
      // app class
@@ -9646,7 +9740,7 @@ index 9d2b0c0..e4d72fe 100644
          radio,
          chip_id,
          keypad,
-@@ -253,53 +324,131 @@ fn main() -> ! {
+@@ -253,53 +329,131 @@ fn main() -> ! {
          &mut cp.SYST,
      );
  
@@ -9813,7 +9907,7 @@ index 9d2b0c0..e4d72fe 100644
  
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
-@@ -309,6 +458,8 @@ fn main() -> ! {
+@@ -309,6 +463,8 @@ fn main() -> ! {
  
      loop {
          let due = scheduler.tick();
@@ -9822,7 +9916,7 @@ index 9d2b0c0..e4d72fe 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,9 +480,22 @@ fn main() -> ! {
+@@ -329,9 +485,22 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -9846,7 +9940,7 @@ index 9d2b0c0..e4d72fe 100644
              app.radio_mut().rf_off(&mut cp.SYST);
              app.save_channel_state();
              power.shutdown(&mut cp.SYST);
-@@ -340,7 +504,7 @@ fn main() -> ! {
+@@ -340,7 +509,7 @@ fn main() -> ! {
          // battery
          if due.every_500ms {
              app.poll_battery();
@@ -9855,7 +9949,7 @@ index 9d2b0c0..e4d72fe 100644
          }
  
          // Wall clock tick + Doppler update
-@@ -381,7 +545,7 @@ fn main() -> ! {
+@@ -381,7 +550,7 @@ fn main() -> ! {
                          wide,
                      ) {
                          app.set_transmitting_for_tracking();
@@ -9864,7 +9958,7 @@ index 9d2b0c0..e4d72fe 100644
                      }
                  } else if !pressed && tracking_tx {
                      let ui = app.satellite_ui();
-@@ -396,11 +560,13 @@ fn main() -> ! {
+@@ -396,11 +565,13 @@ fn main() -> ! {
                          wide,
                      );
                      app.clear_transmitting_for_tracking();
@@ -9879,7 +9973,7 @@ index 9d2b0c0..e4d72fe 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -409,9 +575,9 @@ fn main() -> ! {
+@@ -409,9 +580,9 @@ fn main() -> ! {
          } else if let Some(level) = app.radio_mut().poll_ptt() {
              app.set_ptt(&mut cp.SYST, !level);
              if app.is_transmitting() {
@@ -9891,7 +9985,7 @@ index 9d2b0c0..e4d72fe 100644
              }
          }
  
-@@ -465,9 +631,13 @@ fn main() -> ! {
+@@ -465,9 +636,13 @@ fn main() -> ! {
              }
          }
  
@@ -9908,7 +10002,7 @@ index 9d2b0c0..e4d72fe 100644
              if !app.power_save_is_asleep() {
                  app.poll_squelch(&mut cp.SYST, 3);
                  app.poll_dual_standby(&mut cp.SYST, app.rssi_open());
-@@ -484,7 +654,7 @@ fn main() -> ! {
+@@ -484,7 +659,7 @@ fn main() -> ! {
              if !app.is_transmitting() && !app.power_save_is_asleep() {
                  let rssi = app.radio_mut().rssi(&mut cp.SYST);
                  app.set_rssi_raw(rssi as u8);
@@ -9917,7 +10011,7 @@ index 9d2b0c0..e4d72fe 100644
                      dbg,
                      "RSSI: {} audio_open={} freq={} ch_mode={} ch_num={}",
                      rssi,
-@@ -492,8 +662,7 @@ fn main() -> ! {
+@@ -492,8 +667,7 @@ fn main() -> ! {
                      app.watching_freq_hz(),
                      app.watching_is_channel_mode(),
                      app.watching_channel_num()

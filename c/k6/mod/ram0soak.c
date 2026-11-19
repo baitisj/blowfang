@@ -22,10 +22,30 @@
    - The IWDG can't be stopped once started, so the module ends with a planned reset
      (r0 reset), the note cleared first. The bootloader clears this RAM at every reset, as before.
    API level 2 (ms, key_down). Returns only if the IWDG doesn't arm (r0 no iwdg).
+
+   2026-11-19, for the core's buffers there (docs/k6-ram0.md):
+   - It first maps what is in the range before it writes anything, read only:
+       r0 map nz=NNN first=AAAAAAAA last=AAAAAAAA blk=BBBB
+     nz: the words that aren't 0 (the bootloader clears this RAM at reset, then uses
+     0x20000000-0x2000046F before it starts Aura: what it left), then up to MAP_W of them,
+     three to a line:   r0 w 0100=VVVVVVVV 0104=VVVVVVVV ...
+   - On an image with module API level 12 or more the core's own buffers live there
+     (hal::ram0): it maps and says "r0 refused: core RAM0", writes nothing, returns -2.
+   - R0_ZERO (the ram0zero module) fills with zeros instead of the pattern: the core clears
+     its buffers there at every boot, and the 2026-11-04 store that hung at boot was cleared
+     the same way. A bootloader flag read as "not 0" would only show with zeros. A word that
+     anything else writes shows as bad, as before.
    SPDX-License-Identifier: MIT */
 #include "../k6_mod.h"
+#ifdef R0_ZERO
+K6_MODULE_NAME("RAM0 ZERO");
+#else
 K6_MODULE_NAME("RAM0 SOAK");
+#endif
 #define K6_MODULE_LEVEL 2
+#ifndef MAP_W
+#define MAP_W 12u                    /* non-zero words said in full */
+#endif
 
 #define LO 0x20000100u
 #define HI 0x20001000u
@@ -62,7 +82,14 @@ static char *hex(char *p, uint32_t v, int digits) {
   return p;
 }
 
+#ifdef R0_ZERO
+static uint32_t pat(uint32_t a) {
+  (void)a;
+  return 0;
+}
+#else
 static uint32_t pat(uint32_t a) { return (a * 2654435761u) ^ SEED; }
+#endif
 
 static void feed(void) { IWDG_KR = 0xAAAAu; }
 
@@ -89,6 +116,39 @@ static uint32_t check(uint32_t to, uint32_t *first, uint32_t *blk) {
   return bad;
 }
 
+/* what is in LO..HI before anything is written: the words that aren't 0 */
+static void map(const k6_api_t *api) {
+  char line[64], *p = line;
+  uint32_t a, v, nz = 0, first = 0, last = 0, blk = 0, k = 0;
+  for (a = LO; a < HI; a += 4)
+    if (*(volatile uint32_t *)a) {
+      if (!nz++) first = a;
+      last = a;
+      blk |= 1u << ((a - 0x20000000u) >> 8);
+    }
+  p = hex(put(line, "r0 map nz="), nz, 3);
+  p = hex(put(p, " first="), first, 8);
+  p = hex(put(p, " last="), last, 8);
+  p = hex(put(p, " blk="), blk, 4);
+  *p = 0;
+  api->say(line);
+  for (a = LO; a < HI && k < MAP_W; a += 4) {
+    v = *(volatile uint32_t *)a;
+    if (!v) continue;
+    if (k % 3u == 0) p = put(line, "r0 w");
+    p = hex(put(p, " "), a & 0xFFFFu, 4);
+    p = hex(put(p, "="), v, 8);
+    if (++k % 3u == 0) {
+      *p = 0;
+      api->say(line);
+    }
+  }
+  if (k % 3u) {
+    *p = 0;
+    api->say(line);
+  }
+}
+
 static void dwell(const k6_api_t *api, uint32_t ms) {
   uint32_t t0 = api->ms();
   while (api->ms() - t0 < ms) {
@@ -105,6 +165,11 @@ int k6_main(const k6_api_t *api) {
   p = hex(put(line, "r0 start csr="), RCC_CSR, 8);
   *p = 0;
   api->say(line);
+  map(api);
+  if (api->level >= 12) {             /* the core's buffers are there now (hal::ram0) */
+    api->say("r0 refused: core RAM0");
+    return -2;
+  }
   IWDG_KR = 0xCCCCu;                  /* start (and the LSI with it) */
   IWDG_KR = 0x5555u;                  /* PR and RLR writable */
   IWDG_PR = 4u;                       /* LSI / 64: 1.6 ms a count at 40 kHz */

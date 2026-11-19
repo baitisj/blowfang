@@ -27,6 +27,8 @@ plays it. This is the same store and the same player as VOICE MSG.
   - The arena screen shows `FROM <call>` while it plays.
 - **`msg_mem(&bytes)`** gives a receiver memory outside the arena for the message it is
   hearing: the bootloader's RAM, 0x20000100-0x20000FFF (3,840 B, about 25 s of sotto 1200).
+  From module API level 12 it returns nothing: the core's own buffers moved there and the arena
+  grew instead (docs/k6-ram0.md), so ysfrx keeps the call in its scratch, 21 s of it.
 
 ## The bootloader's RAM
 

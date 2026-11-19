@@ -238,6 +238,34 @@ def test_ysfrx_module_hands_the_call_to_sotto_play():
     assert stack < 1500, stack
 
 
+def test_ysfrx_module_on_a_level_12_image_keeps_the_call_in_scratch():
+    """module API level 12 (hal::ram0, docs/k6-ram0.md): msg_mem returns nothing and the block is
+    14,976 B, so the DMA ring and the message go in scratch, with more room than level 11's
+    msg_mem gave (459 slots, 18.4 s); the call still goes to sotto_play whole"""
+    if not (shutil.which("clang") and shutil.which("ld.lld")):
+        pytest.skip("needs clang and ld.lld")
+    pytest.importorskip("unicorn")
+    import test_k6_dmr as T
+    import k6_live_emu as le
+    from sim.k6if import frontend as fe
+    from modem import k6mod
+    code, entry = T.build([("RUN_S", "20u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    lose = (6, -10)
+    _, (ib, on, off) = k6_counts(ysf_symbols(NSF_LONG, lose), 56.0, post_s=4.0)
+    e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=12, stack_win=7000,
+               scratch=(k6mod.ARENA_BYTES_12 - 24 - len(code)) & ~3, fd_us=300)
+    e.rssi = lambda: -60 if on <= e.sample_now() < off or e.sample_now() < on // 2 else -125
+    ret, stack = e.run()
+    txt = "\n".join(e.said)
+    print(txt, stack, len(code))
+    msg = int(e.said[0].split("msg=")[1].split()[0])
+    assert msg > 459, txt
+    assert e.played == [(want(NSF_LONG, lose), 0xA9, 1, "AG7EW")], e.played
+    # (the message is in scratch: past the code, in the module's own block)
+    assert ret == 17, txt
+    assert stack < 1500, stack
+
+
 def test_ysfrx_module_with_the_dma_following_the_cpu():
     """the DMA's rate following what the CPU does (the emulator's wobble: 3% faster in a chunk that
     reads CNDTR than in one that computes): on the radio (bench runs 15-23) its syncs still came

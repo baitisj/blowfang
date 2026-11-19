@@ -43,8 +43,9 @@ fit() {
     $1 == ".data" { flash += $2; ram += $2 }
     $1 == ".bss" || $1 == ".uninit" { ram += $2 }
     $1 == ".ram0" { ram0 += $2 }
-    END { printf "flash %d of 122880 bytes (%d free); static RAM %d of 20440 (%d left for the stack); RAM0 %d of 4096\n",
+    END { printf "flash %d of 122880 bytes (%d free); static RAM %d of 20440 (%d left for the stack); RAM0 %d of 3840\n",
             flash, 122880 - flash, ram, 20440 - ram, ram0
+          if (ram0 > 3840) { print "RAM0 OVERFLOW: hal::ram0 holds 3840 bytes (0x20000100-0x20000FFF)"; exit 1 }
           if (20440 - ram < 12288) print "warning: under 12 KB of stack left (on the radio Aura had used 8.3 KB of it when playback started; the decoder needs 3.5 KB more)"
           if (flash > 122880) { print "DOES NOT FIT in the 120 KB application flash"; exit 1 } }'
 }
@@ -408,6 +409,7 @@ pocsag_440     # level 2, pocsag on 440.850 for the bench: three settings of 60 
 pocdump        # level 2, what the plain FSK receiver hands over on POCSAG 1200/2400 (its own clock and a 4800 sampler), 440.850 bench, docs/k6-pocsag.md
 pocdump_1200   # level 2, pocsag on 440.850 saying every sampled word of six 1200 baud transmissions, for the host (receive only, docs/k6-pocsag.md)
 ram0soak       # level 2, fills the bootloader's idle RAM 0x20000100-0x20000FFF block by block under the IWDG, then resets the radio, docs/k6-sotto-play.md
+ram0zero       # level 2, ram0soak filling with zeros (the core clears its buffers there at boot from level 12), docs/k6-ram0.md
 ramprobe
 rangerx        # level 2, PHY R: the range mode's receiver, coded 600/1200 Hz FFSK on the plain FSK receiver as a sampler, the radio's own frequency (receive only, docs/k6-range.md)
 rangerx_b      # level 2, rangerx for the bench: 440.850, 32 s wait, then nine 45 s settings of front-end path and gain (receive only, docs/k6-range.md)

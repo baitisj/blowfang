@@ -48,7 +48,7 @@ extern "C" {
 #define KM_HDR 16
 #define KM_TAG 8
 #define KM_ABI 1
-#define KM_LEVEL 11
+#define KM_LEVEL 12
 
 typedef struct k6_api {
   uint16_t abi, level;              /* KM_ABI, KM_LEVEL */
@@ -177,10 +177,17 @@ typedef struct k6_api {
      images reads api->level at run time and calls it only when it is 11 or more. */
   int (*sotto_play)(const uint8_t *sf, unsigned n, unsigned codec, unsigned flags, const char *from);
   /* msg_mem(&bytes): where a receiver keeps the message it hears, outside the shared block, so
-     the block is all code and working memory: the bootloader's own RAM, 0x20000100-0x20000FFF
-     (3,840 B, 25 s of sotto 1200), idle once Aura runs. It holds whatever the module leaves there
-     until the next module writes it; nothing else uses it. Its size in *bytes */
+     the block is all code and working memory. At level 11: the bootloader's own RAM,
+     0x20000100-0x20000FFF (3,840 B, 25 s of sotto 1200), idle once Aura runs. From level 12 it
+     returns 0 with *bytes 0: the core's own buffers live there (docs/k6-ram0.md) and the shared
+     block grew by their 3,200 B instead, so a receiver keeps its message in its scratch. Call
+     it and fall back to scratch when it returns 0. Its size in *bytes */
   void *(*msg_mem)(uint32_t *bytes);
+  /* level 12 (2026-11-19, Jeff: "consolidate the RAM arena so other modules can benefit";
+     docs/k6-ram0.md): no new calls. The shared block is 14,976 bytes instead of 11,776 (header,
+     code, tag and scratch: 3,200 B more scratch), and 0x20000100-0x20000FFF belongs to the core
+     (msg_mem above). A module that needs the bigger block declares K6_MODULE_LEVEL 12, so that
+     older images refuse it (header level > their KM_LEVEL) instead of running it short. */
 } k6_api_t;
 
 #define KM_SOTTO_1200 0xA9u         /* sotto_play's codec: sotto 1200, 6-byte 40 ms slots */
