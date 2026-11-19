@@ -214,6 +214,10 @@ static const ortx_api_t api = {
     .c2_stop = api_c2_stop,
 };
 
+int om_idle(void) {
+    return want == 0;
+}
+
 uint8_t *om_arena(void) {
     get_arena();
     return arena;
@@ -221,7 +225,9 @@ uint8_t *om_arena(void) {
 
 const ortx_api_t *om_api(const om_host *h) {
     H = h;
-    get_arena();                        /* scratch: the test message */
+    get_arena();                        /* scratch: the test message, the receivers' state */
+    if (!want)
+        image_bytes = 0;                /* no module waiting to run: scratch is the whole arena */
     t0 = h->now_ms();
     cancel = 0;
     rx_n = 0;

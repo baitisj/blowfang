@@ -195,17 +195,19 @@ def test_image_runs_the_modules_body_from_flash():
     assert "const ortx_api_t *om_api(const om_host *h) {" in open(os.path.join(HERE, "ortx_mod.c")).read()
 
 
-def test_build_copies_what_c6air_includes():
-    """build.sh puts each header c6air_img.c reaches (mod/ and c/common/) where its includes look"""
+@pytest.mark.parametrize("img", ["c6air_img.c", "c6rx_img.c"])
+def test_build_copies_what_the_image_files_include(img):
+    """build.sh puts each header c6air_img.c / c6rx_img.c reaches (mod/ and c/common/) where its
+    includes look"""
     sh = open(os.path.join(HERE, "build.sh")).read()
     lists = re.findall(r'while read -r f; do\n  cp "([^"]+)/\$f" "([^"]+)"\ndone <<EOF\n(.*?)\nEOF', sh, re.S)
     copied = {}
     for src, dst, names in lists:
         for n in names.split("\n"):
             copied[(src, n)] = dst
-    assert 'cp "$HERE/c6air_img.c" "$WORK/openrtx/src/blowfang/mod/"' in sh
-    # c6air_img.c sits in mod/ in the image: its includes resolve from there
-    seen, todo = set(), [(os.path.join(HERE, "mod", "c6air_img.c"), os.path.join(HERE, "c6air_img.c"))]
+    assert f'cp "$HERE/{img}" "$WORK/openrtx/src/blowfang/mod/"' in sh
+    # it sits in mod/ in the image: its includes resolve from there
+    seen, todo = set(), [(os.path.join(HERE, "mod", img), os.path.join(HERE, img))]
     while todo:
         p, real = todo.pop()
         for inc in re.findall(r'^#include "([^"]+)"', open(real).read(), re.M):
@@ -257,3 +259,68 @@ def test_c6air_img_builds_for_the_radio(tmp_path):
     assert "c6air_send" in glob
     assert all(g == "c6air_send" or g.startswith(("c6c_", "C6C_", "m17t_", "ysft_")) for g in glob), glob
     assert not [ln for ln in out.splitlines() if " U " in ln]      # nothing from libc
+
+
+def test_image_listens_in_m17_and_ysf_from_flash():
+    """milestone 5: PAGER's M17 and YSF sub-modes listen with c6rx_hear (c6rx_img.c) in place of
+    the PHY R receiver, through a host that can't key, play or record, and stop for a USB line
+    (kept for pbPoll, not lost); a message stopped part way is dropped"""
+    pager = "\n".join(patch_files()["openrtx/src/rtx/OpMode_Pager.cpp"])
+    poll = pager[pager.index("static void *probeFunc"):]
+    assert "            if(airListen() == false)\n#endif\n                listenStep();" in poll
+    host = pager[pager.index("static const om_host airLsHost"):]
+    host = host[:host.index("};")]
+    assert host.count("NULL") == 13 and "omTxTone" not in host and "omC2" not in host
+    assert "airLsRead" in host and "airLsStop" in host and "airLsLine" in host
+    ls = pager[pager.index("static bool airListen()"):]
+    ls = ls[:ls.index("\n}\n")]
+    assert "if((a != 1) && (a != 2))" in ls and "om_idle() == 0" in ls
+    assert "c6rx_hear(om_api(&airLsHost), a, AIR_LS_MS, NULL, 0)" in ls
+    assert "else if((n > 0) && (airLsStop() == 0))" in ls
+    assert ls.index("recValid   = false;") < ls.index("c6rx_take(") < ls.index("recValid   = (recFrames > 0);")
+    stop = pager[pager.index("static int airLsStop()"):]
+    stop = stop[:stop.index("\n}\n")]
+    assert "pbLine = true;" in stop and "(phyAir != airLs)" in stop and "(lsEnable == false)" in stop
+    poll_fn = pager[pager.index("static void pbPoll("):]
+    assert poll_fn.index("if(pbLine)") < poll_fn.index("vcom_readBlock")
+    assert "'openrtx/src/blowfang/mod/c6rx_img.c'," in "\n".join(patch_files()["meson.build"])
+    om = open(os.path.join(HERE, "ortx_mod.c")).read()
+    assert "if (!want)\n        image_bytes = 0;" in om and "int om_idle(void) {" in om
+
+
+def test_c6rx_img_builds_for_the_radio(tmp_path):
+    """c6rx_img.c in the image's tree (as build.sh lays it out), for the Cortex-M4F: clean under
+    -Wall -Wextra, its globals c6rx_hear, c6rx_take and the receivers renamed c6rx_* (OpenRTX has
+    M17 code of its own), nothing from libc, no writable statics, and its state (both receivers,
+    a 30 s message) within the 16 KB module arena that om_api gives it whole"""
+    import shutil
+    if not shutil.which("clang"):
+        pytest.skip("needs clang")
+    mod = tmp_path / "openrtx" / "src" / "blowfang" / "mod"
+    com = tmp_path / "openrtx" / "c" / "common"
+    mod.mkdir(parents=True)
+    com.mkdir(parents=True)
+    for n in ("at1846.h", "c6bus_mod.h", "c6rx.h", "c6spi.h"):
+        shutil.copy(os.path.join(HERE, "mod", n), mod)
+    shutil.copy(os.path.join(HERE, "c6rx_img.c"), mod)
+    shutil.copy(os.path.join(HERE, "ortx_mod.h"), mod.parent)
+    for n in ("m17_rx.c", "m17_rx.h", "ysf_rx.c", "ysf_rx.h", "sotto_rx.c", "sotto_rx.h"):
+        shutil.copy(os.path.join(ROOT, "c", "common", n), com)
+    (mod.parent / "blowfang_config.h").write_text("#define BLOWFANG_I2SPROBE 1\n#define BLOWFANG_RANGE 1\n")
+    (mod / "probe.c").write_text('#include "c6rx_img.c"\n'
+                                 '_Static_assert(sizeof(c6rx_state) <= 16384 - 1024, "arena");\n')
+    flags = ["clang", "--target=thumbv7em-none-eabihf", "-mcpu=cortex-m4", "-mfloat-abi=hard", "-ffreestanding",
+             "-c", "-Os", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DPLATFORM_MDUV3x0", "-I", str(mod.parent)]
+    obj = tmp_path / "c6rx_img.o"
+    r = subprocess.run(flags + [str(mod / "c6rx_img.c"), "-o", str(obj)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    r = subprocess.run(flags[:-5] + ["-w", "-DPLATFORM_MDUV3x0", "-I", str(mod.parent), str(mod / "probe.c"),
+                                     "-o", str(tmp_path / "p.o")], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    nm = shutil.which("llvm-nm") or shutil.which("nm")
+    out = subprocess.run([nm, str(obj)], capture_output=True, text=True).stdout
+    glob = [ln.split()[-1] for ln in out.splitlines() if re.match(r"^\S+ [TDBR] ", ln)]
+    assert "c6rx_hear" in glob and "c6rx_take" in glob
+    assert all(g.startswith("c6rx_") for g in glob), glob
+    assert not [ln for ln in out.splitlines() if re.match(r"^\S+ [dDbB] ", ln)], out    # no writable data
+    assert not [ln for ln in out.splitlines() if " U " in ln]

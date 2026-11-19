@@ -107,3 +107,21 @@ clean-ysf-rx:
 	rm -f ysf_rx_host
 
 .PHONY: clean-ysf-rx
+
+# a sotto message put back together from the M17 and YSF receivers (milestone 5)
+all: sotto_rx_host
+
+sotto_rx_host: sotto_rx_host.c \
+		sotto_rx.c \
+		sotto_rx.h \
+		m17_rx.c \
+		m17_rx.h \
+		ysf_rx.c \
+		ysf_rx.h
+	$(CC) $(CFLAGS) -o $@ sotto_rx_host.c sotto_rx.c m17_rx.c ysf_rx.c -lm
+
+clean: clean-sotto-rx
+clean-sotto-rx:
+	rm -f sotto_rx_host
+
+.PHONY: clean-sotto-rx

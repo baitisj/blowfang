@@ -247,6 +247,19 @@ also saves flash there.
        Runner step `uv380.air AIR [test] [dry]`, at power 0 like every send.
      - Cost: about 13 KB of flash (core, both framers, the DMR voice call), no new RAM beyond the
        stack: the message is read in place.
+   - **Flashed and on air (11-18).** Flash 1 went on at 23:37Z (PR #193's CI image, cd3cbd0,
+     keyed; 23 s hands-free). Job air1 at 00:09-00:10Z 11-19 (main 0e8b912, 0 W on 441.850, the
+     Pluto listening) sent the radio's message with `uv380.air` in each mode, from flash:
+
+     | mode | Pluto decode | on channel |
+     |---|---|---|
+     | M17 | 102 of 105 stream frames found, 102/102 CRC good, 204 superframes, LSF src AG7EW, first 9100475824d1 and last 56d3d545aca1 as sent | data +37 Hz, ident about +290 Hz |
+     | YSF | 43/43 frames, FICH 43/43, 205/205 sotto VW CRC-8 good, AG7EW to ALL, first and last as sent; outer 2703 Hz | data +36 Hz, ident about +260 Hz |
+     | DMR | 60/60 blocks CRC good, 85 superframes, text AG7EW, terminator seen | data +146 Hz, ident about +310 Hz |
+
+     The data now lands on the channel, where the RAM-module runs had it 6.7 kHz high, and the
+     DMR capture decodes with no mixing first. The dry run before it (air1-dry) streamed every
+     mode with no late or lost slot. Logs /mnt/project-files/uv380-multimode/air1-1119/.
    - **Step 2, later:** the image's own bus (OpenRTX's HR_C6000 driver and chip-select lock, a
      real EXTI slot interrupt), cal from `calib->sendIrange/sendQrange`, module API level 6
      exporting the core, and no 5 s key-up cap (the guard deadline follows the stream).
@@ -279,6 +292,30 @@ also saves flash there.
    - The two receivers' front ends are the same code twice (about 40 lines); they become one
      `fsk4_rx` when both go into the image, not before (the M17 one is proven on air and stays as
      it is until then).
+   - **Sotto messages back from the air, step 2 (RAM modules, 11-19)**: `c/common/sotto_rx.[ch]`
+     puts a sotto message back together from M17 stream frames (CRC-16 per frame, two new
+     superframes a frame or one plus a repeat) or YSF sotto VW frames (five superframes a frame,
+     each with its CRC-8; a frame's place comes from its time, so a lost frame leaves a hole
+     instead of shifting the rest). A hole is filled from the superframe before it. A message ends
+     on its last frame, an EOT or terminator, or 1.5 s with nothing new; an EOT with nothing heard
+     before it ends nothing (found on back-to-back sends: the last call's EOT cut the next one
+     short after one frame). `mod/c6rx.h` is the radio side: the FM tap, one receiver,
+     sotto_rx, and an `rx AIR msg sf= got= missing= bad= src= first= last=` line per message;
+     it is what the image's PAGER M17 / YSF listen will run from flash. As RAM modules first:
+     `c6sottorx_m17.c` / `c6sottorx_ysf.c` (300 superframes, 12 s of sotto; the compiler checks
+     image + state fit the 16 KB arena), runner plans `uv380.rx m17sotto|ysfsotto`. The Pluto's
+     test transmission: `python3 -m modem.m17rx wav OUT --tones-s 0 --bert-s 0 --sotto N
+     --repeat R` (`--dev 4800`) or `python3 -m modem.ysf wav OUT --sotto N` (`--dev 5400`).
+     Host tests: tests/test_uv380_sottorx.py.
+   - **The same in the image (flash 2, built 11-19, not flashed)**: `c6rx_img.c` builds
+     c6rx.h into flash with both receivers (12.5 KB of code; c/common's receiver names renamed
+     c6rx_* so none clash with OpenRTX's M17). Its state, about 11 KB for both receivers and a 30 s
+     message, goes in the module arena's scratch, which `om_api` now gives whole when no module
+     upload is waiting (`om_idle`). In PAGER's M17 and YSF sub-modes, the probe thread runs
+     `airListen` in place of the PHY R receiver. A message it hears goes into the message
+     (`c6rx_take`) and plays. A message stopped part way is dropped. The listen's host can't
+     key, play or record. A USB line stops it, and the line goes into pbCmd for pbPoll to run,
+     so no command is lost.
 
 **On air (11-18 20:21-20:22Z, job sotto3-air-1118, main 2bc44cf, 0 W on 441.850, the Pluto
 listening):** the c6sotto modules sent the radio's own recorded message (250 superframes) in all

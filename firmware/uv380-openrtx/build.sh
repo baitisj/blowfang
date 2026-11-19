@@ -96,16 +96,20 @@ pager_listen.c
 pager_listen.h
 mod/rxaudio.h
 EOF
-# the HR_C6000 core and framers for the image's M17, YSF and DMR sends (c6air_img.c, milestone 4):
-# mod/c6air.h is the c6sotto RAM modules' body, and finds c/common at "../../../c/common/"
+# the HR_C6000 core and framers for the image's M17, YSF and DMR sends (c6air_img.c, milestone 4)
+# and its M17 and YSF receive (c6rx_img.c, milestone 5): mod/c6air.h and mod/c6rx.h are the RAM
+# modules' bodies, and find c/common at "../../../c/common/"
 mkdir -p "$WORK/openrtx/src/blowfang/mod" "$WORK/openrtx/c/common"
 cp "$HERE/c6air_img.c" "$WORK/openrtx/src/blowfang/mod/"
+cp "$HERE/c6rx_img.c" "$WORK/openrtx/src/blowfang/mod/"
 while read -r f; do
   cp "$HERE/mod/$f" "$WORK/openrtx/src/blowfang/mod/"
 done <<EOF
+at1846.h
 c6air.h
 c6bus_mod.h
 c6key.h
+c6rx.h
 c6slot.h
 c6spi.h
 c6vspi.h
@@ -118,8 +122,14 @@ c6_core.c
 c6_core.h
 dmr_sotto.h
 dmr_voice.h
+m17_rx.c
+m17_rx.h
 m17_tx.c
 m17_tx.h
+sotto_rx.c
+sotto_rx.h
+ysf_rx.c
+ysf_rx.h
 ysf_tx.c
 ysf_tx.h
 EOF

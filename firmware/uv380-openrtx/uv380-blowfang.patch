@@ -2,7 +2,7 @@ diff --git a/meson.build b/meson.build
 index 6bb1adec..ecb6f812 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -59,6 +59,24 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -59,6 +59,25 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/rtx/rtx.cpp',
                 'openrtx/src/rtx/OpMode_FM.cpp',
                 'openrtx/src/rtx/OpMode_M17.cpp',
@@ -18,6 +18,7 @@ index 6bb1adec..ecb6f812 100644
 +               'openrtx/src/blowfang/pager_rx.c',
 +               'openrtx/src/blowfang/mod_core.c',
 +               'openrtx/src/blowfang/mod/c6air_img.c',
++               'openrtx/src/blowfang/mod/c6rx_img.c',
 +               'openrtx/src/blowfang/sotto8k_fx_math.c',
 +               'openrtx/src/blowfang/sotto8k_fx_tables.c',
 +               'openrtx/src/blowfang/sotto8k_fx_dec.c',
@@ -27,7 +28,7 @@ index 6bb1adec..ecb6f812 100644
                 'openrtx/src/protocols/M17/DSP.cpp',
                 'openrtx/src/protocols/M17/Golay.cpp',
                 'openrtx/src/protocols/M17/MetaText.cpp',
-@@ -69,7 +87,7 @@ openrtx_src = ['openrtx/src/core/state.c',
+@@ -69,7 +88,7 @@ openrtx_src = ['openrtx/src/core/state.c',
                 'openrtx/src/protocols/M17/FrameDecoder.cpp',
                 'openrtx/src/protocols/M17/LinkSetupFrame.cpp']
  
@@ -294,7 +295,7 @@ new file mode 100644
 index 00000000..b2040737
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1832 @@
+@@ -0,0 +1,1938 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -1681,60 +1682,165 @@ index 00000000..b2040737
 +static char     pbCmd[OM_LINE];
 +static unsigned pbCmdLen = 0;
 +
++#ifndef PLATFORM_LINUX
++static bool     pbLine = false;    // a whole line in pbCmd, read while M17 / YSF listened
++
++// One byte from USB serial into pbCmd: true when it ends a line that isn't
++// empty (hamlet's readers send an empty one every second)
++static bool pbTake(char c)
++{
++    pbHostMs = (uint32_t) getTick() | 1u;
++    if((c != '\r') && (c != '\n'))
++    {
++        if(pbCmdLen < sizeof(pbCmd) - 1)
++            pbCmd[pbCmdLen++] = c;
++        return false;
++    }
++    if(pbCmdLen == 0)
++        return false;
++    pbCmd[pbCmdLen] = '\0';
++    pbCmdLen = 0;
++    return true;
++}
++
++// The line in pbCmd
++static void pbDo(const i2sp_ops *ops)
++{
++    listenOff();
++    if(pbStop(NULL))
++    {
++        char e[64];
++        snprintf(e, sizeof(e), "err busy (ptt=%d preview=%d frame %u/%u)",
++                 platform_getPttStatus() ? 1 : 0, pvRunning ? 1 : 0, pvFrame, msgFrames());
++        pbSay(NULL, e);
++        return;
++    }
++    pbBusy = true;
++    int r = 0;
++    if(strcmp(pbCmd, "guard") == 0)
++    {
++        char g[160];
++        txGuardReport(g, sizeof(g));
++        pbSay(NULL, g);
++    }
++    else if((strncmp(pbCmd, "mod", 3) == 0) &&
++       ((pbCmd[3] == ' ') || (pbCmd[3] == '\0')))
++    {
++        om_command(&omHost, pbCmd + 3);
++        if(enc != NULL)     // a module that ended mid-recording: keep what it made
++            omEncEnd();
++    }
++    else if((phyCommand(pbCmd) == 0) && (tuneCommand(pbCmd) == 0) &&
++            (listenCommand(pbCmd) == 0) && (airCommand(pbCmd) == 0))
++        r = i2sp_command(ops, pbCmd);
++    pbBusy = false;
++    if(r == I2SP_AUTO_ON)
++        pbAuto = true;
++    else if(r == I2SP_AUTO_OFF)
++        pbAuto = false;
++}
++#endif
++
 +static void pbPoll(const i2sp_ops *ops)
 +{
 +#ifdef PLATFORM_LINUX
 +    (void) ops;
 +#else
++    if(pbLine)                     // taken while M17 / YSF listened
++    {
++        pbLine = false;
++        pbDo(ops);
++    }
 +    char c;
 +    while(vcom_readBlock(&c, 1) == 1)
-+    {
-+        pbHostMs = (uint32_t) getTick() | 1u;
-+        if((c != '\r') && (c != '\n'))
-+        {
-+            if(pbCmdLen < sizeof(pbCmd) - 1)
-+                pbCmd[pbCmdLen++] = c;
-+            continue;
-+        }
-+        if(pbCmdLen == 0)
-+            continue;
-+        pbCmd[pbCmdLen] = '\0';
-+        pbCmdLen = 0;
-+        listenOff();
-+        if(pbStop(NULL))
-+        {
-+            char e[64];
-+            snprintf(e, sizeof(e), "err busy (ptt=%d preview=%d frame %u/%u)",
-+                     platform_getPttStatus() ? 1 : 0, pvRunning ? 1 : 0, pvFrame, msgFrames());
-+            pbSay(NULL, e);
-+            continue;
-+        }
-+        pbBusy = true;
-+        int r = 0;
-+        if(strcmp(pbCmd, "guard") == 0)
-+        {
-+            char g[160];
-+            txGuardReport(g, sizeof(g));
-+            pbSay(NULL, g);
-+        }
-+        else if((strncmp(pbCmd, "mod", 3) == 0) &&
-+           ((pbCmd[3] == ' ') || (pbCmd[3] == '\0')))
-+        {
-+            om_command(&omHost, pbCmd + 3);
-+            if(enc != NULL)     // a module that ended mid-recording: keep what it made
-+                omEncEnd();
-+        }
-+        else if((phyCommand(pbCmd) == 0) && (tuneCommand(pbCmd) == 0) &&
-+                (listenCommand(pbCmd) == 0) && (airCommand(pbCmd) == 0))
-+            r = i2sp_command(ops, pbCmd);
-+        pbBusy = false;
-+        if(r == I2SP_AUTO_ON)
-+            pbAuto = true;
-+        else if(r == I2SP_AUTO_OFF)
-+            pbAuto = false;
-+    }
++        if(pbTake(c))
++            pbDo(ops);
 +#endif
 +}
++
++#ifdef BLOWFANG_AIR
++// M17 and YSF receive from flash (mod/c6rx.h through c6rx_img.c, what the
++// c6sottorx RAM modules prove on the bench): while PAGER sits idle in its M17
++// or YSF sub-mode, the C6000's FM tap is listened to instead of PHY R packets,
++// and a sotto message heard becomes the message and plays, as listenStep's do.
++// The receiver runs until a message ends, or until one of these stops it (and
++// what it had so far is dropped): what stops listenStep, a sub-mode change,
++// "listen 0", a preview asked for, and a USB line (read into pbCmd here, run
++// by pbPoll next). Its lines ("mod say rx m17 msg ...") go out as lsSay's.
++static unsigned airLs   = 0;   // the sub-mode being listened to
++static uint32_t airLsMs = 0;   // a refusal (the arena too small): tried again LS_RETRY_MS later
++static constexpr uint32_t AIR_LS_MS = 30000;   // each listen, when nothing is heard
++
++static int airLsStop()
++{
++    if(pbStop(NULL) || fnHeld || txRequest || (micTxMs != 0) || (toneTxMs != 0) ||
++       (airPend != 0) || pvRequest || (enc != NULL) || (lsEnable == false) ||
++       (phyAir != airLs) || pbLine)
++        return 1;
++    char c;
++    while(vcom_readBlock(&c, 1) == 1)
++        if(pbTake(c))
++        {
++            pbLine = true;
++            return 1;
++        }
++    return 0;
++}
++
++static void airLsLine(const char *s)
++{
++    lsSay(s);
++}
++
++static unsigned airLsRead(void *b, unsigned n)
++{
++    (void) b;
++    (void) n;
++    return 0;                      // USB serial is airLsStop's
++}
++
++// Receive only: no tx_tone, no tx_mic, no speaker, no recording
++static const om_host airLsHost = {airLsLine, omWrite, airLsRead, omNow, airLsStop,
++                                  omSleep, omC6r, omC6w, NULL, omRssi,
++                                  NULL, NULL, NULL, NULL,
++                                  NULL, NULL, NULL, NULL,
++                                  NULL, NULL, NULL, NULL};
++
++// One listen in M17 or YSF; false in the other sub-modes (listenStep's turn)
++static bool airListen()
++{
++    unsigned a = phyAir;
++    if((a != 1) && (a != 2))
++        return false;
++    listenOff();
++    if((airLsMs != 0) && ((uint32_t) getTick() - airLsMs < LS_RETRY_MS))
++        return true;
++    airLsMs = 0;
++    airLs   = a;
++    if(airLsStop() || (om_idle() == 0))
++        return true;
++    pbBusy = true;
++    if(pbStop(NULL) == false)
++    {
++        int n = c6rx_hear(om_api(&airLsHost), a, AIR_LS_MS, NULL, 0);
++        if(n < 0)
++            airLsMs = (uint32_t) getTick() | 1u;
++        else if((n > 0) && (airLsStop() == 0))
++        {
++            lsMsgs++;
++            recValid   = false;
++            recFrames  = (unsigned) c6rx_take(om_api(&airLsHost), recMsg, REC_MAX);
++            recValid   = (recFrames > 0);
++            lsLast     = recFrames;
++            msgChanged = true;
++            if(recValid)
++                pager_requestPreview();
++        }
++    }
++    pbBusy = false;
++    return true;
++}
++#endif
 +
 +static void *probeFunc(void *arg)
 +{
@@ -1765,8 +1871,9 @@ index 00000000..b2040737
 +                airSend(a, 1, 0);
 +                pbBusy = false;
 +            }
++            if(airListen() == false)
 +#endif
-+            listenStep();
++                listenStep();
 +            unsigned ms = lsOn ? 10 : 50;   // the ring holds 128 ms
 +            sleepFor(0, ms);
 +            t += ms;
