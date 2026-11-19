@@ -1,12 +1,12 @@
 {
  "id": "aprsair-3",
- "status": "queued",
- "queued": "2026-11-19T15:52:30Z",
+ "status": "running",
+ "since": "2026-11-19T15:52:37Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "b06cd9f6c9050d2d53bb95cf372d4a3be929cf2b",
   "path": "jobs/aprsair-3"
  },
  "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
- "updated": "2026-11-19T15:52:30Z"
+ "updated": "2026-11-19T15:52:37Z"
 }
