@@ -1,12 +1,12 @@
 {
  "id": "dsraw-air1",
- "status": "queued",
- "queued": "2026-11-19T15:41:07Z",
+ "status": "running",
+ "since": "2026-11-19T15:41:09Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "f3e228e2c8cd14534ebd68fa507f8a20123160a6",
   "path": "jobs/dsraw-air1"
  },
  "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
- "updated": "2026-11-19T15:41:07Z"
+ "updated": "2026-11-19T15:41:09Z"
 }
