@@ -1,0 +1,1 @@
+serial-hold: k6-ysfrx reads the port (pid 274345); ask with: k6_bench.py serial-release k6-ysfrx
