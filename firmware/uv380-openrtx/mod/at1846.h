@@ -230,7 +230,7 @@ AT_FN int at_dmr_rx(const ortx_api_t *api, at_saved *s, int full) {
    half the level per Hz: the C6000's DMR sync search needs an absolute level, and at standard
    DMR deviation (+-1944 Hz) it never synced (uvdmr-sweep1, 11-19 07:46-07:53Z: only a send at
    1.5x the deviation decoded). at_bw12_restore puts it back, 0x30 by its two bits only (OpenRTX
-   owns the rest: RX / TX on). */
+   owns the rest: RX / TX on); call at_reload once everything else is back too. */
 typedef struct {
     uint16_t val[9];
     uint16_t bw30;                      /* 0x30 bits 13-12 as they were */
@@ -253,6 +253,18 @@ AT_FN unsigned at_bw12_set(unsigned i, uint8_t *reg, uint16_t *val) {
     }
 }
 
+/* the AT1846S takes a new bandwidth set only once RX / TX restart, as OpenRTX's reloadConfig
+   does: bits 6-5 off, then back as they were (never on if they were off). Without it the 11-19
+   sweep2 restore left the receiver 30 dB deaf (rssi -123 against -93) until the next run. */
+AT_FN int at_reload(const ortx_api_t *api) {
+    uint16_t v;
+    if (at_read(api, 0x30, &v))
+        return -1;
+    if (at_write(api, 0x30, (uint16_t)(v & ~0x0060u)))
+        return -1;
+    return at_write(api, 0x30, v);
+}
+
 /* 0 or -1; what it changed is in *b either way */
 AT_FN int at_bw12(const ortx_api_t *api, at_bw_saved *b) {
     uint8_t r;
@@ -270,7 +282,9 @@ AT_FN int at_bw12(const ortx_api_t *api, at_bw_saved *b) {
             return -1;
     }
     b->ok = 1;
-    return at_write(api, 0x30, (uint16_t)(old & ~0x3000u));
+    if (at_write(api, 0x30, (uint16_t)(old & ~0x3000u)))
+        return -1;
+    return at_reload(api);
 }
 
 AT_FN void at_bw12_restore(const ortx_api_t *api, const at_bw_saved *b) {

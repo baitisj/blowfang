@@ -242,6 +242,8 @@ int uv_main(const ortx_api_t *api) {
     if (RX_BW12)
         at_bw12_restore(api, &bw);
     at_restore(api, &as);
+    if (RX_BW12)
+        at_reload(api);                     /* the 25 kHz set takes effect only now */
     C6_REG(GPIOD + 0x18u) = mux ? (1u << MUX) : (1u << (MUX + 16u));
     c6s_close(&ss);
     api->fmt(line, sizeof line, "end slots=%u bursts=%u nosync=%u ok=%u rearm=%u raw=%u", slots, bursts,

@@ -260,7 +260,9 @@ def test_headers_write_only_what_they_say():
     a = open(os.path.join(MOD, "at1846.h")).read()
     for reg in ("0x29", "0x2A", "0x30"):
         assert f"*reg = {reg}" not in a
-    assert a.count("at_write(api, 0x30,") == 2
+    assert a.count("at_write(api, 0x30,") == 4
+    assert "at_write(api, 0x30, (uint16_t)(v & ~0x0060u))" in a      # reload: RX / TX off ...
+    assert "return at_write(api, 0x30, v);" in a                      # ... and back as they were
     assert "at_write(api, 0x30, (uint16_t)(old & ~0x3000u))" in a
     assert "at_write(api, 0x30, (uint16_t)((v & ~0x3000u) | b->bw30))" in a
     assert "b->bw30 = old & 0x3000u;" in a
