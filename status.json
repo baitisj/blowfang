@@ -2,12 +2,12 @@
  "runner_commit": "f541fbd5d75ab520e4f8a81ade00f7e9d017f187",
  "inbox": true,
  "autoupdate": true,
- "paused": null,
+ "paused": "k6-arena: boot-trace flash + recovery (power cycle by Jeff)",
  "ic7100_held": null,
  "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T19:54:00Z",
+ "last_poll": "2026-11-19T20:16:25Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T19:54:51Z"
+ "updated": "2026-11-19T20:16:25Z"
 }
