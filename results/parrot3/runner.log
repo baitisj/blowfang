@@ -1,0 +1,7 @@
+2026-11-19T04:48:12Z job parrot3 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-bde3f44e435f at bde3f44e435f54bb6321fbfc8d79cce2187ce404
+2026-11-19T04:48:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-bde3f44e435f/tools/pluto_bench.py --as uv380-multimode parrot --hz 441850000 --gain -40 --minutes 15 --rx-gain 20
+parrot on 441850000 Hz until 05:03:12Z: YSF or M17 sotto heard goes back 2 s later, gain -40 dB
+listening 04:48:13Z
+2026-11-19T04:51:14Z stopping (cancelled): SIGTERM to the step's process group
+2026-11-19T04:51:14Z step 1 (pluto) rc=-15 (cancelled)
+2026-11-19T04:51:14Z job parrot3 cancelled: step 1 (pluto): cancelled
