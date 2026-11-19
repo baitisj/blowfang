@@ -307,6 +307,22 @@ also saves flash there.
      test transmission: `python3 -m modem.m17rx wav OUT --tones-s 0 --bert-s 0 --sotto N
      --repeat R` (`--dev 4800`) or `python3 -m modem.ysf wav OUT --sotto N` (`--dev 5400`).
      Host tests: tests/test_uv380_sottorx.py.
+   - **On the bench (job sottorx2, main e4ea6af, 01:07-01:13Z 11-19):** c6sottorx_m17 and then
+     c6sottorx_ysf on the radio's FM tap (nothing keyed on the UV-380). The Pluto sent the test
+     message three times at -50 dB, then three times at -60 dB with a 1 kHz offset, on 441.850:
+     M17 75 superframes (`modem.m17rx wav --sotto 75`), YSF 60 (`modem.ysf wav --sotto 60`).
+     **M17 6/6 messages and YSF 6/6 came back whole**: 76/76 and 60/60 superframes, none
+     missing, no CRC failures, every one ended on its EOT or terminator, src AG7EW, and the first
+     and last superframes as sent. Scratch was 8824 B against 8260 needed (M17) and 8104 against
+     6712 (YSF).
+   - **FTM echo (Jeff 11-19, job ftm-echo2, 01:01-01:06Z, 0 W on 441.850):** `c6ysftx_echo.c`
+     (c/common/ysf_echo.c keeps each frame of a C4FM call as the bytes it came as, and sends the
+     call back after the ident; runner `uv380.ysf echo`). Jeff keyed his FTM-300D in DN three
+     times. Each call was heard whole: header, 24 voice frames and terminator, none lost, src
+     AG7EW-JEFF. Calls 2 and 3 were longer than the 26-frame room, so 2 and 5 frames from
+     their middles were dropped and their terminators kept. Each echo went out whole (3144
+     bytes, no late slot). **The FTM showed "AG7EW - Jeff" and played his voice back.** There
+     was no Pluto capture, because a recording of his voice would go to the public jobs branch.
    - **The same in the image (flash 2, built 11-19, not flashed)**: `c6rx_img.c` builds
      c6rx.h into flash with both receivers (12.5 KB of code; c/common's receiver names renamed
      c6rx_* so none clash with OpenRTX's M17). Its state, about 11 KB for both receivers and a 30 s
