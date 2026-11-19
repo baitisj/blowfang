@@ -18,14 +18,16 @@
      back everything filled so far:   r0 b=N bad=0
    - Then it holds the whole range for HOLD_S seconds, read back every second, and reads the two
      ends it never writes (txdog's table 0x20000000-0x200000FF and the UserVectors) before and
-     after:   r0 done bad=0 first=00000000 blk=0000 lo=same uv=same
+     after:   r0 done bad=0 first=00000000 bm=0000 lo=same uv=same
    - The IWDG can't be stopped once started, so the module ends with a planned reset
      (r0 reset), the note cleared first. The bootloader clears this RAM at every reset, as before.
    API level 2 (ms, key_down). Returns only if the IWDG doesn't arm (r0 no iwdg).
 
    2026-11-19, for the core's buffers there (docs/k6-ram0.md):
    - It first maps what is in the range before it writes anything, read only:
-       r0 map nz=NNN first=AAAAAAAA last=AAAAAAAA blk=BBBB
+       r0 map nz=NNN first=AAAAAAAA last=AAAAAAAA bm=BBBB
+     (bm, not blk: the bench logger, modem.k6_harness, reads any blk= as decimal numbers and
+     stopped on the first map, blk=f806, 2026-11-19 k6-ram0zero1)
      nz: the words that aren't 0 (the bootloader clears this RAM at reset, then uses
      0x20000000-0x2000046F before it starts Aura: what it left), then up to MAP_W of them,
      three to a line:   r0 w 0100=VVVVVVVV 0104=VVVVVVVV ...
@@ -129,7 +131,7 @@ static void map(const k6_api_t *api) {
   p = hex(put(line, "r0 map nz="), nz, 3);
   p = hex(put(p, " first="), first, 8);
   p = hex(put(p, " last="), last, 8);
-  p = hex(put(p, " blk="), blk, 4);
+  p = hex(put(p, " bm="), blk, 4);
   *p = 0;
   api->say(line);
   for (a = LO; a < HI && k < MAP_W; a += 4) {
@@ -211,7 +213,7 @@ int k6_main(const k6_api_t *api) {
   }
   p = hex(put(line, "r0 done bad="), bad, 3);
   p = hex(put(p, " first="), first, 8);
-  p = hex(put(p, " blk="), blk, 4);
+  p = hex(put(p, " bm="), blk, 4);
   p = put(p, sum(0x20000000u, LO) == lo0 ? " lo=same" : " lo=CHANGED");
   p = put(p, sum(UV, UV + 40u) == uv0 ? " uv=same" : " uv=CHANGED");
   *p = 0;

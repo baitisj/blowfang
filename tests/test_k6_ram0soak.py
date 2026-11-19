@@ -61,13 +61,13 @@ def test_ram0soak_arms_the_watchdog_marks_each_block_and_resets():
     assert e.said[0].startswith("r0 start csr="), txt
     assert e.reg[0x40003004] == 4 and e.reg[0x40003008] == 3750, txt    # IWDG about 6 s
     assert e.reg[0x40003000] == 0xAAAA, txt                             # fed
-    assert e.said[1] == "r0 map nz=000 first=00000000 last=00000000 blk=0000", txt
+    assert e.said[1] == "r0 map nz=000 first=00000000 last=00000000 bm=0000", txt
     blocks = [ln for ln in e.said if ln.startswith("r0 b=")]
     assert blocks == [f"r0 b={b:x} bad=000" for b in range(15, 0, -1)], txt
     # each block's line is said while txdog's note names that block (pc 0a30000N)
     for ln, nt in zip(e.said[2:17], notes[2:17]):
         assert nt == (0xFA170001, 0x0A300000 | int(ln[5], 16), 0x0A3050AC), (ln, nt)
-    assert "r0 done bad=000 first=00000000 blk=0000 lo=same uv=same" in e.said, txt
+    assert "r0 done bad=000 first=00000000 bm=0000 lo=same uv=same" in e.said, txt
     assert e.said[-1] == "r0 reset", txt
     assert notes[-1] == (0, 0x0A300000, 0x0A3050AC), notes[-1]          # cleared before the reset
     assert reset == 0x05FA0004
@@ -78,7 +78,7 @@ def test_ram0soak_says_where_the_pattern_broke():
     txt = "\n".join(e.said)
     assert "r0 b=b bad=001" in e.said, txt
     done = next(ln for ln in e.said if ln.startswith("r0 done"))
-    assert done.startswith("r0 done bad=001 first=20000e10 blk=4000"), txt
+    assert done.startswith("r0 done bad=001 first=20000e10 bm=4000"), txt
     assert reset == 0x05FA0004
 
 
@@ -86,7 +86,7 @@ def test_ram0soak_maps_what_the_bootloader_left_first():
     left = [(0x20000120, 0x08000ABC), (0x20000124, 1), (0x20000400, 0xDEADBEEF), (0x20000468, 7)]
     e, reset, _ = soak(left=left)
     txt = "\n".join(e.said)
-    assert e.said[1] == "r0 map nz=004 first=20000120 last=20000468 blk=0012", txt
+    assert e.said[1] == "r0 map nz=004 first=20000120 last=20000468 bm=0012", txt
     assert e.said[2] == "r0 w 0120=08000abc 0124=00000001 0400=deadbeef", txt
     assert e.said[3] == "r0 w 0468=00000007", txt
     assert reset == 0x05FA0004
@@ -111,9 +111,9 @@ def test_ram0zero_fills_with_zeros_and_sees_a_write():
     e, reset, _ = soak(src="ram0zero.c", left=left)
     txt = "\n".join(e.said)
     assert e.said[1].startswith("r0 map nz=001 first=20000200"), txt
-    assert "r0 done bad=000 first=00000000 blk=0000 lo=same uv=same" in e.said, txt
+    assert "r0 done bad=000 first=00000000 bm=0000 lo=same uv=same" in e.said, txt
     assert bytes(e.mu.mem_read(0x20000100, 0xF00)) == bytes(0xF00)
     assert reset == 0x05FA0004
     e, reset, _ = soak(src="ram0zero.c", corrupt=(6, 0x20000E10, 0x1234))
     done = next(ln for ln in e.said if ln.startswith("r0 done"))
-    assert done.startswith("r0 done bad=001 first=20000e10 blk=4000"), "\n".join(e.said)
+    assert done.startswith("r0 done bad=001 first=20000e10 bm=4000"), "\n".join(e.said)
