@@ -1,7 +1,8 @@
 """M17 receive on the UV-380 with no hardware mod: the test signal the Pluto sends, and the readers
 for the two receive paths the bench measures (docs/uv380-m17-rx.md).
 
-  python3 -m modem.m17rx wav OUT.wav [--tones-s 30] [--bert-s 30]     Pluto test signal, 48 kHz
+  python3 -m modem.m17rx wav OUT.wav [--tones-s 30] [--bert-s 30] [--sotto N [--repeat R]]
+                                                    Pluto test signal, 48 kHz
   python3 -m modem.m17rx tap LOG [--wav OUT.wav]    path B: c6fmtap's 8 kHz FM tap
   python3 -m modem.m17rx phy LOG                    path A: c6phyrx's chip-demodulated windows
 
@@ -9,6 +10,9 @@ The test signal is spec M17 (RRC alpha 0.5) at half scale: send it with `pluto_b
 OUT.wav --dev 4800` for M17's +-2400 Hz outer deviation (--dev 3888 gives DMR's 1944). It starts
 with TONES-S seconds of a multitone (TONES, equal levels, Schroeder phases, 0.2 s period: any
 whole second holds every tone on an FFT bin), then BERT-S seconds of M17 BERT (PRBS9) frames.
+--sotto N adds R copies (each after half a second of silence) of c6sotto's N-superframe test
+message (superframe k is bytes 6k..6k+5 counting up) as sotto 1200 over M17, two superframes a
+frame (docs/uv380-multimode.md): what c6sottorx_m17.c and the image's PAGER M17 receive hear.
 
 tap: the "a" lines as audio, cut by the module's "v" lines (one 0x34 setting each). Per setting:
 the multitone's response against 1 kHz (where the low corner and the top edge sit), and M17 BERT
@@ -53,6 +57,12 @@ def bert_audio(nframes, fs=FS, alpha=0.5):
     """M17 BERT (preamble, frames, EOT) as a discriminator track, outer symbol at HALF"""
     data = m17.tx_bert(nframes)
     return m17.modulate(data, fs=fs, alpha=alpha, outer_hz=HALF), data
+
+
+def sotto_test(n):
+    """c6sotto's test message (SOTTO_SRC 0), as modem.ysf.sotto_test: superframe k is bytes
+    6k..6k+5 counting up"""
+    return bytes(i & 0xFF for i in range(n * m17.SOTTO_SF))
 
 
 def test_signal(tones_s=30.0, bert_s=30.0, fs=FS):
@@ -311,6 +321,8 @@ def main(argv=None):
     w.add_argument("--bert-s", type=float, default=30.0)
     w.add_argument("--sms", action="append", default=[], help="then an M17 SMS (packet) with this text")
     w.add_argument("--c2", help="then an M17 voice stream of this Codec2 3200 file")
+    w.add_argument("--sotto", type=int, default=0, help="then c6sotto's test message, N superframes")
+    w.add_argument("--repeat", type=int, default=3, help="how many times --sotto's message goes out")
     t = sub.add_parser("tap")
     t.add_argument("log")
     t.add_argument("--wav")
@@ -320,12 +332,16 @@ def main(argv=None):
     if a.cmd == "wav":
         x, data = test_signal(a.tones_s, a.bert_s)
         traffic = (m17.tx_sms(a.sms) if a.sms else b"") + (m17.tx_voice(open(a.c2, "rb").read()) if a.c2 else b"")
+        gap = np.zeros(FS // 2)
         if traffic:
-            gap = np.zeros(FS // 2)
             x = np.concatenate([x, gap, m17.modulate(traffic, fs=FS, alpha=0.5, outer_hz=HALF), gap])
+        if a.sotto > 0:
+            one = m17.modulate(m17.tx_sotto(sotto_test(a.sotto)), fs=FS, alpha=0.5, outer_hz=HALF)
+            x = np.concatenate([x] + [np.concatenate([gap, one]) for _ in range(a.repeat)] + [gap])
         m17.write_wav(a.out, np.round(x * 32767), FS)
         print(f"{a.out}: {len(x) / FS:.1f} s at {FS} Hz, multitone {a.tones_s:g} s, "
-              f"{bert_frames(a.bert_s)} BERT frames, {len(a.sms)} SMS, voice {'yes' if a.c2 else 'no'}; "
+              f"{bert_frames(a.bert_s)} BERT frames, {len(a.sms)} SMS, voice {'yes' if a.c2 else 'no'}, "
+              f"sotto {a.sotto} x{a.repeat if a.sotto > 0 else 0}; "
               f"send with --dev 4800 (M17 2400 Hz outer)")
         return 0
     lines = open(a.log, errors="replace").read().splitlines()

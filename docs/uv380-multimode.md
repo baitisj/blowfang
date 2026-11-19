@@ -292,6 +292,21 @@ also saves flash there.
    - The two receivers' front ends are the same code twice (about 40 lines); they become one
      `fsk4_rx` when both go into the image, not before (the M17 one is proven on air and stays as
      it is until then).
+   - **Sotto messages back from the air, step 2 (RAM modules, 11-19)**: `c/common/sotto_rx.[ch]`
+     puts a sotto message back together from M17 stream frames (CRC-16 per frame, two new
+     superframes a frame or one plus a repeat) or YSF sotto VW frames (five superframes a frame,
+     each with its CRC-8; a frame's place comes from its time, so a lost frame leaves a hole
+     instead of shifting the rest). A hole is filled from the superframe before it. A message ends
+     on its last frame, an EOT or terminator, or 1.5 s with nothing new; an EOT with nothing heard
+     before it ends nothing (found on back-to-back sends: the last call's EOT cut the next one
+     short after one frame). `mod/c6rx.h` is the radio side: the FM tap, one receiver,
+     sotto_rx, and an `rx AIR msg sf= got= missing= bad= src= first= last=` line per message;
+     it is what the image's PAGER M17 / YSF listen will run from flash. As RAM modules first:
+     `c6sottorx_m17.c` / `c6sottorx_ysf.c` (300 superframes, 12 s of sotto; the compiler checks
+     image + state fit the 16 KB arena), runner plans `uv380.rx m17sotto|ysfsotto`. The Pluto's
+     test transmission: `python3 -m modem.m17rx wav OUT --tones-s 0 --bert-s 0 --sotto N
+     --repeat R` (`--dev 4800`) or `python3 -m modem.ysf wav OUT --sotto N` (`--dev 5400`).
+     Host tests: tests/test_uv380_sottorx.py.
 
 **On air (11-18 20:21-20:22Z, job sotto3-air-1118, main 2bc44cf, 0 W on 441.850, the Pluto
 listening):** the c6sotto modules sent the radio's own recorded message (250 superframes) in all
