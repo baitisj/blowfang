@@ -387,13 +387,18 @@ SPI library module).
   - Take the scale and DC from the sync, then slice each symbol as its points come in.
   - Look for the next sync where it is due, ±3 quarter points, keeping it even when weak (the flywheel).
     Two missing syncs or a terminator end the call.
-  - **The symbol clock.** The grid's rate comes from the DMA's, which runs by the MCU's clock, and on the
-    radio that was 1.4% off the signal's (bench run 6). Until the grid is timed, the next sync is looked for
-    ±96 quarter points (2.5%) from where it is due, and the miss sets the grid's step. After that each sync
-    moves it 1/8 of the way, as dmrrx's slots do. Each call times the grid again, a missed sync is looked
-    for wide again, and only a strong sync (rho² 0.65) sets the step the whole way (bench run 12). A good
-    FICH's frame number places the message's first frame, so the frames lost while the grid is timed still
-    leave the rest in place.
+  - **The symbol clock.** The grid's step comes from the DMA's rate, and on the radio that rate follows
+    what the CPU does: 2-3% faster while it only polls than while the decoders work (runs 15-23). So
+    every ~0.7 ms the step is set from the DMA's rate over the last window (dmrdet.c, bounded to
+    4.9-5.9 MS/s), times 1 + kd, a ratio the syncs learn. Until kd is timed, the next sync is looked for
+    ±128 quarter points from where it is due, and a strong sync (rho² 0.65) sets kd the whole way. After
+    that the window is ±6 and each sync moves kd 1/8 of the way (1/2 when 3 or more off; the offset
+    after a miss is halved, as it spans two frames). A missed sync, or a weak best at the window's edge,
+    is looked for wide again, and a wide search takes only a strong sync. A frame's own FICH (kept as it
+    ends, since its VW decodes during the next frame) places the message.
+  - **No key poll in a call.** On the radio housekeeping's key poll outlasted the 186 µs DMA ring, and in
+    a continuous stream each gap left ~10 symbols of stale filter points in the frame (run 16). A call
+    ends within ~200 ms of its carrier, and keys are read between calls.
 - **Decoders** (c/k6/ysfdec.h, integer and divide-free).
   - FICH: dibit deinterleave, K=5 Viterbi, Golay data halves, CRC-16.
   - Sotto VW: PN9, K=7 rate 7/18 tail-biting Viterbi with a 24-step wrap, CRC-8 per superframe.
@@ -407,13 +412,13 @@ SPI library module).
   get the superframe before them (`srx_conceal`), so sotto holds the sound over a gap.
 - **Carrier.** RSSI 10 dB over a floor. The floor moves only while there is no carrier: a quarter of
   the way down to a lower reading, 1 dB up for a higher one (see bench run 1 and 2 below).
-- **Room.** 7.7 KB of code (8.1 KB with the `YX_TRACE` frame trace of the bench builds). The scratch holds the filter ring (256 B), the receiver (1.9 KB: two payload
+- **Room.** 7.9 KB of code. The scratch holds the filter ring (256 B), the receiver (2 KB: two payload
   buffers, the decoders), the DMA ring (1,024 B since bench run 2) and then the message buffer, which
-  takes whatever the block has left: about 140 superframes (5.6 s of sotto 1200) in the 11,776-byte
-  block, 69 (2.8 s) with the trace.
-  Under 64 superframes, the module returns -6. Bench builds: `YX_BENCH` adds the time and level lines
-  and `YX_SNAP` the snapshot lines; on the radio (scratch ~3.8 KB with telemetry 0) YX_BENCH no longer
-  fits with the grid timing in (it returns -6), and YX_SNAP fits only with `YX_MSG_MIN 40`.
+  takes whatever the block has left: 104 superframes (4.2 s of sotto 1200) on the radio.
+  Under 64 superframes, the module returns -6. Bench builds: `YX_TRACE` adds the `Y t` frame trace
+  (each frame's sync rho², offset and FICH/VW flags; the step, kd and housekeeping's ring overruns),
+  `YX_SNAP` (with `YX_SNAP_FR`) one frame's sync and FICH filter points, `YX_BENCH` the time and level
+  lines. They need a lower `YX_MSG_MIN` to fit on the radio (8 to 24).
 
 Lines:
 
@@ -502,5 +507,21 @@ ID; the K6 runs ysfrx):
   of the trace build held 67). But noise held the receiver for calls of up to 311 frames: after a
   miss, the wide search's best of 73 tries of noise was taken as a weak sync. Fixed: a wide search
   takes only a strong sync (rho² 0.65).
+- **Run 15, 07:33Z.** All six calls held together with clean syncs, but FICHs and superframes failed
+  from the second frame on.
+- **Run 16, 07:45Z.** A snapshot of a failing frame's sync and FICH, fitted offline against the FICH it
+  should be: right to 0.99 correlation but for the last 10 symbols. Housekeeping's key poll outlasted
+  the DMA ring, and the grid stepped over the gap unfed. Fixed: no key poll in a call.
+- **Run 19, 08:10Z.** Every Pluto call decoded whole: 40/40 and 80/80 superframes, every FICH, at -40
+  and -60. The messages were placed a frame late (a frame's VW decodes during the next frame, whose
+  FICH came first). Fixed: the frame's own FICH is kept for its VW.
+- **Runs 20-23, 08:20-08:44Z.** Superframes failed again, most in each call's second to fourth frames,
+  and the DMA's rate (the s lines' ks) moved 5520-5669 kS/s run to run. The emulator's wobble (the
+  DMA faster while the CPU polls) reproduced it once a chunk with one CNDTR read counts as polling.
+  Fixed: the step follows the DMA's rate over ~0.7 ms (tests/test_k6_ysfrx.py runs the module with
+  a 3% wobble).
+- **Run 24, 09:10Z.** The production build: all six Pluto calls (40 and 80 superframes, at -40 dBm
+  with 5.4 and 3.9 kHz deviation and at -60 dBm) stored byte-exact, every superframe good. The UV-380's
+  0 W YSF send on 440.850 still raised no call.
 
 SPDX-License-Identifier: MIT
