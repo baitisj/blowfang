@@ -908,7 +908,7 @@ under `k6-aprs-ladder/`):
 | -93 | 2/6 | 4/6 | 6/6 |
 | -97 | 3/6 | 2/6 | 3/6 |
 | -100 | 1/6 | 1/6 | 0/6 |
-| -103 and under | 0/18 | 0/12 | 0/12 |
+| -103 and under | 0/24 | 0/24 | 0/24 |
 
   The three settings are alike inside these small numbers: about half the packets at -95 to -97
   dBm, the last at -100. The chip still starts on the flags at -103 to -106, so 6 to 10 dB more
