@@ -1,12 +1,116 @@
 {
  "id": "k6-ram0zero2",
- "status": "running",
- "since": "2026-11-19T19:11:50Z",
+ "who": "k6-ram0",
+ "started": "2026-11-19T19:11:52Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T19:11:52Z",
+   "ended": "2026-11-19T19:11:54Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T19:11:54Z",
+   "ended": "2026-11-19T19:11:57Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "ic7100",
+   "started": "2026-11-19T19:11:57Z",
+   "ended": "2026-11-19T19:12:12Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T19:12:12Z",
+   "ended": "2026-11-19T19:12:32Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "k6.upload",
+   "started": "2026-11-19T19:12:32Z",
+   "ended": "2026-11-19T19:13:31Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T19:13:31Z",
+   "ended": "2026-11-19T19:15:41Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "ic7100",
+   "started": "2026-11-19T19:15:41Z",
+   "ended": "2026-11-19T19:15:55Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-19T19:15:55Z",
+   "ended": "2026-11-19T19:16:15Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "k6.upload",
+   "started": "2026-11-19T19:16:15Z",
+   "ended": "2026-11-19T19:17:14Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-19T19:17:14Z",
+   "ended": "2026-11-19T19:19:24Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "ic7100",
+   "started": "2026-11-19T19:19:24Z",
+   "ended": "2026-11-19T19:19:39Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-19T19:19:39Z",
+   "ended": "2026-11-19T19:19:59Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-19T19:19:59Z",
+   "ended": "2026-11-19T19:20:09Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "logger.stop",
+   "started": "2026-11-19T19:20:09Z",
+   "ended": "2026-11-19T19:20:10Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9",
+ "head": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "ended": "2026-11-19T19:20:10Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "cf1bee0cfb1353797dfbecb0e590adbb2224e54a",
   "path": "jobs/k6-ram0zero2"
  },
  "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
- "updated": "2026-11-19T19:11:50Z"
+ "updated": "2026-11-19T19:20:10Z"
 }
