@@ -175,6 +175,7 @@ uint16_t ysf_crc(const uint8_t *d, unsigned n) {
     return (uint16_t)(crc ^ 0xFFFFu);
 }
 
+#ifndef YSF_RX_NO_SOTTO
 static uint8_t ysf_crc8(const uint8_t *d) {
     unsigned c = 0;
     for (unsigned i = 0; i < 6u; i++) {
@@ -184,6 +185,7 @@ static uint8_t ysf_crc8(const uint8_t *d) {
     }
     return (uint8_t)c;
 }
+#endif
 
 /* the FICH: 0 and its four bytes, or -1 */
 static int ysf_fich(ysf_rx *r, uint8_t out[4], float *metric) {
@@ -217,6 +219,7 @@ static int ysf_csd(ysf_rx *r, int field, uint8_t out[20]) {
     return 1;
 }
 
+#ifndef YSF_RX_NO_SOTTO
 /* coded bit ci of the sotto VW payload: spread (ci % 24) * 30 + ci / 24, PN9 off */
 static float ysf_coded7(const ysf_rx *r, unsigned ci) {
     unsigned p = (ci % 24u) * 30u + ci / 24u;
@@ -285,6 +288,7 @@ static uint8_t ysf_sotto(ysf_rx *r, uint8_t out[30]) {
     }
     return ok;
 }
+#endif
 
 void ysf_init(ysf_rx *r) {
     uint8_t *p = (uint8_t *)r;
@@ -350,10 +354,13 @@ static int ysf_frame_read(ysf_rx *r, ysf_frame *f) {
     if (f->fi == YSF_FI_HEADER || f->fi == YSF_FI_TERM || (f->fi == YSF_FI_COMMS && f->dt == YSF_DT_DATA_FR)) {
         f->pay = f->dt == YSF_DT_DATA_FR && f->fi == YSF_FI_COMMS ? YSF_PAY_DATA_FR : YSF_PAY_CSD;
         f->ok = (uint8_t)(ysf_csd(r, 1, f->data) | ysf_csd(r, 2, f->data + 20) << 1);
-    } else if (f->fi == YSF_FI_COMMS && f->dt == YSF_DT_VOICE_FR && f->sotto) {
+    }
+#ifndef YSF_RX_NO_SOTTO
+    else if (f->fi == YSF_FI_COMMS && f->dt == YSF_DT_VOICE_FR && f->sotto) {
         f->pay = YSF_PAY_SOTTO;
         f->ok = ysf_sotto(r, f->data);
     }
+#endif
     return f->fich_ok || f->ok;
 }
 

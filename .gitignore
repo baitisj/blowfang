@@ -71,3 +71,4 @@ firmware/uv380-openrtx/out/
 *.BTF
 *.btf
 rt950-backup-*/
+c/common/ysf_echo_host

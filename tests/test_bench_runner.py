@@ -525,6 +525,23 @@ def test_uv380_ysf_sends_the_checkouts_module_at_power_0(work, monkeypatch):
     assert argv[5:7] == ["--key-file", br.key_path()] and argv[-2:] == ["--run-timeout", "45"]
 
 
+def test_uv380_ysf_echo_waits_for_calls(work, monkeypatch):
+    """the echo plan (the FTM parrot) listens up to 15 min for calls: its module runs that long, the
+    step's own timeout set by the job; the same power 0 read-back first"""
+    monkeypatch.setattr(br, "command", fake_command({}))
+    ran = []
+    monkeypatch.setattr(br, "run_proc", lambda ctx, argv, cwd, timeout, env: (ran.append((argv, timeout)), (0, None))[1])
+    monkeypatch.setattr(br, "uv380_port", lambda: "/dev/uv380")
+    monkeypatch.setattr(br, "uv380_probe", Radio())
+    j = uv_job({"do": "uv380.ysf", "args": ["echo"], "timeout": 1000})
+    j["minutes"] = 20
+    assert br.check_job(j) == []
+    assert br.run_job(j, str(work / "rd"), Rig())["status"] == "done"
+    argv, timeout = ran[0]
+    assert argv[4].endswith("firmware/uv380-openrtx/mod/c6ysftx_echo.c")
+    assert argv[-2:] == ["--run-timeout", "960"] and timeout >= 960
+
+
 def test_uv380_sotto_checked(work):
     for air in br.UV380_SOTTO_AIRS:
         for extra in ([], ["dry"]):
