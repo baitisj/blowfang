@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "uvdmr-sweep2",
-   "who": "uv380-multimode",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "uvdmr-sweep2",
+  "who": "uv380-multimode",
+  "since": "2026-11-19T08:06:10Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-19T08:06:08Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T08:06:08Z"
+ "updated": "2026-11-19T08:06:10Z"
 }

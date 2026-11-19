@@ -1,12 +1,12 @@
 {
  "id": "uvdmr-sweep2",
- "status": "queued",
- "queued": "2026-11-19T08:06:08Z",
+ "status": "running",
+ "since": "2026-11-19T08:06:10Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "b0960f9b6ebe64eb2440d75447103eac80dede06",
   "path": "jobs/uvdmr-sweep2"
  },
  "runner_commit": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
- "updated": "2026-11-19T08:06:08Z"
+ "updated": "2026-11-19T08:06:10Z"
 }
