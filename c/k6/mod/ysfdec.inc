@@ -20,7 +20,8 @@
 #define SRX_NO_RADIO
 #include "../../common/sotto_rx.c"
 #ifndef YX_MSG_MIN
-#define YX_MSG_MIN 100u         /* the module runs with a message buffer of 4 s or more */
+#define YX_MSG_MIN 64u          /* the module runs with a message buffer of 2.6 s or more (while
+                                   the bench's time and level lines take room) */
 #endif
 #define YX_THR_Q8 166u          /* rho^2 0.65: a sync */
 #define YX_FLY_Q8 40u           /* rho^2 0.16: a due sync taken where it is best */

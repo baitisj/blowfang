@@ -402,12 +402,12 @@ SPI library module).
   the way down to a lower reading, 1 dB up for a higher one (see bench run 1 and 2 below).
 - **Room.** 7.7 KB of code. The scratch holds the filter ring (256 B), the receiver (2.3 KB: two payload
   buffers, the decoders), the DMA ring (1,024 B since bench run 2) and then the message buffer, which
-  takes whatever the block has left: 130 superframes (5.2 s of sotto 1200) in the 11,776-byte block.
-  Under 100 superframes, the module returns -6.
+  takes whatever the block has left: 92 superframes (3.7 s of sotto 1200) in the 11,776-byte block
+  while the bench lines below are built in. Under 64 superframes, the module returns -6.
 
 Lines:
 
-    ysf start f=440850000 floor=-125 msg=130   msg: the message buffer, superframes
+    ysf start f=440850000 floor=-125 msg=92    msg: the message buffer, superframes
     Y call fr=41 fich=40 vw=190/200 sf=200 miss=10 crc=9d79
         frames, FICHs good, superframes good / read, the message's superframes, those filled in
         (over=: superframes past the buffer), the message's CRC-16
@@ -416,6 +416,8 @@ Lines:
     Y m 44 52 68 60 48 32 24 4                 that ran last, and each kind's longest call (us).
         Kinds: search, in a frame, FICH step, VW start, K=7 step, traceback, VW end, idle.
         f=: VW decodes that had to be finished at once because the next payload had come
+    Y h- 22 276 117 17 60 193 122 16           after each call: the FICH symbols' levels, 16 soft
+    Y h+ 27 197 238 73 22 101 202 17           units a bin from -128 (the +1 level is 32, +3 is 96)
 
 A new call while the last one's lines are still going out drops the rest of them.
 
@@ -426,7 +428,7 @@ Model results (tests/test_k6_ysfrx.py):
 - **Lost frames, host:** a 12 s message (300 superframes) with one frame lost whole and one frame's payload
   lost. All 300 places are right, and the 10 lost superframes repeat the one before them.
 - **Module on the emulated K6** (300 µs register reads, 5 ms per say line, started with a carrier
-  already on): a 4.8 s message (120 superframes) with one frame lost whole and one payload lost comes out
+  already on): a 3.2 s message (80 superframes) with one frame lost whole and one payload lost comes out
   byte-exact with its 10 holes filled, with no samples lost. The header frame is missed because the carrier is first seen half a frame
   in.
 
