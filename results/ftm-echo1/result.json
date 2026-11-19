@@ -1,0 +1,12 @@
+{
+ "id": "ftm-echo1",
+ "status": "queued",
+ "queued": "2026-11-19T00:59:18Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "1b795ecc2ba24f584adaea53fa38be8f180c1231",
+  "path": "jobs/ftm-echo1"
+ },
+ "runner_commit": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "updated": "2026-11-19T00:59:18Z"
+}
