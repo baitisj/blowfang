@@ -1,12 +1,12 @@
 {
  "id": "pttcap1",
- "status": "queued",
- "queued": "2026-11-19T04:53:18Z",
+ "status": "running",
+ "since": "2026-11-19T04:53:25Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "6fd43b3a75e6c15404eb986d506bbfd0e910050a",
   "path": "jobs/pttcap1"
  },
  "runner_commit": "bde3f44e435f54bb6321fbfc8d79cce2187ce404",
- "updated": "2026-11-19T04:53:18Z"
+ "updated": "2026-11-19T04:53:25Z"
 }
