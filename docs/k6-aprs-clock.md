@@ -994,8 +994,17 @@ under `k6-aprs-ladder/`):
   limit. The opening must be long enough for the tune: 24 words (80 ms) to measure and some
   flags after it; an APRS sender's TXDELAY is usually 200 to 300 ms.
 
-Next: `aprsdfsk` (144.390) with `DF_OFFT`, an off-air run once the floor is back near -108 dBm,
-and an hour beside an APRS-IS log of the stations within 40 km.
+- **Off the air with the tune** (run aprsair-2, 14:35 to 15:41Z, 144.390 MHz, receive only, four
+  15-minute modules: `aprsdfsk_o`, `aprsdfsk`, `aprsdfsk_o`, `aprsdfsk`): no frame from any. The
+  plain builds started 3 times each (41 to 59 words, too short for a packet); `aprsdfsk_o` tuned
+  8 and 10 times on such starts and said no packet. The minute lines read -95/-96 dBm with peaks
+  of -89/-90 in every minute of the hour, as in aprsair-1 at noon: the floor sits 13 dB over
+  2026-11-10's -108 and nothing on the air comes over it, so this run cannot tell the two
+  builds apart. A steady local source is the likeliest (the garage lamp, insight on the VHF
+  floor); not known yet.
+
+Next: an off-air run once the floor is back near -108 dBm, and an hour beside an APRS-IS log of
+the stations within 40 km.
 
 ## Size: which images
 
