@@ -18,11 +18,20 @@ from sim.k6if import dmr  # noqa: E402
 
 K6 = os.path.join(ROOT, "c", "k6")
 NSF = 40                                    # sotto_test(40): 8 VW frames, CRC-16 0xd821
+NSF_LONG = 200                              # 8 s: 40 VW frames
 
 
-def ysf_symbols(nsf=NSF):
+def ysf_symbols(nsf=NSF, lose=()):
+    """the call's symbols; lose: frames (0 the header, 1 the first VW) made random, all of the
+    frame (f) or only its payload (-f)"""
     b = ysf.bytes_to_bits(ysf.tx_sotto(ysf.sotto_test(nsf)))
-    return np.array([ysf.LEVEL[(int(b[2 * i]) << 1) | int(b[2 * i + 1])] for i in range(len(b) // 2)], float)
+    sym = np.array([ysf.LEVEL[(int(b[2 * i]) << 1) | int(b[2 * i + 1])] for i in range(len(b) // 2)], float)
+    rng = np.random.default_rng(5)
+    for f in lose:
+        a = 96 + 480 * abs(f)                   # after the preamble's 24 bytes
+        lo = a if f > 0 else a + 120            # (the sync and FICH: 120 symbols)
+        sym[lo:a + 480] = rng.choice([-3.0, -1.0, 1.0, 3.0], a + 480 - lo)
+    return sym
 
 
 def k6_counts(sym, cn0, seed=1, dev=2700.0, inv=False, post_s=0.4):
@@ -44,8 +53,15 @@ def stored(lines):
     return bytes(out)
 
 
-def want():
-    return ysf.sotto_test(NSF)
+def want(nsf=NSF, lose=()):
+    """the message as the receiver gives it: a lost VW frame's five superframes are the one
+    before them, repeated (sotto_rx's srx_conceal)"""
+    w = bytearray(ysf.sotto_test(nsf))
+    for f in lose:
+        j = abs(f) - 1
+        for k in range(5 * j, 5 * j + 5):
+            w[6 * k:6 * k + 6] = w[6 * (5 * j - 1):6 * 5 * j]
+    return bytes(w)
 
 
 @pytest.fixture(scope="module")
@@ -66,8 +82,20 @@ def test_host_receiver_on_the_k6_model(host, cn0, inv):
     out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
     lines = out.splitlines()
     print(out)
-    assert "Y call fr=10 fich=10 vw=40/40 crc=d821" in lines, out
+    assert "Y call fr=10 fich=10 vw=40/40 sf=40 miss=0 crc=d821" in lines, out
     assert stored(lines) == want()
+
+
+def test_host_receiver_fills_lost_frames(host):
+    """a 12 s message (300 superframes) with one frame lost whole (the flywheel keeps the frame
+    count) and one frame's payload lost: every superframe in its place, the ten lost ones filled
+    with the superframe before them"""
+    lose = (21, -36)
+    cnt, _ = k6_counts(ysf_symbols(300, lose), 56.0)
+    out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
+    lines = out.splitlines()
+    assert any(ln.startswith("Y call fr=62 ") and " vw=290/300 sf=300 miss=10 " in ln for ln in lines), out
+    assert stored(lines) == want(300, lose)
 
 
 def test_host_receiver_says_nothing_on_noise(host):
@@ -78,8 +106,8 @@ def test_host_receiver_says_nothing_on_noise(host):
 
 def test_ysfrx_module_on_the_emulated_k6():
     """the ysfrx RAM module on the emulated M0 with the modelled DMA, the radio's slow register
-    reads and its ~5 ms say lines: the call's superframes on the serial line after it,
-    byte-exact, in the shared module block (code + the filter's ring + the receiver's state +
+    reads and its ~5 ms say lines: an 8 s message with two frames lost on the serial line after
+    the call, byte-exact with the lost superframes filled in, in the shared module block (code + the filter's ring + the receiver's state +
     the DMA ring), no samples lost, the receiver's registers put back; too small a block and it
     returns -6"""
     if not (shutil.which("clang") and shutil.which("ld.lld")):
@@ -88,8 +116,9 @@ def test_ysfrx_module_on_the_emulated_k6():
     import test_k6_dmr as T
     import k6_live_emu as le
     from sim.k6if import frontend as fe
-    code, entry = T.build([("RUN_S", "3u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
-    _, (ib, on, off) = k6_counts(ysf_symbols(), 56.0, post_s=2.2)   # the call is ~1.1 s
+    code, entry = T.build([("RUN_S", "8u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    lose = (12, -20)
+    _, (ib, on, off) = k6_counts(ysf_symbols(NSF_LONG, lose), 56.0, post_s=3.0)   # the call is ~4.3 s
 
     def emu(block, ib):
         e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=6, stack_win=7000,
@@ -103,10 +132,13 @@ def test_ysfrx_module_on_the_emulated_k6():
     e, ret, stack = emu(11776, ib)
     txt = "\n".join(e.said)
     print(txt, stack, len(code))
+    # the message buffer is what the block has left: 4 s or more
+    assert int(e.said[0].split("msg=")[1]) >= 100, txt
     # the carrier is seen at the next housekeeping, ~half a frame in: the header frame is gone
-    assert any(ln.startswith("Y call fr=9 fich=9 vw=40/40 crc=d821") for ln in e.said), txt
-    assert stored(e.said) == want(), txt
-    assert ret == 9, txt
+    # (frame 12 lost whole and frame 20's payload: 10 superframes filled in)
+    assert any(ln.startswith("Y call fr=41 ") and " vw=190/200 sf=200 miss=10 " in ln for ln in e.said), txt
+    assert stored(e.said) == want(NSF_LONG, lose), txt
+    assert ret == 41, txt
     lost = [int(ln.split("lost=")[1].split()[0]) for ln in e.said if ln.startswith("s ")]
     assert lost and lost[-1] == 0, txt
     assert e.writes[0x13][-1] == 0 and e.writes[0x7E][-1] == 0

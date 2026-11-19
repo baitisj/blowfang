@@ -75,6 +75,7 @@ c/common/ffsk_tx.*
 c/common/pager_tx.*
 c/common/range_rx*
 c/common/range_tx*
+c/common/sotto_rx.*
 c/common/surf_core.inc
 
 [uv380]

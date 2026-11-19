@@ -5,18 +5,22 @@
    own scale and DC; the next frame's sync is looked for where it is due (480 symbols on) and
    taken even when weak (the flywheel). The FICH and the sotto VW payload are decoded step by
    step in the gaps between the DMA's samples (yx_work). A comms frame's five sotto 1200
-   superframes are kept, and when the call ends (a terminator, or two frames that aren't there)
-   housekeeping's lines give them:
-     Y call fr=24 fich=24 vw=110/110 crc=3c1f   frames, FICHs good, superframes good / read
-                                                (drop=: bytes the store had no room for), the
-                                                CRC-16 of all the superframes
-     Y d 0 000102030405...                      the superframes kept, 24 bytes a line
+   superframes go to their places in the message (c/common/sotto_rx.c: frame number x 5 + k,
+   so a lost frame or a superframe failing its CRC-8 leaves a hole), and when the call ends (a
+   terminator, or two frames that aren't there) the holes are filled with the superframe before
+   (srx_conceal) and housekeeping's lines give the message:
+     Y call fr=24 fich=24 vw=110/110 sf=110 miss=0 crc=3c1f
+        frames, FICHs good, superframes good / read, the message's superframes and those filled
+        in (over=: superframes past the message buffer), the CRC-16 of the message
+     Y d 0 000102030405...                      the message, 24 bytes a line
+   The message buffer is what the module's scratch has left (yx_mem): 6 bytes a superframe
+   (40 ms of sotto 1200) and a bit.
    SPDX-License-Identifier: MIT */
 
-#ifndef YX_STORE
-#define YX_STORE 300u           /* the superframes kept for the lines after the call: 50 (2 s of
-                                   sotto 1200, the module's room). Not given out during it: a
-                                   line's ~5 ms pause cost superframes on the emulated K6 */
+#define SRX_NO_RADIO
+#include "../../common/sotto_rx.c"
+#ifndef YX_MSG_MIN
+#define YX_MSG_MIN 100u         /* the module runs with a message buffer of 4 s or more */
 #endif
 #define YX_THR_Q8 166u          /* rho^2 0.65: a sync */
 #define YX_FLY_Q8 40u           /* rho^2 0.16: a due sync taken where it is best */
@@ -42,16 +46,26 @@ typedef struct {
      short for the K=7 decoder in the DMA's gaps: emulated, 250 of its 330 steps had to be done at
      once, and the samples lost meanwhile cost most of the frames) */
   uint8_t pay[2][YD_PAY_BITS / 2];
-  /* jobs: 1 the FICH to decode, 2 the VW (3 its traceback); the decoders; the payload buffers written and decoded */
+  /* jobs: 1 the FICH to decode, 2 the VW (4 done); the decoders; the payload buffers written and decoded */
   uint8_t jf, jv, fok, fi, fn, dt, miss, done, wb, db;
   yd_f5_t f5;
   yd_v7_t v7;
-  /* the call: counts, the superframes kept and given out, those the store had no room for,
-     the CRC-16 of all of them so far */
+  /* the call: counts; the VW frame decoding (its frame number); the message given out (bytes,
+     all ones: the summary first), the superframes filled in and its CRC-16. Not given out
+     during the call: a line's ~5 ms pause cost superframes on the emulated K6 */
   uint32_t nfr, nfich, nsf, nsfok;
-  uint32_t nput, nout, ndrop, crc;
-  uint8_t store[YX_STORE];
+  uint32_t vf, nout, nmiss, crc;
+  srx_state m;
 } yx_t;
+
+/* the message buffer: n bytes at b (6 a superframe and a bit for each); 0 if under min
+   superframes */
+static unsigned yx_mem(yx_t *x, uint8_t *b, uint32_t n, unsigned min) {
+  uint32_t r, max = n ? yd_div((n - 1u) * 8u, 49u, &r) : 0;
+  if (max < min) return 0;
+  srx_init(&x->m, b, b + max * SRX_SF, max);
+  return max;
+}
 
 /* Catmull-Rom between the filter's points (as dmrdec.inc's dx_mf): f at P quarter points */
 static const int16_t YX_CR[4][4] = {{0, 128, 0, 0}, {-9, 111, 29, -3}, {-8, 72, 72, -8}, {-3, 29, 111, -9}};
@@ -118,18 +132,17 @@ static void yx_end(yx_t *x) {
 
 static void yx_work(yx_t *x);
 
-/* a decoded VW frame into the store */
+/* a decoded VW frame's good superframes into their places (the first VW frame's first is the
+   message's 0, even when it failed) */
 static void yx_vw_done(yx_t *x) {
   uint8_t sf[30];
   uint32_t ok = yd_v7_end(&x->v7, sf), k;
   x->jv = 0;
   x->nsf += YD_NSF;
-  for (k = 0; k < YD_NSF; k++) x->nsfok += (ok >> k) & 1u;
-  x->crc = yd_crc16_up(x->crc, sf, 30);
-  for (k = 0; k < 30; k++) {
-    if (x->nput < YX_STORE) x->store[x->nput++] = sf[k];
-    else x->ndrop++;
-  }
+  if (!x->m.based) x->m.based = 1, x->m.base = (int32_t)(x->vf * YD_NSF);
+  for (k = 0; k < YD_NSF; k++)
+    if ((ok >> k) & 1u) x->nsfok++, srx_put(&x->m, (int32_t)(x->vf * YD_NSF + k), sf + YD_SF * k);
+    else x->m.bad++;
 }
 
 /* the sync's correlation at P, kept if the best so far (of the polarity want, -1 either) */
@@ -154,7 +167,9 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       x->cand = 0;
       yx_scale(x, x->rP, x->rc, x->rs);
       x->on = 1, x->n = YD_SYNC_N, x->miss = 0;
-      if (!x->done) x->nfr = x->nfich = x->nsf = x->nsfok = x->nput = x->nout = x->ndrop = x->crc = 0;
+      /* a new call: the last one's lines not given out yet are dropped */
+      x->done = 0, x->nfr = x->nfich = x->nsf = x->nsfok = 0;
+      srx_init(&x->m, x->m.frames, x->m.have, x->m.max);
       return;
     }
     if ((int32_t)(A - x->g) > (int32_t)(DS_FRING / 2) || (int32_t)(x->g - A) > (int32_t)DS_FRING)
@@ -209,7 +224,7 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       x->pay[x->wb][b >> 1] = (uint8_t)(q | (yx_q4(yd_pn9(&x->pn) ? -l1 : l1) << 4));
       if (++x->n == YD_FRAME_SYMS) {
         while (x->jv) yx_work(x);               /* the last frame's VW still decoding: finish it */
-        x->jv = 1, x->db = x->wb, x->nfr++;     /* this one's to decode (after the FICH) */
+        x->jv = 1, x->db = x->wb, x->vf = x->nfr++;   /* this one's to decode (after the FICH) */
         x->rq = -3, x->rr = 0;                 /* the next sync's tries */
       }
     }
@@ -242,9 +257,8 @@ static void yx_work(yx_t *x) {
     x->jv = 2;
   }
   if (x->jv == 2) {
-    if (yd_v7_step(&x->v7, x->pay[x->db])) x->jv = 3;
-  } else if (x->jv == 3) {
-    if (yd_v7_tb(&x->v7, 16u)) x->jv = 4;
+    if (!x->v7.tb) yd_v7_step(&x->v7, x->pay[x->db]);
+    else if (yd_v7_tb(&x->v7, 16u) && x->v7.step == YD_V7_STEPS) x->jv = 4;
   } else if (x->jv == 4) {
     yx_vw_done(x);
   }
@@ -257,23 +271,26 @@ static char *yx_house(yx_t *x, char *line) {
   uint32_t i, n;
   static const char H[] = "0123456789abcdef";
   if (!x->done || x->jv || x->jf) return 0;
+  n = x->m.n * SRX_SF;
   if (x->nout == 0xFFFFFFFFu) {
     x->nout = 0;
+    x->nmiss = srx_conceal(&x->m);
+    x->crc = yd_crc16(x->m.frames, (int)n);
     p = kv(kv(line, "Y call fr=", (int)x->nfr), " fich=", (int)x->nfich);
     p = kv(kv(p, " vw=", (int)x->nsfok), "/", (int)x->nsf);
-    if (x->ndrop) p = kv(p, " drop=", (int)x->ndrop);
+    p = kv(kv(p, " sf=", (int)x->m.n), " miss=", (int)x->nmiss);
+    if (x->m.over) p = kv(p, " over=", (int)x->m.over);
     p = put(p, " crc=");
-    n = x->crc ^ 0xFFFFu;
-    for (i = 4; i-- > 0;) *p++ = H[(n >> (4 * i)) & 15u];
+    for (i = 4; i-- > 0;) *p++ = H[(x->crc >> (4 * i)) & 15u];
     return p;
   }
-  if (x->nout >= x->nput) {
+  if (x->nout >= n) {
     x->done = 0;
     return 0;
   }
   p = kv(line, "Y d ", (int)x->nout);
   *p++ = ' ';
-  for (i = 0; i < 24u && x->nout < x->nput; i++, x->nout++)
-    *p++ = H[x->store[x->nout] >> 4], *p++ = H[x->store[x->nout] & 15u];
+  for (i = 0; i < 24u && x->nout < n; i++, x->nout++)
+    *p++ = H[x->m.frames[x->nout] >> 4], *p++ = H[x->m.frames[x->nout] & 15u];
   return p;
 }

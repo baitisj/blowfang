@@ -387,6 +387,9 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
   p = kv(line, "dmr start f=", (int)FREQ_HZ);
 #endif
   p = kv(p, " floor=", s->floor);
+#ifdef YSF_DECODE
+  p = kv(p, " msg=", (int)s->y->m.max);   /* the message buffer: superframes, 40 ms each */
+#endif
   say(api, line, p);
   s->c17 = rd(TIM17_CNT) & 0xFFFF, s->c14 = rd(TIM14_CNT) & 0xFFFF;
   resync(s);
@@ -462,7 +465,7 @@ MAIN_COLD int k6_main(const k6_api_t *api) {
   }
 #elif defined(YSF_DECODE)
   {
-    /* scratch, as dmrrx: the filter's ring, the YSF decoder and its store, the DMA ring */
+    /* scratch, as dmrrx: the filter's ring, the YSF decoder, the DMA ring, then the message */
     uint32_t n = 0;
     uint8_t *sc = (uint8_t *)api->scratch(&n);
     if (n < DS_FRING + sizeof(yx_t) + RSZ) return -6;
@@ -470,6 +473,8 @@ MAIN_COLD int k6_main(const k6_api_t *api) {
     s->y = (yx_t *)(sc + DS_FRING);
     zero(s->y, sizeof(yx_t));
     s->ring = sc + DS_FRING + sizeof(yx_t);
+    /* the rest: the message, at least YX_MSG_MIN superframes */
+    if (!yx_mem(s->y, s->ring + RSZ, n - (DS_FRING + sizeof(yx_t) + RSZ), YX_MSG_MIN)) return -6;
     return go(api, s);
   }
 #else

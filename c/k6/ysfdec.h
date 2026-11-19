@@ -15,8 +15,8 @@
 
    Both decoders go a step at a time (yd_f5_step, yd_v7_step, then yd_v7_tb's traceback in
    pieces), so a module can spread them over the gaps between the DMA's samples. Both are
-   butterflies (every generator has its first and last taps). The K=7 decisions take
-   (YD_V7_STEPS - YD_WRAP) x 8 bytes.
+   butterflies (every generator has its first and last taps). The K=7 decoder keeps only the
+   last 64 steps' decisions (512 B) and traces back every 32 steps.
    SPDX-License-Identifier: MIT */
 #ifndef YSFDEC_H
 #define YSFDEC_H
@@ -148,14 +148,21 @@ __attribute__((unused)) static uint32_t yd_pn9(uint32_t *s) {
    kept only on even i % 7) is payload bit (c % 24) * 30 + c / 24. The decoder walks i in order
    (wrapping at 280), keeping i % 7 and c as 24 q + r: no divide a step */
 
+/* the K=7 decoder keeps the last YD_TBR steps' decisions and traces back from the best state
+   every YD_TBC steps: the older YD_TBC of those steps are decided (the newer ones, YD_TBR - YD_TBC
+   deep, only lead in); at the end the rest are traced from the best end state. The ring is 512 B
+   where a whole frame's decisions were 2,432 B */
+#define YD_TBR 64u
+#define YD_TBC 32u
 typedef struct {
   int16_t pm[64];
-  uint32_t dec[YD_V7_STEPS - YD_WRAP][2]; /* the first wrap's decisions: traceback stops short */
-  uint32_t step;
-  uint16_t t;                             /* the traceback's (0: not started) */
-  uint8_t s;
-  uint8_t i7, cr;                         /* the info step: i, i % 7, its first coded bit */
+  uint32_t dec[YD_TBR][2];                /* step t's decisions at t % YD_TBR */
+  uint8_t u[YD_INFO / 8];                 /* the info bits, MSB first */
+  uint8_t i7, cr;                         /* the info step: i % 7, its first coded bit */
+  uint8_t s, tb;                          /* the traceback: its state; 1 due, 2 running */
   uint16_t i, cq;
+  uint16_t step, t, tend, tout;           /* steps done; the traceback's step, its stop, and
+                                             the steps below tout it decides */
 } yd_v7_t;
 
 static void yd_v7_at(yd_v7_t *v, uint32_t i) {
@@ -169,18 +176,19 @@ static void yd_v7_at(yd_v7_t *v, uint32_t i) {
 static void yd_v7_start(yd_v7_t *v) {
   uint32_t s;
   for (s = 0; s < 64; s++) v->pm[s] = 0;
-  v->step = 0, v->t = 0;
+  for (s = 0; s < YD_INFO / 8; s++) v->u[s] = 0;
+  v->step = 0, v->tb = 0;
   yd_v7_at(v, YD_INFO - YD_WRAP);
 }
 
-/* one step of the wrap-around decoder over pay (the 720 descrambled soft bits, 4 bits each, two a
-   byte, bit 2k in the low half: -7..7, positive = 0); 1 when all are
-   done */
 /* the outputs (o0 o1 o2 = bits 2 1 0) of the register (state s << 0, the older bit 6 clear) for
    g = 133, 171, 165 octal; with bit 6 set all three flip (each g has it) */
 static const uint8_t YD_O7[32] = {
     0, 4, 1, 5, 6, 2, 7, 3, 7, 3, 6, 2, 1, 5, 0, 4, 3, 7, 2, 6, 5, 1, 4, 0, 4, 0, 5, 1, 2, 6, 3, 7};
 
+/* one step of the wrap-around decoder over pay (the 720 descrambled soft bits, 4 bits each, two a
+   byte, bit 2k in the low half: -7..7, positive = 0); 1 when a traceback is due (yd_v7_tb until
+   it gives 1; all done when v->step is YD_V7_STEPS then) */
 static int yd_v7_step(yd_v7_t *v, const uint8_t *pay) {
   int32_t l[3], bm[8];
   uint32_t t = v->step, g, j, d0 = 0, d1 = 0, r = v->cr, q = v->cq;
@@ -213,41 +221,45 @@ static int yd_v7_step(yd_v7_t *v, const uint8_t *pay) {
     else d1 |= dd << (2 * j - 32);
   }
   for (j = 0; j < 64; j++) v->pm[j] = nm[j];
-  if (t >= YD_WRAP) v->dec[t - YD_WRAP][0] = d0, v->dec[t - YD_WRAP][1] = d1;
-  v->step = t + 1;
-  return v->step >= YD_V7_STEPS;
+  v->dec[t & (YD_TBR - 1u)][0] = d0, v->dec[t & (YD_TBR - 1u)][1] = d1;
+  v->step = (uint16_t)++t;
+  if (t == YD_V7_STEPS)                   /* the end: all not yet decided */
+    v->tend = (uint16_t)(((t - 1u) & ~(YD_TBC - 1u)) - (YD_TBR - YD_TBC)), v->tout = (uint16_t)t;
+  else if ((t & (YD_TBC - 1u)) == 0 && t >= YD_TBR)
+    v->tend = (uint16_t)(t - YD_TBR), v->tout = (uint16_t)(t - (YD_TBR - YD_TBC));
+  else
+    return 0;
+  v->tb = 1;
+  return 1;
 }
 
-/* the traceback, n steps a call (from the best end state, at the first); 1 when done. The info
-   bits go in v->pm's room (no longer needed): 280 bits, MSB first */
+/* the traceback that yd_v7_step made due, n steps a call (from the best state, at the first);
+   1 when done. The steps tout..tend decide info bits (those inside the middle copy) */
 static int yd_v7_tb(yd_v7_t *v, uint32_t n) {
-  uint8_t *u = (uint8_t *)v->pm;
   uint32_t s = v->s, t = v->t;
-  if (t == 0) {
+  if (v->tb == 1) {
     int16_t best = v->pm[0];
     for (s = 0, t = 1; t < 64; t++)
       if (v->pm[t] > best) best = v->pm[t], s = t;
-    for (t = 0; t < 35; t++) u[t] = 0;
-    t = YD_V7_STEPS;
+    t = v->step, v->tb = 2;
   }
-  for (; n && t > YD_WRAP; n--) {
-    const uint32_t *dt = v->dec[--t - YD_WRAP];
-    uint32_t d = (s < 32 ? dt[0] >> s : dt[1] >> (s - 32)) & 1u;
-    if (t < YD_WRAP + YD_INFO && (s & 1u)) {
-      uint32_t k = t - YD_WRAP;
-      u[k >> 3] |= (uint8_t)(0x80u >> (k & 7u));
-    }
+  for (; n && t > v->tend; n--) {
+    const uint32_t *dt = v->dec[--t & (YD_TBR - 1u)];
+    uint32_t d = (s < 32 ? dt[0] >> s : dt[1] >> (s - 32)) & 1u, k = t - YD_WRAP;
+    if (t < v->tout && k < YD_INFO && (s & 1u)) v->u[k >> 3] |= (uint8_t)(0x80u >> (k & 7u));
     s = (s >> 1) | (d << 5);
   }
   v->s = (uint8_t)s, v->t = (uint16_t)t;
-  return t == YD_WRAP;
+  if (t > v->tend) return 0;
+  v->tb = 0;
+  return 1;
 }
 
 /* after the traceback: the 280 info bits' middle copy -> out[30] (five superframes) and the
    CRC-8 flags (bit k: superframe k good) */
 static uint32_t yd_v7_end(const yd_v7_t *v, uint8_t out[30]) {
   static const uint8_t C8[16] = {0, 7, 14, 9, 28, 27, 18, 21, 56, 63, 54, 49, 36, 35, 42, 45};
-  const uint8_t *u = (const uint8_t *)v->pm;
+  const uint8_t *u = v->u;
   uint32_t k, i, ok = 0;
   /* 5 x 7 bytes: 6 data, CRC-8 (0x07, init 0, MSB first) */
   for (k = 0; k < YD_NSF; k++, u += 7) {
