@@ -1,12 +1,12 @@
 {
  "id": "sottorx1",
- "status": "queued",
- "queued": "2026-11-19T00:55:00Z",
+ "status": "running",
+ "since": "2026-11-19T00:55:06Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "1e4758350ed7b6a2a7f3f238a3d88f22eec2b703",
   "path": "jobs/sottorx1"
  },
  "runner_commit": "bdb08d0500cc19086173fcff709e819beb6a411d",
- "updated": "2026-11-19T00:55:00Z"
+ "updated": "2026-11-19T00:55:06Z"
 }
