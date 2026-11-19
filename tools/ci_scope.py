@@ -154,6 +154,62 @@ class Map:
         return wf[0] if len(wf) == 1 else None
 
 
+# The radio workflows' own path filters (on: push / pull_request: paths:). A change that touches
+# only [ignore] paths (docs) starts no radio workflow at all, not even its scope job, and a push of
+# such a change to main builds nothing (Jeff, 2026-11-19: "Docs only change is invoking CI"). The
+# filter is [ignore] turned inside out: everything, less each [ignore] line, plus its ! lines, in
+# the map's order (GitHub's filters also let the last match decide). `--paths` prints it; `--check`
+# checks every radio workflow carries exactly this list on both events.
+FILTER_EVENTS = (
+    "push",
+    "pull_request",
+)
+
+
+def gh_paths(m):
+    """the GitHub `paths:` list that leaves out what [ignore] takes"""
+    out = ["**"]
+    for r in m.sections.get(IGNORE, ()):
+        p = r.pat.rstrip("/")
+        if r.pat.endswith("/"):
+            pats = [p + "/**"]
+        elif r.folder and os.path.isdir(os.path.join(ROOT, p)):
+            pats = [p, p + "/**"]  # a plain name that is a folder here
+        else:
+            pats = [p]
+        if p.startswith("**/"):
+            pats.append(p[3:])  # ** with a slash after it also means no folder at all
+        out += [q if r.neg else "!" + q for q in pats]
+    return out
+
+
+def workflow_paths(src):
+    """{event: [paths]} from a workflow's on: block (a plain reader for the layout used here)"""
+    lines = src.splitlines()
+    try:
+        i = lines.index("on:")
+    except ValueError:
+        return {}
+    got, ev, inpaths = {}, None, False
+    for line in lines[i + 1:]:
+        if line and not line.startswith(" ") and not line.startswith("#"):
+            break  # the next top-level key
+        body = line.split(" #", 1)[0].rstrip()
+        if not body.strip() or body.strip().startswith("#"):
+            continue
+        ind = len(body) - len(body.lstrip())
+        if ind == 2:
+            ev = body.strip().rstrip(":")
+            inpaths = False
+        elif ind == 4:
+            inpaths = body.strip() == "paths:"
+            if inpaths:
+                got[ev] = []
+        elif inpaths and body.strip().startswith("- "):
+            got[ev].append(body.strip()[2:].strip().strip("'\""))
+    return got
+
+
 def git(*args):
     return subprocess.run(["git", "-C", ROOT, *args], check=True, capture_output=True, text=True).stdout
 
@@ -259,6 +315,10 @@ def check(m):
 
         # the tests its workflow runs, and every module they import
         src = open(os.path.join(ROOT, wf), encoding="utf-8").read()
+        want, have = gh_paths(m), workflow_paths(src)
+        for ev in FILTER_EVENTS:
+            if have.get(ev) != want:
+                errors.append(f"{wf}: on.{ev}.paths isn't [ignore]'s filter (tools/ci_scope.py --paths prints it)")
         tests = sorted(set(WORKFLOW_TEST.findall(src)))
         for t in tests:
             if t not in fileset:
@@ -371,11 +431,16 @@ def main(argv=None):
     ap.add_argument("--github", metavar="RADIO", help="in CI: write run=true|false for this radio")
     ap.add_argument("--files", nargs="+", metavar="PATH", help="which radios these paths run")
     ap.add_argument("--base", default="origin/main", help="compare HEAD with this (default origin/main)")
+    ap.add_argument("--paths", action="store_true", help="print the radio workflows' paths: filter")
     a = ap.parse_args(argv)
 
     if a.github:
         return github(a.github)
     m = Map()
+    if a.paths:
+        for p in gh_paths(m):
+            print(f"      - '{p}'")
+        return 0
     if a.check:
         errors = check(m)
         for e in errors:

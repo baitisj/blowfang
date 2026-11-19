@@ -87,12 +87,18 @@ python -m pytest -q -n auto --store-durations --durations-path tests/durations.j
 Each radio has its own workflow: `k6-firmware.yml`, `uv380.yml`, `uv380-openrtx.yml` and
 `rt950.yml`. On a pull request, each one first asks `tools/ci_scope.py` whether the change
 touches that radio, using the map in `.github/ci-radios.txt`. If it doesn't, the radio's jobs
-show as skipped, which counts as passed. Docs-only changes build nothing. Shared code (the sotto
-submodule, `c/common/`, the shared `modem/` files) builds every radio that uses it.
+show as skipped, which counts as passed. Shared code (the sotto submodule, `c/common/`, the
+shared `modem/` files) builds every radio that uses it.
 
-Everything still builds on every push to main (the images hamlet flashes come from there), on
-the weekly run, from "Run workflow" on any branch, and on a PR with the `ci-full` label (add it,
-then re-run the jobs). A file the map doesn't place builds every radio.
+A change that touches only docs (the map's `[ignore]` section) starts no radio workflow at all,
+on a pull request or on a push to main: each radio workflow's `paths:` filter is `[ignore]`
+turned inside out. `python3 tools/ci_scope.py --paths` prints that list, and `--check` (the
+Forbidden files job) fails if a workflow's copy differs from the map. Only the guard workflow
+runs on a docs-only change.
+
+Everything else still builds on every push to main (the images hamlet flashes come from there),
+on the weekly run, from "Run workflow" on any branch, and on a PR with the `ci-full` label (add
+it, then re-run the jobs). A file the map doesn't place builds every radio.
 
 To see what your branch will build, and to check the map after adding files:
 

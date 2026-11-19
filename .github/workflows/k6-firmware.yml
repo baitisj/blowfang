@@ -12,7 +12,37 @@ on:
   # changes nothing the K6 builds from (.github/ci-radios.txt).
   push:
     branches: [main]
+    # docs only ([ignore] in .github/ci-radios.txt): no run at all. tools/ci_scope.py --paths
+    # prints this list and --check keeps it equal to the map
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!*.md'
+      - '!LICENSE'
+      - '!.gitignore'
+      - '!docs/**'
+      - '!.github/workflows/guard.yml'
+      - '!.github/workflows/k6-compilers.yml'
+      - '!tools/hamlet_prune_worktrees.sh'
+      - 'docs/manual/cards/**'
+      - 'docs/k6-insights/**'
+      - 'docs/k6-modules.md'
   pull_request:
+    # docs only ([ignore] in .github/ci-radios.txt): no run at all. tools/ci_scope.py --paths
+    # prints this list and --check keeps it equal to the map
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!*.md'
+      - '!LICENSE'
+      - '!.gitignore'
+      - '!docs/**'
+      - '!.github/workflows/guard.yml'
+      - '!.github/workflows/k6-compilers.yml'
+      - '!tools/hamlet_prune_worktrees.sh'
+      - 'docs/manual/cards/**'
+      - 'docs/k6-insights/**'
+      - 'docs/k6-modules.md'
   # weekly: the host tests against sotto main, not the pinned submodule (see sotto-canary below)
   schedule:
     - cron: "17 9 * * 1"
