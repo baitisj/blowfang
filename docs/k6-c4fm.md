@@ -409,7 +409,8 @@ SPI library module).
   buffers, the decoders), the DMA ring (1,024 B since bench run 2) and then the message buffer, which
   takes whatever the block has left: 151 superframes (6 s of sotto 1200) in the 11,776-byte block.
   Under 64 superframes, the module returns -6. Bench builds: `YX_BENCH` adds the time and level lines
-  (~100 superframes left), `YX_SNAP` the snapshot lines.
+  and `YX_SNAP` the snapshot lines; on the radio (scratch ~3.8 KB with telemetry 0) YX_BENCH no longer
+  fits with the grid timing in (it returns -6), and YX_SNAP fits only with `YX_MSG_MIN 40`.
 
 Lines:
 
