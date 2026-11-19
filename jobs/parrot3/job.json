@@ -1,0 +1,22 @@
+{
+ "id": "parrot3",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 16,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "parrot",
+    "--hz",
+    "441850000",
+    "--gain",
+    "-40",
+    "--minutes",
+    "15",
+    "--rx-gain",
+    "20"
+   ]
+  }
+ ]
+}
