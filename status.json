@@ -5,9 +5,15 @@
  "paused": "k6-arena: boot-trace flash + recovery (power cycle by Jeff)",
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-19T20:16:25Z",
+ "waiting": [
+  {
+   "id": "aprsair-4",
+   "who": "k6-aprs-ladder",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-19T20:24:33Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T20:16:25Z"
+ "updated": "2026-11-19T20:24:33Z"
 }
