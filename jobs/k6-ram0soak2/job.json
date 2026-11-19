@@ -1,0 +1,137 @@
+{
+ "id": "k6-ram0soak2",
+ "who": "k6-ysfrx",
+ "freq_mhz": "bench",
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 660,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:r0s.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "512910bf3f60c25f46480cb607f99836a879a658223db931813d469cbba8ac62"
+  },
+  {
+   "do": "wait",
+   "seconds": 60,
+   "continue_on_error": true,
+   "pattern": "r0 start"
+  },
+  {
+   "do": "wait",
+   "seconds": 150,
+   "continue_on_error": true,
+   "pattern": "r0 done"
+  },
+  {
+   "do": "wait",
+   "seconds": 15,
+   "continue_on_error": true,
+   "pattern": "r0 reset"
+  },
+  {
+   "do": "wait",
+   "seconds": 45,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ysfrx.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "7b48561c944f831f72b0cbca1c6811e22f8c8ffd2fb09d20a1e51c2dfd45eba0"
+  },
+  {
+   "do": "wait",
+   "seconds": 60,
+   "continue_on_error": true,
+   "pattern": "ysf start"
+  },
+  {
+   "do": "wait",
+   "seconds": 2,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 4,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "3888",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 180,
+   "continue_on_error": true,
+   "pattern": "K6 MOD ret="
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
