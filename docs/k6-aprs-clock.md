@@ -846,6 +846,48 @@ registers put back. The model can raise the sync flag at every arming as the chi
 third packet with an opening of four flags only. The model ends a packet when it is armed,
 which the real chip does not: the first bench run's fault could not show there.
 
+### Pluto ladder: how weak, and which receiver setting (2026-11-19, `aprslad_*`)
+
+Everything above measured `aprsdfsk` at -21 dBm from the IC-7100, with noise added to the audio:
+it says what the slicer reads, not how weak a packet it reads. Three later findings make the
+level worth measuring:
+
+- The Pluto ladders put the same plain FSK receiver's edge at about -93 to -96 dBm (K6 RSSI) at
+  2400 baud on 440.850 (docs/k6-fsk24.md, sweep 3). Real APRS at hamlet peaks at -94 to -99 dBm
+  on 144.390 over a floor of -108 (antenna on, garage lamp dark, docs/k6-fesw.md). If APRS's
+  edge is like 2400's, the receiver, not the site's noise, misses most stations.
+- The UV-380's DMR receive failed in 25 kHz mode (its AT1846S gives half the discriminator
+  level there; docs/uv380-c6000-modem.md). `aprsdfsk` tunes wide (REG_43 0x3028); the narrow
+  filter (0x4048) was never tried for APRS. On the K6 it also moves the IF from 16.9 kHz to about
+  9 kHz (docs/k6-characteristics.md). APRS at 3 kHz deviation fits a 12.5 kHz channel.
+- The plain receiver slices at the tuned centre (docs/k6-dmr.md, run N). A sender off frequency
+  skews AFSK's tone timing; a de-emphasised packet's quieter 2200 Hz tone can lose its zero
+  crossings when the sender is about 1 kHz off. The K6's crystal is +0.05 ppm, so this is the
+  senders' offset.
+
+The modules are `aprsdfsk_440` with one setting each, 320 s, the setting on the start line
+(`... plain set=narrow`) and each packet's strongest RSSI on its y line (`r=-81`):
+
+| Module | Filter | AFC | Gain |
+| --- | --- | --- | --- |
+| `aprslad_w` | wide (as `aprsdfsk`) | as Aura leaves it | AGC |
+| `aprslad_n` | narrow (REG_43 0x4048) | as Aura leaves it | AGC |
+| `aprslad_a` | wide | off (REG_73 bit 4, taken at the tune) | AGC |
+| `aprslad_g` | wide | as Aura leaves it | frozen, REG_13 03FF (as `aprsclk`'s tap) |
+
+Each puts back what it changed (the filter found, REG_73, REG_7E and REG_13). The bench job
+(bench runner inbox) uploads one, then the Pluto sends `python3 -m modem.aprs wav OUT --now
+--kinds --only 1,2,3 --repeat 3` (flat, pre-emphasised, de-emphasised, three each, 11 s) at
+3 kHz peak (`--peak 3000`: the wav is half scale) at TX gains -54 to -86 dB:
+`pluto_bench.py steps WAV --gains ... --peak 3000 --out steps.json`. Job A is `aprslad_w`
+alone; job B runs `n`, `a`, `g` and `w` again (a receiver's first minutes after a tune don't
+compare, insight 48). Report: `python3 -m modem.aprs ladder k6.log steps_w.json [...]`, a
+table per setting of frames of each kind out of three per gain, with the K6's RSSI.
+
+Next, by what A and B show: the sender's offset (`--offset-hz` -1500 to +1500 at the edge plus
+6 dB), then an hour on 144.390 (receive only, after the 12-minute lamp wait) beside an APRS-IS log
+of the stations within 40 km, which says which real packets the K6 misses.
+
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the

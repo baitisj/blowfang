@@ -931,6 +931,18 @@ int k6_main(const k6_api_t *api) {
 #endif
 #define NSV 10
 
+#ifdef DF_SET
+#ifndef DF_WIDE
+#define DF_WIDE 1      /* the filter: 1 wide (REG_43 0x3028, as aprsdfsk), 0 narrow (0x4048) */
+#endif
+#ifndef DF_AFC_OFF
+#define DF_AFC_OFF 0   /* 1: REG_73 bit 4 (the AFC off) */
+#endif
+#ifndef DF_GAIN
+#define DF_GAIN 0      /* REG_13 to freeze the gain at (REG_7E bit 15, index 3); 0 leaves the AGC */
+#endif
+#endif
+
 static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B};
 
 #ifdef FSK_SWEEP
@@ -1388,12 +1400,25 @@ int k6_main(const k6_api_t *api) {
   int32_t off = 0;
   int key = 0, left = 0, cald = 0;
   char *p;
+#ifdef DF_SET
+  uint16_t r73, r7e, r13, w0, ypk = 0;
+#endif
   if (api->level < 2) return -3;
   s = (st_t *)api->scratch(&room);
   if (room < sizeof(st_t)) return -8;
   for (i = 0; i < sizeof(st_t) / 4; i++) ((uint32_t *)s)[i] = 0;
   for (i = 0; i < NSV; i++) s->sv[i] = api->fd_read(FSK_SAVED[i]);
+#ifdef DF_SET
+  /* the ladder's settings (aprslad_*.c): the filter, the AFC (its bit is taken at the tune's RX
+     on, insight 48) and the gain frozen as aprsclk's tap does */
+  r73 = api->fd_read(0x73), r7e = api->fd_read(0x7E), r13 = api->fd_read(0x13);
+  w0 = api->fd_read(0x43) == 0x3028;
+  if (DF_AFC_OFF) api->fd_write(0x73, (uint16_t)(r73 | 0x0010));
+  api->tune(APRS_HZ, DF_WIDE);
+  if (DF_GAIN) api->fd_write(0x7E, (uint16_t)((r7e & 0x0FFF) | 0x8000 | (3u << 12))), api->fd_write(0x13, DF_GAIN);
+#else
   api->tune(APRS_HZ, 1);
+#endif
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
@@ -1409,6 +1434,9 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " fsk=", DF_CFG);
   p = kv(p, " sync=", FSK_CTRL);
   p = put(p, " plain");
+#ifdef DF_SET
+  p = put(p, " set=" DF_SET);
+#endif
   say(api, s, p);
   for (;;) {
     uint32_t n, over = 0;
@@ -1418,6 +1446,9 @@ int k6_main(const k6_api_t *api) {
       tkey = now;
       if (r < s->rlo) s->rlo = r;
       if (r > s->rhi) s->rhi = r;
+#ifdef DF_SET
+      if (r > ypk) ypk = r;
+#endif
       key = api->level >= 4 ? api->key_poll() : api->key_down();
       if (key || now >= RUN_MS) break;
       if (api->level >= 7 && now - s->flag_ms > 120) api->led(0);
@@ -1440,6 +1471,9 @@ int k6_main(const k6_api_t *api) {
         /* the first word of a packet of the chip's */
         left = 1, got = 0, eq = 0, drop = 0, rn = 0, tsync = now, ok0 = s->ok;
         tk0 = api->ticks(), off = (DF_LAG - 1) * DF_WORD;
+#ifdef DF_SET
+        ypk = 0;
+#endif
         cald = ncal >= 4 && (s->pre & 7), kq0 = kq, ncal0 = ncal;
         s->in = 0, s->sr = 0, s->idle = 0;
         s->dlast = 0, s->dn = DF_IDLE, s->dtone = 1, s->ddur = 0, s->dmd = -1, s->dclk = 0;
@@ -1494,6 +1528,10 @@ int k6_main(const k6_api_t *api) {
         p = kv(p, " d=", drop);
         p = kv(p, " s=", sy);
         p = kv(p, " k=", kq);
+#ifdef DF_SET
+        p = put(p, " r=-");
+        p = dec(p, (uint32_t)-KM_RSSI_DBM(ypk), 1); /* the packet's strongest REG_67 */
+#endif
         say(api, s, p);
       }
       left = 0;
@@ -1527,6 +1565,10 @@ int k6_main(const k6_api_t *api) {
   s->now_ms = now;
   for (i = 0; i < NSV; i++) api->fd_write(FSK_SAVED[i], s->sv[i]);
   api->fd_write(0x02, 0);
+#ifdef DF_SET
+  if (DF_GAIN) api->fd_write(0x13, r13), api->fd_write(0x7E, r7e);
+  if (DF_AFC_OFF || DF_WIDE != w0) api->fd_write(0x73, r73), api->tune(APRS_HZ, w0);
+#endif
   p = kv(s->ln, "aprs fsk ms=", now);
   p = kv(p, " key=", (uint32_t)key);
   p = kv(p, " pre=", s->pre);

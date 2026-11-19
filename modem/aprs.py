@@ -745,6 +745,70 @@ def plainlog_report(lines):
     return out
 
 
+def ladder_report(lines, steps, kinds=(1, 2, 3), per=3):
+    """the APRS sensitivity ladder (c/k6/mod/aprslad_*.c, tools/pluto_bench.py steps): the K6
+    logger's lines ("EPOCH<tab>BUILD<tab>K6 MOD say ...") and one steps json ({"steps": [{gain,
+    t0, t1}]}) -> table lines: per TX gain, the K6's RSSI (the median of the y lines' r=, the
+    packet's strongest), the packets the chip started on, and the frames read of each kind (its
+    station's number) out of per sent"""
+    said = []
+    for ln in lines:
+        f = ln.split("\t")
+        if len(f) < 2 or "say " not in f[-1]:
+            continue
+        try:
+            said.append((float(f[0]), f[-1].split("say ", 1)[1].strip()))
+        except ValueError:
+            continue
+    sets = [x.split("set=", 1)[1].split()[0] for _, x in said if x.startswith("aprs start") and "set=" in x]
+    head = "TX gain dB | K6 RSSI dBm | packets | " + " | ".join(KINDS[k][0] for k in kinds)
+    out = [f"setting {', '.join(dict.fromkeys(sets)) or '?'}", head, " | ".join(["---"] * (3 + len(kinds)))]
+    tot = {k: 0 for k in kinds}
+    for st in steps["steps"]:
+        mine = [x for t, x in said if st["t0"] <= t <= st["t1"] + 2.0]
+        ys = [x for x in mine if x.startswith("y ")]
+        rs = sorted(int(v.split("r=", 1)[1].split()[0]) for v in ys if " r=" in v)
+        got = {k: 0 for k in kinds}
+        for x in mine:
+            if x.startswith("f ") and len(x.split()) > 1:
+                call = x.split()[1]
+                k = int(call.rsplit("-", 1)[1]) if "-" in call else 0
+                if k in got:
+                    got[k] += 1
+        for k in kinds:
+            tot[k] += got[k]
+        out.append(f"{st['gain']:g} | {rs[len(rs) // 2] if rs else '-'} | {len(ys)} | "
+                   + " | ".join(f"{got[k]}/{per}" for k in kinds))
+    n = len(steps["steps"]) * per
+    out.append("all | | | " + " | ".join(f"{tot[k]}/{n}" for k in kinds))
+    return out
+
+
+def ls_for(lines, steps):
+    """the logger lines from the last 'aprs start' before a steps json's first send to its last"""
+    t0 = steps["steps"][0]["t0"] if steps["steps"] else 0.0
+    t1 = steps["steps"][-1]["t1"] + 2.0 if steps["steps"] else 0.0
+    out, start = [], 0
+    for i, ln in enumerate(lines):
+        f = ln.split("\t")
+        try:
+            t = float(f[0])
+        except ValueError:
+            continue
+        if t <= t0 and "say aprs start" in ln:
+            start = i
+        if t > t1:
+            break
+    for ln in lines[start:]:
+        try:
+            if float(ln.split("\t")[0]) > t1:
+                break
+        except ValueError:
+            continue
+        out.append(ln)
+    return out
+
+
 def describe(f):
     """'SRC>DST,PATH:info' for a frame (with FCS)"""
     calls, i = [], 0
@@ -799,6 +863,12 @@ def main(argv=None):
     q = sub.add_parser("plainlog", help="what c/k6/mod/aprsdfsk.c read, from the K6's serial log: packets "
                                         "and frames by station for each way of reading the FIFO")
     q.add_argument("log")
+    q = sub.add_parser("ladder", help="the APRS sensitivity ladder (c/k6/mod/aprslad_*.c): frames of each kind "
+                                      "per TX gain, from the K6 logger's log and pluto_bench steps --out json files")
+    q.add_argument("log")
+    q.add_argument("steps", nargs="+")
+    q.add_argument("--per", type=int, default=3, help="packets of each kind in one send (wav --repeat)")
+    q.add_argument("--only", default="1,2,3", help="the kinds sent (wav --only)")
     q = sub.add_parser("fsklog", help="what c/k6/mod/aprsfsk.c's packets held, from the K6's serial log (its y "
                                       "and d lines): flags, good frames, and bad ones a single bit away")
     q.add_argument("log")
@@ -808,6 +878,17 @@ def main(argv=None):
     if a.cmd == "dfsklog":
         with open(a.log, errors="replace") as f:
             print("\n".join(dfsklog_report(f.read().splitlines())))
+        return 0
+    if a.cmd == "ladder":
+        import json
+        with open(a.log, errors="replace") as f:
+            ls = f.read().splitlines()
+        for sp in a.steps:
+            with open(sp) as g:
+                st = json.load(g)
+            # a module's lines between its own start and the next one
+            print(sp)
+            print("\n".join(ladder_report(ls_for(ls, st), st, tuple(int(k) for k in a.only.split(",")), a.per)))
         return 0
     if a.cmd == "plainlog":
         with open(a.log, errors="replace") as f:
