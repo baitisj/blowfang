@@ -100,6 +100,48 @@ Then the flash (Jeff's typed line), with: the boot line above, a module run (any
 uses more than 11,776 B), VOICE MSG playback, EXPLORE, and the ysfrx playback regression
 (k6-ysfcsd2's job: three Pluto calls byte-exact, `from=AG7EW`).
 
+## The first flash hung (f541fbd, 2026-11-19 19:48Z)
+
+The keyed ATfE image (CI run 44600504184, build ID 14ee47f5e3f21ed3) flashed completely
+(117/117 KB) and then said nothing: it never answered the cable session, a 75 s listen got
+0 bytes, and `k6_update.py --manual` found no bootloader window in 150 s, so it hung hard
+(no reset loop) and needs a power cycle. The transmitter was never keyed. The radio checks
+above all ran on the old image at run time, after a normal boot, never on an image that uses
+the range from its first instruction right after an update.
+
+**The cause: the free-RAM paint.** VOICE MSG's first entry paints the free RAM (from cortex-m-rt's
+`__sheap` up to the stack pointer) to measure the stack later. link.x sets `__sheap` to the
+location counter after `.uninit`, and memory.x's `.ram0` is inserted right there, so in f541fbd
+`__sheap` was the end of RAM0, 0x20000E98, not the end of the statics (0x20005030). The paint
+wrote 0xA5A5A5A5 from 0x20000E98 to the stack: over the bootloader's UserVectors at 0x20001000
+(the SysTick and USART1 trampolines), `.data`, `.bss` and the arena. With interrupts back on, the
+next USART1 interrupt jumped through a painted UserVector and the K6 stopped.
+
+What the radio showed fits it: a cold boot (Jeff's power cycle, 20:15Z) printed `K6 ARENA
+bytes=14976 at 0x200012dc ram0=3480 ...`, `K6 TXDOG on cfgr1=00000002` and the library list up
+to slot 25, then nothing; the screen stayed white with the backlight on. The last ~500 bytes
+missing are one serial ring's worth: `lib_list` is the last report before `sp_init` and
+`paint_free_ram`, and the ring's tail never went out. In the f541fbd binary 0x20000E98 appears
+five times (`clear`, `used` and the three `__sheap` reads), the end of the statics once.
+
+Fix (aura-pager.patch, app::pager): the paint, `free_ram` and run_module's `stack=` use
+`__euninit`, the end of `.uninit`, the last of the static RAM. The layout is unchanged. The
+bootloader's RAM had nothing to do with it: `ram0soak` and `ram0zero` (map, fill, hold, with
+`say` lines going out the whole time) showed that before. The 2026-11-04 store hang at 0x100 is
+still unexplained, but that image had no `.ram0`-after-`.uninit` either way.
+
+The boot-trace image (`aura-voice-explore-boottrace`, Cargo feature `boottrace`, built in CI
+next to the release image, never bundled) stays as a tool for the next image that dies early:
+
+- `K6 BT 0000000N sp x` lines straight to USART1 at each step of main: 1 UART up, 2 USART1
+  trampoline, 3 txdog, 4 interrupts on, 5/6 around placing the App, 7 the main loops.
+- `K6 BT 0000001N` (0x10-0x1B): what the bootloader handed over, read before RAM0 is cleared:
+  DMA channels on and pointing below 0x20001000, USART1 CR1/CR3, NVIC ISER, SysTick CSR, the
+  reset flags, MSP, non-zero words in RAM0, SYSCFG CFGR1, PRIMASK, and 0x20000440-0x2000046F.
+- The independent watchdog as a net (about 13 s, kicked in hal::uptime::now): a hang resets
+  into the bootloader's window, so `k6_update.py --manual` gets the radio back with nobody at
+  it.
+
 ## Not done
 
 - **A movable floor for a ring of past calls.** Jeff wants the store kept as a ring of calls.
