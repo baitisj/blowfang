@@ -1,0 +1,12 @@
+2026-11-19T04:53:27Z job pttcap1 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-bde3f44e435f at bde3f44e435f54bb6321fbfc8d79cce2187ce404
+2026-11-19T04:53:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-bde3f44e435f/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/pttcap1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 04:53:28Z
+end 04:53:42Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T04:53:43Z step 1 (pluto) rc=0
+2026-11-19T04:53:58Z step 2 (wait) rc=0
+2026-11-19T04:53:58Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-bde3f44e435f/tools/pluto_bench.py --as uv380-multimode rx /home/baitisj/blowfang-work/runs/queue/pttcap1/ptt.wav --hz 441850000 --seconds 100 --gain 20
+/home/baitisj/blowfang-work/runs/queue/pttcap1/ptt.wav: 100.0 s on 441850000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/pttcap1/ptt.cf32), floor -87.7 dBFS, signal on 9%
+2026-11-19T04:55:57Z step 3 (pluto) rc=0
+2026-11-19T04:55:57Z job pttcap1 done

@@ -1,12 +1,39 @@
 {
  "id": "pttcap1",
- "status": "running",
- "since": "2026-11-19T04:53:25Z",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T04:53:27Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-19T04:53:27Z",
+   "ended": "2026-11-19T04:53:43Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-19T04:53:43Z",
+   "ended": "2026-11-19T04:53:58Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-19T04:53:58Z",
+   "ended": "2026-11-19T04:55:57Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-bde3f44e435f",
+ "head": "bde3f44e435f54bb6321fbfc8d79cce2187ce404",
+ "ended": "2026-11-19T04:55:57Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "6fd43b3a75e6c15404eb986d506bbfd0e910050a",
   "path": "jobs/pttcap1"
  },
  "runner_commit": "bde3f44e435f54bb6321fbfc8d79cce2187ce404",
- "updated": "2026-11-19T04:53:25Z"
+ "updated": "2026-11-19T04:55:57Z"
 }
