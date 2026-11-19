@@ -1,12 +1,12 @@
 {
  "id": "aprsoff-e1",
- "status": "queued",
- "queued": "2026-11-19T13:34:20Z",
+ "status": "running",
+ "since": "2026-11-19T13:34:26Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "a195057ad89974d053bfc02a0c17de0c6b81ab38",
   "path": "jobs/aprsoff-e1"
  },
  "runner_commit": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
- "updated": "2026-11-19T13:34:20Z"
+ "updated": "2026-11-19T13:34:26Z"
 }

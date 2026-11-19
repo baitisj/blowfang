@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "aprsoff-e1",
-   "who": "k6-aprs-ladder",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "aprsoff-e1",
+  "who": "k6-aprs-ladder",
+  "since": "2026-11-19T13:34:26Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-19T13:34:20Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T13:34:20Z"
+ "updated": "2026-11-19T13:34:26Z"
 }
