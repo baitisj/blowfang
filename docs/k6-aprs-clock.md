@@ -846,6 +846,157 @@ registers put back. The model can raise the sync flag at every arming as the chi
 third packet with an opening of four flags only. The model ends a packet when it is armed,
 which the real chip does not: the first bench run's fault could not show there.
 
+### Pluto ladder: how weak, and which receiver setting (2026-11-19, `aprslad_*`)
+
+Everything above measured `aprsdfsk` at -21 dBm from the IC-7100, with noise added to the audio:
+it says what the slicer reads, not how weak a packet it reads. Three later findings make the
+level worth measuring:
+
+- The Pluto ladders put the same plain FSK receiver's edge at about -93 to -96 dBm (K6 RSSI) at
+  2400 baud on 440.850 (docs/k6-fsk24.md, sweep 3). Real APRS at hamlet peaks at -94 to -99 dBm
+  on 144.390 over a floor of -108 (antenna on, garage lamp dark, docs/k6-fesw.md). If APRS's
+  edge is like 2400's, the receiver, not the site's noise, misses most stations.
+- The UV-380's DMR receive failed in 25 kHz mode (its AT1846S gives half the discriminator
+  level there; docs/uv380-c6000-modem.md). `aprsdfsk` tunes wide (REG_43 0x3028); the narrow
+  filter (0x4048) was never tried for APRS. On the K6 it also moves the IF from 16.9 kHz to about
+  9 kHz (docs/k6-characteristics.md). APRS at 3 kHz deviation fits a 12.5 kHz channel.
+- The plain receiver slices at the tuned centre (docs/k6-dmr.md, run N). A sender off frequency
+  skews AFSK's tone timing; a de-emphasised packet's quieter 2200 Hz tone can lose its zero
+  crossings when the sender is about 1 kHz off. The K6's crystal is +0.05 ppm, so this is the
+  senders' offset.
+
+The modules are `aprsdfsk_440` with one setting each, 400 s (two minutes to settle after the tune before the Pluto sends), the setting on the start line
+(`... plain set=narrow`) and each packet's strongest RSSI on its y line (`r=-81`):
+
+| Module | Filter | AFC | Gain |
+| --- | --- | --- | --- |
+| `aprslad_w` | wide (as `aprsdfsk`) | as Aura leaves it | AGC |
+| `aprslad_n` | narrow (REG_43 0x4048) | as Aura leaves it | AGC |
+| `aprslad_a` | wide | off (REG_73 bit 4, taken at the tune) | AGC |
+| `aprslad_g` | wide | as Aura leaves it | frozen, REG_13 03FF (as `aprsclk`'s tap) |
+| `aprslad_d` | wide | as Aura leaves it | AGC; REG_2B + 0100 (the receiver's de-emphasis off) |
+| `aprslad_k` | wide | as Aura leaves it, and tuned again after every packet without a frame (`DF_KICK`) | AGC |
+| `aprslad_o` | wide | as Aura leaves it; each packet tuned to its opening flags' offset (`DF_OFFT`) | AGC |
+
+Each puts back what it changed (the filter found, REG_73, REG_7E and REG_13). The bench job
+(bench runner inbox) uploads one, then the Pluto sends `python3 -m modem.aprs wav OUT --now
+--kinds --only 1,2,3 --repeat 3` (flat, pre-emphasised, de-emphasised, three each, 11 s) at
+3 kHz peak (`--peak 3000`: the wav is half scale) at TX gains -54 to -86 dB:
+`pluto_bench.py steps WAV --gains ... --peak 3000 --out steps.json`. Job A is `aprslad_w`
+alone; job B runs `n`, `a`, `g` and `w` again (a receiver's first minutes after a tune don't
+compare, insight 48). Report: `python3 -m modem.aprs ladder k6.log steps_w.json [...]`, a
+table per setting of frames of each kind out of three per gain, with the K6's RSSI.
+
+Runs on 2026-11-19 (K6 receive only on 440.850, the Pluto sending; logs in the project files
+under `k6-aprs-ladder/`):
+
+- **A clock bug ended every early ladder.** In runs A1, B1, B2 and C2 one long packet with many
+  reads of the empty FIFO (`d=9` to `41` on its y line, often two packets run together, yet with a
+  frame in it) pulled the clock `aprsdfsk` learns to its 5 % bound (`k=1284`), and the module read
+  no frame after it, at any level. Their edges and setting comparisons (and C2's offsets, 7 of 12
+  at no offset before it struck, none of 84 after) say when the bug struck, not how weak a packet
+  can be. The fix: a packet with more than `DF_DROPS` (3) such reads teaches the clock nothing, and
+  `DF_MISS` (8) packets in a row without a frame put it back to `DF_KQ`.
+- **The AFC off reads nothing** (B1: the chip starts on 60 packets, no frame), as POCSAG's run 7
+  found. Keep it on.
+- **De-emphasised packets never read** (kind 3, no frame in any run): each stops at 84 words,
+  right where the opening flags end. The 11-10 bench never sent one: the IC-7100's transmit path
+  pre-emphasised them. `dfskcap_de`'s captures (run aprsde-1) hold the whole packet, but the
+  lone 2200 Hz bits between marks are gone and every other flag's mark reads two bits long (an
+  interval of 4 or 5 samples where 2 then 1 belong). The receiver's de-emphasis is not it:
+  `aprslad_d` (REG_2B + 0100) reads the same (run D1: flat 10/21, pre-emphasised 8/21,
+  de-emphasised 0/21, against 10, 10 and 0 for `aprslad_w` in the same run). The plain receiver
+  itself loses a weak 2200 Hz half cycle after a loud 1200 Hz one, so a sender whose highs are
+  some 5 dB down is not read; flat and pre-emphasised senders (most of them) are.
+- **Run A2, with the fix** (levels in a shuffled order, so time and level are apart; three of each
+  kind a level, flat and pre-emphasised together):
+
+| K6 RSSI (wide) | wide | narrow | gain frozen (by TX gain) |
+| --- | --- | --- | --- |
+| -88 / -89 dBm | 10/12 | 7/12 | 9/12 |
+| -93 | 2/6 | 4/6 | 6/6 |
+| -97 | 3/6 | 2/6 | 3/6 |
+| -100 | 1/6 | 1/6 | 0/6 |
+| -103 and under | 0/24 | 0/24 | 0/24 |
+
+  The three settings are alike inside these small numbers: about half the packets at -95 to -97
+  dBm, the last at -100. The chip still starts on the flags at -103 to -106, so 6 to 10 dB more
+  is in the slicer. Real 144.390 stations at hamlet peak at -94 to -99 dBm: right at this edge.
+
+- **Off the air with the fix** (run aprsair-1, 12:02 to 12:32Z, 144.390 MHz, receive only, two
+  15-minute modules): 8 starts, no frame, the clock at 1352 throughout. The minute lines' RSSI
+  sat at -95/-96 dBm with peaks of -89/-90: some 13 dB over the -108 floor of 2026-11-10 and at
+  the edge above, so nothing on the air could be read. What raised the floor is not known yet.
+- **The sender's offset decides it** (runs C3, C4 and C5, `aprs12.wav`, 12 packets flat and
+  pre-emphasised a step, TX gain -62 = -89 dBm, `--offset-hz` as given to `pluto_bench.py`).
+  C4 put a step at 0 between every offset step, two modules of `aprslad_w`:
+
+| Module | 0 | +300 | 0 | -300 | 0 | +600 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 11/12 | 3/12 | 12/12 | 8/12 | 10/12 | 0/12 | 11/12 |
+
+| Module | 0 | -600 | 0 | +1500 | 0 | -1500 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | 11/12 | 4/12 | 1/12 | no start | 1/12 | no start | 0/12 |
+
+  C5 ran `aprslad_k` (below) and then `aprslad_w`, each 0, -600, 0, +300, 0, -300, 0:
+
+| Module | 0 | -600 | 0 | +300 | 0 | -300 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `aprslad_k` | 0/12 | 11/12 | 0/12 | 0/12 | 0/12 | 12/12 | 0/12 |
+| `aprslad_w` | 12/12 | 3/12 | 4/12 | 0/12 | 12/12 | 9/12 | 11/12 |
+
+  - The plain receiver reads a packet only within some 300 Hz of where it is centred (as for
+    DMR's sync in run N and ACARS); 600 Hz off, almost nothing; 1.5 kHz off, the chip does not
+    even start.
+  - Where it is centred is the AFC's doing, with its 30 s time constant (insight 48). Straight
+    after a tune (`aprslad_k` tunes after every packet without a frame) it sits between the
+    -600 and -300 steps: the Pluto's 0 is some 400 Hz (0.9 ppm) from the K6's own centre; the
+    Pluto drifts 0.3 to 0.9 ppm against the TV pilots ([k6-drift-cal.md](k6-drift-cal.md))
+    and the K6 is within 0.1 ppm. After a few minutes of steps at 0 the AFC has pulled the
+    centre there, which is the bench's "settled" state and the two-minute warm-up seen since
+    2026-11-10. A sender 600 Hz off pulls it away and the steps at 0 after it are lost for
+    tens of seconds (C4 module 2, C5 `aprslad_w`).
+  - On the air no sender keys long enough to pull the AFC, so the K6 hears only senders within
+    some 300 Hz of where the AFC last drifted: at 144.390 that is about 2 ppm. `aprslad_k`
+    (`DF_KICK`) keeps the centre on the K6's own tuning, which is right to 0.1 ppm, and so on
+    the mean of the senders; it does not widen the window.
+  - What would: the sender's offset read from its opening flags (the slicer's duty, which
+    moves with the offset since the chip slices at the tuned centre) and a tune to it before
+    the frame begins, or a decoder on the IF tap with its own AFC.
+
+- **The offset from the opening flags** (run aprsoff-e1, `aprslad_a`, the AFC off so the centre
+  stays put). The y lines' `q=` is ones less zeros in the packet's words 2 to 25 (384 samples
+  of its opening flags). With the sender off the tuned centre the chip reads more of one level,
+  and q follows the offset closely, packet after packet (medians; the K6's centre is the
+  Pluto's -450, so a step's offset from it is minus the step, less 450):
+
+| Offset from the K6's centre (Hz) | -1050 | -750 | -450 | -150 | +150 | +450 | +750 | +1050 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| q | -64 (one start) | -32 | -10 to -13 | -3 to -4 | +2 to +4 | +6 to +10 | +16 to +22 | +36 (three starts) |
+| read, AFC off | | 0/12 | 0/12 | 10/12 | 7/12, 10/10 | 1/12 | 0/12 | no start |
+
+  A packet reads while |q| is 6 or under. Beyond about 1 kHz the chip seldom starts at all.
+- **`aprslad_o` (`DF_OFFT`)**: when the flags' q is 8 or more either way, the packet is given up,
+  the K6 tuned 150 Hz times the square root of |q| that way (within 150 Hz of every row above),
+  and the packet read again from the flags still to come; tuned back to the centre when it ends,
+  or after 0.5 s with no packet. A y line's `o=` is the offset it was read at. Run aprsoff-f1,
+  `aprslad_o` and then `aprslad_w`, AFC on, 12 packets a step at -89 dBm:
+
+| Offset from the K6's centre (Hz) | +150 | +750 | -450 | +450 | -750 | -150 | +1050 | -1050 | +150 | All |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `aprslad_o` | 8 | 10 | 6 | 8 | 4 | 11 | 1 | 1 | 11 | 60 of 108 |
+| `aprslad_w` | 4 | 0 | 0 | 4 | 0 | 11 | 0 | 0 | 4 | 23 of 108 |
+
+  The window goes from some 300 Hz either way to some 750, and at the centre `aprslad_o` loses
+  nothing (its tunes back also keep the AFC from wandering, as `aprslad_k` does). At 144.390
+  MHz that is about 5 ppm either way instead of 2. Past about 1 kHz the chip's own start is the
+  limit. The opening must be long enough for the tune: 24 words (80 ms) to measure and some
+  flags after it; an APRS sender's TXDELAY is usually 200 to 300 ms.
+
+Next: `aprsdfsk` (144.390) with `DF_OFFT`, an off-air run once the floor is back near -108 dBm,
+and an hour beside an APRS-IS log of the stations within 40 km.
+
 ## Size: which images
 
 5,046 bytes of code (clang -Oz) and about 2.3 KB of state (the DMA ring 1 KB, a frame 332 B, the

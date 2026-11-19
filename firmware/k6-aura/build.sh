@@ -315,6 +315,13 @@ aprsclk        # level 2 (screen at 6, LED at 7), docs/k6-aprs-clock.md
 aprsclk_440    # level 2, aprsclk on 440.850 for the on-air loopback
 aprsdfsk       # level 2 (screen at 6, LED at 7), aprsclk behind the chip's plain FSK receiver as a sampler (REG_58 00e9), 144.390
 aprsdfsk_440   # level 2, aprsdfsk on 440.850 for 240 s (the bench)
+aprslad_a      # level 2, the APRS ladder: aprsdfsk_440 with the AFC off, 400 s
+aprslad_d      # level 2, the APRS ladder: aprsdfsk_440 with the receiver's de-emphasis off (REG_2B + 0100), 400 s
+aprslad_g      # level 2, the APRS ladder: aprsdfsk_440 with the gain frozen at REG_13 03ff, 400 s
+aprslad_k      # level 2, the APRS ladder: aprsdfsk_440 tuned again after every packet without a frame (the AFC re-centred), 400 s
+aprslad_n      # level 2, the APRS ladder: aprsdfsk_440 with the narrow filter, 400 s
+aprslad_o      # level 2, the APRS ladder: aprsdfsk_440 tuned to each packet's offset from its opening flags (q), 400 s
+aprslad_w      # level 2, the APRS ladder: aprsdfsk_440 as it is (wide, AFC on, AGC), 400 s
 aprsfsk        # level 2 (screen at 6, LED at 7), aprsclk behind the chip's own FSK modem (REG_58 33a3), 144.390
 aprsfsk_440    # level 2, aprsfsk on 440.850 for the on-air loopback, every packet's words said
 aprsfskb       # level 2, aprsfsk reading the modem's FIFO all the time (FSK_STREAM)
@@ -329,6 +336,7 @@ cwlisten       # level 2
 cwlisten_lo    # level 2, cwlisten with a 400-1300 Hz bank
 cwprobe        # level 2
 dfskcap        # level 2, records the chip's plain FSK receiver on Bell 202 audio (docs/k6-aprs-clock.md)
+dfskcap_de     # level 2, dfskcap from 75 s: a de-emphasised packet's words from the Pluto (docs/k6-aprs-clock.md)
 dfskcap_acars  # level 2, dfskcap on 131.550 MHz, four front ends: does the plain FSK receiver hear ACARS (receive only, docs/k6-acars.md)
 dfskcap_acars6 # level 2, dfskcap_acars on 50.650 MHz for the bench's AM test (receive only, docs/k6-acars.md)
 dfskcap_acars6am # level 2, dfskcap_acars6 with the chip in AM at its normal IF: does the tone receiver get the AM audio (receive only, docs/k6-acars.md)

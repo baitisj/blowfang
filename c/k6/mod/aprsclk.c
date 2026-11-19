@@ -145,6 +145,12 @@ typedef struct {
   uint8_t day, mon, yr, stn;
 #ifdef APRS_FSK
   uint32_t fake;      /* sync words with under 6 words and no frame */
+#if defined(DF_SET) && DF_KICK
+  uint32_t kicks;     /* tunes after a packet without a frame */
+#endif
+#if defined(DF_SET) && DF_OFFT
+  uint32_t rts;       /* packets given up for a tune to their flags' offset */
+#endif
   uint16_t sv[10];    /* the modem's registers as found */
 #ifdef FSK_PLAIN
   uint16_t fifo[8];   /* the last eight words taken: what a read of the empty FIFO gives again */
@@ -156,6 +162,11 @@ typedef struct {
   int32_t dct;        /* the tone of the last interval, for dclk */
   int32_t dclk;       /* how long the chip took over the packet's words so far, in the slicer's units */
   uint32_t idle;      /* line bits outside a frame */
+#ifdef DF_SET
+  int32_t qs;         /* ones less zeros in the packet's words DF_Q0 to DF_Q0 + DF_QW (its opening
+                         flags): the chip slices at the tuned centre, so a sender off it reads
+                         more of one level (q= on the y line) */
+#endif
 #else
   uint16_t cap[128];  /* a packet's words as read, for its d lines */
 #endif
@@ -931,6 +942,42 @@ int k6_main(const k6_api_t *api) {
 #endif
 #define NSV 10
 
+#ifdef DF_SET
+#ifndef DF_WIDE
+#define DF_WIDE 1      /* the filter: 1 wide (REG_43 0x3028, as aprsdfsk), 0 narrow (0x4048) */
+#endif
+#ifndef DF_AFC_OFF
+#define DF_AFC_OFF 0   /* 1: REG_73 bit 4 (the AFC off) */
+#endif
+#ifndef DF_GAIN
+#define DF_GAIN 0      /* REG_13 to freeze the gain at (REG_7E bit 15, index 3); 0 leaves the AGC */
+#endif
+#ifndef DF_AF
+#define DF_AF 0        /* bits ORed into REG_2B: 0100 the receiver's de-emphasis off */
+#endif
+#define DF_Q0 2u       /* q=: the opening flags' words from the third */
+#define DF_QW 24u      /* 384 samples, 80 ms of an opening of 40 flags (267 ms) */
+#ifndef DF_OFFT
+#define DF_OFFT 0      /* 1: tuned by the opening flags' q (DF_QHZ * sqrt|q| Hz) when |q| >= DF_QMIN, the
+                          packet given up there and read again from the flags still to come; tuned
+                          back to the centre when a packet ends */
+#endif
+#ifndef DF_QHZ
+#define DF_QHZ 150     /* Hz for the square root of |q| */
+#endif
+#ifndef DF_QMIN
+#define DF_QMIN 8      /* |q| of 6 and under still reads (within some 300 Hz of the centre) */
+#endif
+#define DF_OMAX 1500   /* Hz: the furthest a packet is tuned off */
+#define DF_OWAIT 500u  /* ms after such a tune with no packet begun: back to the centre */
+#ifndef DF_KICK
+#define DF_KICK 0      /* 1: tuned again after every packet without a frame, so the AFC starts
+                          again from the tuned centre (it takes hold at a tune, insight 48): the
+                          offset ladder of 2026-11-19 (run C4) left the receiver deaf to centred
+                          packets after a sender 0.6 kHz off */
+#endif
+#endif
+
 static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B};
 
 #ifdef FSK_SWEEP
@@ -1293,6 +1340,9 @@ int k6_main(const k6_api_t *api) {
 #define DF_TURN 3        /* dclk: a change of tone */
 #define DF_IDLE 8        /* samples without a transition: no tone of Bell 202 */
 #define DF_QUIET 64      /* and this many: the packet is over */
+#define DF_DROPS 3u      /* reads that fell behind in a packet (a clean one has 0 or 1): more, and
+                            the clock learnt in it is not kept */
+#define DF_MISS 8u       /* packets in a row without a frame: the clock learnt is forgotten */
 #define DF_SAY 40u       /* words: a shorter packet without a frame is noise, and gets no line */
 
 static void df_bits(const k6_api_t *api, st_t *s, int32_t tone, int32_t n) {
@@ -1374,26 +1424,60 @@ static uint32_t df_seek(const k6_api_t *api, uint32_t *sy) {
   return (w & 0xFF) << 8 | w >> 8;
 }
 
+#if defined(DF_SET) && (DF_KICK || DF_OFFT)
+/* tuned again (off Hz from APRS_HZ), the AFC starting again there, and the FSK set up behind it
+   (the search starts again after, as after every packet) */
+static void df_tune(const k6_api_t *api, int32_t off) {
+  api->tune((uint32_t)((int32_t)APRS_HZ + off), DF_WIDE);
+  api->fd_write(0x3F, 0), api->fd_write(0x59, 0), api->fd_write(0x58, 0);
+  api->fd_write(0x5B, 0xAAAA), api->fd_write(0x72, 0xC195), api->fd_write(0x5C, 0x5625);
+  api->fd_write(0x5D, 0xFFE0), api->fd_write(0x5E, 0x0204);
+}
+#endif
+
 /* a word of the chip's, the rn-th of its packet, through the slicer */
 static void df_word(const k6_api_t *api, st_t *s, uint32_t v, uint32_t rn) {
   uint32_t i;
   s->fifo[rn & 7] = (uint16_t)v;
+#ifdef DF_SET
+  if (rn - DF_Q0 < DF_QW)
+    for (i = v, s->qs -= 16; i; i &= i - 1) s->qs += 2;
+#endif
   for (i = 16; i--;) df_sample(api, s, (int32_t)((v >> i) & 1));
 }
 
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now, tkey = 0, tsync = 0, ok0 = 0, got = 0, eq = 0, drop = 0, prev, inv = 0;
-  uint32_t tseek = 0, tk0 = 0, rn = 0, sy = 1, kq = DF_KQ, ncal = 0, kq0 = DF_KQ, ncal0 = 0;
+  uint32_t tseek = 0, tk0 = 0, rn = 0, sy = 1, kq = DF_KQ, ncal = 0, kq0 = DF_KQ, ncal0 = 0, miss = 0;
   int32_t off = 0;
   int key = 0, left = 0, cald = 0;
   char *p;
+#ifdef DF_SET
+  uint16_t r73, r7e, r13, w0, ypk = 0;
+#if DF_OFFT
+  int32_t toff = 0;  /* Hz tuned off APRS_HZ for this packet */
+  uint32_t qd = 0, rt = 0, trt = 0; /* q looked at in this packet; the packet given up for a
+                                       tune, and when */
+#endif
+#endif
   if (api->level < 2) return -3;
   s = (st_t *)api->scratch(&room);
   if (room < sizeof(st_t)) return -8;
   for (i = 0; i < sizeof(st_t) / 4; i++) ((uint32_t *)s)[i] = 0;
   for (i = 0; i < NSV; i++) s->sv[i] = api->fd_read(FSK_SAVED[i]);
+#ifdef DF_SET
+  /* the ladder's settings (aprslad_*.c): the filter, the AFC (its bit is taken at the tune's RX
+     on, insight 48) and the gain frozen as aprsclk's tap does */
+  r73 = api->fd_read(0x73), r7e = api->fd_read(0x7E), r13 = api->fd_read(0x13);
+  w0 = api->fd_read(0x43) == 0x3028;
+  if (DF_AFC_OFF) api->fd_write(0x73, (uint16_t)(r73 | 0x0010));
+  api->tune(APRS_HZ, DF_WIDE);
+  if (DF_GAIN) api->fd_write(0x7E, (uint16_t)((r7e & 0x0FFF) | 0x8000 | (3u << 12))), api->fd_write(0x13, DF_GAIN);
+  if (DF_AF) api->fd_write(0x2B, (uint16_t)(s->sv[9] | DF_AF)); /* (put back with FSK_SAVED) */
+#else
   api->tune(APRS_HZ, 1);
+#endif
   api->fd_write(0x3F, 0);
   api->fd_write(0x59, 0);
   api->fd_write(0x58, 0);
@@ -1409,6 +1493,9 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " fsk=", DF_CFG);
   p = kv(p, " sync=", FSK_CTRL);
   p = put(p, " plain");
+#ifdef DF_SET
+  p = put(p, " set=" DF_SET);
+#endif
   say(api, s, p);
   for (;;) {
     uint32_t n, over = 0;
@@ -1418,6 +1505,9 @@ int k6_main(const k6_api_t *api) {
       tkey = now;
       if (r < s->rlo) s->rlo = r;
       if (r > s->rhi) s->rhi = r;
+#ifdef DF_SET
+      if (r > ypk) ypk = r;
+#endif
       key = api->level >= 4 ? api->key_poll() : api->key_down();
       if (key || now >= RUN_MS) break;
       if (api->level >= 7 && now - s->flag_ms > 120) api->led(0);
@@ -1440,6 +1530,12 @@ int k6_main(const k6_api_t *api) {
         /* the first word of a packet of the chip's */
         left = 1, got = 0, eq = 0, drop = 0, rn = 0, tsync = now, ok0 = s->ok;
         tk0 = api->ticks(), off = (DF_LAG - 1) * DF_WORD;
+#ifdef DF_SET
+        ypk = 0, s->qs = 0;
+#if DF_OFFT
+        qd = 0;
+#endif
+#endif
         cald = ncal >= 4 && (s->pre & 7), kq0 = kq, ncal0 = ncal;
         s->in = 0, s->sr = 0, s->idle = 0;
         s->dlast = 0, s->dn = DF_IDLE, s->dtone = 1, s->ddur = 0, s->dmd = -1, s->dclk = 0;
@@ -1478,10 +1574,46 @@ int k6_main(const k6_api_t *api) {
       prev = v, got++;
       s->now_ms = now;
       over = s->idle >= FSK_IDLE || s->dn >= DF_QUIET || got >= DF_WORDS;
+#if defined(DF_SET) && DF_OFFT
+      if (!qd && rn >= DF_Q0 + DF_QW) {
+        /* the opening flags have said where the sender sits: tuned there once a packet, and
+           its flags still to come start the chip again */
+        qd = 1;
+        if (!toff && (s->qs >= DF_QMIN || s->qs <= -DF_QMIN)) {
+          /* the bench's ladder (run aprsoff-e1, AFC off): q is +8, +20, +38 at 450, 750, 1050 Hz
+             one way and -12, -33, -64 the other (steeper as the 2200 Hz half cycles go): about
+             DF_QHZ * sqrt(|q|) Hz, within 150 Hz of each */
+          uint32_t a = (uint32_t)(s->qs < 0 ? -s->qs : s->qs) << 6, r = 0;
+          while ((r + 1) * (r + 1) <= a) r++;
+          toff = (int32_t)((r * DF_QHZ) >> 3);
+          if (s->qs < 0) toff = -toff;
+          if (toff > DF_OMAX) toff = DF_OMAX;
+          if (toff < -DF_OMAX) toff = -DF_OMAX;
+          df_tune(api, toff);
+          rt = 1, over = 1, trt = now;
+        }
+      }
+#endif
     }
     if (!left && now - tseek >= DF_AGAIN) over = 1;
+#if defined(DF_SET) && DF_OFFT
+    if (!left && toff && now - trt >= DF_OWAIT) df_tune(api, 0), toff = 0, over = 1;
+#endif
+#if defined(DF_SET) && DF_OFFT
+    if (left && over && rt) {
+      /* given up for the tune: nothing learnt, no line */
+      kq = kq0, ncal = ncal0, rt = 0, left = 0;
+      s->rts++;
+    }
+#endif
     if (left && over) {
-      if (s->ok == ok0) kq = kq0, ncal = ncal0; /* no frame: nothing learnt from what it was */
+      /* no frame, or a packet whose reads fell behind more than now and then (two packets run
+         together, or a weak one: the bench's ladder of 2026-11-19 had one with d=13 pull the
+         clock to its 5% bound, and nothing was read after): nothing learnt from what it was */
+      if (s->ok == ok0 || drop > DF_DROPS) kq = kq0, ncal = ncal0;
+      /* and a clock that reads nothing for DF_MISS packets in a row starts again from DF_KQ */
+      if (s->ok != ok0) miss = 0;
+      else if (got >= DF_SAY && ++miss >= DF_MISS) kq = kq0 = DF_KQ, ncal = 0, miss = 0;
       if (got < DF_SAY && s->ok == ok0) s->fake++;
       else {
         /* a line costs tens of ms of listening: none for a sync word found in noise */
@@ -1490,12 +1622,36 @@ int k6_main(const k6_api_t *api) {
         p = kv(p, " t=", tsync);
         p = kv(p, " w=", got);
         p = kv(p, " ok=", s->ok - ok0);
+#ifndef DF_SET /* (a ladder line has q= instead: 60 characters) */
         p = kv(p, " e=", eq);
+#endif
         p = kv(p, " d=", drop);
         p = kv(p, " s=", sy);
+#if defined(DF_SET) && DF_OFFT
+        p = put(p, toff < 0 ? " o=-" : " o=");     /* (k= gives way: 60 characters) */
+        p = dec(p, (uint32_t)(toff < 0 ? -toff : toff), 1);
+#else
         p = kv(p, " k=", kq);
+#endif
+#ifdef DF_SET
+        p = put(p, " r=-");
+        p = dec(p, (uint32_t)-KM_RSSI_DBM(ypk), 1); /* the packet's strongest REG_67 */
+        p = put(p, s->qs < 0 ? " q=-" : " q=");
+        p = dec(p, (uint32_t)(s->qs < 0 ? -s->qs : s->qs), 1);
+#endif
         say(api, s, p);
       }
+#if defined(DF_SET) && DF_KICK
+      if (s->ok == ok0 && got >= DF_SAY) {
+        /* the AFC back to the tuned centre: a tune, and the FSK set up again behind it (the
+           search starts again below, as after every packet) */
+        df_tune(api, 0);
+        s->kicks++;
+      }
+#endif
+#if defined(DF_SET) && DF_OFFT
+      if (toff) df_tune(api, 0), toff = 0;
+#endif
       left = 0;
     }
     if (!left && now - s->scr_ms >= 1000) {
@@ -1527,11 +1683,21 @@ int k6_main(const k6_api_t *api) {
   s->now_ms = now;
   for (i = 0; i < NSV; i++) api->fd_write(FSK_SAVED[i], s->sv[i]);
   api->fd_write(0x02, 0);
+#ifdef DF_SET
+  if (DF_GAIN) api->fd_write(0x13, r13), api->fd_write(0x7E, r7e);
+  if (DF_AFC_OFF || DF_WIDE != w0) api->fd_write(0x73, r73), api->tune(APRS_HZ, w0);
+#endif
   p = kv(s->ln, "aprs fsk ms=", now);
   p = kv(p, " key=", (uint32_t)key);
   p = kv(p, " pre=", s->pre);
   p = kv(p, " fake=", s->fake);
   p = kv(p, " inv=", inv);
+#if defined(DF_SET) && DF_KICK
+  p = kv(p, " kick=", s->kicks);
+#endif
+#if defined(DF_SET) && DF_OFFT
+  p = kv(p, " rt=", s->rts);
+#endif
   say(api, s, p);
   p = put(s->ln, "aprs end ok=");
   p = dec(p, s->ok, 1);

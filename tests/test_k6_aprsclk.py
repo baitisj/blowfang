@@ -10,6 +10,7 @@ and stay inside the arena and the stack. Needs a C compiler; the module test als
 and unicorn. SPDX-License-Identifier: MIT"""
 import ctypes
 import gzip
+import math
 import os
 import shutil
 import subprocess
@@ -845,26 +846,13 @@ def test_plainlog_reads_both_builds_lines():
                                              "sync AAAA: 1 packets, 0 with a frame, e=0 d=0; "]
 
 
-@need_clang
-@pytest.mark.parametrize("slow", [0.98, 1.0, 1.02])
-def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
-    """aprsdfsk (aprsclk's HDLC, parser and vote behind the chip's plain FSK receiver, FSK_PLAIN)
-    on the emulated M0. The model's air is the bench's own captures, a packet after another with
-    silence between: twelve flags as the chip gives them (the sync word AAAA is in each), and
-    the words the chip gave, each bit taken when the chip's clock, following the audio, would
-    (follow_times; the chip's clock 2% fast, right and 2% slow against the MCU's), the FIFO a
-    ring of eight whose empty read gives the word of eight reads before. Two more packets have
-    the tones swapped (a model of the chip's bits: the bench has not sent one yet), so their
-    flags hold the other sync word, 3333. Four are of the second set of captures (PRE): two
-    pre-emphasised packets with a lone sample inside a mark run, two with a mark run that the
-    first build's bias rounded a bit short. The module must read every clean packet (flat,
-    pre-emphasised, de-emphasised, low, short opening, swapped), none of the noisy, never let
-    the FIFO run over, learn the clock, set its own from the stations' stamps and put the
-    registers back."""
+def _dfsk_emulated(slow, name="aprsdfsk", defs=()):
+    """aprsdfsk's emulated run on the bench captures (see the test below) -> (the emulator, the
+    packets sent, the clean kinds, the module's return, its stack); e.tunes has the tune calls"""
     pytest.importorskip("unicorn")
     import k6_live_emu as le
     from modem import k6mod
-    src = os.path.join(K6, "mod", "aprsdfsk.c")
+    src = os.path.join(K6, "mod", name + ".c")
     _, _, caps = aprs.dfsklog_caps(dfsk_bench())
     _, _, pre = aprs.dfsklog_caps(dfsk_pre_bench())
     PRE = 10
@@ -888,18 +876,46 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     stream = np.array(stream + [0] * 14400, np.int8)
     times = follow_times(stream, slow)
     total = float(times[-12000])
-    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], src)
+    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")] + list(defs), src)
     full, _ = k6mod.build(src)
     bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
-    assert len(full) < 6400 and len(bench) < 6400, (len(full), len(bench))
-    Chip = modem_chip(le, lambda r58: stream, 4800)
+    assert len(full) < {"aprsdfsk": 6400, "aprslad_o": 7000}.get(name, 6700) and len(bench) < 6400, (len(full), len(bench))
+    Base = modem_chip(le, lambda r58: stream, 4800)
+
+    class Chip(Base):
+        def on_stub(self, uc, addr, size, x):
+            if self.names[(addr - self.stubs) // 16] == "tune":
+                self.tunes.append((uc.reg_read(self.A.UC_ARM_REG_R0), uc.reg_read(self.A.UC_ARM_REG_R1)))
+            return super().on_stub(uc, addr, size, x)
+
     Chip.long5d, Chip.early_done, Chip.ring, Chip.times = True, True, True, times
     e = Chip(code, entry, np.zeros(16, np.uint8), 0, FDMA, 1.5, max_s=total + 1, level=8,
              scratch=11776 - 24 - len(full))
+    e.tunes = []
     r = e.run()
     assert r is not None, e.said[-5:]
     ret, stack = r
     clean = [k for k, _ in sent if k in CLEAN + aprs.KINDS_SWAP]
+    return e, sent, clean, ret, stack
+
+
+@need_clang
+@pytest.mark.parametrize("slow", [0.98, 1.0, 1.02])
+def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
+    """aprsdfsk (aprsclk's HDLC, parser and vote behind the chip's plain FSK receiver, FSK_PLAIN)
+    on the emulated M0. The model's air is the bench's own captures, a packet after another with
+    silence between: twelve flags as the chip gives them (the sync word AAAA is in each), and
+    the words the chip gave, each bit taken when the chip's clock, following the audio, would
+    (follow_times; the chip's clock 2% fast, right and 2% slow against the MCU's), the FIFO a
+    ring of eight whose empty read gives the word of eight reads before. Two more packets have
+    the tones swapped (a model of the chip's bits: the bench has not sent one yet), so their
+    flags hold the other sync word, 3333. Four are of the second set of captures (PRE): two
+    pre-emphasised packets with a lone sample inside a mark run, two with a mark run that the
+    first build's bias rounded a bit short. The module must read every clean packet (flat,
+    pre-emphasised, de-emphasised, low, short opening, swapped), none of the noisy, never let
+    the FIFO run over, learn the clock, set its own from the stations' stamps and put the
+    registers back."""
+    e, sent, clean, ret, stack = _dfsk_emulated(slow)
     assert e.said[0] == "aprs start hz=144390000 fsk=233 sync=240 plain", e.said[:2]
     assert stack < 700 and e.over == 0, (stack, e.over)
     f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
@@ -909,7 +925,7 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     # every clean packet in its turn, and no other; the swapped ones by the other sync word
     assert f == [f"AG7EW-{k}" for k in clean], (f, y)
     assert [int(v["ok"]) for v in y] == [int(k in clean) for k, _ in sent], y
-    assert [v["s"] for v in y] == ["0"] * len(keys) + ["1", "1"], y
+    assert [v["s"] for v in y] == ["0"] * (len(sent) - 2) + ["1", "1"], y
     # a read of the empty FIFO is rare once the clock is learnt (the first build: one in twelve)
     assert all(int(v["d"]) <= 4 for v in y) and sum(int(v["d"]) for v in y[4:]) <= 6, y
     assert all(abs(int(v["k"]) * slow / 1352 - 1) < 0.03 for v in y[4:]), y
@@ -930,6 +946,75 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
 
 
 # ---- the same clock behind the chip's own FSK modem (c/k6/mod/aprsfsk.c) ----
+@need_clang
+@pytest.mark.parametrize("name,setting,afc,gain,wide", [
+    ("aprslad_w", "wide", False, False, 1),
+    ("aprslad_n", "narrow", False, False, 0),
+    ("aprslad_a", "afcoff", True, False, 1),
+    ("aprslad_g", "gain", False, True, 1),
+    ("aprslad_d", "nodeemph", False, False, 1),
+    ("aprslad_k", "kick", False, False, 1),
+])
+def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
+    """the APRS sensitivity ladder's modules (aprslad_*.c: aprsdfsk on 440.850 with a setting
+    each) read the same packets as aprsdfsk, say their setting, put each packet's strongest
+    RSSI on its y line, and set and put back the filter, the AFC bit and the gain"""
+    e, sent, clean, ret, stack = _dfsk_emulated(1.0, name)
+    assert e.said[0] == "aprs start hz=440850000 fsk=233 sync=240 plain set=" + setting, e.said[0]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
+    assert f == [f"AG7EW-{k}" for k in clean], f
+    y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
+    assert len(y) == len(sent) and all(v["r"].startswith("-") for v in y), y
+    # q=: ones less zeros in the opening flags' words 2 to 25 (384 samples); the model's flags
+    # are even, a sender off the tuned centre would read more of one level
+    assert all(abs(int(v["q"])) < 40 for v in y), [v["q"] for v in y]
+    assert stack < 700 and e.over == 0 and e.said[-1].endswith(" lost=0"), (stack, e.said[-1])
+    # the emulator reads every register as 0: REG_43 0 is not Aura's wide 0x3028, so the filter
+    # found is the narrow one and is put back after a wide setting
+    assert e.tunes[0] == (440850000, wide), e.tunes
+    # kick: tuned again (the AFC back to the centre) after each packet without a frame
+    kicks = [(440850000, 1)] * sum(v["ok"] == "0" for v in y) if setting == "kick" else []
+    assert e.tunes[1:] == kicks + ([] if not afc and not wide else [(440850000, 0)]), e.tunes
+    if kicks:
+        assert e.said[-2].endswith(f" kick={len(kicks)}") and e.writes[0x58].count(0x00E9) > len(kicks), e.said[-2]
+    if afc:
+        assert e.writes[0x73] == [0x0010, 0], e.writes.get(0x73)
+    else:
+        assert 0x73 not in e.writes or e.writes[0x73] == [0], e.writes.get(0x73)
+    if setting == "nodeemph":
+        assert e.writes[0x2B] == [0x0100, 0], e.writes.get(0x2B)
+    if gain:
+        assert e.writes[0x13] == [0x03FF, 0] and e.writes[0x7E] == [0xB000, 0], (e.writes[0x13], e.writes[0x7E])
+    else:
+        assert 0x13 not in e.writes and 0x7E not in e.writes
+
+
+@need_clang
+def test_aprslad_o_tunes_to_the_flags_offset_on_the_emulated_m0():
+    """aprslad_o (DF_OFFT): a packet whose opening flags' q is DF_QMIN or more is given up, the
+    K6 tuned DF_QHZ * sqrt|q| Hz off (the sign of q's), and the packet read from the flags still to come; tuned back to
+    the centre after it. The model's chip gives the same bits whatever the tuning, so with
+    DF_QMIN 1 every packet with q != 0 is tuned once and must still be read"""
+    e, sent, clean, ret, stack = _dfsk_emulated(1.0, "aprslad_o", defs=[("DF_QMIN", "1")])
+    assert e.said[0].endswith(" set=offt"), e.said[0]
+    f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
+    y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert stack < 700 and e.over == 0 and e.said[-1].endswith(" lost=0"), (stack, e.said[-1])
+    rt = int(e.said[-2].split(" rt=")[1])
+    off = [(hz - 440850000, w) for hz, w in e.tunes[1:-1]]
+    # each tune off the centre is followed by one back to it, and the y lines say the offset
+    assert rt > 0 and len(off) == 2 * rt, (rt, off)
+    assert all(o != 0 and abs(o) <= 1500 and back == (0, 1) for (o, _), back in zip(off[::2], off[1::2])), off
+    # DF_QHZ * sqrt|q| as the module rounds it: q of 1 (DF_QMIN 1 here) 150 Hz, of 4 300 Hz
+    hz = {(math.isqrt(q * 64) * 150) >> 3 for q in range(1, 200)}
+    assert all(abs(o) in hz for o, _ in off[::2]), off
+    assert rt - 2 <= sum(v["o"] != "0" for v in y) <= rt, y
+    # the packets are read after their tune (the long openings; the model's 8-flag ones may not)
+    assert set(f) >= {f"AG7EW-{k}" for k in clean if k in (9, 10)} and len(f) >= len(clean) - 4, (f, clean)
+
+
 @need_clang
 @pytest.mark.parametrize("name,spur,again_ms", [
     ("aprsfsk", False, 700),
@@ -1110,3 +1195,22 @@ def test_aprsfsk_sweep_goes_round_its_settings():
     for reg in (0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B):
         assert e.writes[reg][-1] == 0, hex(reg)
     assert "ok=3 " in e.said[-1], e.said[-3:]
+
+
+def test_ladder_report_counts_frames_by_gain():
+    """python3 -m modem.aprs ladder: frames of each kind and the K6's RSSI per TX gain of a
+    pluto_bench steps json, from the logger's lines of the module the steps went to"""
+    B = "1794500000.000\tb\tK6 MOD say "
+    lines = [B.replace("500000.000", "499990.000") + "aprs start hz=440850000 fsk=233 sync=240 plain set=narrow"]
+    for t, ln in [(10.5, "f AG7EW-1 n=51 h=0 ts=09:00:00h"), (10.6, "y 1 t=5 w=173 ok=1 e=3 d=0 s=0 k=1352 r=-80"),
+                  (11.5, "f AG7EW-3 n=51 h=0 ts=09:00:01h"), (11.6, "y 2 t=6 w=170 ok=1 e=0 d=0 s=0 k=1352 r=-78"),
+                  (31.0, "y 3 t=26 w=60 ok=0 e=0 d=0 s=0 k=1352 r=-95"),
+                  (32.0, "f AG7EW-2 n=51 h=0 ts=09:00:22h"), (32.1, "y 4 t=27 w=171 ok=1 e=0 d=0 s=0 k=1352 r=-94")]:
+        lines.append(f"{1794500000 + t:.3f}\tb\tK6 MOD say {ln}")
+    steps = {"steps": [{"gain": -54, "t0": 1794500009.0, "t1": 1794500020.0},
+                       {"gain": -80, "t0": 1794500029.0, "t1": 1794500040.0}]}
+    rep = aprs.ladder_report(aprs.ls_for(lines, steps), steps)
+    assert rep[0] == "setting narrow", rep
+    assert rep[3] == "-54 | -78 | 2 | 1/3 | 0/3 | 1/3", rep
+    assert rep[4] == "-80 | -94 | 2 | 0/3 | 1/3 | 0/3", rep
+    assert rep[5] == "all | | | 1/6 | 1/6 | 1/6", rep
