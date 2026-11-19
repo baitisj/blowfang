@@ -1,0 +1,146 @@
+2026-11-19T01:49:47Z job hear3 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a at aa318c46915aa8d641fa1055d31f362abacda62f
+2026-11-19T01:49:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 441850 trim 6100 phy ysf tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=4 last=40 pv=0/40
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: trim 6100
+phy YSF
+timeout: phy ysf
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=4 last=40 pv=0/40
+timeout: listen
+2026-11-19T01:50:01Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:50:01Z step 1 (uv380.cmd) rc=0
+2026-11-19T01:50:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=4 last=40 pv=0/40
+timeout: listen 1
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=4 last=40 pv=0/40
+timeout: listen
+2026-11-19T01:50:08Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:50:08Z step 2 (uv380.cmd) rc=0
+2026-11-19T01:50:13Z step 3 (wait) rc=0
+2026-11-19T01:50:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/hear3/ysfs1.wav --hz 441850000 --dev 5400 --gain -50
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysfs1.wav: 9.8 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:50:14Z
+end 01:50:23Z: 9.8 s of signal in 9.7 s (kept up)
+2026-11-19T01:50:24Z step 4 (pluto) rc=0
+2026-11-19T01:50:32Z step 5 (wait) rc=0
+2026-11-19T01:50:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=60 pv=0/60
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=60 pv=0/60
+timeout: listen
+2026-11-19T01:50:38Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:50:38Z step 6 (uv380.cmd) rc=0
+2026-11-19T01:50:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/hear3/ysfs1.wav --hz 441850000 --dev 5400 --gain -50
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysfs1.wav: 9.8 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:50:39Z
+end 01:50:49Z: 9.8 s of signal in 9.7 s (kept up)
+2026-11-19T01:50:49Z step 7 (pluto) rc=0
+2026-11-19T01:50:57Z step 8 (wait) rc=0
+2026-11-19T01:50:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=60 pv=0/60
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=60 pv=0/60
+timeout: listen
+2026-11-19T01:51:04Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:51:04Z step 9 (uv380.cmd) rc=0
+2026-11-19T01:51:04Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/hear3/ysfs1.wav --hz 441850000 --dev 5400 --gain -50
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysfs1.wav: 9.8 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:51:05Z
+end 01:51:14Z: 9.8 s of signal in 9.7 s (kept up)
+2026-11-19T01:51:15Z step 10 (pluto) rc=0
+2026-11-19T01:51:23Z step 11 (wait) rc=0
+2026-11-19T01:51:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=60 pv=0/60
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=60 pv=0/60
+timeout: listen
+2026-11-19T01:51:29Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:51:29Z step 12 (uv380.cmd) rc=0
+2026-11-19T01:51:29Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 phy m17 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+phy M17
+timeout: phy m17
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=60 pv=0/60
+timeout: listen
+2026-11-19T01:51:36Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850 listen=1
+2026-11-19T01:51:36Z step 13 (uv380.cmd) rc=0
+2026-11-19T01:51:41Z step 14 (wait) rc=0
+2026-11-19T01:51:41Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/hear3/m17s1.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3495 Hz before pre-emphasis
+send m17s1.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:51:42Z
+end 01:51:52Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-19T01:51:52Z step 15 (pluto) rc=0
+2026-11-19T01:52:00Z step 16 (wait) rc=0
+2026-11-19T01:52:00Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=76 pv=0/76
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=76 pv=0/76
+timeout: listen
+2026-11-19T01:52:06Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:52:06Z step 17 (uv380.cmd) rc=0
+2026-11-19T01:52:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/hear3/m17s1.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3495 Hz before pre-emphasis
+send m17s1.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:52:07Z
+end 01:52:17Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-19T01:52:17Z step 18 (pluto) rc=0
+2026-11-19T01:52:25Z step 19 (wait) rc=0
+2026-11-19T01:52:25Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=76 pv=0/76
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=76 pv=0/76
+timeout: listen
+2026-11-19T01:52:32Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:52:32Z step 20 (uv380.cmd) rc=0
+2026-11-19T01:52:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/hear3/m17s1.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3495 Hz before pre-emphasis
+send m17s1.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:52:33Z
+end 01:52:42Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-19T01:52:43Z step 21 (pluto) rc=0
+2026-11-19T01:52:51Z step 22 (wait) rc=0
+2026-11-19T01:52:51Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=76 pv=0/76
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=76 pv=0/76
+timeout: listen
+2026-11-19T01:52:58Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:52:58Z step 23 (uv380.cmd) rc=0
+2026-11-19T01:52:58Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 phy rng tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear3/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=10 last=76 pv=0/76
+timeout: listen 0
+phy K6 RNG
+timeout: phy rng
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=10 last=76 pv=0/76
+timeout: listen
+2026-11-19T01:53:06Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T01:53:06Z step 24 (uv380.cmd) rc=0
+2026-11-19T01:53:06Z job hear3 done
