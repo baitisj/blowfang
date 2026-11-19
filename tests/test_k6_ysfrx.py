@@ -106,7 +106,7 @@ def test_host_receiver_says_nothing_on_noise(host):
 
 def test_ysfrx_module_on_the_emulated_k6():
     """the ysfrx RAM module on the emulated M0 with the modelled DMA, the radio's slow register
-    reads and its ~5 ms say lines: an 8 s message with two frames lost on the serial line after
+    reads and its ~5 ms say lines, started with a carrier on: an 8 s message with two frames lost on the serial line after
     the call, byte-exact with the lost superframes filled in, in the shared module block (code + the filter's ring + the receiver's state +
     the DMA ring), no samples lost, the receiver's registers put back; too small a block and it
     returns -6"""
@@ -123,7 +123,9 @@ def test_ysfrx_module_on_the_emulated_k6():
     def emu(block, ib):
         e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=6, stack_win=7000,
                    scratch=(block - 24 - len(code)) & ~3, fd_us=300)
-        e.rssi = lambda: -60 if on <= e.sample_now() < off else -125
+        # a carrier at the start as well (the bench: the upload's own, still on when the module
+        # starts): the floor read then is too high until a quiet reading lowers it
+        e.rssi = lambda: -60 if on <= e.sample_now() < off or e.sample_now() < on // 2 else -125
         ret, stack = e.run()
         return e, ret, stack
 
@@ -134,6 +136,7 @@ def test_ysfrx_module_on_the_emulated_k6():
     print(txt, stack, len(code))
     # the message buffer is what the block has left: 4 s or more
     assert int(e.said[0].split("msg=")[1]) >= 100, txt
+    assert " floor=-60 " in e.said[0], txt
     # the carrier is seen at the next housekeeping, ~half a frame in: the header frame is gone
     # (frame 12 lost whole and frame 20's payload: 10 superframes filled in)
     assert any(ln.startswith("Y call fr=41 ") and " vw=190/200 sf=200 miss=10 " in ln for ln in e.said), txt
