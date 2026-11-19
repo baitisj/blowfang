@@ -1,9 +1,11 @@
 """tools/k6_bench.py: the PTT lock, the CW ID keeper's rules and the state every keyer shares,
 against a fake rig (no rigctld, no sound card, no serial port)."""
+import contextlib
 import fcntl
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -500,3 +502,68 @@ def test_install_writes_a_pluto_launcher(work):
     t = b.launcher_text("/home/x/blowfang")
     assert "runpy.run_path" in t and "'/home/x/blowfang', 'tools', 'pluto_bench.py'" in t
     compile(t, "pluto_bench.py", "exec")
+
+
+def _reader_under_timeout(work, tmp_path):
+    """serial-hold run as the runner runs a logger (its own session), its reader under GNU timeout
+    as the runner's logger step has it; -> (the serial-hold process, the reader's pid)"""
+    if not shutil.which("timeout"):
+        pytest.skip("needs GNU timeout")
+    pidf = tmp_path / "reader.pid"
+    code = f"import os, time; open({str(pidf)!r}, 'w').write(str(os.getpid())); time.sleep(120)"
+    tool = os.path.join(os.path.dirname(__file__), "..", "tools", "k6_bench.py")
+    p = subprocess.Popen([sys.executable, tool, "serial-hold", "logr", "--", "timeout", "-s", "INT",
+                          "--kill-after=10", "120", sys.executable, "-c", code],
+                         env=dict(os.environ, BLOWFANG_WORK=str(work)), start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(200):
+        if pidf.exists() and pidf.read_text():
+            break
+        time.sleep(0.05)
+    return p, int(pidf.read_text())
+
+
+def _gone(pid, s=10.0):
+    end = time.time() + s
+    while time.time() < end:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        try:                                     # (a zombie of ours counts as gone)
+            if open(f"/proc/{pid}/stat").read().split(") ")[1][0] == "Z":
+                return True
+        except (OSError, IndexError):
+            return True
+        time.sleep(0.05)
+    return False
+
+
+@pytest.mark.parametrize("sig", ["TERM", "KILL"])
+def test_a_stopped_serial_hold_takes_its_timeout_reader_with_it(work, tmp_path, sig):
+    """2026-11-19: the runner's stop (SIGTERM to the logger step's process group) killed
+    serial-hold, but the reader under GNU timeout (a process group of its own) held /dev/ttyUSB2
+    until its timeout ran out, while serial_owner() said the port was free"""
+    import signal
+    p, reader = _reader_under_timeout(work, tmp_path)
+    try:
+        assert b.serial_owner()["who"] == "logr"
+        os.killpg(p.pid, getattr(signal, "SIG" + sig))
+        p.wait(20)
+        assert _gone(reader), f"the reader {reader} outlived serial-hold's SIG{sig}"
+        assert b.serial_owner() is None
+    finally:
+        with contextlib.suppress(OSError):
+            os.kill(reader, signal.SIGKILL)
+
+
+def test_serial_release_stops_a_timeout_reader(work, tmp_path):
+    import signal
+    p, reader = _reader_under_timeout(work, tmp_path)
+    try:
+        assert b.serial_release("next", wait=20) is True
+        p.wait(20)
+        assert _gone(reader)
+    finally:
+        with contextlib.suppress(OSError):
+            os.kill(reader, signal.SIGKILL)

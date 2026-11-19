@@ -41,6 +41,6 @@
 #endif
 #include "dmrdet.c"
 #ifndef K6_NAME
-#define K6_NAME "YSF RX"
+#define K6_NAME "FUSOTTO RX"   /* (Jeff 11-19: sotto over YSF is FuSotto) */
 #endif
 K6_MODULE_NAME(K6_NAME);

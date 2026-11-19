@@ -451,6 +451,7 @@ wspriq
 wsprtx
 xdmrlisten     # level 2, EXPLORE's listen + DMR detector as a module (voice images), docs/k6-explore-app.md
 xtalstep
+ysfrx          # level 2 (sotto_play at 11), FUSOTTO RX: FuSotto calls on 440.850, played with the caller's callsign, release slot 8, docs/k6-sotto-play.md
 EOF
 )
 # They're built the way modem/k6mod.py builds them, for `python -m modem.k6 mod hello.wav out/mod-hello.bin --key-file ...`

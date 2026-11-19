@@ -185,7 +185,7 @@ module again. After a quiet minute it goes back to EXPLORE.
 | 5 | MIDI | plays tunes on the speaker in four voices |
 | 6 | MORSE | hears Morse and draws the dits and dahs on a scrolling tape, with the letters |
 | 7 | GROUNDWAVE | a turn-based artillery game between two radios on 440.850 (transmits) |
-| 8 | STOCK FONT | checks that Baofeng's fonts are still in the SPI flash |
+| 8 | FUSOTTO RX | hears sotto voice calls over C4FM (FuSotto) on 440.850 MHz, plays each one with the caller's callsign, then listens again |
 | 16 | CW LISTEN | decodes a repeater's Morse ID |
 | 17 | POCSAG | a pager message receiver |
 | 18 | DMR RX | DMR details: colour code, slot, talkgroup, IDs |
