@@ -374,9 +374,9 @@ radio's key-up, such as the FTM-300DR's own voice call.
 
 Jeff, 2026-11-19: "is the K6 able to receive C4FM and decode/synthesize Sotto?" `c/k6/mod/ysfrx.c` is a RAM
 module that receives the sotto VW frames the UV-380 and the K6 send (modem/ysf.py, docs/uv380-ysf.md),
-puts the message back together and prints its sotto 1200 superframes. It doesn't play them yet, because
-modules have no call for sotto playback (the design: an API level 11 `sotto_play`, with each receive mode a
-SPI library module).
+puts the message back together and hands it to the core to play (API level 11 `sotto_play`, 2026-11-19,
+docs/k6-sotto-play.md), with the caller's callsign from the header or terminator. On older images it
+prints its sotto 1200 superframes instead.
 
 - **Front end.** dmrdet's GP0 IF grid (c/k6/dmrsync.h) at 2 points a symbol, with its 13-tap matched
   filter. `DS_NOSYNC` drops the DMR sync search, which saves 700 B and the CPU time it took. `DS_ERASE` makes

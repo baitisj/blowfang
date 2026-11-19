@@ -48,7 +48,7 @@ extern "C" {
 #define KM_HDR 16
 #define KM_TAG 8
 #define KM_ABI 1
-#define KM_LEVEL 10
+#define KM_LEVEL 11
 
 typedef struct k6_api {
   uint16_t abi, level;              /* KM_ABI, KM_LEVEL */
@@ -161,7 +161,31 @@ typedef struct k6_api {
      key_down / key_poll too), a good packet, a message playing and PTT, and puts it out when
      the time is up. A module that uses this declares K6_MODULE_LEVEL 10. */
   int (*setting)(int id, int value, int save);
+  /* level 11 (2026-11-19, Jeff: "proceed with playback"; docs/k6-sotto-play.md): a sotto
+     receiver's way to play what it heard. sotto_play(sf, n, codec, flags, from) only notes
+     where the message is and returns: n slots of 6 bytes at sf (in the module's scratch), in
+     the codec whose voice-packet magic is codec (KM_SOTTO_1200), and up to 10 characters of
+     the caller's callsign (from, NUL-ended; 0 or "" when it isn't known). Once the module
+     returns, the core moves them into the message store (it overlaps the module's code), plays
+     them as VOICE MSG plays a message, and leaves them there (VOICE MSG's play key replays
+     them, until the store is wanted again). With KM_PLAY_RERUN in flags and the module run
+     from the SPI library, the core loads it from its slot again after playback, so the radio
+     listens again; a key during playback stops that. A RAM module sent over the air isn't run
+     again (the store took its place). The last call before the module returns counts; n 0
+     cancels it. Returns 0, or -1 (n longer than the store holds, sf not in the module's
+     memory), -2 (a codec this image doesn't play). A module that must also run on older
+     images reads api->level at run time and calls it only when it is 11 or more. */
+  int (*sotto_play)(const uint8_t *sf, unsigned n, unsigned codec, unsigned flags, const char *from);
+  /* msg_mem(&bytes): where a receiver keeps the message it hears, outside the shared block, so
+     the block is all code and working memory: the bootloader's own RAM, 0x20000100-0x20000FFF
+     (3,840 B, 25 s of sotto 1200), idle once Aura runs. It holds whatever the module leaves there
+     until the next module writes it; nothing else uses it. Its size in *bytes */
+  void *(*msg_mem)(uint32_t *bytes);
 } k6_api_t;
+
+#define KM_SOTTO_1200 0xA9u         /* sotto_play's codec: sotto 1200, 6-byte 40 ms slots */
+#define KM_PLAY_RERUN 1u            /* sotto_play's flag: listen again after playback */
+#define KM_FROM_MAX 10u             /* sotto_play's from: characters kept */
 
 #define KM_SET_LIGHT 0
 #define KM_LIGHT_MAX 7

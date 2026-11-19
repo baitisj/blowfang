@@ -244,7 +244,9 @@ static int ones64(const uint8_t *q) {
   return (int)((a & 0xFFFF) + (a >> 16));
 }
 
+#ifndef DS_NOSYNC
 static const char FAM[DS_NFAM][3] = {"bs", "ms", "t1", "t2"};
+#endif
 
 static void say(const k6_api_t *api, char *line, char *p) {
   *p = 0;
@@ -254,6 +256,7 @@ static void say(const k6_api_t *api, char *line, char *p) {
 /* grid points (9600 a second) -> ms */
 NOINLINE static int g2ms(uint32_t g) { return (int)ds_udiv(g * 5u, 48u); }
 
+#ifndef DS_NOSYNC
 /* a sync came out of the detector: a confirmed one, or any of DMR's family while it lasts,
    keeps the audio shut 720 ms more */
 static void hit(st_t *s, int r) {
@@ -267,6 +270,7 @@ static void hit(st_t *s, int r) {
   if (!s->dmr)
     s->dmr = s->pend = 1, s->fam = d->hfam, s->sign = d->hsign, s->r2 = d->hr2, s->on_j = d->hj;
 }
+#endif
 
 /* ~every 48 ms, when the CPU has a moment: the clock, keys, the DMA's rate, the carrier, the
    audio, and at most one line; 1 to stop */
@@ -286,6 +290,14 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
      continuous stream each of those gaps (~every 48 ms, the grid stepping over them unfed)
      left ~10 symbols of stale filter points in the frame (bench run 16's snapshot: the FICH
      right but for its last 10 symbols). A call ends within ~200 ms of its carrier */
+#ifdef YX_PLAY
+  /* a call over and given out: the core plays it once this returns (the store overlaps this
+     module's code), then runs it again from its library slot (module API level 11) */
+  if (s->y->play && api->level >= 11) {
+    api->sotto_play(s->y->m.frames, s->y->m.n, KM_SOTTO_1200, KM_PLAY_RERUN, s->y->from);
+    return 1;
+  }
+#endif
   if (s->y->on) {
     if (s->ms >= RUN_S * 1000u) return 1;
   } else
@@ -364,6 +376,7 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
     s->ydiag--;
 #endif
 #endif
+#ifndef DS_NOSYNC                  /* (no DMR syncs to report: YSF's build) */
   } else if (s->pend) {
     s->pend = 0, s->nd++;
     p = put(put(put(line, "D on "), FAM[s->fam]), s->sign > 0 ? " v" : " d");
@@ -382,6 +395,7 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
       for (i = 0; i < 4; i++) p = kv(p, K[i], (int)v[i]);
     }
     dx_end(s->x);
+#endif
 #endif
   } else if (s->ms >= s->next_s) {
     s->next_s += S_MS;
@@ -489,7 +503,11 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
       for (i = 0; i < 4 && P - s->consumed >= 64u; i++) {
         int r = ds_count(&s->d, 2 * ones64(s->ring + (s->consumed & (RSZ - 1))) - 64);
         s->consumed += 64u;
+#ifndef DS_NOSYNC
         if (r) hit(s, r);
+#else
+        (void)r;
+#endif
       }
 #ifdef DMR_DECODE
       if (s->x->nq) dx_poll(s->x, &s->d);
@@ -538,16 +556,30 @@ MAIN_COLD int k6_main(const k6_api_t *api) {
   }
 #elif defined(YSF_DECODE)
   {
-    /* scratch, as dmrrx: the filter's ring, the YSF decoder, the DMA ring, then the message */
-    uint32_t n = 0;
-    uint8_t *sc = (uint8_t *)api->scratch(&n);
-    if (n < DS_FRING + sizeof(yx_t) + RSZ) return -6;
+    /* scratch, as dmrrx: the filter's ring, the YSF decoder, the DMA ring, then the message. On
+       an image with module API level 11 the DMA ring and the message go in the core's message
+       buffer instead, outside the block (3,840 B: the ring and 18 s), and the block keeps the
+       code, the filter's ring and the decoder */
+    uint32_t n = 0, mn = 0;
+    uint8_t *sc = (uint8_t *)api->scratch(&n), *mb = 0;
+#ifdef YX_PLAY
+    if (api->level >= 11) mb = (uint8_t *)api->msg_mem(&mn);
+#ifdef YX_RAM0
+    else mb = (uint8_t *)0x20000100u, mn = 0xF00u;   /* (the bench, before level 11: its place) */
+#endif
+#endif
+    if (n < DS_FRING + sizeof(yx_t) + (mb ? 0 : RSZ) || (mb && mn < RSZ)) return -6;
     s->d.f = (int8_t *)sc;
     s->y = (yx_t *)(sc + DS_FRING);
     zero(s->y, sizeof(yx_t));
-    s->ring = sc + DS_FRING + sizeof(yx_t);
-    /* the rest: the message, at least YX_MSG_MIN superframes */
-    if (!yx_mem(s->y, s->ring + RSZ, n - (DS_FRING + sizeof(yx_t) + RSZ), YX_MSG_MIN)) return -6;
+    if (mb) {
+      s->ring = mb + ((mn - RSZ) & ~3u), mn = (mn - RSZ) & ~3u;
+    } else {
+      s->ring = sc + DS_FRING + sizeof(yx_t);
+      mb = s->ring + RSZ, mn = n - (DS_FRING + sizeof(yx_t) + RSZ);
+    }
+    /* the message: at least YX_MSG_MIN superframes */
+    if (!yx_mem(s->y, mb, mn, YX_MSG_MIN)) return -6;
     return go(api, s);
   }
 #else

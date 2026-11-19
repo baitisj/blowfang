@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #define DS_FRING 256u
 #define YX_TRACE 1
+#define YX_CSD 1
 #include "dmrsync.h"
 #include "ysfdec.h"
 
@@ -49,7 +50,7 @@ int main(int argc, char **argv) {
         }
       }
     }
-  while (x.jf || x.jv) yx_work(&x);
+  while (x.jf || x.jv || YX_JC(&x)) yx_work(&x);
   if (x.on) yx_end(&x);
   while ((p = yx_house(&x, line)) != 0) {
     *p = 0, puts(line);
