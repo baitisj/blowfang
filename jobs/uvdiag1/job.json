@@ -1,0 +1,15 @@
+{
+ "id": "uvdiag1",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen",
+    "tune"
+   ]
+  }
+ ]
+}
