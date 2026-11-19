@@ -1,0 +1,373 @@
+{
+ "id": "aprslad-b2",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 48,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 540,
+   "file": "k6_w1.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_w.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "9264e13ba512e762058e38d5849cd7ea50e83ee261553d6e59db0230f36e7d78"
+  },
+  {
+   "do": "wait",
+   "pattern": "aprs start",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 100
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-60,-66,-70,-73,-76,-79,-82,-85,-88",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_w1.json"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 300,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "logger",
+   "seconds": 540,
+   "file": "k6_n1.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_n.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "0b601042bee292d0232d7ea74e19168803d624a4fd728fcae647309cfd7b565f"
+  },
+  {
+   "do": "wait",
+   "pattern": "aprs start",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 100
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-60,-66,-70,-73,-76,-79,-82,-85,-88",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_n1.json"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 300,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "logger",
+   "seconds": 540,
+   "file": "k6_g1.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_g.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "2ae520dc84d2a24f447dfe81b2fc19522267ccb144b9459d92e22829f3dcd784"
+  },
+  {
+   "do": "wait",
+   "pattern": "aprs start",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 100
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-60,-66,-70,-73,-76,-79,-82,-85,-88",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_g1.json"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 300,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "logger",
+   "seconds": 540,
+   "file": "k6_n2.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_n.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "0b601042bee292d0232d7ea74e19168803d624a4fd728fcae647309cfd7b565f"
+  },
+  {
+   "do": "wait",
+   "pattern": "aprs start",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 100
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-60,-66,-70,-73,-76,-79,-82,-85,-88",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_n2.json"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 300,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "logger",
+   "seconds": 540,
+   "file": "k6_w2.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_w.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "9264e13ba512e762058e38d5849cd7ea50e83ee261553d6e59db0230f36e7d78"
+  },
+  {
+   "do": "wait",
+   "pattern": "aprs start",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 100
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-60,-66,-70,-73,-76,-79,-82,-85,-88",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_w2.json"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 300,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
