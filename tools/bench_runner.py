@@ -1029,6 +1029,7 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
     env = step_env(job)
     deadline = now() + 60 * float(job["minutes"])
     mine = []                           # this job's background UV-380 receive modules
+    bgs = []                            # all of this job's background steps: (do, process)
     for i, step in enumerate(job["steps"]):
         sr = {"n": i + 1, "do": step["do"], "started": utcnow()}
         res["steps"].append(sr)
@@ -1082,6 +1083,7 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                                             stdout=open(os.path.join(rd, out), "a"),
                                             stderr=subprocess.STDOUT, start_new_session=True)
                     BACKGROUND.append(proc)
+                    bgs.append((step["do"], proc))
                     if step["do"] == "uv380.rx":
                         mine.append(proc)
                     time.sleep(2.0)
@@ -1112,6 +1114,13 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
             time.sleep(0.5)
         if p.poll() is None:
             ctx.say("stopping a background uv380.rx still running at the job's end")
+            stop_group(p)
+    # a logger holds the K6 cable for its job only, and a failed or cancelled job's other
+    # background steps end with it (2026-11-19: a cancelled job's logger, left to its 560 s
+    # timeout, held /dev/ttyUSB2, so the next two jobs had no k6.log and failed)
+    for do, p in bgs:
+        if p.poll() is None and (do == "logger" or res["status"] != "done"):
+            ctx.say(f"stopping the job's background {do} still running at its end")
             stop_group(p)
     res["ended"] = utcnow()
     ctx.say(f"job {job['id']} {res['status']}" + (f": {res.get('reason')}" if res.get("reason") else ""))
