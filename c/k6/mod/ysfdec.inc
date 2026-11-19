@@ -55,6 +55,7 @@ typedef struct {
      during the call: a line's ~5 ms pause cost superframes on the emulated K6 */
   uint32_t nfr, nfich, nsf, nsfok;
   uint32_t vf, nout, nmiss, crc;
+  uint32_t nfin;                       /* VW decodes finished at once (the next payload came) */
   srx_state m;
 } yx_t;
 
@@ -131,6 +132,14 @@ static void yx_end(yx_t *x) {
 }
 
 static void yx_work(yx_t *x);
+
+/* the work yx_work does next, for the time lines: 2 the FICH, 3 a VW's start, 4 a K=7 step, 5
+   a traceback, 6 the VW's end, 7 none (0 and 1 are yx_poll's: searching, in a frame) */
+static inline uint32_t yx_kind(const yx_t *x) {
+  if (x->jf) return 2;
+  if (x->jv == 2) return x->v7.tb ? 5u : 4u;
+  return x->jv == 1 ? 3u : x->jv == 4 ? 6u : 7u;
+}
 
 /* a decoded VW frame's good superframes into their places (the first VW frame's first is the
    message's 0, even when it failed) */
@@ -223,6 +232,7 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       q = yx_q4(yd_pn9(&x->pn) ? -l0 : l0);
       x->pay[x->wb][b >> 1] = (uint8_t)(q | (yx_q4(yd_pn9(&x->pn) ? -l1 : l1) << 4));
       if (++x->n == YD_FRAME_SYMS) {
+        if (x->jv) x->nfin++;
         while (x->jv) yx_work(x);               /* the last frame's VW still decoding: finish it */
         x->jv = 1, x->db = x->wb, x->vf = x->nfr++;   /* this one's to decode (after the FICH) */
         x->rq = -3, x->rr = 0;                 /* the next sync's tries */

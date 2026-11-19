@@ -398,18 +398,24 @@ SPI library module).
   superframes go to place frame × 5 + k. The frame count includes frames the flywheel kept, so a frame
   lost whole or a superframe failing its CRC-8 leaves a hole in the right place. After the call the holes
   get the superframe before them (`srx_conceal`), so sotto holds the sound over a gap.
-- **Room.** 7.3 KB of code. The scratch holds the filter ring (256 B), the receiver (2.3 KB: two payload
-  buffers, the decoders), the DMA ring (512 B) and then the message buffer, which takes whatever the block
-  has left: 285 superframes (11.4 s of sotto 1200) in the 11,776-byte block. Under 100 superframes, the
-  module returns -6.
+- **Carrier.** RSSI 10 dB over a floor. The floor moves only while there is no carrier: a quarter of
+  the way down to a lower reading, 1 dB up for a higher one (see bench run 1 and 2 below).
+- **Room.** 7.7 KB of code. The scratch holds the filter ring (256 B), the receiver (2.3 KB: two payload
+  buffers, the decoders), the DMA ring (1,024 B since bench run 2) and then the message buffer, which
+  takes whatever the block has left: 130 superframes (5.2 s of sotto 1200) in the 11,776-byte block.
+  Under 100 superframes, the module returns -6.
 
 Lines:
 
-    ysf start f=440850000 floor=-125 msg=285   msg: the message buffer, superframes
+    ysf start f=440850000 floor=-125 msg=130   msg: the message buffer, superframes
     Y call fr=41 fich=40 vw=190/200 sf=200 miss=10 crc=9d79
         frames, FICHs good, superframes good / read, the message's superframes, those filled in
         (over=: superframes past the buffer), the message's CRC-16
     Y d 0 000102030405...                      the message, 24 bytes a line, after the call
+    Y l 0 0 0 0 0 0 0 0 f=0                    after each "s" line: DMA overruns by the kind of call
+    Y m 44 52 68 60 48 32 24 4                 that ran last, and each kind's longest call (us).
+        Kinds: search, in a frame, FICH step, VW start, K=7 step, traceback, VW end, idle.
+        f=: VW decodes that had to be finished at once because the next payload had come
 
 A new call while the last one's lines are still going out drops the rest of them.
 
@@ -419,9 +425,9 @@ Model results (tests/test_k6_ysfrx.py):
   50 dB-Hz, either FM polarity. At 48 dB-Hz it gets 37 of 40 and the FICHs start to fail.
 - **Lost frames, host:** a 12 s message (300 superframes) with one frame lost whole and one frame's payload
   lost. All 300 places are right, and the 10 lost superframes repeat the one before them.
-- **Module on the emulated K6** (300 µs register reads, 5 ms per say line): an 8 s message (200
-  superframes) with one frame lost whole and one payload lost comes out byte-exact with its 10 holes
-  filled, with no samples lost. The header frame is missed because the carrier is first seen half a frame
+- **Module on the emulated K6** (300 µs register reads, 5 ms per say line, started with a carrier
+  already on): a 4.8 s message (120 superframes) with one frame lost whole and one payload lost comes out
+  byte-exact with its 10 holes filled, with no samples lost. The header frame is missed because the carrier is first seen half a frame
   in.
 
 Four things the emulator taught:
@@ -435,8 +441,17 @@ Four things the emulator taught:
    the superframes come out after the call.
 4. **CPU.** About 55% idle during a call.
 
-Bench, next: the Pluto sends `python3 -m modem.ysf wav` frames on 440.850 (the K6 link channel, with its MCW ID)
-at low level, and the K6
-runs ysfrx and reports the lines.
+Bench (the Pluto sends a 40- and a longer-superframe call on 440.850 at -40 and -60 dB, with its MCW
+ID; the K6 runs ysfrx):
+
+- **Run 1, 2026-11-19 04:58Z.** The module arrived and started while the upload was still on the air
+  (a module starts when its image is whole), so it read its floor as -61 and the calls at -67 never
+  counted. Fixed: the floor follows the quiet.
+- **Run 2, 05:07Z.** The receiver found the 8 s call's sync for all 41 frames, but every FICH failed and
+  only a few superframes decoded. The module logged about one DMA overrun per frame (lost=102 in 40 s),
+  where the emulator showed none. The emulated longest calls are 44-72 µs against the 512-byte ring's
+  81 µs, too little margin for the radio's own interrupts. The floor, set to follow the lowest reading,
+  went under the radio's odd low readings, so noise held the receiver between calls (carriers at -133).
+  Fixed: the 1,024-byte ring, the steadier floor, and the Y l / Y m lines to show where time goes.
 
 SPDX-License-Identifier: MIT

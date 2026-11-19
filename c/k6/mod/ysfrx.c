@@ -5,23 +5,26 @@
    K=7 rate 7/18 tail-biting Viterbi, a CRC-8 per 6-byte sotto 1200 superframe). Receive
    only, no playback yet (the firmware has no sotto call for modules). Lines, besides
    dmrdet's, once a call is over (none during one: a line's ~5 ms pause costs superframes):
-     Y call fr=10 fich=10 vw=40/40 crc=d821    a call: frames, FICHs that passed their CRC,
-                                               superframes that passed theirs of those read,
-                                               CRC-16 of all the superframes
-     Y d 0 000102...                           the superframes kept (50), 24 bytes a line
-   6.7 KB of code. Scratch past it: the filter's 256-byte ring, the receiver's 4.0 KB state and
-   the 512-byte DMA ring (~200 B to spare in the 11,776-byte block), or it doesn't run (-6).
+     Y call fr=41 fich=40 vw=190/200 sf=200 miss=10 crc=9d79
+                                 a call: frames, FICHs good, superframes good / read, the
+                                 message's superframes and those filled in, its CRC-16
+     Y d 0 000102...             the message, 24 bytes a line
+     Y l 0 0 0 0 0 0 0 0 f=0     after each "s" line: ring overruns by the kind of call that
+     Y m 52 56 72 64 48 32 24 4  ran last (yx_kind), and each kind's longest call, us
+   7.7 KB of code. Scratch past it: the filter's 256-byte ring, the receiver's 2.3 KB state,
+   the DMA ring, then the message (at least 100 superframes), or it doesn't run (-6).
    docs/k6-c4fm.md, "Receiving C4FM sotto".
    SPDX-License-Identifier: MIT */
 #define K6_MODULE_LEVEL 2
-#define K6_MODULE_OPT s         /* -Os: the decoders' steps must stay well under the DMA ring's
-                                   93 us (DS_NOSYNC gave back the room) */
+#define K6_MODULE_OPT s         /* -Os: the decoders' steps must stay well under the DMA ring */
 #ifndef FREQ_HZ
 #define FREQ_HZ 440850000u      /* the bench link channel: the Pluto's sends, with its MCW ID */
 #endif
 #define YSF_DECODE 1
 #ifndef RSZ
-#define RSZ 512u
+#define RSZ 1024u               /* the DMA ring: 186 us. Emulated, the longest calls take 50-72 us,
+                                   near the 512-byte ring's 81 us, and on the radio (its own
+                                   interrupts besides) run 2 lost about a ring a frame */
 #endif
 #include "dmrdet.c"
 #ifndef K6_NAME

@@ -18,7 +18,7 @@ from sim.k6if import dmr  # noqa: E402
 
 K6 = os.path.join(ROOT, "c", "k6")
 NSF = 40                                    # sotto_test(40): 8 VW frames, CRC-16 0xd821
-NSF_LONG = 200                              # 8 s: 40 VW frames
+NSF_LONG = 120                              # 4.8 s: 24 VW frames
 
 
 def ysf_symbols(nsf=NSF, lose=()):
@@ -106,7 +106,7 @@ def test_host_receiver_says_nothing_on_noise(host):
 
 def test_ysfrx_module_on_the_emulated_k6():
     """the ysfrx RAM module on the emulated M0 with the modelled DMA, the radio's slow register
-    reads and its ~5 ms say lines, started with a carrier on: an 8 s message with two frames lost on the serial line after
+    reads and its ~5 ms say lines, started with a carrier on: a 4.8 s message with two frames lost on the serial line after
     the call, byte-exact with the lost superframes filled in, in the shared module block (code + the filter's ring + the receiver's state +
     the DMA ring), no samples lost, the receiver's registers put back; too small a block and it
     returns -6"""
@@ -116,9 +116,9 @@ def test_ysfrx_module_on_the_emulated_k6():
     import test_k6_dmr as T
     import k6_live_emu as le
     from sim.k6if import frontend as fe
-    code, entry = T.build([("RUN_S", "8u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    code, entry = T.build([("RUN_S", "6u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
     lose = (12, -20)
-    _, (ib, on, off) = k6_counts(ysf_symbols(NSF_LONG, lose), 56.0, post_s=3.0)   # the call is ~4.3 s
+    _, (ib, on, off) = k6_counts(ysf_symbols(NSF_LONG, lose), 56.0, post_s=4.0)   # the call is ~2.7 s
 
     def emu(block, ib):
         e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=6, stack_win=7000,
@@ -139,9 +139,9 @@ def test_ysfrx_module_on_the_emulated_k6():
     assert " floor=-60 " in e.said[0], txt
     # the carrier is seen at the next housekeeping, ~half a frame in: the header frame is gone
     # (frame 12 lost whole and frame 20's payload: 10 superframes filled in)
-    assert any(ln.startswith("Y call fr=41 ") and " vw=190/200 sf=200 miss=10 " in ln for ln in e.said), txt
+    assert any(ln.startswith("Y call fr=25 ") and " vw=110/120 sf=120 miss=10 " in ln for ln in e.said), txt
     assert stored(e.said) == want(NSF_LONG, lose), txt
-    assert ret == 41, txt
+    assert ret == 25, txt
     lost = [int(ln.split("lost=")[1].split()[0]) for ln in e.said if ln.startswith("s ")]
     assert lost and lost[-1] == 0, txt
     assert e.writes[0x13][-1] == 0 and e.writes[0x7E][-1] == 0
