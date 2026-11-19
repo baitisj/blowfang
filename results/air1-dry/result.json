@@ -1,0 +1,12 @@
+{
+ "id": "air1-dry",
+ "status": "queued",
+ "queued": "2026-11-19T00:06:56Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "a42088d64138cfbaa2dccbc4f1849448b1ae3d68",
+  "path": "jobs/air1-dry"
+ },
+ "runner_commit": "0e8b912dc2e04cc3d2126e6543927576a95c6b2e",
+ "updated": "2026-11-19T00:06:56Z"
+}
