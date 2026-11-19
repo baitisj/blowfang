@@ -951,6 +951,7 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     ("aprslad_n", "narrow", False, False, 0),
     ("aprslad_a", "afcoff", True, False, 1),
     ("aprslad_g", "gain", False, True, 1),
+    ("aprslad_d", "nodeemph", False, False, 1),
 ])
 def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
     """the APRS sensitivity ladder's modules (aprslad_*.c: aprsdfsk on 440.850 with a setting
@@ -972,6 +973,8 @@ def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
         assert e.writes[0x73] == [0x0010, 0], e.writes.get(0x73)
     else:
         assert 0x73 not in e.writes or e.writes[0x73] == [0], e.writes.get(0x73)
+    if setting == "nodeemph":
+        assert e.writes[0x2B] == [0x0100, 0], e.writes.get(0x2B)
     if gain:
         assert e.writes[0x13] == [0x03FF, 0] and e.writes[0x7E] == [0xB000, 0], (e.writes[0x13], e.writes[0x7E])
     else:

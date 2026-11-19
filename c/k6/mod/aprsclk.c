@@ -941,6 +941,9 @@ int k6_main(const k6_api_t *api) {
 #ifndef DF_GAIN
 #define DF_GAIN 0      /* REG_13 to freeze the gain at (REG_7E bit 15, index 3); 0 leaves the AGC */
 #endif
+#ifndef DF_AF
+#define DF_AF 0        /* bits ORed into REG_2B: 0100 the receiver's de-emphasis off */
+#endif
 #endif
 
 static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B};
@@ -1419,6 +1422,7 @@ int k6_main(const k6_api_t *api) {
   if (DF_AFC_OFF) api->fd_write(0x73, (uint16_t)(r73 | 0x0010));
   api->tune(APRS_HZ, DF_WIDE);
   if (DF_GAIN) api->fd_write(0x7E, (uint16_t)((r7e & 0x0FFF) | 0x8000 | (3u << 12))), api->fd_write(0x13, DF_GAIN);
+  if (DF_AF) api->fd_write(0x2B, (uint16_t)(s->sv[9] | DF_AF)); /* (put back with FSK_SAVED) */
 #else
   api->tune(APRS_HZ, 1);
 #endif

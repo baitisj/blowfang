@@ -316,6 +316,7 @@ aprsclk_440    # level 2, aprsclk on 440.850 for the on-air loopback
 aprsdfsk       # level 2 (screen at 6, LED at 7), aprsclk behind the chip's plain FSK receiver as a sampler (REG_58 00e9), 144.390
 aprsdfsk_440   # level 2, aprsdfsk on 440.850 for 240 s (the bench)
 aprslad_a      # level 2, the APRS ladder: aprsdfsk_440 with the AFC off, 400 s
+aprslad_d      # level 2, the APRS ladder: aprsdfsk_440 with the receiver's de-emphasis off (REG_2B + 0100), 400 s
 aprslad_g      # level 2, the APRS ladder: aprsdfsk_440 with the gain frozen at REG_13 03ff, 400 s
 aprslad_n      # level 2, the APRS ladder: aprsdfsk_440 with the narrow filter, 400 s
 aprslad_w      # level 2, the APRS ladder: aprsdfsk_440 as it is (wide, AFC on, AGC), 400 s
