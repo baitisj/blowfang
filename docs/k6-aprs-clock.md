@@ -884,6 +884,36 @@ alone; job B runs `n`, `a`, `g` and `w` again (a receiver's first minutes after 
 compare, insight 48). Report: `python3 -m modem.aprs ladder k6.log steps_w.json [...]`, a
 table per setting of frames of each kind out of three per gain, with the K6's RSSI.
 
+Runs on 2026-11-19 (K6 receive only on 440.850, the Pluto sending; logs in the project files
+under `k6-aprs-ladder/`):
+
+- **A clock bug ended every early ladder.** In runs A1, B1, B2 and C2 one long packet with many
+  reads of the empty FIFO (`d=9` to `41` on its y line, often two packets run together, yet with a
+  frame in it) pulled the clock `aprsdfsk` learns to its 5 % bound (`k=1284`), and the module read
+  no frame after it, at any level. Their edges and setting comparisons (and C2's offsets, 7 of 12
+  at no offset before it struck, none of 84 after) say when the bug struck, not how weak a packet
+  can be. The fix: a packet with more than `DF_DROPS` (3) such reads teaches the clock nothing, and
+  `DF_MISS` (8) packets in a row without a frame put it back to `DF_KQ`.
+- **The AFC off reads nothing** (B1: the chip starts on 60 packets, no frame), as POCSAG's run 7
+  found. Keep it on.
+- **De-emphasised packets never read** (kind 3, no frame in any run): each stops at 84 words,
+  right where the opening flags end. The 11-10 bench never sent one: the IC-7100's transmit path
+  pre-emphasised them. Not yet explained.
+- **Run A2, with the fix** (levels in a shuffled order, so time and level are apart; three of each
+  kind a level, flat and pre-emphasised together):
+
+| K6 RSSI (wide) | wide | narrow | gain frozen (by TX gain) |
+| --- | --- | --- | --- |
+| -88 / -89 dBm | 10/12 | 7/12 | 9/12 |
+| -93 | 2/6 | 4/6 | 6/6 |
+| -97 | 3/6 | 2/6 | 3/6 |
+| -100 | 1/6 | 1/6 | 0/6 |
+| -103 and under | 0/18 | 0/12 | 0/12 |
+
+  The three settings are alike inside these small numbers: about half the packets at -95 to -97
+  dBm, the last at -100. The chip still starts on the flags at -103 to -106, so 6 to 10 dB more
+  is in the slicer. Real 144.390 stations at hamlet peak at -94 to -99 dBm: right at this edge.
+
 Next, by what A and B show: the sender's offset (`--offset-hz` -1500 to +1500 at the edge plus
 6 dB), then an hour on 144.390 (receive only, after the 12-minute lamp wait) beside an APRS-IS log
 of the stations within 40 km, which says which real packets the K6 misses.
