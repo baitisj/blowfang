@@ -346,6 +346,14 @@ also saves flash there.
      mode (the bytes coded again, src AG7EW, MCW ident around it). The UV-380 sends with PTT in
      its M17 or YSF sub-mode. FUNC's record-and-send still sends RNG or FSK, so record with FUNC
      (that send gets no reply), then PTT to send it as YSF or M17.
+   - **Parrot on air (11-19, Jeff on battery in the house, UV-380 YSF at 1 W, Pluto -40 dB):**
+     the first tries (parrot1-3, 04:31-04:51Z) never answered. A plain capture of his PTT send
+     (job pttcap1, the 251_m clip) decoded 43/43 frames and 205/205 superframes, so the radio and
+     the stub were fine: the parrot measured burst power over its whole 240 kHz (15 dB more
+     noise than one channel), and it stopped receiving while it decoded. PR #200 fixed both
+     (8 kHz low-pass detector, receive thread). **parrot4/5 answered every YSF send: 205 sf at
+     05:05Z, 105 at 05:07Z, 75 at 05:12Z**, and skipped his FUNC (FSK) sends in between. Jeff:
+     "Yay!". RX gain 20 dB is right; 0 dB heard nothing.
 
 **On air (11-18 20:21-20:22Z, job sotto3-air-1118, main 2bc44cf, 0 W on 441.850, the Pluto
 listening):** the c6sotto modules sent the radio's own recorded message (250 superframes) in all
