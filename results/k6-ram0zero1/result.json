@@ -1,12 +1,155 @@
 {
  "id": "k6-ram0zero1",
- "status": "running",
- "since": "2026-11-19T18:47:43Z",
+ "who": "k6-ram0",
+ "started": "2026-11-19T18:47:45Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T18:47:45Z",
+   "ended": "2026-11-19T18:47:47Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T18:47:47Z",
+   "ended": "2026-11-19T18:47:50Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "ic7100",
+   "started": "2026-11-19T18:47:50Z",
+   "ended": "2026-11-19T18:48:05Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T18:48:05Z",
+   "ended": "2026-11-19T18:48:05Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "k6.upload",
+   "started": "2026-11-19T18:48:05Z",
+   "ended": "2026-11-19T18:49:03Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T18:49:03Z",
+   "ended": "2026-11-19T18:49:03Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T18:49:03Z",
+   "ended": "2026-11-19T18:51:34Z",
+   "rc": 1,
+   "why": "no /r0 done/ in /home/baitisj/blowfang-work/runs/queue/k6-ram0zero1/k6.log"
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-19T18:51:34Z",
+   "ended": "2026-11-19T18:51:49Z",
+   "rc": 1,
+   "why": "no /r0 reset/ in /home/baitisj/blowfang-work/runs/queue/k6-ram0zero1/k6.log"
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T18:51:49Z",
+   "ended": "2026-11-19T18:52:34Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "ic7100",
+   "started": "2026-11-19T18:52:34Z",
+   "ended": "2026-11-19T18:52:48Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-19T18:52:48Z",
+   "ended": "2026-11-19T18:52:48Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "k6.upload",
+   "started": "2026-11-19T18:52:48Z",
+   "ended": "2026-11-19T18:53:47Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-19T18:53:47Z",
+   "ended": "2026-11-19T18:53:47Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "wait",
+   "started": "2026-11-19T18:53:47Z",
+   "ended": "2026-11-19T18:56:17Z",
+   "rc": 1,
+   "why": "no /r0 done/ in /home/baitisj/blowfang-work/runs/queue/k6-ram0zero1/k6.log"
+  },
+  {
+   "n": 15,
+   "do": "wait",
+   "started": "2026-11-19T18:56:17Z",
+   "ended": "2026-11-19T18:56:32Z",
+   "rc": 1,
+   "why": "no /r0 reset/ in /home/baitisj/blowfang-work/runs/queue/k6-ram0zero1/k6.log"
+  },
+  {
+   "n": 16,
+   "do": "wait",
+   "started": "2026-11-19T18:56:32Z",
+   "ended": "2026-11-19T18:57:17Z",
+   "rc": 0
+  },
+  {
+   "n": 17,
+   "do": "ic7100",
+   "started": "2026-11-19T18:57:17Z",
+   "ended": "2026-11-19T18:57:31Z",
+   "rc": 0
+  },
+  {
+   "n": 18,
+   "do": "wait",
+   "started": "2026-11-19T18:57:31Z",
+   "ended": "2026-11-19T18:57:31Z",
+   "rc": 0
+  },
+  {
+   "n": 19,
+   "do": "logger.stop",
+   "started": "2026-11-19T18:57:31Z",
+   "ended": "2026-11-19T18:57:32Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9",
+ "head": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "ended": "2026-11-19T18:57:32Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "86bb0264db94242e11e7ab1784be93ed3abfb8e2",
   "path": "jobs/k6-ram0zero1"
  },
  "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
- "updated": "2026-11-19T18:47:43Z"
+ "updated": "2026-11-19T18:57:32Z"
 }
