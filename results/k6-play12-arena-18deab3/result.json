@@ -1,0 +1,12 @@
+{
+ "id": "k6-play12-arena-18deab3",
+ "status": "queued",
+ "queued": "2026-11-19T20:57:19Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "50fc8c27fbe1b05ca8cb6ed27c80184193a92cf3",
+  "path": "jobs/k6-play12-arena-18deab3"
+ },
+ "runner_commit": "f541fbd5d75ab520e4f8a81ade00f7e9d017f187",
+ "updated": "2026-11-19T20:57:19Z"
+}
