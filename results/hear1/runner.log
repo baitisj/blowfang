@@ -1,0 +1,20 @@
+2026-11-19T01:44:50Z job hear1 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a at aa318c46915aa8d641fa1055d31f362abacda62f
+2026-11-19T01:44:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 441850 trim 6100 phy ysf listen 1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/hear1/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: trim 6100
+phy YSF
+timeout: phy ysf
+listen on=1 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 1
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-19T01:45:07Z step 1 (uv380.cmd) rc=1 ('listen 0' reads back listen=1)
+2026-11-19T01:45:07Z job hear1 failed: step 1 (uv380.cmd): 'listen 0' reads back listen=1
