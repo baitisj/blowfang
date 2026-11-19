@@ -1,0 +1,284 @@
+{
+ "id": "ysfdemo2",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 14,
+ "steps": [
+  {
+   "do": "wait",
+   "seconds": 10
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_3536_f.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  }
+ ]
+}
