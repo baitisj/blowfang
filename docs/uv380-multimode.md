@@ -247,6 +247,19 @@ also saves flash there.
        Runner step `uv380.air AIR [test] [dry]`, at power 0 like every send.
      - Cost: about 13 KB of flash (core, both framers, the DMR voice call), no new RAM beyond the
        stack: the message is read in place.
+   - **Flashed and on air (11-18).** Flash 1 went on at 23:37Z (PR #193's CI image, cd3cbd0,
+     keyed; 23 s hands-free). Job air1 at 00:09-00:10Z 11-19 (main 0e8b912, 0 W on 441.850, the
+     Pluto listening) sent the radio's message with `uv380.air` in each mode, from flash:
+
+     | mode | Pluto decode | on channel |
+     |---|---|---|
+     | M17 | 102 of 105 stream frames found, 102/102 CRC good, 204 superframes, LSF src AG7EW, first 9100475824d1 and last 56d3d545aca1 as sent | data +37 Hz, ident about +290 Hz |
+     | YSF | 43/43 frames, FICH 43/43, 205/205 sotto VW CRC-8 good, AG7EW to ALL, first and last as sent; outer 2703 Hz | data +36 Hz, ident about +260 Hz |
+     | DMR | 60/60 blocks CRC good, 85 superframes, text AG7EW, terminator seen | data +146 Hz, ident about +310 Hz |
+
+     The data now lands on the channel, where the RAM-module runs had it 6.7 kHz high, and the
+     DMR capture decodes with no mixing first. The dry run before it (air1-dry) streamed every
+     mode with no late or lost slot. Logs /mnt/project-files/uv380-multimode/air1-1119/.
    - **Step 2, later:** the image's own bus (OpenRTX's HR_C6000 driver and chip-select lock, a
      real EXTI slot interrupt), cal from `calib->sendIrange/sendQrange`, module API level 6
      exporting the core, and no 5 s key-up cap (the guard deadline follows the stream).
