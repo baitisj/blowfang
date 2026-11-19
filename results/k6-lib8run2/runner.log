@@ -1,0 +1,45 @@
+2026-11-19T23:09:16Z job k6-lib8run2 by k6-ysfrx, checkout /home/baitisj/blowfang-work/worktrees/inbox-2df52d95f727 at 2df52d95f72710817218061623f80d406603cf8c
+2026-11-19T23:09:16Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-ysfrx -- timeout -s INT --kill-after=10 480 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/k6-lib8run2/k6.log
+2026-11-19T23:09:18Z step 1 (logger) rc=0
+2026-11-19T23:09:21Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T23:09:21Z step 2 (ic7100.tune) rc=0
+2026-11-19T23:10:19Z seen /K6 EX t stopped/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run2/k6.log
+2026-11-19T23:10:19Z step 3 (wait) rc=0
+2026-11-19T23:10:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py --as k6-ysfrx id wake the K6 to run FUSOTTO RX from slot 8
+CW ID 'AG7EW SOTTO TEST' on 440850000 Hz (wake the K6 to run FUSOTTO RX from slot 8); PTT now 0
+2026-11-19T23:10:34Z step 4 (ic7100) rc=0
+2026-11-19T23:10:34Z seen /VOICE MSG for/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run2/k6.log
+2026-11-19T23:10:34Z step 5 (wait) rc=0
+2026-11-19T23:10:34Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-2df52d95f727/tools/pluto_bench.py --as k6-ysfrx send /home/baitisj/blowfang-work/runs/inbox/k6-lib8run2/run8.wav --gain -40
+send: wav peak 0.500 of full scale -> 1500 Hz before pre-emphasis
+send run8.wav: 11.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 23:10:35Z
+end 23:10:45Z: 11.0 s of signal in 10.8 s (kept up)
+2026-11-19T23:10:46Z step 6 (pluto) rc=0
+2026-11-19T23:11:26Z step 7 (wait) rc=1 (no /K6 LIB run slot=8/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run2/k6.log)
+2026-11-19T23:12:06Z step 8 (wait) rc=1 (no /ysf start/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run2/k6.log)
+2026-11-19T23:12:08Z step 9 (wait) rc=0
+2026-11-19T23:12:08Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-2df52d95f727/tools/pluto_bench.py --as k6-ysfrx send /home/baitisj/blowfang-work/runs/inbox/k6-lib8run2/ysf.wav --dev 5400 --gain -40
+/home/baitisj/blowfang-work/worktrees/inbox-2df52d95f727/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysf.wav: 22.2 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 23:12:09Z
+end 23:12:31Z: 22.2 s of signal in 22.1 s (kept up)
+2026-11-19T23:12:31Z step 10 (pluto) rc=0
+2026-11-19T23:13:21Z step 11 (wait) rc=1 (no /ysf start/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run2/k6.log)
+2026-11-19T23:13:23Z step 12 (wait) rc=0
+2026-11-19T23:13:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-2df52d95f727/tools/pluto_bench.py --as k6-ysfrx send /home/baitisj/blowfang-work/runs/inbox/k6-lib8run2/ysf.wav --dev 3888 --gain -40
+/home/baitisj/blowfang-work/worktrees/inbox-2df52d95f727/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.917 of full scale -> 3565 Hz before pre-emphasis
+send ysf.wav: 22.2 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 23:13:24Z
+end 23:13:47Z: 22.2 s of signal in 22.1 s (kept up)
+2026-11-19T23:13:47Z step 13 (pluto) rc=0
+2026-11-19T23:14:17Z step 14 (wait) rc=0
+2026-11-19T23:15:47Z step 15 (wait) rc=0
+2026-11-19T23:15:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release k6-ysfrx
+the port is free (k6-ysfrx let go)
+2026-11-19T23:15:48Z step 16 (logger.stop) rc=0
+2026-11-19T23:15:48Z job k6-lib8run2 done
