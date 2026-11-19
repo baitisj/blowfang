@@ -181,6 +181,12 @@ A source wired to the bench PC can't test the mic: its audio reaches the codec i
   inner about +-760 (a third). Trim 6100 - 6680 = -580 put the burst +200 to +370 Hz from 441.850
   (uncorrected Pluto) and the ident before it about 7 kHz below the burst. Symbol map MSB dibit first,
   01 +3, 00 +1, 10 -1, 11 -3 (the DMR / M17 map).
+- DSOTTO RAW, DSR120 THROUGH THE PHYSICAL LAYER MODE (M, 11-19, docs/uv380-dsotto-raw.md, 441.850).
+  Receive, with the radio's own FM tap and the Pluto sending (`dsraw-ladder1`, 09:43Z): at Pluto
+  gain -72 dB (RSSI -86 dBm) DSR120 got 48/48 superframes and M17 live 6/48. That puts DSR120's
+  edge 2-3 dB below M17 live's. The RSSI meter stops at -86 dBm, the FM threshold.
+  Send at 0 W, with the Pluto receiving (`dsraw-air1`, 15:41Z): trim -580, TX_DEV 123, 68 slots,
+  `late=0 lost=0`, 45/45 superframes decoded byte-exact from the Pluto's discriminator wav.
 - FSK (PHY F) on air (M, 11-14 10:25Z, "phy fsk" + tx_request, 1 W, IC-7100 at 48 kHz): reference
   decoder 20/20 packets, 200/200 frames. Baud 1799.97 (-14 ppm); tones roughly 1270/1810 Hz by a rough
   instantaneous-frequency measure (reference wav measured the same way: 1190/1790); 1800/1200 Hz
