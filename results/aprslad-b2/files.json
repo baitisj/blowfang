@@ -1,0 +1,72 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6-rate.json"
+ },
+ {
+  "name": "steps_n2.json",
+  "bytes": 743,
+  "sha256": "41eecfd34a0ad50700a30b8ae815def96bbd3c81ee4be1b9231b1081afc7d5ac",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_n2.json"
+ },
+ {
+  "name": "steps_n1.json",
+  "bytes": 907,
+  "sha256": "c91c65b2c11f349b2adfb04113de72912c340132cce265c0bc005e1a2695ef4b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_n1.json"
+ },
+ {
+  "name": "steps_g1.json",
+  "bytes": 908,
+  "sha256": "9bd059851c2f0eaedd1ce1a79e922c27e27926c9b676ac140840abc9b33ba20a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_g1.json"
+ },
+ {
+  "name": "steps_w1.json",
+  "bytes": 908,
+  "sha256": "4577ebe2c6308dc5d43db5722c8c2349e6d738152f20647d2d68f6d0facc1962",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_w1.json"
+ },
+ {
+  "name": "k6_n2.log",
+  "bytes": 14576,
+  "sha256": "a36a722d3fd6408096ce7bb7ca478e0784076deeaa2b79e0a4bd83cf72175cbe",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_n2.log"
+ },
+ {
+  "name": "k6_g1.log",
+  "bytes": 15186,
+  "sha256": "9ce1bd4afe8a9ed9f51783e6161cbd8ebcca9ce701671f6da347d16b044b7603",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_g1.log"
+ },
+ {
+  "name": "k6_n1.log",
+  "bytes": 17069,
+  "sha256": "8c31c553a3f2813807a84ff64b0ddfe4cc76cb1256165347e9a8b1395832f72c",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_n1.log"
+ },
+ {
+  "name": "k6_w1.log",
+  "bytes": 17631,
+  "sha256": "5126a402396cf40600f9c8a7c1cd716ce050197cfb3a94f2ab3fd24e55c5161e",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_w1.log"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 41679,
+  "sha256": "d4d49421642bc4a16f47522fb80721f6ebab4ed9272a1c919e98aa5dc0ef756d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-b2/logger.out"
+ }
+]
