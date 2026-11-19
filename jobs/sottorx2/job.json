@@ -1,0 +1,115 @@
+{
+ "id": "sottorx2",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 14,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "m17sotto"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "sottorx start",
+   "file": "uv380.log",
+   "seconds": 120
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17s.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17s.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-60",
+    "--offset-hz",
+    "1000"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "mod say end msgs=",
+   "file": "uv380.log",
+   "seconds": 240
+  },
+  {
+   "do": "wait",
+   "seconds": 10
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "ysfsotto"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "sottorx start air=ysf",
+   "file": "uv380.log",
+   "seconds": 120
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysfs.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysfs.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-60",
+    "--offset-hz",
+    "1000"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "air=ysf[\\s\\S]*mod say end msgs=",
+   "file": "uv380.log",
+   "seconds": 240
+  }
+ ],
+ "sources_commit": "e4ea6af"
+}
