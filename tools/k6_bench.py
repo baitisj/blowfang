@@ -408,9 +408,22 @@ def serial_hold(who, cmd, poll=SERIAL_POLL_S, term_s=5.0):
     _unlink("serial_release")                   # a request made before we started is not for us
     now = time.time()
     _put_json("serial_owner", {"who": who, "pid": os.getpid(), "cmd": " ".join(cmd), "since": round(now, 3)})
+    # a stop (the runner's SIGTERM to this process group when a job ends or is cancelled) must take
+    # the reader with it. 2026-11-19: SIGTERM killed this process outright, its finally never ran,
+    # and the reader, under GNU timeout (which puts itself in a process group of its own, out of
+    # reach of the group kill), held /dev/ttyUSB2 for up to 83 minutes while the lock, freed with
+    # this process, said the port was free.
+    def _stop(sig, frame):
+        raise SystemExit(128 + sig)
+    old = {}
+    if threading.current_thread() is threading.main_thread():
+        for sig in (signal.SIGTERM, signal.SIGHUP):
+            old[sig] = signal.signal(sig, _stop)
     try:
-        child = subprocess.Popen(cmd)
+        child = subprocess.Popen(cmd, preexec_fn=_die_with_parent)
     except OSError:
+        for sig, h in old.items():
+            signal.signal(sig, h)
         _unlink("serial_owner")
         fcntl.flock(lk, fcntl.LOCK_UN)
         lk.close()
@@ -424,20 +437,17 @@ def serial_hold(who, cmd, poll=SERIAL_POLL_S, term_s=5.0):
             if rc is None and os.path.exists(path("serial_release")):
                 r = _json("serial_release") or {}
                 why = f"released for {r.get('by', '?')}"
-                child.terminate()
-                try:
-                    child.wait(term_s)
-                except subprocess.TimeoutExpired:
-                    child.kill()
-                    child.wait()
+                _end_reader(child, term_s)
                 rc = 0
                 break
             if rc is None:
                 time.sleep(poll)
+    except SystemExit as e:
+        why, rc = f"stopped by signal {int(e.code) - 128}", 0
     finally:
-        if child.poll() is None:
-            child.terminate()
-            child.wait()
+        _end_reader(child, term_s)
+        for sig, h in old.items():
+            signal.signal(sig, h)
         _unlink("serial_owner")
         _unlink("serial_release")
         now = time.time()
@@ -445,6 +455,39 @@ def serial_hold(who, cmd, poll=SERIAL_POLL_S, term_s=5.0):
         fcntl.flock(lk, fcntl.LOCK_UN)
         lk.close()
     return rc
+
+
+def _die_with_parent():
+    """in the reader, before exec: SIGTERM when serial-hold dies, even by SIGKILL (Linux prctl
+    PR_SET_PDEATHSIG; elsewhere nothing)"""
+    try:
+        import ctypes
+        ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGTERM, 0, 0, 0)
+    except (OSError, AttributeError):
+        pass
+
+
+def _end_reader(child, term_s):
+    """the reader and its own process group (GNU timeout makes one) gone: SIGTERM, then SIGKILL"""
+    def group():
+        try:
+            return child.pid if os.getpgid(child.pid) == child.pid != os.getpgid(0) else None
+        except OSError:
+            return None
+    g = group()
+    if child.poll() is not None:
+        if g:
+            with contextlib.suppress(OSError):
+                os.killpg(g, signal.SIGTERM)
+        return
+    with contextlib.suppress(OSError):
+        os.killpg(g, signal.SIGTERM) if g else child.terminate()
+    try:
+        child.wait(term_s)
+    except subprocess.TimeoutExpired:
+        with contextlib.suppress(OSError):
+            os.killpg(g, signal.SIGKILL) if g else child.kill()
+        child.wait()
 
 
 def serial_release(by, wait=30.0, poll=0.2):
