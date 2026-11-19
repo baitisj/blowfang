@@ -865,7 +865,7 @@ level worth measuring:
   crossings when the sender is about 1 kHz off. The K6's crystal is +0.05 ppm, so this is the
   senders' offset.
 
-The modules are `aprsdfsk_440` with one setting each, 320 s, the setting on the start line
+The modules are `aprsdfsk_440` with one setting each, 400 s (two minutes to settle after the tune before the Pluto sends), the setting on the start line
 (`... plain set=narrow`) and each packet's strongest RSSI on its y line (`r=-81`):
 
 | Module | Filter | AFC | Gain |
