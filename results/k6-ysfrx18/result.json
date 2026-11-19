@@ -1,0 +1,12 @@
+{
+ "id": "k6-ysfrx18",
+ "status": "queued",
+ "queued": "2026-11-19T07:56:48Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f8d4c4704ec9602dc95acdd29898607c3381ea83",
+  "path": "jobs/k6-ysfrx18"
+ },
+ "runner_commit": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
+ "updated": "2026-11-19T07:56:48Z"
+}
