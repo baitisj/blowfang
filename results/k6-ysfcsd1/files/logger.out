@@ -1,0 +1,181 @@
+listening (Ctrl-C to stop) ...
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=D frames=XL baud=2400 rates=F12,F18,D24 stream=0 reg58=00e9 reg2b=8400 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-109 batt=8510 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=D frames=XL baud=2400 rates=F12,F18,D24 stream=0 reg58=00e9 reg2b=8400 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8510 build=8a78fb5-20261117T0904Z
+K6 RATE D24>F18 why=quiet n=8 bad=0
+K6 CFG why=rate chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8510 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=69 chunk=8 have=1/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=9 have=2/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=69 chunk=10 have=3/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=69 chunk=11 have=4/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=12 have=5/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=13 have=6/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=14 have=7/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=15 have=8/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=16 have=9/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=17 have=10/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=69 chunk=18 have=11/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=19 have=12/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=20 have=13/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=21 have=14/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=22 have=15/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=23 have=16/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=69 chunk=24 have=17/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=25 have=18/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=26 have=19/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=27 have=20/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=28 have=21/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=29 have=22/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=30 have=23/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=31 have=24/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=32 have=25/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=33 have=26/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=34 have=27/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=69 chunk=35 have=28/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=69 chunk=36 have=29/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=37 have=30/70 rssi=-67 noise=14
+K6 MOD r=1 xfer=69 chunk=38 have=31/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=39 have=32/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=40 have=33/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=41 have=34/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=42 have=35/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=43 have=36/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=69 chunk=44 have=37/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=45 have=38/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=46 have=39/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=69 chunk=47 have=40/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=48 have=41/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=49 have=42/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=50 have=43/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=51 have=44/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=52 have=45/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=53 have=46/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=54 have=47/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=55 have=48/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=56 have=49/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=57 have=50/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=58 have=51/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=59 have=52/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=60 have=53/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=61 have=54/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=62 have=55/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=63 have=56/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=64 have=57/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=69 chunk=65 have=58/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=66 have=59/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=67 have=60/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=68 have=61/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=69 have=62/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=69 chunk=0 have=63/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=69 chunk=1 have=64/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=2 have=65/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=3 have=66/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=4 have=67/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=69 chunk=5 have=68/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=69 chunk=6 have=69/70 rssi=-67 noise=17
+K6 MOD r=3 xfer=69 chunk=7 have=70/70 rssi=-67 noise=17
+K6 MOD run serial=1795108677 code=8430 B at 0x200020a4 stack=2028 B scratch=3320 B
+K6 MOD say ysf start f=440850000 floor=-61 msg=459
+K6 MOD say s 40 h=0 lost=0 idle=56 ks=5555
+K6 MOD say s 80 h=0 lost=1 idle=53 ks=5556
+K6 MOD say Y call fr=10 fich=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7
+K6 MOD say Y d 0 000102030405060708090a0b0c0d0e0f1011121314151617
+K6 MOD say Y d 24 18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f
+K6 MOD say Y d 48 303132333435363738393a3b3c3d3e3f4041424344454647
+K6 MOD say Y d 72 48494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+K6 MOD say Y d 96 606162636465666768696a6b6c6d6e6f7071727374757677
+K6 MOD say Y d 120 78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f
+K6 MOD say Y d 144 909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7
+K6 MOD say Y d 168 a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+K6 MOD say Y d 192 c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7
+K6 MOD say Y d 216 d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef
+K6 MOD say Y call fr=18 fich=18 vw=80/80 sf=80 miss=0 crc=5d15 from=AG7
+K6 MOD say Y d 0 000102030405060708090a0b0c0d0e0f1011121314151617
+K6 MOD say Y d 24 18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f
+K6 MOD say Y d 48 303132333435363738393a3b3c3d3e3f4041424344454647
+K6 MOD say Y d 72 48494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+K6 MOD say Y d 96 606162636465666768696a6b6c6d6e6f7071727374757677
+K6 MOD say Y d 120 78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f
+K6 MOD say Y d 144 909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7
+K6 MOD say Y d 168 a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+K6 MOD say Y d 192 c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7
+K6 MOD say Y d 216 d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef
+K6 MOD say Y d 240 f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0001020304050607
+K6 MOD say Y d 264 08090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+K6 MOD say Y d 288 202122232425262728292a2b2c2d2e2f3031323334353637
+K6 MOD say Y d 312 38393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f
+K6 MOD say Y d 336 505152535455565758595a5b5c5d5e5f6061626364656667
+K6 MOD say Y d 360 68696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f
+K6 MOD say Y d 384 808182838485868788898a8b8c8d8e8f9091929394959697
+K6 MOD say Y d 408 98999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf
+K6 MOD say Y d 432 b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7
+K6 MOD say Y d 456 c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf
+K6 MOD say c -61 22077 h=0
+K6 MOD say Y call fr=10 fich=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7
+K6 MOD say Y d 0 000102030405060708090a0b0c0d0e0f1011121314151617
+K6 MOD say Y d 24 18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f
+K6 MOD say Y d 48 303132333435363738393a3b3c3d3e3f4041424344454647
+K6 MOD say Y d 72 48494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+K6 MOD say Y d 96 606162636465666768696a6b6c6d6e6f7071727374757677
+K6 MOD say Y d 120 78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f
+K6 MOD say Y d 144 909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7
+K6 MOD say Y d 168 a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+K6 MOD say Y d 192 c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7
+K6 MOD say Y d 216 d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef
+K6 MOD say Y call fr=18 fich=18 vw=80/80 sf=80 miss=0 crc=5d15 from=AG7
+K6 MOD say Y d 0 000102030405060708090a0b0c0d0e0f1011121314151617
+K6 MOD say Y d 24 18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f
+K6 MOD say Y d 48 303132333435363738393a3b3c3d3e3f4041424344454647
+K6 MOD say Y d 72 48494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+K6 MOD say Y d 96 606162636465666768696a6b6c6d6e6f7071727374757677
+K6 MOD say Y d 120 78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f
+K6 MOD say Y d 144 909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7
+K6 MOD say Y d 168 a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+K6 MOD say Y d 192 c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7
+K6 MOD say Y d 216 d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef
+K6 MOD say Y d 240 f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0001020304050607
+K6 MOD say Y d 264 08090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+K6 MOD say Y d 288 202122232425262728292a2b2c2d2e2f3031323334353637
+K6 MOD say Y d 312 38393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f
+K6 MOD say Y d 336 505152535455565758595a5b5c5d5e5f6061626364656667
+K6 MOD say Y d 360 68696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f
+K6 MOD say Y d 384 808182838485868788898a8b8c8d8e8f9091929394959697
+K6 MOD say Y d 408 98999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf
+K6 MOD say Y d 432 b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7
+K6 MOD say Y d 456 c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf
+K6 MOD say s 120 h=0 lost=2 idle=42 ks=5556
+K6 MOD say c -61 22081 h=0
+K6 MOD say c -75 47 h=0
+K6 MOD say Y call fr=10 fich=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7
+K6 MOD say Y d 0 000102030405060708090a0b0c0d0e0f1011121314151617
+K6 MOD say Y d 24 18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f
+K6 MOD say Y d 48 303132333435363738393a3b3c3d3e3f4041424344454647
+K6 MOD say Y d 72 48494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+K6 MOD say Y d 96 606162636465666768696a6b6c6d6e6f7071727374757677
+K6 MOD say Y d 120 78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f
+K6 MOD say Y d 144 909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7
+K6 MOD say Y d 168 a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+K6 MOD say Y d 192 c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7
+K6 MOD say Y d 216 d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef
+K6 MOD say Y call fr=18 fich=18 vw=80/80 sf=80 miss=0 crc=5d15 from=AG7
+K6 MOD say Y d 0 000102030405060708090a0b0c0d0e0f1011121314151617
+K6 MOD say Y d 24 18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f
+K6 MOD say Y d 48 303132333435363738393a3b3c3d3e3f4041424344454647
+K6 MOD say Y d 72 48494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f
+K6 MOD say Y d 96 606162636465666768696a6b6c6d6e6f7071727374757677
+K6 MOD say Y d 120 78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f
+K6 MOD say Y d 144 909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7
+K6 MOD say Y d 168 a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf
+K6 MOD say Y d 192 c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7
+K6 MOD say Y d 216 d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeef
+K6 MOD say Y d 240 f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0001020304050607
+K6 MOD say Y d 264 08090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+K6 MOD say Y d 288 202122232425262728292a2b2c2d2e2f3031323334353637
+K6 MOD say Y d 312 38393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f
+K6 MOD say Y d 336 505152535455565758595a5b5c5d5e5f6061626364656667
+K6 MOD say Y d 360 68696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f
+K6 MOD say Y d 384 808182838485868788898a8b8c8d8e8f9091929394959697
+K6 MOD say Y d 408 98999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf
+K6 MOD say Y d 432 b0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7
+K6 MOD say Y d 456 c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf
+K6 MOD ret=18 (0x12) in 5941 ms stack_free=260 B
