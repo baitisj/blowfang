@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>blowfang K6 installer</title>
+<meta name="description" content="Install blowfang on a Baofeng UV-K6 / K61 from the browser, over the programming cable (Web Serial). No Python needed.">
+<style>
+:root {
+  --bg: #f6f5f1; --card: #ffffff; --ink: #1d1d1b; --muted: #66645e; --line: #dedbd2;
+  --accent: #b4441c; --accent-ink: #ffffff; --ok: #2f7a3b; --warn: #a15c00; --bad: #b3261e;
+  --log-bg: #1f1e1c; --log-ink: #e9e6dc; --prompt: #fff4d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161614; --card: #22211e; --ink: #ecebe6; --muted: #a29f96; --line: #3a3833;
+    --accent: #e0703f; --accent-ink: #1a1a18; --ok: #6cc07a; --warn: #e5a54a; --bad: #f08079;
+    --log-bg: #0f0f0e; --log-ink: #e9e6dc; --prompt: #3a3220;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.05rem; margin: 0 0 8px; display: flex; gap: 10px; align-items: baseline; }
+h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; }
+p { margin: 6px 0; }
+.lead { color: var(--muted); margin-bottom: 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 14px 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+button, .file { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button:disabled, .file.disabled { opacity: .45; cursor: not-allowed; }
+.file input { display: none; }
+.state { font-size: .92rem; color: var(--muted); margin-top: 8px; overflow-wrap: anywhere; }
+.state b { color: var(--ink); }
+.ok, .state .ok { color: var(--ok); } .warn, .state .warn { color: var(--warn); } .bad, .state .bad { color: var(--bad); }
+label.opt { display: flex; gap: 8px; align-items: flex-start; font-size: .95rem; margin: 6px 0; }
+select { font: inherit; padding: 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--ink); max-width: 100%; }
+details summary { cursor: pointer; color: var(--muted); }
+#prompt { display: none; background: var(--prompt); border: 2px solid var(--accent); }
+#prompt.on { display: block; }
+#prompt p { font-size: 1.05rem; }
+#prompt input { font: inherit; padding: 8px; border-radius: 6px; border: 1px solid var(--line); width: 8em; }
+progress { width: 100%; height: 10px; margin-top: 8px; accent-color: var(--accent); }
+#log { background: var(--log-bg); color: var(--log-ink); font: 12.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; padding: 12px; border-radius: 8px; height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 10px; }
+#nosupport { display: none; border-color: var(--bad); }
+footer { color: var(--muted); font-size: .85rem; margin-top: 28px; }
+a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>blowfang K6 installer</h1>
+  <p class="lead">Installs blowfang on a Baofeng UV-K6 / K61 over its USB programming cable, right from this page.
+    It does what <code>tools/k6_install.py</code> does, without Python. The instruction book is
+    <a href="https://github.com/baitisj/blowfang/blob/main/docs/manual/install.md">docs/manual/install.md</a>: read its
+    <em>Before you start</em> first, because flashing replaces the stock firmware for good.</p>
+
+  <div class="card" id="nosupport">
+    <h2>This browser can't reach a serial port</h2>
+    <p>Web Serial works in Chrome, Edge and Opera on a desktop or laptop (Windows, macOS, Linux, ChromeOS). Firefox,
+      Safari and phones don't have it. Open this page in one of those browsers, or use <code>tools/k6_install.py</code>.</p>
+  </div>
+
+  <section class="card">
+    <h2><span class="n">1</span> Your key</h2>
+    <p>The radio runs only modules signed with your own key, so nobody else can load code into it. This page makes
+      the key on your computer and never sends it anywhere: it writes the key into each image just before flashing
+      and signs each module with it as it goes over the cable. Keep the key file: a radio keyed with it takes only
+      modules signed with it. A key made by <code>k6_install.py key</code> works here too.</p>
+    <div class="row">
+      <button id="newkey">Make my key</button>
+      <label class="file" id="keyfilebtn">Load my key file<input type="file" id="keyfile" accept=".key,.txt,text/plain"></label>
+      <button id="forgetkey">Forget</button>
+    </div>
+    <label class="opt"><input type="checkbox" id="rememberkey" checked> Remember the key in this browser (the file stays the copy that counts)</label>
+    <div class="state" id="keystate">No key yet.</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span> The release</h2>
+    <p>The release folder <code>blowfang-k6-…</code>, from a blowfang release or the newest <em>K6 pager firmware</em>
+      run on GitHub (artifact <code>blowfang-k6-&lt;commit&gt;</code>). Choose its zip as downloaded, or the unzipped folder.
+      Every file is checked against the release's manifest before anything is sent.</p>
+    <div class="row">
+      <label class="file">Choose release zip<input type="file" id="zip" accept=".zip,application/zip"></label>
+      <label class="file">Choose release folder<input type="file" id="folder" webkitdirectory multiple></label>
+    </div>
+    <div class="state" id="bundlestate">No release chosen.</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span> The radio</h2>
+    <p>Plug the cable into the radio's two-pin socket, all the way in, and switch the radio on. On a radio that already
+      runs blowfang, leave it in EXPLORE (or the arena). Then pick the cable's port: it is usually named
+      CH340, CP210x, PL2303 or "USB Serial".</p>
+    <div class="row">
+      <button id="connect">Connect the cable</button>
+      <button id="disconnect" disabled>Disconnect</button>
+    </div>
+    <div class="state" id="portstate">Not connected.</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">4</span> Install</h2>
+    <p>On a new radio this asks you to switch it off and on three times and to press MENU once; it never asks you to
+      hold keys. On a radio that runs blowfang it updates with no hands.</p>
+    <label class="opt"><span>Backup of the radio's 2 MB SPI flash (factory calibration):</span></label>
+    <select id="backup">
+      <option value="auto">Back up first, unless this browser saved a backup before</option>
+      <option value="always">Always back up first</option>
+      <option value="never">Skip the backup</option>
+    </select>
+    <label class="opt"><input type="checkbox" id="fresh"> Install as on a new radio even if it runs blowfang (flashes the codebook installers again)</label>
+    <label class="opt"><input type="checkbox" id="verify"> Read every library slot back after writing it (slower)</label>
+    <div class="row">
+      <button class="primary" id="install">Install or update</button>
+    </div>
+    <details>
+      <summary>Single steps</summary>
+      <div class="row">
+        <button id="load">Load library only</button>
+        <button id="dobackup">Back up SPI flash</button>
+        <button id="status">Radio status</button>
+        <label class="file" id="flashbtn">Flash one image…<input type="file" id="flashimg" accept=".bin"></label>
+      </div>
+      <p class="state">Load library: EXPLORE's pages, the help deck and the modules into a radio that runs the release's image.
+        Flash one image: keys any blowfang .bin with your key and flashes it (on a blowfang radio with no hands, otherwise as you switch it on).</p>
+    </details>
+  </section>
+
+  <section class="card" id="prompt">
+    <h2>Your turn</h2>
+    <p id="prompttext"></p>
+    <div class="row">
+      <input id="promptinput" autocomplete="off" placeholder="YES">
+      <button class="primary" id="promptgo">Continue</button>
+      <button id="promptstop">Stop</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Progress</h2>
+    <div class="state" id="what">Idle.</div>
+    <progress id="bar" max="1" value="0"></progress>
+    <div id="log" role="log" aria-live="polite"></div>
+    <div class="row"><button id="savelog">Save log</button></div>
+  </section>
+
+  <footer>blowfang is built on Aura (GPL-3.0); source at <a href="https://github.com/baitisj/blowfang">github.com/baitisj/blowfang</a>.
+    Nothing on this page is Baofeng's, and nothing you choose here leaves your computer.</footer>
+</main>
+<script src="k6web.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
