@@ -1,0 +1,178 @@
+{
+ "id": "aprslad-a2",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 34,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 1800,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_w.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "b20c4c3d56a77500a6cfefa82a1e22fdc7e08dcacb49f403abee85e8defd55c3"
+  },
+  {
+   "do": "wait",
+   "seconds": 60
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-62,-82,-70,-88,-66,-78,-74,-85,-60",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_w.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 300
+  },
+  {
+   "do": "wait",
+   "seconds": 130
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_n.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "23ef8ce5f8b2a1f1d0e1a329846e804d64d61c31b8680feccab62f7f3f29965d"
+  },
+  {
+   "do": "wait",
+   "seconds": 60
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-62,-82,-70,-88,-66,-78,-74,-85,-60",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_n.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 300
+  },
+  {
+   "do": "wait",
+   "seconds": 130
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_g.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "c803eda7195b6dad800cc5c8657ddbeb308856d5845e115c5934347cd4286c55"
+  },
+  {
+   "do": "wait",
+   "seconds": 60
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs3.wav",
+    "--gains",
+    "-62,-82,-70,-88,-66,-78,-74,-85,-60",
+    "--peak",
+    "3000",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps_g.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 300
+  },
+  {
+   "do": "wait",
+   "seconds": 130
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
