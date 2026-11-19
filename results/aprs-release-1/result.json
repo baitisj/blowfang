@@ -1,0 +1,12 @@
+{
+ "id": "aprs-release-1",
+ "status": "queued",
+ "queued": "2026-11-19T21:27:54Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "bb07f81e69432d359a7059c9371111ff7304fdd0",
+  "path": "jobs/aprs-release-1"
+ },
+ "runner_commit": "8235569589ba9f1325949aa0e9247c93d4ac7b72",
+ "updated": "2026-11-19T21:27:54Z"
+}
