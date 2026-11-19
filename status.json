@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "dsraw-air1",
-  "who": "dsotto-raw",
-  "since": "2026-11-19T15:41:09Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T15:41:07Z",
+ "last_poll": "2026-11-19T15:42:23Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T15:41:09Z"
+ "updated": "2026-11-19T15:42:23Z"
 }
