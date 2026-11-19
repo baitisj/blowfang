@@ -1,0 +1,71 @@
+2026-11-19T14:33:31Z job aprsair-2 by k6-aprs-ladder, checkout /home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9 at ef67e4cfcec9778c8bc4f26509869f9cb482d73a
+2026-11-19T14:33:31Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-aprs-ladder -- timeout -s INT --kill-after=10 4200 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/aprsair-2/k6.log
+2026-11-19T14:33:33Z step 1 (logger) rc=0
+2026-11-19T14:33:36Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T14:33:36Z step 2 (ic7100.tune) rc=0
+2026-11-19T14:33:37Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk_o.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprsair-2/k6-rate.json --telemetry 0
+06:33:39 send 1: 58 of 58 XL chunks at F/1800 (serial 1795098818, xfer 194); module /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk_o.bin: 6976 B code, entry +16, API level 2, serial 1795098818, xfer 194, 7000 B image in 58 XL chunks; 116 packets, 74.8 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 82.2 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 14:33:40Z
+end 14:35:02Z: 82.2 s of signal in 82.1 s (kept up)
+06:35:02 listening for the K6's report
+06:35:28 no report heard
+06:35:28 no report after a whole send: the K6 may be set to L packets, so the next send is 121 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 58 chunks sent were lost
+06:35:28 CW ID
+2026-11-19T14:35:29Z step 3 (k6.upload) rc=0
+2026-11-19T14:50:29Z step 4 (wait) rc=0
+2026-11-19T14:50:32Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T14:50:32Z step 5 (ic7100.tune) rc=0
+2026-11-19T14:50:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprsair-2/k6-rate.json --telemetry 0
+06:50:35 send 1: 53 of 53 XL chunks at F/1800 (serial 1795099834, xfer 186); module /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk.bin: 6378 B code, entry +16, API level 2, serial 1795099834, xfer 186, 6402 B image in 53 XL chunks; 106 packets, 68.4 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 75.8 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 14:50:36Z
+end 14:51:52Z: 75.8 s of signal in 75.7 s (kept up)
+06:51:52 listening for the K6's report
+06:52:19 no report heard
+06:52:19 no report after a whole send: the K6 may be set to L packets, so the next send is 111 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 53 chunks sent were lost
+06:52:19 CW ID
+2026-11-19T14:52:19Z step 6 (k6.upload) rc=0
+2026-11-19T15:07:20Z step 7 (wait) rc=0
+2026-11-19T15:07:23Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T15:07:23Z step 8 (ic7100.tune) rc=0
+2026-11-19T15:07:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk_o.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprsair-2/k6-rate.json --telemetry 0
+07:07:26 send 1: 58 of 58 XL chunks at F/1800 (serial 1795100845, xfer 173); module /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk_o.bin: 6976 B code, entry +16, API level 2, serial 1795100845, xfer 173, 7000 B image in 58 XL chunks; 116 packets, 74.8 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 82.2 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 15:07:27Z
+end 15:08:49Z: 82.2 s of signal in 82.1 s (kept up)
+07:08:49 listening for the K6's report
+07:09:15 no report heard
+07:09:15 no report after a whole send: the K6 may be set to L packets, so the next send is 121 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 58 chunks sent were lost
+07:09:15 CW ID
+2026-11-19T15:09:15Z step 9 (k6.upload) rc=0
+2026-11-19T15:24:15Z step 10 (wait) rc=0
+2026-11-19T15:24:19Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T15:24:19Z step 11 (ic7100.tune) rc=0
+2026-11-19T15:24:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprsair-2/k6-rate.json --telemetry 0
+07:24:21 send 1: 53 of 53 XL chunks at F/1800 (serial 1795101861, xfer 165); module /home/baitisj/blowfang-work/runs/inbox/aprsair-2/aprsdfsk.bin: 6378 B code, entry +16, API level 2, serial 1795101861, xfer 165, 6402 B image in 53 XL chunks; 106 packets, 68.4 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 75.8 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 15:24:22Z
+end 15:25:38Z: 75.8 s of signal in 75.7 s (kept up)
+07:25:38 listening for the K6's report
+07:26:05 no report heard
+07:26:05 no report after a whole send: the K6 may be set to L packets, so the next send is 111 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 53 chunks sent were lost
+07:26:05 CW ID
+2026-11-19T15:26:06Z step 12 (k6.upload) rc=0
+2026-11-19T15:41:06Z step 13 (wait) rc=0
+2026-11-19T15:41:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release k6-aprs-ladder
+the port is free (k6-aprs-ladder let go)
+2026-11-19T15:41:07Z step 14 (logger.stop) rc=0
+2026-11-19T15:41:07Z job aprsair-2 done

@@ -1,0 +1,23 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprsair-2/k6-rate.json"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 24533,
+  "sha256": "c6262b39de8b6190fe4a24644e0ec2da9a2e938b3dbc26e5f95c1c3bf765371e",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprsair-2/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 37305,
+  "sha256": "39d8fb330c57b77c823e675e9286cfe8d5b4b5d6e16d9cc9ecc6de5b11feb466",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprsair-2/k6.log"
+ }
+]
