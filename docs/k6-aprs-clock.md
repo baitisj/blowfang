@@ -876,6 +876,7 @@ The modules are `aprsdfsk_440` with one setting each, 400 s (two minutes to sett
 | `aprslad_g` | wide | as Aura leaves it | frozen, REG_13 03FF (as `aprsclk`'s tap) |
 | `aprslad_d` | wide | as Aura leaves it | AGC; REG_2B + 0100 (the receiver's de-emphasis off) |
 | `aprslad_k` | wide | as Aura leaves it, and tuned again after every packet without a frame (`DF_KICK`) | AGC |
+| `aprslad_o` | wide | as Aura leaves it; each packet tuned to its opening flags' offset (`DF_OFFT`) | AGC |
 
 Each puts back what it changed (the filter found, REG_73, REG_7E and REG_13). The bench job
 (bench runner inbox) uploads one, then the Pluto sends `python3 -m modem.aprs wav OUT --now
@@ -964,8 +965,37 @@ under `k6-aprs-ladder/`):
     moves with the offset since the chip slices at the tuned centre) and a tune to it before
     the frame begins, or a decoder on the IF tap with its own AFC.
 
-Next: the offset read from the flags and a tune per packet, an off-air run once the floor is
-back near -108 dBm, and an hour beside an APRS-IS log of the stations within 40 km.
+- **The offset from the opening flags** (run aprsoff-e1, `aprslad_a`, the AFC off so the centre
+  stays put). The y lines' `q=` is ones less zeros in the packet's words 2 to 25 (384 samples
+  of its opening flags). With the sender off the tuned centre the chip reads more of one level,
+  and q follows the offset closely, packet after packet (medians; the K6's centre is the
+  Pluto's -450, so a step's offset from it is minus the step, less 450):
+
+| Offset from the K6's centre (Hz) | -1050 | -750 | -450 | -150 | +150 | +450 | +750 | +1050 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| q | -64 (one start) | -32 | -10 to -13 | -3 to -4 | +2 to +4 | +6 to +10 | +16 to +22 | +36 (three starts) |
+| read, AFC off | | 0/12 | 0/12 | 10/12 | 7/12, 10/10 | 1/12 | 0/12 | no start |
+
+  A packet reads while |q| is 6 or under. Beyond about 1 kHz the chip seldom starts at all.
+- **`aprslad_o` (`DF_OFFT`)**: when the flags' q is 8 or more either way, the packet is given up,
+  the K6 tuned 150 Hz times the square root of |q| that way (within 150 Hz of every row above),
+  and the packet read again from the flags still to come; tuned back to the centre when it ends,
+  or after 0.5 s with no packet. A y line's `o=` is the offset it was read at. Run aprsoff-f1,
+  `aprslad_o` and then `aprslad_w`, AFC on, 12 packets a step at -89 dBm:
+
+| Offset from the K6's centre (Hz) | +150 | +750 | -450 | +450 | -750 | -150 | +1050 | -1050 | +150 | All |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `aprslad_o` | 8 | 10 | 6 | 8 | 4 | 11 | 1 | 1 | 11 | 60 of 108 |
+| `aprslad_w` | 4 | 0 | 0 | 4 | 0 | 11 | 0 | 0 | 4 | 23 of 108 |
+
+  The window goes from some 300 Hz either way to some 750, and at the centre `aprslad_o` loses
+  nothing (its tunes back also keep the AFC from wandering, as `aprslad_k` does). At 144.390
+  MHz that is about 5 ppm either way instead of 2. Past about 1 kHz the chip's own start is the
+  limit. The opening must be long enough for the tune: 24 words (80 ms) to measure and some
+  flags after it; an APRS sender's TXDELAY is usually 200 to 300 ms.
+
+Next: `aprsdfsk` (144.390) with `DF_OFFT`, an off-air run once the floor is back near -108 dBm,
+and an hour beside an APRS-IS log of the stations within 40 km.
 
 ## Size: which images
 
