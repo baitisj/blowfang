@@ -60,14 +60,27 @@ typedef struct {
   /* the FICH symbols' levels this call, in soft units (the +1 level 32, the +3 level 96) /16 +
      8: the levels' spread for the bench ("Y h" lines) */
   uint16_t hist[16];
+#ifdef YX_SNAP
+  /* the bench's look at the signal (a YX_SNAP build): the filter's 240 points (sync and FICH)
+     of the third frame of the first call that has one, its sync's rho^2 (Q8), quarter point,
+     +1 level and DC; kept in the message buffer's last 240 bytes */
+  int8_t *snap;
+  uint32_t snapped, sr, sq, su, sdc, sout;
+#endif
   srx_state m;
 } yx_t;
 
 /* the message buffer: n bytes at b (6 a superframe and a bit for each); 0 if under min
    superframes */
 static unsigned yx_mem(yx_t *x, uint8_t *b, uint32_t n, unsigned min) {
-  uint32_t r, max = n ? yd_div((n - 1u) * 8u, 49u, &r) : 0;
+  uint32_t r, max;
+  max = n ? yd_div((n - 1u) * 8u, 49u, &r) : 0;
   if (max < min) return 0;
+#ifdef YX_SNAP
+  /* at the message's far end: only a message that fills the buffer writes over it */
+  if (max * SRX_SF < 240u) return 0;
+  x->snap = (int8_t *)b + max * SRX_SF - 240u;
+#endif
   srx_init(&x->m, b, b + max * SRX_SF, max);
   return max;
 }
@@ -182,6 +195,7 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       x->on = 1, x->n = YD_SYNC_N, x->miss = 0;
       /* a new call: the last one's lines not given out yet are dropped */
       x->done = 0, x->nfr = x->nfich = x->nsf = x->nsfok = 0;
+      x->jf = 0, x->jv = 0;                  /* (the last call's frame still decoding: dropped) */
       for (k = 0; k < 16; k++) x->hist[k] = 0;
       srx_init(&x->m, x->m.frames, x->m.have, x->m.max);
       return;
@@ -232,7 +246,17 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       av = ((v * x->k16) >> 16) + 128;
       x->hist[av < 0 ? 0 : av > 255 ? 15 : av >> 4]++;
       x->fich[yd_fich_dibit(x->n - YD_SYNC_N)] = (uint8_t)(yx_q4(l0) | (yx_q4(l1) << 4));
-      if (++x->n == YD_SYNC_N + YD_FICH_SYMS) x->jf = 1, yd_f5_start(&x->f5);
+      if (++x->n == YD_SYNC_N + YD_FICH_SYMS) {
+        x->jf = 1, yd_f5_start(&x->f5);
+#ifdef YX_SNAP
+        if (!x->snapped && x->nfr == 2) {      /* (the third frame: nfr counts on at its end) */
+          uint32_t i, g0 = ((P + 3u) >> 2) - 239u;
+          for (i = 0; i < 240u; i++) x->snap[i] = d->f[(g0 + i) & (DS_FRING - 1)];
+          x->snapped = 1, x->sq = (x->P0 - (g0 << 2)), x->su = (uint32_t)x->u, x->sdc = (uint32_t)x->dc;
+          x->sr = x->rr, x->sout = 0;
+        }
+#endif
+      }
     } else {
       uint32_t b = 2u * (x->n - (YD_SYNC_N + YD_FICH_SYMS)), q;
       if (b == 0) x->pn = 0x1FF, x->wb ^= 1u;   /* the other buffer (the one decoded before last) */
@@ -309,6 +333,23 @@ static char *yx_house(yx_t *x, char *line) {
     x->nout = x->nout == 0xFFFFFFFEu ? 0xFFFFFFFDu : 0;
     return p;
   }
+#ifdef YX_SNAP
+  if (x->snapped == 1) {                 /* the snapshot: its sync, then 24 points a line */
+    if (x->sout == 0) {
+      p = kv(kv(line, "Y s r2=", (int)x->sr), " q=", (int)x->sq);
+      p = kv(kv(p, " u=", (int)x->su), " dc=", (int)x->sdc);
+      p = kv(p, " inv=", (int)x->inv);
+      x->sout = 1;
+      return p;
+    }
+    p = kv(line, "Y s ", (int)(x->sout - 1u));
+    *p++ = ' ';
+    for (i = 0; i < 24u; i++, x->sout++)
+      *p++ = H[(uint8_t)x->snap[x->sout - 1u] >> 4], *p++ = H[(uint8_t)x->snap[x->sout - 1u] & 15u];
+    if (x->sout > 240u) x->snapped = 2;
+    return p;
+  }
+#endif
   if (x->nout >= n) {
     x->done = 0;
     return 0;
