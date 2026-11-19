@@ -286,11 +286,14 @@ three separate 52 s key-ups of twelve 1200 baud transmissions each, 18 s apart.
 
 Run 7 (2026-11-11 21:07-21:12Z, receive only, 440.850, CW ID) ran `pocdump_1200` built to turn
 the AFC off (REG_73 bit 4, before the tune) under two 52 s key-ups. The sampler found no
-transmission at all: 345 false starts, no capture. With the AFC off the receiver stays where the
-restart leaves it, and the sampler's slicing never sees the preamble's `F0F0`. So the AFC is
-needed; it only has to be left alone. The module now tunes only when it is not on `POC_HZ`
-(wide) already (`tune=0` on the start line): after an upload on the same frequency the AFC keeps
-the pull it had on the upload's signal.
+transmission at all: 345 false starts, no capture. Why is open. The DMR sync detector works on
+the plain receiver with the AFC off and a restart every slot, and K6 and IC-7100 sit only about
+150 Hz apart, so "the plain receiver needs the AFC" is not a rule. The write may have done
+something besides the AFC: REG_73 was written before `api->tune` and never read back. A re-test
+writes it after the tune and reads it back. The module keeps the AFC as found and tunes only when
+it is not on `POC_HZ` (wide) already (`tune=0` on the start line), so after an upload on the same
+frequency the AFC keeps the pull it had on the upload's signal. On a live paging channel the
+module must tune, and short pages never settle a 30 s AFC, so run 8's gain below is the bench's.
 
 ## Bench run 8: no tune, less noise
 
