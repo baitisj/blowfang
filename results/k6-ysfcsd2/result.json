@@ -1,12 +1,102 @@
 {
  "id": "k6-ysfcsd2",
- "status": "running",
- "since": "2026-11-19T17:52:34Z",
+ "who": "k6-ysfrx",
+ "started": "2026-11-19T17:52:36Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T17:52:36Z",
+   "ended": "2026-11-19T17:52:38Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T17:52:38Z",
+   "ended": "2026-11-19T17:52:41Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "ic7100",
+   "started": "2026-11-19T17:52:41Z",
+   "ended": "2026-11-19T17:52:56Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T17:52:56Z",
+   "ended": "2026-11-19T17:52:56Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "k6.upload",
+   "started": "2026-11-19T17:52:56Z",
+   "ended": "2026-11-19T17:55:04Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T17:55:04Z",
+   "ended": "2026-11-19T17:55:04Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T17:55:04Z",
+   "ended": "2026-11-19T17:55:06Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-19T17:55:06Z",
+   "ended": "2026-11-19T17:55:30Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T17:55:30Z",
+   "ended": "2026-11-19T17:55:34Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T17:55:34Z",
+   "ended": "2026-11-19T17:55:57Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-19T17:55:57Z",
+   "ended": "2026-11-19T17:55:57Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "logger.stop",
+   "started": "2026-11-19T17:55:57Z",
+   "ended": "2026-11-19T17:55:58Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9",
+ "head": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "ended": "2026-11-19T17:55:58Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "2e27d6f63ab8e601773a23c0c61bad7c2bfc434b",
   "path": "jobs/k6-ysfcsd2"
  },
  "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
- "updated": "2026-11-19T17:52:34Z"
+ "updated": "2026-11-19T17:55:58Z"
 }
