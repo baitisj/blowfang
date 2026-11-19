@@ -195,6 +195,15 @@ tone 6680 Hz down for these modes by itself, so leave the trim at the FM value. 
 m17|ysf|dmr [test] [dry]` does the same with no PTT and ends with `ok air ret=80` (the whole
 message sent); the bench runner's step is `uv380.air`.
 
+**Hearing M17 and YSF (milestone 5, built, not yet flashed).** Sitting idle in M17 or YSF, the
+image listens on the C6000's FM tap (no hardware mod) instead of for RNG/FSK packets. A sotto
+message it hears becomes the message and plays, the same as a message heard in RNG or FSK. A
+superframe that was lost is filled from the one before it. The code is the c6sottorx RAM modules'
+(`mod/c6rx.h`, built in by `c6rx_img.c`), with its state in the module arena. It doesn't run
+while a module upload is under way, and it stops for PTT, FUNC, #, a mode change, `listen 0`
+and any USB line. It reports one line per message (`mod say rx m17 msg sf= got= missing= ...`)
+while a host is reading, and `listen` counts the messages. DMR still listens for RNG/FSK.
+
 **FUNC: hold to record, let go to send (probe image).** In PAGER mode on 441.850 or 440.850 MHz, holding FUNC
 (the black side button above PTT) records the mic as sotto 1200 from the C6000's codec input
 (I2S3, `pager_rec.c`, gain 5), LED orange, WITHOUT transmitting: only the C6000 runs its analog

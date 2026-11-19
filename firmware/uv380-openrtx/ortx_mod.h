@@ -153,6 +153,15 @@ uint8_t *om_arena(void);                /* NULL if the heap can't spare it */
 const ortx_api_t *om_api(const om_host *h);
 /* c6air_img.c: mod/c6air.h's c6air_run from flash (PAGER's M17, YSF and DMR sends, "air") */
 int c6air_send(const ortx_api_t *api, unsigned air, unsigned src, unsigned dry);
+/* No module upload under way ("mod begin" with no "mod run" yet): the image may use the arena */
+int om_idle(void);
+/* c6rx_img.c: mod/c6rx.h's c6rx_listen from flash (PAGER's M17 and YSF receive, air 1 or 2): a
+   heard message's superframes into out (at most max), 0 when stop() or max_ms came first, -1 if
+   the arena is too small */
+int c6rx_hear(const ortx_api_t *api, unsigned air, uint32_t max_ms, uint8_t *out, unsigned max);
+/* the message c6rx_hear last heard (it stays in the scratch until the arena's next use): its
+   superframes into out, at most max; 0 if there is none */
+int c6rx_take(const ortx_api_t *api, uint8_t *out, unsigned max);
 
 #ifdef __cplusplus
 }

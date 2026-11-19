@@ -307,6 +307,15 @@ also saves flash there.
      test transmission: `python3 -m modem.m17rx wav OUT --tones-s 0 --bert-s 0 --sotto N
      --repeat R` (`--dev 4800`) or `python3 -m modem.ysf wav OUT --sotto N` (`--dev 5400`).
      Host tests: tests/test_uv380_sottorx.py.
+   - **The same in the image (flash 2, built 11-19, not flashed)**: `c6rx_img.c` builds
+     c6rx.h into flash with both receivers (12.5 KB of code; c/common's receiver names renamed
+     c6rx_* so none clash with OpenRTX's M17). Its state, about 11 KB for both receivers and a 30 s
+     message, goes in the module arena's scratch, which `om_api` now gives whole when no module
+     upload is waiting (`om_idle`). In PAGER's M17 and YSF sub-modes, the probe thread runs
+     `airListen` in place of the PHY R receiver. A message it hears goes into the message
+     (`c6rx_take`) and plays. A message stopped part way is dropped. The listen's host can't
+     key, play or record. A USB line stops it, and the line goes into pbCmd for pbPoll to run,
+     so no command is lost.
 
 **On air (11-18 20:21-20:22Z, job sotto3-air-1118, main 2bc44cf, 0 W on 441.850, the Pluto
 listening):** the c6sotto modules sent the radio's own recorded message (250 superframes) in all
