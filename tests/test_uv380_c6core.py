@@ -96,7 +96,12 @@ def test_sotto_modules_build_and_fit():
     if not shutil.which("clang") or not shutil.which("ld.lld"):
         pytest.skip("needs clang and ld.lld")
     from modem import uv380mod
-    for air in ("m17", "ysf", "dmr"):
+    for air in (
+        "m17",
+        "ysf",
+        "dmr",
+        "dsr",
+    ):
         for dry in ("_dry", ""):
             src = os.path.join(MOD, f"c6sotto_{air}{dry}.c")
             assert uv380mod.source_level(src) == 4
@@ -106,7 +111,7 @@ def test_sotto_modules_build_and_fit():
 
 def test_sotto_module_is_dry_unless_a_wrapper_says_otherwise():
     """c6sotto (its body c6air.h) keys only through c6key.h's c6k_key (level 4: ident first,
-    transmit guard), only with dry 0, which only the three on-air wrappers set (TX_DRY 0)"""
+    transmit guard), only with dry 0, which only the four on-air wrappers set (TX_DRY 0)"""
     src = open(os.path.join(MOD, "c6sotto.c")).read()
     assert "#ifndef TX_DRY\n#define TX_DRY 1\n" in src
     assert "c6air_run(api, SOTTO_AIR, SOTTO_SRC, TX_DRY)" in src
@@ -117,7 +122,12 @@ def test_sotto_module_is_dry_unless_a_wrapper_says_otherwise():
     assert key.index("api->level < 4u") < key.index("api->tx_tone(")
     live = sorted(f for f in os.listdir(MOD) if f.startswith("c6sotto_")
                   and "#define TX_DRY 0" in open(os.path.join(MOD, f)).read())
-    assert live == ["c6sotto_dmr.c", "c6sotto_m17.c", "c6sotto_ysf.c"]
+    assert live == [
+        "c6sotto_dmr.c",
+        "c6sotto_dsr.c",
+        "c6sotto_m17.c",
+        "c6sotto_ysf.c",
+    ]
 
 
 HERE = os.path.join(ROOT, "firmware", "uv380-openrtx")

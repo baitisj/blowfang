@@ -585,10 +585,10 @@ def test_uv380_sotto_sends_the_checkouts_module_at_power_0(work, monkeypatch):
 
 
 def test_uv380_air_checked(work):
-    for air in br.UV380_SOTTO_AIRS:
+    for air in br.UV380_AIR_AIRS:
         for extra in br.UV380_AIR_EXTRAS:
             assert br.check_job(uv_job({"do": "uv380.air", "args": [air] + extra})) == [], (air, extra)
-    for args in ([], ["x"], ["m17", "live"], ["m17", "dry", "test"], ["m17", "test", "test"], ["p25"]):
+    for args in ([], ["x"], ["m17", "live"], ["m17", "dry", "test"], ["m17", "test", "test"], ["p25"], ["dsr"]):
         assert "one of m17" in problems(uv_job({"do": "uv380.air", "args": args})), args
 
 

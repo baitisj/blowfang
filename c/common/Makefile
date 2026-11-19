@@ -141,3 +141,17 @@ clean-ysf-echo:
 	rm -f ysf_echo_host
 
 .PHONY: clean-ysf-echo
+
+# DSotto raw transmit framer (docs/uv380-dsotto-raw.md)
+all: dsr_host
+
+dsr_host: dsr_host.c \
+		dsr_tx.c \
+		dsr_tx.h
+	$(CC) $(CFLAGS) -o $@ dsr_host.c dsr_tx.c
+
+clean: clean-dsr
+clean-dsr:
+	rm -f dsr_host
+
+.PHONY: clean-dsr

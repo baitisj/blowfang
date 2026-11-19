@@ -37,11 +37,18 @@
 #include "../../../c/common/ysf_tx.c"
 #include "../../../c/common/dmr_sotto.h"
 #include "../../../c/common/dmr_voice.h"
+#if C6AIR_WITH_DSR             /* DSotto raw: RAM modules only so far (c6sotto_dsr*.c), not the image */
+#include "../../../c/common/dsr_tx.c"
+#endif
 #include "c6bus_mod.h"
 
 #define C6AIR_M17 1u
 #define C6AIR_YSF 2u
 #define C6AIR_DMR 3u
+#define C6AIR_DSR 4u
+#ifndef C6AIR_WITH_DSR
+#define C6AIR_WITH_DSR 0
+#endif
 
 #ifndef TX_FKHZ
 #define TX_FKHZ 441850u         /* the calibration pair's frequency: the UV-380's bench channel */
@@ -83,17 +90,23 @@ C6AIR_FN unsigned c6air_pull_m17(void *s, uint8_t *o, unsigned n) {
     return m17t_sotto_read(s, o, n);
 }
 
+#if C6AIR_WITH_DSR
+C6AIR_FN unsigned c6air_pull_dsr(void *s, uint8_t *o, unsigned n) {
+    return dsrt_msg_read(s, o, n);
+}
+#endif
+
 /* 0x50 after a whole send, -1 refused before keying, -2 short */
 C6AIR_FN int c6air_run(const ortx_api_t *api, unsigned air, unsigned src, unsigned dry) {
-    static const char names[4][4] = {"?", "m17", "ysf", "dmr"};
+    static const char names[5][4] = {"?", "m17", "ysf", "dmr", "dsr"};
     char line[180];
     uint32_t sz = 0;
     uint8_t *scratch = (uint8_t *)api->scratch(&sz);
     const uint8_t *msg = scratch;
     unsigned nsf = 0, have;
     unsigned dev = air == C6AIR_DMR ? 100u : air == C6AIR_YSF ? 140u : 123u;
-    if (air < C6AIR_M17 || air > C6AIR_DMR) {
-        api->say("err air: m17, ysf or dmr");
+    if (air < C6AIR_M17 || air > (C6AIR_WITH_DSR ? C6AIR_DSR : C6AIR_DMR)) {
+        api->say(C6AIR_WITH_DSR ? "err air: m17, ysf, dmr or dsr" : "err air: m17, ysf or dmr");
         return -1;
     }
     if (src) {
@@ -126,6 +139,9 @@ C6AIR_FN int c6air_run(const ortx_api_t *api, unsigned air, unsigned src, unsign
     unsigned nvoice = 0;
     m17t_sotto ms;
     ysft_sotto ys;
+#if C6AIR_WITH_DSR
+    dsrt_msg ds;
+#endif
     if (air == C6AIR_DMR) {
         unsigned textlen = sizeof C6AIR_CALL - 1u;
         unsigned maxbytes = (C6AIR_DMR_MAXV - 2u - ds_ntext(textlen)) * DS_PAYLOAD;
@@ -144,6 +160,11 @@ C6AIR_FN int c6air_run(const ortx_api_t *api, unsigned air, unsigned src, unsign
             if (air == C6AIR_YSF) {
                 ysft_sotto_begin(&ys, msg, nsf, "ALL", C6AIR_CALL, 0);
                 bytes = ysft_sotto_bytes(&ys);
+#if C6AIR_WITH_DSR
+            } else if (air == C6AIR_DSR) {
+                dsrt_msg_begin(&ds, DSRT_120, msg, nsf, C6AIR_CALL);
+                bytes = dsrt_msg_bytes(&ds);
+#endif
             } else {
                 m17t_sotto_begin(&ms, msg, nsf, C6AIR_CALL, "", 0);
                 bytes = m17t_sotto_bytes(&ms);
@@ -205,7 +226,7 @@ C6AIR_FN int c6air_run(const ortx_api_t *api, unsigned air, unsigned src, unsign
         p.q46 = q46;
         p.mode = 0x66u;
         p.fill = 0x77u;
-        if (air == C6AIR_YSF) {
+        if (air == C6AIR_YSF || air == C6AIR_DSR) {
             p.pad0 = p.pad1 = 0x77u;
         } else {
             p.pad0 = 0x55u;         /* M17 EOT */
@@ -215,6 +236,10 @@ C6AIR_FN int c6air_run(const ortx_api_t *api, unsigned air, unsigned src, unsign
         p.t_end = t_key + tx_ms - C6AIR_TAIL_MS;
         if (air == C6AIR_YSF)
             r = c6c_fsk4_tx(&b, &p, c6air_pull_ysf, &ys, &st);
+#if C6AIR_WITH_DSR
+        else if (air == C6AIR_DSR)
+            r = c6c_fsk4_tx(&b, &p, c6air_pull_dsr, &ds, &st);
+#endif
         else
             r = c6c_fsk4_tx(&b, &p, c6air_pull_m17, &ms, &st);
         c6s_close(&ss);

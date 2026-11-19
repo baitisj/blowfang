@@ -11,6 +11,8 @@
              flag, at 140 % (2712 Hz measured 11-18)
      3 DMR   a group voice call to TG 9 whose bursts carry dmr_sotto blocks under the voice FEC
              (c6dvtx's format, 60/60 blocks 11-17), at the DMR pair itself
+     4 DSR   DSotto raw (docs/uv380-dsotto-raw.md): DSR120 frames, three superframes a 120 ms
+             frame under a K=7 rate 1/6 tail-biting code, at 123 % (as M17); RAM modules only
    SOTTO_SRC 1 (the default) sends the radio's message (api->msg: the last recording or message
    heard, what PTT sends); 0 a test message (superframe k = bytes 6k..6k+5 counting up). The
    message is cut to what one key-up carries (tx_tone's 5 s): about 8 s of sotto as M17 or YSF,
@@ -44,6 +46,9 @@
 #define TX_DRY 1
 #endif
 
+#if SOTTO_AIR == 4
+#define C6AIR_WITH_DSR 1
+#endif
 #include "c6air.h"
 
 int uv_main(const ortx_api_t *api) {
