@@ -11,7 +11,9 @@ frames. docs/uv380-dsotto-raw.md has the design, the simulation results and the 
                                                     --dev 4800 (2400 Hz outer)
   python3 -m modem.dsr tap LOG [--json OUT]         decode the UV-380's own FM tap (c6fmtap_1c
                                                     log, runner plan uv380.rx tap1c)
-  python3 -m modem.dsr decode CAP.cf32              decode a Pluto capture (a UV-380 send)
+  python3 -m modem.dsr decode CAP.cf32|OUT.wav      decode a Pluto capture (a UV-380 send): the
+                                                    IQ, or the discriminator wav that pluto_bench
+                                                    rx returns (5000 Hz = full scale)
   python3 -m modem.dsr bytes OUT.bin [--fmt dsr120] [--sf N]   a test message's air bytes (for the
                                                     C framer's host test)
 
@@ -697,6 +699,7 @@ def latency(fmt, lowdelay=False):
 
 
 # ---- the Pluto ladder transmission and the decodes of real captures ----------------------------
+PLUTO_WAV_DEV = 5000.0       # tools/pluto_bench.py WAV_FULL_DEV: rx OUT.wav full scale, Hz
 
 LADDER = ("dsr120", "dsr40", "dsr40d", "m17live")
 
@@ -895,14 +898,22 @@ def main(argv=None):
                 json.dump(rep, f, indent=1)
         return 0
     if a.cmd == "decode":
-        from . import c6phy
-        iq, meta = c6phy.read_capture(a.cap)
-        fs = int(meta.get("fs", 240000))
-        off, on, disc = c6phy.capture_disc(iq, fs)
-        if disc is None:
-            print("no signal")
-            return 1
-        y = front(disc, 48000)
+        if a.cap.endswith(".wav"):
+            # pluto_bench rx OUT.wav: the flat FM discriminator at 48 kHz, WAV_FULL_DEV = full scale
+            import wave
+            with wave.open(a.cap) as w:
+                fs = w.getframerate()
+                x = np.frombuffer(w.readframes(w.getnframes()), np.int16) / 32768.0 * PLUTO_WAV_DEV
+            off, disc = float(np.median(x)), x - np.median(x)
+        else:
+            from . import c6phy
+            iq, meta = c6phy.read_capture(a.cap)
+            off, on, disc = c6phy.capture_disc(iq, int(meta.get("fs", 240000)))
+            fs = 48000
+            if disc is None:
+                print("no signal")
+                return 1
+        y = front(disc, fs)
         fmt = FMTS[a.fmt]
         frames = receive(y, fmt)
         print(f"carrier {off:+.0f} Hz, {len(frames)} {fmt.name} frames with a good CRC")
