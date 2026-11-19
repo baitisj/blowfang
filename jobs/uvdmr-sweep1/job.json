@@ -1,0 +1,232 @@
+{
+ "id": "uvdmr-sweep1",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "dmr"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441847000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441844000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 50
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "dmr"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441841000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441853000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441856000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 50
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "dmr"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "2500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "5000",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-60"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 50
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "dmr"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_inv.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_inv.wav",
+    "--hz",
+    "441844000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441838000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 50
+  }
+ ]
+}
