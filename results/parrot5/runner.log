@@ -1,0 +1,14 @@
+2026-11-19T05:11:59Z job parrot5 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-ab20307b0754 at ab20307b0754ac261df5d2de952bda14ce4db407
+2026-11-19T05:11:59Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-ab20307b0754/tools/pluto_bench.py --as uv380-multimode parrot --hz 441850000 --gain -40 --minutes 20 --rx-gain 20
+parrot on 441850000 Hz until 05:31:59Z: YSF or M17 sotto heard goes back 2 s later, gain -40 dB
+listening 05:12:00Z
+05:12:50Z heard: ADC peak 10 of 2047 (rx gain 20 dB)
+05:12:50Z heard: burst 7.6 s, carrier +188 Hz
+05:12:50Z heard: YSF sotto 75/75 superframes CRC good, from AG7EW
+parrot ysf 75 superframes: 9.6 s on 441850000 Hz (LO 441850000), gain -40.0 dB, rate 2400000, RF on
+start 05:13:02Z
+end 05:13:11Z: 9.6 s of signal in 9.5 s (kept up)
+listening 05:13:12Z
+2026-11-19T05:14:00Z stopping (cancelled): SIGTERM to the step's process group
+2026-11-19T05:14:00Z step 1 (pluto) rc=-15 (cancelled)
+2026-11-19T05:14:00Z job parrot5 cancelled: step 1 (pluto): cancelled
