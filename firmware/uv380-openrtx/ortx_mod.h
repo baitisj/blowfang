@@ -148,6 +148,11 @@ typedef struct {
 /* One "mod ..." command; args is what follows "mod". Returns 0, or -1 after an "err" line. */
 int om_command(const om_host *h, const char *args);
 uint8_t *om_arena(void);                /* NULL if the heap can't spare it */
+/* The image's own use of the module table (docs/uv380-multimode.md milestone 4): h for the
+   calls that follow, the clock from now, Ctrl-C cleared. Not for modules. */
+const ortx_api_t *om_api(const om_host *h);
+/* c6air_img.c: mod/c6air.h's c6air_run from flash (PAGER's M17, YSF and DMR sends, "air") */
+int c6air_send(const ortx_api_t *api, unsigned air, unsigned src, unsigned dry);
 
 #ifdef __cplusplus
 }

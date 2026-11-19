@@ -550,6 +550,52 @@ def test_uv380_sotto_sends_the_checkouts_module_at_power_0(work, monkeypatch):
     assert ran[1][4].endswith("firmware/uv380-openrtx/mod/c6sotto_dmr_dry.c")
 
 
+def test_uv380_air_checked(work):
+    for air in br.UV380_SOTTO_AIRS:
+        for extra in br.UV380_AIR_EXTRAS:
+            assert br.check_job(uv_job({"do": "uv380.air", "args": [air] + extra})) == [], (air, extra)
+    for args in ([], ["x"], ["m17", "live"], ["m17", "dry", "test"], ["m17", "test", "test"], ["p25"]):
+        assert "one of m17" in problems(uv_job({"do": "uv380.air", "args": args})), args
+
+
+class AirRadio(Radio):
+    """Radio, and the image's air command answering ret"""
+
+    def __init__(self, ret=0x50, **kw):
+        super().__init__(**kw)
+        self.ret = ret
+
+    def __call__(self, ctx, cmds, env, timeout=60.0):
+        if cmds[:1] and cmds[0].startswith("air "):
+            self.sent.append(cmds[0])
+            return "mod say sotto m17 sf=4/4\nmod say sotto done\n" + (
+                "" if self.ret is None else f"ok air ret={self.ret}\n")
+        return super().__call__(ctx, cmds, env, timeout)
+
+
+def test_uv380_air_sends_from_the_image_at_power_0_with_the_fm_trim(work, monkeypatch):
+    j = uv_job({"do": "uv380.air", "args": ["ysf", "test"]})
+    radio = AirRadio(pwr="1000")
+    monkeypatch.setattr(br, "uv380_probe", radio)
+    res = br.run_job(j, str(work / "rd"), Rig())
+    assert res["status"] == "failed" and "sends only at power 0" in res["reason"]
+    assert not [c for c in radio.sent if c.startswith("air")]
+    radio = AirRadio()
+    radio.st["trim"] = "-580"           # set for a raw-mode module: the image would go 6.7 kHz lower
+    monkeypatch.setattr(br, "uv380_probe", radio)
+    res = br.run_job(j, str(work / "rd2"), Rig())
+    assert res["status"] == "failed" and "set the FM trim" in res["reason"]
+    assert not [c for c in radio.sent if c.startswith("air")]
+    radio = AirRadio()
+    monkeypatch.setattr(br, "uv380_probe", radio)
+    assert br.run_job(j, str(work / "rd3"), Rig())["status"] == "done"
+    assert radio.sent[-1] == "air ysf test"
+    for ret, why in ((-2, "air ret=-2"), (None, "no 'ok air' line")):
+        monkeypatch.setattr(br, "uv380_probe", AirRadio(ret=ret))
+        res = br.run_job(j, str(work / f"rd{ret}"), Rig())
+        assert res["status"] == "failed" and why in res["reason"], (ret, res)
+
+
 def test_uv380_voice_checked(work):
     for plan in br.UV380_VOICE_PLANS:
         assert br.check_job(uv_job({"do": "uv380.voice", "args": [plan]})) == [], plan

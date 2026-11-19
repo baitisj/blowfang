@@ -30,8 +30,9 @@
 # firmware/uv380-openrtx/build/openrtx, which this script owns and deletes), git apply
 # uv380-blowfang.patch, copy blowfang's portable transmitter and receiver (c/common: pager_tx, ffsk_tx,
 # range_tx, cw_tx, range_rx, pager_rx, fsk_rx), the module checker (c/common/mod_core), blowfang_message.h, the probe and the
-# module loader (i2sprobe, ortx_mod) and the fixed-point sotto 1200 decoder (the sotto
-# submodule, with the wrappers in sotto8k/) into openrtx/src/blowfang, then meson.
+# module loader (i2sprobe, ortx_mod), the HR_C6000 core with the M17/YSF/DMR framers (c6air_img.c
+# and mod/c6air.h: the bench image's M17, YSF and DMR sends) and the fixed-point sotto 1200
+# decoder (the sotto submodule, with the wrappers in sotto8k/) into openrtx/src/blowfang, then meson.
 #
 # Needs: what OpenRTX's own build needs (openrtx.org, compiling.md). The radio build uses
 # OpenRTX's arm-miosix-eabi toolchain; CI runs it in OpenRTX's published devcontainer image.
@@ -94,6 +95,33 @@ pager_rec.h
 pager_listen.c
 pager_listen.h
 mod/rxaudio.h
+EOF
+# the HR_C6000 core and framers for the image's M17, YSF and DMR sends (c6air_img.c, milestone 4):
+# mod/c6air.h is the c6sotto RAM modules' body, and finds c/common at "../../../c/common/"
+mkdir -p "$WORK/openrtx/src/blowfang/mod" "$WORK/openrtx/c/common"
+cp "$HERE/c6air_img.c" "$WORK/openrtx/src/blowfang/mod/"
+while read -r f; do
+  cp "$HERE/mod/$f" "$WORK/openrtx/src/blowfang/mod/"
+done <<EOF
+c6air.h
+c6bus_mod.h
+c6key.h
+c6slot.h
+c6spi.h
+c6vspi.h
+w25sec.h
+EOF
+while read -r f; do
+  cp "$ROOT/c/common/$f" "$WORK/openrtx/c/common/"
+done <<EOF
+c6_core.c
+c6_core.h
+dmr_sotto.h
+dmr_voice.h
+m17_tx.c
+m17_tx.h
+ysf_tx.c
+ysf_tx.h
 EOF
 SUFFIX=
 {

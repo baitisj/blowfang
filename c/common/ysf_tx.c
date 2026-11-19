@@ -8,7 +8,7 @@
 
 static const uint8_t SYNC[5] = {0xD4, 0x71, 0xC9, 0x63, 0x4D};
 
-static unsigned parity(unsigned v) {
+static unsigned ysft_parity(unsigned v) {
     v ^= v >> 16;
     v ^= v >> 8;
     v ^= v >> 4;
@@ -52,7 +52,7 @@ static uint32_t golay24(unsigned d) {
         if (r & (1u << i))
             r ^= (uint32_t)GOLAY_POLY << (i - 11u);
     uint32_t c = (uint32_t)d << 11 | r;
-    return c << 1 | parity(c);
+    return c << 1 | ysft_parity(c);
 }
 
 /* nbytes of d + 4 flush bits through the K=5 code, dibit i (of cols x 20) to field bits
@@ -66,8 +66,8 @@ static void conv_field(uint8_t *f, const uint8_t *d, unsigned nbytes, unsigned c
         unsigned b = i < 8u * nbytes ? get_bit(d, i) : 0u;
         m = ((m << 1) | b) & 0x1Fu;
         unsigned j = (i % cols) * 40u + (i / cols) * 2u;
-        put_bit(f, at(j, arg), parity(m & 0x19u));
-        put_bit(f, at(j + 1u, arg), parity(m & 0x17u));
+        put_bit(f, at(j, arg), ysft_parity(m & 0x19u));
+        put_bit(f, at(j + 1u, arg), ysft_parity(m & 0x17u));
     }
 }
 
@@ -191,7 +191,7 @@ void ysft_frame_sotto(const ysft_fich *f, const uint8_t frames[30], uint8_t out[
     unsigned ci = 0;
     for (unsigned i = 0; i < NU; i++) {
         reg = ((reg << 1) | get_bit(u, i)) & 0x7Fu;
-        unsigned g[3] = {parity(reg & 0133u), parity(reg & 0171u), parity(reg & 0165u)};
+        unsigned g[3] = {ysft_parity(reg & 0133u), ysft_parity(reg & 0171u), ysft_parity(reg & 0165u)};
         unsigned n = (i % 7u) % 2u == 0 ? 3u : 2u;   /* g3 on rows 0, 2, 4, 6 of 7 */
         for (unsigned j = 0; j < n; j++, ci++)
             put_bit(out, PAYLOAD_AT + (ci % 24u) * 30u + ci / 24u, g[j]);
@@ -232,7 +232,7 @@ unsigned ysft_sotto_bytes(const ysft_sotto *t) {
     return YSFT_PRE_BYTES + (t->units - 1u) * YSFT_FRAME;
 }
 
-static void build(ysft_sotto *t) {
+static void ysft_build(ysft_sotto *t) {
     unsigned u = t->unit, nc = t->units - 3u;
     ysft_fich f;
     ysft_fich_default(&f);
@@ -267,7 +267,7 @@ unsigned ysft_sotto_read(ysft_sotto *t, uint8_t *out, unsigned max) {
         if (t->pos >= t->len) {
             if (t->unit >= t->units)
                 break;
-            build(t);
+            ysft_build(t);
             t->unit++;
             t->pos = 0;
         }
