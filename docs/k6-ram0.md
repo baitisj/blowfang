@@ -85,6 +85,17 @@ Bench job: two `ram0zero` runs back to back, each woken by the CW ID first (afte
 reset the K6 boots into EXPLORE): the first maps whatever the last module left, the second maps
 a fresh boot.
 
+**On the radio (k6-ram0zero2, 2026-11-19 19:12-19:20Z, image 8a78fb5).** Both runs passed. Each
+map said `r0 map nz=000 first=00000000 last=00000000 bm=0000`. The second ran on a fresh boot, so
+the bootloader leaves nothing at all in 0x20000100-0x20000FFF: clearing it at boot changes nothing,
+and the 2026-11-04 hang had another cause. Every block held its zeros (`r0 b=f` .. `r0 b=1`, all
+`bad=000`), then the minute's hold: `r0 done bad=000 first=00000000 bm=0000 lo=same uv=same`.
+Each planned reset came back in under half a second (`K6 ARENA`, then EXPLORE), with no
+`K6 FAULT`, and the K6 answered the CW-ID wake and went back to VOICE MSG afterwards. (The first
+job, k6-ram0zero1, lost its log: its map line said `blk=f806`, the ysfrx call it found there from
+k6-ysfcsd2, and the bench logger, modem.k6_harness, reads any `blk=` as decimal numbers and
+stopped. The key is `bm=` since.)
+
 Then the flash (Jeff's typed line), with: the boot line above, a module run (any, then one that
 uses more than 11,776 B), VOICE MSG playback, EXPLORE, and the ysfrx playback regression
 (k6-ysfcsd2's job: three Pluto calls byte-exact, `from=AG7EW`).
