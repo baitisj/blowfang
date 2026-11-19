@@ -11,8 +11,9 @@ before and after, the bench's PTT lock and owner check.
         [--delay-s 2] [--rx-gain 20] [--max-replies 30] [--save DIR]
 
 Receive: the RX LO sits RX_IF_HZ above the channel (its own leak and DC stay out of it), the
-2.4 MS/s stream is mixed down and cut to 240 kS/s, and a burst is a run of 55 ms chunks 15 dB
-over the quiet floor; it ends after END_QUIET_S below 10 dB. The burst (ident and message, one
+2.4 MS/s stream is mixed down and cut to 240 kS/s, and a burst is a run of 55 ms chunks whose
+power in the channel (8 kHz low-pass) is 10 dB over the quiet floor; it ends after END_QUIET_S
+below 6 dB. The burst (ident and message, one
 key-up) is then decoded as modem.ysf and modem.m17 decode a capture, and the RX stops while the
 reply goes out. A burst with no sotto in it (FM voice, a DN call) gets no reply.
 
@@ -34,8 +35,9 @@ sys.path.insert(0, ROOT)
 
 FS = 240_000                 # the burst's rate (pluto_bench IQ_FS_SAVE)
 RX_IF_HZ = 50_000            # RX LO this far above the channel
-START_DB = 15.0              # a chunk this far over the floor starts a burst
-END_DB = 10.0                # ... and the burst ends after END_QUIET_S under this
+CHANNEL_HZ = 8000.0          # the burst detector's low-pass: one 12.5 kHz channel, with the offset
+START_DB = 10.0              # a chunk's channel power this far over the floor starts a burst
+END_DB = 6.0                 # ... and the burst ends after END_QUIET_S under this
 END_QUIET_S = 1.0
 PRE_S = 0.2                  # kept from before the burst's first loud chunk
 MAX_BURST_S = 40.0           # the UV-380 keys 5 s at most; anything longer is not ours
@@ -70,9 +72,16 @@ class Bursts:
         self.end_n = int(END_QUIET_S / chunk_s) + 1
         self.max_n = int(MAX_BURST_S / chunk_s)
         self.hist, self.burst, self.below = [], None, 0
+        from scipy import signal
+        self.sps = signal
+        self.sos = signal.butter(4, CHANNEL_HZ, fs=fs, output="sos")
+        self.zi = np.zeros((self.sos.shape[0], 2), complex)
 
     def feed(self, y):
-        p = float(np.mean(np.abs(y) ** 2)) + 1e-20
+        # the power in the channel only: over the whole 240 kHz the noise is 15 dB more, and a
+        # signal 20 dB over the noise in its channel never stood out (11-19 04:31-04:51Z on air)
+        c, self.zi = self.sps.sosfilt(self.sos, y, zi=self.zi)
+        p = float(np.mean(np.abs(c) ** 2)) + 1e-20
         if self.burst is None:
             self.hist = (self.hist + [y])[-self.pre:]
             if self.floor is not None and p > self.floor * 10 ** (START_DB / 10):

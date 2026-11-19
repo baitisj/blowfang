@@ -181,3 +181,24 @@ def test_a_send_right_after_another_burst_still_gets_its_reply(monkeypatch, caps
     assert sent and sent[0][0] == 441_850_000 and "ysf" in sent[0][1], sent
     out = capsys.readouterr().out
     assert out.count("heard: burst") == 2, out                  # the FSK send, then the YSF one
+
+
+def test_a_burst_20_db_over_the_noise_in_its_channel_is_heard():
+    """11-19 04:31-04:51Z: Jeff's YSF sends decoded perfectly from a plain Pluto capture, but the
+    parrot measured power over the whole 240 kHz (15 dB more noise than one channel) and never
+    saw a burst. The detector now looks through an 8 kHz low-pass."""
+    msg = sotto(40)
+    x, dev = pp.reply_wav("ysf", msg)
+    from scipy import signal
+    fs = pp.FS
+    d = signal.resample_poly(x * dev, fs // 48000, 1)
+    z = np.exp(2j * np.pi * np.cumsum(d + 300.0) / fs)
+    z = np.concatenate([np.zeros(fs), z, np.zeros(3 * fs)])
+    pn = 10 ** (-20 / 10) * 240 / 16                  # 20 dB over the noise in 16 kHz, 8 dB in 240
+    rng = np.random.default_rng(7)
+    z = (z + (rng.standard_normal(len(z)) + 1j * rng.standard_normal(len(z))) * np.sqrt(pn / 2)).astype(np.complex64)
+    b = pp.Bursts()
+    bursts = [y for y in (b.feed(c) for c in chunks(z)) if y is not None]
+    assert len(bursts) == 1
+    mode, got, src, lines = pp.heard(bursts[0])
+    assert mode == "ysf" and got[:len(msg)] == msg, lines
