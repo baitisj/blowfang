@@ -82,6 +82,10 @@ typedef struct {
   uint16_t peek_ms;
   uint8_t peek_i, pad3;
   uint32_t peek_t, tone_hz;
+  /* the CW wake (xs_wake): the bench frequency's own floor (dBm, 0: not read yet), reads over
+     in a row */
+  int16_t wake_fl;
+  uint8_t wake_n, pad4;
 } xs_t;
 
 /* the usual settings: 1.5 ms quick reads, 12 ms full, wide, noise 6 dB, hits 10 dB, refine on */
@@ -123,8 +127,19 @@ unsigned xs_up(const xs_t *s, uint32_t *out, unsigned max);
    peek's length (0: off). Returns the centre of an up carrier the last peek heard keyed (on and
    off both seen), once, else 0. */
 uint32_t xs_tone(xs_t *s, unsigned peek_ms);
-/* reads the level at hz now (a tune and a full read), for the details screen */
-int xs_level(xs_t *s, uint32_t hz);
+/* The CW wake (explore.rs: hamlet keys up on the bench frequency to bring the K6 from EXPLORE
+   to its RAM arena). Called every second or so with that frequency: a tune and a full read.
+   hz keeps a floor of its own: a read under it is the floor at once, a quiet read (under the
+   floor + XS_WAKE_DB) lifts it XS_WAKE_RISE_DB, and a read XS_WAKE_DB or more over the floor, or
+   over XS_WAKE_ABS_DBM whatever the floor, counts as over and leaves the floor where it is. Two
+   reads over in a row: returns the read (dBm, below 0), else 0. *fl_dbm (if not null): the
+   floor now. The floor starts at the first read under XS_WAKE_ABS_DBM, after xs_defaults.
+   Since 2026-11-19 (Jeff): the fixed -60 dBm missed the bench Pluto at its top (-61 dBm here)
+   with the floor at -114. */
+#define XS_WAKE_DB 20
+#define XS_WAKE_RISE_DB 1
+#define XS_WAKE_ABS_DBM (-60)
+int xs_wake(xs_t *s, uint32_t hz, int *fl_dbm);
 
 #ifdef __cplusplus
 }

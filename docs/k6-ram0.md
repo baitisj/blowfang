@@ -37,7 +37,7 @@ statics, txdog's crash note (it must survive a reset: 0x20005FF0) and the stack.
 ## How
 
 - memory.x: `RAM0 : ORIGIN = 0x20000100, LENGTH = 0xF00` and a NOLOAD output section `.ram0`
-  with `__sram0` / `__eram0`, inserted after `.uninit`. The linker fails the build if it
+  with `__sram0` / `__eram0`, inserted after `.uninit` (before `.bss` from level 13, below). The linker fails the build if it
   overflows (it would run into UserVectors), and build.sh's fit line says `RAM0 n of 3840`.
 - hal::ram0 (new): `clear()` zeroes the section, the first thing main does, so everything there
   starts out as it would in `.bss`; `used()` for the boot line.
@@ -64,6 +64,49 @@ No new calls. Level 12 means:
 Modules that write RAM0 directly must not run on a level 12 image. `ram0soak` and `ram0zero`
 check `api->level` and refuse (`r0 refused: core RAM0`, return -2, nothing written). ysfrx's
 YX_RAM0 bench path is only taken below level 11, so it never runs there.
+
+## Module API level 13: sotto's statics and EXPLORE's state (later 2026-11-19)
+
+Jeff, the same day: "move EXPLORE's state into the reclaimed RAM to grow the arena by about 600 B
+more". The block is uniform across the voice images, so it can only grow by what the tightest
+image gains, and that is the hiss image (vlrh: 256 B of running stack to spare), which has no
+EXPLORE. So two moves, one for each kind of image:
+
+| moved to `.ram0` | bytes | images |
+|---|---|---|
+| sotto's C statics (`libsotto_k6.a`'s `.bss`) | 444 in vlrh | all without EXPLORE or lean |
+| EXPLORE's state (`S`, was `.data`) | 600 | explore, voice-explore |
+| EXPLORE's known stations (`KNOWN`) back to `.bss` | -256 | explore, voice-explore |
+
+| image | RAM0 of 3,840 | running stack to spare at 14,976 | at 15,408 |
+|---|---|---|---|
+| vlrh (hiss) | 3,668 | 700 | 268 |
+| voice-explore | 3,820 | 984 | 552 |
+| pager-only, lr, vlr | about 3,660 | about 1,800 | about 1,400 |
+
+The block grows by 432 to **15,408 bytes** (module API level 13), keeping the hiss image's margin
+(268 B, 256 before). 600 B more would have left the hiss image under 100 B. Nothing else of size
+is left outside the block there: its `.bss` is the block and about 140 B of small statics.
+
+How:
+
+- memory.x became memory.x.in. build.rs writes memory.x to OUT_DIR, adding
+  `*libsotto_k6.a:*(.bss .bss.* COMMON)` to `.ram0` in the images without the `explore` or `lean`
+  feature (a lean library keeps the decoder's memory in its own static, 556 B too big for RAM0, and
+  those images have over 6 KB of stack to spare).
+  The source file is renamed because the linker finds `INCLUDE memory.x` in its working directory
+  (the crate root) before the search path, so an edited copy in OUT_DIR was never read.
+- `.ram0` is now inserted BEFORE `.bss` (it was after `.uninit`): the linker gives an input section
+  to the first output section whose pattern matches, so the library's `.bss` only lands in `.ram0`
+  ahead of cortex-m-rt's `*(.bss .bss.*)`. It also keeps the location counter in RAM after
+  `.uninit`, where link.x sets `__sheap` and `_stack_end`.
+- EXPLORE's `S` is `MaybeUninit<State>` in `.ram0`; main writes its starting value (`S0`) right
+  after `hal::ram0::clear()` (a NOLOAD section drops an initializer silently).
+- `KM_LEVEL` 13, `modem.k6mod.ARENA_BYTES_13`. A module that needs more than 14,976 declares
+  `K6_MODULE_LEVEL 13`; level 12 modules run as before.
+
+The same flash brings the floor-relative CW wake (docs/k6-explore-app.md, c/k6/xscan.h
+`xs_wake`): the Pluto at its top reads -61 dBm at the K6, under the old fixed -60.
 
 ## The checks before a flash (RAM modules, on the image already on the radio)
 

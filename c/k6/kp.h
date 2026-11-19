@@ -47,7 +47,7 @@
   X(xs_summary)         \
   X(xs_info)            \
   X(xs_up)              \
-  X(xs_level)
+  X(xs_wake)
 
 /* the Listen for ID page: xlisten.c, xdmr.c */
 #define KP_LISTEN_FNS(X) \
