@@ -1305,6 +1305,9 @@ int k6_main(const k6_api_t *api) {
 #define DF_TURN 3        /* dclk: a change of tone */
 #define DF_IDLE 8        /* samples without a transition: no tone of Bell 202 */
 #define DF_QUIET 64      /* and this many: the packet is over */
+#define DF_DROPS 3u      /* reads that fell behind in a packet (a clean one has 0 or 1): more, and
+                            the clock learnt in it is not kept */
+#define DF_MISS 8u       /* packets in a row without a frame: the clock learnt is forgotten */
 #define DF_SAY 40u       /* words: a shorter packet without a frame is noise, and gets no line */
 
 static void df_bits(const k6_api_t *api, st_t *s, int32_t tone, int32_t n) {
@@ -1396,7 +1399,7 @@ static void df_word(const k6_api_t *api, st_t *s, uint32_t v, uint32_t rn) {
 int k6_main(const k6_api_t *api) {
   st_t *s;
   uint32_t room, i, now, tkey = 0, tsync = 0, ok0 = 0, got = 0, eq = 0, drop = 0, prev, inv = 0;
-  uint32_t tseek = 0, tk0 = 0, rn = 0, sy = 1, kq = DF_KQ, ncal = 0, kq0 = DF_KQ, ncal0 = 0;
+  uint32_t tseek = 0, tk0 = 0, rn = 0, sy = 1, kq = DF_KQ, ncal = 0, kq0 = DF_KQ, ncal0 = 0, miss = 0;
   int32_t off = 0;
   int key = 0, left = 0, cald = 0;
   char *p;
@@ -1515,7 +1518,13 @@ int k6_main(const k6_api_t *api) {
     }
     if (!left && now - tseek >= DF_AGAIN) over = 1;
     if (left && over) {
-      if (s->ok == ok0) kq = kq0, ncal = ncal0; /* no frame: nothing learnt from what it was */
+      /* no frame, or a packet whose reads fell behind more than now and then (two packets run
+         together, or a weak one: the bench's ladder of 2026-11-19 had one with d=13 pull the
+         clock to its 5% bound, and nothing was read after): nothing learnt from what it was */
+      if (s->ok == ok0 || drop > DF_DROPS) kq = kq0, ncal = ncal0;
+      /* and a clock that reads nothing for DF_MISS packets in a row starts again from DF_KQ */
+      if (s->ok != ok0) miss = 0;
+      else if (got >= DF_SAY && ++miss >= DF_MISS) kq = kq0 = DF_KQ, ncal = 0, miss = 0;
       if (got < DF_SAY && s->ok == ok0) s->fake++;
       else {
         /* a line costs tens of ms of listening: none for a sync word found in noise */
