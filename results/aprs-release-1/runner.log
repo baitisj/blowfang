@@ -1,0 +1,9 @@
+2026-11-19T21:28:02Z job aprs-release-1 by k6-aprs-ladder, checkout /home/baitisj/blowfang-work/worktrees/inbox-8235569589ba at 8235569589ba9f1325949aa0e9247c93d4ac7b72
+2026-11-19T21:28:02Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release k6-aprs-ladder
+the port is free
+2026-11-19T21:28:03Z step 1 (logger.stop) rc=0
+2026-11-19T21:28:06Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T21:28:06Z step 2 (ic7100.tune) rc=0
+2026-11-19T21:28:07Z IC-7100 RFPOWER 0.00
+2026-11-19T21:28:07Z step 3 (ic7100.power0) rc=0
+2026-11-19T21:28:07Z job aprs-release-1 done
