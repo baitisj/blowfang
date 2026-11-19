@@ -135,3 +135,23 @@ def test_latency_budget():
     assert t120 - t40 == 160                    # two more superframes to fill, 80 ms more air
     _, low = dsr.latency(dsr.DSR120, lowdelay=True)
     assert low == t120 - 120
+
+
+def test_decode_pluto_wav(tmp_path, capsys):
+    """decode takes the discriminator wav pluto_bench rx returns (the .cf32 stays on hamlet)"""
+    import wave
+    fmt = dsr.DSR120
+    data = dsr.tx_stream(fmt, dsr.test_sotto(45))
+    x = dsr.modulate(data)
+    y = dsr.fm_channel(np.concatenate([np.zeros(48000), x, np.zeros(48000)]), 60.0, offset_hz=-200.0,
+                       rng=np.random.default_rng(5), tap=False)
+    wav = tmp_path / "dsr.wav"
+    with wave.open(str(wav), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(48000)
+        w.writeframes(np.clip(np.round(y / dsr.PLUTO_WAV_DEV * 32767), -32768, 32767)
+                      .astype(np.int16).tobytes())
+    assert dsr.main(["decode", str(wav)]) == 0
+    out = capsys.readouterr().out
+    assert "src AG7EW, superframes 45 (0..44, 0 missing)" in out, out

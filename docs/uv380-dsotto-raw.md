@@ -155,13 +155,21 @@ any format. The RSSI meter stops moving at -86 dBm, which is again the FM thresh
 the radio's noise floor (R3). Decode: `dsr-tap-report.json` beside the job; the log and steps.json
 are in `result/files/`.
 
-**UV-380 send at 0 W (job `dsraw-air1`, staged).** `c6sotto_dsr_dry.c`, then `c6sotto_dsr.c`,
-send the radio's own message as DSR120 through `c6air.h` (mode 4), with the Pluto recording.
-They run after this PR merges and the runner self-updates, because the runner's `uv380.sotto`
-plan list gains `dsr`. Decode with `python3 -m modem.dsr decode dsr.cf32`. DSR is a RAM module
-only (`C6AIR_WITH_DSR`, set by `c6sotto.c` for mode 4), so the image builds exactly as before.
-The image's own `air` command keeps m17, ysf and dmr, and the runner has its own list for it
-(`UV380_AIR_AIRS`). Files: `/mnt/project-files/uv380-dsotto-raw/air1/`.
+**UV-380 send at 0 W (job `dsraw-air1`, 11-19 15:41Z).** The UV-380 sent and the Pluto
+received on 441.850. The UV-380 ran `c6sotto_dsr_dry.c` (no keying), then `c6sotto_dsr.c` at
+power 0 with trim -580. The sequence was the Morse ident AG7EW (3.9 s), then the radio's own
+45-superframe message as DSR120, through `c6air.h` mode 4. The module reported
+`sf=45/45 first=5a5b5c5d5e5f last=626364656667 bytes=2354`, 68 slots, `late=0 lost=0`.
+
+The Pluto's discriminator wav decodes with `python3 -m modem.dsr decode dsr.wav` (the 115 MB
+.cf32 stays on hamlet). It gave 16 frames, all with a good CRC: counters 0 to 15, 15 sotto frames
+and the end frame. The source decoded as AG7EW from the header chunks, and all 45 superframes
+came back (0 missing), with first and last the same as the module's. So the C framer and RAM
+module match the Python receiver over the air, end to end.
+
+DSR is a RAM module only (`C6AIR_WITH_DSR`, set by `c6sotto.c` for mode 4), so the image builds
+exactly as before. The image's own `air` command keeps m17, ysf and dmr, and the runner has its
+own list for it (`UV380_AIR_AIRS`). Files: `/mnt/project-files/uv380-dsotto-raw/air1/`.
 
 ## Into the multi-mode image
 
@@ -213,7 +221,7 @@ speaker path, about 6 KB in `c6_arena` in all. The order is the same as for M17 
 ## Next
 
 1. Done: `dsraw-ladder1` puts DSR120 2-3 dB ahead of M17 live on the radio's own tap.
-2. Merge this PR, then run `dsraw-air1` (0 W, the Pluto listening).
+2. Done: `dsraw-air1`, the UV-380's own DSR120 send at 0 W, decoded by the Pluto 45/45.
 3. `dsr_rx` in C, and the receive module.
 4. The mic in raw PHY with Jeff, then live keying in the image (milestone 4 step 2), and the DSR
    sub-mode.

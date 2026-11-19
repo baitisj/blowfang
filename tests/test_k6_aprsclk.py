@@ -879,7 +879,7 @@ def _dfsk_emulated(slow, name="aprsdfsk", defs=()):
     code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")] + list(defs), src)
     full, _ = k6mod.build(src)
     bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
-    assert len(full) < {"aprsdfsk": 6400, "aprslad_o": 7000}.get(name, 6700) and len(bench) < 6400, (len(full), len(bench))
+    assert len(full) < {"aprsdfsk": 6400, "aprslad_o": 7000, "aprsdfsk_o": 7000}.get(name, 6700) and len(bench) < 6400, (len(full), len(bench))
     Base = modem_chip(le, lambda r58: stream, 4800)
 
     class Chip(Base):
@@ -1013,6 +1013,17 @@ def test_aprslad_o_tunes_to_the_flags_offset_on_the_emulated_m0():
     assert rt - 2 <= sum(v["o"] != "0" for v in y) <= rt, y
     # the packets are read after their tune (the long openings; the model's 8-flag ones may not)
     assert set(f) >= {f"AG7EW-{k}" for k in clean if k in (9, 10)} and len(f) >= len(clean) - 4, (f, clean)
+
+
+@need_clang
+def test_aprsdfsk_o_is_aprslad_o_on_144390_on_the_emulated_m0():
+    """aprsdfsk_o, the off-air build of DF_OFFT: tunes 144.390 MHz and reads every clean packet"""
+    e, sent, clean, ret, stack = _dfsk_emulated(1.0, "aprsdfsk_o")
+    assert e.said[0] == "aprs start hz=144390000 fsk=233 sync=240 plain set=offt", e.said[0]
+    assert e.tunes[0] == (144390000, 1), e.tunes
+    f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
+    assert f == [f"AG7EW-{k}" for k in clean], f
+    assert all(len(ln) <= 60 for ln in e.said) and stack < 700 and e.over == 0, (stack, e.over)
 
 
 @need_clang
