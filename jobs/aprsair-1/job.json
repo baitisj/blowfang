@@ -1,0 +1,82 @@
+{
+ "id": "aprsair-1",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 40,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 2280,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprsdfsk.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "dfe5a51c8f986195350e975e9d30a4351010da7a603152d13b3158dfb703f400"
+  },
+  {
+   "do": "wait",
+   "seconds": 900
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprsdfsk.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "dfe5a51c8f986195350e975e9d30a4351010da7a603152d13b3158dfb703f400"
+  },
+  {
+   "do": "wait",
+   "seconds": 900
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
