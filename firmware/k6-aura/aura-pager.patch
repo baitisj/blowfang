@@ -342,10 +342,10 @@ index 5f006e4..371e81e 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..011ef37
+index 0000000..e732fa6
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,5104 @@
+@@ -0,0 +1,5110 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -2356,12 +2356,18 @@ index 0000000..011ef37
 +
 +const PAINT: u32 = 0xA5A5_A5A5;
 +extern "C" {
-+    static __sheap: u32; // cortex-m-rt: end of .bss/.uninit, where the free RAM starts
++    // cortex-m-rt: the end of .uninit, the last of the static RAM, where the free RAM (the
++    // stack's) starts. Not __sheap: link.x sets that to wherever the location counter is after
++    // .uninit, and memory.x inserts .ram0 there, so from 2026-11-19 it was the end of RAM0,
++    // 0x20000E98. The first arena image (f541fbd) then painted from there up to the stack,
++    // UserVectors and every static on the way, at VOICE MSG's first entry, and hung at every boot
++    // (docs/k6-ram0.md)
++    static __euninit: u32;
 +}
 +
 +fn paint_free_ram() {
 +    cortex_m::interrupt::free(|_| {
-+        let start = (addr_of!(__sheap) as usize + 3) & !3;
++        let start = (addr_of!(__euninit) as usize + 3) & !3;
 +        let end = cortex_m::register::msp::read() as usize - 128;
 +        let mut p = start;
 +        while p < end {
@@ -2391,7 +2397,7 @@ index 0000000..011ef37
 +}
 +
 +fn free_ram() -> u32 {
-+    let start = (addr_of!(__sheap) as usize + 3) & !3;
++    let start = (addr_of!(__euninit) as usize + 3) & !3;
 +    let sp = cortex_m::register::msp::read() as usize;
 +    let mut p = start;
 +    while p < sp && unsafe { read_volatile(p as *const u32) } == PAINT {
@@ -3677,7 +3683,7 @@ index 0000000..011ef37
 +    let at = (arena::base() as usize) + 16;
 +    // 8-byte tag after the code, then word aligned
 +    let scratch = (at + st.code_len as usize + 8 + 3) & !3;
-+    let room = cortex_m::register::msp::read() as usize - ((addr_of!(__sheap) as usize + 3) & !3);
++    let room = cortex_m::register::msp::read() as usize - ((addr_of!(__euninit) as usize + 3) & !3);
 +    rl!(
 +        "K6 MOD run serial={} code={} B at {:#010x} stack={} B scratch={} B",
 +        st.serial,
