@@ -370,4 +370,57 @@ all three calls.
 comes up and `rxtrig off MS DBM` when it goes. A job can then start a Pluto capture on another
 radio's key-up, such as the FTM-300DR's own voice call.
 
+## Receiving C4FM sotto (ysfrx, 2026-11-19)
+
+Jeff, 2026-11-19: "is the K6 able to receive C4FM and decode/synthesize Sotto?" `c/k6/mod/ysfrx.c` is a RAM
+module that receives the sotto VW frames the UV-380 and the K6 send (modem/ysf.py, docs/uv380-ysf.md) and
+prints the sotto 1200 superframes. It doesn't play them yet, because modules have no call for sotto
+playback.
+
+- **Front end.** dmrdet's GP0 IF grid (c/k6/dmrsync.h) at 2 points a symbol, with its 13-tap matched
+  filter. `DS_NOSYNC` drops the DMR sync search, which saves 700 B and the CPU time it took. `DS_ERASE` makes
+  the points in a pause 0 instead of stale ring values.
+- **Frames** (c/k6/mod/ysfdec.inc).
+  - Search for the 20-symbol sync only while there is a carrier. Before this gate, noise's false syncs held
+    the receiver when the call began.
+  - Take the scale and DC from the sync, then slice each symbol as its points come in.
+  - Look for the next sync where it is due, ±3 quarter points, keeping it even when weak (the flywheel).
+    Two missing syncs or a terminator end the call.
+- **Decoders** (c/k6/ysfdec.h, integer and divide-free).
+  - FICH: dibit deinterleave, K=5 Viterbi, Golay data halves, CRC-16.
+  - Sotto VW: PN9, K=7 rate 7/18 tail-biting Viterbi with a 24-step wrap, CRC-8 per superframe.
+  - Both are butterfly Viterbis with 4-bit soft values. They run a step at a time between DMA samples.
+- **Room.** 6.7 KB of code. The scratch holds the filter ring (256 B), the receiver (4.0 KB: two payload
+  buffers, the K=7 decisions, a 300-byte store) and the DMA ring (512 B). That is ~200 B under the
+  11,776-byte block.
+
+Lines:
+
+    ysf start f=440925000 floor=-125
+    Y call fr=9 fich=9 vw=40/40 crc=d821     frames, FICHs good, superframes good / read, CRC-16 of all
+    Y d 0 000102030405...                    the superframes kept, 24 bytes a line, after the call
+
+Model results (tests/test_k6_ysfrx.py):
+
+- **Host decoder** on the modelled K6 IF: all 40 superframes of `sotto_test(40)` are byte-exact down to
+  50 dB-Hz, either FM polarity. At 48 dB-Hz it gets 37 of 40 and the FICHs start to fail.
+- **Module on the emulated K6** (300 µs register reads, 5 ms per say line): 9 of 9 frames and 40 of 40
+  superframes, with no samples lost. The header frame is missed because the carrier is first seen half a
+  frame in.
+
+Four things the emulator taught:
+
+1. **Double buffering.** The K=7 decoder could not finish in the 25 ms between one payload's end and the
+   next one's start, so the payload is double buffered and a frame decodes while the next one arrives.
+2. **Short steps.** Each step must stay well under the DMA ring's 93 µs. One correlation runs per call, the
+   traceback runs 16 steps per call, and the CRCs use nibble tables.
+3. **No pauses during a frame.** Register reads and say lines pause the sampling, and those pauses cost
+   superframes even inside a payload. During a frame the module reads no registers and says no lines, and
+   the superframes come out after the call.
+4. **CPU.** About 55% idle during a call.
+
+Bench, next: the Pluto sends `python3 -m modem.ysf wav` frames on 440.850 (the K6 link channel, with its MCW ID)
+at low level, and the K6
+runs ysfrx and reports the lines.
+
 SPDX-License-Identifier: MIT
