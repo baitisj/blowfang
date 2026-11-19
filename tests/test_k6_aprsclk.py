@@ -878,7 +878,7 @@ def _dfsk_emulated(slow, name="aprsdfsk"):
     code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], src)
     full, _ = k6mod.build(src)
     bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
-    assert len(full) < (6400 if name == "aprsdfsk" else 6600) and len(bench) < 6400, (len(full), len(bench))
+    assert len(full) < {"aprsdfsk": 6400, "aprslad_k": 6700}.get(name, 6600) and len(bench) < 6400, (len(full), len(bench))
     Base = modem_chip(le, lambda r58: stream, 4800)
 
     class Chip(Base):
@@ -952,6 +952,7 @@ def test_aprsdfsk_reads_the_bench_captures_on_the_emulated_m0(slow):
     ("aprslad_a", "afcoff", True, False, 1),
     ("aprslad_g", "gain", False, True, 1),
     ("aprslad_d", "nodeemph", False, False, 1),
+    ("aprslad_k", "kick", False, False, 1),
 ])
 def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
     """the APRS sensitivity ladder's modules (aprslad_*.c: aprsdfsk on 440.850 with a setting
@@ -968,7 +969,11 @@ def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
     # the emulator reads every register as 0: REG_43 0 is not Aura's wide 0x3028, so the filter
     # found is the narrow one and is put back after a wide setting
     assert e.tunes[0] == (440850000, wide), e.tunes
-    assert e.tunes[1:] == ([] if not afc and not wide else [(440850000, 0)]), e.tunes
+    # kick: tuned again (the AFC back to the centre) after each packet without a frame
+    kicks = [(440850000, 1)] * sum(v["ok"] == "0" for v in y) if setting == "kick" else []
+    assert e.tunes[1:] == kicks + ([] if not afc and not wide else [(440850000, 0)]), e.tunes
+    if kicks:
+        assert e.said[-2].endswith(f" kick={len(kicks)}") and e.writes[0x58].count(0x00E9) > len(kicks), e.said[-2]
     if afc:
         assert e.writes[0x73] == [0x0010, 0], e.writes.get(0x73)
     else:

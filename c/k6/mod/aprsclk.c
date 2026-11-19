@@ -145,6 +145,9 @@ typedef struct {
   uint8_t day, mon, yr, stn;
 #ifdef APRS_FSK
   uint32_t fake;      /* sync words with under 6 words and no frame */
+#if defined(DF_SET) && DF_KICK
+  uint32_t kicks;     /* tunes after a packet without a frame */
+#endif
   uint16_t sv[10];    /* the modem's registers as found */
 #ifdef FSK_PLAIN
   uint16_t fifo[8];   /* the last eight words taken: what a read of the empty FIFO gives again */
@@ -944,6 +947,12 @@ int k6_main(const k6_api_t *api) {
 #ifndef DF_AF
 #define DF_AF 0        /* bits ORed into REG_2B: 0100 the receiver's de-emphasis off */
 #endif
+#ifndef DF_KICK
+#define DF_KICK 0      /* 1: tuned again after every packet without a frame, so the AFC starts
+                          again from the tuned centre (it takes hold at a tune, insight 48): the
+                          offset ladder of 2026-11-19 (run C4) left the receiver deaf to centred
+                          packets after a sender 0.6 kHz off */
+#endif
 #endif
 
 static const uint8_t FSK_SAVED[NSV] = {0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x72, 0x3F, 0x2B};
@@ -1547,6 +1556,17 @@ int k6_main(const k6_api_t *api) {
 #endif
         say(api, s, p);
       }
+#if defined(DF_SET) && DF_KICK
+      if (s->ok == ok0 && got >= DF_SAY) {
+        /* the AFC back to the tuned centre: a tune, and the FSK set up again behind it (the
+           search starts again below, as after every packet) */
+        api->tune(APRS_HZ, DF_WIDE);
+        api->fd_write(0x3F, 0), api->fd_write(0x59, 0), api->fd_write(0x58, 0);
+        api->fd_write(0x5B, 0xAAAA), api->fd_write(0x72, 0xC195), api->fd_write(0x5C, 0x5625);
+        api->fd_write(0x5D, 0xFFE0), api->fd_write(0x5E, 0x0204);
+        s->kicks++;
+      }
+#endif
       left = 0;
     }
     if (!left && now - s->scr_ms >= 1000) {
@@ -1587,6 +1607,9 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " pre=", s->pre);
   p = kv(p, " fake=", s->fake);
   p = kv(p, " inv=", inv);
+#if defined(DF_SET) && DF_KICK
+  p = kv(p, " kick=", s->kicks);
+#endif
   say(api, s, p);
   p = put(s->ln, "aprs end ok=");
   p = dec(p, s->ok, 1);
