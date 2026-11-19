@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "k6-ram0zero1",
-   "who": "k6-ram0",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "k6-ram0zero1",
+  "who": "k6-ram0",
+  "since": "2026-11-19T18:47:43Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-19T18:47:36Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T18:47:36Z"
+ "updated": "2026-11-19T18:47:43Z"
 }
