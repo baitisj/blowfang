@@ -1,12 +1,74 @@
 {
  "id": "aprsair-1",
- "status": "running",
- "since": "2026-11-19T12:00:43Z",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T12:00:45Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T12:00:45Z",
+   "ended": "2026-11-19T12:00:47Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T12:00:47Z",
+   "ended": "2026-11-19T12:00:50Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T12:00:50Z",
+   "ended": "2026-11-19T12:02:37Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T12:02:37Z",
+   "ended": "2026-11-19T12:17:37Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T12:17:37Z",
+   "ended": "2026-11-19T12:17:40Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "k6.upload",
+   "started": "2026-11-19T12:17:40Z",
+   "ended": "2026-11-19T12:19:27Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T12:19:27Z",
+   "ended": "2026-11-19T12:34:27Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "logger.stop",
+   "started": "2026-11-19T12:34:27Z",
+   "ended": "2026-11-19T12:34:28Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-989248773c0f",
+ "head": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "ended": "2026-11-19T12:34:28Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "904b7d454f8354b66defaa6caa924b3973c98e3c",
   "path": "jobs/aprsair-1"
  },
  "runner_commit": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
- "updated": "2026-11-19T12:00:43Z"
+ "updated": "2026-11-19T12:34:29Z"
 }

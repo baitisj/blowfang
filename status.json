@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "aprsair-1",
-  "who": "k6-aprs-ladder",
-  "since": "2026-11-19T12:00:43Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T12:00:36Z",
+ "last_poll": "2026-11-19T12:34:28Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T12:00:43Z"
+ "updated": "2026-11-19T12:34:29Z"
 }
