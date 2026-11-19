@@ -1,0 +1,115 @@
+2026-11-19T02:04:24Z job ysfdemo1 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a at aa318c46915aa8d641fa1055d31f362abacda62f
+2026-11-19T02:05:09Z step 1 (wait) rc=0
+2026-11-19T02:05:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:05:10Z
+end 02:05:25Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:05:25Z step 2 (pluto) rc=0
+2026-11-19T02:05:45Z step 3 (wait) rc=0
+2026-11-19T02:05:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:05:46Z
+end 02:06:01Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:06:01Z step 4 (pluto) rc=0
+2026-11-19T02:06:21Z step 5 (wait) rc=0
+2026-11-19T02:06:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:06:22Z
+end 02:06:37Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:06:37Z step 6 (pluto) rc=0
+2026-11-19T02:06:57Z step 7 (wait) rc=0
+2026-11-19T02:06:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:06:58Z
+end 02:07:13Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:07:13Z step 8 (pluto) rc=0
+2026-11-19T02:07:33Z step 9 (wait) rc=0
+2026-11-19T02:07:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:07:34Z
+end 02:07:49Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:07:49Z step 10 (pluto) rc=0
+2026-11-19T02:08:09Z step 11 (wait) rc=0
+2026-11-19T02:08:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:08:10Z
+end 02:08:25Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:08:25Z step 12 (pluto) rc=0
+2026-11-19T02:08:45Z step 13 (wait) rc=0
+2026-11-19T02:08:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:08:46Z
+end 02:09:01Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:09:01Z step 14 (pluto) rc=0
+2026-11-19T02:09:21Z step 15 (wait) rc=0
+2026-11-19T02:09:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:09:22Z
+end 02:09:37Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:09:37Z step 16 (pluto) rc=0
+2026-11-19T02:09:57Z step 17 (wait) rc=0
+2026-11-19T02:09:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:09:58Z
+end 02:10:13Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:10:13Z step 18 (pluto) rc=0
+2026-11-19T02:10:33Z step 19 (wait) rc=0
+2026-11-19T02:10:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:10:34Z
+end 02:10:49Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:10:49Z step 20 (pluto) rc=0
+2026-11-19T02:11:09Z step 21 (wait) rc=0
+2026-11-19T02:11:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:11:10Z
+end 02:11:25Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:11:25Z step 22 (pluto) rc=0
+2026-11-19T02:11:45Z step 23 (wait) rc=0
+2026-11-19T02:11:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:11:46Z
+end 02:12:01Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:12:01Z step 24 (pluto) rc=0
+2026-11-19T02:12:21Z step 25 (wait) rc=0
+2026-11-19T02:12:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:12:22Z
+end 02:12:37Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:12:37Z step 26 (pluto) rc=0
+2026-11-19T02:12:57Z step 27 (wait) rc=0
+2026-11-19T02:12:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:12:58Z
+end 02:13:13Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:13:13Z step 28 (pluto) rc=0
+2026-11-19T02:13:33Z step 29 (wait) rc=0
+2026-11-19T02:13:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:13:34Z
+end 02:13:49Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:13:49Z step 30 (pluto) rc=0
+2026-11-19T02:14:09Z step 31 (wait) rc=0
+2026-11-19T02:14:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo1/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:14:10Z
+end 02:14:25Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:14:26Z step 32 (pluto) rc=0
+2026-11-19T02:14:46Z step 33 (wait) rc=0
+2026-11-19T02:14:46Z job ysfdemo1 done
