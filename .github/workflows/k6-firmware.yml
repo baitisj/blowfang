@@ -169,6 +169,7 @@ jobs:
             tests/test_k6_txrules.py \
             tests/test_k6_update.py \
             tests/test_k6_vlr.py \
+            tests/test_k6_web_install.py \
             tests/test_k6_xscan.py \
             tests/test_nwr_watch.py \
             tests/test_pluto_bench.py \

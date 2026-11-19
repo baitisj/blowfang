@@ -49,6 +49,8 @@ licensed amateurs only. The install itself never transmits.
   UV-K5. It shows up as a serial port: `/dev/ttyUSB0` on Linux, `/dev/cu.usbserial-...` on a
   Mac, `COM3` or similar on Windows.
 - Python 3.8 or newer with two packages: `pip install pyserial numpy`.
+  No Python? The browser installer, [web/k6-installer/](../../web/k6-installer/README.md), does the
+  same steps from Chrome, Edge or Opera on a desktop over Web Serial: open its `index.html`.
 - This repository (for `tools/k6_install.py`) and a **release folder**, `blowfang-k6-...`. Get
   the folder from a GitHub release of blowfang when there is one, or from the newest run of the
   *K6 pager firmware* workflow on GitHub (artifact `blowfang-k6-<commit>`), or build it

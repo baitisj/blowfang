@@ -57,6 +57,8 @@ tools/uv380_i2sprobe.py
 tools/uv380_dmrburst.py
 tests/test_k6*
 tests/k6_live_emu.py
+tests/k6_web_driver.cjs
+web/k6-installer/
 tests/test_nwr_watch.py
 tests/test_pluto_bench.py
 tests/test_pluto_parrot.py
