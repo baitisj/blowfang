@@ -958,15 +958,15 @@ int k6_main(const k6_api_t *api) {
 #define DF_Q0 2u       /* q=: the opening flags' words from the third */
 #define DF_QW 24u      /* 384 samples, 80 ms of an opening of 40 flags (267 ms) */
 #ifndef DF_OFFT
-#define DF_OFFT 0      /* 1: tuned by the opening flags' q (DF_QHZ Hz a unit) when |q| >= DF_QMIN, the
+#define DF_OFFT 0      /* 1: tuned by the opening flags' q (DF_QHZ * sqrt|q| Hz) when |q| >= DF_QMIN, the
                           packet given up there and read again from the flags still to come; tuned
                           back to the centre when a packet ends */
 #endif
 #ifndef DF_QHZ
-#define DF_QHZ 4
+#define DF_QHZ 150     /* Hz for the square root of |q| */
 #endif
 #ifndef DF_QMIN
-#define DF_QMIN 24
+#define DF_QMIN 8      /* |q| of 6 and under still reads (within some 300 Hz of the centre) */
 #endif
 #define DF_OMAX 1500   /* Hz: the furthest a packet is tuned off */
 #define DF_OWAIT 500u  /* ms after such a tune with no packet begun: back to the centre */
@@ -1580,7 +1580,13 @@ int k6_main(const k6_api_t *api) {
            its flags still to come start the chip again */
         qd = 1;
         if (!toff && (s->qs >= DF_QMIN || s->qs <= -DF_QMIN)) {
-          toff = s->qs * DF_QHZ;
+          /* the bench's ladder (run aprsoff-e1, AFC off): q is +8, +20, +38 at 450, 750, 1050 Hz
+             one way and -12, -33, -64 the other (steeper as the 2200 Hz half cycles go): about
+             DF_QHZ * sqrt(|q|) Hz, within 150 Hz of each */
+          uint32_t a = (uint32_t)(s->qs < 0 ? -s->qs : s->qs) << 6, r = 0;
+          while ((r + 1) * (r + 1) <= a) r++;
+          toff = (int32_t)((r * DF_QHZ) >> 3);
+          if (s->qs < 0) toff = -toff;
           if (toff > DF_OMAX) toff = DF_OMAX;
           if (toff < -DF_OMAX) toff = -DF_OMAX;
           df_tune(api, toff);

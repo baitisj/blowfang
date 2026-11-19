@@ -10,6 +10,7 @@ and stay inside the arena and the stack. Needs a C compiler; the module test als
 and unicorn. SPDX-License-Identifier: MIT"""
 import ctypes
 import gzip
+import math
 import os
 import shutil
 import subprocess
@@ -992,7 +993,7 @@ def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
 @need_clang
 def test_aprslad_o_tunes_to_the_flags_offset_on_the_emulated_m0():
     """aprslad_o (DF_OFFT): a packet whose opening flags' q is DF_QMIN or more is given up, the
-    K6 tuned q * DF_QHZ Hz off, and the packet read from the flags still to come; tuned back to
+    K6 tuned DF_QHZ * sqrt|q| Hz off (the sign of q's), and the packet read from the flags still to come; tuned back to
     the centre after it. The model's chip gives the same bits whatever the tuning, so with
     DF_QMIN 1 every packet with q != 0 is tuned once and must still be read"""
     e, sent, clean, ret, stack = _dfsk_emulated(1.0, "aprslad_o", defs=[("DF_QMIN", "1")])
@@ -1006,7 +1007,10 @@ def test_aprslad_o_tunes_to_the_flags_offset_on_the_emulated_m0():
     # each tune off the centre is followed by one back to it, and the y lines say the offset
     assert rt > 0 and len(off) == 2 * rt, (rt, off)
     assert all(o != 0 and abs(o) <= 1500 and back == (0, 1) for (o, _), back in zip(off[::2], off[1::2])), off
-    assert rt - 2 <= sum(v["o"] != "0" for v in y) <= rt and all(int(v["o"]) % 4 == 0 for v in y), y
+    # DF_QHZ * sqrt|q| as the module rounds it: q of 1 (DF_QMIN 1 here) 150 Hz, of 4 300 Hz
+    hz = {(math.isqrt(q * 64) * 150) >> 3 for q in range(1, 200)}
+    assert all(abs(o) in hz for o, _ in off[::2]), off
+    assert rt - 2 <= sum(v["o"] != "0" for v in y) <= rt, y
     # the packets are read after their tune (the long openings; the model's 8-flag ones may not)
     assert set(f) >= {f"AG7EW-{k}" for k in clean if k in (9, 10)} and len(f) >= len(clean) - 4, (f, clean)
 
