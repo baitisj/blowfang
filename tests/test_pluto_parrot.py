@@ -82,6 +82,21 @@ def test_mix_decimate_brings_the_channel_to_zero():
     assert abs(np.mean(np.diff(ph))) < 1e-3          # no rotation left: the channel sits at 0 Hz
 
 
+def test_run_mixes_the_channel_down_not_further_away():
+    """11-19 04:32Z on air: run() passed -RX_IF_HZ and heard Jeff's sends 100 kHz off (no decode)"""
+    import inspect
+    src = inspect.getsource(pp.run)
+    assert "q, RX_IF_HZ)" in src and "-RX_IF_HZ" not in src
+    rate, q = 2_400_000, 10
+    n = 131072
+    t = np.arange(n) / rate
+    z = np.exp(-2j * np.pi * pp.RX_IF_HZ * t) * 1000          # the channel, RX_IF_HZ below the LO
+    raw = np.empty(2 * n, np.int16)
+    raw[0::2], raw[1::2] = np.round(z.real), np.round(z.imag)
+    y = pp.mix_decimate(raw.tobytes(), {}, rate, q, pp.RX_IF_HZ)
+    assert abs(np.mean(np.diff(np.unwrap(np.angle(y[100:]))))) < 1e-3
+
+
 def test_reply_wavs_decode_as_sent():
     msg = sotto(25)
     x, dev = pp.reply_wav("ysf", msg)

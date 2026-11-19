@@ -47,6 +47,8 @@ def mix_decimate(raw, state, rate, q, if_hz):
     mixed, then summed in blocks of q (a boxcar: its first null at rate / q, plenty for one FM
     channel on a quiet bench). state carries the mixer phase and the samples left over."""
     x = np.frombuffer(raw, np.int16).astype(np.float32)
+    if len(x):
+        state["peak"] = max(state.get("peak", 0.0), float(np.max(np.abs(x))))
     iq = (x[0::2] + 1j * x[1::2]).astype(np.complex64) / 2048.0
     n0 = state.get("n", 0)
     ph = np.exp(2j * np.pi * if_hz * (n0 + np.arange(len(iq))) / rate).astype(np.complex64)
@@ -106,8 +108,15 @@ def heard(iq, fs=FS):
         lines.append(f"M17 sotto {s['sotto_ok']}/{s['sotto_frames']} frames CRC good, "
                      f"{len(s['sotto']) // 6} superframes, from {src}")
         return "m17", s["sotto"], src, lines
-    lines.append(f"no sotto (YSF frames {len(ysf.summarize(ysf.demod(disc))['fn'])}, "
-                 f"M17 stream frames {s['stream']})")
+    yf = ysf.demod(disc)
+    ys = ysf.summarize(yf)
+    kinds = {}
+    for f in fr:
+        kinds[f["kind"]] = kinds.get(f["kind"], 0) + 1
+    d = disc[np.abs(disc) < 8000]
+    lines.append(f"no sotto: YSF syncs {len(yf)}, FICH good {ys['fich_ok']}, kinds {ys['dt']}; "
+                 f"M17 frames {kinds or 0}; deviation p50 {np.percentile(np.abs(d), 50):.0f} Hz, "
+                 f"p99 {np.percentile(np.abs(d), 99):.0f} Hz")
     return None, b"", "", lines
 
 
@@ -143,7 +152,7 @@ def run(a):
                 raw = p.stdout.read(4 * pb.CHUNK)
                 if not raw:
                     break
-                burst = bursts.feed(mix_decimate(raw[:len(raw) // 4 * 4], st, rate, q, -RX_IF_HZ))
+                burst = bursts.feed(mix_decimate(raw[:len(raw) // 4 * 4], st, rate, q, RX_IF_HZ))
         finally:
             if p.poll() is None:
                 p.kill()
@@ -152,6 +161,7 @@ def run(a):
         if burst is None:
             break
         t = time.strftime('%H:%M:%S', time.gmtime())
+        print(f"{t}Z heard: ADC peak {st.get('peak', 0):.0f} of 2047 (rx gain {a.rx_gain} dB)", flush=True)
         mode, sotto, src, lines = heard(burst)
         for ln in lines:
             print(f"{t}Z heard: {ln}", flush=True)
