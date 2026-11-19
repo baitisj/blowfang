@@ -5,9 +5,15 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-19T00:59:18Z",
+ "waiting": [
+  {
+   "id": "ftm-echo2",
+   "who": "uv380-multimode",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-19T01:00:22Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T00:59:39Z"
+ "updated": "2026-11-19T01:00:22Z"
 }
