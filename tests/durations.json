@@ -676,6 +676,12 @@
 "tests/test_k6_xscan.py::test_the_k6_s_own_clock_is_a_spur_at_once": 0.01,
 "tests/test_k6_xscan.py::test_the_peek_hears_an_id_go_out_mid_carrier": 0.06,
 "tests/test_k6_xscan.py::test_up_list_leaves_out_a_louder_carrier_s_skirts": 0.04,
+"tests/test_k6_ysfrx.py::test_host_receiver_fills_lost_frames": 1.41,
+"tests/test_k6_ysfrx.py::test_host_receiver_on_the_k6_model[52.0-False]": 0.38,
+"tests/test_k6_ysfrx.py::test_host_receiver_on_the_k6_model[54.0-True]": 0.33,
+"tests/test_k6_ysfrx.py::test_host_receiver_on_the_k6_model[60.0-False]": 0.36,
+"tests/test_k6_ysfrx.py::test_host_receiver_says_nothing_on_noise": 0.27,
+"tests/test_k6_ysfrx.py::test_ysfrx_module_on_the_emulated_k6": 39.42,
 "tests/test_psk31.py::test_round_trip_through_noise": 0.05,
 "tests/test_psk31.py::test_varicode_is_well_formed": 0.0
 }

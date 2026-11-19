@@ -47,6 +47,7 @@ uint16_t srx_crc16(const uint8_t *d, unsigned n) {
     return c;
 }
 
+#ifndef SRX_NO_RADIO
 int srx_m17(srx_state *s, const m17_frame *f) {
     if (f->kind == M17_EOT) {           /* ends a message, not the quiet before the next one */
         s->ended = s->got != 0;
@@ -98,6 +99,7 @@ int srx_ysf(srx_state *s, const ysf_frame *f) {
     }
     return got;
 }
+#endif
 
 unsigned srx_conceal(srx_state *s) {
     unsigned missing = 0, last = s->n;

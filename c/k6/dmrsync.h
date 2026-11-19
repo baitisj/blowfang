@@ -126,10 +126,23 @@ static void ds_gap(ds_t *d) { d->have = 0, d->okg = 0; }
 __attribute__((unused)) static void ds_skip(ds_t *d, uint32_t n) { d->n += n; }
 #endif
 
+#ifdef DS_FRING
+/* a grid point with no value (a gap, a pause): with DS_ERASE its value and its filter output are
+   0 (an erasure for a soft decoder) rather than whatever the rings held from before (ysfrx: the
+   pauses of housekeeping's calls cost VW superframes on the emulated K6) */
+static void ds_unfed(ds_t *d) {
+#ifdef DS_ERASE
+  d->y[d->j & (DS_RING - 1)] = 0;
+  d->f[(d->j - 6u) & (DS_FRING - 1)] = 0;
+#endif
+  d->j++;
+}
+#endif
+
 static int32_t ds_clamp(int32_t v) { return v > DS_YMAX ? DS_YMAX : v < -DS_YMAX ? -DS_YMAX : v; }
 
 /* a confirmed DMR hit? (and keep it in its family's history) */
-static int ds_confirm(ds_t *d, uint32_t j, int32_t f) {
+__attribute__((unused)) static int ds_confirm(ds_t *d, uint32_t j, int32_t f) {
   uint32_t i, n = d->nlast[f], ok = 0, keep = 0;
   uint32_t *h = d->last[f];
   for (i = 0; i < n; i++) {
@@ -168,6 +181,12 @@ __attribute__((noinline)) static int ds_grid(ds_t *d, int32_t y) {
     d->f[(j - 6u) & (DS_FRING - 1)] = (int8_t)(a > 127 ? 127 : a < -127 ? -127 : a);
   }
 #endif
+#ifdef DS_NOSYNC
+  /* (a build with no DMR sync search: the matched filter only) */
+  (void)yo, (void)f, (void)par;
+  d->okg++;
+  return ret;
+#else
   if (d->okg < 2) d->s1[par] = 0, d->s2[par] = 0;
   d->okg++;
   d->s1[par] += y - yo;
@@ -203,6 +222,7 @@ __attribute__((noinline)) static int ds_grid(ds_t *d, int32_t y) {
     }
   }
   return ret;
+#endif
 }
 
 /* one count; returns what ds_grid said for the grid points it made (the last that wasn't
@@ -228,7 +248,7 @@ __attribute__((noinline)) static int ds_count(ds_t *d, int32_t x) {
           if (r) ret = r;
         }
 #ifdef DS_FRING
-        else d->j++;
+        else ds_unfed(d);
 #endif
         d->phl = ph;
         d->g += d->w16;
@@ -237,7 +257,7 @@ __attribute__((noinline)) static int ds_count(ds_t *d, int32_t x) {
       /* a gap: the grid starts again at this crossing (in the decoder's builds, on the old
          grid's points, counting those it skipped) */
 #ifdef DS_FRING
-      while ((int32_t)(t - d->g) > 0) d->g += d->w16, d->j++;
+      while ((int32_t)(t - d->g) > 0) d->g += d->w16, ds_unfed(d);
 #else
       d->g = t + d->w16;
 #endif

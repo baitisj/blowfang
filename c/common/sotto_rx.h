@@ -15,15 +15,18 @@
  * that came), as pager_rx.c's prx_conceal does, so the decoder holds the sound over a gap.
  *
  * No malloc, no writable statics, no floating point: the caller owns the buffers, and a RAM
- * module (-fropi) can #include sotto_rx.c.
+ * module (-fropi) can #include sotto_rx.c. SRX_NO_RADIO leaves out srx_m17 and srx_ysf (and
+ * the UV-380 receivers' headers): the K6's ysfrx (c/k6/mod/ysfdec.inc) places its own frames.
  * SPDX-License-Identifier: MIT */
 #ifndef SOTTO_RX_H
 #define SOTTO_RX_H
 
 #include <stdint.h>
 
+#ifndef SRX_NO_RADIO
 #include "m17_rx.h"
 #include "ysf_rx.h"
+#endif
 
 #define SRX_SF 6u                       /* bytes a superframe */
 #define SRX_YSF_FRAME 2400u             /* a YSF frame at ysf_rx's 24 kHz */
@@ -45,10 +48,12 @@ typedef struct {
 void srx_init(srx_state *s, uint8_t *frames, uint8_t *have, unsigned max);
 /* superframe sf at place idx (any origin: the first one seen is the message's 0); 1 if new */
 int srx_put(srx_state *s, int32_t idx, const uint8_t *sf);
+#ifndef SRX_NO_RADIO
 /* an M17 frame: superframes it gave (0 for LSF, packet, BERT, EOT or a bad payload) */
 int srx_m17(srx_state *s, const m17_frame *f);
 /* a YSF frame: superframes it gave */
 int srx_ysf(srx_state *s, const ysf_frame *f);
+#endif
 /* fills the places that never came; returns how many were missing */
 unsigned srx_conceal(srx_state *s);
 /* M17's CRC-16 (polynomial 0x5935, initial 0xFFFF) */

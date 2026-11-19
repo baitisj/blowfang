@@ -40,6 +40,15 @@
 #ifdef DMR_DECODE
 #define DS_FRING 512u           /* 53 ms of matched-filtered grid: a burst and more */
 #include "../dmrburst.h"
+#elif defined(YSF_DECODE)
+#define DS_FRING 256u           /* 27 ms: ysfdec.inc slices each symbol as its points come in */
+#define DS_NOSYNC 1             /* no DMR sync search: the room and the time go to YSF's */
+#define DS_ERASE 1              /* the grid's points in a pause: 0, not old values */
+#include "../ysfdec.h"
+#endif
+#if defined(DMR_DECODE) || defined(YSF_DECODE)
+#define DS_KEEP 1               /* the grid's index stays on time across pauses (bursts and
+                                   frames are predicted by it) */
 #endif
 #include "../dmrsync.h"
 
@@ -90,7 +99,7 @@
 #define AF_FM 0x6140u           /* Aura's AF_OUT_BASE | RX audio */
 #define AF_MUTE 0x6040u
 #define NOINLINE __attribute__((noinline))
-#if defined(DMR_DECODE) && defined(__clang__)
+#if defined(DS_KEEP) && defined(__clang__)
 #define COLD __attribute__((noinline, minsize)) /* dmrrx: set-up and housekeeping, size over speed */
 #define MAIN_COLD __attribute__((minsize))
 #else
@@ -143,6 +152,8 @@ static int rssi(const k6_api_t *api) { return KM_RSSI_DBM(api->fd_read(0x67)); }
 
 #ifdef DMR_DECODE
 #include "dmrdec.inc"
+#elif defined(YSF_DECODE)
+#include "ysfdec.inc"
 #endif
 
 typedef struct {
@@ -160,6 +171,8 @@ typedef struct {
   uint32_t ahb, apb2, odr, r33, r34, r47, r7e, r13;
 #ifdef DMR_DECODE
   dx_t *x; /* in scratch */
+#elif defined(YSF_DECODE)
+  yx_t *y; /* in scratch */
 #endif
 } st_t;
 
@@ -174,7 +187,7 @@ static uint32_t now(st_t *s) {
 
 static uint32_t poll(st_t *s) {
   uint32_t w = RSZ - (rd(DMA_CNDTR1) & 0xFFFF);
-#ifdef DMR_DECODE
+#ifdef DS_KEEP
   /* a burst's decoding can outlast the ring: the laps from the clock when it was long */
   uint32_t t = now(s), dt = t - s->tpoll;
   s->tpoll = t;
@@ -191,7 +204,7 @@ static uint32_t poll(st_t *s) {
 /* count again from where the DMA is now (after a pause or an overrun) */
 NOINLINE static void resync(st_t *s) {
   uint32_t w = RSZ - (rd(DMA_CNDTR1) & 0xFFFF);
-#ifdef DMR_DECODE
+#ifdef DS_KEEP
   {
     /* the decoder predicts bursts by grid index, so the grid must count the time it missed:
        the transfers since the last poll from the clock and the DMA's rate, the whole rings
@@ -249,7 +262,7 @@ static void hit(st_t *s, int r) {
    audio, and at most one line; 1 to stop */
 COLD static int housekeeping(const k6_api_t *api, st_t *s) {
   char line[64], *p = line;
-#ifdef DMR_DECODE
+#ifdef DS_KEEP
   char *q8;
 #endif
   uint32_t j = s->d.j, t = s->t, P = s->laps * RSZ + s->lastw, dt = t - s->thk, q;
@@ -267,7 +280,7 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
       s->cps8 = s->nrate++ ? (3 * s->cps8 + m) >> 2 : m; /* the first one whole: the grid is on
                                                             time from ~50 ms (1% off cost most
                                                             embedded LCs while it settled) */
-#ifdef DMR_DECODE
+#ifdef DS_KEEP
       s->rhalf = (RSZ * (s->cps8 >> 2)) >> 7;               /* half the ring, in cycles */
 #endif
 #ifdef DMR_DECODE
@@ -277,7 +290,14 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
     }
     s->t0 = t, s->p0 = P;
   }
+#ifdef YSF_DECODE
+  /* in a frame, no register reads and no lines (below): their pauses (a line ~5 ms on the
+     radio) cost superframes on the emulated K6, even in a payload. The frames say there's a
+     carrier */
+  if (!s->y->on) s->db = rssi(api);
+#else
   s->db = rssi(api);
+#endif
   car = s->db >= s->floor + SQ_DB;
   if (car != s->car) {
     s->car = car;
@@ -287,6 +307,8 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
       if (s->dmr) s->until = j;
 #ifdef DMR_DECODE
       dx_end(s->x);
+#elif defined(YSF_DECODE)
+      if (s->y->on) yx_end(s->y);
 #endif
       p = kv(kv(kv(line, "c ", s->cdb), " ", g2ms(j - s->car_j)), " h=", (int)s->chits);
     }
@@ -297,6 +319,11 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
   } else if ((q8 = dx_house(s->x, line)) != 0) {
     /* a decode before the other lines: the burst waiting holds back the next one (on 440.925
        a GPS packet's one data header came while the line was "D on", 2026-11-09) */
+    p = q8;
+#elif defined(YSF_DECODE)
+  } else if (s->y->on) {
+    /* (no line in a frame) */
+  } else if ((q8 = yx_house(s->y, line)) != 0) {
     p = q8;
 #endif
   } else if (s->pend) {
@@ -326,7 +353,11 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
     p = kv(p, " ks=", (int)ds_udiv(96000u * 256u, s->cps8));
     s->idle = s->win = 0;
   }
+#ifdef YSF_DECODE
+  af = 0; /* receive only, the speaker shut */
+#else
   af = s->car && !s->dmr && j - s->car_j >= HOLD_MS * 96u / 10u;
+#endif
   if (af != s->af) s->af = af, api->fd_write(0x47, af ? AF_FM : AF_MUTE);
 #ifdef DMR_DECODE
   if (dx_lcd(api, s->x) && p == line) resync(s);
@@ -346,12 +377,19 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
      ~90 ms (st_t came zeroed: ds_init's work but the rate and the empty candidate) */
   s->cps8 = 4476u;
   ds_rate(&s->d, s->cps8);
-#ifdef DMR_DECODE
+#ifdef DS_KEEP
   s->rhalf = (RSZ * (s->cps8 >> 2)) >> 7;
 #endif
   s->d.cfam = -1;
+#ifdef YSF_DECODE
+  p = kv(line, "ysf start f=", (int)FREQ_HZ);
+#else
   p = kv(line, "dmr start f=", (int)FREQ_HZ);
+#endif
   p = kv(p, " floor=", s->floor);
+#ifdef YSF_DECODE
+  p = kv(p, " msg=", (int)s->y->m.max);   /* the message buffer: superframes, 40 ms each */
+#endif
   say(api, line, p);
   s->c17 = rd(TIM17_CNT) & 0xFFFF, s->c14 = rd(TIM14_CNT) & 0xFFFF;
   resync(s);
@@ -369,6 +407,9 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
     if (P - s->consumed < 64u) {
       s->idle += t - s->tp;
       s->tp = t;
+#ifdef YSF_DECODE
+      yx_work(s->y); /* a decoder step in the gap */
+#endif
       if (hk < HK_COUNTS) continue;
 #ifdef DMR_DECODE
       if (hk < 2 * HK_COUNTS && !dx_quiet(s->x, s->d.j)) continue; /* between the voice's bursts */
@@ -382,6 +423,9 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
       }
 #ifdef DMR_DECODE
       if (s->x->nq) dx_poll(s->x, &s->d);
+#elif defined(YSF_DECODE)
+      if (s->car || s->y->on) yx_poll(s->y, &s->d); /* (no search without a carrier: noise's
+                                                        false syncs held the receiver) */
 #endif
       hk += i;
       if (hk < 4 * HK_COUNTS) continue; /* never idle: housekeeping anyway */
@@ -417,6 +461,20 @@ MAIN_COLD int k6_main(const k6_api_t *api) {
     zero(s->x, sizeof(dx_t));
     s->x->lcd_dirty = 1; /* the screen at once: "LISTENING" until a call's LC */
     s->ring = sc + DS_FRING + sizeof(dx_t);
+    return go(api, s);
+  }
+#elif defined(YSF_DECODE)
+  {
+    /* scratch, as dmrrx: the filter's ring, the YSF decoder, the DMA ring, then the message */
+    uint32_t n = 0;
+    uint8_t *sc = (uint8_t *)api->scratch(&n);
+    if (n < DS_FRING + sizeof(yx_t) + RSZ) return -6;
+    s->d.f = (int8_t *)sc;
+    s->y = (yx_t *)(sc + DS_FRING);
+    zero(s->y, sizeof(yx_t));
+    s->ring = sc + DS_FRING + sizeof(yx_t);
+    /* the rest: the message, at least YX_MSG_MIN superframes */
+    if (!yx_mem(s->y, s->ring + RSZ, n - (DS_FRING + sizeof(yx_t) + RSZ), YX_MSG_MIN)) return -6;
     return go(api, s);
   }
 #else
@@ -468,5 +526,9 @@ COLD static int go(const k6_api_t *api, st_t *s) {
   api->fd_write(0x7E, (uint16_t)s->r7e);
   api->fd_write(0x34, (uint16_t)s->r34);
   api->fd_write(0x33, (uint16_t)s->r33);
+#ifdef YSF_DECODE
+  return (int)s->y->nfr;
+#else
   return s->nd;
+#endif
 }
