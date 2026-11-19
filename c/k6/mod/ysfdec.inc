@@ -65,6 +65,10 @@ typedef struct {
   uint8_t pay[2][YD_PAY_BITS / 2];
   /* jobs: 1 the FICH to decode, 2 the VW (4 done); the decoders; the payload buffers written and decoded */
   uint8_t jf, jv, fok, fi, fn, dt, miss, done, wb, db;
+  /* the VW frame's own FICH (fok, fi, fn, dt as its frame ended): its VW decodes during the next
+     frame, whose FICH is decoded first (bench run 19: the next frame's FN placed every message a
+     frame late) */
+  uint8_t vfok, vfi, vfn, vdt;
   yd_f5_t f5;
   yd_v7_t v7;
   /* the call: counts; the VW frame decoding (its frame number); the message given out (bytes,
@@ -79,6 +83,9 @@ typedef struct {
   uint16_t hist[16];
 #endif
 #ifdef YX_SNAP
+#ifndef YX_SNAP_FR
+#define YX_SNAP_FR 2u                  /* the call's third frame */
+#endif
   /* the bench's look at the signal (a YX_SNAP build): the filter's 240 points (sync and FICH)
      of the third frame of the first call that has one, its sync's rho^2 (Q8), quarter point,
      +1 level and DC; kept in the message buffer's last 240 bytes */
@@ -91,7 +98,7 @@ typedef struct {
      flags (0x80 the FICH good, 0x40 a wide search, 0x20 a VW decoded, its good superframes'
      bits below); the grid's step as the call began and ended */
   uint8_t tr[YX_TR][3];
-  uint32_t tw0, tw1, tout;
+  uint32_t tw0, tw1, tout, nho;      /* nho: housekeeping's overruns of the DMA ring this call */
 #endif
   srx_state m;
 } yx_t;
@@ -204,10 +211,10 @@ static void yx_vw_done(yx_t *x) {
   uint32_t ok = yd_v7_end(&x->v7, sf), k, f0;
   x->jv = 0;
   x->nsf += YD_NSF;
-  if (!x->m.based && (ok || x->fok)) {
+  if (!x->m.based && (ok || x->vfok)) {
     /* a good FICH's frame number places the message's first frame (FN 0) even when the frames
        before were lost: frames that early are the grid's timing (YX_WIDE) */
-    f0 = x->fok && x->fn <= x->vf ? x->vf - x->fn : x->vf;
+    f0 = x->vfok && x->vfn <= x->vf ? x->vf - x->vfn : x->vf;
     x->m.based = 1, x->m.base = (int32_t)(f0 * YD_NSF);
   }
 #ifdef YX_TRACE
@@ -253,7 +260,7 @@ static void yx_poll(yx_t *x, ds_t *d) {
       x->rlock = 0;                          /* (the call times the grid again) */
 #ifdef YX_TRACE
       for (k = 0; k < 3u * YX_TR; k++) (&x->tr[0][0])[k] = 0;
-      x->tw0 = x->tw1 = d->w16;
+      x->tw0 = x->tw1 = d->w16, x->nho = 0;
       yx_tr(x, 0, x->rr, 0, 0);
 #endif
 #ifdef YX_BENCH
@@ -339,7 +346,7 @@ static void yx_poll(yx_t *x, ds_t *d) {
       if (++x->n == YD_SYNC_N + YD_FICH_SYMS) {
         x->jf = 1, yd_f5_start(&x->f5);
 #ifdef YX_SNAP
-        if (!x->snapped && x->nfr == 2) {      /* (the third frame: nfr counts on at its end) */
+        if (!x->snapped && x->nfr == YX_SNAP_FR) {  /* (nfr counts on at the frame's end) */
           uint32_t i, g0 = ((P + 3u) >> 2) - 239u;
           for (i = 0; i < 240u; i++) x->snap[i] = d->f[(g0 + i) & (DS_FRING - 1)];
           x->snapped = 1, x->sq = (x->P0 - (g0 << 2)), x->su = (uint32_t)x->u, x->sdc = (uint32_t)x->dc;
@@ -354,8 +361,9 @@ static void yx_poll(yx_t *x, ds_t *d) {
       x->pay[x->wb][b >> 1] = (uint8_t)(q | (yx_q4(yd_pn9(&x->pn) ? -l1 : l1) << 4));
       if (++x->n == YD_FRAME_SYMS) {
         if (x->jv) x->nfin++;
-        while (x->jv) yx_work(x);               /* the last frame's VW still decoding: finish it */
+        while (x->jv || x->jf) yx_work(x);    /* the last frame's VW (and this one's FICH): finish them */
         x->jv = 1, x->db = x->wb, x->vf = x->nfr++;   /* this one's to decode (after the FICH) */
+        x->vfok = x->fok, x->vfi = x->fi, x->vfn = x->fn, x->vdt = x->dt, x->fok = 0;
         x->rr = 0;                             /* the next sync's tries */
         if (x->rlock) x->rf = 1, x->rq = -YX_LOCKW, x->rend = YX_LOCKW;
         else x->rf = 0, x->rq = -YX_WIDE;
@@ -384,9 +392,9 @@ static void yx_work(yx_t *x) {
   }
   if (x->jv == 1) {
     /* a header, terminator or other data type has no VW to decode */
-    if (x->fok && (x->fi != 1 || x->dt != 3)) {
+    if (x->vfok && (x->vfi != 1 || x->vdt != 3)) {
       x->jv = 0;
-      if (x->fi == 2) yx_end(x);
+      if (x->vfi == 2) yx_end(x);
       return;
     }
     yd_v7_start(&x->v7);
@@ -439,7 +447,7 @@ static char *yx_house(yx_t *x, char *line) {
     uint32_t nf = 3u * (x->nfr < YX_TR ? x->nfr : YX_TR);
     if (x->tout == 0) {
       x->tout = 1;
-      return kv(kv(line, "Y t w=", (int)x->tw0), " ", (int)x->tw1);
+      return kv(kv(kv(line, "Y t w=", (int)x->tw0), " ", (int)x->tw1), " ho=", (int)x->nho);
     }
     if (x->tout - 1u < nf) return yx_hex(line, "Y t ", &x->tout, 1u, &x->tr[0][0], nf);
     x->tout = 0x100u;

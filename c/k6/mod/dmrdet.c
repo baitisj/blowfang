@@ -278,6 +278,15 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
   q = ds_udiv(dt + s->rem, 96000u);
   s->rem = dt + s->rem - q * 96000u;
   s->ms += q;
+#ifdef YSF_DECODE
+  /* no key poll in a YSF call: on the radio housekeeping outlasted the DMA's ring, and in a
+     continuous stream each of those gaps (~every 48 ms, the grid stepping over them unfed)
+     left ~10 symbols of stale filter points in the frame (bench run 16's snapshot: the FICH
+     right but for its last 10 symbols). A call ends within ~200 ms of its carrier */
+  if (s->y->on) {
+    if (s->ms >= RUN_S * 1000u) return 1;
+  } else
+#endif
   if ((api->level >= 4 ? api->key_poll() : api->key_down()) || s->ms >= RUN_S * 1000u) return 1;
   /* the DMA's rate over the gap-free stretch since the last housekeeping (~45 ms: the
      resync after each one starts a new one) */
@@ -434,6 +443,9 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
       if (!s->hkd) s->yl[s->yk]++;
 #endif
       s->lost += !s->hkd; /* housekeeping's calls can outlast the ring (the radio's do): not lost */
+#if defined(YSF_DECODE) && defined(YX_TRACE)
+      if (s->hkd && s->y->on) s->y->nho++;   /* (in a call: the trace's ho=) */
+#endif
       s->hkd = 0;
       resync(s);
       continue;

@@ -96,6 +96,12 @@ def test_host_receiver_fills_lost_frames(host):
     lines = out.splitlines()
     assert any(ln.startswith("Y call fr=62 ") and " vw=290/300 sf=300 miss=10 " in ln for ln in lines), out
     assert stored(lines) == want(300, lose)
+    # the trace (the host builds it, as the bench builds do): the grid's step, then 3 bytes for
+    # each of the first 24 frames (frame 21, lost: no sync, no superframe good; the next sync
+    # looked for wide, its FICH and five superframes good)
+    assert any(ln.startswith("Y t w=") and ln.endswith(" ho=0") for ln in lines), out
+    tr = "".join(ln.split()[3] for ln in lines if ln.startswith("Y t ") and not ln.startswith("Y t w="))
+    assert len(tr) == 6 * 24 and tr[6 * 21 + 4:6 * 21 + 6] == "20" and tr[6 * 22 + 4:6 * 22 + 6] == "ff", out
 
 
 @pytest.mark.parametrize("cps8", [4539, 4413])
@@ -138,7 +144,7 @@ def test_host_receiver_says_nothing_on_noise(host, cn0):
 
 def test_ysfrx_module_on_the_emulated_k6():
     """the ysfrx RAM module on the emulated M0 with the modelled DMA, the radio's slow register
-    reads and its ~5 ms say lines, started with a carrier on: a 2.4 s message with two frames lost on the serial line after
+    reads and its ~5 ms say lines, started with a carrier on: a 3.2 s message with two frames lost on the serial line after
     the call, byte-exact with the lost superframes filled in, in the shared module block (code + the filter's ring + the receiver's state +
     the DMA ring), no samples lost, the receiver's registers put back; too small a block and it
     returns -6"""
@@ -148,11 +154,10 @@ def test_ysfrx_module_on_the_emulated_k6():
     import test_k6_dmr as T
     import k6_live_emu as le
     from sim.k6if import frontend as fe
-    # the bench build (the frame trace): its message buffer holds 69 superframes
-    code, entry = T.build([("RUN_S", "6u"), ("S_MS", "1000u"), ("YX_TRACE", "1")], os.path.join(K6, "mod", "ysfrx.c"))
+    code, entry = T.build([("RUN_S", "6u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
     lose = (6, -10)
-    nsf = 60
-    _, (ib, on, off) = k6_counts(ysf_symbols(nsf, lose), 56.0, post_s=4.0)   # the call is ~1.5 s
+    nsf = NSF_LONG
+    _, (ib, on, off) = k6_counts(ysf_symbols(nsf, lose), 56.0, post_s=4.0)   # the call is ~1.9 s
 
     def emu(block, ib):
         e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=6, stack_win=7000,
@@ -173,13 +178,9 @@ def test_ysfrx_module_on_the_emulated_k6():
     assert " floor=-60 " in e.said[0], txt
     # the carrier is seen at the next housekeeping, ~half a frame in: the header frame is gone
     # (frame 6 lost whole and frame 10's payload: 10 superframes filled in)
-    assert any(ln.startswith("Y call fr=13 ") and " vw=50/60 sf=60 miss=10 " in ln for ln in e.said), txt
+    assert any(ln.startswith("Y call fr=17 ") and " vw=70/80 sf=80 miss=10 " in ln for ln in e.said), txt
     assert stored(e.said) == want(nsf, lose), txt
-    # the trace: the grid's step, then 3 bytes a frame (the call's frame 5, frame 6 sent: no sync
-    # and no superframe good; frame 9's payload lost: its FICH good, no superframe)
-    tr = "".join(ln.split()[3] for ln in e.said if ln.startswith("Y t ") and not ln.startswith("Y t w="))
-    assert len(tr) == 6 * 13 and tr[6 * 5 + 4:6 * 5 + 6] == "20" and tr[6 * 9 + 4:6 * 9 + 6] == "a0", txt
-    assert ret == 13, txt
+    assert ret == 17, txt
     lost = [int(ln.split("lost=")[1].split()[0]) for ln in e.said if ln.startswith("s ")]
     assert lost and lost[-1] == 0, txt
     assert e.writes[0x13][-1] == 0 and e.writes[0x7E][-1] == 0
