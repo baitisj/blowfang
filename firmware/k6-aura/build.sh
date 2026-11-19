@@ -99,7 +99,7 @@ cp "$LIB" "$WORK/lib/libsotto_k6.a"
 # Link with the flash region opened up, so an overflow still links and shows where the bytes go.
 # The layout doesn't depend on the region's length (same origin), so the fit check is the same
 # test the linker makes, and no image is written unless it passes.
-sed -i 's/LENGTH = 120K/LENGTH = 1024K/' "$WORK/memory.x"
+sed -i 's/LENGTH = 120K/LENGTH = 1024K/' "$WORK/memory.x.in"  # build.rs writes memory.x from it
 
 # variant NAME TITLE [cargo args]: build, report to out/size-NAME.txt, write out/NAME.bin if it fits
 # hal::txdog (the crash and stuck key-up backstop, docs/k6-modules.md, Security) is on in every

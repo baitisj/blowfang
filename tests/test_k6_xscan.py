@@ -97,6 +97,7 @@ def lib():
     L.xs_info.argtypes = [ctypes.c_void_p, ctypes.POINTER(XsInfo)]
     L.xs_tone.argtypes = [ctypes.c_void_p, ctypes.c_uint]
     L.xs_tone.restype = U32
+    L.xs_wake.argtypes = [ctypes.c_void_p, U32, ctypes.POINTER(ctypes.c_int)]
     L.xl_start.argtypes = [ctypes.c_void_p, ctypes.POINTER(Api), U32, U32]
     L.xl_step.argtypes = [ctypes.c_void_p]
     L.xl_stop.argtypes = [ctypes.c_void_p, ctypes.c_int]
@@ -639,3 +640,91 @@ def test_listen_times_out_with_no_id(lib):
     while r == 0:
         r = L.xl_step(x)
     assert r == 2 and s_(5) <= radio.us < s_(5.2)
+
+
+class Bench:
+    """440.850 alone: the floor (dBm) until a key-up, then the carrier (at_s, until_s, dBm)"""
+
+    def __init__(self, floor, keyups=(), drift=0.0):
+        self.floor, self.keyups, self.drift, self.hz = floor, keyups, drift, 0
+
+    def tune(self, hz, wide, us):
+        self.hz = hz
+
+    def level(self, us):
+        s = us / 1e6
+        for a, b, dbm in self.keyups:
+            if a <= s < b:
+                return dbm
+        return self.floor + self.drift * s
+
+    def rssi(self, us):
+        return (round(self.level(us)) + 174) << 1
+
+
+def wake_run(L, kxl, model, seconds):
+    """xs_wake once a second, as explore.rs's beacon check: (second, read, floor) for each wake"""
+    radio = Radio(model)
+    buf, mem, ex = explorer(L, kxl, [(440_000_000, 12_500, 100, 12_500)], radio)
+    assert L.xs_init(buf, ctypes.byref(radio.api), ctypes.byref(ex.e), mem, len(mem)) == 0
+    woke, fl = [], ctypes.c_int()
+    for sec in range(seconds):
+        radio.us = s_(sec)
+        r = L.xs_wake(buf, 440_850_000, ctypes.byref(fl))
+        if r:
+            woke.append((sec, r, fl.value))
+    return woke, fl.value
+
+
+def test_the_pluto_at_its_top_wakes_it_over_the_floor(lib):
+    """2026-11-19: the bench Pluto at its top reads -61 dBm at the K6, under the old fixed -60, with
+    the floor at -114. Over the floor it wakes on the second read; the floor stays put under it."""
+    L, kxl = lib
+    woke, fl = wake_run(L, kxl, Bench(-114, [(10, 20, -61)]), 30)
+    assert woke and woke[0][:2] == (11, -61) and woke[0][2] == -114, woke
+    assert fl == -114
+
+
+def test_one_read_over_is_not_a_wake(lib):
+    L, kxl = lib
+    woke, _ = wake_run(L, kxl, Bench(-114, [(10, 10.5, -40), (20, 20.5, -90)]), 30)
+    assert woke == []
+
+
+def test_a_weak_carrier_does_not_wake_it(lib):
+    """19 dB over the floor is not enough (20 is), and a steady one under the line lifts the floor
+    a dB a read up to it, so it never gets there"""
+    L, kxl = lib
+    woke, fl = wake_run(L, kxl, Bench(-114, [(10, 100, -95)]), 100)
+    assert woke == [] and fl == -95, (woke, fl)
+    woke, _ = wake_run(L, kxl, Bench(-114, [(10, 20, -94)]), 30)
+    assert woke and woke[0][1] == -94
+
+
+def test_a_key_up_never_lifts_the_floor(lib):
+    """a carrier over the line held for minutes (a long upload, a stuck key) leaves the floor
+    where it was: it wakes on every pair of reads, and after it the floor is the same"""
+    L, kxl = lib
+    woke, fl = wake_run(L, kxl, Bench(-114, [(5, 200, -80)]), 210)
+    assert len(woke) > 100 and all(w[2] == -114 for w in woke), woke[:3]
+    assert fl == -114
+
+
+def test_the_floor_follows_the_band(lib):
+    """the floor drifting up (the garage lamp, warm-up) is followed, so no wake comes of it; one
+    that drops is taken at once"""
+    L, kxl = lib
+    woke, fl = wake_run(L, kxl, Bench(-114, drift=0.2), 171)
+    assert woke == [] and -81 <= fl <= -79, (woke, fl)
+    woke, fl = wake_run(L, kxl, Bench(-100, [(10, 20, -120)]), 15)
+    assert woke == [] and fl == -120
+
+
+def test_over_minus_60_wakes_whatever_the_floor(lib):
+    """keyed up from the start (no quiet read yet), or with a floor that rose high: -60 still wakes
+    it, as before 2026-11-19"""
+    L, kxl = lib
+    woke, _ = wake_run(L, kxl, Bench(-114, [(0, 10, -30)]), 10)
+    assert woke and woke[0][0] == 1 and woke[0][2] == 0, woke
+    woke, _ = wake_run(L, kxl, Bench(-50), 10)
+    assert woke and woke[0][0] == 1, woke

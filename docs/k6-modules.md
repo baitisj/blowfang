@@ -60,6 +60,10 @@ images, so header, code and tag can be up to 14,952 bytes. Boot line `K6 ARENA b
 ... ram0=...`. A module that needs more than 11,776 declares `K6_MODULE_LEVEL 12`, so an older
 image refuses it instead of running it short (`modem.k6mod.arena_bytes(level)`).
 
+**15,408 bytes from module API level 13** (later 2026-11-19, docs/k6-ram0.md): sotto's C statics
+(images without EXPLORE) and EXPLORE's state (the voice + EXPLORE image) moved there too, 432
+bytes more. A module that needs more than 14,976 declares `K6_MODULE_LEVEL 13`.
+
 The hello module is about 360 bytes of code (366 with clang 18 here, 358 in CI), 4 XL packets,
 3.1 s on air at F/1800 per copy; `modem.k6 mod` sends every chunk twice by default.
 
@@ -334,6 +338,12 @@ the shared block is 14,976 bytes (3,200 more scratch for every module) because t
 buffers now live in 0x20000100-0x20000FFF, so `msg_mem` returns 0 there and a receiver keeps its
 message in scratch (ysfrx: 21 s of call, up from 18.4 s). `ram0soak` and `ram0zero` refuse to run
 on these images. docs/k6-ram0.md.
+
+## API level 13: 432 bytes more
+
+Added later on 2026-11-19 (Jeff: "move EXPLORE's state into the reclaimed RAM"). No new calls:
+the shared block is 15,408 bytes, because sotto's C statics and EXPLORE's state moved into
+0x20000100-0x20000FFF as well. docs/k6-ram0.md.
 
 ## The SPI module library
 

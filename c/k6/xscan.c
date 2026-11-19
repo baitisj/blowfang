@@ -110,7 +110,16 @@ static int full(xs_t *s, uint32_t hz, uint32_t spent) {
   return (r + rssi(api)) >> 1;
 }
 
-int xs_level(xs_t *s, uint32_t hz) { return full(s, hz, 0); }
+int xs_wake(xs_t *s, uint32_t hz, int *fl_dbm) {
+  int l = full(s, hz, 0), fl = s->wake_fl, over;
+  if (!fl && l <= XS_WAKE_ABS_DBM) fl = l;  /* the first quiet read */
+  over = l > XS_WAKE_ABS_DBM || (fl && l >= fl + XS_WAKE_DB);
+  if (!over && fl) fl = l < fl ? l : fl + XS_WAKE_RISE_DB > l ? l : fl + XS_WAKE_RISE_DB;
+  s->wake_fl = (int16_t)fl;
+  s->wake_n = over ? (uint8_t)(s->wake_n < 2 ? s->wake_n + 1 : 2) : 0;
+  if (fl_dbm) *fl_dbm = fl;
+  return s->wake_n >= 2 ? l : 0;
+}
 
 /* refine a hit near hz: narrow reads 5 ms after the tune every 2.5 kHz over +-(step + 5 kHz);
    the middle of those within 3 dB of the loudest, snapped to snap_hz */
