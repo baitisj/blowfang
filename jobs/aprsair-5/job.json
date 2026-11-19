@@ -1,0 +1,175 @@
+{
+ "id": "aprsair-5",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 95,
+ "steps": [
+  {
+   "do": "wait",
+   "seconds": 720
+  },
+  {
+   "do": "logger",
+   "seconds": 5000,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:fesw_vhf.bin",
+   "args": [
+    "--via",
+    "ic7100",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "3db61fe7e087e33e6cd606a732938cdf6cb4475ad5d799e349299fdc52a28809"
+  },
+  {
+   "do": "wait",
+   "seconds": 260
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprsdfsk_o.bin",
+   "args": [
+    "--via",
+    "ic7100",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "ca4411fe2548698ea4f517941f6be8797b0a373af924573223bf88f9e599ab52"
+  },
+  {
+   "do": "wait",
+   "seconds": 900
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprsdfsk.bin",
+   "args": [
+    "--via",
+    "ic7100",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "dfe5a51c8f986195350e975e9d30a4351010da7a603152d13b3158dfb703f400"
+  },
+  {
+   "do": "wait",
+   "seconds": 900
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprsdfsk_o.bin",
+   "args": [
+    "--via",
+    "ic7100",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "ca4411fe2548698ea4f517941f6be8797b0a373af924573223bf88f9e599ab52"
+  },
+  {
+   "do": "wait",
+   "seconds": 900
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprsdfsk.bin",
+   "args": [
+    "--via",
+    "ic7100",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "dfe5a51c8f986195350e975e9d30a4351010da7a603152d13b3158dfb703f400"
+  },
+  {
+   "do": "wait",
+   "seconds": 900
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
