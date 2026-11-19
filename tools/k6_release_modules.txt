@@ -19,9 +19,9 @@
 5 midi
 6 morse
 7 gw
-8 stockfont
 31 settings
 # serial report only (a cable, or hamlet's logger), receive only
+8 ysfrx          # FuSotto (sotto over C4FM): plays each call, then listens again (Jeff 2026-11-19: drop STOCK FONT for it)
 16 cwlisten
 17 pocsag
 18 dmrrx
