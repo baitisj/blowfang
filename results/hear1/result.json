@@ -1,12 +1,12 @@
 {
  "id": "hear1",
- "status": "queued",
- "queued": "2026-11-19T01:44:42Z",
+ "status": "running",
+ "since": "2026-11-19T01:44:48Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "0b2ec0adb5f4f8f8962241ac78a9918dbf0937a0",
   "path": "jobs/hear1"
  },
  "runner_commit": "aa318c46915aa8d641fa1055d31f362abacda62f",
- "updated": "2026-11-19T01:44:42Z"
+ "updated": "2026-11-19T01:44:48Z"
 }
