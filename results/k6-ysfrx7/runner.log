@@ -1,0 +1,15 @@
+2026-11-19T06:25:18Z job k6-ysfrx7 by k6-ysfrx, checkout /home/baitisj/blowfang-work/worktrees/inbox-1f572382a8ab at 1f572382a8ab34eec237c399c2cabc2eec4cc5ca
+2026-11-19T06:25:18Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-ysfrx -- timeout -s INT --kill-after=10 560 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/k6-ysfrx7/k6.log
+2026-11-19T06:25:20Z step 1 (logger) rc=0
+2026-11-19T06:25:23Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T06:25:23Z step 2 (ic7100.tune) rc=0
+2026-11-19T06:25:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-1f572382a8ab/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/k6-ysfrx7/ysfrx.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/k6-ysfrx7/k6-rate.json --telemetry 0
+22:25:26 send 1: 68 of 68 XL chunks at F/1800 (serial 1795069525, xfer 85); module /home/baitisj/blowfang-work/runs/inbox/k6-ysfrx7/ysfrx.bin: 8210 B code, entry +16, API level 2, serial 1795069525, xfer 85, 8234 B image in 68 XL chunks; 136 packets, 87.6 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 95.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 06:25:27Z
+2026-11-19T06:26:18Z stopping (cancelled): SIGTERM to the step's process group
+2026-11-19T06:26:18Z step 3 (k6.upload) rc=-15 (cancelled)
+2026-11-19T06:26:18Z step 4 (wait) rc=1 (refused: cancelled)
+2026-11-19T06:26:18Z job k6-ysfrx7 cancelled: step 4 (wait): refused: cancelled
+signal 15 while keyed: unkeying
