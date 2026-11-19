@@ -1,0 +1,12 @@
+{
+ "id": "k6-ram0zero2",
+ "status": "queued",
+ "queued": "2026-11-19T19:11:44Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "cf1bee0cfb1353797dfbecb0e590adbb2224e54a",
+  "path": "jobs/k6-ram0zero2"
+ },
+ "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "updated": "2026-11-19T19:11:44Z"
+}
