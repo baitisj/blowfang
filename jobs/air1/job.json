@@ -1,0 +1,53 @@
+{
+ "id": "air1",
+ "who": "multimode",
+ "freq_mhz": 441.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:a.wav",
+    "--hz",
+    "441850000",
+    "--seconds",
+    "100"
+   ],
+   "background": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2",
+    "trim 6100"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "ysf"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "dmr"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "a\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 120
+  }
+ ]
+}
