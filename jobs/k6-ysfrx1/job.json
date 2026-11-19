@@ -1,0 +1,85 @@
+{
+ "id": "k6-ysfrx1",
+ "who": "k6-ysfrx",
+ "freq_mhz": 440.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 480,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ysfrx.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "2",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "76ca4cb518492b86ada99272ec92f86fe3d7ff8fa5d3dc352e735e284c6d476c"
+  },
+  {
+   "do": "wait",
+   "pattern": "ysf start",
+   "seconds": 60
+  },
+  {
+   "do": "wait",
+   "seconds": 2
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 4
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-60"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
