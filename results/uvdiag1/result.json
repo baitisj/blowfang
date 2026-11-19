@@ -1,12 +1,12 @@
 {
  "id": "uvdiag1",
- "status": "queued",
- "queued": "2026-11-19T02:43:19Z",
+ "status": "running",
+ "since": "2026-11-19T02:43:25Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "62a517eecf6d79d06f1db6a079a4bf3575905fa2",
   "path": "jobs/uvdiag1"
  },
  "runner_commit": "aa318c46915aa8d641fa1055d31f362abacda62f",
- "updated": "2026-11-19T02:43:19Z"
+ "updated": "2026-11-19T02:43:25Z"
 }
