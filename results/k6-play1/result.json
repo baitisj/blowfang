@@ -1,12 +1,12 @@
 {
  "id": "k6-play1",
- "status": "queued",
- "queued": "2026-11-19T19:36:05Z",
+ "status": "running",
+ "since": "2026-11-19T19:36:12Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "bf9f95f4245314dc59d8a4b26f7cb1ac4d9d86c8",
   "path": "jobs/k6-play1"
  },
  "runner_commit": "f47312fee6553a262bcbf96dabec4830ef2ceb7e",
- "updated": "2026-11-19T19:36:05Z"
+ "updated": "2026-11-19T19:36:12Z"
 }
