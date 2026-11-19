@@ -430,6 +430,27 @@ def test_one_serial_reader_at_a_time(work):
     t.join(10)
 
 
+def test_same_who_takes_over_its_own_serial_reader(work):
+    """a reader left running by the same WHO (a cancelled job's logger) lets go to the new one"""
+    out, out2 = [], []
+    t = _hold("ysf", [sys.executable, "-c", "import time; time.sleep(60)"], out)
+    first = b.serial_owner()["pid"]
+    t2 = threading.Thread(target=lambda: out2.append(b.serial_hold(
+        "ysf", [sys.executable, "-c", "import time; time.sleep(60)"], poll=0.05)))
+    t2.start()
+    t.join(20)
+    assert out == [0]
+    for _ in range(100):
+        o = b.serial_owner()
+        if o and o["pid"] != first:
+            break
+        time.sleep(0.05)
+    assert o and o["who"] == "ysf" and o["pid"] != first
+    b.serial_release("x", wait=10)
+    t2.join(10)
+    assert out2 == [0]
+
+
 def test_serial_reader_that_ends_frees_the_port(work):
     assert b.serial_hold("dcs", [sys.executable, "-c", "raise SystemExit(3)"], poll=0.05) == 3
     assert b.serial_owner() is None

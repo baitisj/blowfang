@@ -280,6 +280,23 @@ def test_cancel_stops_the_step_with_sigterm(work, monkeypatch):
     assert time.time() - t0 < 30
 
 
+def test_job_end_stops_its_background_logger(work, monkeypatch):
+    """a failed or cancelled job's background steps stop with it, and a logger always does"""
+    def command(job, step, rd):
+        return [sys.executable, "-c", "import time; time.sleep(60)"], rd, step["do"] in ("logger", "pluto")
+    monkeypatch.setattr(br, "command", command)
+    monkeypatch.setattr(br.kb, "serial_owner", lambda: {"who": "t1"})
+    rx = {"do": "pluto", "args": ["rx", "c.cf32", "--hz", "441900000", "--seconds", "60"], "background": True}
+    j = job("a", {"do": "logger", "seconds": 60, "file": "k6.log"}, rx, {"do": "wait", "pattern": "never", "seconds": 1})
+    n = len(br.BACKGROUND)
+    t0 = time.time()
+    res = br.run_job(j, str(work / "rd"), Rig())
+    assert res["status"] == "failed", res
+    assert all(p.poll() is not None for p in br.BACKGROUND[n:]) and len(br.BACKGROUND) == n + 2
+    assert time.time() - t0 < 30
+    assert "stopping the job's background logger" in open(work / "rd" / "runner.log").read()
+
+
 def test_changed_file_refused_at_run_time(work):
     p, h = stage(work, "k.bin", KEY)
     j = job("a", {"do": "k6.update", "image": p, "sha256": h, "commit": "8a78fb5"})

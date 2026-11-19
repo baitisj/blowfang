@@ -392,6 +392,16 @@ def serial_hold(who, cmd, poll=SERIAL_POLL_S, term_s=5.0):
             time.sleep(0.025)
     if tries < 0:
         o = serial_owner() or {}
+        # the same WHO's own reader (a cancelled job's logger, a thread's earlier one): the new
+        # one takes over (2026-11-19: an orphan held the port for 9 minutes)
+        if o.get("who") == who and serial_release(who, wait=term_s + 10.0):
+            try:
+                fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                tries = 0
+            except BlockingIOError:
+                pass
+    if tries < 0:
+        o = serial_owner() or {}
         lk.close()
         raise SystemExit(f"serial-hold: {o.get('who', '?')} reads the port (pid {o.get('pid', '?')}); "
                          f"ask with: k6_bench.py serial-release {who}")
