@@ -500,7 +500,8 @@ static char *yx_house(yx_t *x, char *line) {
     x->nout = 0;
     x->nmiss = srx_conceal(&x->m);
     x->crc = yd_crc16(x->m.frames, (int)n);
-    p = kv(kv(line, "Y call fr=", (int)x->nfr), " fich=", (int)x->nfich);
+    p = kv(line, "Y call fr=", (int)x->nfr);    /* (fich= only when it differs: say's 60 chars */
+    if (x->nfich != x->nfr) p = kv(p, " fich=", (int)x->nfich); /* keep the callsign, 2026-11-19 */
     p = kv(kv(p, " vw=", (int)x->nsfok), "/", (int)x->nsf);
     p = kv(kv(p, " sf=", (int)x->m.n), " miss=", (int)x->nmiss);
     if (x->m.over) p = kv(p, " over=", (int)x->m.over);

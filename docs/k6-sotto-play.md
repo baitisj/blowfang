@@ -37,14 +37,37 @@ of that vector table; `msg_mem` starts above it.
 
 ysfrx puts its DMA ring (1 KB) and the message there, which leaves the arena for code and the
 decoder. Without it, the callsign decoder and the playback hand-off don't fit next to the
-receiver. `c/k6/mod/ram0soak.c` checks the RAM holds over minutes of the radio's ordinary work:
-the write build fills it with a pattern (`r0 w seed= n=`), and the `RAM0_CHECK` build reads it
-back after uploads, a receiver and playback have run (`r0 c seed= bad= first= blk=`).
+receiver.
+
+**On the radio (k6-ysfcsd1, 2026-11-19 17:18-17:21Z, image 8a78fb5).** A `YX_RAM0` build kept its
+DMA ring and message there for 2.5 minutes. All six Pluto calls came out byte-exact (crc d821 and
+5d15) with the callsign, and the radio carried on normally.
+
+**The soak test (`c/k6/mod/ram0soak.c`).** Jeff: make it safe, so that nobody has to reboot the
+radio by hand. A write check can't see a read: if the bootloader's interrupt code read a flag in
+this range, filling it could hang the radio. So the module:
+
+- arms the independent watchdog (IWDG) first, about 6 s, and feeds it while it runs. A hang
+  anywhere, interrupts included, resets the radio.
+- leaves txdog's crash note (0x20005FF0, which a reset keeps) naming the block it is on. A
+  watchdog reset's next boot prints `K6 FAULT last boot pc=0a30000N lr=0a3050ac`, where N is the
+  256-byte block (f = 0x20000F00, 0 = the hold that follows).
+- fills from the top down, a block at a time, starting at the end farthest from the bootloader's
+  own 0x20000000-0x2000046F. It holds each block for a second with interrupts running, then
+  reads back everything filled so far: `r0 b=N bad=0`.
+- holds the whole range for a minute, reading it back every second. It checksums the two ends
+  it never writes, before and after: txdog's table (0x20000000-0x200000FF) and the UserVectors.
+  `r0 done bad= first= blk= lo=same uv=same`
+- ends with a planned reset (`r0 reset`), clearing the note first, because the IWDG can't be
+  stopped once started.
+
+Tests: `tests/test_k6_ram0soak.py`.
 
 ## ysfrx
 
 - It reads the caller from the header's CSD1 field, or from the terminator's when the carrier
-  detect lost the header (c/k6/ysfdec.h, `yd_csd_end`). The summary line ends ` from=AG7EW`.
+  detect lost the header (c/k6/ysfdec.h, `yd_csd_end`). The summary line ends ` from=AG7EW`. It
+  shows `fich=` only when that differs from `fr=`, so the callsign fits `say`'s 60 characters.
 - When the call ends with at least one frame's worth of superframes decoded (5; noise calls
   have none), it calls `sotto_play` with `KM_PLAY_RERUN` and the callsign (level 11 images only,
   read at run time), and returns. Lost superframes stay in the message as the receiver left

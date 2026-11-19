@@ -82,7 +82,7 @@ def test_host_receiver_on_the_k6_model(host, cn0, inv):
     out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
     lines = out.splitlines()
     print(out)
-    assert "Y call fr=10 fich=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW" in lines, out
+    assert "Y call fr=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW" in lines, out
     assert stored(lines) == want()
 
 
