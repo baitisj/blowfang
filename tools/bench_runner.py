@@ -104,7 +104,7 @@ WHO_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 HEX_RE = re.compile(r"^[0-9a-f]{64}$")
 # the UV-380's USB bench commands a job may send (OpMode_Pager.cpp tuneCommand, "phy", "listen"):
 # nothing that writes memory or registers (the probe also takes wr, c6w, pin, ...), power only 0
-UV380_CMD_RE = re.compile(r"^(tune|listen|listen [01]|power 0|zero [12]|phy (fsk|rng)|emph [01]|"
+UV380_CMD_RE = re.compile(r"^(tune|listen|listen [01]|power 0|zero [12]|phy (fsk|rng|m17|ysf|dmr)|emph [01]|"
                           r"trim -?\d{1,4}|gain -?\d{1,2}|freq \d{6})$")
 UV380_SEND_HZ = (441_850_000, 440_850_000)    # the image sends only on these (SEND_HZ, SEND_K6_HZ)
 UV380_SEND_MODULE = ("firmware", "uv380-openrtx", "mod", "txreq.c")
@@ -590,7 +590,7 @@ def check_step(job, i, step, rs, problems):
 def check_uv380_cmd(job, c, what, problems):
     if not UV380_CMD_RE.match(c):
         problems.append(f"{what}: '{c}' is not a UV-380 bench command (tune, listen [0|1], power 0,"
-                        " zero 1|2, phy fsk|rng, emph 0|1, trim N, gain N, freq 441850|440850)")
+                        " zero 1|2, phy fsk|rng|m17|ysf|dmr, emph 0|1, trim N, gain N, freq 441850|440850)")
         return
     k, _, v = c.partition(" ")
     if k == "trim" and abs(int(v)) > 8000:

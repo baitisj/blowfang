@@ -404,7 +404,7 @@ def uv_job(*steps, freq_mhz=441.850):
 
 
 def test_uv380_commands_checked(work):
-    ok = uv_job({"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "phy fsk", "trim 6350",
+    ok = uv_job({"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "phy fsk", "phy ysf", "phy m17", "trim 6350",
                                               "gain 6", "emph 0", "tune"]}, {"do": "uv380.send"})
     assert br.check_job(ok) == []
     for c, want in (("power 1000", "not a UV-380 bench command"), ("wr 40020018 1", "not a UV-380"),
