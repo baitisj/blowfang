@@ -72,11 +72,13 @@ docs/k6-modules.md
 sotto
 c/*
 c/common/ffsk_tx.*
+c/common/m17_rx.h
 c/common/pager_tx.*
 c/common/range_rx*
 c/common/range_tx*
 c/common/sotto_rx.*
 c/common/surf_core.inc
+c/common/ysf_rx.h
 
 [uv380]
 .github/workflows/uv380.yml
