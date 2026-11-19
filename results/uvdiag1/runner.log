@@ -1,0 +1,3 @@
+2026-11-19T02:43:27Z job uvdiag1 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a at aa318c46915aa8d641fa1055d31f362abacda62f
+2026-11-19T02:43:27Z step 1 (uv380.cmd) rc=1 (refused: the UV-380: 0 ports with USB ids 0483:5740 (want one: is it on and on the probe image? UV380_DEV in the unit overrides))
+2026-11-19T02:43:27Z job uvdiag1 failed: step 1 (uv380.cmd): refused: the UV-380: 0 ports with USB ids 0483:5740 (want one: is it on and on the probe image? UV380_DEV in the unit overrides)
