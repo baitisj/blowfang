@@ -253,12 +253,17 @@ def test_usb_fifo_empty_interrupt_cannot_storm():
 
 def test_headers_write_only_what_they_say():
     """w25sec.h sends only the read-security-register command; at1846.h never writes the
-    frequency (0x29, 0x2A), TX (0x30) or power registers"""
+    frequency (0x29, 0x2A) or power registers, and of 0x30 (RX / TX on) only the bandwidth
+    bits 13-12 (at_bw12, at_restore)"""
     w = open(os.path.join(MOD, "w25sec.h")).read()
     assert w.count("w25_byte(0x") == 1 and "w25_byte(0x48)" in w
     a = open(os.path.join(MOD, "at1846.h")).read()
     for reg in ("0x29", "0x2A", "0x30"):
         assert f"*reg = {reg}" not in a
+    assert a.count("at_write(api, 0x30,") == 2
+    assert "at_write(api, 0x30, (uint16_t)(old & ~0x3000u))" in a
+    assert "at_write(api, 0x30, (uint16_t)((v & ~0x3000u) | b->bw30))" in a
+    assert "b->bw30 = old & 0x3000u;" in a
 
 
 def _sf_lines(levels, t):
