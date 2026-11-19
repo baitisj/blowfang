@@ -295,6 +295,9 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
      radio) cost superframes on the emulated K6, even in a payload. The frames say there's a
      carrier */
   if (!s->y->on) s->db = rssi(api);
+  /* the floor follows the quietest reading: on the bench the module starts while the upload's
+     own carrier is still on (2026-11-19: floor -61, so the calls at -67 never counted) */
+  if (s->db < s->floor) s->floor = s->db;
 #else
   s->db = rssi(api);
 #endif
