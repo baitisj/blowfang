@@ -156,3 +156,49 @@ def test_a_pr_skips(tmp_path, monkeypatch):
         monkeypatch.setenv("GITHUB_OUTPUT", str(out))
         ci_scope.github(radio)
         assert out.read_text().strip() == want
+
+
+def test_the_workflow_filter(toy):
+    # [ignore] turned inside out, in the map's order: the last match decides, as on GitHub
+    assert ci_scope.gh_paths(toy) == [
+        "**",
+        "!**/*.md",
+        "!*.md",
+        "!docs/**",
+        "docs/cards/**",
+    ]
+
+
+def test_workflow_paths_reads_both_events():
+    src = """name: x
+on:
+  push:
+    branches: [main]
+    # a comment
+    paths:
+      - '**'
+      - '!docs/**'
+  pull_request:
+    paths:
+      - "**"
+  schedule:
+    - cron: "17 9 * * 1"
+
+jobs:
+  a:
+    paths:
+      - nope
+"""
+    assert ci_scope.workflow_paths(src) == {"push": ["**", "!docs/**"], "pull_request": ["**"]}
+
+
+def test_the_radio_workflows_skip_docs_only():
+    # every radio workflow carries the real map's filter on push and pull_request (--check too)
+    m = ci_scope.Map()
+    want = ci_scope.gh_paths(m)
+    assert "!docs/**" in want and "docs/k6-modules.md" in want
+    for radio in m.radios:
+        src = open(os.path.join(ROOT, m.workflow(radio)), encoding="utf-8").read()
+        got = ci_scope.workflow_paths(src)
+        for ev in ci_scope.FILTER_EVENTS:
+            assert got.get(ev) == want, (radio, ev)

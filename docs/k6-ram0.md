@@ -142,6 +142,34 @@ next to the release image, never bundled) stays as a tool for the next image tha
   into the bootloader's window, so `k6_update.py --manual` gets the radio back with nobody at
   it.
 
+## On the radio (main 18deab3, 2026-11-19 20:31-21:00Z)
+
+No hands after one power cycle: the boot-trace build of f541fbd hung the same way on every boot
+(markers 1-6, then the report stopped at the same byte, 2,152 bytes in), its watchdog reset it 10
+times in 150 s, and `k6_update.py --manual` caught one of those windows to put f47312f back. Then,
+over the cable session: the fixed boot-trace build (ran VOICE MSG and EXPLORE, never reset), then
+the fixed release build with the library (`k6_install.py install --verify`, 43 s, build ID
+ecfa4ec469cfd828):
+
+- `K6 ARENA bytes=14976 at 0x200012dc ram0=3480 store=4096 ring=1280 dec=9600 need=3552`,
+  `K6 TXDOG on`, `K6 LIB used=31`, no `K6 FAULT`; the CW ID woke it into VOICE MSG and it went
+  back to EXPLORE after 60 quiet seconds.
+- C4FM playback (bench job k6-play12-arena-18deab3, ysfrx from the library build): `ysf start ...
+  msg=524` (459 at level 11), `Y call fr=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW`, `K6 PLAY
+  ... played=40 aborted=0 late=0`.
+
+Lessons:
+
+- A linker `INSERT AFTER .uninit` moves cortex-m-rt's `__sheap` and `_stack_end` (both are "the
+  location counter after .uninit"). Use `__euninit` for the end of the static RAM.
+- The runtime soaks tested the RAM, not the image: the bug was in the image's own use of a
+  linker symbol. A boot-trace build with the watchdog net is the cheap first flash for any image
+  that changes memory.x; build.sh makes one next to voice-explore.
+- The bench runner's logger opens too late for boot lines: listen from the moment the flash
+  tool exits (hamlet's go-fix.py, ~/blowfang-work/runs/arena-flash-20261119/fix).
+- The Pluto at its maximum reached the K6 at -61 dBm, under the -60 dBm CW-wake threshold: wakes
+  need the IC-7100 (RF 0).
+
 ## Not done
 
 - **A movable floor for a ring of past calls.** Jeff wants the store kept as a ring of calls.
