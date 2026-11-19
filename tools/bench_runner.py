@@ -119,9 +119,20 @@ UV380_YSF_PLANS = (                             # firmware/uv380-openrtx/mod/c6y
 UV380_YSF_RUN_S = {"echo": 960}
 # the radio's sotto message through the shared C6000 core (docs/uv380-multimode.md): uv380.sotto
 # AIR [dry] -> the checkout's c6sotto_AIR.c or c6sotto_AIR_dry.c (dry never keys)
-UV380_SOTTO_AIRS = ("m17", "ysf", "dmr")
+UV380_SOTTO_AIRS = (
+    "m17",
+    "ysf",
+    "dmr",
+    "dsr",                                      # DSotto raw, DSR120 frames (docs/uv380-dsotto-raw.md)
+)
 # the same from the image's flash (milestone 4, OpMode_Pager.cpp airCommand): uv380.air AIR [test]
-# [dry] -> "air AIR [test] [dry]" over USB (test: the test message, dry: never keys)
+# [dry] -> "air AIR [test] [dry]" over USB (test: the test message, dry: never keys). DSotto raw is
+# a RAM module only, so the image's own modes are these:
+UV380_AIR_AIRS = (
+    "m17",
+    "ysf",
+    "dmr",
+)
 UV380_AIR_EXTRAS = ([], ["test"], ["dry"], ["test", "dry"])
 UV380_AIR_DONE = 0x50                         # c6air_run: the whole message went out
 # receive-only modules (docs/uv380-m17-rx.md): plan -> the checkout's module. None of them keys
@@ -579,8 +590,8 @@ def check_step(job, i, step, rs, problems):
         elif not os.path.isfile(os.path.join(job_sources(job), *uv380_sotto_module(args))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_sotto_module(args))}")
     elif do == "uv380.air":
-        if not (args and args[0] in UV380_SOTTO_AIRS and args[1:] in UV380_AIR_EXTRAS):
-            problems.append(f"{what}: args: one of {', '.join(UV380_SOTTO_AIRS)}, then \"test\","
+        if not (args and args[0] in UV380_AIR_AIRS and args[1:] in UV380_AIR_EXTRAS):
+            problems.append(f"{what}: args: one of {', '.join(UV380_AIR_AIRS)}, then \"test\","
                             " \"dry\", both (in that order) or nothing")
     elif do == "uv380.rx":
         if len(args) != 1 or not isinstance(args[0], str) or args[0] not in UV380_RX_PLANS:

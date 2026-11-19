@@ -117,6 +117,8 @@ modem/m17.py
 modem/m17rx.py
 # YSF (C4FM, Yaesu framing) through the physical layer mode (tests/test_uv380_ysf.py), and its receiver (tests/test_uv380_ysfrx.py)
 modem/ysf.py
+# DSotto raw: framing, simulation and the bench ladder's decode (tests/test_uv380_dsr.py)
+modem/dsr.py
 # the multi-mode image's M17 / YSF framers against the Python (tests/test_uv380_framers.py)
 modem/fec.py
 modem/fsk24.py

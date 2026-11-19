@@ -155,6 +155,7 @@ def test_dmrtx_is_dry_unless_a_wrapper_says_otherwise():
         "c6phytx_live.c",
         "c6phytx_live1200.c",
         "c6sotto_dmr.c",
+        "c6sotto_dsr.c",
         "c6sotto_m17.c",
         "c6sotto_ysf.c",
         "c6ysftx_data.c",

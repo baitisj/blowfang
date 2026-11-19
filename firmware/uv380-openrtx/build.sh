@@ -122,6 +122,8 @@ c6_core.c
 c6_core.h
 dmr_sotto.h
 dmr_voice.h
+dsr_tx.c
+dsr_tx.h
 m17_rx.c
 m17_rx.h
 m17_tx.c
