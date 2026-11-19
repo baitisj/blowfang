@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "k6-play12-arena-18deab3",
-  "who": "k6-ram0",
-  "since": "2026-11-19T20:57:26Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T20:57:19Z",
+ "last_poll": "2026-11-19T21:01:23Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T20:57:26Z"
+ "updated": "2026-11-19T21:01:23Z"
 }

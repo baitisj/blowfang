@@ -1,0 +1,160 @@
+listening (Ctrl-C to stop) ...
+K6 EX t 1824 a 144068
+K6 EX t 1824 b r=0
+K6 EX t 1824 c
+K6 EX t 1856 a 146103
+K6 EX t 1856 b r=0
+K6 EX t 1856 c
+K6 EX t end tone=1567 dmr=0
+K6 MOD say DMR end n=0 h=0 lost=1 steps=1869
+K6 MOD say DMR rate busy=41 ks=5675 ctcss=1567/173
+K6 MOD say DMR diag e=1 o=0 g=405 clk=999 kx=5673
+K6 EX t stopped
+K6 EX t applied 0
+K6 EX heard 442250000 tone=1567 dmr=0 rt=0 saved_tone=0
+K6 MOD say CWID end time msgs=0 short=1
+K6 EX t xl stopped
+K6 EX t monitor off
+K6 MOD say F0 -98 q-138: -93 -98 -97 -98 -97 -98 -97 -97
+K6 MOD say N 144.210 -85 fl-98 b21
+K6 MOD say H 442.250 717 -97 a26121
+K6 MOD say W 144.210 0 -85 a147335
+K6 MOD say S0 11 1192 c1 h1
+K6 MOD say F1 -93 q-135: -93 -92 -93 -93 -92 -92 -93 -93
+K6 MOD say S1 11 205 c3 h0
+K6 MOD say F2 -115 q-146: -112 -111 -115 -114 -115 -113 -113 -113
+K6 MOD say N 443.525 -87 fl-115 b742
+K6 MOD say S2 11 1228 c3 h1
+K6 MOD say N 146.940 -81 fl-98 b294
+K6 MOD say H 146.940 0 -81 a151019
+K6 MOD say S0 12 1361 c2 h1
+K6 MOD say S1 12 176 c0 h0
+K6 MOD say H 443.525 2367 -87 a149639
+K6 EX beacon -20 dBm: VOICE MSG for 60 s
+K6 MOD say H 144.000 151224 -76 a2777
+K6 MOD say T 144.000 n1 t151 -76 d0 s
+K6 MOD say T 144.020 n2 t0 -82 d6
+K6 MOD say T 144.035 n3 t0 -81 d4
+K6 MOD say T 144.055 n2 t0 -80 d3
+K6 MOD say T 443.525 n1 t2 -87 d0
+K6 MOD say T 144.100 n3 t0 -84 d4
+K6 MOD say T 144.135 n3 t0 -78 d6
+K6 MOD say T 146.940 n1 t0 -81 d0
+K6 MOD say T 442.250 n5 t3 -97 d1
+K6 MOD say T 144.210 n1 t0 -85 d0
+K6 MOD say Z sw=12 bins=10780 ms=153219 bps=70 hot=9
+K6 CAND band=ALL n=10 sweeps=12 bins=10780 ms=153220
+K6 CAND 0 R 442250000 off=5000000 tone=1567 call= score=6 overs=5 on=2 hi=-97 lo=-98 ids=0 skirts=0 fl=0
+K6 CAND 1 r 144035000 off=0 tone=0 call= score=3 overs=3 on=0 hi=-79 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 2 r 144135000 off=0 tone=0 call= score=0 overs=3 on=0 hi=-75 lo=-81 ids=0 skirts=0 fl=0
+K6 CAND 3 r 144055000 off=0 tone=0 call= score=0 overs=2 on=0 hi=-79 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 4 r 144160000 off=0 tone=0 call= score=0 overs=2 on=0 hi=-79 lo=-80 ids=0 skirts=0 fl=0
+K6 CAND 5 r 144080000 off=0 tone=0 call= score=0 overs=2 on=0 hi=-78 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 6 ? 144020000 off=0 tone=0 call= score=0 overs=1 on=0 hi=-79 lo=-79 ids=0 skirts=0 fl=0
+K6 CAND 7 s 144000000 off=0 tone=0 call= score=-100 overs=1 on=151 hi=-76 lo=-76 ids=0 skirts=0 fl=16
+K6 CAND 8 ? 443525000 off=5000000 tone=0 call= score=2 overs=1 on=2 hi=-87 lo=-87 ids=0 skirts=0 fl=96
+K6 CAND 9 ? 146940000 off=-600000 tone=0 call= score=2 overs=1 on=0 hi=-81 lo=-81 ids=0 skirts=0 fl=96
+K6 EX leave
+K6 firmware build 18deab3-20261119T2024Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-111 batt=8480 build=18deab3-20261119T2024Z
+K6 MOD r=1 xfer=205 chunk=0 have=1/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=1 have=2/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=205 chunk=2 have=3/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=3 have=4/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=4 have=5/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=5 have=6/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=6 have=7/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=7 have=8/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=8 have=9/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=9 have=10/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=10 have=11/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=11 have=12/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=12 have=13/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=13 have=14/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=14 have=15/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=15 have=16/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=16 have=17/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=17 have=18/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=18 have=19/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=19 have=20/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=20 have=21/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=21 have=22/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=22 have=23/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=23 have=24/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=24 have=25/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=25 have=26/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=26 have=27/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=27 have=28/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=28 have=29/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=29 have=30/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=205 chunk=30 have=31/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=31 have=32/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=32 have=33/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=33 have=34/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=34 have=35/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=35 have=36/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=36 have=37/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=37 have=38/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=38 have=39/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=39 have=40/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=40 have=41/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=41 have=42/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=42 have=43/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=43 have=44/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=44 have=45/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=45 have=46/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=46 have=47/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=47 have=48/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=48 have=49/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=49 have=50/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=50 have=51/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=51 have=52/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=52 have=53/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=53 have=54/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=54 have=55/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=55 have=56/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=56 have=57/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=57 have=58/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=58 have=59/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=59 have=60/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=60 have=61/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=61 have=62/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=62 have=63/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=63 have=64/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=64 have=65/70 rssi=-67 noise=16
+K6 MOD r=1 xfer=205 chunk=65 have=66/70 rssi=-67 noise=17
+K6 MOD r=1 xfer=205 chunk=66 have=67/70 rssi=-67 noise=15
+K6 MOD r=1 xfer=205 chunk=67 have=68/70 rssi=-67 noise=18
+K6 MOD r=1 xfer=205 chunk=68 have=69/70 rssi=-67 noise=16
+K6 MOD r=3 xfer=205 chunk=69 have=70/70 rssi=-67 noise=17
+K6 MOD run serial=1795121869 code=8512 B at 0x200012ec stack=2232 B scratch=6440 B
+K6 MOD say ysf start f=440850000 floor=-61 msg=524
+K6 MOD say s 40 h=0 lost=0 idle=57 ks=5662
+K6 MOD say s 80 h=0 lost=1 idle=56 ks=5669
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW
+K6 MOD ret=10 (0xa) in 2747 ms stack_free=504 B
+K6 PLAY put r=40 n=40 codec=a9 crc=7eaf from=AG7EW rerun=255
+K6 STEP stream id=01 total=40 got=40 ring=0
+K6 PLAY id=01 total=40 stored=40 got=40 packets=0/0 played=40 dec_mean_us=13130 dec_max_us=20800 ram_free=1216 aborted=0 stream=0 waits=0 late=0 under=0 overruns=0 yields=0 pcm=25cf3af6 samples=12800 rebuilt=0 rung=F18 syncs=70 crcbad=0 rssi_min=-67 rssi_med=-66 missing=0
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-67 batt=8500 build=18deab3-20261119T2024Z
+K6 ARQ tx seq=0 state=1 xfer=205 have=70/70 r=3 parts=1
+K6 ARQ sent seq=0 ms=3932
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-125 batt=8530 build=18deab3-20261119T2024Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-112 batt=8550 build=18deab3-20261119T2024Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-111 batt=8550 build=18deab3-20261119T2024Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-112 batt=8550 build=18deab3-20261119T2024Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-112 batt=8560 build=18deab3-20261119T2024Z
+K6 EX quiet 60 s: EXPLORE
+K6 EX band ALL bins=988 r=0
+K6 EX enter cap=60 rt=11 live=11 repairs=0 xl=280 xd=416
+K6 MOD say F0 -97 q-137: -94 -97 -97 -97 -97 -97 -97 -97
+K6 MOD say F1 -96 q-137: -98 -96 -94 -95 -95 -95 -95 -95
+K6 MOD say F2 -115 q-146: -115 -115 -115 -114 -114 -114 -116 -113
+K6 MOD say S0 0 869 c0 h0
+K6 MOD say S1 0 138 c0 h0
