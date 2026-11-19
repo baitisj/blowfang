@@ -100,6 +100,37 @@ Then the flash (Jeff's typed line), with: the boot line above, a module run (any
 uses more than 11,776 B), VOICE MSG playback, EXPLORE, and the ysfrx playback regression
 (k6-ysfcsd2's job: three Pluto calls byte-exact, `from=AG7EW`).
 
+## The first flash hung (f541fbd, 2026-11-19 19:48Z)
+
+The keyed ATfE image (CI run 44600504184, build ID 14ee47f5e3f21ed3) flashed completely
+(117/117 KB) and then said nothing: it never answered the cable session, a 75 s listen got
+0 bytes, and `k6_update.py --manual` found no bootloader window in 150 s, so it hung hard
+(no reset loop) and needs a power cycle. The transmitter was never keyed. The radio checks
+above all ran on the old image at run time, after a normal boot, never on an image that uses
+the range from its first instruction right after an update.
+
+What overlaps: the bootloader's own RAM is 0x20000000-0x2000046F (its 200 ms count, a 1 KB RX
+buffer at 0x40, more of its variables at 0x440-0x46F; docs/k6-modules.md, `loram`). In f541fbd
+Aura's `App` sits at 0x20000100-0x20000973, right across the RX buffer and those variables
+(MOD_SCREEN 0x974, RX_RING 0xA38, TX_RING 0xB88, KNOWN 0xD98). The 2026-11-04 message store
+that hung the same way also started at 0x100. Not proven: the bootloader's code isn't read yet.
+
+The boot-trace image (`aura-voice-explore-boottrace`, Cargo feature `boottrace`, built in CI
+next to the release image, never bundled) answers where it stops:
+
+- `K6 BT 0000000N sp x` lines straight to USART1 at each step of main: 1 UART up, 2 USART1
+  trampoline, 3 txdog, 4 interrupts on, 5/6 around placing the App, 7 the main loops.
+- `K6 BT 0000001N` (0x10-0x1B): what the bootloader handed over, read before RAM0 is cleared:
+  DMA channels on and pointing below 0x20001000, USART1 CR1/CR3, NVIC ISER, SysTick CSR, the
+  reset flags, MSP, non-zero words in RAM0, SYSCFG CFGR1, PRIMASK, and 0x20000440-0x2000046F.
+- The independent watchdog as a net (about 13 s, kicked in hal::uptime::now): a hang resets
+  into the bootloader's window, so `k6_update.py --manual` gets the radio back with nobody at
+  it, and the boot after that reset says whether the image runs when it wasn't just flashed.
+
+If it stops in the bootloader's RAM, the fix is to start RAM0 at 0x20000470: 2,960 bytes, room
+for the App, the module screen and the TX ring (2,888), with the RX ring and KNOWN back in
+Aura's RAM, and the block grows by about 2,880 bytes instead of 3,200.
+
 ## Not done
 
 - **A movable floor for a ring of past calls.** Jeff wants the store kept as a ring of calls.

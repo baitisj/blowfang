@@ -251,6 +251,15 @@ if [ "${VLR:-1}" = 1 ]; then
     "$PB/kp_edit.o" \
     "$PB/sted.o" >> "$OUT/size-aura-voice-explore.txt"
   tail -4 "$OUT/size-aura-voice-explore.txt"
+  # the boot-trace diagnostic (Cargo feature boottrace, hal::ram0): the same image with boot
+  # markers straight to USART1 (`K6 BT n a b`) and the independent watchdog as a net, so a hang
+  # resets into the bootloader's window. Never in the bundle (k6_install takes the image by name)
+  if [ -n "${K6_ATFE:-}" ]; then
+    export K6_PAGE_IMPORTS="$OUT/page-imports.x"
+    variant aura-voice-explore-boottrace "8 kHz voice + EXPLORE image, boot trace (diagnostic)" \
+      --features voice-explore,txdog,spilib,boottrace || echo "(the boot-trace image doesn't fit)"
+    unset K6_PAGE_IMPORTS
+  fi
   K6_CODEC=vlr K6_CB=install sh "$ROOT/tools/k6_build.sh"
   lib build-vlr-cbi
   # it holds sotto 600 / 400's 21 KB of codebooks: lean, as the other install image

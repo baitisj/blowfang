@@ -1,8 +1,8 @@
 diff --git a/Cargo.toml b/Cargo.toml
-index 785c441..6c752c0 100644
+index 785c441..65b82b3 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
-@@ -21,6 +21,34 @@ st7565 = "0.6"
+@@ -21,6 +21,38 @@ st7565 = "0.6"
  embedded-graphics = "0.8"
  profont = "0.7"
  
@@ -30,6 +30,10 @@ index 785c441..6c752c0 100644
 +txdog = []
 +# with txdog: no lines straight to USART1 (the boot-loop hunt: does their time at boot matter?)
 +txdog-quiet = ["txdog"]
++# boot markers straight to USART1 (`BT n a b`, hal::ram0::bt), polled, at each step of main up to
++# the main loop: where does an image stop at boot? (2026-11-19: the first arena image, f541fbd,
++# sent nothing at all after its flash.) A diagnostic build only
++boottrace = []
 +# the SPI module library (c/k6/k6_lib.h): install a module image in an SPI slot, run it on
 +# control action 11, and side key 1 reruns the last module. Every image but the lean ones
 +spilib = []
@@ -8845,10 +8849,10 @@ index 0000000..37404d9
 +}
 diff --git a/src/hal/ram0.rs b/src/hal/ram0.rs
 new file mode 100644
-index 0000000..892ebef
+index 0000000..3173dc0
 --- /dev/null
 +++ b/src/hal/ram0.rs
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,176 @@
 +//! The bootloader's idle RAM, 0x2000_0100-0x2000_0FFF (memory.x `RAM0`, section `.ram0`).
 +//!
 +//! SRAM 0x2000_0000-0x2000_1027 lies below Aura's region. The bootloader uses it before it
@@ -8894,6 +8898,131 @@ index 0000000..892ebef
 +            p = p.add(1);
 +        }
 +    }
++}
++
++/// `boottrace` images: a boot marker straight to USART1, polled with a time-out, as hal::txdog's
++/// raw lines: `BT <n> <a> <b>` in hex. Without the feature it is nothing.
++#[inline(never)]
++pub fn bt(n: u32, a: u32, b: u32) {
++    if !cfg!(feature = "boottrace") {
++        return;
++    }
++    const ISR: usize = 0x4001_381C;
++    const TDR: usize = 0x4001_3828;
++    fn put(c: u8) {
++        let mut k = 0u32;
++        while unsafe { core::ptr::read_volatile(ISR as *const u32) } & 0x80 == 0 && k < 100_000 {
++            k += 1;
++        }
++        unsafe { core::ptr::write_volatile(TDR as *mut u32, c as u32) };
++    }
++    fn hex(v: u32) {
++        put(b' ');
++        for i in (0..8).rev() {
++            put(b"0123456789abcdef"[(v >> (4 * i)) as usize & 15]);
++        }
++    }
++    for &c in b"\r\nK6 BT" {
++        put(c);
++    }
++    hex(n);
++    hex(a);
++    hex(b);
++    put(b'\r');
++    put(b'\n');
++}
++
++/// What the bootloader left when it started Aura, read before `clear` (boottrace images):
++/// printed by `snap_print` once the UART is up
++#[cfg(feature = "boottrace")]
++pub struct Snap {
++    pub w: [u32; 24],
++}
++
++#[cfg(feature = "boottrace")]
++fn rd(a: usize) -> u32 {
++    unsafe { core::ptr::read_volatile(a as *const u32) }
++}
++
++/// boottrace: the bootloader's hand-over state, read first thing in main (nothing written).
++/// w[0] DMA channels enabled (bit n = channel n+1), w[1] channels whose memory address points
++/// into 0x2000_0000-0x2000_0FFF, w[2] USART1 CR1, w[3] USART1 CR3, w[4] NVIC ISER, w[5] SysTick
++/// CSR, w[6] RCC CSR (reset flags), w[7] MSP, w[8] non-zero words in RAM0, w[9] the first one's
++/// address, w[10] SYSCFG CFGR1, w[11] PRIMASK, w[12..24] the words at 0x2000_0440-0x2000_046F
++/// (the top of the bootloader's own RAM, above its 1 KB RX buffer)
++#[cfg(feature = "boottrace")]
++#[inline(always)]
++pub fn snap() -> Snap {
++    let mut w = [0u32; 24];
++    for ch in 0..7usize {
++        let ccr = rd(0x4002_0008 + 20 * ch);
++        let cmar = rd(0x4002_0014 + 20 * ch);
++        if ccr & 1 != 0 {
++            w[0] |= 1 << ch;
++        }
++        if (0x2000_0000..0x2000_1000).contains(&cmar) {
++            w[1] |= 1 << ch;
++        }
++    }
++    w[2] = rd(0x4001_3800);
++    w[3] = rd(0x4001_3808);
++    w[4] = rd(0xE000_E100);
++    w[5] = rd(0xE000_E010);
++    w[6] = rd(0x4002_1024);
++    w[7] = sp();
++    let mut a = BASE;
++    while a < BASE + BYTES {
++        if rd(a) != 0 {
++            if w[8] == 0 {
++                w[9] = a as u32;
++            }
++            w[8] += 1;
++        }
++        a += 4;
++    }
++    w[10] = rd(0x4001_0000);
++    w[11] = cortex_m::register::primask::read().is_inactive() as u32;
++    for i in 0..12 {
++        w[12 + i] = rd(0x2000_0440 + 4 * i);
++    }
++    Snap { w }
++}
++
++#[cfg(feature = "boottrace")]
++pub fn snap_print(s: &Snap) {
++    for i in 0..12u32 {
++        bt(0x10 + i, s.w[2 * i as usize], s.w[2 * i as usize + 1]);
++    }
++}
++
++/// boottrace: the independent watchdog as a net. A hang anywhere resets the K6 within about
++/// 13 s (LSI ~40 kHz / 128, reload 4095), so the bootloader's 200 ms window opens again and
++/// `k6_update.py --manual` can put an image back with nobody at the radio. `kick` runs in
++/// hal::uptime::now, which every loop of Aura's reads.
++#[cfg(feature = "boottrace")]
++pub fn dog_start() {
++    const KR: usize = 0x4000_3000;
++    unsafe {
++        core::ptr::write_volatile(KR as *mut u32, 0xCCCC);
++        core::ptr::write_volatile(KR as *mut u32, 0x5555);
++        core::ptr::write_volatile((KR + 4) as *mut u32, 5); // PR: /128
++        core::ptr::write_volatile((KR + 8) as *mut u32, 0xFFF);
++        core::ptr::write_volatile(KR as *mut u32, 0xAAAA);
++    }
++}
++
++#[inline(always)]
++pub fn dog_kick() {
++    #[cfg(feature = "boottrace")]
++    unsafe {
++        core::ptr::write_volatile(0x4000_3000 as *mut u32, 0xAAAA)
++    };
++}
++
++/// The stack pointer, for the boot markers
++#[inline(always)]
++pub fn sp() -> u32 {
++    cortex_m::register::msp::read()
 +}
 +
 +/// Bytes of RAM0 in use (the `.ram0` section)
@@ -9484,8 +9613,20 @@ index 131f932..c39f8a6 100644
  impl core::fmt::Write for DebugUart<'_> {
      #[cfg(debug_assertions)]
      fn write_str(&mut self, s: &str) -> core::fmt::Result {
+diff --git a/src/hal/uptime.rs b/src/hal/uptime.rs
+index c298592..acce259 100644
+--- a/src/hal/uptime.rs
++++ b/src/hal/uptime.rs
+@@ -14,6 +14,7 @@ pub fn init() {
+ 
+ /// Current tick count, in units of 100us. Wraps every 6.5536s.
+ pub fn now() -> u16 {
++    crate::hal::ram0::dog_kick();
+     let tim = unsafe { &*kd32f328_pac::Tim14::ptr() };
+     tim.cnt().read().bits() as u16
+ }
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..7786118 100644
+index 9d2b0c0..fa6d64b 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -1,6 +1,8 @@
@@ -9510,7 +9651,7 @@ index 9d2b0c0..7786118 100644
  
  use app::satellite;
  use device::display::{Backlight, Display};
-@@ -30,8 +33,43 @@ use hal_shim::{ClosurePin, SystDelay};
+@@ -30,8 +33,48 @@ use hal_shim::{ClosurePin, SystDelay};
  
  const DEFAULT_FREQ_HZ: u32 = 439_500_000;
  
@@ -9549,14 +9690,28 @@ index 9d2b0c0..7786118 100644
 +
  #[entry]
  fn main() -> ! {
++    // boottrace: what the bootloader handed over, before anything here changes it
++    #[cfg(feature = "boottrace")]
++    let snap = hal::ram0::snap();
++    #[cfg(feature = "boottrace")]
++    hal::ram0::dog_start();
 +    // first: the core buffers in the bootloader's idle RAM start out zero, as in .bss
 +    hal::ram0::clear();
      let _dp = unsafe { Peripherals::steal() };
  
      let rcc = unsafe { &*kd32f328_pac::Rcc::ptr() };
-@@ -78,9 +116,26 @@ fn main() -> ! {
+@@ -76,17 +119,43 @@ fn main() -> ! {
+     let mut keypad = Keypad::new(gpiob, gpioc, gpiof);
+ 
      let mut dbg = uart::DebugUart::new(usart1, clock::SYSCLK_HZ, 115_200);
++    // boottrace: 1 = past the RAM0 clear and the UART set-up (sp, SysTick CSR)
++    hal::ram0::bt(1, hal::ram0::sp(), unsafe { core::ptr::read_volatile(0xE000_E010 as *const u32) });
++    #[cfg(feature = "boottrace")]
++    hal::ram0::snap_print(&snap);
      uart::install_bootloader_trampoline();
++    hal::ram0::bt(2, unsafe { core::ptr::read_volatile(0x2000_1000 as *const u32) }, unsafe {
++        core::ptr::read_volatile(0x2000_1004 as *const u32)
++    });
      unsafe { cortex_m::peripheral::NVIC::unmask(kd32f328_pac::Interrupt::USART1) };
 -    writeln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ).ok();
 +    dln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ);
@@ -9573,6 +9728,7 @@ index 9d2b0c0..7786118 100644
 +    // goes on the serial report from VOICE MSG's first entry
 +    #[cfg(not(feature = "lean"))]
 +    hal::txdog::install();
++    hal::ram0::bt(3, hal::ram0::sp(), hal::ram0::used() as u32);
  
      let mut cp = cortex_m::Peripherals::take().unwrap();
 +    // The bootloader leaves SysTick's interrupt on (CSR 0x00010006, sotto's fdirq module,
@@ -9582,7 +9738,14 @@ index 9d2b0c0..7786118 100644
      unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
      // Enabled this early (rather than just before the main loop, as before)
      // so UART RX -- hence CPS handshake detection -- already works during
-@@ -98,63 +153,82 @@ fn main() -> ! {
+     // the first-boot format-confirmation gate below, before `App` exists.
+     // USART1 is the only interrupt configured at this point.
+     unsafe { cortex_m::interrupt::enable() };
++    hal::ram0::bt(4, hal::ram0::sp(), 0);
+ 
+     // display
+     let spi_bus = spi::SpiBus::new(spi2, spi::ClockMode::Mode3, 8);
+@@ -98,63 +167,82 @@ fn main() -> ! {
          .unwrap_or_else(|_| unreachable!());
      let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
  
@@ -9679,7 +9842,7 @@ index 9d2b0c0..7786118 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -163,11 +237,11 @@ fn main() -> ! {
+@@ -163,11 +251,11 @@ fn main() -> ! {
          .ok();
          rfic.set_squelch_cal(sql_cal);
      } else {
@@ -9693,7 +9856,7 @@ index 9d2b0c0..7786118 100644
  
      rfic.set_audio_calibration(cal_buf[0], cal_buf[1], cal_buf[2], cal_buf[3], cal_buf[4]);
      rfic.apply_af_calibration(
-@@ -177,18 +251,17 @@ fn main() -> ! {
+@@ -177,18 +265,17 @@ fn main() -> ! {
          cal_buf[13],
          cal_buf[14],
      );
@@ -9715,7 +9878,7 @@ index 9d2b0c0..7786118 100644
  
      let ani_raw = storage.read_ani_raw();
      let ani = AniConfig::from_raw(
-@@ -219,9 +292,8 @@ fn main() -> ! {
+@@ -219,9 +306,8 @@ fn main() -> ! {
      let fm_radio = FmRadio::new(gpioa);
  
      if radio.ptt_asserted() || keypad.any_pressed(&mut cp.SYST) {
@@ -9727,7 +9890,7 @@ index 9d2b0c0..7786118 100644
          let mut released_ticks = 0u32;
          while released_ticks < 50 {
              delay::ms(&mut cp.SYST, 10);
-@@ -234,7 +306,11 @@ fn main() -> ! {
+@@ -234,7 +320,12 @@ fn main() -> ! {
      }
  
      // app class
@@ -9735,14 +9898,17 @@ index 9d2b0c0..7786118 100644
 +    // The App (2.7 KB) lives in a static, built by a function of its own: in main's frame it
 +    // sat there for good, with the temporary it was built in, and the pager's decoder ran out
 +    // of stack on the radio.
++    hal::ram0::bt(5, hal::ram0::sp(), unsafe { core::ptr::addr_of!(APP_SLOT) as u32 });
 +    let mut app: &'static mut app::App = place_app(
 +        unsafe { &mut *core::ptr::addr_of_mut!(APP_SLOT) },
          radio,
          chip_id,
          keypad,
-@@ -253,53 +329,131 @@ fn main() -> ! {
+@@ -252,63 +343,146 @@ fn main() -> ! {
+         },
          &mut cp.SYST,
      );
++    hal::ram0::bt(6, hal::ram0::sp(), 0);
  
 +    ui::glyph::set_flash(&mut app.storage_mut().norflash, false); // the Storage moved into the App
      app.init_battery_samples();
@@ -9843,6 +10009,7 @@ index 9d2b0c0..7786118 100644
 +        // in EXPLORE or the arena, never while keyed
 +        #[cfg(feature = "spilib")]
 +        let mut cable = cps::HandshakeDetector::cable();
++        hal::ram0::bt(7, hal::ram0::sp(), 1);
 +        loop {
 +            let due = scheduler.tick();
 +            #[cfg(not(feature = "lean"))]
@@ -9907,7 +10074,10 @@ index 9d2b0c0..7786118 100644
  
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
-@@ -309,6 +463,8 @@ fn main() -> ! {
+     let mut applied_contrast: u8 = u8::MAX;
+     let mut backlight_on = true;
+     let mut cps_handshake = cps::HandshakeDetector::new();
++    hal::ram0::bt(7, hal::ram0::sp(), 2);
  
      loop {
          let due = scheduler.tick();
@@ -9916,7 +10086,7 @@ index 9d2b0c0..7786118 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,9 +485,22 @@ fn main() -> ! {
+@@ -329,9 +503,22 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -9940,7 +10110,7 @@ index 9d2b0c0..7786118 100644
              app.radio_mut().rf_off(&mut cp.SYST);
              app.save_channel_state();
              power.shutdown(&mut cp.SYST);
-@@ -340,7 +509,7 @@ fn main() -> ! {
+@@ -340,7 +527,7 @@ fn main() -> ! {
          // battery
          if due.every_500ms {
              app.poll_battery();
@@ -9949,7 +10119,7 @@ index 9d2b0c0..7786118 100644
          }
  
          // Wall clock tick + Doppler update
-@@ -381,7 +550,7 @@ fn main() -> ! {
+@@ -381,7 +568,7 @@ fn main() -> ! {
                          wide,
                      ) {
                          app.set_transmitting_for_tracking();
@@ -9958,7 +10128,7 @@ index 9d2b0c0..7786118 100644
                      }
                  } else if !pressed && tracking_tx {
                      let ui = app.satellite_ui();
-@@ -396,11 +565,13 @@ fn main() -> ! {
+@@ -396,11 +583,13 @@ fn main() -> ! {
                          wide,
                      );
                      app.clear_transmitting_for_tracking();
@@ -9973,7 +10143,7 @@ index 9d2b0c0..7786118 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -409,9 +580,9 @@ fn main() -> ! {
+@@ -409,9 +598,9 @@ fn main() -> ! {
          } else if let Some(level) = app.radio_mut().poll_ptt() {
              app.set_ptt(&mut cp.SYST, !level);
              if app.is_transmitting() {
@@ -9985,7 +10155,7 @@ index 9d2b0c0..7786118 100644
              }
          }
  
-@@ -465,9 +636,13 @@ fn main() -> ! {
+@@ -465,9 +654,13 @@ fn main() -> ! {
              }
          }
  
@@ -10002,7 +10172,7 @@ index 9d2b0c0..7786118 100644
              if !app.power_save_is_asleep() {
                  app.poll_squelch(&mut cp.SYST, 3);
                  app.poll_dual_standby(&mut cp.SYST, app.rssi_open());
-@@ -484,7 +659,7 @@ fn main() -> ! {
+@@ -484,7 +677,7 @@ fn main() -> ! {
              if !app.is_transmitting() && !app.power_save_is_asleep() {
                  let rssi = app.radio_mut().rssi(&mut cp.SYST);
                  app.set_rssi_raw(rssi as u8);
@@ -10011,7 +10181,7 @@ index 9d2b0c0..7786118 100644
                      dbg,
                      "RSSI: {} audio_open={} freq={} ch_mode={} ch_num={}",
                      rssi,
-@@ -492,8 +667,7 @@ fn main() -> ! {
+@@ -492,8 +685,7 @@ fn main() -> ! {
                      app.watching_freq_hz(),
                      app.watching_is_channel_mode(),
                      app.watching_channel_num()
