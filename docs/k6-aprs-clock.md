@@ -898,7 +898,13 @@ under `k6-aprs-ladder/`):
   found. Keep it on.
 - **De-emphasised packets never read** (kind 3, no frame in any run): each stops at 84 words,
   right where the opening flags end. The 11-10 bench never sent one: the IC-7100's transmit path
-  pre-emphasised them. Not yet explained.
+  pre-emphasised them. `dfskcap_de`'s captures (run aprsde-1) hold the whole packet, but the
+  lone 2200 Hz bits between marks are gone and every other flag's mark reads two bits long (an
+  interval of 4 or 5 samples where 2 then 1 belong). The receiver's de-emphasis is not it:
+  `aprslad_d` (REG_2B + 0100) reads the same (run D1: flat 10/21, pre-emphasised 8/21,
+  de-emphasised 0/21, against 10, 10 and 0 for `aprslad_w` in the same run). The plain receiver
+  itself loses a weak 2200 Hz half cycle after a loud 1200 Hz one, so a sender whose highs are
+  some 5 dB down is not read; flat and pre-emphasised senders (most of them) are.
 - **Run A2, with the fix** (levels in a shuffled order, so time and level are apart; three of each
   kind a level, flat and pre-emphasised together):
 
