@@ -1,12 +1,12 @@
 {
  "id": "ysfdemo2",
- "status": "queued",
- "queued": "2026-11-19T02:38:04Z",
+ "status": "running",
+ "since": "2026-11-19T02:38:11Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "27f1314db383cfeb35a79bc6d82ef387d183e8ad",
   "path": "jobs/ysfdemo2"
  },
  "runner_commit": "aa318c46915aa8d641fa1055d31f362abacda62f",
- "updated": "2026-11-19T02:38:04Z"
+ "updated": "2026-11-19T02:38:11Z"
 }
