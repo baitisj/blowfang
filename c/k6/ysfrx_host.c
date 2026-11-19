@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #define DS_FRING 256u
+#define YX_TRACE 1
 #include "dmrsync.h"
 #include "ysfdec.h"
 

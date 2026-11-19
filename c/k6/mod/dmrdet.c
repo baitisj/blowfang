@@ -173,6 +173,13 @@ typedef struct {
   dx_t *x; /* in scratch */
 #elif defined(YSF_DECODE)
   yx_t *y; /* in scratch */
+  /* where the time goes, a YX_BENCH build's (run 2 lost ~1 ring a frame on the radio, none emulated):
+     the last call's kind (yx_kind), each kind's overruns and longest call this period (cycles),
+     the "Y l" / "Y m" lines still to say after the "s" line */
+#ifdef YX_BENCH
+  uint32_t yk, ydiag, ym[8];
+  uint16_t yl[8];
+#endif
 #endif
 } st_t;
 
@@ -285,6 +292,8 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
 #endif
 #ifdef DMR_DECODE
       if (!dx_locked(s->x, &s->d)) /* while DMR's own slots time the grid, they set its step */
+#elif defined(YSF_DECODE)
+      if (!s->y->timed)            /* once YSF's frames have timed the grid, they set its step */
 #endif
       ds_rate(&s->d, s->cps8);
     }
@@ -295,9 +304,12 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
      radio) cost superframes on the emulated K6, even in a payload. The frames say there's a
      carrier */
   if (!s->y->on) s->db = rssi(api);
-  /* the floor follows the quietest reading: on the bench the module starts while the upload's
-     own carrier is still on (2026-11-19: floor -61, so the calls at -67 never counted) */
-  if (s->db < s->floor) s->floor = s->db;
+  /* the floor follows the quiet: on the bench the module starts while the upload's own carrier
+     is still on (2026-11-19: floor -61, so the calls at -67 never counted). Down a quarter of
+     the way to a lower reading, up 1 dB a reading, and not while there's a carrier: following
+     the lowest reading put it under the radio's odd low readings and noise held the receiver
+     (run 2: carriers at -133) */
+  if (!s->car) s->floor += s->db < s->floor ? (s->db - s->floor) >> 2 : s->db > s->floor;
 #else
   s->db = rssi(api);
 #endif
@@ -328,6 +340,17 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
     /* (no line in a frame) */
   } else if ((q8 = yx_house(s->y, line)) != 0) {
     p = q8;
+#ifdef YX_BENCH
+  } else if (s->ydiag) {
+    /* after the "s" line: each kind's overruns (and the VW decodes finished at once), then its
+       longest call, us */
+    int i;
+    p = put(line, s->ydiag == 2 ? "Y l" : "Y m");
+    for (i = 0; i < 8; i++)
+      p = kv(p, " ", s->ydiag == 2 ? (int)s->yl[i] : (int)ds_udiv(s->ym[i], 96u)), s->ydiag == 2 ? (void)(s->yl[i] = 0) : (void)(s->ym[i] = 0);
+    if (s->ydiag == 2) p = kv(p, " f=", (int)s->y->nfin), s->y->nfin = 0;
+    s->ydiag--;
+#endif
 #endif
   } else if (s->pend) {
     s->pend = 0, s->nd++;
@@ -355,6 +378,9 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
            (int)ds_udiv((s->idle >> 8) * 100u, (s->win >> 8) + 1u));
     p = kv(p, " ks=", (int)ds_udiv(96000u * 256u, s->cps8));
     s->idle = s->win = 0;
+#if defined(YSF_DECODE) && defined(YX_BENCH)
+    s->ydiag = 2;
+#endif
   }
 #ifdef YSF_DECODE
   af = 0; /* receive only, the speaker shut */
@@ -400,7 +426,13 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
   for (;;) {
     uint32_t t;
     P = poll(s), t = now(s);
+#if defined(YSF_DECODE) && defined(YX_BENCH)
+    if (!s->hkd && t - s->tp > s->ym[s->yk]) s->ym[s->yk] = t - s->tp;
+#endif
     if (P - s->consumed > RSZ - 64u) {
+#if defined(YSF_DECODE) && defined(YX_BENCH)
+      if (!s->hkd) s->yl[s->yk]++;
+#endif
       s->lost += !s->hkd; /* housekeeping's calls can outlast the ring (the radio's do): not lost */
       s->hkd = 0;
       resync(s);
@@ -411,6 +443,9 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
       s->idle += t - s->tp;
       s->tp = t;
 #ifdef YSF_DECODE
+#ifdef YX_BENCH
+      s->yk = yx_kind(s->y);
+#endif
       yx_work(s->y); /* a decoder step in the gap */
 #endif
       if (hk < HK_COUNTS) continue;
@@ -427,6 +462,9 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
 #ifdef DMR_DECODE
       if (s->x->nq) dx_poll(s->x, &s->d);
 #elif defined(YSF_DECODE)
+#ifdef YX_BENCH
+      s->yk = (uint32_t)s->y->on;
+#endif
       if (s->car || s->y->on) yx_poll(s->y, &s->d); /* (no search without a carrier: noise's
                                                         false syncs held the receiver) */
 #endif
