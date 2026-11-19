@@ -1,12 +1,123 @@
 {
  "id": "aprslad-c2",
- "status": "running",
- "since": "2026-11-19T10:56:15Z",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T10:56:17Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T10:56:17Z",
+   "ended": "2026-11-19T10:56:19Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T10:56:19Z",
+   "ended": "2026-11-19T10:56:22Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T10:56:22Z",
+   "ended": "2026-11-19T10:58:10Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T10:58:10Z",
+   "ended": "2026-11-19T10:58:10Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T10:58:10Z",
+   "ended": "2026-11-19T10:59:10Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T10:59:10Z",
+   "ended": "2026-11-19T10:59:34Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "pluto",
+   "started": "2026-11-19T10:59:34Z",
+   "ended": "2026-11-19T10:59:59Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-19T10:59:59Z",
+   "ended": "2026-11-19T11:00:23Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-19T11:00:23Z",
+   "ended": "2026-11-19T11:00:48Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T11:00:48Z",
+   "ended": "2026-11-19T11:01:12Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "pluto",
+   "started": "2026-11-19T11:01:12Z",
+   "ended": "2026-11-19T11:01:37Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "pluto",
+   "started": "2026-11-19T11:01:37Z",
+   "ended": "2026-11-19T11:02:01Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "pluto",
+   "started": "2026-11-19T11:02:01Z",
+   "ended": "2026-11-19T11:02:26Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "wait",
+   "started": "2026-11-19T11:02:26Z",
+   "ended": "2026-11-19T11:03:45Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "logger.stop",
+   "started": "2026-11-19T11:03:45Z",
+   "ended": "2026-11-19T11:03:46Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-989248773c0f",
+ "head": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "ended": "2026-11-19T11:03:46Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "82794974df05f0e5b80ed66ada3b298247bb2468",
   "path": "jobs/aprslad-c2"
  },
  "runner_commit": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
- "updated": "2026-11-19T10:56:15Z"
+ "updated": "2026-11-19T11:03:46Z"
 }
