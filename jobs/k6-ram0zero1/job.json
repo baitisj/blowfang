@@ -1,0 +1,156 @@
+{
+ "id": "k6-ram0zero1",
+ "who": "k6-ram0",
+ "freq_mhz": "bench",
+ "minutes": 15,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 840,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "ic7100",
+   "args": [
+    "id",
+    "wake the K6 from EXPLORE"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 30,
+   "continue_on_error": true,
+   "pattern": "VOICE MSG for"
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ram0zero.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "2d37ec5e5929bca7e2f80f5efecd7a9e788ebd202f32ff4e9864785f7cf98444"
+  },
+  {
+   "do": "wait",
+   "seconds": 60,
+   "continue_on_error": true,
+   "pattern": "r0 start"
+  },
+  {
+   "do": "wait",
+   "seconds": 150,
+   "continue_on_error": true,
+   "pattern": "r0 done"
+  },
+  {
+   "do": "wait",
+   "seconds": 15,
+   "continue_on_error": true,
+   "pattern": "r0 reset"
+  },
+  {
+   "do": "wait",
+   "seconds": 45,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100",
+   "args": [
+    "id",
+    "wake the K6 from EXPLORE"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 30,
+   "continue_on_error": true,
+   "pattern": "VOICE MSG for"
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ram0zero.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "2d37ec5e5929bca7e2f80f5efecd7a9e788ebd202f32ff4e9864785f7cf98444"
+  },
+  {
+   "do": "wait",
+   "seconds": 60,
+   "continue_on_error": true,
+   "pattern": "r0 start"
+  },
+  {
+   "do": "wait",
+   "seconds": 150,
+   "continue_on_error": true,
+   "pattern": "r0 done"
+  },
+  {
+   "do": "wait",
+   "seconds": 15,
+   "continue_on_error": true,
+   "pattern": "r0 reset"
+  },
+  {
+   "do": "wait",
+   "seconds": 45,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100",
+   "args": [
+    "id",
+    "wake the K6 from EXPLORE"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 30,
+   "continue_on_error": true,
+   "pattern": "VOICE MSG for"
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
