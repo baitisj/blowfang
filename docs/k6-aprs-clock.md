@@ -874,6 +874,8 @@ The modules are `aprsdfsk_440` with one setting each, 400 s (two minutes to sett
 | `aprslad_n` | narrow (REG_43 0x4048) | as Aura leaves it | AGC |
 | `aprslad_a` | wide | off (REG_73 bit 4, taken at the tune) | AGC |
 | `aprslad_g` | wide | as Aura leaves it | frozen, REG_13 03FF (as `aprsclk`'s tap) |
+| `aprslad_d` | wide | as Aura leaves it | AGC; REG_2B + 0100 (the receiver's de-emphasis off) |
+| `aprslad_k` | wide | as Aura leaves it, and tuned again after every packet without a frame (`DF_KICK`) | AGC |
 
 Each puts back what it changed (the filter found, REG_73, REG_7E and REG_13). The bench job
 (bench runner inbox) uploads one, then the Pluto sends `python3 -m modem.aprs wav OUT --now
@@ -920,9 +922,50 @@ under `k6-aprs-ladder/`):
   dBm, the last at -100. The chip still starts on the flags at -103 to -106, so 6 to 10 dB more
   is in the slicer. Real 144.390 stations at hamlet peak at -94 to -99 dBm: right at this edge.
 
-Next, by what A and B show: the sender's offset (`--offset-hz` -1500 to +1500 at the edge plus
-6 dB), then an hour on 144.390 (receive only, after the 12-minute lamp wait) beside an APRS-IS log
-of the stations within 40 km, which says which real packets the K6 misses.
+- **Off the air with the fix** (run aprsair-1, 12:02 to 12:32Z, 144.390 MHz, receive only, two
+  15-minute modules): 8 starts, no frame, the clock at 1352 throughout. The minute lines' RSSI
+  sat at -95/-96 dBm with peaks of -89/-90: some 13 dB over the -108 floor of 2026-11-10 and at
+  the edge above, so nothing on the air could be read. What raised the floor is not known yet.
+- **The sender's offset decides it** (runs C3, C4 and C5, `aprs12.wav`, 12 packets flat and
+  pre-emphasised a step, TX gain -62 = -89 dBm, `--offset-hz` as given to `pluto_bench.py`).
+  C4 put a step at 0 between every offset step, two modules of `aprslad_w`:
+
+| Module | 0 | +300 | 0 | -300 | 0 | +600 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 11/12 | 3/12 | 12/12 | 8/12 | 10/12 | 0/12 | 11/12 |
+
+| Module | 0 | -600 | 0 | +1500 | 0 | -1500 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | 11/12 | 4/12 | 1/12 | no start | 1/12 | no start | 0/12 |
+
+  C5 ran `aprslad_k` (below) and then `aprslad_w`, each 0, -600, 0, +300, 0, -300, 0:
+
+| Module | 0 | -600 | 0 | +300 | 0 | -300 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `aprslad_k` | 0/12 | 11/12 | 0/12 | 0/12 | 0/12 | 12/12 | 0/12 |
+| `aprslad_w` | 12/12 | 3/12 | 4/12 | 0/12 | 12/12 | 9/12 | 11/12 |
+
+  - The plain receiver reads a packet only within some 300 Hz of where it is centred (as for
+    DMR's sync in run N and ACARS); 600 Hz off, almost nothing; 1.5 kHz off, the chip does not
+    even start.
+  - Where it is centred is the AFC's doing, with its 30 s time constant (insight 48). Straight
+    after a tune (`aprslad_k` tunes after every packet without a frame) it sits between the
+    -600 and -300 steps: the Pluto's 0 is some 400 Hz (0.9 ppm) from the K6's own centre; the
+    Pluto drifts 0.3 to 0.9 ppm against the TV pilots ([k6-drift-cal.md](k6-drift-cal.md))
+    and the K6 is within 0.1 ppm. After a few minutes of steps at 0 the AFC has pulled the
+    centre there, which is the bench's "settled" state and the two-minute warm-up seen since
+    2026-11-10. A sender 600 Hz off pulls it away and the steps at 0 after it are lost for
+    tens of seconds (C4 module 2, C5 `aprslad_w`).
+  - On the air no sender keys long enough to pull the AFC, so the K6 hears only senders within
+    some 300 Hz of where the AFC last drifted: at 144.390 that is about 2 ppm. `aprslad_k`
+    (`DF_KICK`) keeps the centre on the K6's own tuning, which is right to 0.1 ppm, and so on
+    the mean of the senders; it does not widen the window.
+  - What would: the sender's offset read from its opening flags (the slicer's duty, which
+    moves with the offset since the chip slices at the tuned centre) and a tune to it before
+    the frame begins, or a decoder on the IF tap with its own AFC.
+
+Next: the offset read from the flags and a tune per packet, an off-air run once the floor is
+back near -108 dBm, and an hour beside an APRS-IS log of the stations within 40 km.
 
 ## Size: which images
 
