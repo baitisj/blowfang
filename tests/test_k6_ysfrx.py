@@ -126,10 +126,14 @@ def test_host_receiver_retimes_after_lost_frames(host, cps8):
     assert stored(lines)[60:] == want(NSF_LONG, lose)[60:], out
 
 
-def test_host_receiver_says_nothing_on_noise(host):
-    cnt, _ = k6_counts(ysf_symbols(), 30.0)
+@pytest.mark.parametrize("cn0", [30.0, 20.0])
+def test_host_receiver_says_nothing_on_noise(host, cn0):
+    """no message from noise, and a false sync in it ends within two frames (bench run 14: the
+    wide search's best of noise, taken weak, held calls of up to 311 frames)"""
+    cnt, _ = k6_counts(ysf_symbols(), cn0)
     out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
     assert not any(ln.startswith("Y d") for ln in out.splitlines()), out
+    assert all(int(ln.split()[2][3:]) <= 2 for ln in out.splitlines() if ln.startswith("Y call")), out
 
 
 def test_ysfrx_module_on_the_emulated_k6():

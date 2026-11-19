@@ -297,15 +297,17 @@ static void yx_poll(yx_t *x, ds_t *d) {
       yx_tr(x, x->nfr, x->rr, (int32_t)(x->rP - P), x->rlock ? 0 : 0x40u);  /* (+-99 at most) */
 #endif
       e = (int32_t)(x->rP - P);
-      /* timed, a weak best at the window's edge: the sync is further out, so it's looked for wide */
-      if (x->rlock && x->rr < YX_THR_Q8 && (e >= YX_LOCKW || e <= -YX_LOCKW)) x->rr = 0;
+      /* a weak best is a miss when the search was wide (73 tries of noise: in bench run 14 such
+         bests held the receiver for calls of up to 311 frames of noise) or, timed, at the
+         window's edge (the sync further out: looked for wide next) */
+      if (x->rr < YX_THR_Q8 && (!x->rlock || e >= YX_LOCKW || e <= -YX_LOCKW)) x->rr = 0;
       if (x->rr >= YX_FLY_Q8) {
         /* the grid's step from the offset a frame (two after a miss: bench run 13, where each
            sync after a miss set the step twice over and the next one was as far off the other
            way): 1/8 of the way, 1/2 when 3 or more off, the whole way when not timed and strong */
         if (x->miss) e >>= 1;
         if (x->rlock) yx_time(d, e, e >= 3 || e <= -3 ? 1u : 3u);
-        else if (x->rr >= YX_THR_Q8) yx_time(d, e, 0), x->rlock = x->timed = 1;
+        else yx_time(d, e, 0), x->rlock = x->timed = 1;
         yx_scale(x, x->rP, x->rc, x->rs);
         x->miss = 0;
 #ifdef YX_TRACE

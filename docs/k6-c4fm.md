@@ -497,5 +497,10 @@ ID; the K6 runs ysfrx):
   sync) and fixed: the offset after a miss is halved, the timed window is ±6, a weak best at its edge
   sends the search wide, a sync 3 or more off moves the step half way, and the wide search is ±128
   (3.3%). The host model now holds calls with the grid 3% off and frames lost.
+- **Run 14, 07:22Z.** The 80-superframe Pluto call decoded on the radio: 18 frames, 16 FICHs, 70 of 85
+  superframes good (14 of 17 VW frames whole; the first went to timing the grid; the message buffer
+  of the trace build held 67). But noise held the receiver for calls of up to 311 frames: after a
+  miss, the wide search's best of 73 tries of noise was taken as a weak sync. Fixed: a wide search
+  takes only a strong sync (rho² 0.65).
 
 SPDX-License-Identifier: MIT
