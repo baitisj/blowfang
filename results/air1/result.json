@@ -1,12 +1,12 @@
 {
  "id": "air1",
- "status": "queued",
- "queued": "2026-11-19T00:08:59Z",
+ "status": "running",
+ "since": "2026-11-19T00:09:06Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "06b8319b3ff1bdff5ac169111c46eed94a9fa735",
   "path": "jobs/air1"
  },
  "runner_commit": "0e8b912dc2e04cc3d2126e6543927576a95c6b2e",
- "updated": "2026-11-19T00:08:59Z"
+ "updated": "2026-11-19T00:09:06Z"
 }
