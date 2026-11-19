@@ -295,7 +295,7 @@ new file mode 100644
 index 00000000..b2040737
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1938 @@
+@@ -0,0 +1,1945 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -2051,6 +2051,13 @@ index 00000000..b2040737
 +        holdProbe();
 +        joinPreview(true);
 +        int frames = recordMic(status);
++#ifdef BLOWFANG_AIR
++        // M17, YSF or DMR (Jeff 11-19: FUNC then PTT was two sends): the
++        // recording goes out in that mode, as PTT would send it
++        if((frames > 0) && (phyAir != 0))
++            airPend = phyAir;
++        else
++#endif
 +        if(frames >= 0)
 +        {
 +            sendIdentOnly = (frames == 0);
@@ -2368,26 +2375,29 @@ index d71444c6..15c6e2b2 100644
  
  #ifdef PLATFORM_TTWRPLUS
  #include "drivers/baseband/SA8x8.h"
-@@ -1263,6 +1264,13 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+@@ -1263,6 +1264,14 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
          gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
                    color_white, bw_str);
      }
 +    else if (last_state.channel.mode == OPMODE_PAGER)
 +    {
-+        // blowfang: what PTT sends, RNG, FSK, M17, YSF or DMR
++        // blowfang: what PTT sends, RNG, FSK, M17, YSF or DMR (three spaces:
++        // two left the label touching the "4", Jeff 11-19)
 +        const char *phy = pager_phyName();
 +        gfx_print(pos_2, layout.top_font, TEXT_ALIGN_LEFT,
-+                  color_white, "  %s", (phy[0] == 'K') ? phy + 3 : phy);
++                  color_white, "   %s", (phy[0] == 'K') ? phy + 3 : phy);
 +    }
  #ifdef CONFIG_M17
      else if (last_state.channel.mode == OPMODE_M17)
      {
-@@ -1292,6 +1300,9 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
+@@ -1292,6 +1301,11 @@ bool _ui_drawMacroMenu(ui_state_t* ui_state)
              gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "          M17");
              break;
  #endif
 +        case OPMODE_PAGER:
-+            gfx_print(pos_2, layout.top_font, TEXT_ALIGN_CENTER, color_white, "        PAGER");
++            // 31 px between "5" and "6": "PAGER" (53 px) ran over the 5 ("P5AGER",
++            // Jeff 11-19); "PGR" in the small font is 25 px, like upstream's "2.5W"
++            gfx_print(pos_2, layout.top_font - 1, TEXT_ALIGN_CENTER, color_white, "             PGR");
 +            break;
      }
  

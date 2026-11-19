@@ -209,7 +209,8 @@ while a host is reading, and `listen` counts the messages. DMR still listens for
 (I2S3, `pager_rec.c`, gain 5), LED orange, WITHOUT transmitting: only the C6000 runs its analog
 transmit with the mic selected (E0 c1 ... 60 80, the half of OpenRTX's startAnalogTx that leaves
 the AT1846S in receive and the PA off; `micsilent`, 11-14 15:31Z). Letting go sends the
-recording as PTT would (RNG or FSK, then the ident) at the channel's power. Recording stops
+recording as PTT would (RNG or FSK, then the ident) at the channel's power; in the M17, YSF and
+DMR sub-modes it goes out in that mode, as PTT sends there (Jeff 11-19). Recording stops
 after 31 s, or after 1 s with no samples, whatever FUNC does; when the 30 s store fills the LED
 blinks red until FUNC is let go. The mic preamp stays on in PAGER mode, since it needs about 6 s
 to settle. The TYT cable in the side jack switches the internal mic out, so record with it
