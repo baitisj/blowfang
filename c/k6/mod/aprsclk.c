@@ -159,6 +159,11 @@ typedef struct {
   int32_t dct;        /* the tone of the last interval, for dclk */
   int32_t dclk;       /* how long the chip took over the packet's words so far, in the slicer's units */
   uint32_t idle;      /* line bits outside a frame */
+#ifdef DF_SET
+  int32_t qs;         /* ones less zeros in the packet's words DF_Q0 to DF_Q0 + DF_QW (its opening
+                         flags): the chip slices at the tuned centre, so a sender off it reads
+                         more of one level (q= on the y line) */
+#endif
 #else
   uint16_t cap[128];  /* a packet's words as read, for its d lines */
 #endif
@@ -947,6 +952,8 @@ int k6_main(const k6_api_t *api) {
 #ifndef DF_AF
 #define DF_AF 0        /* bits ORed into REG_2B: 0100 the receiver's de-emphasis off */
 #endif
+#define DF_Q0 2u       /* q=: the opening flags' words from the third */
+#define DF_QW 24u      /* 384 samples, 80 ms of an opening of 40 flags (267 ms) */
 #ifndef DF_KICK
 #define DF_KICK 0      /* 1: tuned again after every packet without a frame, so the AFC starts
                           again from the tuned centre (it takes hold at a tune, insight 48): the
@@ -1405,6 +1412,10 @@ static uint32_t df_seek(const k6_api_t *api, uint32_t *sy) {
 static void df_word(const k6_api_t *api, st_t *s, uint32_t v, uint32_t rn) {
   uint32_t i;
   s->fifo[rn & 7] = (uint16_t)v;
+#ifdef DF_SET
+  if (rn - DF_Q0 < DF_QW)
+    for (i = v, s->qs -= 16; i; i &= i - 1) s->qs += 2;
+#endif
   for (i = 16; i--;) df_sample(api, s, (int32_t)((v >> i) & 1));
 }
 
@@ -1488,7 +1499,7 @@ int k6_main(const k6_api_t *api) {
         left = 1, got = 0, eq = 0, drop = 0, rn = 0, tsync = now, ok0 = s->ok;
         tk0 = api->ticks(), off = (DF_LAG - 1) * DF_WORD;
 #ifdef DF_SET
-        ypk = 0;
+        ypk = 0, s->qs = 0;
 #endif
         cald = ncal >= 4 && (s->pre & 7), kq0 = kq, ncal0 = ncal;
         s->in = 0, s->sr = 0, s->idle = 0;
@@ -1546,13 +1557,17 @@ int k6_main(const k6_api_t *api) {
         p = kv(p, " t=", tsync);
         p = kv(p, " w=", got);
         p = kv(p, " ok=", s->ok - ok0);
+#ifndef DF_SET /* (a ladder line has q= instead: 60 characters) */
         p = kv(p, " e=", eq);
+#endif
         p = kv(p, " d=", drop);
         p = kv(p, " s=", sy);
         p = kv(p, " k=", kq);
 #ifdef DF_SET
         p = put(p, " r=-");
         p = dec(p, (uint32_t)-KM_RSSI_DBM(ypk), 1); /* the packet's strongest REG_67 */
+        p = put(p, s->qs < 0 ? " q=-" : " q=");
+        p = dec(p, (uint32_t)(s->qs < 0 ? -s->qs : s->qs), 1);
 #endif
         say(api, s, p);
       }

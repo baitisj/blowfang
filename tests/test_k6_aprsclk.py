@@ -878,7 +878,7 @@ def _dfsk_emulated(slow, name="aprsdfsk"):
     code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], src)
     full, _ = k6mod.build(src)
     bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
-    assert len(full) < {"aprsdfsk": 6400, "aprslad_k": 6700}.get(name, 6600) and len(bench) < 6400, (len(full), len(bench))
+    assert len(full) < (6400 if name == "aprsdfsk" else 6700) and len(bench) < 6400, (len(full), len(bench))
     Base = modem_chip(le, lambda r58: stream, 4800)
 
     class Chip(Base):
@@ -965,6 +965,9 @@ def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
     assert f == [f"AG7EW-{k}" for k in clean], f
     y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
     assert len(y) == len(sent) and all(v["r"].startswith("-") for v in y), y
+    # q=: ones less zeros in the opening flags' words 2 to 25 (384 samples); the model's flags
+    # are even, a sender off the tuned centre would read more of one level
+    assert all(abs(int(v["q"])) < 40 for v in y), [v["q"] for v in y]
     assert stack < 700 and e.over == 0 and e.said[-1].endswith(" lost=0"), (stack, e.said[-1])
     # the emulator reads every register as 0: REG_43 0 is not Aura's wide 0x3028, so the filter
     # found is the narrow one and is put back after a wide setting
