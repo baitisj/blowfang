@@ -56,6 +56,9 @@ typedef struct {
   uint32_t nfr, nfich, nsf, nsfok;
   uint32_t vf, nout, nmiss, crc;
   uint32_t nfin;                       /* VW decodes finished at once (the next payload came) */
+  /* the FICH symbols' levels this call, in soft units (the +1 level 32, the +3 level 96) /16 +
+     8: the levels' spread for the bench ("Y h" lines) */
+  uint16_t hist[16];
   srx_state m;
 } yx_t;
 
@@ -178,6 +181,7 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       x->on = 1, x->n = YD_SYNC_N, x->miss = 0;
       /* a new call: the last one's lines not given out yet are dropped */
       x->done = 0, x->nfr = x->nfich = x->nsf = x->nsfok = 0;
+      for (k = 0; k < 16; k++) x->hist[k] = 0;
       srx_init(&x->m, x->m.frames, x->m.have, x->m.max);
       return;
     }
@@ -224,6 +228,8 @@ static void yx_poll(yx_t *x, const ds_t *d) {
     l0 = (v * x->k16) >> 16;                    /* the sign bit: 1 below 0 */
     l1 = ((2 * x->u - av) * x->k16) >> 16;      /* the size bit: 1 outside +-2 */
     if (x->n < YD_SYNC_N + YD_FICH_SYMS) {
+      av = ((v * x->k16) >> 16) + 128;
+      x->hist[av < 0 ? 0 : av > 255 ? 15 : av >> 4]++;
       x->fich[yd_fich_dibit(x->n - YD_SYNC_N)] = (uint8_t)(yx_q4(l0) | (yx_q4(l1) << 4));
       if (++x->n == YD_SYNC_N + YD_FICH_SYMS) x->jf = 1, yd_f5_start(&x->f5);
     } else {
@@ -292,6 +298,14 @@ static char *yx_house(yx_t *x, char *line) {
     if (x->m.over) p = kv(p, " over=", (int)x->m.over);
     p = put(p, " crc=");
     for (i = 4; i-- > 0;) *p++ = H[(x->crc >> (4 * i)) & 15u];
+    x->nout = 0xFFFFFFFEu;
+    return p;
+  }
+  if (x->nout >= 0xFFFFFFFDu) {          /* the FICH levels: -128..-1, then 0..127 */
+    i = x->nout == 0xFFFFFFFEu ? 0 : 8;
+    p = put(line, i ? "Y h+" : "Y h-");
+    for (n = i + 8; i < n; i++) p = kv(p, " ", (int)x->hist[i]);
+    x->nout = x->nout == 0xFFFFFFFEu ? 0xFFFFFFFDu : 0;
     return p;
   }
   if (x->nout >= n) {
