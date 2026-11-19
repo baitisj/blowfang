@@ -1,0 +1,23 @@
+[
+ {
+  "name": "steps.json",
+  "bytes": 664,
+  "sha256": "dfd18015c0a6758aadff5332d91007a857f663b0572d66ed0593d18aeb38b802",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/steps.json"
+ },
+ {
+  "name": "uv380.rx.out",
+  "bytes": 15472,
+  "sha256": "814a86b897e7133ef6c32453cc42b0c807a004dbd23f9655558ac8335d8cb0c0",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/uv380.rx.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 6172681,
+  "sha256": "68b35ff95690674daf95abdaa223ef32983da9a5db0b28c2260511eaec923898",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/uv380.log"
+ }
+]
