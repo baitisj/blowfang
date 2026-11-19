@@ -11,16 +11,19 @@ before and after, the bench's PTT lock and owner check.
         [--delay-s 2] [--rx-gain 20] [--max-replies 30] [--save DIR]
 
 Receive: the RX LO sits RX_IF_HZ above the channel (its own leak and DC stay out of it), the
-2.4 MS/s stream is mixed down and cut to 240 kS/s, and a burst is a run of 55 ms chunks 15 dB
-over the quiet floor; it ends after END_QUIET_S below 10 dB. The burst (ident and message, one
+2.4 MS/s stream is mixed down and cut to 240 kS/s, and a burst is a run of 55 ms chunks whose
+power in the channel (8 kHz low-pass) is 10 dB over the quiet floor; it ends after END_QUIET_S
+below 6 dB. The burst (ident and message, one
 key-up) is then decoded as modem.ysf and modem.m17 decode a capture, and the RX stops while the
 reply goes out. A burst with no sotto in it (FM voice, a DN call) gets no reply.
 
 Standard bench rules: 70 cm only, gain <= -30 dB, ident on every send. SPDX-License-Identifier: MIT
 """
 import os
+import queue
 import subprocess
 import sys
+import threading
 import time
 
 import numpy as np
@@ -32,8 +35,9 @@ sys.path.insert(0, ROOT)
 
 FS = 240_000                 # the burst's rate (pluto_bench IQ_FS_SAVE)
 RX_IF_HZ = 50_000            # RX LO this far above the channel
-START_DB = 15.0              # a chunk this far over the floor starts a burst
-END_DB = 10.0                # ... and the burst ends after END_QUIET_S under this
+CHANNEL_HZ = 8000.0          # the burst detector's low-pass: one 12.5 kHz channel, with the offset
+START_DB = 10.0              # a chunk's channel power this far over the floor starts a burst
+END_DB = 6.0                 # ... and the burst ends after END_QUIET_S under this
 END_QUIET_S = 1.0
 PRE_S = 0.2                  # kept from before the burst's first loud chunk
 MAX_BURST_S = 40.0           # the UV-380 keys 5 s at most; anything longer is not ours
@@ -47,6 +51,8 @@ def mix_decimate(raw, state, rate, q, if_hz):
     mixed, then summed in blocks of q (a boxcar: its first null at rate / q, plenty for one FM
     channel on a quiet bench). state carries the mixer phase and the samples left over."""
     x = np.frombuffer(raw, np.int16).astype(np.float32)
+    if len(x):
+        state["peak"] = max(state.get("peak", 0.0), float(np.max(np.abs(x))))
     iq = (x[0::2] + 1j * x[1::2]).astype(np.complex64) / 2048.0
     n0 = state.get("n", 0)
     ph = np.exp(2j * np.pi * if_hz * (n0 + np.arange(len(iq))) / rate).astype(np.complex64)
@@ -66,9 +72,16 @@ class Bursts:
         self.end_n = int(END_QUIET_S / chunk_s) + 1
         self.max_n = int(MAX_BURST_S / chunk_s)
         self.hist, self.burst, self.below = [], None, 0
+        from scipy import signal
+        self.sps = signal
+        self.sos = signal.butter(4, CHANNEL_HZ, fs=fs, output="sos")
+        self.zi = np.zeros((self.sos.shape[0], 2), complex)
 
     def feed(self, y):
-        p = float(np.mean(np.abs(y) ** 2)) + 1e-20
+        # the power in the channel only: over the whole 240 kHz the noise is 15 dB more, and a
+        # signal 20 dB over the noise in its channel never stood out (11-19 04:31-04:51Z on air)
+        c, self.zi = self.sps.sosfilt(self.sos, y, zi=self.zi)
+        p = float(np.mean(np.abs(c) ** 2)) + 1e-20
         if self.burst is None:
             self.hist = (self.hist + [y])[-self.pre:]
             if self.floor is not None and p > self.floor * 10 ** (START_DB / 10):
@@ -93,8 +106,8 @@ def heard(iq, fs=FS):
     if disc is None:
         return None, b"", "", ["no signal"]
     lines = [f"burst {len(iq) / fs:.1f} s, carrier {off:+.0f} Hz"]
-    fr = ysf.demod(disc)
-    s = ysf.summarize(fr)
+    yfr = ysf.demod(disc)
+    s = ys0 = ysf.summarize(yfr)
     if s["sotto_n"] >= MIN_SOTTO_SF:
         src = "/".join(sorted(s["src"])) or "?"
         lines.append(f"YSF sotto {s['sotto_ok']}/{s['sotto_n']} superframes CRC good, from {src}")
@@ -106,8 +119,14 @@ def heard(iq, fs=FS):
         lines.append(f"M17 sotto {s['sotto_ok']}/{s['sotto_frames']} frames CRC good, "
                      f"{len(s['sotto']) // 6} superframes, from {src}")
         return "m17", s["sotto"], src, lines
-    lines.append(f"no sotto (YSF frames {len(ysf.summarize(ysf.demod(disc))['fn'])}, "
-                 f"M17 stream frames {s['stream']})")
+    yf, ys = yfr, ys0
+    kinds = {}
+    for f in fr:
+        kinds[f["kind"]] = kinds.get(f["kind"], 0) + 1
+    d = disc[np.abs(disc) < 8000]
+    lines.append(f"no sotto: YSF syncs {len(yf)}, FICH good {ys['fich_ok']}, kinds {ys['dt']}; "
+                 f"M17 frames {kinds or 0}; deviation p50 {np.percentile(np.abs(d), 50):.0f} Hz, "
+                 f"p99 {np.percentile(np.abs(d), 99):.0f} Hz")
     return None, b"", "", lines
 
 
@@ -122,6 +141,48 @@ def reply_wav(mode, sotto, fs=48000):
     return np.concatenate([gap, x, gap]), DEV[mode]
 
 
+class Listener:
+    """iio_readdev on the RX, read in its own thread so the receive never stops while a burst is
+    decoded (11-19 04:32Z: Jeff's FUNC send took 30 s to decode and his PTT send came in that
+    gap). Whole bursts go to .bursts as (iq, ADC peak); stop() ends it and parks the RX LO."""
+
+    def __init__(self, a, rate, q, t_end):
+        import pluto_bench as pb
+        self.pb, self.a, self.err = pb, a, None
+        self.bursts = queue.Queue()
+        pb.setup(rate, rx_hz=a.hz + RX_IF_HZ, rx_gain=a.rx_gain, uri=a.uri)
+        left = max(1, int((t_end - time.time()) * rate))
+        cmd = ["iio_readdev", "-u", a.uri or pb.URI, "-b", str(pb.CHUNK), "-s", str(left), pb.RX_DEV,
+               "voltage0", "voltage1"]
+        self.p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.th = threading.Thread(target=self._read, args=(rate, q), daemon=True)
+        self.th.start()
+        print(f"listening {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+
+    def _read(self, rate, q):
+        st, b = {}, Bursts()
+        while True:
+            raw = self.p.stdout.read(4 * self.pb.CHUNK)
+            if not raw:
+                break
+            y = b.feed(mix_decimate(raw[:len(raw) // 4 * 4], st, rate, q, RX_IF_HZ))
+            if y is not None:
+                self.bursts.put((y, st.get("peak", 0.0)))
+                st["peak"] = 0.0
+        if self.p.poll() not in (None, 0, -9):
+            self.err = self.p.stderr.read().decode(errors="replace").strip() or f"rc {self.p.returncode}"
+
+    def alive(self):
+        return self.th.is_alive()
+
+    def stop(self):
+        if self.p.poll() is None:
+            self.p.kill()
+            self.p.wait()
+            self.th.join(timeout=5)
+            self.pb.park_rx(self.a.uri)
+
+
 def run(a):
     import pluto_bench as pb
     pb.check_tx(a.hz, 0, a.gain)
@@ -131,39 +192,37 @@ def run(a):
     print(f"parrot on {a.hz} Hz until {time.strftime('%H:%M:%SZ', time.gmtime(t_end))}: YSF or M17 "
           f"sotto heard goes back {a.delay_s:g} s later, gain {a.gain:g} dB", flush=True)
     while time.time() < t_end and replies < a.max_replies:
-        pb.setup(rate, rx_hz=a.hz + RX_IF_HZ, rx_gain=a.rx_gain, uri=a.uri)
-        left = max(1, int((t_end - time.time()) * rate))
-        cmd = ["iio_readdev", "-u", a.uri or pb.URI, "-b", str(pb.CHUNK), "-s", str(left), pb.RX_DEV,
-               "voltage0", "voltage1"]
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        st, bursts, burst = {}, Bursts(), None
-        print(f"listening {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+        rx = Listener(a, rate, q, t_end)
+        replied = False
         try:
-            while burst is None:
-                raw = p.stdout.read(4 * pb.CHUNK)
-                if not raw:
-                    break
-                burst = bursts.feed(mix_decimate(raw[:len(raw) // 4 * 4], st, rate, q, -RX_IF_HZ))
+            while not replied and time.time() < t_end and replies < a.max_replies:
+                try:
+                    burst, peak = rx.bursts.get(timeout=1.0)
+                except queue.Empty:
+                    if not rx.alive():
+                        break
+                    continue
+                t = time.strftime('%H:%M:%S', time.gmtime())
+                print(f"{t}Z heard: ADC peak {peak:.0f} of 2047 (rx gain {a.rx_gain} dB)", flush=True)
+                mode, sotto, src, lines = heard(burst)          # the Listener keeps listening meanwhile
+                for ln in lines:
+                    print(f"{t}Z heard: {ln}", flush=True)
+                if a.save:
+                    os.makedirs(a.save, exist_ok=True)
+                    burst.tofile(os.path.join(a.save, f"burst-{t.replace(':', '')}.cf32"))
+                if mode is None:
+                    continue
+                x, dev = reply_wav(mode, sotto)
+                rx.stop()                                      # no RX while the reply goes out
+                time.sleep(a.delay_s)
+                track = pb.audio_track(x, 48000, dev)
+                pb.send(track, a.hz, 0, a.gain, rate, a.uri, True,
+                        f"parrot {mode} {len(sotto) // 6} superframes")
+                replies += 1
+                replied = True
         finally:
-            if p.poll() is None:
-                p.kill()
-            p.wait()
-            pb.park_rx(a.uri)
-        if burst is None:
+            rx.stop()
+        if not replied and not rx.alive() and time.time() < t_end and rx.err:
+            print(f"receive stopped: {rx.err}", flush=True)
             break
-        t = time.strftime('%H:%M:%S', time.gmtime())
-        mode, sotto, src, lines = heard(burst)
-        for ln in lines:
-            print(f"{t}Z heard: {ln}", flush=True)
-        if a.save:
-            os.makedirs(a.save, exist_ok=True)
-            burst.tofile(os.path.join(a.save, f"burst-{t.replace(':', '')}.cf32"))
-        if mode is None:
-            continue
-        x, dev = reply_wav(mode, sotto)
-        time.sleep(a.delay_s)
-        track = pb.audio_track(x, 48000, dev)
-        pb.send(track, a.hz, 0, a.gain, rate, a.uri, True,
-                f"parrot {mode} {len(sotto) // 6} superframes")
-        replies += 1
     print(f"parrot done: {replies} replies", flush=True)
