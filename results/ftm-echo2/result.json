@@ -1,12 +1,48 @@
 {
  "id": "ftm-echo2",
- "status": "running",
- "since": "2026-11-19T01:00:28Z",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T01:00:30Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "wait",
+   "started": "2026-11-19T01:00:30Z",
+   "ended": "2026-11-19T01:01:15Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:01:15Z",
+   "ended": "2026-11-19T01:01:28Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.ysf",
+   "started": "2026-11-19T01:01:28Z",
+   "ended": "2026-11-19T01:05:59Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:05:59Z",
+   "ended": "2026-11-19T01:06:05Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-e4ea6afff0c3",
+ "head": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-e4ea6afff0c3",
+ "sources_head": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "ended": "2026-11-19T01:06:05Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "5e842362059160a507c1ab324a215ad50a77d65f",
   "path": "jobs/ftm-echo2"
  },
  "runner_commit": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
- "updated": "2026-11-19T01:00:28Z"
+ "updated": "2026-11-19T01:06:05Z"
 }
