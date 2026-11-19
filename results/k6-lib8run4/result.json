@@ -1,12 +1,12 @@
 {
  "id": "k6-lib8run4",
- "status": "queued",
- "queued": "2026-11-19T23:25:44Z",
+ "status": "running",
+ "since": "2026-11-19T23:25:51Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "3731dc7de2bf17069712f6e31274b504fac22403",
   "path": "jobs/k6-lib8run4"
  },
  "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
- "updated": "2026-11-19T23:25:44Z"
+ "updated": "2026-11-19T23:25:51Z"
 }
