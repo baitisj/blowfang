@@ -1,0 +1,86 @@
+{
+ "id": "hear1",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 8,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850",
+    "trim 6100",
+    "phy ysf",
+    "listen 1"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysfs.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 6
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "phy m17"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17s.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 6
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "phy rng"
+   ]
+  }
+ ]
+}
