@@ -185,3 +185,35 @@ def test_ysfrx_module_on_the_emulated_k6():
     assert lost and lost[-1] == 0, txt
     assert e.writes[0x13][-1] == 0 and e.writes[0x7E][-1] == 0
     assert stack < 1500, stack
+
+
+def test_ysfrx_module_with_the_dma_following_the_cpu():
+    """the DMA's rate following what the CPU does (the emulator's wobble: 3% faster in a chunk that
+    reads CNDTR than in one that computes): on the radio (bench runs 15-23) its syncs still came
+    on time while the symbols between them drifted and most superframes failed. The grid's step
+    follows the DMA's rate over ~0.7 ms (dmrdet.c), and the call decodes whole"""
+    if not (shutil.which("clang") and shutil.which("ld.lld")):
+        pytest.skip("needs clang and ld.lld")
+    pytest.importorskip("unicorn")
+    import test_k6_dmr as T
+    import k6_live_emu as le
+    from sim.k6if import frontend as fe
+    code, entry = T.build([("RUN_S", "3u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    fh = 6.5e6                                  # the sigma-delta's own bits (le.Emu.fhi)
+    s, _ = dmr.dmr_baseband(ysf_symbols() * 2700.0 / 3 / dmr.UNIT, pre_s=0.0, post_s=0.0)
+    bits = fe.receive(s, T.st.FZ, 56.0, seed=1, L=0, fdma=fh, jit=0.0)
+    rng = np.random.default_rng(2)
+    a = int(0.5 * fh)
+    ib = np.concatenate([rng.integers(0, 2, a), bits, rng.integers(0, 2, int(1.0 * fh))]).astype(np.uint8) * 2
+    on, off = a / fh, (a + len(bits)) / fh
+    e = le.Emu(code, entry, ib, int(on * fe.FDMA), fe.FDMA, 1.5, max_s=4.0, wobble=0.03, wob_reads=1,
+               level=6, stack_win=7000, scratch=(11776 - 24 - len(code)) & ~3, fd_us=300)
+    e.rssi = lambda: -60 if on <= e.cyc / le.FCPU < off else -125
+    r = e.run()
+    txt = "\n".join(e.said)
+    assert r is not None, txt
+    ks = [int(ln.split("ks=")[1]) for ln in e.said if ln.startswith("s ")]
+    assert ks and ks[-1] > 5560, txt            # (the DMA ran faster than its 5.49 MS/s)
+    # (the header goes by while the carrier is seen)
+    assert any(ln.startswith("Y call fr=9 ") and ln.endswith(" vw=40/40 sf=40 miss=0 crc=d821") for ln in e.said), txt
+    assert stored(e.said) == want(), txt

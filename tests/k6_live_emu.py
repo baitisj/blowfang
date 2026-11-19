@@ -83,7 +83,7 @@ def stream(mode, cn0, f_off=0.0, steps=10, seg_s=6.0, lead_s=1.5, seed=1, pre_s=
 class Emu:
     def __init__(self, code, entry, ib, on_at, fdma, cpi=1.5, max_s=None, key_us=60, stall=None,
                  wobble=None, flash_cpi=None, level=4, stack_win=3504, scratch=4096, fd_us=20,
-                 screen=None):
+                 screen=None, wob_reads=3):
         import unicorn
         from unicorn import arm_const as A
         self.U, self.A = unicorn, A
@@ -96,7 +96,9 @@ class Emu:
         # wobble w: ib holds the sigma-delta's bits at FCLK, and the DMA runs at fdma while the
         # CPU computes and fdma * (1 + w) while it polls the ring (a chunk with 3 or more reads
         # of CNDTR): the K6's channel 1 runs at what the bus leaves it
-        self.wob, self.fhi = wobble, 6.5e6
+        # wob_reads: the CNDTR reads in a chunk that make it a polling one (ysfrx's loop reads it
+        # once a pass between its decoders' steps: 1)
+        self.wob, self.fhi, self.wob_reads = wobble, 6.5e6, wob_reads
         self.max_cyc = (max_s or (len(ib) / (self.fhi if wobble is not None else fdma) + 1.0)) * FCPU
         self.cyc = 0.0
         self.spos, self.nread, self.bp = 0.0, 0, [(0.0, 0.0)]
@@ -327,7 +329,7 @@ class Emu:
             self.mu.emu_start(pc, self.stop, count=n)
             pc = self.mu.reg_read(A.UC_ARM_REG_PC)
             fl = self.flash_cpi is not None and self.base <= pc < self.code_end
-            self.tick(n * (self.flash_cpi if fl else self.cpi), self.nread >= 3)
+            self.tick(n * (self.flash_cpi if fl else self.cpi), self.nread >= self.wob_reads)
             self.nread = 0
             if pc == self.stop:
                 break

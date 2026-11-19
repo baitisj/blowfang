@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
   char line[96], *p;
   uint32_t fr = 0, fich = 0, sf = 0, ok = 0;
   ds_init(&d, argc > 1 ? (uint32_t)atoi(argv[1]) : 4476u);
+  x.wbase = d.w16;
   d.f = f;
   yx_mem(&x, msg, sizeof msg, 1);
   while ((n = fread(buf, 2, 4096, stdin)) > 0)

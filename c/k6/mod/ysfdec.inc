@@ -46,12 +46,20 @@ typedef struct {
      where it was due, past the +-3 quarter points tried. Until a frame's syncs have timed the
      grid (rlock) the next sync is looked for +-YX_WIDE (rf: the fine tries' turn, rend: their
      last); then each sync moves the grid's step 1/8 of the way, as DMR's slots do (dx_time).
-     Each call times it again (its first frame's sync, wide), and a missed sync looks wide again:
-     on the radio (bench run 12) a step kept from an earlier call held the next syncs outside
-     +-3 and calls fell apart after a frame or two. timed: a sync has timed it (the DMA's
+     A missed sync, or a weak one at the window's edge, is looked for wide again: on the radio
+     (bench run 12) a step kept from an earlier call held the next syncs outside +-3 and calls
+     fell apart after a frame or two. A call starts with the step kept (run 20: the wide search's
+     73 tries at its first sync held its first frames back, and some of their superframes
+     failed). timed: a sync has timed it (the DMA's
      measured rate no longer sets it, dmrdet.c) */
   int32_t rend;
   uint8_t rlock, rf, timed;
+  /* the grid's step: wbase from the DMA's rate over the last ~0.7 ms (dmrdet.c: on the radio the
+     DMA's rate follows what the CPU does, 2-3% faster while it only polls than while the
+     decoders work, so within a frame the symbols drifted while the syncs still came on time:
+     bench runs 15-23, and the emulator's wobble), times 1 + kd (Q16), what the syncs say */
+  uint32_t wbase;
+  int32_t kd;
   /* the frame: its sync's last symbol (19) at P0 quarter grid points; the next symbol; the
      scale (k16: soft units a filter unit, Q16), the DC, the polarity */
   int on;
@@ -240,9 +248,14 @@ static void yx_try(yx_t *x, const ds_t *d, uint32_t P, int32_t want) {
    where the next sync was due outlasted the DMA's ring */
 /* the grid's step from a sync e quarter points off where it was due a frame on: the whole way
    (sh 0) or 1/8 (sh 3) */
-static void yx_time(ds_t *d, int32_t e, uint32_t sh) {
-  uint32_t dw = ds_udiv((d->w16 >> sh) * (uint32_t)(e < 0 ? -e : e), 8u * YD_FRAME_SYMS);
-  d->w16 += e < 0 ? (uint32_t)-dw : dw;
+static void yx_w(const yx_t *x, ds_t *d) {
+  d->w16 = x->wbase + (uint32_t)(((int32_t)(x->wbase >> 6) * x->kd) >> 10);
+}
+
+static void yx_time(yx_t *x, ds_t *d, int32_t e, uint32_t sh) {
+  int32_t dk = (int32_t)(ds_udiv((uint32_t)(e < 0 ? -e : e) << 16, 8u * YD_FRAME_SYMS) >> sh);
+  x->kd += e < 0 ? -dk : dk;
+  yx_w(x, d);
 }
 
 static void yx_poll(yx_t *x, ds_t *d) {
@@ -257,10 +270,11 @@ static void yx_poll(yx_t *x, ds_t *d) {
       /* a new call: the last one's lines not given out yet are dropped */
       x->done = 0, x->nfr = x->nfich = x->nsf = x->nsfok = 0;
       x->jf = 0, x->jv = 0;                  /* (the last call's frame still decoding: dropped) */
-      x->rlock = 0;                          /* (the call times the grid again) */
+      x->rlock = x->timed;                   /* (a step timed before: the first sync looked for
+                                                +-6; missed, or weak at the edge, it's wide) */
 #ifdef YX_TRACE
       for (k = 0; k < 3u * YX_TR; k++) (&x->tr[0][0])[k] = 0;
-      x->tw0 = x->tw1 = d->w16, x->nho = 0;
+      x->tw0 = d->w16, x->tw1 = (uint32_t)x->kd, x->nho = 0;
       yx_tr(x, 0, x->rr, 0, 0);
 #endif
 #ifdef YX_BENCH
@@ -313,12 +327,12 @@ static void yx_poll(yx_t *x, ds_t *d) {
            sync after a miss set the step twice over and the next one was as far off the other
            way): 1/8 of the way, 1/2 when 3 or more off, the whole way when not timed and strong */
         if (x->miss) e >>= 1;
-        if (x->rlock) yx_time(d, e, e >= 3 || e <= -3 ? 1u : 3u);
-        else yx_time(d, e, 0), x->rlock = x->timed = 1;
+        if (x->rlock) yx_time(x, d, e, e >= 3 || e <= -3 ? 1u : 3u);
+        else yx_time(x, d, e, 0), x->rlock = x->timed = 1;
         yx_scale(x, x->rP, x->rc, x->rs);
         x->miss = 0;
 #ifdef YX_TRACE
-        x->tw1 = d->w16;
+        x->tw1 = (uint32_t)x->kd;
 #endif
       } else {
         x->P0 = P;
@@ -447,7 +461,7 @@ static char *yx_house(yx_t *x, char *line) {
     uint32_t nf = 3u * (x->nfr < YX_TR ? x->nfr : YX_TR);
     if (x->tout == 0) {
       x->tout = 1;
-      return kv(kv(kv(line, "Y t w=", (int)x->tw0), " ", (int)x->tw1), " ho=", (int)x->nho);
+      return kv(kv(kv(line, "Y t w=", (int)x->tw0), " k=", (int)x->tw1), " ho=", (int)x->nho);
     }
     if (x->tout - 1u < nf) return yx_hex(line, "Y t ", &x->tout, 1u, &x->tr[0][0], nf);
     x->tout = 0x100u;

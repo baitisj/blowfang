@@ -163,6 +163,9 @@ typedef struct {
   /* the ring */
   uint8_t *ring;
   uint32_t laps, lastw, consumed, p0, t0, cps8, lost, hkd, nrate, idle, tp, tpoll, rhalf;
+#ifdef YSF_DECODE
+  uint32_t rt0, rp0;                  /* the DMA's rate window's start: cycles, sample */
+#endif
   uint32_t thk, rem, ms, win, next_s; /* housekeeping's clock: ms since the start */
   /* the listener */
   int floor, db, cdb, car, af, dmr, pend, nd;
@@ -301,10 +304,10 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
 #endif
 #ifdef DMR_DECODE
       if (!dx_locked(s->x, &s->d)) /* while DMR's own slots time the grid, they set its step */
-#elif defined(YSF_DECODE)
-      if (!s->y->timed)            /* once YSF's frames have timed the grid, they set its step */
 #endif
+#ifndef YSF_DECODE                 /* (YSF: the step follows the rate window, in run) */
       ds_rate(&s->d, s->cps8);
+#endif
     }
     s->t0 = t, s->p0 = P;
   }
@@ -415,6 +418,9 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
      ~90 ms (st_t came zeroed: ds_init's work but the rate and the empty candidate) */
   s->cps8 = 4476u;
   ds_rate(&s->d, s->cps8);
+#ifdef YSF_DECODE
+  s->y->wbase = s->d.w16;
+#endif
 #ifdef DS_KEEP
   s->rhalf = (RSZ * (s->cps8 >> 2)) >> 7;
 #endif
@@ -432,9 +438,23 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
   s->c17 = rd(TIM17_CNT) & 0xFFFF, s->c14 = rd(TIM14_CNT) & 0xFFFF;
   resync(s);
   s->thk = s->t, s->next_s = S_MS;
+#ifdef YSF_DECODE
+  s->rp0 = poll(s), s->rt0 = s->t;      /* (the rate window's start) */
+#endif
   for (;;) {
     uint32_t t;
     P = poll(s), t = now(s);
+#ifdef YSF_DECODE
+    /* the grid's step from the DMA's rate over the last ~0.7 ms, and the syncs' ratio (yx_w) */
+    if (t - s->rt0 >= (1u << 16)) {
+      if (t - s->rt0 < (1u << 22) && P - s->rp0 >= 1024u) {   /* (not across a long pause) */
+        uint32_t m = ds_udiv((t - s->rt0) << 8, P - s->rp0);
+        if (m > 4096u && m < 4864u)          /* (4.9-5.9 MS/s: a stall's estimate otherwise) */
+          s->y->wbase = ds_udiv(40000u * 65536u / 16u, m) << 4, yx_w(s->y, &s->d);
+      }
+      s->rt0 = t, s->rp0 = P;
+    }
+#endif
 #if defined(YSF_DECODE) && defined(YX_BENCH)
     if (!s->hkd && t - s->tp > s->ym[s->yk]) s->ym[s->yk] = t - s->tp;
 #endif
