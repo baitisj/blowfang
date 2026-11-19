@@ -3,4 +3,5 @@
    SPDX-License-Identifier: MIT */
 #include "ortx_mod.h"
 #define RX_AT 0
+#define RX_BW12 0
 #include "c6dmrrx.c"

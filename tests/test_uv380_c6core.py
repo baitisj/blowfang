@@ -324,3 +324,19 @@ def test_c6rx_img_builds_for_the_radio(tmp_path):
     assert all(g.startswith("c6rx_") for g in glob), glob
     assert not [ln for ln in out.splitlines() if re.match(r"^\S+ [dDbB] ", ln)], out    # no writable data
     assert not [ln for ln in out.splitlines() if " U " in ln]
+
+
+def test_func_sends_in_the_air_sub_mode_and_the_macro_row_fits():
+    """Jeff 11-19: in YSF, FUNC's release sent FSK and PTT then sent YSF (two sends). The
+    recording now goes out as PTT would send it in M17, YSF or DMR; RNG and FSK unchanged. The
+    macro menu read '4YSF P5AGER6 1W': the phy label gets a third space, and PAGER's 53 px
+    label (31 px between the 5 and the 6) is 'PGR' in the small font"""
+    pager = "\n".join(patch_files()["openrtx/src/rtx/OpMode_Pager.cpp"])
+    fn = pager[pager.index("int frames = recordMic(status);"):]
+    fn = fn[:fn.index("\n    }\n")]
+    assert "if((frames > 0) && (phyAir != 0))\n            airPend = phyAir;\n        else\n#endif" in fn
+    assert fn.index("airPend = phyAir;") < fn.index("send(status);")
+    menu = "\n".join(patch_files()["openrtx/src/ui/default/ui_menu.c"])
+    assert 'color_white, "   %s", (phy[0] == \'K\') ? phy + 3 : phy);' in menu
+    assert 'layout.top_font - 1, TEXT_ALIGN_CENTER, color_white, "             PGR");' in menu
+    assert '"        PAGER"' not in menu

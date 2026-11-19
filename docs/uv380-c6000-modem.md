@@ -284,6 +284,19 @@ emph 1) and the current trim.
 
 - Receive is proven through the IC-7100 harness (pre-equalised). A DMR transmitter with a flat
   audio path (another UV-380, a real DMR radio) should need none of that: C4 shows it.
+- **A flat transmitter, 11-19 (the Pluto, plain `dmr_plain.wav`, 0 W, the UV-380 receiving
+  only on 441.850).** From 11-18 c6dmrrx never synced on the K6 or the Pluto (slots=1, bursts=0).
+  uvdmr-sweep1 (07:46-07:53Z): no sync at standard deviation (+-3 symbols at 2060 Hz) anywhere
+  from -9 to +6 kHz off the channel (the RSSI says the receiver is centred), none at 0.7x, but
+  72/72 bursts at 1.5x. The cause: PAGER (and FM on the default channel) leaves the AT1846S in
+  its 25 kHz mode, about half the discriminator level per Hz, and the C6000's sync search needs
+  an absolute level (R4). c6dmrrx now writes the 12.5 kHz set (`at_bw12`: 0x30 bits 13-12 = 00
+  and the narrow IF / AGC values, RX_BW12 1) and restarts RX after it and after putting it back
+  (`at_reload`, as OpenRTX's reloadConfig: without it the put-back left the receiver 30 dB deaf,
+  sweep2). uvdmr-sweep3 (08:14-08:20Z): 216/216 bursts in each of two runs, at standard deviation at
+  -40 and -60 dB Pluto gain (rssi -52 and -74 dBm) and at 0.86x; the YSF listener heard both
+  sends after. For the image's DMR receive (milestone 5): the DMR sub-mode needs the same 12.5
+  kHz set.
 - PC0 is confirmed as the slot interrupt; PC1 and PC2 are still inferred from the DM-1701
   family (C3 counted an RF TX edge per burst on PC2).
 - The DMR modulation pair: OpenRTX writes 0x45 = 0 (MOD1 only) for FM and M17; DMR wants both

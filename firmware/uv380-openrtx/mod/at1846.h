@@ -224,6 +224,80 @@ AT_FN int at_dmr_rx(const ortx_api_t *api, at_saved *s, int full) {
     return 0;
 }
 
+/* The 12.5 kHz receive set (the AT1846S's narrow mode: 0x30 bits 13-12 = 00 and its IF and
+   AGC values, as OpenRTX's setBandwidth(_12P5) and RadioFoundry's DMR set write them). PAGER and
+   FM leave the AT1846S in 25 kHz mode (the default channel), where its discriminator gives about
+   half the level per Hz: the C6000's DMR sync search needs an absolute level, and at standard
+   DMR deviation (+-1944 Hz) it never synced (uvdmr-sweep1, 11-19 07:46-07:53Z: only a send at
+   1.5x the deviation decoded). at_bw12_restore puts it back, 0x30 by its two bits only (OpenRTX
+   owns the rest: RX / TX on); call at_reload once everything else is back too. */
+typedef struct {
+    uint16_t val[9];
+    uint16_t bw30;                      /* 0x30 bits 13-12 as they were */
+    unsigned n;
+    int ok;
+} at_bw_saved;
+
+AT_FN unsigned at_bw12_set(unsigned i, uint8_t *reg, uint16_t *val) {
+    switch (i) {
+    case 0: *reg = 0x15, *val = 0x1100; return 1;   /* IF tuning */
+    case 1: *reg = 0x32, *val = 0x4495; return 1;   /* AGC target */
+    case 2: *reg = 0x3A, *val = 0x00C3; return 1;
+    case 3: *reg = 0x3C, *val = 0x1B34; return 1;   /* pk_det_th */
+    case 4: *reg = 0x3F, *val = 0x29D1; return 1;   /* rssi3_th */
+    case 5: *reg = 0x48, *val = 0x19B1; return 1;   /* noise1_th */
+    case 6: *reg = 0x62, *val = 0x1425; return 1;
+    case 7: *reg = 0x65, *val = 0x2494; return 1;
+    case 8: *reg = 0x66, *val = 0xEB2E; return 1;
+    default: return 0;
+    }
+}
+
+/* the AT1846S takes a new bandwidth set only once RX / TX restart, as OpenRTX's reloadConfig
+   does: bits 6-5 off, then back as they were (never on if they were off). Without it the 11-19
+   sweep2 restore left the receiver 30 dB deaf (rssi -123 against -93) until the next run. */
+AT_FN int at_reload(const ortx_api_t *api) {
+    uint16_t v;
+    if (at_read(api, 0x30, &v))
+        return -1;
+    if (at_write(api, 0x30, (uint16_t)(v & ~0x0060u)))
+        return -1;
+    return at_write(api, 0x30, v);
+}
+
+/* 0 or -1; what it changed is in *b either way */
+AT_FN int at_bw12(const ortx_api_t *api, at_bw_saved *b) {
+    uint8_t r;
+    uint16_t v, old;
+    b->n = 0;
+    b->ok = 0;
+    if (at_read(api, 0x30, &old))
+        return -1;
+    b->bw30 = old & 0x3000u;
+    for (unsigned i = 0; at_bw12_set(i, &r, &v); i++) {
+        if (at_read(api, r, &b->val[i]))
+            return -1;
+        b->n = i + 1u;
+        if (at_write(api, r, v))
+            return -1;
+    }
+    b->ok = 1;
+    if (at_write(api, 0x30, (uint16_t)(old & ~0x3000u)))
+        return -1;
+    return at_reload(api);
+}
+
+AT_FN void at_bw12_restore(const ortx_api_t *api, const at_bw_saved *b) {
+    uint8_t r;
+    uint16_t v;
+    if (b->ok && at_read(api, 0x30, &v) == 0)
+        at_write(api, 0x30, (uint16_t)((v & ~0x3000u) | b->bw30));
+    for (unsigned i = b->n; i-- > 0;) {
+        at_bw12_set(i, &r, &v);
+        at_write(api, r, b->val[i]);
+    }
+}
+
 AT_FN void at_restore(const ortx_api_t *api, const at_saved *s) {
     if (!s->ok)
         return;

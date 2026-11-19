@@ -5,7 +5,8 @@
 
    What it does, all of it put back at the end (or at PTT, mode change, Ctrl-C):
    - AT1846S into its DMR receive set (at1846.h: filters off, LF passed, AF gain; RX_AT 0 skips,
-     2 writes the full RadioFoundry set), RX_AUDIO_MUX (PD9) high so its audio reaches the C6000;
+     2 writes the full RadioFoundry set) and, RX_BW12 1, its 12.5 kHz mode (PAGER leaves it in
+     25 kHz, half the level: no sync at standard deviation, 11-19 uvdmr-sweep1), RX_AUDIO_MUX (PD9) high so its audio reaches the C6000;
    - C6000 into DMR layer 2 receive (RadioFoundry modem-hrc6000.md 3.1 and 5.1): 0x10 = 0x6E,
      0x01 = 0xF0, colour code RX_CC, every sync family, the receiver restart, any colour code
      deframed (0x41 bit 3) unless RX_CCANY 0; RX_RAW 1 instead runs the physical layer test mode
@@ -38,6 +39,9 @@
 #endif
 #ifndef RX_AT
 #define RX_AT 1
+#endif
+#ifndef RX_BW12
+#define RX_BW12 1               /* AT1846S in its 12.5 kHz mode too (at_bw12; 0: as the image left it) */
 #endif
 #ifndef RX_CC
 #define RX_CC 1u
@@ -98,8 +102,11 @@ int uv_main(const ortx_api_t *api) {
     char line[180], hex[80];
     c6_saved sv;
     at_saved as;
+    at_bw_saved bw;
     c6s_state ss;
     as.ok = 0;
+    bw.ok = 0;
+    bw.n = 0;
 
     if (c6s_open(&ss))
         api->say("irq err: EXTI0-2 in use, no slot clock (0x41 rewritten every 10 ms)");
@@ -109,6 +116,12 @@ int uv_main(const ortx_api_t *api) {
     if (RX_AT) {
         int r = at_dmr_rx(api, &as, RX_AT > 1);
         api->fmt(line, sizeof line, "at1846 dmr rx %s (%u regs)", r ? "err" : "ok", as.n);
+        api->say(line);
+    }
+    if (RX_BW12) {
+        int r = at_bw12(api, &bw);
+        api->fmt(line, sizeof line, "at1846 12.5 kHz %s (30 bits 13-12 were %x)", r ? "err" : "ok",
+                 (unsigned)(bw.bw30 >> 12));
         api->say(line);
     }
 
@@ -226,7 +239,11 @@ int uv_main(const ortx_api_t *api) {
     api->c6000_write(0x41, 0x00);
     c6_restore(api, &sv);
     api->c6000_write(0x83, 0xFF);
+    if (RX_BW12)
+        at_bw12_restore(api, &bw);
     at_restore(api, &as);
+    if (RX_BW12)
+        at_reload(api);                     /* the 25 kHz set takes effect only now */
     C6_REG(GPIOD + 0x18u) = mux ? (1u << MUX) : (1u << (MUX + 16u));
     c6s_close(&ss);
     api->fmt(line, sizeof line, "end slots=%u bursts=%u nosync=%u ok=%u rearm=%u raw=%u", slots, bursts,
