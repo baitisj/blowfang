@@ -173,10 +173,10 @@ typedef struct {
   dx_t *x; /* in scratch */
 #elif defined(YSF_DECODE)
   yx_t *y; /* in scratch */
-  /* where the time goes, for the bench (run 2 lost ~1 ring a frame on the radio, none emulated):
+  /* where the time goes, a YX_BENCH build's (run 2 lost ~1 ring a frame on the radio, none emulated):
      the last call's kind (yx_kind), each kind's overruns and longest call this period (cycles),
      the "Y l" / "Y m" lines still to say after the "s" line */
-#ifndef YX_NOTIMES
+#ifdef YX_BENCH
   uint32_t yk, ydiag, ym[8];
   uint16_t yl[8];
 #endif
@@ -292,6 +292,8 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
 #endif
 #ifdef DMR_DECODE
       if (!dx_locked(s->x, &s->d)) /* while DMR's own slots time the grid, they set its step */
+#elif defined(YSF_DECODE)
+      if (!s->y->rlock)            /* once YSF's frames have timed the grid, they set its step */
 #endif
       ds_rate(&s->d, s->cps8);
     }
@@ -338,7 +340,7 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
     /* (no line in a frame) */
   } else if ((q8 = yx_house(s->y, line)) != 0) {
     p = q8;
-#ifndef YX_NOTIMES
+#ifdef YX_BENCH
   } else if (s->ydiag) {
     /* after the "s" line: each kind's overruns (and the VW decodes finished at once), then its
        longest call, us */
@@ -376,7 +378,7 @@ COLD static int housekeeping(const k6_api_t *api, st_t *s) {
            (int)ds_udiv((s->idle >> 8) * 100u, (s->win >> 8) + 1u));
     p = kv(p, " ks=", (int)ds_udiv(96000u * 256u, s->cps8));
     s->idle = s->win = 0;
-#if defined(YSF_DECODE) && !defined(YX_NOTIMES)
+#if defined(YSF_DECODE) && defined(YX_BENCH)
     s->ydiag = 2;
 #endif
   }
@@ -424,11 +426,11 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
   for (;;) {
     uint32_t t;
     P = poll(s), t = now(s);
-#if defined(YSF_DECODE) && !defined(YX_NOTIMES)
+#if defined(YSF_DECODE) && defined(YX_BENCH)
     if (!s->hkd && t - s->tp > s->ym[s->yk]) s->ym[s->yk] = t - s->tp;
 #endif
     if (P - s->consumed > RSZ - 64u) {
-#if defined(YSF_DECODE) && !defined(YX_NOTIMES)
+#if defined(YSF_DECODE) && defined(YX_BENCH)
       if (!s->hkd) s->yl[s->yk]++;
 #endif
       s->lost += !s->hkd; /* housekeeping's calls can outlast the ring (the radio's do): not lost */
@@ -441,7 +443,7 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
       s->idle += t - s->tp;
       s->tp = t;
 #ifdef YSF_DECODE
-#ifndef YX_NOTIMES
+#ifdef YX_BENCH
       s->yk = yx_kind(s->y);
 #endif
       yx_work(s->y); /* a decoder step in the gap */
@@ -460,7 +462,7 @@ NOINLINE static void run(const k6_api_t *api, st_t *s) {
 #ifdef DMR_DECODE
       if (s->x->nq) dx_poll(s->x, &s->d);
 #elif defined(YSF_DECODE)
-#ifndef YX_NOTIMES
+#ifdef YX_BENCH
       s->yk = (uint32_t)s->y->on;
 #endif
       if (s->car || s->y->on) yx_poll(s->y, &s->d); /* (no search without a carrier: noise's

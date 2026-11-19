@@ -20,12 +20,13 @@
 #define SRX_NO_RADIO
 #include "../../common/sotto_rx.c"
 #ifndef YX_MSG_MIN
-#define YX_MSG_MIN 64u          /* the module runs with a message buffer of 2.6 s or more (while
-                                   the bench's time and level lines take room) */
+#define YX_MSG_MIN 64u          /* the module runs with a message buffer of 2.6 s or more */
 #endif
 #define YX_THR_Q8 166u          /* rho^2 0.65: a sync */
 #define YX_FLY_Q8 40u           /* rho^2 0.16: a due sync taken where it is best */
 #define YX_K 32                 /* soft bits: 32 a level step */
+#define YX_WIDE 96              /* the first next sync's search: +-96 quarter points (2.5% of a
+                                   frame), every grid point, then the quarter points by the best */
 
 typedef struct {
   /* the search: the next grid point to try; the candidate (cand 1, 2 while its quarter points
@@ -36,6 +37,13 @@ typedef struct {
      sync is due): the next offset, the best's rho^2, place, correlation and sum */
   int32_t rq, rc, rs;
   uint32_t rr, rP;
+  /* the symbol clock: on the radio the grid's rate (the DMA's, by the MCU's clock) was 1.4% off
+     the signal's (bench run 6, 2026-11-19), and 480 symbols on the next sync was ~7 symbols from
+     where it was due, past the +-3 quarter points tried. Until a frame's syncs have timed the
+     grid (rlock) the next sync is looked for +-YX_WIDE (rf: the fine tries' turn, rend: their
+     last); then each sync moves the grid's step 1/8 of the way, as DMR's slots do (dx_time) */
+  int32_t rend;
+  uint8_t rlock, rf;
   /* the frame: its sync's last symbol (19) at P0 quarter grid points; the next symbol; the
      scale (k16: soft units a filter unit, Q16), the DC, the polarity */
   int on;
@@ -57,9 +65,11 @@ typedef struct {
   uint32_t nfr, nfich, nsf, nsfok;
   uint32_t vf, nout, nmiss, crc;
   uint32_t nfin;                       /* VW decodes finished at once (the next payload came) */
+#ifdef YX_BENCH
   /* the FICH symbols' levels this call, in soft units (the +1 level 32, the +3 level 96) /16 +
      8: the levels' spread for the bench ("Y h" lines) */
   uint16_t hist[16];
+#endif
 #ifdef YX_SNAP
   /* the bench's look at the signal (a YX_SNAP build): the filter's 240 points (sync and FICH)
      of the third frame of the first call that has one, its sync's rho^2 (Q8), quarter point,
@@ -158,14 +168,21 @@ static inline uint32_t yx_kind(const yx_t *x) {
   return x->jv == 1 ? 3u : x->jv == 4 ? 6u : 7u;
 }
 
-/* a decoded VW frame's good superframes into their places (the first VW frame's first is the
-   message's 0, even when it failed) */
+/* a decoded VW frame's good superframes into their places: the message's 0 comes from the first
+   frame with a good FICH (a VW frame's, even with no good superframe) or, before one, with a good
+   superframe (a frame whose FICH failed is decoded as VW: the header, with its FICH missed, gave
+   garbage and shifted the message by a frame where the grid was being timed) */
 static void yx_vw_done(yx_t *x) {
   uint8_t sf[30];
   uint32_t ok = yd_v7_end(&x->v7, sf), k;
   x->jv = 0;
   x->nsf += YD_NSF;
-  if (!x->m.based) x->m.based = 1, x->m.base = (int32_t)(x->vf * YD_NSF);
+  if (!x->m.based && (ok || x->fok)) {
+    /* a good FICH's frame number places the message's first frame (FN 0) even when the frames
+       before were lost: frames that early are the grid's timing (YX_WIDE) */
+    uint32_t f0 = x->fok && x->fn <= x->vf ? x->vf - x->fn : x->vf;
+    x->m.based = 1, x->m.base = (int32_t)(f0 * YD_NSF);
+  }
   for (k = 0; k < YD_NSF; k++)
     if ((ok >> k) & 1u) x->nsfok++, srx_put(&x->m, (int32_t)(x->vf * YD_NSF + k), sf + YD_SF * k);
     else x->m.bad++;
@@ -184,7 +201,14 @@ static void yx_try(yx_t *x, const ds_t *d, uint32_t P, int32_t want) {
 /* new grid points: the search, or the frame's next symbols (a few a call). A correlation is
    ~20 interpolations, so one a call where several are tried: emulated, the seven tried at once
    where the next sync was due outlasted the DMA's ring */
-static void yx_poll(yx_t *x, const ds_t *d) {
+/* the grid's step from a sync e quarter points off where it was due a frame on: the whole way
+   (sh 0) or 1/8 (sh 3) */
+static void yx_time(ds_t *d, int32_t e, uint32_t sh) {
+  uint32_t dw = ds_udiv((d->w16 >> sh) * (uint32_t)(e < 0 ? -e : e), 8u * YD_FRAME_SYMS);
+  d->w16 += e < 0 ? (uint32_t)-dw : dw;
+}
+
+static void yx_poll(yx_t *x, ds_t *d) {
   uint32_t A = d->j - 9u, k;          /* f[] is in up to d->j - 7; the interpolation reaches +2 */
   if (!x->on) {
     if (x->cand == 2) {               /* the candidate's best quarter point, one a call */
@@ -196,7 +220,9 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       /* a new call: the last one's lines not given out yet are dropped */
       x->done = 0, x->nfr = x->nfich = x->nsf = x->nsfok = 0;
       x->jf = 0, x->jv = 0;                  /* (the last call's frame still decoding: dropped) */
+#ifdef YX_BENCH
       for (k = 0; k < 16; k++) x->hist[k] = 0;
+#endif
       srx_init(&x->m, x->m.frames, x->m.have, x->m.max);
       return;
     }
@@ -218,13 +244,23 @@ static void yx_poll(yx_t *x, const ds_t *d) {
   for (k = 0; k < 4; k++) {
     uint32_t P = x->P0 + 8u * (x->n == YD_FRAME_SYMS ? YD_FRAME_SYMS : x->n - (YD_SYNC_N - 1u));
     int32_t v, l0, l1, av;
-    if ((int32_t)(A - ((P + 3u) >> 2)) < 0) return;
     if (x->n == YD_FRAME_SYMS) {
       /* the next sync, due 480 symbols on (P: its last symbol): the best of the quarter points
          around it (one a call) of this call's polarity, taken even when weak (the flywheel) */
+      if (!x->rf) {                             /* the grid not timed yet: every grid point */
+        if ((int32_t)(A - ((P + YX_WIDE + 3u) >> 2)) < 0) return;
+        yx_try(x, d, P + (uint32_t)x->rq, x->inv);
+        if ((x->rq += 4) <= YX_WIDE) return;
+        x->rf = 1, x->rq = (int32_t)(x->rP - P) - 3, x->rend = x->rq + 6;
+        return;
+      }
+      if ((int32_t)(A - ((P + (uint32_t)x->rend + 3u) >> 2)) < 0) return;
       yx_try(x, d, P + (uint32_t)x->rq, x->inv);
-      if (++x->rq <= 3) return;
+      if (++x->rq <= x->rend) return;
       if (x->rr >= YX_FLY_Q8) {
+        int32_t e = (int32_t)(x->rP - P);
+        yx_time(d, e, x->rlock ? 3u : 0u);
+        if (x->rr >= YX_THR_Q8) x->rlock = 1;   /* (a strong sync times it) */
         yx_scale(x, x->rP, x->rc, x->rs);
         x->miss = 0;
       } else {
@@ -237,14 +273,17 @@ static void yx_poll(yx_t *x, const ds_t *d) {
       x->n = YD_SYNC_N;
       continue;
     }
+    if ((int32_t)(A - ((P + 3u) >> 2)) < 0) return;
     v = yx_mf(d, P) - x->dc;
     if (x->inv) v = -v;
     av = v < 0 ? -v : v;
     l0 = (v * x->k16) >> 16;                    /* the sign bit: 1 below 0 */
     l1 = ((2 * x->u - av) * x->k16) >> 16;      /* the size bit: 1 outside +-2 */
     if (x->n < YD_SYNC_N + YD_FICH_SYMS) {
+#ifdef YX_BENCH
       av = ((v * x->k16) >> 16) + 128;
       x->hist[av < 0 ? 0 : av > 255 ? 15 : av >> 4]++;
+#endif
       x->fich[yd_fich_dibit(x->n - YD_SYNC_N)] = (uint8_t)(yx_q4(l0) | (yx_q4(l1) << 4));
       if (++x->n == YD_SYNC_N + YD_FICH_SYMS) {
         x->jf = 1, yd_f5_start(&x->f5);
@@ -266,7 +305,9 @@ static void yx_poll(yx_t *x, const ds_t *d) {
         if (x->jv) x->nfin++;
         while (x->jv) yx_work(x);               /* the last frame's VW still decoding: finish it */
         x->jv = 1, x->db = x->wb, x->vf = x->nfr++;   /* this one's to decode (after the FICH) */
-        x->rq = -3, x->rr = 0;                 /* the next sync's tries */
+        x->rr = 0;                             /* the next sync's tries */
+        if (x->rlock) x->rf = 1, x->rq = -3, x->rend = 3;
+        else x->rf = 0, x->rq = -YX_WIDE;
       }
     }
   }
@@ -323,9 +364,12 @@ static char *yx_house(yx_t *x, char *line) {
     if (x->m.over) p = kv(p, " over=", (int)x->m.over);
     p = put(p, " crc=");
     for (i = 4; i-- > 0;) *p++ = H[(x->crc >> (4 * i)) & 15u];
+#ifdef YX_BENCH
     x->nout = 0xFFFFFFFEu;
+#endif
     return p;
   }
+#ifdef YX_BENCH
   if (x->nout >= 0xFFFFFFFDu) {          /* the FICH levels: -128..-1, then 0..127 */
     i = x->nout == 0xFFFFFFFEu ? 0 : 8;
     p = put(line, i ? "Y h+" : "Y h-");
@@ -333,6 +377,7 @@ static char *yx_house(yx_t *x, char *line) {
     x->nout = x->nout == 0xFFFFFFFEu ? 0xFFFFFFFDu : 0;
     return p;
   }
+#endif
 #ifdef YX_SNAP
   if (x->snapped == 1) {                 /* the snapshot: its sync, then 24 points a line */
     if (x->sout == 0) {

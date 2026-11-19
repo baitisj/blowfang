@@ -98,6 +98,19 @@ def test_host_receiver_fills_lost_frames(host):
     assert stored(lines) == want(300, lose)
 
 
+@pytest.mark.parametrize("cps8", [4539, 4413])
+def test_host_receiver_times_its_grid(host, cps8):
+    """the grid's rate 1.4% off the signal's (the radio's DMA by its MCU clock, bench run 6):
+    the first frames' syncs time the grid (YX_WIDE), so the call holds together and the message
+    from its second VW frame on is byte-exact in place (the old receiver broke it into calls)"""
+    cnt, _ = k6_counts(ysf_symbols(), 56.0)
+    out = subprocess.run([host, str(cps8)], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
+    lines = out.splitlines()
+    calls = [ln for ln in lines if ln.startswith("Y call")]
+    assert len(calls) == 1 and calls[0].startswith("Y call fr=10 ") and " sf=40 " in calls[0], out
+    assert stored(lines)[30:] == want()[30:], out
+
+
 def test_host_receiver_says_nothing_on_noise(host):
     cnt, _ = k6_counts(ysf_symbols(), 30.0)
     out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()

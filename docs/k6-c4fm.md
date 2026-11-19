@@ -387,6 +387,11 @@ SPI library module).
   - Take the scale and DC from the sync, then slice each symbol as its points come in.
   - Look for the next sync where it is due, ±3 quarter points, keeping it even when weak (the flywheel).
     Two missing syncs or a terminator end the call.
+  - **The symbol clock.** The grid's rate comes from the DMA's, which runs by the MCU's clock, and on the
+    radio that was 1.4% off the signal's (bench run 6). Until the grid is timed, the next sync is looked for
+    ±96 quarter points (2.5%) from where it is due, and the miss sets the grid's step. After that each sync
+    moves it 1/8 of the way, as dmrrx's slots do. A good FICH's frame number places the message's first
+    frame, so the frames lost while the grid is timed still leave the rest in place.
 - **Decoders** (c/k6/ysfdec.h, integer and divide-free).
   - FICH: dibit deinterleave, K=5 Viterbi, Golay data halves, CRC-16.
   - Sotto VW: PN9, K=7 rate 7/18 tail-biting Viterbi with a 24-step wrap, CRC-8 per superframe.
@@ -400,24 +405,32 @@ SPI library module).
   get the superframe before them (`srx_conceal`), so sotto holds the sound over a gap.
 - **Carrier.** RSSI 10 dB over a floor. The floor moves only while there is no carrier: a quarter of
   the way down to a lower reading, 1 dB up for a higher one (see bench run 1 and 2 below).
-- **Room.** 7.7 KB of code. The scratch holds the filter ring (256 B), the receiver (2.3 KB: two payload
+- **Room.** 7.6 KB of code. The scratch holds the filter ring (256 B), the receiver (1.9 KB: two payload
   buffers, the decoders), the DMA ring (1,024 B since bench run 2) and then the message buffer, which
-  takes whatever the block has left: 92 superframes (3.7 s of sotto 1200) in the 11,776-byte block
-  while the bench lines below are built in. Under 64 superframes, the module returns -6.
+  takes whatever the block has left: 151 superframes (6 s of sotto 1200) in the 11,776-byte block.
+  Under 64 superframes, the module returns -6. Bench builds: `YX_BENCH` adds the time and level lines
+  (~100 superframes left), `YX_SNAP` the snapshot lines.
 
 Lines:
 
-    ysf start f=440850000 floor=-125 msg=92    msg: the message buffer, superframes
+    ysf start f=440850000 floor=-125 msg=151   msg: the message buffer, superframes
     Y call fr=41 fich=40 vw=190/200 sf=200 miss=10 crc=9d79
         frames, FICHs good, superframes good / read, the message's superframes, those filled in
         (over=: superframes past the buffer), the message's CRC-16
     Y d 0 000102030405...                      the message, 24 bytes a line, after the call
+  YX_BENCH builds also say:
+
     Y l 0 0 0 0 0 0 0 0 f=0                    after each "s" line: DMA overruns by the kind of call
     Y m 44 52 68 60 48 32 24 4                 that ran last, and each kind's longest call (us).
         Kinds: search, in a frame, FICH step, VW start, K=7 step, traceback, VW end, idle.
         f=: VW decodes that had to be finished at once because the next payload had come
     Y h- 22 276 117 17 60 193 122 16           after each call: the FICH symbols' levels, 16 soft
     Y h+ 27 197 238 73 22 101 202 17           units a bin from -128 (the +1 level is 32, +3 is 96)
+
+  and YX_SNAP builds the matched filter's 240 points (sync and FICH) of one frame:
+
+    Y s r2=69 q=154 u=17 dc=9 inv=0            the sync's rho^2 (Q8), its last symbol's quarter point
+    Y s 0 b54cfe7f...                          in the snapshot, the +1 level, DC; then the points
 
 A new call while the last one's lines are still going out drops the rest of them.
 
@@ -455,5 +468,15 @@ ID; the K6 runs ysfrx):
   81 µs, too little margin for the radio's own interrupts. The floor, set to follow the lowest reading,
   went under the radio's odd low readings, so noise held the receiver between calls (carriers at -133).
   Fixed: the 1,024-byte ring, the steadier floor, and the Y l / Y m lines to show where time goes.
+- **Run 4, 05:53Z.** 3 overruns in 4 minutes and no noise calls, but FICHs still mostly failed and no
+  superframe decoded. The UV-380's 0 W YSF send on 440.850 raised no carrier at the K6.
+- **Run 5, 06:02Z.** The FICH level histograms were flat, with no four levels. A call at DMR's 1.94 kHz
+  deviation did a little better than at 2.7 kHz (FICH 5/5, 8 of 25 superframes).
+- **Run 6, 06:14Z.** A snapshot of one frame's filter points, fitted offline: the sync correlates at
+  0.985 with the symbols 2.028 grid points apart, not 2 (1.4%). Over a 480-symbol frame that is 7
+  symbols, so the next sync was never where it was due, calls broke into pieces of 2 to 16 frames, and the
+  FICH after a sync was sliced at the wrong times. The emulator and host model had the grid exactly on
+  time. Fixed: the grid is timed by the frames' syncs. The host model now runs with the grid 1.4% off
+  both ways (tests/test_k6_ysfrx.py).
 
 SPDX-License-Identifier: MIT
