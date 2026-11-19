@@ -1000,8 +1000,16 @@ under `k6-aprs-ladder/`):
   8 and 10 times on such starts and said no packet. The minute lines read -95/-96 dBm with peaks
   of -89/-90 in every minute of the hour, as in aprsair-1 at noon: the floor sits 13 dB over
   2026-11-10's -108 and nothing on the air comes over it, so this run cannot tell the two
-  builds apart. A steady local source is the likeliest (the garage lamp, insight on the VHF
-  floor); not known yet.
+  builds apart. A steady local source is the likeliest; not known yet.
+- **Again with a compact fluorescent switched off** (run aprsair-3, 16:05 to 17:12Z, the same four
+  modules, after a 12-minute wait): the same -95/-96 dBm, no frame. The CFL was not it.
+- **`fesw_vhf` at 17:21Z** (the 2 m floor by frequency, [k6-fesw.md](k6-fesw.md)), against its
+  run of 2026-11-12: the own path reads -94 to -98 dBm from 136 to 170 MHz (-104 to -118 then),
+  the other path -123 to -131 (-124 to -147), and neither path -150 as then. So the noise comes
+  in by the antenna and is broad: 10 to 20 dB over the whole VHF band, no hump at 144.390. A
+  wide-band source near the antenna (a switching supply, an LED driver, a USB device) is the
+  likeliest. The K6's idle RSSI on 440.850 rose by about 3 dB as well, between 11:36Z and 20:24Z
+  on 2026-11-18 (-115 to -112), so the 70 cm ladders above are hardly touched by it.
 
 Next: an off-air run once the floor is back near -108 dBm, and an hour beside an APRS-IS log of
 the stations within 40 km.
