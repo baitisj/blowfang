@@ -2,12 +2,12 @@
  "runner_commit": "305eb0412b4a0c99893216bdb2a5d16637ab6cc6",
  "inbox": true,
  "autoupdate": true,
- "paused": null,
+ "paused": "k6-arena: level 13 arena flash (boottrace then release) over the cable, ~5 min",
  "ic7100_held": null,
  "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T22:26:50Z",
+ "last_poll": "2026-11-19T22:46:05Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T22:27:35Z"
+ "updated": "2026-11-19T22:47:00Z"
 }
