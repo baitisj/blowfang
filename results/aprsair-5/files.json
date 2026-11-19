@@ -1,0 +1,16 @@
+[
+ {
+  "name": "logger.out",
+  "bytes": 17944,
+  "sha256": "456ddd6f2da68dc4b0f5292ffccfbf1d63bded294a46a56f0184dc97a0b0e91d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprsair-5/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 41989,
+  "sha256": "0cd7a6527713d95c7f081c720edb8185e42712942c32c02aebcfcf1f99c526a5",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprsair-5/k6.log"
+ }
+]

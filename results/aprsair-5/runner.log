@@ -1,0 +1,16 @@
+2026-11-19T21:10:40Z job aprsair-5 by k6-aprs-ladder, checkout /home/baitisj/blowfang-work/worktrees/inbox-f3b3e18f5617 at f3b3e18f5617efd5896c23bec84cd1cb9e438609
+2026-11-19T21:22:40Z step 1 (wait) rc=0
+2026-11-19T21:22:40Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-aprs-ladder -- timeout -s INT --kill-after=10 5000 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/aprsair-5/k6.log
+2026-11-19T21:22:42Z step 2 (logger) rc=0
+2026-11-19T21:22:45Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T21:22:45Z step 3 (ic7100.tune) rc=0
+2026-11-19T21:22:46Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-f3b3e18f5617/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprsair-5/fesw_vhf.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via ic7100 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprsair-5/k6-rate.json --telemetry 0
+13:22:48 send 1: 9 of 9 XL chunks at F/1800 (serial 1795123367, xfer 167); module /home/baitisj/blowfang-work/runs/inbox/aprsair-5/fesw_vhf.bin: 1036 B code, entry +0, API level 2, serial 1795123367, xfer 167, 1060 B image in 9 XL chunks; 18 packets, 12.0 s on air; reply asked
+13:23:04 listening for the K6's report
+13:23:14 K6: partway, 8/9 chunks, r=2 (repeat), rates F12,F18,D24 on F18
+gave up after 1 sends
+13:23:14 CW ID
+2026-11-19T21:23:38Z step 4 (k6.upload) rc=0
+2026-11-19T21:26:47Z step 5 (wait) rc=1 (cancelled)
+2026-11-19T21:26:47Z stopping the job's background logger still running at its end
+2026-11-19T21:26:47Z job aprsair-5 cancelled: step 5 (wait): cancelled
