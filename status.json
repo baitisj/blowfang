@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "ysfdemo3",
-  "who": "uv380-multimode",
-  "since": "2026-11-19T02:44:27Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T02:44:20Z",
+ "last_poll": "2026-11-19T02:54:11Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T02:44:27Z"
+ "updated": "2026-11-19T02:54:12Z"
 }
