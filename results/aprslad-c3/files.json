@@ -1,0 +1,79 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/k6-rate.json"
+ },
+ {
+  "name": "steps_m1500.json",
+  "bytes": 242,
+  "sha256": "6691a22f689eafc8550ccac476843d437327f7edcef1d7bec06a81153f967f86",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_m1500.json"
+ },
+ {
+  "name": "steps_m300.json",
+  "bytes": 242,
+  "sha256": "8d55040e6fef88e6cb24179cb995c7c529bfad4e48b5b17f37ae80c806ed5a30",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_m300.json"
+ },
+ {
+  "name": "steps_p300.json",
+  "bytes": 242,
+  "sha256": "93777a0289e67228036c2edc4fd152f6c098fdd0b55c6f642737ef443e7e263f",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_p300.json"
+ },
+ {
+  "name": "steps_p600.json",
+  "bytes": 242,
+  "sha256": "02b54251e0199cb8da7bcf99f3ab11e8f72f0e2a2191075d4c15ce4c682cf1ea",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_p600.json"
+ },
+ {
+  "name": "steps_m600.json",
+  "bytes": 243,
+  "sha256": "ee53553d5abd6a90515ebcb3f98abf1657dd982ddec0364b801a2d828798bb0a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_m600.json"
+ },
+ {
+  "name": "steps_p0.json",
+  "bytes": 243,
+  "sha256": "1704a9a01b54d620d352544355f8196b93748459a8e527346f50e8b41386f60b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_p0.json"
+ },
+ {
+  "name": "steps_p0b.json",
+  "bytes": 243,
+  "sha256": "00e57ef667435f47438c859e31d915b5ea229f3f979a4ecb31a6cdbb35f4bd58",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_p0b.json"
+ },
+ {
+  "name": "steps_p1500.json",
+  "bytes": 243,
+  "sha256": "d896e18aa02ba242896d0bb578bc5dd0935821d006901bcac1d40cb9faa5ff3f",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/steps_p1500.json"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 10776,
+  "sha256": "5d98ae492e0d20be47058f4464fe4d349796a496f8485f201cae38b57d3fa6f3",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 17848,
+  "sha256": "e6a44cd1be650d2cd438e57df4ec547653edae607ad58252a1f353cc77769c1d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/aprslad-c3/k6.log"
+ }
+]
