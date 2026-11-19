@@ -19,8 +19,10 @@ reply goes out. A burst with no sotto in it (FM voice, a DN call) gets no reply.
 Standard bench rules: 70 cm only, gain <= -30 dB, ident on every send. SPDX-License-Identifier: MIT
 """
 import os
+import queue
 import subprocess
 import sys
+import threading
 import time
 
 import numpy as np
@@ -95,8 +97,8 @@ def heard(iq, fs=FS):
     if disc is None:
         return None, b"", "", ["no signal"]
     lines = [f"burst {len(iq) / fs:.1f} s, carrier {off:+.0f} Hz"]
-    fr = ysf.demod(disc)
-    s = ysf.summarize(fr)
+    yfr = ysf.demod(disc)
+    s = ys0 = ysf.summarize(yfr)
     if s["sotto_n"] >= MIN_SOTTO_SF:
         src = "/".join(sorted(s["src"])) or "?"
         lines.append(f"YSF sotto {s['sotto_ok']}/{s['sotto_n']} superframes CRC good, from {src}")
@@ -108,8 +110,7 @@ def heard(iq, fs=FS):
         lines.append(f"M17 sotto {s['sotto_ok']}/{s['sotto_frames']} frames CRC good, "
                      f"{len(s['sotto']) // 6} superframes, from {src}")
         return "m17", s["sotto"], src, lines
-    yf = ysf.demod(disc)
-    ys = ysf.summarize(yf)
+    yf, ys = yfr, ys0
     kinds = {}
     for f in fr:
         kinds[f["kind"]] = kinds.get(f["kind"], 0) + 1
@@ -131,6 +132,48 @@ def reply_wav(mode, sotto, fs=48000):
     return np.concatenate([gap, x, gap]), DEV[mode]
 
 
+class Listener:
+    """iio_readdev on the RX, read in its own thread so the receive never stops while a burst is
+    decoded (11-19 04:32Z: Jeff's FUNC send took 30 s to decode and his PTT send came in that
+    gap). Whole bursts go to .bursts as (iq, ADC peak); stop() ends it and parks the RX LO."""
+
+    def __init__(self, a, rate, q, t_end):
+        import pluto_bench as pb
+        self.pb, self.a, self.err = pb, a, None
+        self.bursts = queue.Queue()
+        pb.setup(rate, rx_hz=a.hz + RX_IF_HZ, rx_gain=a.rx_gain, uri=a.uri)
+        left = max(1, int((t_end - time.time()) * rate))
+        cmd = ["iio_readdev", "-u", a.uri or pb.URI, "-b", str(pb.CHUNK), "-s", str(left), pb.RX_DEV,
+               "voltage0", "voltage1"]
+        self.p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.th = threading.Thread(target=self._read, args=(rate, q), daemon=True)
+        self.th.start()
+        print(f"listening {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+
+    def _read(self, rate, q):
+        st, b = {}, Bursts()
+        while True:
+            raw = self.p.stdout.read(4 * self.pb.CHUNK)
+            if not raw:
+                break
+            y = b.feed(mix_decimate(raw[:len(raw) // 4 * 4], st, rate, q, RX_IF_HZ))
+            if y is not None:
+                self.bursts.put((y, st.get("peak", 0.0)))
+                st["peak"] = 0.0
+        if self.p.poll() not in (None, 0, -9):
+            self.err = self.p.stderr.read().decode(errors="replace").strip() or f"rc {self.p.returncode}"
+
+    def alive(self):
+        return self.th.is_alive()
+
+    def stop(self):
+        if self.p.poll() is None:
+            self.p.kill()
+            self.p.wait()
+            self.th.join(timeout=5)
+            self.pb.park_rx(self.a.uri)
+
+
 def run(a):
     import pluto_bench as pb
     pb.check_tx(a.hz, 0, a.gain)
@@ -140,40 +183,37 @@ def run(a):
     print(f"parrot on {a.hz} Hz until {time.strftime('%H:%M:%SZ', time.gmtime(t_end))}: YSF or M17 "
           f"sotto heard goes back {a.delay_s:g} s later, gain {a.gain:g} dB", flush=True)
     while time.time() < t_end and replies < a.max_replies:
-        pb.setup(rate, rx_hz=a.hz + RX_IF_HZ, rx_gain=a.rx_gain, uri=a.uri)
-        left = max(1, int((t_end - time.time()) * rate))
-        cmd = ["iio_readdev", "-u", a.uri or pb.URI, "-b", str(pb.CHUNK), "-s", str(left), pb.RX_DEV,
-               "voltage0", "voltage1"]
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        st, bursts, burst = {}, Bursts(), None
-        print(f"listening {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+        rx = Listener(a, rate, q, t_end)
+        replied = False
         try:
-            while burst is None:
-                raw = p.stdout.read(4 * pb.CHUNK)
-                if not raw:
-                    break
-                burst = bursts.feed(mix_decimate(raw[:len(raw) // 4 * 4], st, rate, q, RX_IF_HZ))
+            while not replied and time.time() < t_end and replies < a.max_replies:
+                try:
+                    burst, peak = rx.bursts.get(timeout=1.0)
+                except queue.Empty:
+                    if not rx.alive():
+                        break
+                    continue
+                t = time.strftime('%H:%M:%S', time.gmtime())
+                print(f"{t}Z heard: ADC peak {peak:.0f} of 2047 (rx gain {a.rx_gain} dB)", flush=True)
+                mode, sotto, src, lines = heard(burst)          # the Listener keeps listening meanwhile
+                for ln in lines:
+                    print(f"{t}Z heard: {ln}", flush=True)
+                if a.save:
+                    os.makedirs(a.save, exist_ok=True)
+                    burst.tofile(os.path.join(a.save, f"burst-{t.replace(':', '')}.cf32"))
+                if mode is None:
+                    continue
+                x, dev = reply_wav(mode, sotto)
+                rx.stop()                                      # no RX while the reply goes out
+                time.sleep(a.delay_s)
+                track = pb.audio_track(x, 48000, dev)
+                pb.send(track, a.hz, 0, a.gain, rate, a.uri, True,
+                        f"parrot {mode} {len(sotto) // 6} superframes")
+                replies += 1
+                replied = True
         finally:
-            if p.poll() is None:
-                p.kill()
-            p.wait()
-            pb.park_rx(a.uri)
-        if burst is None:
+            rx.stop()
+        if not replied and not rx.alive() and time.time() < t_end and rx.err:
+            print(f"receive stopped: {rx.err}", flush=True)
             break
-        t = time.strftime('%H:%M:%S', time.gmtime())
-        print(f"{t}Z heard: ADC peak {st.get('peak', 0):.0f} of 2047 (rx gain {a.rx_gain} dB)", flush=True)
-        mode, sotto, src, lines = heard(burst)
-        for ln in lines:
-            print(f"{t}Z heard: {ln}", flush=True)
-        if a.save:
-            os.makedirs(a.save, exist_ok=True)
-            burst.tofile(os.path.join(a.save, f"burst-{t.replace(':', '')}.cf32"))
-        if mode is None:
-            continue
-        x, dev = reply_wav(mode, sotto)
-        time.sleep(a.delay_s)
-        track = pb.audio_track(x, 48000, dev)
-        pb.send(track, a.hz, 0, a.gain, rate, a.uri, True,
-                f"parrot {mode} {len(sotto) // 6} superframes")
-        replies += 1
     print(f"parrot done: {replies} replies", flush=True)
