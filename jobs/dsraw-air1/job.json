@@ -1,0 +1,54 @@
+{
+ "id": "dsraw-air1",
+ "who": "dsotto-raw",
+ "freq_mhz": 441.85,
+ "minutes": 8,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:dsr.wav",
+    "--hz",
+    "441850000",
+    "--seconds",
+    "60"
+   ],
+   "background": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2",
+    "trim -580"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "dsr",
+    "dry"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "dsr"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "trim 6100"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "dsr\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 90
+  }
+ ]
+}
