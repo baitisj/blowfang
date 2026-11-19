@@ -323,7 +323,7 @@ also saves flash there.
      their middles were dropped and their terminators kept. Each echo went out whole (3144
      bytes, no late slot). **The FTM showed "AG7EW - Jeff" and played his voice back.** There
      was no Pluto capture, because a recording of his voice would go to the public jobs branch.
-   - **The same in the image (flash 2, built 11-19, not flashed)**: `c6rx_img.c` builds
+   - **The same in the image (flash 2, FLASHED 11-19 01:36Z, main e4ea6af)**: `c6rx_img.c` builds
      c6rx.h into flash with both receivers (12.5 KB of code; c/common's receiver names renamed
      c6rx_* so none clash with OpenRTX's M17). Its state, about 11 KB for both receivers and a 30 s
      message, goes in the module arena's scratch, which `om_api` now gives whole when no module
@@ -332,6 +332,20 @@ also saves flash there.
      (`c6rx_take`) and plays. A message stopped part way is dropped. The listen's host can't
      key, play or record. A USB line stops it, and the line goes into pbCmd for pbPoll to run,
      so no command is lost.
+   - **Flash 2 hears (job hear3, 01:49-01:53Z 11-19):** the Pluto sent the sotto test message
+     one copy at a time at -50 dB, with `listen` read after each: YSF 3/3 (60/60 superframes each)
+     and M17 3/3 (76/76 each), each played to its end (pv=0/N). Copies sent back to back (hear2)
+     were joined late while the first one played, so the last came out short (50/60, 40/76).
+     A `uv380.cmd` step can't hold both `listen 0` and `listen 1`: the read-back checks the last.
+   - **YSF voice demo for Jeff (ysfdemo3, 02:44-02:54Z 11-19, the radio on battery in his
+     hand):** LibriSpeech 251_m and 3536_f, 12 s each, coded by sotto's fixed-point sotto 1200
+     encoder and sent as YSF sotto VW by the Pluto at -40 dB. **Jeff: "Working"**, the radio
+     played them. From power-on it needs MONI+4 three times (RNG, FSK, M17, YSF).
+   - **The Pluto parrot (`pluto_bench.py parrot`, tools/pluto_parrot.py, Jeff 11-19):** listens
+     on the channel, and each YSF or M17 sotto message it hears goes back 2 s later in the same
+     mode (the bytes coded again, src AG7EW, MCW ident around it). The UV-380 sends with PTT in
+     its M17 or YSF sub-mode. FUNC's record-and-send still sends RNG or FSK, so record with FUNC
+     (that send gets no reply), then PTT to send it as YSF or M17.
 
 **On air (11-18 20:21-20:22Z, job sotto3-air-1118, main 2bc44cf, 0 W on 441.850, the Pluto
 listening):** the c6sotto modules sent the radio's own recorded message (250 superframes) in all

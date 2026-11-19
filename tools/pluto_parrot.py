@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""The Pluto as a sotto parrot (Jeff 2026-11-19: "Can we also build a test parrot?"): it listens
+on one 70 cm channel, and each YSF or M17 sotto message it hears (the UV-380's image sending its
+stored message on PTT, in its M17 or YSF sub-mode) goes back out on the same channel a moment
+later in the same mode, so the UV-380 that sent it plays it on its own speaker. The words come
+back as they were heard: the sotto bytes decoded and coded again (src AG7EW), not the audio, so
+the reply is clean however the message arrived. pluto_bench.py's send keys it: AG7EW in MCW
+before and after, the bench's PTT lock and owner check.
+
+    python3 tools/pluto_bench.py parrot [--hz 441850000] [--gain -40] [--minutes 20]
+        [--delay-s 2] [--rx-gain 20] [--max-replies 30] [--save DIR]
+
+Receive: the RX LO sits RX_IF_HZ above the channel (its own leak and DC stay out of it), the
+2.4 MS/s stream is mixed down and cut to 240 kS/s, and a burst is a run of 55 ms chunks 15 dB
+over the quiet floor; it ends after END_QUIET_S below 10 dB. The burst (ident and message, one
+key-up) is then decoded as modem.ysf and modem.m17 decode a capture, and the RX stops while the
+reply goes out. A burst with no sotto in it (FM voice, a DN call) gets no reply.
+
+Standard bench rules: 70 cm only, gain <= -30 dB, ident on every send. SPDX-License-Identifier: MIT
+"""
+import os
+import subprocess
+import sys
+import time
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+sys.path.insert(0, ROOT)
+
+FS = 240_000                 # the burst's rate (pluto_bench IQ_FS_SAVE)
+RX_IF_HZ = 50_000            # RX LO this far above the channel
+START_DB = 15.0              # a chunk this far over the floor starts a burst
+END_DB = 10.0                # ... and the burst ends after END_QUIET_S under this
+END_QUIET_S = 1.0
+PRE_S = 0.2                  # kept from before the burst's first loud chunk
+MAX_BURST_S = 40.0           # the UV-380 keys 5 s at most; anything longer is not ours
+MIN_SOTTO_SF = 5             # superframes: less is noise, not a message
+DEV = {"ysf": 5400.0, "m17": 4800.0}     # pluto_bench send --dev for a WAV_HALF wav (2.7 / 2.4 kHz)
+HALF = 0.5
+
+
+def mix_decimate(raw, state, rate, q, if_hz):
+    """int16 IQ at rate -> complex64 at rate / q with the channel (if_hz below the LO) at 0 Hz:
+    mixed, then summed in blocks of q (a boxcar: its first null at rate / q, plenty for one FM
+    channel on a quiet bench). state carries the mixer phase and the samples left over."""
+    x = np.frombuffer(raw, np.int16).astype(np.float32)
+    iq = (x[0::2] + 1j * x[1::2]).astype(np.complex64) / 2048.0
+    n0 = state.get("n", 0)
+    ph = np.exp(2j * np.pi * if_hz * (n0 + np.arange(len(iq))) / rate).astype(np.complex64)
+    state["n"] = (n0 + len(iq)) % rate
+    iq = np.concatenate([state.get("left", np.zeros(0, np.complex64)), iq * ph])
+    m = len(iq) // q * q
+    state["left"] = iq[m:]
+    return iq[:m].reshape(-1, q).mean(axis=1).astype(np.complex64)
+
+
+class Bursts:
+    """chunks in, whole bursts out: feed() returns a burst's IQ once it has ended, else None"""
+
+    def __init__(self, fs=FS, chunk_s=0.0546):
+        self.fs, self.floor, self.quiet = fs, None, []
+        self.pre = int(PRE_S / chunk_s) + 1
+        self.end_n = int(END_QUIET_S / chunk_s) + 1
+        self.max_n = int(MAX_BURST_S / chunk_s)
+        self.hist, self.burst, self.below = [], None, 0
+
+    def feed(self, y):
+        p = float(np.mean(np.abs(y) ** 2)) + 1e-20
+        if self.burst is None:
+            self.hist = (self.hist + [y])[-self.pre:]
+            if self.floor is not None and p > self.floor * 10 ** (START_DB / 10):
+                self.burst, self.below = list(self.hist), 0
+                return None
+            self.quiet = (self.quiet + [p])[-40:]
+            self.floor = float(np.median(self.quiet))
+            return None
+        self.burst.append(y)
+        self.below = self.below + 1 if p < self.floor * 10 ** (END_DB / 10) else 0
+        if self.below >= self.end_n or len(self.burst) >= self.max_n:
+            out = np.concatenate(self.burst)
+            self.burst, self.hist = None, []
+            return out
+        return None
+
+
+def heard(iq, fs=FS):
+    """a burst -> (mode, sotto bytes, src, report lines); mode None when no sotto was in it"""
+    from modem import c6phy, m17, ysf
+    off, on, disc = c6phy.capture_disc(iq, fs, bw_hz=12000.0)
+    if disc is None:
+        return None, b"", "", ["no signal"]
+    lines = [f"burst {len(iq) / fs:.1f} s, carrier {off:+.0f} Hz"]
+    fr = ysf.demod(disc)
+    s = ysf.summarize(fr)
+    if s["sotto_n"] >= MIN_SOTTO_SF:
+        src = "/".join(sorted(s["src"])) or "?"
+        lines.append(f"YSF sotto {s['sotto_ok']}/{s['sotto_n']} superframes CRC good, from {src}")
+        return "ysf", s["sotto"], src, lines
+    fr = m17.demod(disc)
+    s = m17.summarize(fr)
+    if s["sotto_ok"] * 2 >= MIN_SOTTO_SF:
+        src = s.get("src", "?")
+        lines.append(f"M17 sotto {s['sotto_ok']}/{s['sotto_frames']} frames CRC good, "
+                     f"{len(s['sotto']) // 6} superframes, from {src}")
+        return "m17", s["sotto"], src, lines
+    lines.append(f"no sotto (YSF frames {len(ysf.summarize(ysf.demod(disc))['fn'])}, "
+                 f"M17 stream frames {s['stream']})")
+    return None, b"", "", lines
+
+
+def reply_wav(mode, sotto, fs=48000):
+    """the same sotto bytes, coded again in the same mode -> (discriminator wav at WAV_HALF, dev)"""
+    from modem import m17, ysf
+    gap = np.zeros(fs // 4)
+    if mode == "ysf":
+        x = ysf.modulate(ysf.tx_sotto(sotto), fs=fs, outer_hz=HALF)
+    else:
+        x = m17.modulate(m17.tx_sotto(sotto), fs=fs, alpha=0.5, outer_hz=HALF)
+    return np.concatenate([gap, x, gap]), DEV[mode]
+
+
+def run(a):
+    import pluto_bench as pb
+    pb.check_tx(a.hz, 0, a.gain)
+    rate, q = pb.RATE, pb.RATE // FS
+    t_end = time.time() + a.minutes * 60
+    replies = 0
+    print(f"parrot on {a.hz} Hz until {time.strftime('%H:%M:%SZ', time.gmtime(t_end))}: YSF or M17 "
+          f"sotto heard goes back {a.delay_s:g} s later, gain {a.gain:g} dB", flush=True)
+    while time.time() < t_end and replies < a.max_replies:
+        pb.setup(rate, rx_hz=a.hz + RX_IF_HZ, rx_gain=a.rx_gain, uri=a.uri)
+        left = max(1, int((t_end - time.time()) * rate))
+        cmd = ["iio_readdev", "-u", a.uri or pb.URI, "-b", str(pb.CHUNK), "-s", str(left), pb.RX_DEV,
+               "voltage0", "voltage1"]
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        st, bursts, burst = {}, Bursts(), None
+        print(f"listening {time.strftime('%H:%M:%S', time.gmtime())}Z", flush=True)
+        try:
+            while burst is None:
+                raw = p.stdout.read(4 * pb.CHUNK)
+                if not raw:
+                    break
+                burst = bursts.feed(mix_decimate(raw[:len(raw) // 4 * 4], st, rate, q, -RX_IF_HZ))
+        finally:
+            if p.poll() is None:
+                p.kill()
+            p.wait()
+            pb.park_rx(a.uri)
+        if burst is None:
+            break
+        t = time.strftime('%H:%M:%S', time.gmtime())
+        mode, sotto, src, lines = heard(burst)
+        for ln in lines:
+            print(f"{t}Z heard: {ln}", flush=True)
+        if a.save:
+            os.makedirs(a.save, exist_ok=True)
+            burst.tofile(os.path.join(a.save, f"burst-{t.replace(':', '')}.cf32"))
+        if mode is None:
+            continue
+        x, dev = reply_wav(mode, sotto)
+        time.sleep(a.delay_s)
+        track = pb.audio_track(x, 48000, dev)
+        pb.send(track, a.hz, 0, a.gain, rate, a.uri, True,
+                f"parrot {mode} {len(sotto) // 6} superframes")
+        replies += 1
+    print(f"parrot done: {replies} replies", flush=True)

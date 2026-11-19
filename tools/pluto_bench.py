@@ -540,6 +540,11 @@ def cmd_rx(a):
           f" floor {m['floor_dbfs']:.1f} dBFS, signal on {m['share']:.0%}")
 
 
+def cmd_parrot(a):
+    import pluto_parrot
+    pluto_parrot.run(a)
+
+
 def cmd_measure(a):
     iq, meta = read_cap(a.cap)
     m = measure(iq, meta.get("fs", IQ_FS_SAVE))
@@ -626,6 +631,15 @@ def main(argv=None):
     r.add_argument("--hz", type=int, default=HZ)
     r.add_argument("--seconds", type=float, default=10.0)
     r.add_argument("--gain", type=int, default=30, help="RX gain, dB (manual)")
+    pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
+    pa.add_argument("--hz", type=int, default=441_850_000)
+    pa.add_argument("--minutes", type=float, default=20.0)
+    pa.add_argument("--delay-s", type=float, default=2.0, help="after the burst ends, before the reply")
+    pa.add_argument("--rx-gain", type=int, default=20, help="RX gain, dB (manual)")
+    pa.add_argument("--max-replies", type=int, default=30)
+    pa.add_argument("--save", metavar="DIR", help="keep each burst heard (cf32 at 240 kS/s)")
+    tx_args(pa)
+    pa.set_defaults(gain=-40.0)
     m = sub.add_parser("measure")
     m.add_argument("cap")
     c = sub.add_parser("cal")
@@ -636,7 +650,7 @@ def main(argv=None):
     if a.as_who:
         os.environ["K6_BENCH_AS"] = a.as_who
     {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx, "steps": cmd_steps,
-     "measure": cmd_measure, "cal": cmd_cal}[a.cmd](a)
+     "measure": cmd_measure, "cal": cmd_cal, "parrot": cmd_parrot}[a.cmd](a)
 
 
 if __name__ == "__main__":

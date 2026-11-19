@@ -96,8 +96,9 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240}
-PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24")
-PLUTO_TX = ("send", "steps", "fsk24")
+PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot")
+PLUTO_TX = ("send", "steps", "fsk24", "parrot")
+PARROT_MAX_MIN = 25                         # a parrot holds the bench: 25 min at most (the step's 1800 s)
 IC7100_SUBS = ("send", "id", "stop")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 WHO_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
@@ -470,6 +471,14 @@ def check_step(job, i, step, rs, problems):
             return
         if "--as" in args:
             problems.append(f"{what}: --as is the runner's to set")
+        if args[0] == "parrot":
+            if "--save" in args:
+                problems.append(f"{what}: parrot --save is for a local run, not a job")
+            for m in opts(args, "--minutes") or ["20"]:
+                if float(m) > PARROT_MAX_MIN:
+                    problems.append(f"{what}: parrot --minutes {m} is over {PARROT_MAX_MIN}")
+            if "--hz" not in args:
+                problems.append(f"{what}: parrot needs --hz (its channel, inside the job's claim)")
         if step.get("background") and args[0] != "rx":
             problems.append(f"{what}: only a Pluto rx (receive) may run in the background")
         if args[0] in PLUTO_TX:
@@ -1552,6 +1561,7 @@ def sample_jobs(tmp, co, key):
         ("UV-380 sotto as YSF through the C6000 core at 0 W on 441.850, the Pluto listening", J("ok-sotto", {"do": "pluto", "args": ["rx", os.path.join(tmp, "s.cf32"), "--hz", "441850000", "--seconds", "40"], "background": True}, {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "trim -580"]}, {"do": "uv380.sotto", "args": ["ysf"]}, {"do": "uv380.cmd", "args": ["trim 6100"]}, freq_mhz=441.850), True),
         ("UV-380 sotto with a mode it doesn't have", J("bad-sotto", {"do": "uv380.sotto", "args": ["p25"]}, freq_mhz=441.850), False),
         ("UV-380 image's own M17 send of the test message at 0 W on 441.850", J("ok-air", {"do": "uv380.cmd", "args": ["listen 0", "power 0", "zero 2", "trim 6100"]}, {"do": "uv380.air", "args": ["m17", "test"]}, freq_mhz=441.850), True),
+        ("Pluto parrot on 441.850 for 20 min", J("ok-parrot", {"do": "pluto", "args": ["parrot", "--hz", "441850000", "--gain", "-40", "--minutes", "20"]}, freq_mhz=441.850, minutes=25), True),
         ("UV-380 air send with the words swapped", J("bad-air", {"do": "uv380.air", "args": ["ysf", "dry", "test"]}, freq_mhz=441.850), False),
         ("UV-380 DMR voice with a module path", J("bad-dvoice", {"do": "uv380.voice", "args": ["../txreq.c"]}, freq_mhz=441.850), False),
         ("Pluto send in the background", J("bad-bgtx", {"do": "pluto", "args": ["send", wav, "--gain", "-60"], "background": True}), False),
