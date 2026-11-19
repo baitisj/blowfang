@@ -63,6 +63,16 @@ this range, filling it could hang the radio. So the module:
 
 Tests: `tests/test_k6_ram0soak.py`.
 
+**Soak on the radio (k6-ram0soak2, 2026-11-19 17:27-17:28Z, image 8a78fb5).** Every block held
+(`r0 b=f` down to `r0 b=1`, all `bad=000`), then the whole range held for 60 s:
+`r0 done bad=000 first=00000000 blk=0000 lo=same uv=same`. The planned reset brought the radio
+back on its own in under a second, with no `K6 FAULT` line. The reset flags read at the start
+were `csr=08800000`. After the reset the radio boots into EXPLORE, so a job that follows has to
+wake it with the CW ID first.
+
+**The callsign on air (k6-ysfcsd2, 17:55Z).** After the CW ID wake, the same `YX_RAM0` build heard
+three Pluto calls, all byte-exact: `Y call fr=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW`.
+
 ## ysfrx
 
 - It reads the caller from the header's CSD1 field, or from the terminator's when the carrier
