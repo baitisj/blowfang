@@ -1,0 +1,16 @@
+[
+ {
+  "name": "logger.out",
+  "bytes": 30071,
+  "sha256": "ca710190bee263b24f66dbce0e12273a844b8651c39fa595f1b8efa6a4e2de21",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/k6-lib8run4/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 70316,
+  "sha256": "350f15ae9d057aca48266c04f2a93335eabbf0153d2b85fb32852e16bce5f6aa",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/k6-lib8run4/k6.log"
+ }
+]

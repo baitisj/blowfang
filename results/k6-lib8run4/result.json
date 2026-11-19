@@ -1,12 +1,134 @@
 {
  "id": "k6-lib8run4",
- "status": "running",
- "since": "2026-11-19T23:25:51Z",
+ "who": "k6-ysfrx",
+ "started": "2026-11-19T23:25:52Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T23:25:52Z",
+   "ended": "2026-11-19T23:25:54Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T23:25:54Z",
+   "ended": "2026-11-19T23:25:58Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-19T23:25:58Z",
+   "ended": "2026-11-19T23:26:58Z",
+   "rc": 1,
+   "why": "no /K6 EX t stopped/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run4/k6.log"
+  },
+  {
+   "n": 4,
+   "do": "ic7100",
+   "started": "2026-11-19T23:26:58Z",
+   "ended": "2026-11-19T23:27:12Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T23:27:12Z",
+   "ended": "2026-11-19T23:27:12Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T23:27:12Z",
+   "ended": "2026-11-19T23:27:23Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T23:27:23Z",
+   "ended": "2026-11-19T23:28:03Z",
+   "rc": 1,
+   "why": "no /K6 LIB run slot=8/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run4/k6.log"
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-19T23:28:03Z",
+   "ended": "2026-11-19T23:28:43Z",
+   "rc": 1,
+   "why": "no /ysf start/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run4/k6.log"
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T23:28:43Z",
+   "ended": "2026-11-19T23:28:45Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T23:28:45Z",
+   "ended": "2026-11-19T23:29:08Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-19T23:29:08Z",
+   "ended": "2026-11-19T23:29:58Z",
+   "rc": 1,
+   "why": "no /ysf start/ in /home/baitisj/blowfang-work/runs/queue/k6-lib8run4/k6.log"
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-19T23:29:58Z",
+   "ended": "2026-11-19T23:30:00Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "pluto",
+   "started": "2026-11-19T23:30:00Z",
+   "ended": "2026-11-19T23:30:24Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "wait",
+   "started": "2026-11-19T23:30:24Z",
+   "ended": "2026-11-19T23:30:54Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "wait",
+   "started": "2026-11-19T23:30:54Z",
+   "ended": "2026-11-19T23:32:24Z",
+   "rc": 0
+  },
+  {
+   "n": 16,
+   "do": "logger.stop",
+   "started": "2026-11-19T23:32:24Z",
+   "ended": "2026-11-19T23:32:24Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36",
+ "head": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "ended": "2026-11-19T23:32:24Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "3731dc7de2bf17069712f6e31274b504fac22403",
   "path": "jobs/k6-lib8run4"
  },
  "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
- "updated": "2026-11-19T23:25:51Z"
+ "updated": "2026-11-19T23:32:25Z"
 }
