@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "k6-ram0soak2",
-  "who": "k6-ysfrx",
-  "since": "2026-11-19T17:26:48Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T17:26:46Z",
+ "last_poll": "2026-11-19T17:36:14Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T17:26:48Z"
+ "updated": "2026-11-19T17:36:14Z"
 }
