@@ -5,9 +5,15 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-19T12:34:28Z",
+ "waiting": [
+  {
+   "id": "aprslad-c3",
+   "who": "k6-aprs-ladder",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-19T12:36:32Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T12:34:29Z"
+ "updated": "2026-11-19T12:36:32Z"
 }

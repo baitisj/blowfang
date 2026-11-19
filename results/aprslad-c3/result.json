@@ -1,0 +1,12 @@
+{
+ "id": "aprslad-c3",
+ "status": "queued",
+ "queued": "2026-11-19T12:36:32Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "fb2867f5300903bf07f8a7f674e9838346b3cff2",
+  "path": "jobs/aprslad-c3"
+ },
+ "runner_commit": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "updated": "2026-11-19T12:36:32Z"
+}
