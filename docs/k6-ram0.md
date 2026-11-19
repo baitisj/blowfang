@@ -211,7 +211,34 @@ Lessons:
 - The bench runner's logger opens too late for boot lines: listen from the moment the flash
   tool exits (hamlet's go-fix.py, ~/blowfang-work/runs/arena-flash-20261119/fix).
 - The Pluto at its maximum reached the K6 at -61 dBm, under the -60 dBm CW-wake threshold: wakes
-  need the IC-7100 (RF 0).
+  need the IC-7100 (RF 0). (Fixed at level 13 by the floor-relative wake, below.)
+
+## On the radio, level 13 (main 305eb041, 2026-11-19 22:46-23:00Z)
+
+No hands, over the cable session: the boot-trace build first, then the release build (build ID
+02337aa4a1b39a6f) and the library.
+
+- Boot trace: one boot in 75 s, markers 1 to 7, then VOICE MSG and EXPLORE with no reset.
+  `K6 ARENA bytes=15408 at 0x20001184 ram0=3820 store=4096 ring=1280 dec=10032 need=3552`,
+  `K6 TXDOG on cfgr1=00000002`. The reset-flag word in the hand-over snapshot (BT 13 =
+  0x38800000) still carried the IWDG bit from f541fbd's loop earlier that day: no power-on reset
+  had cleared it. The single boot is the evidence, not the flag.
+- Release: the same ARENA line, `K6 LIB slot 0-31 r=0`, `K6 LIB used=31`, no `K6 FAULT`.
+  `k6_install.py` loaded 29 images verified in 42 s (EXPLORE's 4 pages, the sweep page now
+  5,828 B with `xs_wake`; the help deck; 24 modules), slot 8 left for FUSOTTO RX. A release
+  image prints no `K6 BOOT build=` (debug only): the build is in the `K6 CFG ... build=` line.
+- Floor-relative wake: the bench Pluto at its top gain (-30) on 440.850, MCW ident AG7EW then
+  PSK31, woke it first try: `K6 EX beacon -61 dBm floor -114: VOICE MSG for 60 s`, 53 dB over the
+  floor, where the fixed -60 had missed the same -61 twice that day. Back to EXPLORE after 60 quiet
+  seconds.
+
+Lessons:
+
+- Every step that opens ttyUSB2 goes through the bench runner (a local submit with
+  `take_serial`). The flash script opened the port on its own while another thread's runner job
+  held the claim; that job's cancelled listener then shared the port and swallowed the boot
+  lines, and the script took the silence for a hang and sent bootloader handshakes for 17 s
+  (the K6 was in EXPLORE, where that line is the cable session's input: nothing keyed).
 
 ## Not done
 
@@ -219,10 +246,11 @@ Lessons:
   With one 14,976-byte block, the core can keep earlier calls at the block's bottom and load a
   receiver above them (modules are position-independent), so a receiver still gets about 11 KB
   and the calls survive its runs; a module that needs the whole block drops them.
-- **More to move.** EXPLORE's `S` (600 B, `.data`) could start zeroed and be set up at run time;
-  the C library's statics (about 300 B) could take `__attribute__((section(".ram0")))`. The
-  room left in RAM0 is 616 bytes (360 with EXPLORE).
+- **More to move.** Done at level 13 (EXPLORE's `S`, the C library's statics). What is left:
+  RAM0 has 172 bytes free in the hiss image and 20 with EXPLORE, and the hiss image's `.bss`
+  outside the block is about 140 bytes of small statics. More arena now means less stack: the
+  hiss image's deepest call (4,440 B) is the limit.
 
 Tests: tests/test_k6_ram0soak.py (map, refusal at 12, zeros), tests/test_k6_ysfrx.py (level 12:
 the call in scratch, more than 459 slots, handed to sotto_play), tests/test_k6_mod.py (the loader
-takes level 12, refuses 13; arena by level).
+takes level 13, refuses 14; arena by level), tests/test_k6_xscan.py (the floor-relative wake).
