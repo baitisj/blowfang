@@ -1,12 +1,104 @@
 {
  "id": "sottorx2",
- "status": "running",
- "since": "2026-11-19T01:07:15Z",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T01:07:16Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:07:16Z",
+   "ended": "2026-11-19T01:07:27Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-19T01:07:27Z",
+   "ended": "2026-11-19T01:07:29Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-19T01:07:29Z",
+   "ended": "2026-11-19T01:07:43Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-19T01:07:43Z",
+   "ended": "2026-11-19T01:07:58Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-19T01:07:58Z",
+   "ended": "2026-11-19T01:08:14Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T01:08:14Z",
+   "ended": "2026-11-19T01:10:13Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T01:10:13Z",
+   "ended": "2026-11-19T01:10:23Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "uv380.rx",
+   "started": "2026-11-19T01:10:23Z",
+   "ended": "2026-11-19T01:10:25Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T01:10:25Z",
+   "ended": "2026-11-19T01:10:41Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T01:10:41Z",
+   "ended": "2026-11-19T01:10:56Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "pluto",
+   "started": "2026-11-19T01:10:56Z",
+   "ended": "2026-11-19T01:11:11Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-19T01:11:11Z",
+   "ended": "2026-11-19T01:13:10Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-e4ea6afff0c3",
+ "head": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-e4ea6afff0c3",
+ "sources_head": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "ended": "2026-11-19T01:13:11Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "2ceb2c0c6e00e26c35620fe2ed8c76c26dd0906d",
   "path": "jobs/sottorx2"
  },
  "runner_commit": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
- "updated": "2026-11-19T01:07:15Z"
+ "updated": "2026-11-19T01:13:11Z"
 }
