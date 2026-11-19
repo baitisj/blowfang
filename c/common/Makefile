@@ -125,3 +125,19 @@ clean-sotto-rx:
 	rm -f sotto_rx_host
 
 .PHONY: clean-sotto-rx
+
+# a YSF call kept frame by frame for the parrot (c6ysftx_echo.c)
+all: ysf_echo_host
+
+ysf_echo_host: ysf_echo_host.c \
+		ysf_echo.c \
+		ysf_echo.h \
+		ysf_rx.c \
+		ysf_rx.h
+	$(CC) $(CFLAGS) -DYSF_RX_NO_SOTTO -o $@ ysf_echo_host.c ysf_echo.c ysf_rx.c -lm
+
+clean: clean-ysf-echo
+clean-ysf-echo:
+	rm -f ysf_echo_host
+
+.PHONY: clean-ysf-echo

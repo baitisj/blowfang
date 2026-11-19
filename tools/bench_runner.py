@@ -109,7 +109,13 @@ UV380_CMD_RE = re.compile(r"^(tune|listen|listen [01]|power 0|zero [12]|phy (fsk
 UV380_SEND_HZ = (441_850_000, 440_850_000)    # the image sends only on these (SEND_HZ, SEND_K6_HZ)
 UV380_SEND_MODULE = ("firmware", "uv380-openrtx", "mod", "txreq.c")
 UV380_M17_PLANS = ("bert", "sms", "voice")     # firmware/uv380-openrtx/mod/c6m17tx_PLAN.c
-UV380_YSF_PLANS = ("dn", "data")               # firmware/uv380-openrtx/mod/c6ysftx_PLAN.c
+UV380_YSF_PLANS = (                             # firmware/uv380-openrtx/mod/c6ysftx_PLAN.c
+    "dn",
+    "data",
+    "echo",                                     # the FTM parrot: listens, then sends each call back
+)
+# how long a plan's module may run (Ctrl-C after): echo waits up to 15 min for calls to echo
+UV380_YSF_RUN_S = {"echo": 960}
 # the radio's sotto message through the shared C6000 core (docs/uv380-multimode.md): uv380.sotto
 # AIR [dry] -> the checkout's c6sotto_AIR.c or c6sotto_AIR_dry.c (dry never keys)
 UV380_SOTTO_AIRS = ("m17", "ysf", "dmr")
@@ -1045,7 +1051,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
             elif step["do"] == "uv380.m17":
                 rc, why = uv380_send_step(ctx, step, env, timeout, uv380_m17_module(step["args"][0]), 45)
             elif step["do"] == "uv380.ysf":
-                rc, why = uv380_send_step(ctx, step, env, timeout, uv380_ysf_module(step["args"][0]), 45)
+                rc, why = uv380_send_step(ctx, step, env, timeout, uv380_ysf_module(step["args"][0]),
+                                          UV380_YSF_RUN_S.get(step["args"][0], 45))
             elif step["do"] == "uv380.voice":
                 rc, why = uv380_send_step(ctx, step, env, timeout, uv380_voice_module(step["args"][0]), 45)
             elif step["do"] == "uv380.sotto":

@@ -21,7 +21,8 @@
  * Soft bits come straight from the kept symbols (MSB: the level; LSB: 2 - |level|), so no frame
  * of soft values is held. Floating point (the Cortex-M4F has an FPU); no malloc, no writable
  * statics, no tables of pointers: a RAM module (-fropi) can #include ysf_rx.c and keep ysf_rx
- * (about 5 KB) in scratch.
+ * (about 5 KB) in scratch. YSF_RX_NO_SOTTO leaves the sotto VW decoder out (about 2.6 KB less
+ * state, for a module that needs only FICH, CSD and the frame's symbols: c6ysftx_echo.c).
  * SPDX-License-Identifier: MIT */
 #ifndef YSF_RX_H
 #define YSF_RX_H
@@ -92,7 +93,9 @@ typedef struct {
     uint8_t pn[90];                     /* sotto VW's PN9 (seed 0x1FF), 720 bits */
     uint8_t white[20];                  /* the CSD whitening (PN9 seed 0x1C9) */
     union {
+#ifndef YSF_RX_NO_SOTTO
         uint64_t k7[280 + 2 * YSF_WRAP];  /* the sotto VW decoder's survivors */
+#endif
         uint16_t k5[184];                 /* the FICH's and the CSD's */
     } surv;
     uint32_t frames, lost, bad;         /* counts: frames, locks lost, FICH failures read on */
