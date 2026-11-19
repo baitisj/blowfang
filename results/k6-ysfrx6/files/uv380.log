@@ -1,0 +1,22 @@
+listen on=0 running=0 fail=0 pk=0 msgs=20 last=75 pv=0/75
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=20 last=75 pv=0/75
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=440850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=440850
+phy YSF
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=440850
+listen on=0 running=0 fail=0 pk=0 msgs=20 last=75 pv=0/75
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=440850
+listen on=0 running=0 fail=0 pk=0 msgs=20 last=75 pv=0/75
+mod say sotto ysf sf=205/400 first=000102030405 last=c8c9cacbcccd bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=140% -> 45=b1 46=4b src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 6 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=17 ms rftx=1 late=0 lost=0 chk=36/24 spi=0 done=1 restored at 4509 ms
+mod say sotto done
+ok air ret=80
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=20 last=75 pv=0/75
