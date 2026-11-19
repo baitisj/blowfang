@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "air1",
-  "who": "multimode",
-  "since": "2026-11-19T00:09:06Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-19T00:08:59Z",
+ "last_poll": "2026-11-19T00:11:19Z",
  "error": null,
  "update": null,
- "updated": "2026-11-19T00:09:06Z"
+ "updated": "2026-11-19T00:11:20Z"
 }

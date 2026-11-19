@@ -1,0 +1,36 @@
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+mod say sotto m17 sf=210/250 first=9100475824d1 last=56d3d545aca1 bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=1 dry=0
+mod say tx_tone ok
+mod say ident keyed after 131 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=19 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4511 ms
+mod say sotto done
+ok air ret=80
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+mod say sotto ysf sf=205/250 first=9100475824d1 last=d71bc3ed205b bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=140% -> 45=b1 46=4b src=1 dry=0
+mod say tx_tone ok
+mod say ident keyed after 22 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=9 ms rftx=1 late=0 lost=0 chk=36/24 spi=0 done=1 restored at 4500 ms
+mod say sotto done
+ok air ret=80
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+mod say sotto dmr sf=85/250 first=9100475824d1 last=1f2604c8257a bytes=720 tx_ms=4600 cal I=7f Q=36 dev=100% -> 45=7f 46=36 src=1 dry=0
+mod say tx_tone ok
+mod say ident keyed after 7 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx hdr=3 voice=60/60 term=1 edges=132 first=29 ms rftx=64 82|=08 late=0 done=1 restored at 4039 ms
+mod say sotto done
+ok air ret=80

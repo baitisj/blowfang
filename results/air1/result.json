@@ -1,12 +1,60 @@
 {
  "id": "air1",
- "status": "running",
- "since": "2026-11-19T00:09:06Z",
+ "who": "multimode",
+ "started": "2026-11-19T00:09:08Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-19T00:09:08Z",
+   "ended": "2026-11-19T00:09:10Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T00:09:10Z",
+   "ended": "2026-11-19T00:09:23Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.air",
+   "started": "2026-11-19T00:09:23Z",
+   "ended": "2026-11-19T00:09:37Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.air",
+   "started": "2026-11-19T00:09:37Z",
+   "ended": "2026-11-19T00:09:51Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "uv380.air",
+   "started": "2026-11-19T00:09:51Z",
+   "ended": "2026-11-19T00:10:05Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T00:10:05Z",
+   "ended": "2026-11-19T00:11:19Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-0e8b912dc2e0",
+ "head": "0e8b912dc2e04cc3d2126e6543927576a95c6b2e",
+ "ended": "2026-11-19T00:11:19Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "06b8319b3ff1bdff5ac169111c46eed94a9fa735",
   "path": "jobs/air1"
  },
  "runner_commit": "0e8b912dc2e04cc3d2126e6543927576a95c6b2e",
- "updated": "2026-11-19T00:09:06Z"
+ "updated": "2026-11-19T00:11:20Z"
 }
