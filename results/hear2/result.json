@@ -1,12 +1,102 @@
 {
  "id": "hear2",
- "status": "running",
- "since": "2026-11-19T01:45:52Z",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T01:45:53Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:45:53Z",
+   "ended": "2026-11-19T01:46:08Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:46:08Z",
+   "ended": "2026-11-19T01:46:15Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-19T01:46:15Z",
+   "ended": "2026-11-19T01:46:20Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-19T01:46:20Z",
+   "ended": "2026-11-19T01:46:35Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T01:46:35Z",
+   "ended": "2026-11-19T01:46:41Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:46:41Z",
+   "ended": "2026-11-19T01:46:47Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:46:47Z",
+   "ended": "2026-11-19T01:46:53Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-19T01:46:53Z",
+   "ended": "2026-11-19T01:46:58Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-19T01:46:58Z",
+   "ended": "2026-11-19T01:47:14Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-19T01:47:14Z",
+   "ended": "2026-11-19T01:47:20Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:47:20Z",
+   "ended": "2026-11-19T01:47:26Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T01:47:26Z",
+   "ended": "2026-11-19T01:47:35Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a",
+ "head": "aa318c46915aa8d641fa1055d31f362abacda62f",
+ "ended": "2026-11-19T01:47:35Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "6c42a7a1cbd278279de69b51e67db98754790850",
   "path": "jobs/hear2"
  },
  "runner_commit": "aa318c46915aa8d641fa1055d31f362abacda62f",
- "updated": "2026-11-19T01:45:52Z"
+ "updated": "2026-11-19T01:47:35Z"
 }
