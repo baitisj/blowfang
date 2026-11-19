@@ -59,7 +59,8 @@ this range, filling it could hang the radio. So the module:
   reads back everything filled so far: `r0 b=N bad=0`.
 - holds the whole range for a minute, reading it back every second. It checksums the two ends
   it never writes, before and after: txdog's table (0x20000000-0x200000FF) and the UserVectors.
-  `r0 done bad= first= blk= lo=same uv=same`
+  `r0 done bad= first= bm= lo=same uv=same` (`blk=` before 2026-11-19: the bench logger reads
+  any `blk=` as decimal numbers, so the key is `bm=` now, docs/k6-ram0.md)
 - ends with a planned reset (`r0 reset`), clearing the note first, because the IWDG can't be
   stopped once started.
 
@@ -67,7 +68,7 @@ Tests: `tests/test_k6_ram0soak.py`.
 
 **Soak on the radio (k6-ram0soak2, 2026-11-19 17:27-17:28Z, image 8a78fb5).** Every block held
 (`r0 b=f` down to `r0 b=1`, all `bad=000`), then the whole range held for 60 s:
-`r0 done bad=000 first=00000000 blk=0000 lo=same uv=same`. The planned reset brought the radio
+`r0 done bad=000 first=00000000 blk=0000 lo=same uv=same` (as that build said it). The planned reset brought the radio
 back on its own in under a second, with no `K6 FAULT` line. The reset flags read at the start
 were `csr=08800000`. After the reset the radio boots into EXPLORE, so a job that follows has to
 wake it with the CW ID first.
