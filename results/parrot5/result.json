@@ -1,0 +1,12 @@
+{
+ "id": "parrot5",
+ "status": "queued",
+ "queued": "2026-11-19T05:11:55Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "01f86c51bb97c0bb489c1a7b35ed73798ea78333",
+  "path": "jobs/parrot5"
+ },
+ "runner_commit": "e0726b20b6a2a7d9de6de21d2a825ea9978f9fd5",
+ "updated": "2026-11-19T05:11:55Z"
+}
