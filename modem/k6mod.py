@@ -29,10 +29,23 @@ ABI = 1
 LEVEL = 1
 TLM_MAX = 12             # telemetry parts a module may ask for
 ARENA_BYTES = 11776     # the block a module runs in (SPI-codebook images, 2026-11-08 on)
+ARENA_BYTES_12 = 14976  # the same block in the images with module API level 12 (2026-11-19, hal::ram0)
+LEVEL_BIG_ARENA = 12    # a module that needs more than ARENA_BYTES declares this level: older
+                        # images refuse it (header level > their KM_LEVEL) instead of running it
 TLM_BYTES = 696         # its top, where the K6 keeps the say lines for telemetry while a module runs
 TLM_ROOM = ARENA_BYTES - TLM_BYTES   # an image (header + code + tag) longer than this, with telemetry
                                      # on, has its tail written over by its own say lines (11-18:
                                      # c4ftm's size table at 11,080-11,182, c4sotto's last call)
+
+
+def arena_bytes(level):
+    """The module block a module of this API level runs in on every image that takes it."""
+    return ARENA_BYTES_12 if level >= LEVEL_BIG_ARENA else ARENA_BYTES
+
+
+def tlm_room(level):
+    """TLM_ROOM for a module of this API level."""
+    return arena_bytes(level) - TLM_BYTES
 LIB_FLAG = 0x01          # header byte 13: keep it in the SPI module library (c/k6/k6_lib.h)
 PAGE_FLAG = 0x02         # with LIB_FLAG: a code page the image loads itself, never run (kl_page)
 CARDS_FLAG = 0x04        # with LIB_FLAG: a deck of help cards, never run

@@ -242,13 +242,20 @@ SETTLE = os.path.join(K6, "mod", "settle.c")
 
 
 @need_host
-def test_loader_takes_level_11_refuses_12():
+def test_loader_takes_level_12_refuses_13():
     code = bytes(64)
-    for level in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
+    for level in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
         rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000 + level, KEY, level=level), 1, 128))
         assert rs[-1] == 3
-    rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000, KEY, level=12), 1, 128))
+    rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000, KEY, level=13), 1, 128))
     assert 3 not in rs
+
+
+def test_arena_by_level():
+    # level 12 images (hal::ram0) give modules 14,976 B; a module that needs it declares level 12
+    assert k6mod.arena_bytes(11) == k6mod.ARENA_BYTES == 11776
+    assert k6mod.arena_bytes(12) == k6mod.ARENA_BYTES_12 == 14976
+    assert k6mod.tlm_room(12) - k6mod.tlm_room(11) == 3200
 
 
 # ---- upload ARQ: magic 0xAE asks for a reply, the K6's 0xAF reports (k6_mod.h) ----

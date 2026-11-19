@@ -136,6 +136,7 @@ class Emu:
                       "cal_write", "fl_read", "fl_prog", "fl_erase", "lcd_text", "lcd_bar", "lcd_wf",
                       "lcd_flush", "led", "clock_set", "clock_get", "lcd_glyphs", "setting", "sotto_play", "msg_mem"]
         self.played = []                             # level 11: (bytes, codec, flags, from) each sotto_play
+        self.level = level
         for i in range(len(self.names)):
             mu.mem_write(self.stubs + 16 * i, b"\x70\x47")
         mu.mem_write(self.stop, b"\x00\xbf" * 8)
@@ -288,10 +289,11 @@ class Emu:
             fp = int.from_bytes(bytes(uc.mem_read(sp, 4)), "little")
             frm = bytes(uc.mem_read(fp, 16)).split(b"\0")[0][:10].decode("latin-1") if fp else ""
             self.played.append((bytes(uc.mem_read(r0, 6 * r1)), r2, r3, frm))
-        elif name == "msg_mem":                      # the bootloader's RAM, as the core gives it
-            if r0:
-                uc.mem_write(r0, (0xF00).to_bytes(4, "little"))
-            ret = self.ram + 0x100
+        elif name == "msg_mem":                      # the bootloader's RAM, as the core gives it at
+            n = 0xF00 if self.level < 12 else 0      # level 11; from level 12 the core's own buffers
+            if r0:                                   # are there (hal::ram0): none
+                uc.mem_write(r0, n.to_bytes(4, "little"))
+            ret = self.ram + 0x100 if n else 0
         elif name == "scratch":
             if r0:
                 uc.mem_write(r0, self.scratch.to_bytes(4, "little"))
