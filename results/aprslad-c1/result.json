@@ -1,12 +1,201 @@
 {
  "id": "aprslad-c1",
- "status": "running",
- "since": "2026-11-19T10:34:02Z",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T10:34:04Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T10:34:04Z",
+   "ended": "2026-11-19T10:34:06Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T10:34:06Z",
+   "ended": "2026-11-19T10:34:09Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T10:34:09Z",
+   "ended": "2026-11-19T10:35:57Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T10:35:57Z",
+   "ended": "2026-11-19T10:37:27Z",
+   "rc": 1,
+   "why": "no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-c1/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T10:37:27Z",
+   "ended": "2026-11-19T10:38:27Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T10:38:27Z",
+   "ended": "2026-11-19T10:39:09Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "pluto",
+   "started": "2026-11-19T10:39:09Z",
+   "ended": "2026-11-19T10:39:51Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-19T10:39:51Z",
+   "ended": "2026-11-19T10:40:33Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-19T10:40:33Z",
+   "ended": "2026-11-19T10:41:15Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T10:41:15Z",
+   "ended": "2026-11-19T10:41:58Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-19T10:41:58Z",
+   "ended": "2026-11-19T10:46:59Z",
+   "rc": 1,
+   "why": "no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/aprslad-c1/k6.log"
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-19T10:46:59Z",
+   "ended": "2026-11-19T10:47:04Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "logger.stop",
+   "started": "2026-11-19T10:47:04Z",
+   "ended": "2026-11-19T10:47:04Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "logger",
+   "started": "2026-11-19T10:47:04Z",
+   "ended": "2026-11-19T10:47:06Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T10:47:06Z",
+   "ended": "2026-11-19T10:47:09Z",
+   "rc": 0
+  },
+  {
+   "n": 16,
+   "do": "k6.upload",
+   "started": "2026-11-19T10:47:09Z",
+   "ended": "2026-11-19T10:48:57Z",
+   "rc": 0
+  },
+  {
+   "n": 17,
+   "do": "wait",
+   "started": "2026-11-19T10:48:57Z",
+   "ended": "2026-11-19T10:50:27Z",
+   "rc": 1,
+   "why": "no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-c1/k6.log"
+  },
+  {
+   "n": 18,
+   "do": "wait",
+   "started": "2026-11-19T10:50:27Z",
+   "ended": "2026-11-19T10:51:27Z",
+   "rc": 0
+  },
+  {
+   "n": 19,
+   "do": "pluto",
+   "started": "2026-11-19T10:51:27Z",
+   "ended": "2026-11-19T10:52:09Z",
+   "rc": 0
+  },
+  {
+   "n": 20,
+   "do": "pluto",
+   "started": "2026-11-19T10:52:09Z",
+   "ended": "2026-11-19T10:52:51Z",
+   "rc": 0
+  },
+  {
+   "n": 21,
+   "do": "pluto",
+   "started": "2026-11-19T10:52:51Z",
+   "ended": "2026-11-19T10:53:33Z",
+   "rc": 0
+  },
+  {
+   "n": 22,
+   "do": "pluto",
+   "started": "2026-11-19T10:53:33Z",
+   "ended": "2026-11-19T10:54:04Z",
+   "rc": 1,
+   "why": "timeout 30 s"
+  },
+  {
+   "n": 23,
+   "do": "pluto",
+   "started": "2026-11-19T10:54:04Z",
+   "ended": "2026-11-19T10:54:04Z",
+   "rc": 1,
+   "why": "refused: the job's 20 min are used up"
+  },
+  {
+   "n": 24,
+   "do": "wait",
+   "started": "2026-11-19T10:54:04Z",
+   "ended": "2026-11-19T10:54:04Z",
+   "rc": 1,
+   "why": "refused: the job's 20 min are used up"
+  },
+  {
+   "n": 25,
+   "do": "wait",
+   "started": "2026-11-19T10:54:04Z",
+   "ended": "2026-11-19T10:54:04Z",
+   "rc": 1,
+   "why": "refused: the job's 20 min are used up"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-989248773c0f",
+ "head": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "reason": "step 25 (wait): refused: the job's 20 min are used up",
+ "ended": "2026-11-19T10:54:04Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "a03c02a5a6a04bd069f6d289600e922526ee9c07",
   "path": "jobs/aprslad-c1"
  },
  "runner_commit": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
- "updated": "2026-11-19T10:34:02Z"
+ "updated": "2026-11-19T10:54:05Z"
 }

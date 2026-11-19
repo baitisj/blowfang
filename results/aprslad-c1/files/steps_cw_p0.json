@@ -1,0 +1,19 @@
+{
+ "wav": "/home/baitisj/blowfang-work/runs/inbox/aprslad-c1/aprs3.wav",
+ "hz": 440850000,
+ "dev": 6000.0,
+ "peak": 3000.0,
+ "preemph": false,
+ "steps": [
+  {
+   "gain": -60.0,
+   "t0": 1795084792.38455,
+   "t1": 1795084810.912189
+  },
+  {
+   "gain": -70.0,
+   "t0": 1795084812.9128308,
+   "t1": 1795084831.4392722
+  }
+ ]
+}
