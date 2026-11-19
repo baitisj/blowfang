@@ -1,12 +1,130 @@
 {
  "id": "k6-ysfrx20",
- "status": "running",
- "since": "2026-11-19T08:19:18Z",
+ "who": "k6-ysfrx",
+ "started": "2026-11-19T08:19:20Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T08:19:20Z",
+   "ended": "2026-11-19T08:19:22Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T08:19:22Z",
+   "ended": "2026-11-19T08:19:25Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T08:19:25Z",
+   "ended": "2026-11-19T08:21:26Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T08:21:26Z",
+   "ended": "2026-11-19T08:21:26Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T08:21:26Z",
+   "ended": "2026-11-19T08:21:28Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T08:21:28Z",
+   "ended": "2026-11-19T08:21:51Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T08:21:51Z",
+   "ended": "2026-11-19T08:21:55Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-19T08:21:55Z",
+   "ended": "2026-11-19T08:22:19Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T08:22:19Z",
+   "ended": "2026-11-19T08:22:23Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T08:22:23Z",
+   "ended": "2026-11-19T08:22:46Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:22:46Z",
+   "ended": "2026-11-19T08:22:53Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:22:53Z",
+   "ended": "2026-11-19T08:23:05Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "uv380.air",
+   "started": "2026-11-19T08:23:05Z",
+   "ended": "2026-11-19T08:23:19Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:23:19Z",
+   "ended": "2026-11-19T08:23:26Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "wait",
+   "started": "2026-11-19T08:23:26Z",
+   "ended": "2026-11-19T08:24:14Z",
+   "rc": 0
+  },
+  {
+   "n": 16,
+   "do": "logger.stop",
+   "started": "2026-11-19T08:24:14Z",
+   "ended": "2026-11-19T08:24:15Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-25fd9ce15712",
+ "head": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
+ "ended": "2026-11-19T08:24:15Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "247b48f15cd3d1482607bd2c073410e1afd5784f",
   "path": "jobs/k6-ysfrx20"
  },
  "runner_commit": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
- "updated": "2026-11-19T08:19:18Z"
+ "updated": "2026-11-19T08:24:15Z"
 }
