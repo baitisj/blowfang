@@ -1,0 +1,56 @@
+{
+ "id": "dsraw-ladder1",
+ "who": "dsotto-raw",
+ "freq_mhz": 441.85,
+ "minutes": 9,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "tap1c"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "tap start",
+   "file": "uv380.log",
+   "seconds": 120
+  },
+  {
+   "do": "wait",
+   "seconds": 2
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:dsr-ladder.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gains",
+    "-64,-66,-68,-70,-72,-74",
+    "--pause",
+    "2",
+    "--out",
+    "run:steps.json"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "end halves=",
+   "file": "uv380.log",
+   "seconds": 240
+  }
+ ]
+}
