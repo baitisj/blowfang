@@ -407,11 +407,10 @@ SPI library module).
   get the superframe before them (`srx_conceal`), so sotto holds the sound over a gap.
 - **Carrier.** RSSI 10 dB over a floor. The floor moves only while there is no carrier: a quarter of
   the way down to a lower reading, 1 dB up for a higher one (see bench run 1 and 2 below).
-- **Room.** 7.6 KB of code (8.0 KB with the `YX_TRACE` frame trace, on for the bench; `YX_NO_TRACE`
-  leaves it out). The scratch holds the filter ring (256 B), the receiver (1.9 KB: two payload
+- **Room.** 7.7 KB of code (8.1 KB with the `YX_TRACE` frame trace of the bench builds). The scratch holds the filter ring (256 B), the receiver (1.9 KB: two payload
   buffers, the decoders), the DMA ring (1,024 B since bench run 2) and then the message buffer, which
-  takes whatever the block has left: 151 superframes (6 s of sotto 1200) in the 11,776-byte block, 82
-  (3.3 s) with the trace.
+  takes whatever the block has left: about 140 superframes (5.6 s of sotto 1200) in the 11,776-byte
+  block, 69 (2.8 s) with the trace.
   Under 64 superframes, the module returns -6. Bench builds: `YX_BENCH` adds the time and level lines
   and `YX_SNAP` the snapshot lines; on the radio (scratch ~3.8 KB with telemetry 0) YX_BENCH no longer
   fits with the grid timing in (it returns -6), and YX_SNAP fits only with `YX_MSG_MIN 40`.
@@ -491,5 +490,12 @@ ID; the K6 runs ysfrx):
   later call with only ±3 quarter points tried, so a step timed wrong (or a rate that moved) lost the
   next syncs. Fixed: each call and each missed sync time it again wide, and the `Y t` trace gives each
   frame's sync, offset and decodes, so the next run shows where the syncs fall.
+- **Run 13, 07:11Z.** The trace showed clean syncs (rho² 0.98) found wide at offsets swinging between
+  about +18 and -18 quarter points, with a missed sync between each. After a miss the offset is two
+  frames' worth, and taking it as one set the step twice over, so the next sync was as far off the
+  other way, every time. Reproduced on the host model (the grid off, a frame lost after the timing
+  sync) and fixed: the offset after a miss is halved, the timed window is ±6, a weak best at its edge
+  sends the search wide, a sync 3 or more off moves the step half way, and the wide search is ±128
+  (3.3%). The host model now holds calls with the grid 3% off and frames lost.
 
 SPDX-License-Identifier: MIT

@@ -111,6 +111,21 @@ def test_host_receiver_times_its_grid(host, cps8):
     assert stored(lines)[30:] == want()[30:], out
 
 
+@pytest.mark.parametrize("cps8", [4610, 4413])
+def test_host_receiver_retimes_after_lost_frames(host, cps8):
+    """the grid 3% off with frames lost, one right after the sync that timed it: the sync after
+    a miss is two frames' offset (bench run 13: taken as one, the step swung as far the other way
+    each time and the call fell apart), so the call holds and the message from its third VW
+    frame on is in place"""
+    lose = (2, 5, 9)
+    cnt, _ = k6_counts(ysf_symbols(NSF_LONG, lose), 56.0)
+    out = subprocess.run([host, str(cps8)], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
+    lines = out.splitlines()
+    calls = [ln for ln in lines if ln.startswith("Y call")]
+    assert len(calls) == 1 and calls[0].startswith("Y call fr=18 ") and " sf=80 miss=20 " in calls[0], out
+    assert stored(lines)[60:] == want(NSF_LONG, lose)[60:], out
+
+
 def test_host_receiver_says_nothing_on_noise(host):
     cnt, _ = k6_counts(ysf_symbols(), 30.0)
     out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
@@ -119,7 +134,7 @@ def test_host_receiver_says_nothing_on_noise(host):
 
 def test_ysfrx_module_on_the_emulated_k6():
     """the ysfrx RAM module on the emulated M0 with the modelled DMA, the radio's slow register
-    reads and its ~5 ms say lines, started with a carrier on: a 3.2 s message with two frames lost on the serial line after
+    reads and its ~5 ms say lines, started with a carrier on: a 2.4 s message with two frames lost on the serial line after
     the call, byte-exact with the lost superframes filled in, in the shared module block (code + the filter's ring + the receiver's state +
     the DMA ring), no samples lost, the receiver's registers put back; too small a block and it
     returns -6"""
@@ -129,9 +144,11 @@ def test_ysfrx_module_on_the_emulated_k6():
     import test_k6_dmr as T
     import k6_live_emu as le
     from sim.k6if import frontend as fe
-    code, entry = T.build([("RUN_S", "6u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    # the bench build (the frame trace): its message buffer holds 69 superframes
+    code, entry = T.build([("RUN_S", "6u"), ("S_MS", "1000u"), ("YX_TRACE", "1")], os.path.join(K6, "mod", "ysfrx.c"))
     lose = (6, -10)
-    _, (ib, on, off) = k6_counts(ysf_symbols(NSF_LONG, lose), 56.0, post_s=4.0)   # the call is ~1.9 s
+    nsf = 60
+    _, (ib, on, off) = k6_counts(ysf_symbols(nsf, lose), 56.0, post_s=4.0)   # the call is ~1.5 s
 
     def emu(block, ib):
         e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=6, stack_win=7000,
@@ -152,13 +169,13 @@ def test_ysfrx_module_on_the_emulated_k6():
     assert " floor=-60 " in e.said[0], txt
     # the carrier is seen at the next housekeeping, ~half a frame in: the header frame is gone
     # (frame 6 lost whole and frame 10's payload: 10 superframes filled in)
-    assert any(ln.startswith("Y call fr=17 ") and " vw=70/80 sf=80 miss=10 " in ln for ln in e.said), txt
-    assert stored(e.said) == want(NSF_LONG, lose), txt
+    assert any(ln.startswith("Y call fr=13 ") and " vw=50/60 sf=60 miss=10 " in ln for ln in e.said), txt
+    assert stored(e.said) == want(nsf, lose), txt
     # the trace: the grid's step, then 3 bytes a frame (the call's frame 5, frame 6 sent: no sync
     # and no superframe good; frame 9's payload lost: its FICH good, no superframe)
     tr = "".join(ln.split()[3] for ln in e.said if ln.startswith("Y t ") and not ln.startswith("Y t w="))
-    assert len(tr) == 6 * 17 and tr[6 * 5 + 4:6 * 5 + 6] == "20" and tr[6 * 9 + 4:6 * 9 + 6] == "a0", txt
-    assert ret == 17, txt
+    assert len(tr) == 6 * 13 and tr[6 * 5 + 4:6 * 5 + 6] == "20" and tr[6 * 9 + 4:6 * 9 + 6] == "a0", txt
+    assert ret == 13, txt
     lost = [int(ln.split("lost=")[1].split()[0]) for ln in e.said if ln.startswith("s ")]
     assert lost and lost[-1] == 0, txt
     assert e.writes[0x13][-1] == 0 and e.writes[0x7E][-1] == 0

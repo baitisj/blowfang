@@ -28,8 +28,9 @@
 #ifdef YX_TRACE
 #define YX_TR 24                /* frames traced a call */
 #endif
-#define YX_WIDE 96              /* the first next sync's search: +-96 quarter points (2.5% of a
+#define YX_WIDE 128             /* the first next sync's search: +-128 quarter points (3.3% of a
                                    frame), every grid point, then the quarter points by the best */
+#define YX_LOCKW 6              /* once timed: +-6 quarter points */
 
 typedef struct {
   /* the search: the next grid point to try; the candidate (cand 1, 2 while its quarter points
@@ -278,7 +279,7 @@ static void yx_poll(yx_t *x, ds_t *d) {
   }
   for (k = 0; k < 4; k++) {
     uint32_t P = x->P0 + 8u * (x->n == YD_FRAME_SYMS ? YD_FRAME_SYMS : x->n - (YD_SYNC_N - 1u));
-    int32_t v, l0, l1, av;
+    int32_t v, l0, l1, av, e;
     if (x->n == YD_FRAME_SYMS) {
       /* the next sync, due 480 symbols on (P: its last symbol): the best of the quarter points
          around it (one a call) of this call's polarity, taken even when weak (the flywheel) */
@@ -295,11 +296,16 @@ static void yx_poll(yx_t *x, ds_t *d) {
 #ifdef YX_TRACE
       yx_tr(x, x->nfr, x->rr, (int32_t)(x->rP - P), x->rlock ? 0 : 0x40u);  /* (+-99 at most) */
 #endif
+      e = (int32_t)(x->rP - P);
+      /* timed, a weak best at the window's edge: the sync is further out, so it's looked for wide */
+      if (x->rlock && x->rr < YX_THR_Q8 && (e >= YX_LOCKW || e <= -YX_LOCKW)) x->rr = 0;
       if (x->rr >= YX_FLY_Q8) {
-        int32_t e = (int32_t)(x->rP - P);
-        if (x->rlock) yx_time(d, e, 3u);
-        else if (x->rr >= YX_THR_Q8) yx_time(d, e, 0), x->rlock = x->timed = 1;  /* (only a strong
-                                                   sync times it the whole way) */
+        /* the grid's step from the offset a frame (two after a miss: bench run 13, where each
+           sync after a miss set the step twice over and the next one was as far off the other
+           way): 1/8 of the way, 1/2 when 3 or more off, the whole way when not timed and strong */
+        if (x->miss) e >>= 1;
+        if (x->rlock) yx_time(d, e, e >= 3 || e <= -3 ? 1u : 3u);
+        else if (x->rr >= YX_THR_Q8) yx_time(d, e, 0), x->rlock = x->timed = 1;
         yx_scale(x, x->rP, x->rc, x->rs);
         x->miss = 0;
 #ifdef YX_TRACE
@@ -349,7 +355,7 @@ static void yx_poll(yx_t *x, ds_t *d) {
         while (x->jv) yx_work(x);               /* the last frame's VW still decoding: finish it */
         x->jv = 1, x->db = x->wb, x->vf = x->nfr++;   /* this one's to decode (after the FICH) */
         x->rr = 0;                             /* the next sync's tries */
-        if (x->rlock) x->rf = 1, x->rq = -3, x->rend = 3;
+        if (x->rlock) x->rf = 1, x->rq = -YX_LOCKW, x->rend = YX_LOCKW;
         else x->rf = 0, x->rq = -YX_WIDE;
       }
     }

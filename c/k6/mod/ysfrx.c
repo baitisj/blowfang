@@ -15,7 +15,7 @@
                                  20 a VW decoded, its good superframes' bits below)
      Y l 0 0 0 0 0 0 0 0 f=0     after each "s" line: ring overruns by the kind of call that
      Y m 52 56 72 64 48 32 24 4  ran last (yx_kind), and each kind's longest call, us
-   7.7 KB of code. Scratch past it: the filter's 256-byte ring, the receiver's 2.3 KB state,
+   7.7 KB of code (8.1 KB with YX_TRACE). Scratch past it: the filter's 256-byte ring, the receiver's 2.3 KB state,
    the DMA ring, then the message (at least 100 superframes), or it doesn't run (-6).
    docs/k6-c4fm.md, "Receiving C4FM sotto".
    SPDX-License-Identifier: MIT */
@@ -25,9 +25,8 @@
 #define FREQ_HZ 440850000u      /* the bench link channel: the Pluto's sends, with its MCW ID */
 #endif
 #define YSF_DECODE 1
-#ifndef YX_NO_TRACE
-#define YX_TRACE 1              /* "Y t" lines after each call (bench, ~0.3 KB): its frames' syncs */
-#endif
+/* YX_TRACE 1: "Y t" lines after each call, its frames' syncs (the bench build: 0.4 KB of code,
+   the message buffer 69 superframes) */
 #ifndef RSZ
 #define RSZ 1024u               /* the DMA ring: 186 us. Emulated, the longest calls take 50-72 us,
                                    near the 512-byte ring's 81 us, and on the radio (its own
