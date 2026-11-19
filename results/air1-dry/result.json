@@ -1,12 +1,46 @@
 {
  "id": "air1-dry",
- "status": "running",
- "since": "2026-11-19T00:07:03Z",
+ "who": "multimode",
+ "started": "2026-11-19T00:07:05Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T00:07:05Z",
+   "ended": "2026-11-19T00:07:18Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.air",
+   "started": "2026-11-19T00:07:18Z",
+   "ended": "2026-11-19T00:07:27Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.air",
+   "started": "2026-11-19T00:07:27Z",
+   "ended": "2026-11-19T00:07:36Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.air",
+   "started": "2026-11-19T00:07:36Z",
+   "ended": "2026-11-19T00:07:45Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-0e8b912dc2e0",
+ "head": "0e8b912dc2e04cc3d2126e6543927576a95c6b2e",
+ "ended": "2026-11-19T00:07:45Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "a42088d64138cfbaa2dccbc4f1849448b1ae3d68",
   "path": "jobs/air1-dry"
  },
  "runner_commit": "0e8b912dc2e04cc3d2126e6543927576a95c6b2e",
- "updated": "2026-11-19T00:07:03Z"
+ "updated": "2026-11-19T00:07:45Z"
 }
