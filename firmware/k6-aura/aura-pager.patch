@@ -321,10 +321,10 @@ index 5f006e4..371e81e 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..a1c6695
+index 0000000..98265ae
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,4966 @@
+@@ -0,0 +1,5102 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -522,6 +522,7 @@ index 0000000..a1c6695
 +    pub const NO_BITERR: SpBiterr = SpBiterr { errors: -1, seq: 0, swap: 0, invert: 0, block: [0; 8] };
 +    extern "C" {
 +        pub fn sp_init(mem: *mut u8, bytes: u32) -> i32;
++        pub fn sp_put(mem: *mut u8, bytes: u32, sf: *const u8, n: u32, magic: i32) -> i32;
 +        #[cfg(not(feature = "lean"))]
 +        pub fn sp_dec_pool(mem: *mut u8, bytes: u32);
 +        #[cfg(not(feature = "lean"))]
@@ -666,6 +667,10 @@ index 0000000..a1c6695
 +        pub lcd_glyphs: unsafe extern "C" fn(*const u16, i32),
 +        // level 10: the radio's settings (the SETTINGS module): the backlight's idle time
 +        pub setting: unsafe extern "C" fn(i32, i32, i32) -> i32,
++        // level 11: a sotto receiver's message played once it returns, and the buffer that
++        // holds it outside the arena
++        pub sotto_play: unsafe extern "C" fn(*const u8, u32, u32, u32, *const u8) -> i32,
++        pub msg_mem: unsafe extern "C" fn(*mut u32) -> *mut u8,
 +    }
 +    /// c/k6/k6_lib.h kl_flash_t and kl_info_t
 +    #[repr(C)]
@@ -709,7 +714,7 @@ index 0000000..a1c6695
 +/// through MOD_CTX, set only while a module runs.
 +static MOD_API: ffi::K6Api = ffi::K6Api {
 +    abi: 1,
-+    level: 10,
++    level: 11,
 +    say: mod_say,
 +    ticks: mod_ticks,
 +    fd_read: mod_fd_read,
@@ -738,7 +743,116 @@ index 0000000..a1c6695
 +    clock_get: mod_clock_get,
 +    lcd_glyphs: mod_lcd_glyphs,
 +    setting: mod_setting,
++    sotto_play: mod_sotto_play,
++    msg_mem: mod_msg_mem,
 +};
++
++// ---- level 11: a sotto receiver's message played (Jeff 2026-11-19, "proceed with playback") ----
++//
++// sotto_play(sf, n, codec, flags, from) only notes the message: the store it goes into overlaps
++// the module's code, so run_module moves it there (sp_put) once the module returns, and the
++// main loop plays it as any message (play_pending). KM_PLAY_RERUN: the library slot the module
++// ran from runs again after playback (not a RAM module from the air: the store took its place).
++// msg_mem: where a receiver keeps the message while it listens, outside the arena: SRAM
++// 0x2000_0100-0x2000_0FFF, the bootloader's own RAM, idle once Aura runs (docs/k6-modules.md,
++// `loram`; 0x2000_0000-0x2000_00BF is hal::txdog's vector table). Nothing else uses it.
++
++/// sotto_play's flag: listen again after playback (c/k6/k6_mod.h KM_PLAY_RERUN)
++const KM_PLAY_RERUN: u32 = 1;
++const MSG_MEM: usize = 0x2000_0100;
++const MSG_MEM_BYTES: usize = 0x0F00;
++/// characters of the caller's callsign kept (KM_FROM_MAX)
++pub const FROM_MAX: usize = 10;
++
++struct Play {
++    sf: usize,
++    n: u16,
++    codec: u8,
++    flags: u8,
++    from: [u8; FROM_MAX],
++}
++static mut PLAY: Play = Play { sf: 0, n: 0, codec: 0, flags: 0, from: [0; FROM_MAX] };
++/// the caller of the message in the store (from a sotto_play), for the screen; empty otherwise
++static mut PLAY_FROM: [u8; FROM_MAX] = [0; FROM_MAX];
++/// the library slot the running module came from (255: sent over the air), and the slot to run
++/// again after playback (255: none)
++static mut RUN_SLOT: u8 = 255;
++static mut RERUN: u8 = 255;
++
++unsafe extern "C" fn mod_sotto_play(sf: *const u8, n: u32, codec: u32, flags: u32, from: *const u8) -> i32 {
++    let p = unsafe { &mut *addr_of_mut!(PLAY) };
++    p.n = 0;
++    if n == 0 {
++        return 0;
++    }
++    let (a, len) = (sf as usize, 6 * n as usize);
++    let c = unsafe { &*addr_of!(MOD_CTX) };
++    let inside = |lo: usize, hi: usize| a >= lo && a <= hi && len <= hi - a;
++    if !inside(c.scratch, scratch_end()) && !inside(MSG_MEM, MSG_MEM + MSG_MEM_BYTES) {
++        return -1;
++    }
++    let (app, _) = unsafe { mod_ctx() };
++    if n > app.pager.store_frames as u32 {
++        return -1;
++    }
++    if !matches!(codec, 0xA9 | 0xAC | 0xAD) {
++        return -2;
++    }
++    p.from = [0; FROM_MAX];
++    if !from.is_null() {
++        for i in 0..FROM_MAX {
++            let b = unsafe { *from.add(i) };
++            if b == 0 {
++                break;
++            }
++            p.from[i] = b;
++        }
++    }
++    (p.sf, p.n, p.codec, p.flags) = (a, n as u16, codec as u8, flags as u8);
++    0
++}
++
++unsafe extern "C" fn mod_msg_mem(bytes: *mut u32) -> *mut u8 {
++    if !bytes.is_null() {
++        unsafe { *bytes = MSG_MEM_BYTES as u32 };
++    }
++    MSG_MEM as *mut u8
++}
++
++/// After a module returned: its sotto_play's message into the store, to play (true), or false
++fn play_put(app: &mut App) -> bool {
++    let p = unsafe { &mut *addr_of_mut!(PLAY) };
++    if p.n == 0 {
++        return false;
++    }
++    let n = core::mem::take(&mut p.n);
++    let crc = unsafe { ffi::sp_crc16(p.sf as *const u8, 6 * n as i32) };
++    let r = unsafe { ffi::sp_put(arena::base(), STORE_BYTES as u32, p.sf as *const u8, n as u32, p.codec as i32) };
++    unsafe {
++        PLAY_FROM = p.from;
++        KEPT = false;
++        RERUN = if p.flags as u32 & KM_PLAY_RERUN != 0 { RUN_SLOT } else { 255 };
++    }
++    let f = &p.from[..p.from.iter().position(|&b| b == 0).unwrap_or(FROM_MAX)];
++    rl!(
++        "K6 PLAY put r={} n={} codec={:02x} crc={:04x} from={} rerun={}",
++        r, n, p.codec, crc, core::str::from_utf8(f).unwrap_or("?"), unsafe { RERUN }
++    );
++    if r <= 0 {
++        unsafe { RERUN = 255 };
++        return false;
++    }
++    app.pager.played_id = -1;
++    app.pager.play_pending = true;
++    refresh_status(app);
++    true
++}
++
++/// The caller of the message in the store, if a receiver module named one
++pub fn play_from() -> &'static [u8] {
++    let f = unsafe { &*addr_of!(PLAY_FROM) };
++    &f[..f.iter().position(|&b| b == 0).unwrap_or(FROM_MAX)]
++}
 +
 +// ---- level 10: the radio's settings, for the SETTINGS module (Jeff 2026-11-17) ----
 +//
@@ -3433,6 +3547,9 @@ index 0000000..a1c6695
 +        clear_store(app); // a message wins over the kept module
 +    }
 +    let r = unsafe { ffi::sp_packet(buf.as_ptr(), len as i32) };
++    if r == 2 {
++        unsafe { PLAY_FROM = [0; FROM_MAX] }; // a new message over the air: no caller to show
++    }
 +    app.pager.last_result = r as i8;
 +    app.pager.last_magic = unsafe { *ffi::sp_last_packet() };
 +    refresh_status(app);
@@ -3497,10 +3614,15 @@ index 0000000..a1c6695
 +                arq_owe(KM_ST_RAN, n, 0, free_ram().min(0xFFFF) as u16);
 +            }
 +        } else {
-+            run_module(app, syst);
++            unsafe { RUN_SLOT = 255 };
++            if run_module(app, syst) {
++                return; // its message is in the store, to play
++            }
 +        }
 +        #[cfg(not(feature = "spilib"))]
-+        run_module(app, syst);
++        if run_module(app, syst) {
++            return;
++        }
 +    }
 +    #[cfg(not(feature = "lean"))]
 +    if st.reply != 0 && r != KM_READY {
@@ -3525,8 +3647,9 @@ index 0000000..a1c6695
 +
 +/// Run the module that km_packet (over the air) or kl_load (from the SPI library) armed in
 +/// the shared block, and report how it went.
++/// true when the module handed a message to sotto_play (level 11): it is in the store now, to play
 +#[inline(never)] // its locals only while it runs, not in main's frame for good
-+fn run_module(app: &mut App, syst: &mut SYST) {
++fn run_module(app: &mut App, syst: &mut SYST) -> bool {
 +    let st = unsafe { &*ffi::km_status() };
 +    let at = (arena::base() as usize) + 16;
 +    // 8-byte tag after the code, then word aligned
@@ -3592,6 +3715,7 @@ index 0000000..a1c6695
 +    app.radio.fd6818.reg_write(syst, MOD_GPIO, gpio);
 +    app.sync_watching_to_master(syst);
 +    arm(app, syst);
++    play_put(app)
 +}
 +
 +/// Side key 1 runs the last module again (Jeff, 2026-11-10), in the images with the SPI
@@ -4008,8 +4132,11 @@ index 0000000..a1c6695
 +    }
 +    rl!("K6 LIB run slot={} r={}", n, r);
 +    if r > 0 {
-+        run_module(app, syst);
-+        unsafe { KEPT = true };
++        if n != AGAIN_SLOT {
++            unsafe { RUN_SLOT = n }; // (side key 1's rerun of the block: where it came from still)
++        }
++        let played = run_module(app, syst);
++        unsafe { KEPT = !played };
 +    } else if r != LIB_PLAYING {
 +        clear_store(app); // the slot was read over it
 +    }
@@ -4228,7 +4355,7 @@ index 0000000..a1c6695
 +
 +/// Drop the stored message (key *, control action clear).
 +fn clear_store(app: &mut App) {
-+    unsafe { KEPT = false };
++    unsafe { (KEPT, PLAY_FROM) = (false, [0; FROM_MAX]) };
 +    let p = &mut app.pager;
 +    p.store_frames = unsafe { ffi::sp_init(arena::base(), STORE_BYTES as u32) } as u16;
 +    p.played_id = -1;
@@ -4497,6 +4624,15 @@ index 0000000..a1c6695
 +    if app.mode == Mode::Pager && app.pager.chip_ok {
 +        arm(app, syst);
 +    }
++    // a receiver module's message (sotto_play, KM_PLAY_RERUN): it listens again, unless a key
++    // stopped the playback
++    let slot = core::mem::replace(unsafe { &mut *addr_of_mut!(RERUN) }, 255);
++    #[cfg(feature = "spilib")]
++    if slot != 255 && !app.pager.aborted && app.mode == Mode::Pager {
++        lib_run(app, syst, slot);
++    }
++    #[cfg(not(feature = "spilib"))]
++    let _ = slot;
 +}
 +
 +// ---- streaming playback: the PWM ring refilled from the receive loops ----
@@ -5293,7 +5429,7 @@ index 0000000..a1c6695
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..56920be
+index 0000000..daaded3
 --- /dev/null
 +++ b/src/app/pager/explore.rs
 @@ -0,0 +1,2400 @@
@@ -10824,10 +10960,10 @@ index cdfa0f7..429f08b 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..c9af309
+index 0000000..831c602
 --- /dev/null
 +++ b/src/ui/pager.rs
-@@ -0,0 +1,461 @@
+@@ -0,0 +1,467 @@
 +//! VOICE MSG screen (app/pager.rs): link settings, message progress, the
 +//! last packet's sync / CRC / magic, and after a playback the decoder's time
 +//! per 20 ms frame and the free RAM, for the first on-air tests.
@@ -10935,8 +11071,14 @@ index 0000000..c9af309
 +{
 +    use app::pager::Busy;
 +    line(lcd, 19, "  BLOWFANG RAM ARENA");
-+    // key 0 held it: no fallback to EXPLORE (Jeff's wording, 2026-11-16)
-+    if app::pager::arena_stay() {
++    let busy = app::pager::arena_busy(app);
++    let from = app::pager::play_from();
++    // a receiver module's message playing: its caller (module API level 11, Jeff 2026-11-19)
++    if matches!(busy, app::pager::Busy::Playing) && !from.is_empty() {
++        let mut b: TextBuf<24> = TextBuf::new();
++        out!(b, "  FROM {}", core::str::from_utf8(from).unwrap_or("?"));
++        line(lcd, 29, b.as_str());
++    } else if app::pager::arena_stay() {
 +        line(lcd, 29, "  STAYING HERE.");
 +        line(lcd, 39, "  EXIT TO EXPLORE");
 +    } else {
@@ -10944,7 +11086,7 @@ index 0000000..c9af309
 +        line(lcd, 39, "  0 TO STAY HERE");
 +    }
 +    let mut b: TextBuf<24> = TextBuf::new();
-+    match app::pager::arena_busy(app) {
++    match busy {
 +        Busy::Module(have, n) => {
 +            out!(b, "  MOD {}/{}", have, n);
 +        }

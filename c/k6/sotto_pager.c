@@ -281,7 +281,9 @@ uint32_t sp_pcm_hash(unsigned *samples) {
 static int32_t emph1[EMPH_STRIDE], emph2[EMPH_STRIDE];
 
 
-int sp_init(void *mem, unsigned bytes) {
+/* the store's layout in mem (sp_init, sp_put): its frames, or 0 if mem is too small. Clears
+   nothing in mem */
+static unsigned store_setup(void *mem, unsigned bytes) {
   /* per frame: 6 bytes, 1 good bit, 1/2 seen bit (room for 2-frame packets, as the retired
      profile S had; the store size stays as it was) */
   unsigned n = (bytes * 16u) / (6u * 16u + 2u + 1u);
@@ -294,7 +296,6 @@ int sp_init(void *mem, unsigned bytes) {
 #endif
   dec_used = dec_blocks = 0;
 #endif
-  memset(mem, 0, bytes);          /* the good/seen bitmaps start clear (the K6 keeps mem in NOLOAD RAM) */
   n &= ~15u;                      /* the bitmaps round evenly */
   if (n > 65535u) n = 65520u;
   if (n == 0) return 0;
@@ -302,7 +303,12 @@ int sp_init(void *mem, unsigned bytes) {
   S.frames = (uint8_t *)mem;
   S.good = S.frames + 6u * n;
   S.seen = S.good + n / 8u;
-  return (int)n;
+  return n;
+}
+
+int sp_init(void *mem, unsigned bytes) {
+  memset(mem, 0, bytes);          /* the good/seen bitmaps start clear (the K6 keeps mem in NOLOAD RAM) */
+  return (int)store_setup(mem, bytes);
 }
 
 static int voice_magic(int m) {
@@ -324,6 +330,32 @@ static void clear_message(uint8_t msg_id, uint8_t profile, uint8_t magic) {
 }
 
 static int pos_of(long f) { return ring ? (int)(f % ring) : (int)f; }
+
+/* A whole message handed over at once (module API level 11, sotto_play): n slots of 6 bytes
+   at sf, which may lie anywhere in or past mem (a RAM module's scratch shares the K6's block
+   with the store), all good. memmove first, then the store is set up around them. */
+int sp_put(void *mem, unsigned bytes, const uint8_t *sf, unsigned n, int magic) {
+  static uint8_t put_id;
+  unsigned max = (bytes * 16u) / (6u * 16u + 2u + 1u) & ~15u, i;
+  if (!voice_magic(magic)) return -1;
+#if defined(SP_VLR)
+  if (magic == SP_MAGIC) return -2;               /* a codec this build doesn't play */
+#elif defined(SP_LR)
+  if (magic != SP_MAGIC_LR) return -2;
+#else
+  if (magic != SP_MAGIC) return -2;
+#endif
+  if (max > 65520u) max = 65520u;
+  if (n > max) n = max;
+  memmove(mem, sf, 6u * n);
+  memset((uint8_t *)mem + 6u * n, 0, bytes - 6u * n);
+  if (!store_setup(mem, bytes)) return -1;
+  clear_message(++put_id, magic == SP_MAGIC ? 'L' : 'l', (uint8_t)magic);
+  for (i = 0; i < n; i++) set_bit(S.good, (int)i);
+  S.st.total = S.st.stored = S.st.frames_got = (uint16_t)n;
+  S.st.complete = 1;
+  return (int)n;
+}
 
 /* The message's layout: how many packets group g has (n), and the frame in slot s of its
    packet k: g*F*D + s*n + k. Packet placement and the parity rebuild both go through these. */

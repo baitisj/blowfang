@@ -481,7 +481,8 @@ and the hiss image gets its fourth PWM segment (the decoder has 40-60 ms per fra
 4 KB store back; every image gains 2720 B of stack margin. The second pass (27c951d) held a pattern
 there for 50 ms and watched four words 2-16 KB below while the first word was written:
 `ram probe good=2a8 bad=none held=2a8 alias=none`, so it is RAM of its own, not a mirror of lower
-SRAM. RAM0 (0x20000000-0x20000FFF) keeps the live vector table and stays off limits.
+SRAM. RAM0 (0x20000000-0x20000FFF) keeps the live vector table at 0x20000000-0x200000BF. (2026-11-19:
+the part above it, 0x20000100-0x20000FFF, now holds a receiver's message, docs/k6-sotto-play.md.)
 
 **Four segments were not enough (a65f7e6, 2026-11-08 00:05 UTC, cable in).** All three Lynden clips
 bit-exact at depth 8, `late=0`, `overruns=0`, but `under=39` at 1200 (344 frames, 18 packets),

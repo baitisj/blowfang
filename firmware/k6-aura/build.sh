@@ -407,6 +407,7 @@ pocsag         # level 2, POCSAG pager receiver on the chip's plain FSK receiver
 pocsag_440     # level 2, pocsag on 440.850 for the bench: three settings of 60 s (receive only, docs/k6-pocsag.md)
 pocdump        # level 2, what the plain FSK receiver hands over on POCSAG 1200/2400 (its own clock and a 4800 sampler), 440.850 bench, docs/k6-pocsag.md
 pocdump_1200   # level 2, pocsag on 440.850 saying every sampled word of six 1200 baud transmissions, for the host (receive only, docs/k6-pocsag.md)
+ram0soak       # level 1, fills the bootloader's idle RAM 0x20000100-0x20000FFF (RAM0_CHECK reads it back), docs/k6-sotto-play.md
 ramprobe
 rangerx        # level 2, PHY R: the range mode's receiver, coded 600/1200 Hz FFSK on the plain FSK receiver as a sampler, the radio's own frequency (receive only, docs/k6-range.md)
 rangerx_b      # level 2, rangerx for the bench: 440.850, 32 s wait, then nine 45 s settings of front-end path and gain (receive only, docs/k6-range.md)

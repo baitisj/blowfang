@@ -84,6 +84,14 @@ enum {
    or 0 if the buffer is too small. Clears any message. */
 int sp_init(void *mem, unsigned bytes);
 
+/* A whole message at once (module API level 11, k6_mod.h sotto_play): n slots of 6 bytes at sf
+   (anywhere, even inside mem: a RAM module's scratch shares the K6's block with the store),
+   all good, in the codec of magic (SP_MAGIC_LR: sotto 1200). Sets the store up in mem as
+   sp_init does, around them. Returns the slots stored (n, or what fits), -1 (an unknown
+   magic, a store too small: nothing changed) or -2 (a codec this build doesn't play: nothing
+   changed). sp_play_start then plays it, and it stays until the store is wanted again. */
+int sp_put(void *mem, unsigned bytes, const uint8_t *sf, unsigned n, int magic);
+
 /* The decoder's working memory (SP_DEC_POOL builds, the K6's SPI images): the firmware hands the library
    a pool of at least sp_dec_need() bytes, 4-byte aligned, once at boot. It is part of the
    firmware's RAM arena, which RAM modules borrow while nothing plays, so sp_init (which the

@@ -85,31 +85,44 @@ typedef struct {
   uint32_t step;
 } yd_f5_t;
 
+static void yd_k5_start(int16_t pm[16]);
 static void yd_f5_start(yd_f5_t *v) {
-  uint32_t s;
-  for (s = 0; s < 16; s++) v->pm[s] = s ? -8000 : 0;
+  yd_k5_start(v->pm);
   v->step = 0;
 }
 
-/* one step over llr (the 100 code dibits' soft bits, 4 bits each, -7..7, positive = 0: byte i
-   holds dibit i, its first bit low); 1 when all 100 are done */
-static int yd_f5_step(yd_f5_t *v, const uint8_t *llr) {
-  uint32_t i = v->step, s, d = 0, q = llr[i];
+/* one step of the K=5 code over q (a code dibit's two soft bits, 4 bits each, -7..7, positive =
+   0, its first bit low): the path metrics pm move on and the step's 16 decisions come back
+   (the FICH's and the CSD's: yd_csd) */
+static uint32_t yd_k5(int16_t pm[16], uint32_t q) {
+  uint32_t s, d = 0;
   int32_t l0 = (int32_t)((q & 15u) ^ 8u) - 8, l1 = (int32_t)(((q >> 4) & 15u) ^ 8u) - 8, nm[16];
   /* butterflies: s = b << 3 | old >> 1, from old = (s & 7) << 1 | k (old: r0 = bit 3 .. r3 =
      bit 0); s and s | 8 both come from 2s and 2s + 1, and flipping b or k flips both outputs
      (the taps' first and last), so the branch metrics are m, -m, -m, m. No normalisation: a
-     step adds at most 14, 100 of them and the start's -8000 fit an int16 */
+     step adds at most 14, 180 of them and the start's -8000 fit an int16 */
   for (s = 0; s < 8; s++) {
-    int32_t a = v->pm[2 * s], b = v->pm[2 * s + 1];
+    int32_t a = pm[2 * s], b = pm[2 * s + 1];
     int32_t m = ((s & 1u) ? -l0 : l0) + ((((s >> 2) ^ (s >> 1)) & 1u) ? -l1 : l1);
     int32_t x0 = a + m, y0 = b - m, x1 = a - m, y1 = b + m;
     if (y0 > x0) x0 = y0, d |= 1u << s;
     if (y1 > x1) x1 = y1, d |= 1u << (s + 8);
     nm[s] = x0, nm[s + 8] = x1;
   }
-  for (s = 0; s < 16; s++) v->pm[s] = (int16_t)nm[s];
-  v->dec[i] = (uint16_t)d;
+  for (s = 0; s < 16; s++) pm[s] = (int16_t)nm[s];
+  return d;
+}
+
+static void yd_k5_start(int16_t pm[16]) {
+  uint32_t s;
+  for (s = 0; s < 16; s++) pm[s] = s ? -8000 : 0;
+}
+
+/* one step over llr (the 100 code dibits' soft bits: byte i holds dibit i); 1 when all 100 are
+   done */
+static int yd_f5_step(yd_f5_t *v, const uint8_t *llr) {
+  uint32_t i = v->step;
+  v->dec[i] = (uint16_t)yd_k5(v->pm, llr[i]);
   v->step = i + 1;
   return v->step >= 100;
 }
@@ -273,6 +286,49 @@ static uint32_t yd_v7_end(const yd_v7_t *v, uint8_t out[30]) {
     if (c == u[6]) ok |= 1u << k;
   }
   return ok;
+}
+
+/* The header's and terminator's CSD1 (dest and src callsigns, 10 bytes each), in the 360-symbol
+   payload as captured for a VW (the sotto PN9 taken off: yd_csd_unpn9 puts it back): the first
+   36 symbols of each 72-symbol section, a 9 x 20 dibit interleaver (code dibit i -> field
+   dibit (i % 9) * 20 + i / 9), the K=5 code over 176 bits and 4 flush bits: 20 whitened bytes
+   (PN9 seed 0x1C9) and their CRC-16 (as the FICH's). modem/ysf.py csd_decode. */
+#define YD_CSD_STEPS 180u
+
+/* code dibit i's payload symbol */
+static uint32_t yd_csd_sym(uint32_t i) {
+  uint32_t r, q = yd_div(i, 9u, &r);
+  q = yd_div(r * 20u + q, 36u, &r);
+  return q * 72u + r;
+}
+
+/* put the VW's PN9 back on symbols a..b of pay (in place), the PN9 state in *pn */
+static void yd_csd_unpn9(uint8_t *pay, uint32_t a, uint32_t b, uint32_t *pn) {
+  for (; a < b; a++) {
+    uint32_t q = pay[a], l0 = q & 15u, l1 = q >> 4;
+    if (yd_pn9(pn)) l0 = (0u - ((l0 ^ 8u) - 8u)) & 15u;
+    if (yd_pn9(pn)) l1 = (0u - ((l1 ^ 8u) - 8u)) & 15u;
+    pay[a] = (uint8_t)(l0 | l1 << 4);
+  }
+}
+
+/* after the 180 steps' decisions dec: the src callsign (10 characters, trailing spaces off,
+   NUL-ended) into from and 1, or 0 if the CRC fails. The CRC is over the whitened bytes; src
+   is bytes 10-19, whitened with the PN9's bytes there */
+static int yd_csd_end(const uint16_t *dec, char from[11]) {
+  static const uint8_t W[10] = {0xf8, 0x3d, 0xf1, 0x73, 0x20, 0x94, 0xed, 0x1e, 0x7c, 0xd8};
+  uint8_t w[22];
+  uint32_t i, s = 0;
+  for (i = 0; i < 22u; i++) w[i] = 0;
+  for (i = YD_CSD_STEPS; i-- > 0;) {        /* back from state 0 (the flush bits) */
+    if (i < 176u && (s >> 3)) w[i >> 3] |= (uint8_t)(0x80u >> (i & 7u));
+    s = ((s & 7u) << 1) | ((dec[i] >> s) & 1u);
+  }
+  if (yd_crc16(w, 20) != ((uint32_t)w[20] << 8 | w[21])) return 0;
+  for (i = 0; i < 10u; i++) from[i] = (char)(w[10u + i] ^ W[i]);
+  for (i = 10; i > 0 && from[i - 1u] == ' '; i--) {}
+  from[i] = 0;
+  return 1;
 }
 
 #endif

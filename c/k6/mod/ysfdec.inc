@@ -31,6 +31,14 @@
 #define YX_WIDE 128             /* the first next sync's search: +-128 quarter points (3.3% of a
                                    frame), every grid point, then the quarter points by the best */
 #define YX_LOCKW 6              /* once timed: +-6 quarter points */
+#ifdef YX_CSD
+#define YX_JC(x) ((x)->jc)
+#else
+#define YX_JC(x) 0
+#endif
+#ifndef YX_DUMP
+#define YX_DUMP 1               /* the message's bytes as "Y d" lines after the summary */
+#endif
 
 typedef struct {
   /* the search: the next grid point to try; the candidate (cand 1, 2 while its quarter points
@@ -78,7 +86,27 @@ typedef struct {
      frame late) */
   uint8_t vfok, vfi, vfn, vdt;
   yd_f5_t f5;
-  yd_v7_t v7;
+  /* the VW's decoder, or (jc) the header's or terminator's CSD1 decoding in its place: the
+     header's during the first comms frame, which has nothing to decode yet (frame ends wait for
+     it), the terminator's after the call */
+  union {
+    yd_v7_t v7;
+    struct {
+      int16_t pm[16];
+      uint16_t dec[YD_CSD_STEPS];
+    } c5;
+  };
+#ifdef YX_CSD
+  /* the CSD job: 1 the PN9 back on, 2 the K=5 steps, 3 the traceback; its payload buffer, step
+     and PN9; the caller's callsign (the CSD's src, "" until one decodes) */
+  uint8_t jc, cb;
+  uint16_t ci;
+  uint32_t cpn;
+  char from[11];
+#endif
+#ifdef YX_PLAY
+  uint8_t play;                        /* the call is over and given out: play it */
+#endif
   /* the call: counts; the VW frame decoding (its frame number); the message given out (bytes,
      all ones: the summary first), the superframes filled in and its CRC-16. Not given out
      during the call: a line's ~5 ms pause cost superframes on the emulated K6 */
@@ -270,6 +298,12 @@ static void yx_poll(yx_t *x, ds_t *d) {
       /* a new call: the last one's lines not given out yet are dropped */
       x->done = 0, x->nfr = x->nfich = x->nsf = x->nsfok = 0;
       x->jf = 0, x->jv = 0;                  /* (the last call's frame still decoding: dropped) */
+#ifdef YX_CSD
+      x->jc = 0, x->from[0] = 0;
+#endif
+#ifdef YX_PLAY
+      x->play = 0;
+#endif
       x->rlock = x->timed;                   /* (a step timed before: the first sync looked for
                                                 +-6; missed, or weak at the edge, it's wide) */
 #ifdef YX_TRACE
@@ -375,7 +409,7 @@ static void yx_poll(yx_t *x, ds_t *d) {
       x->pay[x->wb][b >> 1] = (uint8_t)(q | (yx_q4(yd_pn9(&x->pn) ? -l1 : l1) << 4));
       if (++x->n == YD_FRAME_SYMS) {
         if (x->jv) x->nfin++;
-        while (x->jv || x->jf) yx_work(x);    /* the last frame's VW (and this one's FICH): finish them */
+        while (x->jv || x->jf || YX_JC(x)) yx_work(x);   /* the last frame's VW or CSD (and this one's FICH): finish them */
         x->jv = 1, x->db = x->wb, x->vf = x->nfr++;   /* this one's to decode (after the FICH) */
         x->vfok = x->fok, x->vfi = x->fi, x->vfn = x->fn, x->vdt = x->dt, x->fok = 0;
         x->rr = 0;                             /* the next sync's tries */
@@ -389,6 +423,23 @@ static void yx_poll(yx_t *x, ds_t *d) {
 /* a step of the decoders, in a gap between samples: the FICH first, then the VW's K=7 steps,
    its traceback 16 steps a call, the CRCs */
 static void yx_work(yx_t *x) {
+#ifdef YX_CSD
+  if (x->jc && !x->jf) {
+    uint8_t *pay = x->pay[x->cb];
+    if (x->jc == 1) {                         /* the PN9 back on, 60 symbols a call */
+      yd_csd_unpn9(pay, x->ci, x->ci + 60u, &x->cpn);
+      if ((x->ci += 60u) >= YD_PAY_SYMS) x->jc = 2, x->ci = 0, yd_k5_start(x->c5.pm);
+    } else if (x->jc == 2) {                  /* the K=5 steps, 4 a call */
+      uint32_t k;
+      for (k = 0; k < 4u; k++, x->ci++) x->c5.dec[x->ci] = (uint16_t)yd_k5(x->c5.pm, pay[yd_csd_sym(x->ci)]);
+      if (x->ci >= YD_CSD_STEPS) x->jc = 3;
+    } else {
+      x->jc = 0;
+      if (!yd_csd_end(x->c5.dec, x->from)) x->from[0] = 0;
+    }
+    return;
+  }
+#endif
   if (x->jf) {
     if (yd_f5_step(&x->f5, x->fich)) {
       uint8_t b[4];
@@ -408,6 +459,10 @@ static void yx_work(yx_t *x) {
     /* a header, terminator or other data type has no VW to decode */
     if (x->vfok && (x->vfi != 1 || x->vdt != 3)) {
       x->jv = 0;
+#ifdef YX_CSD
+      /* a header's or terminator's caller, the first that decodes */
+      if ((x->vfi == 0 || x->vfi == 2) && !x->from[0]) x->jc = 1, x->cb = x->db, x->ci = 0, x->cpn = 0x1FFu;
+#endif
       if (x->vfi == 2) yx_end(x);
       return;
     }
@@ -439,7 +494,7 @@ static char *yx_hex(char *line, const char *tag, uint32_t *at, uint32_t o, const
 static char *yx_house(yx_t *x, char *line) {
   char *p;
   uint32_t i, n;
-  if (!x->done || x->jv || x->jf) return 0;
+  if (!x->done || x->jv || x->jf || YX_JC(x)) return 0;
   n = x->m.n * SRX_SF;
   if (x->nout == 0xFFFFFFFFu) {
     x->nout = 0;
@@ -451,6 +506,9 @@ static char *yx_house(yx_t *x, char *line) {
     if (x->m.over) p = kv(p, " over=", (int)x->m.over);
     p = put(p, " crc=");
     for (i = 4; i-- > 0;) *p++ = YX_H[(x->crc >> (4 * i)) & 15u];
+#ifdef YX_CSD
+    if (x->from[0]) p = put(put(p, " from="), x->from);
+#endif
 #ifdef YX_BENCH
     x->nout = 0xFFFFFFFEu;
 #endif
@@ -493,8 +551,11 @@ static char *yx_house(yx_t *x, char *line) {
     return p;
   }
 #endif
-  if (x->nout >= n) {
+  if (x->nout >= n || !YX_DUMP) {
     x->done = 0;
+#ifdef YX_PLAY
+    x->play = x->nsfok >= YD_NSF;          /* (a frame's worth decoded: not a noise call's) */
+#endif
     return 0;
   }
   return yx_hex(line, "Y d ", &x->nout, 0, x->m.frames, n);

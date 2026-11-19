@@ -82,8 +82,29 @@ def test_host_receiver_on_the_k6_model(host, cn0, inv):
     out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
     lines = out.splitlines()
     print(out)
-    assert "Y call fr=10 fich=10 vw=40/40 sf=40 miss=0 crc=d821" in lines, out
+    assert "Y call fr=10 fich=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW" in lines, out
     assert stored(lines) == want()
+
+
+@pytest.mark.parametrize("lose", [(0,), (9,), (0, 9)])
+def test_host_receiver_reads_the_callers_callsign(host, lose):
+    """the caller's callsign (CSD1's src) from the header, or from the terminator when the
+    header is lost (on the radio the carrier is often seen only half a frame in), and none
+    when both are lost: the CSD decoded in the K=7 decoder's place"""
+    cnt, _ = k6_counts(ysf_symbols(NSF, lose), 56.0)
+    out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
+    calls = [ln for ln in out.splitlines() if ln.startswith("Y call")]
+    assert len(calls) == 1 and " sf=40 miss=0 crc=d821" in calls[0], out   # (a lost terminator is tried as a VW)
+    assert calls[0].endswith(" crc=d821" if lose == (0, 9) else " crc=d821 from=AG7EW"), out
+
+
+def test_host_receiver_reads_a_long_callsign(host):
+    """ten characters, the field's whole width"""
+    b = ysf.bytes_to_bits(ysf.tx_sotto(ysf.sotto_test(NSF), src="KE7ABC-12/"))
+    sym = np.array([ysf.LEVEL[(int(b[2 * i]) << 1) | int(b[2 * i + 1])] for i in range(len(b) // 2)], float)
+    cnt, _ = k6_counts(sym, 56.0)
+    out = subprocess.run([host], input=cnt.tobytes(), capture_output=True, check=True).stdout.decode()
+    assert any(ln.startswith("Y call ") and ln.endswith(" from=KE7ABC-12/") for ln in out.splitlines()), out
 
 
 def test_host_receiver_fills_lost_frames(host):
@@ -154,7 +175,10 @@ def test_ysfrx_module_on_the_emulated_k6():
     import test_k6_dmr as T
     import k6_live_emu as le
     from sim.k6if import frontend as fe
-    code, entry = T.build([("RUN_S", "6u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    # (the bench build for images before module API level 11: the message in the bootloader's
+    # RAM, where level 11's msg_mem puts it, and its bytes said)
+    code, entry = T.build([("RUN_S", "6u"), ("S_MS", "1000u"), ("YX_RAM0", "1"), ("YX_DUMP", "1")],
+                          os.path.join(K6, "mod", "ysfrx.c"))
     lose = (6, -10)
     nsf = NSF_LONG
     _, (ib, on, off) = k6_counts(ysf_symbols(nsf, lose), 56.0, post_s=4.0)   # the call is ~1.9 s
@@ -173,8 +197,8 @@ def test_ysfrx_module_on_the_emulated_k6():
     e, ret, stack = emu(11776, ib)
     txt = "\n".join(e.said)
     print(txt, stack, len(code))
-    # the message buffer is what the block has left: 2.6 s or more
-    assert int(e.said[0].split("msg=")[1]) >= 64, txt
+    # the message buffer: the bootloader's RAM less the DMA ring, 18.4 s
+    assert int(e.said[0].split("msg=")[1]) == 459, txt
     assert " floor=-60 " in e.said[0], txt
     # the carrier is seen at the next housekeeping, ~half a frame in: the header frame is gone
     # (frame 6 lost whole and frame 10's payload: 10 superframes filled in)
@@ -184,6 +208,33 @@ def test_ysfrx_module_on_the_emulated_k6():
     lost = [int(ln.split("lost=")[1].split()[0]) for ln in e.said if ln.startswith("s ")]
     assert lost and lost[-1] == 0, txt
     assert e.writes[0x13][-1] == 0 and e.writes[0x7E][-1] == 0
+    assert stack < 1500, stack
+
+
+def test_ysfrx_module_hands_the_call_to_sotto_play():
+    """on an image with module API level 11 the module hands the call it heard to sotto_play once
+    its lines are out (the message, sotto 1200, listen again after playback, the caller from the
+    terminator: the header went by while the carrier was seen) and returns at once, long before
+    RUN_S, so the core can play it"""
+    if not (shutil.which("clang") and shutil.which("ld.lld")):
+        pytest.skip("needs clang and ld.lld")
+    pytest.importorskip("unicorn")
+    import test_k6_dmr as T
+    import k6_live_emu as le
+    from sim.k6if import frontend as fe
+    code, entry = T.build([("RUN_S", "20u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    lose = (6, -10)
+    _, (ib, on, off) = k6_counts(ysf_symbols(NSF_LONG, lose), 56.0, post_s=4.0)
+    e = le.Emu(code, entry, ib, on, fe.FDMA, 1.5, max_s=len(ib) / fe.FDMA + 0.5, level=11, stack_win=7000,
+               scratch=(11776 - 24 - len(code)) & ~3, fd_us=300)
+    e.rssi = lambda: -60 if on <= e.sample_now() < off or e.sample_now() < on // 2 else -125
+    ret, stack = e.run()
+    txt = "\n".join(e.said)
+    print(txt, stack, len(code))
+    assert any(ln.startswith("Y call fr=17 ") and ln.endswith(" sf=80 miss=10 crc=" + ln.split("crc=")[1][:4] + " from=AG7EW")
+               for ln in e.said), txt
+    assert e.played == [(want(NSF_LONG, lose), 0xA9, 1, "AG7EW")], e.played
+    assert ret == 17 and e.cyc / le.FCPU < off / fe.FDMA + 2.0, (ret, e.cyc / le.FCPU)
     assert stack < 1500, stack
 
 
@@ -198,7 +249,8 @@ def test_ysfrx_module_with_the_dma_following_the_cpu():
     import test_k6_dmr as T
     import k6_live_emu as le
     from sim.k6if import frontend as fe
-    code, entry = T.build([("RUN_S", "3u"), ("S_MS", "1000u")], os.path.join(K6, "mod", "ysfrx.c"))
+    code, entry = T.build([("RUN_S", "3u"), ("S_MS", "1000u"), ("YX_RAM0", "1"), ("YX_DUMP", "1")],
+                          os.path.join(K6, "mod", "ysfrx.c"))
     fh = 6.5e6                                  # the sigma-delta's own bits (le.Emu.fhi)
     s, _ = dmr.dmr_baseband(ysf_symbols() * 2700.0 / 3 / dmr.UNIT, pre_s=0.0, post_s=0.0)
     bits = fe.receive(s, T.st.FZ, 56.0, seed=1, L=0, fdma=fh, jit=0.0)
@@ -214,6 +266,7 @@ def test_ysfrx_module_with_the_dma_following_the_cpu():
     assert r is not None, txt
     ks = [int(ln.split("ks=")[1]) for ln in e.said if ln.startswith("s ")]
     assert ks and ks[-1] > 5560, txt            # (the DMA ran faster than its 5.49 MS/s)
-    # (the header goes by while the carrier is seen)
-    assert any(ln.startswith("Y call fr=9 ") and ln.endswith(" vw=40/40 sf=40 miss=0 crc=d821") for ln in e.said), txt
+    # (the header may go by while the carrier is seen; then the callsign comes from the terminator)
+    assert any(ln.startswith(("Y call fr=9 ", "Y call fr=10 "))
+               and ln.endswith(" vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW") for ln in e.said), txt
     assert stored(e.said) == want(), txt

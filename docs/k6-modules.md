@@ -311,6 +311,15 @@ the light at power-on and never put it out. The core now keeps the timeout itsel
   `settings light=N secs=S saved` (or `unchanged`). Tests: `tests/test_k6_settings.py`
   (`tests/test_k6_i2s.py` `run(settings=...)` models the call).
 
+## API level 11: playing what a receiver hears
+
+Added 2026-11-19 (Jeff: "Please proceed with playback"). `sotto_play(sf, n, codec, flags, from)`
+notes a received sotto 1200 message and its caller's callsign; once the module returns, the core
+moves it into the message store, plays it with `FROM <call>` on the screen, and with
+`KM_PLAY_RERUN` loads the module from its library slot again so the radio listens again.
+`msg_mem(&bytes)` gives a receiver the bootloader's idle RAM (0x20000100-0x20000FFF, 3,840 B)
+for the call it is hearing. The details, and what ysfrx does with them: docs/k6-sotto-play.md.
+
 ## The SPI module library
 
 Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).

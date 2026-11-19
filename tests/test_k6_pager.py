@@ -646,3 +646,36 @@ def test_pause_frames_play_as_the_full_message(codec, name, lost, stream):
 
 def _split6(b):
     return [b[i:i + 6] for i in range(0, len(b), 6)]
+
+
+def _put(host, frames, at, store=4096):
+    with tempfile.TemporaryDirectory() as d:
+        with open(f"{d}/m.raw", "wb") as f:
+            f.write(b"".join(frames))
+        args = [host, "-r", str(at), "-b", str(store), f"{d}/m.raw", f"{d}/o.raw"]
+        out = subprocess.run(args, check=True, capture_output=True, text=True).stdout.split()
+        st = dict(kv.split("=", 1) for kv in out)
+        return st, np.fromfile(f"{d}/o.raw", "<i2")
+
+
+@pytest.mark.skipif(not os.path.exists(HOST_LR), reason="needs make -C c/k6")
+@pytest.mark.parametrize("at", [0, 6, 600, 4096 - 6 * 70, 4096, 6000])
+def test_sp_put_plays_a_whole_message_from_anywhere_in_the_block(at):
+    """sp_put (module API level 11, sotto_play): a RAM module's message, 6-byte sotto 1200 slots
+    in its scratch, which shares the K6's block with the store (before it, inside it, past it),
+    plays bit-exactly as the M0 decoder plays the same slots, every one good, and stays in the
+    store complete (VOICE MSG's play key replays it)"""
+    fr = frames_of(70, seed=13)
+    st, pcm = _put(HOST_LR, fr, at)
+    assert st["results"] == "put70,"
+    assert int(st["total"]) == 70 and int(st["got"]) == 70 and st["complete"] == "1"
+    assert np.array_equal(pcm, _dec_lr(fr, [1] * 70))
+
+
+@pytest.mark.skipif(not os.path.exists(HOST_LR), reason="needs make -C c/k6")
+def test_sp_put_keeps_what_fits():
+    """a message longer than the store keeps what fits (4,096 B: 656 slots, 26 s)"""
+    fr = frames_of(700, seed=14)
+    st, pcm = _put(HOST_LR, fr, 4096, store=4096)
+    assert st["results"] == "put656," and int(st["stored"]) == 656 and st["complete"] == "1"
+    assert len(pcm) == 656 * 320

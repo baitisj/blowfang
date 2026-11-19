@@ -20,7 +20,9 @@
  * (pager_host_vlr*, -DSP_VLR) also print vlr= (sp_vlr_setup's result) after cb=, and with their
  * tables in SPI flash take -V IMAGE (put at SP_VLR_ADDR) and -X FILE (that region written out
  * after the setup), and print vlr_reads= after cb_reads=. pager_host -e [-x] PACKETS.bin prints, for each packet,
- * sp_test_errors: errors seq swap invert and the eight block counts.
+ * sp_test_errors: errors seq swap invert and the eight block counts. -r OFFSET reads PACKETS.bin
+ * as raw 6-byte sotto 1200 slots instead (a RAM module's message, module API level 11), puts them at
+ * byte OFFSET of the store's buffer (inside it, as a module's scratch can be) and hands them to sp_put.
  * SPDX-License-Identifier: MIT */
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,7 +35,7 @@
 #endif
 
 int main(int argc, char **argv) {
-  int len = SP_PAYLOAD_L, n, r, c, pwm = 0, ber = 0, halves = 0, playing = 0, waits = 0, ov = 0, ringf, npk = 0, start = 0;
+  int len = SP_PAYLOAD_L, n, r, c, raw = -1, pwm = 0, ber = 0, halves = 0, playing = 0, waits = 0, ov = 0, ringf, npk = 0, start = 0;
   unsigned bytes = 6144;
   static uint32_t mem[65536];
   uint8_t pkt[SP_PAYLOAD_MAX];
@@ -52,6 +54,7 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "-e")) ber = 1, argv++, argc--;
     else if (!strcmp(argv[1], "-x")) len = SP_PAYLOAD_XL, argv++, argc--;
     else if (!strcmp(argv[1], "-p")) pwm = 1, argv++, argc--;
+    else if (!strcmp(argv[1], "-r") && argc > 2) raw = atoi(argv[2]), argv += 2, argc -= 2;
     else if (!strcmp(argv[1], "-S")) sp_set_stream(0), argv++, argc--;
     else if (!strcmp(argv[1], "-s") && argc > 2) halves = atoi(argv[2]), argv += 2, argc -= 2;
     else if (!strcmp(argv[1], "-b") && argc > 2) bytes = (unsigned)atoi(argv[2]), argv += 2, argc -= 2;
@@ -123,7 +126,11 @@ int main(int argc, char **argv) {
 #endif
   n = sp_init(mem, bytes);
   printf("max_frames=%d static=%u results=", n, sp_static_bytes());
-  while (fread(pkt, 1, (size_t)len, in) == (size_t)len) {
+  if (raw >= 0) {                     /* the slots at byte raw of the buffer, then sp_put */
+    size_t got = fread((uint8_t *)mem + raw, 1, sizeof mem - (size_t)raw, in);
+    printf("put%d,", sp_put(mem, bytes, (uint8_t *)mem + raw, (unsigned)(got / 6u), SP_MAGIC_LR));
+  }
+  while (raw < 0 && fread(pkt, 1, (size_t)len, in) == (size_t)len) {
     c = sp_check(pkt, len);
     r = sp_packet(pkt, len);
     if (c != (r >= 0)) { fprintf(stderr, "sp_check %d disagrees with sp_packet %d\n", c, r); return 2; }

@@ -25,6 +25,13 @@
 #define FREQ_HZ 440850000u      /* the bench link channel: the Pluto's sends, with its MCW ID */
 #endif
 #define YSF_DECODE 1
+#define YX_CSD 1                /* the caller's callsign from the header or terminator */
+#ifndef YX_NO_PLAY
+#define YX_PLAY 1               /* on an image with module API level 11: the call played */
+#ifndef YX_DUMP
+#define YX_DUMP 0               /* (no "Y d" lines: the core's "K6 PLAY put" line has the CRC) */
+#endif
+#endif
 /* YX_TRACE 1: "Y t" lines after each call, its frames' syncs (the bench build: 0.4 KB of code,
    the message buffer 69 superframes) */
 #ifndef RSZ
