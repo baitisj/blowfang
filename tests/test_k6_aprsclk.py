@@ -845,7 +845,7 @@ def test_plainlog_reads_both_builds_lines():
                                              "sync AAAA: 1 packets, 0 with a frame, e=0 d=0; "]
 
 
-def _dfsk_emulated(slow, name="aprsdfsk"):
+def _dfsk_emulated(slow, name="aprsdfsk", defs=()):
     """aprsdfsk's emulated run on the bench captures (see the test below) -> (the emulator, the
     packets sent, the clean kinds, the module's return, its stack); e.tunes has the tune calls"""
     pytest.importorskip("unicorn")
@@ -875,10 +875,10 @@ def _dfsk_emulated(slow, name="aprsdfsk"):
     stream = np.array(stream + [0] * 14400, np.int8)
     times = follow_times(stream, slow)
     total = float(times[-12000])
-    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")], src)
+    code, entry = le.build("x", [("RUN_MS", f"{int(total * 1000)}u")] + list(defs), src)
     full, _ = k6mod.build(src)
     bench, _ = k6mod.build(os.path.join(K6, "mod", "aprsdfsk_440.c"))
-    assert len(full) < (6400 if name == "aprsdfsk" else 6700) and len(bench) < 6400, (len(full), len(bench))
+    assert len(full) < {"aprsdfsk": 6400, "aprslad_o": 7000}.get(name, 6700) and len(bench) < 6400, (len(full), len(bench))
     Base = modem_chip(le, lambda r58: stream, 4800)
 
     class Chip(Base):
@@ -987,6 +987,28 @@ def test_aprslad_settings_on_the_emulated_m0(name, setting, afc, gain, wide):
         assert e.writes[0x13] == [0x03FF, 0] and e.writes[0x7E] == [0xB000, 0], (e.writes[0x13], e.writes[0x7E])
     else:
         assert 0x13 not in e.writes and 0x7E not in e.writes
+
+
+@need_clang
+def test_aprslad_o_tunes_to_the_flags_offset_on_the_emulated_m0():
+    """aprslad_o (DF_OFFT): a packet whose opening flags' q is DF_QMIN or more is given up, the
+    K6 tuned q * DF_QHZ Hz off, and the packet read from the flags still to come; tuned back to
+    the centre after it. The model's chip gives the same bits whatever the tuning, so with
+    DF_QMIN 1 every packet with q != 0 is tuned once and must still be read"""
+    e, sent, clean, ret, stack = _dfsk_emulated(1.0, "aprslad_o", defs=[("DF_QMIN", "1")])
+    assert e.said[0].endswith(" set=offt"), e.said[0]
+    f = [ln.split()[1] for ln in e.said if ln.startswith("f ")]
+    y = [dict(kv.split("=") for kv in ln.split()[2:]) for ln in e.said if ln.startswith("y ")]
+    assert all(len(ln) <= 60 for ln in e.said), max(e.said, key=len)
+    assert stack < 700 and e.over == 0 and e.said[-1].endswith(" lost=0"), (stack, e.said[-1])
+    rt = int(e.said[-2].split(" rt=")[1])
+    off = [(hz - 440850000, w) for hz, w in e.tunes[1:-1]]
+    # each tune off the centre is followed by one back to it, and the y lines say the offset
+    assert rt > 0 and len(off) == 2 * rt, (rt, off)
+    assert all(o != 0 and abs(o) <= 1500 and back == (0, 1) for (o, _), back in zip(off[::2], off[1::2])), off
+    assert rt - 2 <= sum(v["o"] != "0" for v in y) <= rt and all(int(v["o"]) % 4 == 0 for v in y), y
+    # the packets are read after their tune (the long openings; the model's 8-flag ones may not)
+    assert set(f) >= {f"AG7EW-{k}" for k in clean if k in (9, 10)} and len(f) >= len(clean) - 4, (f, clean)
 
 
 @need_clang

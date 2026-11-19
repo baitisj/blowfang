@@ -320,6 +320,7 @@ aprslad_d      # level 2, the APRS ladder: aprsdfsk_440 with the receiver's de-e
 aprslad_g      # level 2, the APRS ladder: aprsdfsk_440 with the gain frozen at REG_13 03ff, 400 s
 aprslad_k      # level 2, the APRS ladder: aprsdfsk_440 tuned again after every packet without a frame (the AFC re-centred), 400 s
 aprslad_n      # level 2, the APRS ladder: aprsdfsk_440 with the narrow filter, 400 s
+aprslad_o      # level 2, the APRS ladder: aprsdfsk_440 tuned to each packet's offset from its opening flags (q), 400 s
 aprslad_w      # level 2, the APRS ladder: aprsdfsk_440 as it is (wide, AFC on, AGC), 400 s
 aprsfsk        # level 2 (screen at 6, LED at 7), aprsclk behind the chip's own FSK modem (REG_58 33a3), 144.390
 aprsfsk_440    # level 2, aprsfsk on 440.850 for the on-air loopback, every packet's words said
