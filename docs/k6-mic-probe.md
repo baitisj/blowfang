@@ -12,6 +12,15 @@ that pin"), with the runs that took it down, because the way it went wrong is wo
 
 ## Short answer
 
+**Read this first (2026-11-20 22:59 UTC, Jeff): every mic test below ran with the programming
+cable in the K6's jack.** The cable sits on the mic line (as on the UV-380, whose USB cable
+switches its internal mic out), so the negatives below say nothing about the mic: "no path to
+the MCU" is untested. What stands: PA11 reads the chip's AF output, REG_64 is a 20 ms level
+meter, select 4 with the TX DSP on is the receiver's raw baseband, and the "mic" sounds of
+micp4/micp5 were the Pluto's carrier leaking in (their 120/240/360 Hz hum rides on the Pluto's
+signal: it fell 2 dB per dB of Pluto power in micp5g). The retest is micout, below.
+
+
 - **The MCU has an audio input after all: the beep pin.** PA11, the voice prompts' PWM pin,
   shares a node with the FD6818's audio output. Run as a one-pin delta-sigma converter
   (`c/k6/mod/pa11adc.h`) it digitises whatever the chip puts on its AF pin, with no part added:
@@ -422,7 +431,23 @@ which suggests REG_64 measures something on the AF side rather than the mic.) Wi
 result (Jeff heard the tone at the mic, and no register followed it in receive), REG_64 has not
 followed a sound at the K6's mic in any state tried.
 
+## micout: mic64 with the cable pulled (2026-11-20)
+
+`c/k6/mod/micout.c` is mic64 built with `MIC64_OUT`. Nothing the K6 says with the cable out
+reaches the logger, so the screen runs the bench: PULL CABLE / THEN ANY KEY; then QUIET PLEASE
+while it waits for the sound's carrier on 445.850 MHz and records REG_64 keyed with the PA off
+(105 s, every 20 ms); TALK NOW for the last 1,000 samples (20 s), when the person at the bench
+talks into the mic; then key-down and PLUG CABLE IN / THEN ANY KEY. Only after that key does it
+send its lines, mic64's own plus `mic64 out talk=N` (the first TALK NOW sample). The sound is the
+Pluto at gain -46 playing a 1,300 Hz tone keyed by micscan's 31-chip m-sequence (100 ms chips,
+nine periods) through the IC-7100 on 445.850 MHz: once at AF 0.3, once at AF 0 as the control.
+A level meter that hears the room correlates with the pattern whatever the alignment, and the
+talk window needs no pattern at all.
+
 ## Where this leaves the K6
+
+(Written before the cable was noticed: the mic line is open again until micout runs.)
+
 
 - **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or
   off, and with the guide's DISC bit: no AF select, GP0 select or register carries it. What is

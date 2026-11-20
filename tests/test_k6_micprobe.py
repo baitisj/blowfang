@@ -945,6 +945,50 @@ def test_mic64_every_way_out_keys_down():
     assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
 
 
+# ---- micout: mic64 with the cable pulled ----
+
+MICOUT = os.path.join(ROOT, "c", "k6", "mod", "micout.c")
+MOUT_DEFS = M64_DEFS + [("TALK_N", "13u"), ("KEY_WAIT_MS", "60000u")]
+
+
+def mout_run(keys, level=14, tx=None, **kw):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1, **kw)
+    tx = {} if tx is None else tx
+    lcd = {}
+    ret, said, regs, writes = run_k6(regs, src=MICOUT, code=build(MICOUT, MOUT_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=level, spare=4096, tx=tx, rx_hz=HOME_HZ,
+                                     keys=keys, lcd=lcd, count=6_000_000_000)
+    return w, tx, ret, said, regs, lcd
+
+
+def test_micout_fits_the_radio():
+    assert k6mod.source_level(MICOUT) == 13
+    assert len(k6mod.build(MICOUT)[0]) <= 11_776
+
+
+@need_clang
+def test_micout_waits_for_the_pull_records_then_speaks_only_after_the_replug_key():
+    pull, plug = 1_000_000, 40_000_000
+    w, tx, ret, said, regs, lcd = mout_run(((pull, pull + 200_000), (plug, plug + 200_000)))
+    assert ret == 52, said[-4:]
+    log = tx["log"]
+    t_on = next(us for n, _, us in log if n == "tx_on")
+    t_off = next(us for n, _, us in log if n == "tx_off")
+    assert pull < t_on < t_off < plug                # keyed only after the pull key, down before the plug key
+    assert "mic64 out talk=0027" in said             # 52 - 13
+    i = said.index("mic64 out talk=0027")
+    assert said[i + 1].startswith("mic64 keyed 30=c1fa") and said[-1] == "mic64 done"
+    assert lcd["scr"]["text"][2] == "SENDING" and lcd["scr"]["text"][0] == "MIC64 CABLE OUT"
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_micout_without_the_pull_key_keys_nothing():
+    w, tx, ret, said, regs, lcd = mout_run(())
+    assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "mic64 done"
+    assert lcd["scr"]["text"][2] == "PULL CABLE"
+
+
 # ---- keygo ----
 
 KEYGO = os.path.join(ROOT, "c", "k6", "mod", "keygo.c")

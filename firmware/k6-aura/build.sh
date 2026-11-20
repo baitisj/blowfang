@@ -418,6 +418,7 @@ mic64          # level 13, keyed on the bench frequency: its CW ID, then the PA 
 micdisc        # level 4, the guide's DISC baseband mode (REG_44 bit 0) tried as a way from the mic to the AF pin, every select (keys nothing, docs/k6-mic-probe.md)
 mickey         # level 4, keyed on the bench frequency: its CW ID, then the PA off and every AF select read by PA11 with the mic ADC on (the mic never on the air, docs/k6-mic-probe.md)
 miclvl         # level 4, AF select 4 with the mic ADC and TX DSP on over 48 s of a stepped tone: as is, the mic ADC off, the mic AGC bit flipped (keys nothing, docs/k6-mic-probe.md)
+micout         # level 13, mic64 with the programming cable pulled (it takes the mic out): the screen asks for the pull and the replug, the dump only after (the mic never on the air, docs/k6-mic-probe.md)
 micpin         # level 4, AF select 4 with the mic ADC and TX DSP on in receive, read by PA11 in whole captures: quiet, then a tone (the receiver's baseband, not the mic; keys nothing, docs/k6-mic-probe.md)
 micprobe       # level 4, the mic ADC switched on in receive: what follows a sound at the mic (AF selects by PA11, GP0, registers; keys nothing, docs/k6-mic-probe.md)
 micrec         # level 4, three seconds of that select as IMA ADPCM, for tools/k6_micprobe.py (keys nothing, docs/k6-mic-probe.md)

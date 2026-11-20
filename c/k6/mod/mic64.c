@@ -22,6 +22,12 @@
      A 000 00100011000f...                            REG_64, four hex digits a sample, 13 a line
      mic64 A ticks=a1b2 step=14 n=1484
      mic64 done
+   MIC64_OUT (micout.c, 2026-11-20 Jeff: "WE DID EVERY TEST WITH THE SERIAL JACK IN THE K6"): the
+   programming cable in the jack takes the mic out, so this build runs with it pulled. The screen
+   says PULL CABLE / THEN ANY KEY; after that key it waits for the sound as above. TALK_N samples
+   before the end the screen says TALK NOW (the line "mic64 out talk=" gives the sample). After
+   key-down it says PLUG CABLE IN / THEN ANY KEY and only then sends its lines, all of them
+   (nothing said while the cable was out reaches the logger). -7: no key within KEY_WAIT_MS.
    Returns the samples, or -8 (scratch under 3 KB), -6 (a key), -5 (the PA would not go off, or
    REG_30 did not take the bit), -4 (the bench frequency is busy), -3 (tx_on refused), -2 (not on
    the bench frequency), -1 (no transmitter). Level 13.
@@ -61,6 +67,14 @@
 #define RSSI_ON -90 /* dBm: the sound's carrier is sent weak */
 #define AF_DAC 0x0200u
 #define CW_TEXT "AG7EW"
+#ifdef MIC64_OUT
+#ifndef TALK_N
+#define TALK_N 1000u /* the last 20 s: Jeff talks into the mic */
+#endif
+#ifndef KEY_WAIT_MS
+#define KEY_WAIT_MS 1200000u /* 20 minutes for each of the two keys */
+#endif
+#endif
 #define UNIT_US 60000u /* 20 wpm */
 #ifndef TX_MS
 #define TX_MS 118000u /* the ID, SETTLE_MS and N_MAX x STEP_MS (the core's cap is 120 s) */
@@ -90,6 +104,28 @@ static char *dbm(char *p, int v) {
 }
 
 static int rssi(const k6_api_t *api) { return KM_RSSI_DBM(api->fd_read(0x67)); }
+
+#ifdef MIC64_OUT
+static void show(const k6_api_t *api, const char *l1, const char *l2) {
+  if (api->level < 6) return;
+  api->lcd_text(0, "MIC64 CABLE OUT");
+  api->lcd_text(2, l1);
+  api->lcd_text(3, l2);
+  api->lcd_flush();
+}
+
+/* a whole key press (any key held now must be let go first): 0, or -7 after ms */
+static int key_go(const k6_api_t *api, uint32_t ms) {
+  uint32_t t0 = api->ms();
+  int phase;
+  for (phase = 0; phase < 3; phase++) /* let go, press, let go */
+    while (api->key_poll() == !(phase & 1)) {
+      if (api->ms() - t0 >= ms) return -7;
+      api->delay_us(20000);
+    }
+  return 0;
+}
+#endif
 
 typedef struct {
   const k6_api_t *api;
@@ -159,6 +195,9 @@ static int pass(const run_t *r, uint32_t r47, int *made) {
     }
     if (e) break;
     if (api->ms() - t0 > i * STEP_MS + STEP_MS / 2u) late++;
+#ifdef MIC64_OUT
+    if (i + TALK_N == r->n) show(api, "TALK NOW", "INTO THE MIC");
+#endif
     r->buf[i] = (uint16_t)api->fd_read(0x64);
     if (!(i & 31u) && (api->fd_read(0x36) & 0x0080u)) e = -5;
   }
@@ -166,6 +205,15 @@ static int pass(const run_t *r, uint32_t r47, int *made) {
   if (s30 && api->fd_read(0x30) != s30 && api->fd_write(0x30, (uint16_t)s30) != 0) mic_bus_write(api, 0x30, s30);
   api->fd_write(0x47, (uint16_t)r47);
   api->tx_off();
+#ifdef MIC64_OUT
+  show(api, "PLUG CABLE IN", "THEN ANY KEY");
+  if (key_go(api, KEY_WAIT_MS) < 0 && !e) e = -7;
+  show(api, "SENDING", "");
+  api->delay_us(1000000);
+  p = hexn(put(line, "mic64 out talk="), r->n > TALK_N ? r->n - TALK_N : 0u, 4);
+  *p = 0;
+  api->say(line);
+#endif
   p = hexn(put(line, "mic64 keyed 30="), s30, 4);
   p = hexn(put(p, " 36="), api->fd_read(0x36), 4);
   p = hexn(put(p, " now="), now, 4);
@@ -213,6 +261,14 @@ int k6_main(const k6_api_t *api) {
   api->say(line);
   if (home != BENCH_HZ) return -2;
   wr(MIC_GPIOB + MIC_BRR, AMP);
+#ifdef MIC64_OUT
+  show(api, "PULL CABLE", "THEN ANY KEY");
+  if (key_go(api, KEY_WAIT_MS) < 0) {
+    ret = -7;
+    goto out;
+  }
+  show(api, "QUIET PLEASE", "RECORDING");
+#endif
   /* the upload's tail: wait until the channel has been quiet for a second */
   t0 = api->ms();
   t1 = t0;
