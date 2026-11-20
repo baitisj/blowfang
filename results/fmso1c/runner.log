@@ -1,0 +1,6 @@
+2026-11-20T08:42:15Z job fmso1c by fmsotto, checkout /home/baitisj/blowfang-work/worktrees/inbox-449e94dbf4ed at 449e94dbf4edc520251fd44843c995df5caf5565
+2026-11-20T08:42:15Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold fmsotto -- timeout -s INT --kill-after=10 3500 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/fmso1c/k6.log
+2026-11-20T08:42:17Z step 1 (logger) rc=0
+2026-11-20T09:27:17Z step 2 (wait) rc=1 (no /K6 BOOT/ in /home/baitisj/blowfang-work/runs/queue/fmso1c/k6.log)
+2026-11-20T09:27:17Z stopping the job's background logger still running at its end
+2026-11-20T09:27:17Z job fmso1c failed: step 2 (wait): no /K6 BOOT/ in /home/baitisj/blowfang-work/runs/queue/fmso1c/k6.log
