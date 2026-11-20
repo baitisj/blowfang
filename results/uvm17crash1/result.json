@@ -1,0 +1,12 @@
+{
+ "id": "uvm17crash1",
+ "status": "queued",
+ "queued": "2026-11-20T01:44:01Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "d72986e561a6e083a7b4704cf024c53d86e2315c",
+  "path": "jobs/uvm17crash1"
+ },
+ "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "updated": "2026-11-20T01:44:01Z"
+}
