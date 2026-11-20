@@ -1,12 +1,12 @@
 {
  "id": "fmso1a",
- "status": "queued",
- "queued": "2026-11-20T08:19:21Z",
+ "status": "running",
+ "since": "2026-11-20T08:19:28Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "764a697fc810a2c41e0b3178a153388a0e1f7895",
   "path": "jobs/fmso1a"
  },
  "runner_commit": "449e94dbf4edc520251fd44843c995df5caf5565",
- "updated": "2026-11-20T08:19:21Z"
+ "updated": "2026-11-20T08:19:28Z"
 }
