@@ -1,0 +1,20 @@
+{
+ "id": "fmso1b",
+ "who": "fmsotto",
+ "freq_mhz": 440.85,
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 60,
+   "file": "k6.log"
+  },
+  {
+   "do": "wait",
+   "seconds": 45
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
