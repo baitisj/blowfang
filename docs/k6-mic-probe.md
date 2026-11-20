@@ -138,6 +138,10 @@ Probe 2 has to turn the chip's mic ADC on while it receives, which is REG_30 bit
 - `tx_on`, `tx_off` and every retune write REG_30 whole, and the core's return to receive after
   the module does too, so nothing a module sets there outlives it.
 
+The level outlives its first purpose. The mic is on none of these bits' selects, and Jeff kept
+the level for the baseband tap (2026-11-19: "Keep baseband tap"): bit 1, the TX DSP, in
+receive, with REG_47 select 4 ("The correction", below).
+
 ## Probe 2: the mic ADC on, with no flash
 
 (Read this section with "The correction" after it: the measurements stand, the reading of
@@ -336,4 +340,5 @@ its AF pin at all.
 - **The baseband select is a find of its own**: with the TX DSP bit on, select 4 gives the MCU
   the channel before the FM demodulator, as audio (a carrier 1.2 kHz off tune is a 1.2 kHz
   tone). That is a second way to a receiver in software, beside GP0's 1-bit stream
-  (`docs/k6-i2s-probe.md`), and it needs API level 14 or the bus-pin write.
+  (`docs/k6-i2s-probe.md`), and it needs API level 14 or the bus-pin write. Jeff kept level 14
+  for it.

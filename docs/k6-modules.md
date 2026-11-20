@@ -354,6 +354,11 @@ is refused while the PA is on, and `tx_pa(1)` clears it first: a module can neve
 on the air. `tx_on`, `tx_off`, a retune and the core's return to receive all write REG_30
 whole, so nothing a module sets there outlives it.
 
+The mic turned out not to reach the MCU by any of these bits. The level stays for the baseband
+tap (Jeff, 2026-11-19: "Keep baseband tap"): with bit 1 on in receive, REG_47 select 4 gives
+the channel before the FM demodulator on the AF pin, which PA11's converter reads
+(docs/k6-mic-probe.md, "The correction").
+
 ## The SPI module library
 
 Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).
