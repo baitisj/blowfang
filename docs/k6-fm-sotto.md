@@ -49,12 +49,12 @@ a 1 kHz tone at 3 kHz deviation at 13,440 (-7.7 dBFS). The AGC is frozen at its 
 
 | | bytes |
 | --- | --- |
-| code and constants (-Oz) | 10,586 |
+| code and constants (-Oz) | 10,622 |
 | header and tag | 24 |
 | DMA ring | 512 |
 | front end (filters, clock, 320-sample ring) | 768 |
 | slim encoder state | 3,148 |
-| left of level 13's 15,408 | about 360 |
+| left of level 13's 15,408 | about 330 |
 | stack, deepest (k6_main, encode, coder, search; -fstack-usage) | about 1,210 + fl_read + 116 for the handler, of the 2,136 the module gets |
 
 The first build was 13.6 KB of code, 2.7 KB over. Three hooks added to the slim encoder (sotto
@@ -101,7 +101,7 @@ fms end n=750 lost=0 miss=0 h=440000
 `sps`: 8 kHz samples made in the second (8,000 when the clock is right); `pk`: their largest
 value; `skip`: 10 ms blocks the encoder fell behind on and skipped in the second (`lost` at the
 end: in all); `miss`: DMA halves lost; `isr`: the handler's share of the CPU; `rd`: the SPI reads'. Returns the superframes coded, or -2 (a key before any),
--3, -4, -5, -7, -8, -9 as dmairq, -10 (no cell deck).
+-3, -4, -5, -7, -8, -9 as dmairq, -10 (no cell deck), -11 (the DMA never started).
 
 `python3 tools/k6_fmsotto.py log k6.log out.bit --wav out.wav` turns a run's lines back into a
 sotto 1200 file (gaps as silence) and decodes it with sotto's fixed-point decoder.
@@ -139,8 +139,19 @@ while fmsotto coded, so most of the run is the upload's data, then the voice at 
 itself after (RUN_MS + 30 s) of halves whatever happens; and the encoder's reads go straight to
 SPI1 from RAM (READ 0x03 only, as `stockfont.c` does; `spi=0` in the start line falls back to
 `fl_read`). The second's line now says `skip=` (blocks skipped in that second) and `rd=` (the
-reads' share of the CPU), so the next run shows where the time goes. Code 10,586 B. Jobs upload
+reads' share of the CPU), so the next run shows where the time goes. Jobs upload
 with `--rounds 1` so no retry lands on a running module.
+
+**fmso1d (09:28-09:33Z, the fix, after Jeff switched the K6 off and on at 08:56Z).** It
+stopped on time (`fms end`, `ret=0` after 90 s), but `h=0`: the DMA never moved. gp0rx.h and
+aprsclk.c turn on TIM17's update DMA request (DIER UDE), which is what starts channel 1 (it then
+runs flat out); fmsotto and dmairq didn't, and only ran before because an earlier module had left
+that bit set (the timer's registers keep their values with its clock off). Now fmsotto sets it
+and clears it at the end, and returns -11 if no half arrives in the first 20 ms. The run also
+started while the upload was still on the air (its quiet wait gave up after 30 s), so the voice
+came after the module's 60 s. The quiet wait is now up to 150 s and RUN_MS 90 s.
+(fmso1c had waited for a `K6 BOOT` line after the power cycle; the line came out garbled as the
+radio powered up, so the job never started.)
 
 ## The bench run
 

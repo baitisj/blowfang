@@ -33,7 +33,7 @@
    NVIC bit 9, TIM17, DMA channel 1 and their clock enables, all put back. Returns the
    superframes coded, or -2 (a key before any), -3 (old image), -4 (PB1 not an input), -5 (REG_33
    refused), -7 (TIM17 or DMA channel 1 in use), -8 (scratch), -9 (the vector copy isn't the
-   bootloader's table), -10 (no cell deck in the library).
+   bootloader's table), -10 (no cell deck in the library), -11 (the DMA never started).
 
    -DFMS_HOST builds the same front end and encoder for a PC (tools/k6_fmsotto.py sim): counts in,
    superframes out.
@@ -52,7 +52,7 @@ K6_MODULE_NAME("FM SOTTO");
 #endif
 
 #ifndef RUN_MS
-#define RUN_MS 60000u
+#define RUN_MS 90000u
 #endif
 #ifndef FMS_WIDE
 #define FMS_WIDE 1
@@ -554,7 +554,7 @@ int k6_main(const k6_api_t *api) {
   if (bad || rd(SRAM0 + 4u * V_HF) == rd(BOOT_VEC + 4u * V_HF)) return -9;
   /* the upload's carrier gone */
   t0 = api->ms();
-  while (KM_RSSI_DBM(api->fd_read(0x67)) > -80 && api->ms() - t0 < 30000) {
+  while (KM_RSSI_DBM(api->fd_read(0x67)) > -80 && api->ms() - t0 < 150000) {
     if (api->key_poll()) return -2;
     api->delay_us(10000);
   }
@@ -592,6 +592,11 @@ int k6_main(const k6_api_t *api) {
   wr(TIM17 + 0x28, 0);
   wr(TIM17 + 0x2C, 0xFFFF);
   wr(TIM17 + 0x14, 1);
+  /* its update request on, as gp0rx.h and aprsclk.c have it: that is what starts DMA channel 1
+     (then it runs flat out). fmso1a ran without it only because an earlier module had left it
+     set; after a power cycle (fmso1d) the DMA never moved */
+  wr(TIM17 + 0x10, 0);
+  wr(TIM17 + 0x0C, 1u << 8);
   wr(TIM17 + 0x00, 1);
   f->c17 = rd(TIM17_CNT) & 0xFFFF;
 #ifndef FMS_API_READS
@@ -620,7 +625,7 @@ int k6_main(const k6_api_t *api) {
   pr = f->pw, ri = f->wi, pw0 = f->pw, c0 = f->isr, r0 = f->rdc;
   pr -= pr % BLK, ri -= ri % BLK; /* blocks start where the ring's do */
   t0 = tsec = tq = api->ms();
-  for (;;) {
+  while (f->halves) { /* none in the 20 ms: the DMA isn't running, so nothing to code (-11) */
     /* the clock and the keys each time round, not only when the encoder has caught up: fmso1a
        ran behind for minutes and never got here, so no key or time limit could end it */
     f->quiet = 0;
@@ -664,6 +669,7 @@ int k6_main(const k6_api_t *api) {
   wr(SRAM0 + 4u * V_CTX, v46);
   if (nf) n = say_frames(api, line, fr, &nf, n);
   wr(TIM17 + 0x00, 0);
+  wr(TIM17 + 0x0C, 0);
   wr(RCC_APB2ENR, apb2);
   wr(RCC_AHBENR, ahb);
   if (GAIN13) api->fd_write(0x13, r13), api->fd_write(0x7E, r7e);
@@ -675,7 +681,7 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " h=", f->halves);
   *p = 0;
   api->say(line);
-  ret = key && !n ? -2 : (int)n;
+  ret = !f->halves ? -11 : key && !n ? -2 : (int)n;
   return ret;
 }
 #endif
