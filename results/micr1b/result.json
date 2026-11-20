@@ -1,12 +1,71 @@
 {
  "id": "micr1b",
- "status": "running",
- "since": "2026-11-20T05:35:24Z",
+ "who": "micprobe",
+ "started": "2026-11-20T05:35:26Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T05:35:26Z",
+   "ended": "2026-11-20T05:35:28Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-20T05:35:28Z",
+   "ended": "2026-11-20T05:35:31Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-20T05:35:31Z",
+   "ended": "2026-11-20T05:36:46Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-20T05:36:46Z",
+   "ended": "2026-11-20T05:38:38Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-20T05:38:38Z",
+   "ended": "2026-11-20T05:39:29Z",
+   "rc": 1,
+   "why": "cancelled"
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-20T05:39:29Z",
+   "ended": "2026-11-20T05:39:29Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-20T05:39:29Z",
+   "ended": "2026-11-20T05:39:29Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-3a77493dab19",
+ "head": "3a77493dab192500760cb9c5da0501f9bb4156e3",
+ "reason": "step 7 (wait): refused: cancelled",
+ "ended": "2026-11-20T05:39:29Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "378f0cf2b964499387bec5d02f6833ec24bb1aca",
   "path": "jobs/micr1b"
  },
  "runner_commit": "3a77493dab192500760cb9c5da0501f9bb4156e3",
- "updated": "2026-11-20T05:35:24Z"
+ "updated": "2026-11-20T05:39:29Z"
 }
