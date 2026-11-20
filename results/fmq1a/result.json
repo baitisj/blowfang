@@ -1,12 +1,67 @@
 {
  "id": "fmq1a",
- "status": "running",
- "since": "2026-11-20T06:53:52Z",
+ "who": "fmsotto",
+ "started": "2026-11-20T06:53:54Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T06:53:54Z",
+   "ended": "2026-11-20T06:53:56Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-20T06:53:56Z",
+   "ended": "2026-11-20T06:53:59Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-20T06:53:59Z",
+   "ended": "2026-11-20T06:55:14Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-20T06:55:14Z",
+   "ended": "2026-11-20T06:56:05Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-20T06:56:05Z",
+   "ended": "2026-11-20T06:56:05Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-20T06:56:05Z",
+   "ended": "2026-11-20T06:56:10Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "logger.stop",
+   "started": "2026-11-20T06:56:10Z",
+   "ended": "2026-11-20T06:56:11Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-3c3ca7033ca7",
+ "head": "3c3ca7033ca709983f5a6251882ae6c2fd2125fd",
+ "ended": "2026-11-20T06:56:11Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "d6e6644aeb5f2407e5aa1e8b918d478d878b1c61",
   "path": "jobs/fmq1a"
  },
  "runner_commit": "3c3ca7033ca709983f5a6251882ae6c2fd2125fd",
- "updated": "2026-11-20T06:53:52Z"
+ "updated": "2026-11-20T06:56:11Z"
 }
