@@ -1,0 +1,162 @@
+1795166919.631	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8460 build=305eb04-20261119T2227Z
+1795166931.507	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-62 batt=8480 build=305eb04-20261119T2227Z
+1795166943.382	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-62 batt=8480 build=305eb04-20261119T2227Z
+1795166955.257	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-62 batt=8480 build=305eb04-20261119T2227Z
+1795166967.134	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-62 batt=8480 build=305eb04-20261119T2227Z
+1795166979.012	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-62 batt=8460 build=305eb04-20261119T2227Z
+1795166990.887	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8460 build=305eb04-20261119T2227Z
+1795166999.703	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=0 have=1/87 rssi=-69 noise=15
+1795167000.303	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=1 have=2/87 rssi=-69 noise=17
+1795167000.904	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=2 have=3/87 rssi=-69 noise=17
+1795167001.706	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=3 have=4/87 rssi=-69 noise=18
+1795167002.307	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=4 have=5/87 rssi=-69 noise=17
+1795167002.908	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=5 have=6/87 rssi=-69 noise=16
+1795167003.509	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=6 have=7/87 rssi=-69 noise=17
+1795167004.110	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=7 have=8/87 rssi=-69 noise=16
+1795167004.911	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=8 have=9/87 rssi=-69 noise=16
+1795167005.512	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=9 have=10/87 rssi=-69 noise=17
+1795167006.113	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=10 have=11/87 rssi=-69 noise=17
+1795167006.714	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=11 have=12/87 rssi=-69 noise=18
+1795167007.315	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=12 have=13/87 rssi=-69 noise=16
+1795167008.116	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=13 have=14/87 rssi=-69 noise=16
+1795167008.717	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=14 have=15/87 rssi=-69 noise=19
+1795167009.318	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=15 have=16/87 rssi=-69 noise=14
+1795167009.919	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=16 have=17/87 rssi=-69 noise=17
+1795167010.520	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=17 have=18/87 rssi=-69 noise=17
+1795167011.322	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=18 have=19/87 rssi=-69 noise=18
+1795167011.923	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=19 have=20/87 rssi=-69 noise=16
+1795167012.524	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=20 have=21/87 rssi=-69 noise=16
+1795167013.125	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=21 have=22/87 rssi=-69 noise=17
+1795167013.726	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=22 have=23/87 rssi=-69 noise=16
+1795167014.527	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=23 have=24/87 rssi=-69 noise=18
+1795167015.128	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=24 have=25/87 rssi=-69 noise=17
+1795167015.730	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=25 have=26/87 rssi=-69 noise=17
+1795167016.330	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=26 have=27/87 rssi=-69 noise=17
+1795167016.931	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=27 have=28/87 rssi=-69 noise=15
+1795167017.532	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=28 have=29/87 rssi=-69 noise=18
+1795167018.333	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=29 have=30/87 rssi=-69 noise=16
+1795167018.934	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=30 have=31/87 rssi=-69 noise=17
+1795167019.535	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=31 have=32/87 rssi=-69 noise=17
+1795167020.136	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=32 have=33/87 rssi=-69 noise=17
+1795167020.737	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=33 have=34/87 rssi=-69 noise=17
+1795167021.539	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=34 have=35/87 rssi=-69 noise=17
+1795167022.140	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=35 have=36/87 rssi=-69 noise=17
+1795167022.741	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=36 have=37/87 rssi=-69 noise=16
+1795167023.342	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=37 have=38/87 rssi=-69 noise=16
+1795167023.943	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=38 have=39/87 rssi=-69 noise=17
+1795167024.744	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=39 have=40/87 rssi=-69 noise=18
+1795167025.345	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=40 have=41/87 rssi=-69 noise=18
+1795167025.946	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=41 have=42/87 rssi=-69 noise=17
+1795167026.547	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=42 have=43/87 rssi=-69 noise=15
+1795167027.149	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=43 have=44/87 rssi=-69 noise=16
+1795167027.950	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=44 have=45/87 rssi=-69 noise=17
+1795167028.551	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=45 have=46/87 rssi=-69 noise=16
+1795167029.152	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=46 have=47/87 rssi=-69 noise=17
+1795167029.753	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=47 have=48/87 rssi=-69 noise=16
+1795167030.354	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=48 have=49/87 rssi=-69 noise=17
+1795167031.156	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=49 have=50/87 rssi=-69 noise=17
+1795167031.757	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=50 have=51/87 rssi=-69 noise=17
+1795167032.358	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=51 have=52/87 rssi=-69 noise=17
+1795167032.958	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=52 have=53/87 rssi=-69 noise=16
+1795167033.559	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=53 have=54/87 rssi=-69 noise=16
+1795167034.361	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=54 have=55/87 rssi=-69 noise=16
+1795167034.962	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=55 have=56/87 rssi=-69 noise=15
+1795167035.563	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=56 have=57/87 rssi=-69 noise=16
+1795167036.164	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=57 have=58/87 rssi=-69 noise=16
+1795167036.765	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=58 have=59/87 rssi=-69 noise=17
+1795167037.566	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=59 have=60/87 rssi=-69 noise=16
+1795167038.167	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=60 have=61/87 rssi=-69 noise=16
+1795167038.768	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=61 have=62/87 rssi=-69 noise=16
+1795167039.369	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=62 have=63/87 rssi=-69 noise=17
+1795167039.970	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=63 have=64/87 rssi=-69 noise=17
+1795167040.571	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=64 have=65/87 rssi=-69 noise=16
+1795167041.372	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=65 have=66/87 rssi=-69 noise=18
+1795167041.973	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=66 have=67/87 rssi=-69 noise=18
+1795167042.574	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=67 have=68/87 rssi=-69 noise=17
+1795167043.175	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=68 have=69/87 rssi=-69 noise=16
+1795167043.776	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=69 have=70/87 rssi=-69 noise=17
+1795167044.578	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=70 have=71/87 rssi=-69 noise=16
+1795167045.179	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=71 have=72/87 rssi=-69 noise=18
+1795167045.780	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=72 have=73/87 rssi=-69 noise=18
+1795167046.380	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=73 have=74/87 rssi=-69 noise=17
+1795167046.981	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=74 have=75/87 rssi=-69 noise=15
+1795167047.783	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=75 have=76/87 rssi=-69 noise=17
+1795167048.384	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=76 have=77/87 rssi=-69 noise=17
+1795167048.985	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=77 have=78/87 rssi=-69 noise=18
+1795167049.586	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=78 have=79/87 rssi=-69 noise=17
+1795167050.187	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=79 have=80/87 rssi=-69 noise=18
+1795167050.988	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=80 have=81/87 rssi=-69 noise=17
+1795167051.589	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=81 have=82/87 rssi=-69 noise=17
+1795167052.190	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=82 have=83/87 rssi=-69 noise=17
+1795167052.792	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=83 have=84/87 rssi=-69 noise=17
+1795167053.392	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=84 have=85/87 rssi=-69 noise=15
+1795167054.194	305eb04-20261119T2227Z	K6 MOD r=1 xfer=16 chunk=85 have=86/87 rssi=-69 noise=16
+1795167054.795	305eb04-20261119T2227Z	K6 MOD r=3 xfer=16 chunk=86 have=87/87 rssi=-69 noise=17
+1795167054.795	305eb04-20261119T2227Z	K6 MOD run serial=1795166992 code=10586 B at 0x20001194 stack=2136 B scratch=4796 B
+1795167084.847	305eb04-20261119T2227Z	K6 MOD say fms start ks=5621 cfgr1=00000002 v25=08000105 spi=1
+1795167085.849	305eb04-20261119T2227Z	K6 MOD say fms 1 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167086.851	305eb04-20261119T2227Z	K6 MOD say fms 2 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167087.852	305eb04-20261119T2227Z	K6 MOD say fms 3 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167088.854	305eb04-20261119T2227Z	K6 MOD say fms 4 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167089.855	305eb04-20261119T2227Z	K6 MOD say fms 5 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167090.857	305eb04-20261119T2227Z	K6 MOD say fms 6 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167091.859	305eb04-20261119T2227Z	K6 MOD say fms 7 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167092.860	305eb04-20261119T2227Z	K6 MOD say fms 8 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167093.862	305eb04-20261119T2227Z	K6 MOD say fms 9 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167094.863	305eb04-20261119T2227Z	K6 MOD say fms 10 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167095.865	305eb04-20261119T2227Z	K6 MOD say fms 11 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167096.867	305eb04-20261119T2227Z	K6 MOD say fms 12 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167097.868	305eb04-20261119T2227Z	K6 MOD say fms 13 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167098.870	305eb04-20261119T2227Z	K6 MOD say fms 14 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167099.872	305eb04-20261119T2227Z	K6 MOD say fms 15 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167100.873	305eb04-20261119T2227Z	K6 MOD say fms 16 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167101.875	305eb04-20261119T2227Z	K6 MOD say fms 17 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167102.877	305eb04-20261119T2227Z	K6 MOD say fms 18 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167103.878	305eb04-20261119T2227Z	K6 MOD say fms 19 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167104.880	305eb04-20261119T2227Z	K6 MOD say fms 20 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167105.882	305eb04-20261119T2227Z	K6 MOD say fms 21 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167106.883	305eb04-20261119T2227Z	K6 MOD say fms 22 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167107.885	305eb04-20261119T2227Z	K6 MOD say fms 23 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167108.886	305eb04-20261119T2227Z	K6 MOD say fms 24 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167109.888	305eb04-20261119T2227Z	K6 MOD say fms 25 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167110.890	305eb04-20261119T2227Z	K6 MOD say fms 26 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167111.891	305eb04-20261119T2227Z	K6 MOD say fms 27 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167112.893	305eb04-20261119T2227Z	K6 MOD say fms 28 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167113.894	305eb04-20261119T2227Z	K6 MOD say fms 29 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167114.896	305eb04-20261119T2227Z	K6 MOD say fms 30 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167115.898	305eb04-20261119T2227Z	K6 MOD say fms 31 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167116.900	305eb04-20261119T2227Z	K6 MOD say fms 32 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167117.902	305eb04-20261119T2227Z	K6 MOD say fms 33 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167118.904	305eb04-20261119T2227Z	K6 MOD say fms 34 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167119.906	305eb04-20261119T2227Z	K6 MOD say fms 35 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167120.908	305eb04-20261119T2227Z	K6 MOD say fms 36 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167121.910	305eb04-20261119T2227Z	K6 MOD say fms 37 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167122.912	305eb04-20261119T2227Z	K6 MOD say fms 38 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167123.913	305eb04-20261119T2227Z	K6 MOD say fms 39 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167124.915	305eb04-20261119T2227Z	K6 MOD say fms 40 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167125.916	305eb04-20261119T2227Z	K6 MOD say fms 41 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167126.917	305eb04-20261119T2227Z	K6 MOD say fms 42 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167127.919	305eb04-20261119T2227Z	K6 MOD say fms 43 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167128.921	305eb04-20261119T2227Z	K6 MOD say fms 44 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167129.923	305eb04-20261119T2227Z	K6 MOD say fms 45 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167130.925	305eb04-20261119T2227Z	K6 MOD say fms 46 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167131.926	305eb04-20261119T2227Z	K6 MOD say fms 47 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167132.928	305eb04-20261119T2227Z	K6 MOD say fms 48 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167133.929	305eb04-20261119T2227Z	K6 MOD say fms 49 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167134.931	305eb04-20261119T2227Z	K6 MOD say fms 50 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167135.933	305eb04-20261119T2227Z	K6 MOD say fms 51 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167136.935	305eb04-20261119T2227Z	K6 MOD say fms 52 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167137.936	305eb04-20261119T2227Z	K6 MOD say fms 53 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167138.938	305eb04-20261119T2227Z	K6 MOD say fms 54 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167139.939	305eb04-20261119T2227Z	K6 MOD say fms 55 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167140.940	305eb04-20261119T2227Z	K6 MOD say fms 56 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167141.942	305eb04-20261119T2227Z	K6 MOD say fms 57 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167142.943	305eb04-20261119T2227Z	K6 MOD say fms 58 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167143.945	305eb04-20261119T2227Z	K6 MOD say fms 59 sps=0 pk=0 skip=0 miss=0 isr=0 rd=0
+1795167144.946	305eb04-20261119T2227Z	K6 MOD say fms end n=0 lost=0 miss=0 h=0
+1795167144.946	305eb04-20261119T2227Z	K6 MOD ret=0 (0x0) in 90085 ms stack_free=1256 B
+1795167148.800	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8460 build=305eb04-20261119T2227Z
+1795167160.368	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8480 build=305eb04-20261119T2227Z
+1795167171.933	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8480 build=305eb04-20261119T2227Z
+1795167176.140	305eb04-20261119T2227Z	K6 ARQ tx seq=0 state=1 xfer=16 have=87/87 r=3 parts=1
+1795167180.150	305eb04-20261119T2227Z	K6 ARQ sent seq=0 ms=3922
