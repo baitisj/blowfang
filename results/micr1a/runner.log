@@ -1,0 +1,29 @@
+2026-11-20T05:30:13Z job micr1a by micprobe, checkout /home/baitisj/blowfang-work/worktrees/inbox-3a77493dab19 at 3a77493dab192500760cb9c5da0501f9bb4156e3
+2026-11-20T05:30:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-3a77493dab19/tools/pluto_bench.py --as micprobe steps /home/baitisj/blowfang-work/runs/inbox/micr1a/tone1300.wav --hz 445850000 --dev 3000 --gains -46,-46,-46,-46,-46,-46,-46,-46 --pause 1
+steps: 8 sends of tone1300.wav (30.0 s), peak deviation 1328 Hz before pre-emphasis, 1328 Hz sent, gains -46,-46,-46,-46,-46,-46,-46,-46 dB
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:30:14Z
+end 05:30:52Z: 37.4 s of signal in 37.3 s (kept up)
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:30:53Z
+end 05:31:30Z: 37.4 s of signal in 37.3 s (kept up)
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:31:31Z
+end 05:32:09Z: 37.4 s of signal in 37.3 s (kept up)
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:32:10Z
+end 05:32:47Z: 37.4 s of signal in 37.3 s (kept up)
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:32:48Z
+end 05:33:25Z: 37.4 s of signal in 37.3 s (kept up)
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:33:27Z
+end 05:34:04Z: 37.4 s of signal in 37.3 s (kept up)
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:34:05Z
+end 05:34:42Z: 37.4 s of signal in 37.3 s (kept up)
+steps gain -46: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 05:34:44Z
+end 05:35:21Z: 37.4 s of signal in 37.3 s (kept up)
+2026-11-20T05:35:22Z step 1 (pluto) rc=0
+2026-11-20T05:35:22Z job micr1a done
