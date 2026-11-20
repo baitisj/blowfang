@@ -153,9 +153,9 @@ def test_it_fits_the_module_block(tmp_path):
 
 def test_a_log_back_into_superframes(tmp_path):
     log = ("K6 MOD run serial=1 code=10210 B\n"
-           "fms start ks=5621 cfgr1=00000002 v25=080001d1\n"
+           "fms start ks=5621 cfgr1=00000002 v25=080001d1 spi=1\n"
            "s 0 " + "01" * 24 + "\n"
-           "fms 1 sps=8000 pk=13021 lost=0 miss=0 isr=31 rssi=-62\n"
+           "fms 1 sps=8000 pk=13021 skip=0 miss=0 isr=31 rd=15\n"
            "s 8 " + "02" * 18 + "\n")
     got = F.frames_from_log(log)
     assert sorted(got) == [0, 1, 2, 3, 8, 9, 10]

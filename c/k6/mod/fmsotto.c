@@ -19,12 +19,14 @@
    superframes as hex, four to a line. tools/k6_fmsotto.py turns a log back into a .bit file.
 
    Lines (under 60 characters):
-     fms start ks=5621 cfgr1=00000002 v25=080001d1
+     fms start ks=5621 cfgr1=00000002 v25=080001d1 spi=1
      s 0 0123456789ab...                     (superframes 0-3: 4 x 6 bytes, hex)
-     fms 1 sps=8000 pk=13021 lost=0 miss=0 isr=31 rssi=-62    (each second)
+     fms 1 sps=8000 pk=13021 skip=0 miss=0 isr=31 rd=15      (each second)
      fms end n=750 lost=0 miss=0 h=440000
-   sps: 8 kHz samples made in the second; pk: their largest |value|; lost: 10 ms blocks the
-   encoder fell behind and skipped; miss: DMA halves lost; isr: the interrupt's share of the CPU, %.
+   sps: 8 kHz samples made in the second; pk: their largest |value|; skip: 10 ms blocks the
+   encoder fell behind on and skipped in the second (lost: in all); miss: DMA halves lost; isr:
+   the interrupt's share of the CPU, %; rd: the SPI reads' share; spi=1: the reads go to SPI1
+   directly (0: through the core's fl_read).
    Needs the cell deck in a library slot (tools/k6_fmsotto.py deck, installed with --cards).
    Runs RUN_MS or until a key. Receive only. Writes REG_34[3:0], REG_33 bit 8 (GP0), REG_7E and
    REG_13 (the gain frozen), SYSCFG CFGR1 and FLASH_ACR, the vector copy's entries 25 and 46,
@@ -76,6 +78,7 @@ K6_MODULE_NAME("FM SOTTO");
 #define LP_A1 (-1314)
 #define LP_A2 2830
 #define MAX_IRQ 40000u /* halves with no word from the foreground: the handler stops itself */
+#define MAX_HALVES ((RUN_MS / 1000u + 30u) * 25000u) /* and after this many in all, whatever */
 
 #define GPIOB 0x48000400u
 #define RCC_AHBENR 0x40021014u
@@ -128,6 +131,7 @@ typedef struct {
   uint32_t wi;
   volatile uint32_t pw, pk, halves, miss, quiet, isr;
   uint32_t deck; /* the cell deck's address in SPI flash */
+  uint32_t rdc, spi; /* TIM17 cycles in SPI reads (foreground); 1: read SPI1 directly */
 #ifndef FMS_HOST
   const k6_api_t *api;
   uint8_t *ring;
@@ -235,7 +239,57 @@ static int host_fl_read(uint32_t a, void *buf, uint32_t n);
 #define FL_READF(f, a, b, n) ((void)(f), host_fl_read(a, b, n))
 #else
 #define CTX() ((const fe_t *)rd(SRAM0 + 4u * V_CTX))
-#define FL_READF(f, a, b, n) (f)->api->fl_read(a, b, n)
+/* SPI flash reads. Aura's fl_read runs from main flash, and with SRAM mapped at 0 (MEM_MODE 3)
+   the flash prefetch is off (docs/k6-modules.md, txdog), so it runs slowly: on the radio
+   (fmso1a) the encoder kept up with only 80 % of real time. So the encoder's reads go to SPI1
+   directly from RAM, as stockfont.c does (READ 0x03 only; SPI1 as Aura left it, soft NSS on
+   PA2), a byte at a time with bounded waits, interrupts on (no other SPI1 user runs while the
+   module does; the DMA handler never reads the flash). The time in reads is counted on TIM17. */
+#define SPI1 0x40013000u
+#define SPI_CR1 (SPI1 + 0x00u)
+#define SPI_SR (SPI1 + 0x08u)
+#define SPI_DR (SPI1 + 0x0Cu)
+#define GPIOA 0x48000000u
+#define CS_PA2 (1u << 2)
+#define SPIN 20000u
+#define R8(a) (*(volatile uint8_t *)(uintptr_t)(a))
+#define R16(a) (*(volatile uint16_t *)(uintptr_t)(a))
+static int spi_x(uint8_t o, uint8_t *in) {
+  uint32_t k = 0;
+  while (!(R16(SPI_SR) & 2u))
+    if (++k > SPIN) return -1;
+  R8(SPI_DR) = o;
+  while (!(R16(SPI_SR) & 1u))
+    if (++k > SPIN) return -1;
+  *in = R8(SPI_DR);
+  return 0;
+}
+static int spi_rd(uint32_t a, uint8_t *b, uint32_t n) {
+  uint32_t i, k = 0;
+  int r = 0;
+  uint8_t d;
+  while (R16(SPI_SR) & 0x80u)
+    if (++k > SPIN) return -1;
+  for (i = 0; i < 8 && (R16(SPI_SR) & 1u); i++) (void)R8(SPI_DR);
+  wr(GPIOA + 0x28u, CS_PA2);
+  r |= spi_x(0x03, &d);
+  r |= spi_x((uint8_t)(a >> 16), &d);
+  r |= spi_x((uint8_t)(a >> 8), &d);
+  r |= spi_x((uint8_t)a, &d);
+  for (i = 0; i < n && !r; i++) r |= spi_x(0, b + i);
+  for (k = 0; (R16(SPI_SR) & 0x80u) && k < SPIN; k++) {
+  }
+  wr(GPIOA + 0x18u, CS_PA2);
+  return r;
+}
+static int fl_rd(const fe_t *cf, uint32_t a, void *b, uint32_t n) {
+  fe_t *f = (fe_t *)cf;
+  uint32_t t = rd(TIM17_CNT);
+  int r = f->spi ? spi_rd(a, (uint8_t *)b, n) : f->api->fl_read(a, b, n);
+  f->rdc += (rd(TIM17_CNT) - t) & 0xFFFFu;
+  return r;
+}
+#define FL_READF(f, a, b, n) fl_rd(f, a, b, n)
 #endif
 #define FL_READ(a, b, n) FL_READF(CTX(), a, b, n)
 #define LIB_BASE 0x110000u /* the SPI module library: 32 slots of 16 KB (k6_lib.h) */
@@ -431,7 +485,7 @@ static void dma_isr(void) {
     fe_count(f, (int)((a & 0xFFFF) + (a >> 16)) * 2 - 64);
   }
   f->halves++;
-  if (++f->quiet > MAX_IRQ) {
+  if (++f->quiet > MAX_IRQ || f->halves > MAX_HALVES) {
     wr(DMA_CCR1, rd(DMA_CCR1) & ~6u);
     wr(NVIC_ICER, 1u << IRQ_DMA1);
   }
@@ -477,7 +531,7 @@ static uint32_t say_frames(const k6_api_t *api, char *line, const unsigned char 
 
 int k6_main(const k6_api_t *api) {
   uint32_t room = 0, i, bad = 0, apb2, ahb, cfgr1, acr, v25, v46, t0, now, tsec = 0, sec = 0;
-  uint32_t pr = 0, ri = 0, lost = 0, n = 0, nf = 0, pw0 = 0, h0 = 0, c0 = 0, tq = 0;
+  uint32_t pr = 0, ri = 0, lost = 0, n = 0, nf = 0, pw0 = 0, l0 = 0, r0 = 0, c0 = 0, tq = 0;
   uint16_t r33, r34, r7e, r13;
   char line[64], *p;
   unsigned char fr[4 * SLIM_BYTES];
@@ -540,6 +594,9 @@ int k6_main(const k6_api_t *api) {
   wr(TIM17 + 0x14, 1);
   wr(TIM17 + 0x00, 1);
   f->c17 = rd(TIM17_CNT) & 0xFFFF;
+#ifndef FMS_API_READS
+  f->spi = (R16(SPI_CR1) & 0x44u) == 0x44u; /* SPE and MSTR: as Aura left it */
+#endif
   slim_enc_init(e);
   /* the handler in: its state, its vector, SRAM at 0, then the DMA with both interrupts */
   wr(SRAM0 + 4u * V_CTX, (uint32_t)f);
@@ -557,17 +614,16 @@ int k6_main(const k6_api_t *api) {
   p = kv(put(line, "fms start"), " ks=", 393216000u / f->cav);
   p = hex(put(p, " cfgr1="), cfgr1, 8);
   p = hex(put(p, " v25="), v25, 8);
+  p = kv(p, " spi=", f->spi);
   *p = 0;
   api->say(line);
-  pr = f->pw, ri = f->wi, pw0 = f->pw, h0 = f->halves, c0 = f->isr;
+  pr = f->pw, ri = f->wi, pw0 = f->pw, c0 = f->isr, r0 = f->rdc;
   pr -= pr % BLK, ri -= ri % BLK; /* blocks start where the ring's do */
   t0 = tsec = tq = api->ms();
   for (;;) {
+    /* the clock and the keys each time round, not only when the encoder has caught up: fmso1a
+       ran behind for minutes and never got here, so no key or time limit could end it */
     f->quiet = 0;
-    if (fe_take(f, &pr, &ri, &lost, x)) {
-      if (slim_encode10(e, x, fr + SLIM_BYTES * nf) && ++nf == 4) n = say_frames(api, line, fr, &nf, n);
-      continue;
-    }
     now = api->ms();
     if (now - tq >= 50) {
       tq = now;
@@ -575,20 +631,21 @@ int k6_main(const k6_api_t *api) {
       if (key || now - t0 >= RUN_MS) break;
     }
     if (now - tsec >= 1000) { /* the second's report */
-      uint32_t pw = f->pw, h = f->halves, c = f->isr, dt = now - tsec, pk = f->pk;
+      uint32_t pw = f->pw, c = f->isr, dt = now - tsec, pk = f->pk;
       f->pk = 0;
       p = dec(put(line, "fms "), ++sec);
       p = kv(p, " sps=", (pw - pw0) * 1000u / dt);
       p = kv(p, " pk=", pk);
-      p = kv(p, " lost=", lost);
+      p = kv(p, " skip=", lost - l0);
       p = kv(p, " miss=", f->miss);
       p = kv(p, " isr=", (c - c0) / (dt * 960u));
-      p = put(p, " rssi=-");
-      p = dec(p, (uint32_t)-KM_RSSI_DBM(api->fd_read(0x67)));
+      p = kv(p, " rd=", (f->rdc - r0) / (dt * 960u));
       *p = 0;
       api->say(line);
-      pw0 = pw, h0 = h, c0 = c, tsec = now;
+      pw0 = pw, c0 = c, l0 = lost, r0 = f->rdc, tsec = now;
     }
+    if (fe_take(f, &pr, &ri, &lost, x) && slim_encode10(e, x, fr + SLIM_BYTES * nf) && ++nf == 4)
+      n = say_frames(api, line, fr, &nf, n);
   }
   /* everything back: the interrupt off first, then the DMA, the map, the vector */
   wr(NVIC_ICER, 1u << IRQ_DMA1);
@@ -618,7 +675,6 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " h=", f->halves);
   *p = 0;
   api->say(line);
-  (void)h0;
   ret = key && !n ? -2 : (int)n;
   return ret;
 }
