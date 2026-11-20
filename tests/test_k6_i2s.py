@@ -38,6 +38,9 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
     (else PB1's pull-up reads 1), following REG_34[3:0]: 13 (DFS) toggles every PERIOD reads of
     PB1 once i2s_en's bit is set, 15 (XTAL/2) on every read, others hold 0. gp0_gate: the image
     lets a module change REG_33's GP0 bits (8 and 0); False = an image that refuses REG_33.
+    From level 14 a write of REG_30 that changes only bits 9, 2 and 1 lands (bit 2, the mic ADC,
+    not while the PA is on: after tx_on or tx_pa(1), which clears it), and tx_on / tx_off leave
+    the core's words there (0xC1FA, 0xBFF1).
     model(sel, reads, regs) -> 0/1 replaces that GP0 model while GP0 drives. spare: the scratch
     RAM the module is given. mmio: (base, size, read(uc, off, size, st), write(uc, off, size,
     value, st)) for more MCU peripherals. level: the API level the table says. tx: a dict
@@ -194,6 +197,9 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
                 tx.setdefault("w_ns", []).append(st["us"] * 1000 + st.get("ns", 0))
             if r0 == 0x33 and gp0_gate and not (regs.get(0x33, 0) ^ r1) & ~0x0101 & 0xFFFF:
                 regs[r0] = r1
+            elif (r0 == 0x30 and level >= 14 and not (regs.get(0x30, 0) ^ r1) & ~0x0206 & 0xFFFF
+                  and not (r1 & 4 and st.get("pa"))):
+                regs[r0] = r1                      # level 14: the audio block enables, no mic with the PA on
             elif r0 in REFUSED:
                 ret = -1
             else:
@@ -248,6 +254,15 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
             tx.setdefault("log", []).append((name, r0, st["us"]))
             if fsk is not None and name != "tx_pa":
                 st["us"] += fsk.key(name, st["us"]) or 0   # (tx_on takes 1.4-1.9 s on the radio)
+            if level >= 14:                        # the core's REG_30 words, and the PA's state
+                if name == "tx_on" and tx.get("on_ret", 0) == 0:
+                    regs[0x30], st["pa"] = 0xC1FA, True
+                elif name == "tx_off":
+                    regs[0x30], st["pa"] = 0xBFF1, False
+                elif st["us"] < tx.get("dead_us", float("inf")):
+                    st["pa"] = bool(r0)
+                    if r0:
+                        regs[0x30] = regs.get(0x30, 0) & ~4
             if name == "tx_on":
                 ret = tx.get("on_ret", 0)
             elif name == "tx_pa" and st["us"] >= tx.get("dead_us", float("inf")):

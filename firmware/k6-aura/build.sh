@@ -311,6 +311,7 @@ K6_MODULES=$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' <<'EOF'
 acarsfsk       # level 2, can the chip's FSK modem read ACARS framing (FM control), docs/k6-acars.md
 acarsfsk_am    # level 2, acarsfsk with the test signal in AM: six front ends
 acrprobe       # level 1, does hal::txdog leave the flash prefetch off
+afpin          # level 4, the beep pin (PA11) as a one-pin delta-sigma converter on the chip's audio output (receive only, docs/k6-mic-probe.md)
 afsweep
 aiscap         # level 2, records AIS bursts for sim/k6if/ais.py, docs/k6-ais.md
 aiscap_acars   # level 2, aiscap on two ACARS airband channels, receive only
@@ -408,6 +409,9 @@ iflive_k6t
 iflive_tsweep
 libls          # level 5, the SPI module library's slots with the modules' names (reads only, docs/k6-modules.md)
 loram          # level 1, does anything write 0x20000000-0x20000FFF (hal::txdog)
+micpin         # level 4, the mic's audio on the AF pin (mic ADC and TX DSP on in receive, select 4) read by PA11: quiet, then a tone at the mic (keys nothing, docs/k6-mic-probe.md)
+micprobe       # level 4, the mic ADC switched on in receive: what follows a sound at the mic (AF selects by PA11, GP0, registers; keys nothing, docs/k6-mic-probe.md)
+micrec         # level 4, three seconds from the mic by that route as IMA ADPCM, for tools/k6_micprobe.py (keys nothing, docs/k6-mic-probe.md)
 midi           # level 2 (screen at 6, LED at 7), songs patched by tools/k6_midi.py, docs/k6-midi.md
 morse          # level 6, docs/k6-morse.md
 pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRFTBE (stage 3)
@@ -446,6 +450,7 @@ surfkeys       # level 6, docs/k6-surf.md: Jeff's keys of 2026-11-10 pressed by 
 tonewr         # level 3, what a write does to the tone oscillator's phase: 7 s of scheduled REG_70/71 writes on 440.850, PA off, then MCW ID (docs/k6-range.md)
 vecprobe       # level 1, can Aura catch its own HardFaults (docs/k6-modules.md)
 vectab         # level 1, is 0x08000000's vector table the live one (hal::txdog)
+voxcap         # level 4, the VOX pin (PA0) sampled at 16 kHz while the speaker plays tones: waveform or only loudness (no radio register written, docs/k6-mic-probe.md)
 wsprbcn
 wspriq
 wsprtx

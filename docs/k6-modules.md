@@ -107,7 +107,7 @@ API level 2 (images from 2026-11-06 on) adds the receiver:
 | Call | What it does |
 | --- | --- |
 | `fd_read(reg)` | an FD6818 register |
-| `fd_write(reg, v)` | writes one, 0; or -1 for the registers it refuses: 0x30 (RX/TX state), 0x33 (GPIO), 0x36 (PA), 0x37 (power). In images from 2026-11-06 06:30 UTC on, a 0x33 write that changes only bits 8 and 0 (GP0, the line to MCU PB1) is allowed, and the firmware puts 0x33 back after the module |
+| `fd_write(reg, v)` | writes one, 0; or -1 for the registers it refuses: 0x30 (RX/TX state), 0x33 (GPIO), 0x36 (PA), 0x37 (power). In images from 2026-11-06 06:30 UTC on, a 0x33 write that changes only bits 8 and 0 (GP0, the line to MCU PB1) is allowed, and the firmware puts 0x33 back after the module. From level 14 a 0x30 write that changes only bits 0x0206 is allowed too (below) |
 | `delay_us(us)` | busy wait, any length |
 | `tune(hz, wide)` | receive on `hz`: band switch, PLL, wide or narrow filter, RX on |
 | `rx_hz()` | the frequency the pager listens on |
@@ -344,6 +344,15 @@ on these images. docs/k6-ram0.md.
 Added later on 2026-11-19 (Jeff: "move EXPLORE's state into the reclaimed RAM"). No new calls:
 the shared block is 15,408 bytes, because sotto's C statics and EXPLORE's state moved into
 0x20000100-0x20000FFF as well. docs/k6-ram0.md.
+
+## API level 14: the mic ADC's bit in REG_30
+
+Added 2026-11-19 (Jeff: "mic probe first"; docs/k6-mic-probe.md). No new calls: `fd_write`
+takes a REG_30 write that changes only bits 0x0206 (bit 9 the AF DAC, bit 2 the mic ADC, bit 1
+the TX DSP), so a module can switch the chip's mic ADC on while the radio receives. The mic bit
+is refused while the PA is on, and `tx_pa(1)` clears it first: a module can never put the mic
+on the air. `tx_on`, `tx_off`, a retune and the core's return to receive all write REG_30
+whole, so nothing a module sets there outlives it.
 
 ## The SPI module library
 
