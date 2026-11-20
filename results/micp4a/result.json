@@ -1,12 +1,12 @@
 {
  "id": "micp4a",
- "status": "queued",
- "queued": "2026-11-20T02:54:56Z",
+ "status": "running",
+ "since": "2026-11-20T02:55:03Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "f0451c0b79d3e6a63bb1e2126f6482462ba270ec",
   "path": "jobs/micp4a"
  },
  "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
- "updated": "2026-11-20T02:54:56Z"
+ "updated": "2026-11-20T02:55:03Z"
 }
