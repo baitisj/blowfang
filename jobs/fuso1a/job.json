@@ -1,0 +1,135 @@
+{
+ "id": "fuso1a",
+ "who": "fusotx",
+ "freq_mhz": 440.85,
+ "minutes": 16,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 900,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:fusodeck.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--install",
+    "15",
+    "--cards",
+    "--rounds",
+    "3",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "ee45e6ff4ee1803a803059a005361c3e5ec47f84878d2a4f2115a9e48b172fbf"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 LIB put slot=15",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:fusoslot.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--api-level",
+    "13",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "e6253733c03a8d99768d3c6a1ce9efe47b43ea3e039a2d44f3931990a1401f01"
+  },
+  {
+   "do": "wait",
+   "pattern": "c4lock n=|K6 MOD ret=",
+   "seconds": 120
+  },
+  {
+   "do": "wait",
+   "seconds": 3
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c4.wav",
+    "--hz",
+    "440850500",
+    "--seconds",
+    "70"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4lock (sent|w=)|K6 MOD ret=",
+   "seconds": 150,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 90
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
