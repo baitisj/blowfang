@@ -1,0 +1,257 @@
+{
+ "id": "micr2a",
+ "who": "micprobe",
+ "freq_mhz": "bench",
+ "minutes": 70,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 3600,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:keygo.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "3321da73be9d80ba2496646a24a3af95d735def19b4014548ceecf48f12bde72"
+  },
+  {
+   "do": "wait",
+   "pattern": "keygo go",
+   "seconds": 2400
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:tone1300.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gains",
+    "-46,-46,-46,-46,-46",
+    "--pause",
+    "1"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:micprobe.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "3cb48543c311544ead63c355300b2babb25fad324f61ed0a1449f8d5948dc694"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone1300x60.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "micprobe done",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:micdisc.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "dbd60314dd1281ca737729e575cf4ae21ff179411b311372601b607b3f30efda"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone1300.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "micdisc done",
+   "seconds": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:mickey.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "9057d35ce105c530075f91b5613e52d4ebda6874022196912156ed795ed3dd31"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone1300.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "mickey done",
+   "seconds": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
