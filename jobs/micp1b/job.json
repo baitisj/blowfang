@@ -1,0 +1,68 @@
+{
+ "id": "micp1b",
+ "who": "micprobe",
+ "freq_mhz": 440.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 360,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:afpin.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "e6a2423475be731950c820c01f4f21acfe80d1b992f52072182273723880e8ab"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone1k60.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "afpin done",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
