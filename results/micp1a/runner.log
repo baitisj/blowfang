@@ -1,0 +1,48 @@
+2026-11-20T02:14:30Z job micp1a by micprobe, checkout /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36 at a59e428b9b36f68df4636eb53f4154365d93d3ec
+2026-11-20T02:14:30Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold micprobe -- timeout -s INT --kill-after=10 420 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/micp1a/k6.log
+2026-11-20T02:14:32Z step 1 (logger) rc=0
+2026-11-20T02:14:35Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-20T02:14:35Z step 2 (ic7100.tune) rc=0
+2026-11-20T02:14:36Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/micp1a/voxcap.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --api-level 4 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/micp1a/k6-rate.json --telemetry 0 --rounds 3 --run-s 10
+18:14:38 send 1: 15 of 15 XL chunks at F/1800 (serial 1795140877, xfer 13); module /home/baitisj/blowfang-work/runs/inbox/micp1a/voxcap.bin: 1708 B code, entry +0, API level 4, serial 1795140877, xfer 13, 1732 B image in 15 XL chunks; 30 packets, 19.7 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 27.1 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:14:39Z
+end 02:15:06Z: 27.1 s of signal in 27.0 s (kept up)
+18:15:06 listening for the K6's report
+18:15:14 K6: ran, 15/15 chunks, r=2 (repeat), rates F12,F18,D24 on F18
+ran: returned 8 in 5755 ms, 296 B stack free
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': True}, 0% of 15 chunks sent were lost
+18:15:14 CW ID
+2026-11-20T02:15:15Z step 3 (k6.upload) rc=0
+2026-11-20T02:15:15Z seen /voxcap done/ in /home/baitisj/blowfang-work/runs/queue/micp1a/k6.log
+2026-11-20T02:15:15Z step 4 (wait) rc=0
+2026-11-20T02:15:18Z step 5 (wait) rc=0
+2026-11-20T02:15:19Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/micp1a/afpin.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --api-level 4 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/micp1a/k6-rate.json --telemetry 0 --rounds 1 --run-s 0
+14 chunks, under 16: F/1800 is quicker than asking for D/2400
+18:15:21 send 1: 14 of 14 XL chunks at F/1800 (serial 1795140920, xfer 56); module /home/baitisj/blowfang-work/runs/inbox/micp1a/afpin.bin: 1634 B code, entry +0, API level 4, serial 1795140920, xfer 56, 1658 B image in 14 XL chunks; 28 packets, 18.4 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 25.8 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:15:22Z
+end 02:15:47Z: 25.8 s of signal in 25.7 s (kept up)
+18:15:48 listening for the K6's report
+18:16:08 K6: ran, 14/14 chunks, r=3 (ready), rates F12,F18,D24 on F18
+ran: returned 10 in 22589 ms, 296 B stack free
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': True}, 0% of 14 chunks sent were lost
+18:16:08 CW ID
+2026-11-20T02:16:09Z step 6 (k6.upload) rc=0
+2026-11-20T02:16:09Z seen /afpin i ticks/ in /home/baitisj/blowfang-work/runs/queue/micp1a/k6.log
+2026-11-20T02:16:09Z step 7 (wait) rc=0
+2026-11-20T02:16:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as micprobe send /home/baitisj/blowfang-work/runs/inbox/micp1a/tone1k.wav --hz 440850000 --dev 3000 --gain -40
+send: wav peak 0.885 of full scale -> 2655 Hz before pre-emphasis
+send tone1k.wav: 27.4 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:16:10Z
+end 02:16:37Z: 27.4 s of signal in 27.3 s (kept up)
+2026-11-20T02:16:37Z step 8 (pluto) rc=0
+2026-11-20T02:16:37Z seen /afpin done/ in /home/baitisj/blowfang-work/runs/queue/micp1a/k6.log
+2026-11-20T02:16:37Z step 9 (wait) rc=0
+2026-11-20T02:16:42Z step 10 (wait) rc=0
+2026-11-20T02:16:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release micprobe
+the port is free (micprobe let go)
+2026-11-20T02:16:43Z step 11 (logger.stop) rc=0
+2026-11-20T02:16:43Z job micp1a done
