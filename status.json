@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "fuso1b",
-   "who": "fusotx",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "fuso1b",
+  "who": "fusotx",
+  "since": "2026-11-20T16:18:20Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-20T16:18:13Z",
  "error": null,
  "update": null,
- "updated": "2026-11-20T16:18:13Z"
+ "updated": "2026-11-20T16:18:20Z"
 }
