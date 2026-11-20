@@ -1,0 +1,35 @@
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+phy YSF
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+listen on=1 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+listen on=1 running=0 fail=0 pk=0 msgs=2 last=50 pv=0/50
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=2 last=50 pv=0/50
+listen on=1 running=0 fail=0 pk=0 msgs=4 last=50 pv=0/50
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=4 last=50 pv=0/50
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=50 pv=0/50
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=50 pv=0/50
+phy M17
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=50 pv=0/50
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=44 pv=0/44
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=44 pv=0/44
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=44 pv=0/44
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=44 pv=0/44
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
+listen on=0 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
+phy K6 RNG
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
