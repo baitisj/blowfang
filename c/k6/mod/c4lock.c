@@ -392,7 +392,8 @@ typedef struct {
   uint32_t latn;
 #endif
 #if C4_FUSO
-  uint8_t fpl[2u * CH_FRAMES * C4_PKT_BYTES];  /* this packet's frames: signs, then sizes (fusotx.c) */
+  uint8_t *fpl;               /* this packet's frames: signs, then sizes (fusotx.c); C4_FPL bytes in
+                                 the scratch after the state (tx_main) */
   uint32_t pl, nf, nsf, tn;   /* where the frames are in SPI, frames, superframes; the grid's anchor */
   uint32_t trk, dbig;         /* chained packets that moved the grid; ones over a quarter symbol off */
   int32_t dmax, slack;        /* the most one was off (cycles); the least time to spare before an
@@ -410,6 +411,8 @@ typedef struct {
 #if C4_FUSO
 #define SG_ c4_t *s,
 #define SG s,
+#define C4_FPL (2u * CH_FRAMES * C4_PKT_BYTES)
+#define C4_FUSO_SCRATCH (C4_FPL + 120u + 64u)  /* and fusotx.c's frame and line after them */
 #define YSG (s->fpl)
 #define YSZ (s->fpl + CH_FRAMES * C4_PKT_BYTES)
 #else
@@ -1041,7 +1044,7 @@ static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t
 #if C4_FUSO
 /* frames CH_FRAMES x g on into s->fpl (fusotx.c's layout: a group's signs, then its sizes) */
 static void fload(c4_t *s, uint32_t g) {
-  s->api->fl_read(s->pl + OB_GRP + g * (uint32_t)sizeof s->fpl, s->fpl, sizeof s->fpl);
+  s->api->fl_read(s->pl + OB_GRP + g * C4_FPL, s->fpl, C4_FPL);
 }
 
 static int fuso_prep(c4_t *s, ui_t *ku);   /* fusotx.c: the frames into SPI, s->pl, nf, nsf */
@@ -1537,7 +1540,17 @@ static void report(c4_t *s, int cal_done, char *line) {
 
 static int tx_main(const k6_api_t *api, ui_t *ku) {
   char line[64], *p;
+#if C4_FUSO
+  /* the state in the scratch, the packet's frames after it: the radio gives a module 2,136 B of
+     stack, and fusotx ran out with them on it (11-20 fuso1a) */
+  uint32_t room = 0;
+  c4_t *sp = (c4_t *)(((uint32_t)api->scratch(&room) + 3u) & ~3u);
+#define s (*sp)
+  if (room < sizeof s + C4_FUSO_SCRATCH + 4u) return -8;
+  s.fpl = (uint8_t *)(sp + 1);
+#else
   c4_t s;
+#endif
   uint32_t t, i;
   int r = 0, id = 0;
   s.api = api;
@@ -1635,6 +1648,7 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   *p = 0;
   api->say(line);
   return (int)NPKT;
+#undef s
 }
 
 int k6_main(const k6_api_t *api) {

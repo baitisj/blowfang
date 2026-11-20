@@ -57,6 +57,9 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from modem import k6mod  # noqa: E402
 
+DECK_WRAP = 24                       # a library image: header 16 and tag 8 around the deck
+DECK_RX_MAX = k6mod.ARENA_BYTES_13   # what the K6 receives an image into (k6_mod.c km_packet)
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import k6_bench as bench  # noqa: E402  (the PTT lock and the CW ID keeper's state)
 
@@ -418,6 +421,11 @@ def main():
     a = ap.parse_args()
     if a.cards and (a.install is None or not a.source.endswith(".bin")):
         sys.exit("--cards: a deck .bin into a library slot: add --install SLOT")
+    if a.cards and os.path.getsize(a.source) + DECK_WRAP > DECK_RX_MAX:
+        # a deck reaches the slot through the K6's RAM arena: a bigger image's chunks come back
+        # r=-2 (KM_BAD_CHUNK), every one (11-20 fuso1a, a 16,096 B deck)
+        sys.exit(f"--cards: {a.source} is {os.path.getsize(a.source)} B; a deck goes through the K6's "
+                 f"{DECK_RX_MAX} B arena, so {DECK_RX_MAX - DECK_WRAP} B at most")
     ladder = a.phy == "F" and a.baud == 1800     # the ladder starts from F/1800, as the K6 boots
     want = a.rate if ladder else "F18"
     rates = load_rates(a.rate_state)

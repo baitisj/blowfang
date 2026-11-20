@@ -207,7 +207,7 @@ the 48 KB after it.
 
 ## Sending it: FuSotto from the K6 (fusotx)
 
-c/k6/mod/fusotx.c (API level 15, 12.8 KB of the 15,408 B block) sends the recording as one sotto
+c/k6/mod/fusotx.c (API level 15, 13.2 KB of the 15,408 B block) sends the recording as one sotto
 VW call over YSF, as the UV-380 and the sotto softmodem do (modem/ysf.py `tx_sotto`): header, VW
 frames FN 0-6 of five superframes each, terminator, from AG7EW to ALL, on c4lock's chip-locked
 C4FM (docs/k6-c4fm.md), then AG7EW in MCW. Armed after the upload like c4ftm: a K6 key press, or
@@ -250,5 +250,13 @@ over a quarter symbol off, and the least time to spare before a chained enable (
 `python3 tools/k6_fusotx.py air CAP.wav --sf SF.bit` counts the superframes a Pluto capture of
 the call holds. Before the level 15 flash, c/k6/mod/fusoslot.c (level 13) sends frames the PC
 made (`tools/k6_fusotx.py deck SF.bit OUT.bin`, installed with `k6_upload.py OUT.bin --cards
---install 15`; up to 650 superframes, 26 s) from library slot 15 and writes nothing, so the
-sender's C4FM can be tried on the radio as it is.
+--install 15`; up to 610 superframes, 24 s: a deck reaches its slot through the K6's 15,408 B
+arena, so a full 16 KB slot can't be filled over the air) from library slot 15 and writes
+nothing, so the sender's C4FM can be tried on the radio as it is.
+
+The first bench run (fuso1a, 11-20) found two things the emulator hadn't: a 16,096 B deck's
+chunks all came back `r=-2` (KM_BAD_CHUNK: more than the arena; `k6_upload.py --cards` now
+refuses one), and the module ran out of stack (`stack_free=0`, the core rebooted) with 1,584 B
+used here of the 2,136 B the radio gives a module. c4lock's state and the packet's frames now
+live in the scratch in the FUSO builds (736-764 B of stack in the emulator; the tests hold it
+to 2,136 less 512).

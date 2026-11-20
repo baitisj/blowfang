@@ -28,6 +28,7 @@ OB_GROUPS = (OB_HI - OB_PL - OB_GRP) // OB_GBYTES
 OB_SF_MAX = (OB_GROUPS * OB_GFRAMES - 2) * 5
 SOTTO_1200 = 0xA9
 SLOT_DATA = 0x4000 - 24                 # a library slot: header 16, data, tag 8
+DECK_DATA = 15408 - 24                  # but a deck travels through the K6's RAM arena (level 13)
 
 
 def outbox(sf):
@@ -68,8 +69,9 @@ def planes(sf, src=ysf.IDENT):
 
 
 def deck(sf, src=ysf.IDENT):
-    """planes for a library slot (fusoslot.c): as many superframes as fit"""
-    per = (SLOT_DATA - OB_GRP) // OB_GBYTES * OB_GFRAMES - 2
+    """planes for a library slot (fusoslot.c): as many superframes as reach it (610: the upload
+    goes through the K6's 15,408 B arena, smaller than a slot)"""
+    per = (min(SLOT_DATA, DECK_DATA) - OB_GRP) // OB_GBYTES * OB_GFRAMES - 2
     return planes(bytes(sf)[:per * 5 * OB_SF], src)
 
 

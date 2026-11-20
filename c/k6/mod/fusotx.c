@@ -23,7 +23,8 @@
                                     superframes and frames sent, chained packets that steered the
                                     grid, the worst TX done off its tick, ones over a quarter
                                     symbol, the least time to spare before a chained enable
-   and returns the packets sent, or c4lock's errors, -1 a K6 under API level 15, or -12 no
+   and returns the packets sent, or c4lock's errors, -1 a K6 under API level 15, -8 no scratch for
+   a packet's frames, or -12 no
    recording (FUSO_SLOT: no frames in that library slot).
 
    FUSO_SLOT=n (a bench build for a K6 without level 15): the frames come ready made from library
@@ -127,24 +128,23 @@ static void split(const uint8_t *fr, uint8_t *sg, uint8_t *sz) {
 static int fuso_prep(c4_t *s, ui_t *ku) {
   const k6_api_t *api = s->api;
   uint32_t h[4], nf, nsf, ng;
-  char line[64], *p;
 #if FUSO_SLOT
   s->pl = LIB_BASE + FUSO_SLOT * LIB_SLOT + 16u;
   api->fl_read(s->pl, h, 16);
   nf = h[1], nsf = h[2], ng = (nf + OB_GFRAMES - 1u) / OB_GFRAMES;
   if (h[0] != OP_MAGIC || nf < 3u || OB_GRP + ng * OB_GBYTES > LIB_SLOT - 24u
-      || spi_sum(api, s->pl + OB_GRP, ng * OB_GBYTES, s->fpl, sizeof s->fpl) != h[3])
+      || spi_sum(api, s->pl + OB_GRP, ng * OB_GBYTES, s->fpl, C4_FPL) != h[3])
     return -12;
   (void)ku;
-  (void)line;
-  (void)p;
 #else
+  /* the frame and the line in the scratch after the packet's frames (C4_FUSO_SCRATCH) */
   uint32_t k, sum = 0, nrec, t0 = api->ms();
-  uint8_t fr[YSFT_FRAME];
+  uint8_t *fr = s->fpl + C4_FPL;
+  char *line = (char *)fr + YSFT_FRAME, *p;
   api->fl_read(KM_OB_LO, h, 16);
   nrec = h[2];
   if (h[0] != OB_MAGIC || h[1] != (1u | KM_SOTTO_1200 << 8) || !nrec || nrec > OB_REC_CAP / OB_SF
-      || spi_sum(api, KM_OB_LO + OB_DATA, nrec * OB_SF, s->fpl, sizeof s->fpl) != h[3])
+      || spi_sum(api, KM_OB_LO + OB_DATA, nrec * OB_SF, s->fpl, C4_FPL) != h[3])
     return -12;
   nsf = nrec < OB_SF_MAX ? nrec : OB_SF_MAX;
   nf = 2u + (nsf + YSFT_SOTTO_NF - 1u) / YSFT_SOTTO_NF;
@@ -164,8 +164,8 @@ static int fuso_prep(c4_t *s, ui_t *ku) {
       for (i = 0; i < 60u; i++) sg[i] = sz[i] = 0;
     }
     if (j == OB_GFRAMES - 1u) {
-      for (i = 0; i < sizeof s->fpl; i++) sum += s->fpl[i];
-      if (prog(api, OB_PL + OB_GRP + (k / OB_GFRAMES) * OB_GBYTES, s->fpl, sizeof s->fpl)) return -12;
+      for (i = 0; i < C4_FPL; i++) sum += s->fpl[i];
+      if (prog(api, OB_PL + OB_GRP + (k / OB_GFRAMES) * OB_GBYTES, s->fpl, C4_FPL)) return -12;
     }
   }
   h[0] = OP_MAGIC, h[1] = nf, h[2] = nsf, h[3] = sum;

@@ -22,6 +22,8 @@ import k6_fusotx as F  # noqa: E402
 SRC = os.path.join(ROOT, "c", "k6", "mod", "fusotx.c")
 SLOT_SRC = os.path.join(ROOT, "c", "k6", "mod", "fusoslot.c")
 ARENA = k6mod.ARENA_BYTES_13
+STACK = 2136 - 512      # the radio's "K6 MOD run ... stack=2136 B", less the 512 B to keep untouched
+                        # (docs/k6-modules.md); 11-20 fuso1a: 1,584 B here ran out on the radio
 _BUILT = {}
 
 
@@ -114,7 +116,7 @@ def line(said, head):
 def test_it_fits_the_arena():
     code, _ = built(SRC)
     assert k6mod.source_level(SRC) == 15 and k6mod.source_level(SLOT_SRC) == 13
-    assert 16 + len(code) + 8 + 2048 <= ARENA, len(code)      # 2 KB of stack at least
+    assert 16 + len(code) + 8 + 664 + 4 <= ARENA, len(code)   # C4_FUSO_SCRATCH in the scratch
 
 
 @need_clang
@@ -136,7 +138,7 @@ def test_it_sends_the_recording():
     got = [c for c in calls if len(c) >= 60]
     assert len(got) == 1, [len(c) for c in calls]
     assert [s for s in got[0][:60]] == [sf[6 * k:6 * k + 6] for k in range(60)]
-    assert lcd["st"]["stack"] < 2048, lcd["st"]["stack"]
+    assert lcd["st"]["stack"] <= STACK, lcd["st"]["stack"]
 
 
 @need_clang
@@ -159,8 +161,9 @@ def test_a_long_call_through_clock_wander(drift):
 def test_no_recording_no_key_up():
     """no outbox, one whose sum doesn't add up, or a K6 under API level 15: -12 or -1, never keyed"""
     pytest.importorskip("unicorn")
-    ret, said, tx, *_ = send(flash={"mem": flash_with(F.OB_LO, b"")})
+    ret, said, tx, *_, lcd = send(flash={"mem": flash_with(F.OB_LO, b"")})
     assert ret == -12 and "log" not in tx, said
+    assert lcd["st"]["stack"] <= STACK, lcd["st"]["stack"]
     bad = bytearray(F.outbox(superframes(20)))
     bad[300] ^= 1
     ret, said, tx, *_ = send(flash={"mem": flash_with(F.OB_LO, bytes(bad))})
@@ -176,18 +179,19 @@ def test_from_a_library_slot():
     pytest.importorskip("unicorn")
     sf = superframes(100, seed=3)
     d = F.deck(sf)
-    assert len(d) <= F.SLOT_DATA
+    assert len(d) <= F.DECK_DATA
     flash = {"mem": flash_with(0x110000 + 15 * 0x4000 + 16, d)}
     ret, said, tx, fsk, ev, flash, lcd = send(src=SLOT_SRC, level=13, flash=flash)
     assert ret > 0 and flash["progs"] == 0 and flash["erases"] == 0, said
     calls = F.decode(air(ev, fsk))
     c = max(calls, key=len)
     assert [s for s in c[:100]] == [sf[6 * k:6 * k + 6] for k in range(100)]
+    assert lcd["st"]["stack"] <= STACK, lcd["st"]["stack"]
 
 
 def test_the_deck_fills_a_slot():
     sf = superframes(2000)
     d = F.deck(sf)
     nf, nsf = int.from_bytes(d[4:8], "little"), int.from_bytes(d[8:12], "little")
-    assert len(d) <= F.SLOT_DATA and nf == 132 and nsf == 650
-    assert F.planes(sf[:6 * 650]) == d
+    assert len(d) <= F.DECK_DATA and nf == 124 and nsf == 610
+    assert F.planes(sf[:6 * 610]) == d
