@@ -1,12 +1,12 @@
 {
  "id": "m64a",
- "status": "queued",
- "queued": "2026-11-20T20:06:23Z",
+ "status": "running",
+ "since": "2026-11-20T20:06:30Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "5f680af1a2e351a0bb7b9bc6b0a526301480ad43",
   "path": "jobs/m64a"
  },
  "runner_commit": "1c2853c78b58691acbf23063e8b8e0cc1baad627",
- "updated": "2026-11-20T20:06:23Z"
+ "updated": "2026-11-20T20:06:30Z"
 }
