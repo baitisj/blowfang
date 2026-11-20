@@ -374,6 +374,8 @@ fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
 fesw           # level 2, the receive front end's band switch as an attenuator: how much the wrong path loses (receive only, docs/k6-fesw.md)
 fesw_vhf       # level 2, fesw on fifteen frequencies of the VHF path, 136 to 174 MHz: is the 2 m floor the same everywhere (receive only, docs/k6-fesw.md)
 fmsotto        # level 13, FM SOTTO: what the K6 hears on FM, demodulated from the IF in DMA interrupts and coded live as sotto 1200, said as hex (receive only; needs out/fmsotto-cells.bin in a library slot, docs/k6-fm-sotto.md)
+fusoslot       # level 13, FUSOTTO SLOT: fusotx with PC-made frames from library slot 15, for a K6 before level 15 (docs/k6-fm-sotto.md)
+fusotx         # level 15, FUSOTTO TX: sends what FM SOTTO recorded in the outbox as one FuSotto call (C4FM), AG7EW + CW ID (docs/k6-fm-sotto.md)
 fskaprs        # level 2, the chip's FSK modem on AX.25 packets (docs/k6-aprs-clock.md)
 fsk24rx        # level 2, the chip's FSK modem on plain FSK at 2400 baud from the pre-equalised IC-7100, 440.850 bench (receive only, docs/k6-fsk24.md)
 fsk24rx_sweep  # level 2, fsk24rx in 12 s slots of D/2400, D/1800 (two bandwidths) and D/1200 while the Pluto steps its level down: receive sensitivity (receive only, docs/k6-fsk24.md)
@@ -483,9 +485,15 @@ for m in $K6_MODULES; do
   cmp "$HERE/build/$m-0.bin" "$HERE/build/$m-4096.bin"
   cp "$HERE/build/$m-0.bin" "$OUT/mod-$m.bin"
   ls -l "$OUT/mod-$m.bin"
-  # the shared RAM block (hal::arena in the Aura patch, 11,776 bytes in every SPI voice image) holds a
-  # 16-byte header, the code and an 8-byte tag; the scratch a module asks for comes after them
-  [ "$(wc -c < "$OUT/mod-$m.bin")" -le 11752 ] || { echo "mod-$m.bin: over the 11,776-byte module block"; exit 1; }
+  # the shared RAM block (hal::arena in the Aura patch) holds a 16-byte header, the code and an
+  # 8-byte tag; the scratch a module asks for comes after them. 11,776 bytes, 14,976 for a module
+  # that declares level 12 and 15,408 for level 13 on (modem/k6mod.py arena_bytes: older images
+  # refuse those levels)
+  lvl=$(sed -n 's/^[[:space:]]*#[[:space:]]*define[[:space:]]*K6_MODULE_LEVEL[[:space:]]*\([0-9]*\).*/\1/p' "$ROOT/c/k6/mod/$m.c" | head -n 1)
+  blk=11776
+  [ "${lvl:-1}" -ge 12 ] && blk=14976
+  [ "${lvl:-1}" -ge 13 ] && blk=15408
+  [ "$(wc -c < "$OUT/mod-$m.bin")" -le $((blk - 24)) ] || { echo "mod-$m.bin: over the $blk-byte module block (level ${lvl:-1})"; exit 1; }
 done
 # the help card decks (tools/k6_cards.py, docs/manual/cards/): out/cards-core.bin goes into
 # library slot 13 with `python -m modem.k6 mod OUT.wav out/cards-core.bin --cards --install 13`
