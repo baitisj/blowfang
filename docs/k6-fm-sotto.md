@@ -259,4 +259,10 @@ chunks all came back `r=-2` (KM_BAD_CHUNK: more than the arena; `k6_upload.py --
 refuses one), and the module ran out of stack (`stack_free=0`, the core rebooted) with 1,584 B
 used here of the 2,136 B the radio gives a module. c4lock's state and the packet's frames now
 live in the scratch in the FUSO builds (736-764 B of stack in the emulator; the tests hold it
-to 2,136 less 512).
+to 2,136 less 512). The radio then had 408 B left (fuso1b): the core and its interrupts take
+about 1 KB of the 2,136 B, so keep a module near 1 KB in the emulator.
+
+fuso1b (2026-11-20 16:25Z, keyed main 305eb04, PA off): the K6 sent the 610-superframe deck as
+one call (63 packets, 30 chained ones steering the grid, the worst TX done 64% of a symbol off
+its tick), and the Pluto decoded 604 of 610 superframes byte-exact; the 6 lost ones are scattered
+(14, 74, 151, 154, 234, 571), not at the splices.
