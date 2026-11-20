@@ -187,7 +187,8 @@ fmsotto on a level 15 image:
 
 - erases the sectors a RUN_MS recording can fill (5 at 90 s) before the interrupt starts;
 - records one call: from the first carrier over -100 dBm (`FMS_SQ_DBM`, read every 50 ms) until
-  it has been gone 1 s, when the module ends (or RUN_MS, a key, or the outbox full: 435 s);
+  it has been gone 1 s, when the module ends (or RUN_MS, a key, or its part of the outbox full:
+  105 s);
 - writes each line's four superframes (24 B) with `fl_prog` as it says them, and the header
   last, so a recording cut short reads as empty:
 
@@ -201,12 +202,53 @@ before and writes nothing. To fit (code 10,834 B), the start line lost its `cfgr
 fields, the vector check looks at the DMA entry and HardFault only, and the direct SPI reads
 trust SPI1's set-up (CR1) without the deck read-back.
 
-A sender module (next) reads the outbox with `fl_read` and keys up FuSotto: VW frames
-(c/common/ysf_tx.c) on the K6's C4FM modulator (c4lock.c), with the callsign and a CW ID.
+The layout is c/k6/mod/outbox.h: the recording takes 0x190000-0x193FFF, and the sender's frames
+the 48 KB after it.
 
-## Next
+## Sending it: FuSotto from the K6 (fusotx)
 
-Sending it on as FuSotto from the K6 itself: the C4FM sender (c4sotto, 11.3 KB) and this module
-don't fit the block together, so the superframes need a handoff between two modules (the
-message store, as sotto_play uses, or a second run that keys up with what the first left in
-RAM).
+c/k6/mod/fusotx.c (API level 15, 12.8 KB of the 15,408 B block) sends the recording as one sotto
+VW call over YSF, as the UV-380 and the sotto softmodem do (modem/ysf.py `tx_sotto`): header, VW
+frames FN 0-6 of five superframes each, terminator, from AG7EW to ALL, on c4lock's chip-locked
+C4FM (docs/k6-c4fm.md), then AG7EW in MCW. Armed after the upload like c4ftm: a K6 key press, or
+a DTMF 1 on 440.850, is the go, and it keys 5 s later with the channel clear. PA off by default.
+
+1. It checks the recording (magic, codec, byte sum) and makes every frame with
+   c/common/ysf_tx.c, as signs and sizes for the FSK FIFO and the REG_70 writes, four frames (one
+   chip packet) a group, into the outbox from 0x194000 with a header of its own ("K6OP", frames,
+   superframes, byte sum). 101 groups fit: a call of up to 2,010 superframes, 80.4 s of speech in
+   40 s on air (VW carries two seconds of speech a second); a longer recording is cut there.
+2. c4lock's rate packets and calibration (about 5 s), the A packets on the call's first frames,
+   a rate packet, then the call: its first packet times itself from its fill words, the rest
+   chain back to back. Each chained packet's group is read from SPI (`fl_read`, 480 B) after the
+   last packet's TX done and before its own enable: about 2.5 ms to spare, emulated.
+
+Two things the shorter C4FM calls never needed:
+
+- **The splices.** A chained packet's lead (1 preamble byte, 2 sync bytes) goes over the last 48
+  symbols of the frame before it. In c4voice that was the 5th AMBE frame of every fourth YSF
+  frame; in a VW frame it is coded speech. Offline (modem.ysf, 200 frames), a lead at the outer
+  size left only 59% of those frames' superframes; at the inner size the wrong symbols are weak
+  and the rate 7/18 code corrects them: 99% (100% with 32 symbols over). So fusotx sends the
+  lead, and the gap before it, at the inner size.
+- **The length.** A call is up to 40 s, and the MCU's RC clock wanders against the chip's (11-18:
+  hundreds of ppm in seconds), where c4voice's 1.6 s calls ran on one rate packet. Each chained
+  packet's TX done now steers the grid: half its error into the phase, a quarter into the rate
+  (`C4_KP8`, `C4_KI8`; a done over half a symbol off counts as half a symbol). The polls start a
+  dithered eighth of a read early, and a chained packet's last 4 symbols keep the size before
+  (`C4_TAIL_SKIP`) so the polls start before the rise. The latency window stays as the rate and B
+  packets measured it: these dones bracket the rise only within a read, and feeding them in
+  emptied the window and slipped packets a symbol.
+
+Emulated (tests/test_k6_fusotx.py, the FD6818 FSK model with the MCU's clock drifting): a 400
+superframe call (82 frames, 21 packets) decodes 399-400 of 400 superframes with no drift and with
+the clock moving 50 or -80 ppm a second; every chained packet on its tick. It says
+`fusotx sf= frames= trk= dmax= big= slack=` after the key-up: superframes and frames sent, the
+packets that steered the grid, the worst TX done off its tick (% of a symbol), how many were
+over a quarter symbol off, and the least time to spare before a chained enable (us).
+
+`python3 tools/k6_fusotx.py air CAP.wav --sf SF.bit` counts the superframes a Pluto capture of
+the call holds. Before the level 15 flash, c/k6/mod/fusoslot.c (level 13) sends frames the PC
+made (`tools/k6_fusotx.py deck SF.bit OUT.bin`, installed with `k6_upload.py OUT.bin --cards
+--install 15`; up to 650 superframes, 26 s) from library slot 15 and writes nothing, so the
+sender's C4FM can be tried on the radio as it is.

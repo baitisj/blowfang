@@ -64,7 +64,9 @@
 
    Build: python -m modem.k6 mod out.wav c/k6/mod/c4lock.c --api-level 3 --key-file KEY.
    SPDX-License-Identifier: MIT */
+#ifndef K6_MODULE_LEVEL
 #define K6_MODULE_LEVEL 3
+#endif
 #define K6_MODULE_OPT z     /* -Oz: c4sotto with the rate packets is 12.1 KB at -Os, over the 11,776 B module space */
 #include "../k6_mod.h"
 #include "k6ui.h"
@@ -76,6 +78,21 @@
 #endif
 #ifndef C4_VOICE
 #define C4_VOICE 0          /* 1 (c4voice.c, with C4_CHAIN): the table is one 14-frame DN voice call */
+#endif
+#ifndef C4_FUSO
+#define C4_FUSO 0           /* 1 (fusotx.c, with C4_DEMO and C4_CHAIN): one FuSotto call, its frames
+                               read from SPI a packet at a time (fusotx.c) */
+#endif
+#ifndef C4_TAIL_SKIP
+#define C4_TAIL_SKIP 4      /* C4_FUSO: a chained packet's last 4 symbols left at the size before,
+                               so its TX-done polls start in time (emulated with 117 us reads, the
+                               writes there ran into the rise: no done, nothing to steer by) */
+#endif
+#ifndef C4_KP8
+#define C4_KP8 4            /* C4_FUSO: the grid's phase and rate steered by 4/8 and 2/8 of each */
+#endif
+#ifndef C4_KI8
+#define C4_KI8 2            /* chained packet's TX done error (cont()) */
 #endif
 #ifndef C4_DMRS
 #define C4_DMRS 0           /* 1 (c4dmr.c, with C4_CHAIN): the table is a DMR stream (k6c4fm.dmr_frames) */
@@ -220,6 +237,10 @@ K6_MODULE_NAME(K6_NAME);
 #define NB 5
 #define CH_PKTS 20                                  /* packets in the NB calls: 4 each */
 #define B_MS 1900u
+#elif C4_FUSO
+#define NB 1
+#define CH_PKTS 0                                   /* (counted as they go: s->chn) */
+#define B_MS (700u + s.nf * 100u)                   /* the rate packet and the call (tx_main's s) */
 #elif C4_VOICE
 #define NB 3
 #define CH_PKTS 12                                  /* packets in the NB calls: 4 each */
@@ -278,6 +299,9 @@ static const uint8_t BF0[NB] = {0, 0, 0, 0, 0};
 static const uint8_t BNF[NB] = {12, 12, 12, 12, 12};
 static const uint8_t BINV[NB] = {0, 1, 0, 1, 0};   /* dmr4: the UV-380 never synced on plain calls */
 static const uint8_t BIN[NB] = {8, 8, 8, 8, 8};
+#elif C4_FUSO
+static const int8_t BQ[NB] = {0};
+static const uint8_t BINV[NB] = {0};
 #elif C4_VOICE
 static const int8_t BQ[NB] = {0, 0, 0};
 static const uint8_t BF0[NB] = {0, 0, 0};           /* the voice call three times (k6c4fm.VOICE_CALLS): */
@@ -367,6 +391,13 @@ typedef struct {
   int32_t latlo, lathi;     /* enable to lead start, less the wait for the tick: in (lo, hi] */
   uint32_t latn;
 #endif
+#if C4_FUSO
+  uint8_t fpl[2u * CH_FRAMES * C4_PKT_BYTES];  /* this packet's frames: signs, then sizes (fusotx.c) */
+  uint32_t pl, nf, nsf, tn;   /* where the frames are in SPI, frames, superframes; the grid's anchor */
+  uint32_t trk, dbig;         /* chained packets that moved the grid; ones over a quarter symbol off */
+  int32_t dmax, slack;        /* the most one was off (cycles); the least time to spare before an
+                                 enable after reading a packet's frames (cycles) */
+#endif
 #if C4_FIFOPROBE
   int16_t pm[NR][NM];       /* mark k less the first and k nominal periods (C4_PPM), 16 cycles */
   uint32_t px[NR], p0[NR], pe[NR];   /* each packet's enable, first mark and TX done (cycles) */
@@ -375,6 +406,18 @@ typedef struct {
   int8_t pr[NR];            /* 0, or -9: a flag never came (the packet stopped) */
 #endif
 } c4_t;
+
+#if C4_FUSO
+#define SG_ c4_t *s,
+#define SG s,
+#define YSG (s->fpl)
+#define YSZ (s->fpl + CH_FRAMES * C4_PKT_BYTES)
+#else
+#define SG_
+#define SG
+#define YSG C4_YSF_SIGN
+#define YSZ C4_YSF_SIZE
+#endif
 
 static uint32_t now(clk_t *c) {
   uint32_t c17 = rd(TIM17_CNT) & 0xFFFF, c14 = rd(TIM14_CNT) & 0xFFFF;
@@ -630,15 +673,15 @@ static unsigned bit(const uint8_t *b, uint32_t k) {
 }
 
 /* FIFO word i of a packet: frame f0's signs on (nwf words), then outer alternation; nwf 0: C4_PN */
-static uint16_t fword(uint32_t f0, uint32_t nwf, uint32_t i) {
-  const uint8_t *b = nwf ? C4_YSF_SIGN + f0 * C4_PKT_BYTES : C4_PN;
+static uint16_t fword(SG_ uint32_t f0, uint32_t nwf, uint32_t i) {
+  const uint8_t *b = nwf ? YSG + f0 * C4_PKT_BYTES : C4_PN;
   if (nwf && i >= nwf) return 0x5555;
   return (uint16_t)(b[2 * i] | b[2 * i + 1] << 8);
 }
 
 /* word i of a packet that starts with fill words of alternation (more preamble) */
-static uint16_t pword(uint32_t f0, uint32_t nwf, uint32_t fill, uint16_t inv, uint32_t i) {
-  return i < fill ? 0x5555 : fword(f0, nwf, i - fill) ^ inv;
+static uint16_t pword(SG_ uint32_t f0, uint32_t nwf, uint32_t fill, uint16_t inv, uint32_t i) {
+  return i < fill ? 0x5555 : fword(SG f0, nwf, i - fill) ^ inv;
 }
 
 /* a packet of nw words set up, pre of them in the FIFO, the 20 ms settle: 0 or an error */
@@ -650,7 +693,7 @@ static int arm(c4_t *s, uint32_t nw, uint32_t pre, uint32_t f0, uint32_t nwf, ui
   api->fd_write(R_CTRL, CTRL_BASE | CTRL_CLR);
   api->fd_write(R_CTRL, CTRL_BASE);
   api->fd_write(0x5D, (uint16_t)((2u * nw - 1u) << 8));
-  for (i = 0; i < pre; i++) api->fd_write(R_FIFO, pword(f0, nwf, fill, inv, i));
+  for (i = 0; i < pre; i++) api->fd_write(R_FIFO, pword(SG f0, nwf, fill, inv, i));
   if ((r = until(api, api->ms() + 20)) != 0) return r;        /* as the stock MDC path */
   return keyed(api);
 }
@@ -758,7 +801,7 @@ static int settle(c4_t *s) {
    symbol late, its phase too near that edge) */
 static void lat_add(c4_t *s, int32_t d) {
   int32_t lo = d - (int32_t)(s->p12 >> 12);
-#if C4_VOICE
+#if C4_VOICE || C4_FUSO
   /* voice1-2 (11-18): with every call's rate a few hundred ppm apart, a sample can miss the window
      altogether; the window emptied and the later calls ended after their first packet. Here a
      sample outside it starts the window again from itself */
@@ -779,7 +822,7 @@ static void lat_add(c4_t *s, int32_t d) {
 /* nf frames from f0 in one packet, the size writes q quarter symbols from the lag: 0 or an error */
 static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int tail) {
   const k6_api_t *api = s->api;
-  const uint8_t *sz = C4_YSF_SIZE + f0 * C4_PKT_BYTES;
+  const uint8_t *sz = YSZ + f0 * C4_PKT_BYTES;
   uint32_t nwf = nf * FRAME_WORDS, nw = tail ? nwf - CH_E : nwf + PAD_WORDS;
   uint32_t pre = nw < FIFO_WORDS ? nw : FIFO_WORDS;
   uint32_t fill = 0, ahead, k, k0 = 0, x, sent, e = 0;
@@ -818,7 +861,7 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
         api->fd_write(R_IRQ, 0);
         b = api->fd_read(R_IRQ);
         if (!(b & IRQ_AE) || (b & IRQ_TX_DONE)) break;
-        api->fd_write(R_FIFO, pword(f0, nwf, fill, inv, sent));
+        api->fd_write(R_FIFO, pword(SG f0, nwf, fill, inv, sent));
         sent++;
         api->fd_write(R_IRQ, 0);
         an = mk - mulp(s, 16u * (nm + 1u));
@@ -868,6 +911,9 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
   s->n00 = n0;
   s->fill0 = fill;
 #endif
+#if C4_FUSO
+  s->tn = (uint32_t)ne;
+#endif
   off = sixteenths(s, 4 * (C4_LAG4 + q)) - s->ubar;
   for (k = k0; k < nw * 16u; k++) {
     uint32_t kd = k - k0, nfs = nf * FRAME_SYMS;
@@ -881,7 +927,7 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
       /* a word in the slack after this edge (it ends before the next one's write would start) */
       if ((int32_t)(at - now(&s->c)) < 0) s->late++;
       wait_to(api, &s->c, at);
-      api->fd_write(R_FIFO, pword(f0, nwf, fill, inv, sent));
+      api->fd_write(R_FIFO, pword(SG f0, nwf, fill, inv, sent));
       sent++;
     }
   }
@@ -899,27 +945,45 @@ static int data(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv, int 
    numbering), the lead before it; tail: more packets follow (CH_E words short) */
 static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t q, uint16_t inv) {
   const k6_api_t *api = s->api;
-  const uint8_t *sz = C4_YSF_SIZE + f0 * C4_PKT_BYTES;
+  const uint8_t *sz = YSZ + f0 * C4_PKT_BYTES;
   uint32_t nwf = nf * FRAME_WORDS, nw = tail ? nwf - CH_E : nwf + PAD_WORDS;
   uint32_t i, x, xl, k, sent = CH_PRE, nfs = nf * FRAME_SYMS, e = 0;
   int32_t ne = n0 + (int32_t)(nw * 16u), off = sixteenths(s, 4 * (C4_LAG4 + q)) - s->ubar;
-  unsigned cur = 1;
+  unsigned cur = !C4_FUSO;
   int r;
+#if C4_FUSO
+  /* the lead (and the gap before it) at the inner size: the symbols it puts over the last frame's
+     tail come out as weak wrong guesses, which the sotto VW code shrugs off (2026-11-20, offline:
+     99% of the spliced frames' superframes, against 59% with the lead at the outer size) */
+  api->fd_write(R_TONE, G(GIN));
+#endif
   api->fd_write(R_CTRL, CH_CTRL | CTRL_CLR);
   api->fd_write(R_CTRL, CH_CTRL);
   api->fd_write(0x5D, (uint16_t)((2u * nw - 1u) << 8));
-  for (i = 0; i < CH_PRE; i++) api->fd_write(R_FIFO, pword(f0, nwf, 0, inv, i));
+  for (i = 0; i < CH_PRE; i++) api->fd_write(R_FIFO, pword(SG f0, nwf, 0, inv, i));
   /* its lead to start CH_LEAD before n0: the enable half a symbol inside the latency's window
      (call() checks there is one) */
   {
+#if C4_FUSO
+    uint32_t lead = tick(s, n0 - (int32_t)CH_LEAD) - (uint32_t)s->dd;   /* the grid follows the call */
+#else
     uint32_t lead = s->a0c + mulp(s, (uint32_t)(n0 - s->n00) - CH_LEAD);
+#endif
     x = lead - (uint32_t)((s->latlo + s->lathi) / 2) - (s->p12 >> 13);
     xl = lead - x;
   }
-  if ((int32_t)(x - s->len - now(&s->c)) < 0) s->clate++;
+  {
+    int32_t sl = (int32_t)(x - s->len - now(&s->c));
+    if (sl < 0) s->clate++;
+#if C4_FUSO
+    if (sl < s->slack) s->slack = sl;
+#endif
+  }
   timed(s, x, R_CTRL, CH_CTRL | CTRL_TX_EN);
+#if !C4_FUSO
   api->fd_write(R_TONE, G(C4_GAIN));    /* the sync's first symbol outer (the lead's don't matter) */
-  for (k = 0; k < nw * 16u; k++) {
+#endif
+  for (k = 0; k < nw * 16u - (C4_FUSO && tail ? C4_TAIL_SKIP : 0u); k++) {
     unsigned want = k < nfs ? bit(sz, k) : 1u;
     uint32_t at = tick(s, n0 + (int32_t)k) + (uint32_t)off;
     if (want != cur) {
@@ -929,22 +993,59 @@ static int cont(c4_t *s, uint32_t f0, uint32_t nf, int32_t n0, int tail, int32_t
     } else if (sent < nw && sent < (k >> 4) + FIFO_WORDS - 20u && (k + 1 >= nfs || bit(sz, k + 1) == cur)) {
       if ((int32_t)(at - now(&s->c)) < 0) s->late++;
       wait_to(api, &s->c, at);
-      api->fd_write(R_FIFO, pword(f0, nwf, 0, inv, sent));
+      api->fd_write(R_FIFO, pword(SG f0, nwf, 0, inv, sent));
       sent++;
     }
   }
+#if C4_FUSO
+  /* the polls start a dithered eighth of a read early, by the packet (as probe()'s): a fixed
+     start brackets every rise at the same phase of the reads, and the grid would keep that bias */
+  if ((r = done(s, tick(s, ne) - mulp(s, 3) - ((s->chn * 5u & 7u) * s->rmax >> 3), &e)) < 0) return r;
+#else
   if ((r = done(s, tick(s, ne) - mulp(s, 3), &e)) < 0) return r;
+#endif
   if (s->chn < CH_MAX) s->cdo[s->chn] = (int16_t)(r ? pct(s, (int32_t)(e - tick(s, ne))) : 9999);
   s->chn++;
   if (r) {
     int32_t d = (int32_t)(e - tick(s, ne)), h = (int32_t)(s->p12 >> 13);
     if (d > h || d < -h) s->miss++;
+#if !C4_FUSO
     /* where its lead really began: whole symbols off the aim, by its TX done */
     lat_add(s, (int32_t)xl + sdivq(d + (d < 0 ? -h : h), s->p12 >> 12, 0) * (int32_t)(s->p12 >> 12));
+#else
+    (void)xl;
+    /* A FuSotto call runs for many seconds, and the MCU's clock wanders against the chip's (11-18
+       lock5: a few hundred ppm in seconds; 11-17 runs: R0 and R1 150 ppm apart), so each chained
+       packet's TX done steers the grid: C4_KP8 / 8 of its error into the phase, C4_KI8 / 8 of it
+       over the packet into the rate (a second-order loop). A done over half a symbol off counts as half a
+       symbol (a slip, the packet started a tick off, would look like a whole one: the next
+       packet puts that back). The latency window stays as the rate and B packets left it:
+       these dones bracket the rise within a read (0.56 symbol) and would only blur it. */
+    {
+      int32_t ad = d < 0 ? -d : d;
+      if (ad > s->dmax) s->dmax = ad;
+      if (ad > h / 2) s->dbig++;
+      if (ad > h) d = d < 0 ? -h : h;
+      s->p12 = (uint32_t)((int32_t)s->p12 + sdivq(d * (512 * C4_KI8), (uint32_t)(ne - (int32_t)s->tn), 0));
+      s->ta = e - (uint32_t)(d * (8 - C4_KP8) / 8);
+      s->na = ne;
+      s->tn = (uint32_t)ne;
+      s->trk++;
+    }
+#endif
   }
   if ((r = keyed(api)) != 0) return r;
   return sent < nw ? -9 : 0;
 }
+
+#if C4_FUSO
+/* frames CH_FRAMES x g on into s->fpl (fusotx.c's layout: a group's signs, then its sizes) */
+static void fload(c4_t *s, uint32_t g) {
+  s->api->fl_read(s->pl + OB_GRP + g * (uint32_t)sizeof s->fpl, s->fpl, sizeof s->fpl);
+}
+
+static int fuso_prep(c4_t *s, ui_t *ku);   /* fusotx.c: the frames into SPI, s->pl, nf, nsf */
+#endif
 
 /* a call: nf frames from f0, its first packet as a B packet (its fill words time it), then
    chained packets of up to CH_FRAMES frames */
@@ -953,6 +1054,10 @@ static int call(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
   int r;
   uint32_t skip = s->skip;
   m = nf < CH_FRAMES ? nf : CH_FRAMES;
+#if C4_FUSO
+  fload(s, 0);
+  f0 = 0;
+#endif
   if ((r = data(s, f0, m, q, inv, m < nf)) != 0) return r;
   if (s->skip != skip || !s->a0c || s->latlo >= s->lathi) {
     s->clate++;                           /* no marks or no window: the call ends there */
@@ -960,7 +1065,12 @@ static int call(c4_t *s, uint32_t f0, uint32_t nf, int32_t q, uint16_t inv) {
   }
   for (c = m; c < nf; c += m) {
     m = nf - c < CH_FRAMES ? nf - c : CH_FRAMES;
+#if C4_FUSO
+    fload(s, c / CH_FRAMES);            /* in the 48 symbols before its lead: 0.4-0.7 ms */
+    r = cont(s, 0, m, s->n00 + (int32_t)(s->fill0 * 16u + c * FRAME_SYMS), c + m < nf, q, inv);
+#else
     r = cont(s, f0 + c, m, s->n00 + (int32_t)(s->fill0 * 16u + c * FRAME_SYMS), c + m < nf, q, inv);
+#endif
     if (r) return r;
   }
   return 0;
@@ -1008,7 +1118,7 @@ static int probe(c4_t *s, uint32_t j) {
 #endif
       if (sent < P_WORDS && !(b & IRQ_TX_DONE)) {
         for (i = 0; i < P_CHUNK && sent < P_WORDS; i++, sent++)
-          api->fd_write(R_FIFO, fword(0, 0, sent & 15u));
+          api->fd_write(R_FIFO, fword(SG 0, 0, sent & 15u));
         if (sent >= P_WORDS) api->fd_write(R_IRQ_EN, IRQ_TX_DONE);
         api->fd_write(R_IRQ, 0);          /* a flag that came back before the refill */
       }
@@ -1143,6 +1253,9 @@ static int burst(c4_t *s) {
   if ((r = settle(s)) != 0) return r;
   s->cppm = ppm10(s);
   s->settled = 1;
+#if C4_FUSO
+  fload(s, 0);                          /* the A packets: the call's first frames */
+#endif
   for (k = 0; k < NA; k++) {
     if (api->key_down()) return -4;
     if ((r = data(s, k & 3u, 1, A_FIRST + (int32_t)k, 0, 0)) != 0) return r;
@@ -1155,7 +1268,11 @@ static int burst(c4_t *s) {
 #if C4_DMRS || C4_VOICE
     s->gin = BIN[k];
 #endif
+#if C4_FUSO
+    if ((r = call(s, 0, s->nf, BQ[k], BINV[k] ? 0xFFFFu : 0u)) != 0) return r;
+#else
     if ((r = call(s, BF0[k], BNF[k], BQ[k], BINV[k] ? 0xFFFFu : 0u)) != 0) return r;
+#endif
 #else
     if ((r = data(s, BSET[k] * C4_NFRAMES, C4_NFRAMES, BQ[k], BINV[k] ? 0xFFFFu : 0u, 0)) != 0) return r;
 #endif
@@ -1329,7 +1446,7 @@ static void report(c4_t *s, int cal_done, char *line) {
   *p++ = '/';
   p = sdec(p, pct(s, s->lathi));
   p = put(p, " d=");
-  for (i = 0; i < (int)(s->chn < CH_MAX ? s->chn : CH_MAX); i++) {
+  for (i = 0; i < (int)(s->chn < CH_MAX ? s->chn : CH_MAX) && p < line + 54; i++) {
     if (i) *p++ = ',';
     p = sdec(p, s->cdo[i]);
   }
@@ -1375,6 +1492,22 @@ static void report(c4_t *s, int cal_done, char *line) {
       api->say(line);
     }
   }
+#endif
+#if C4_FUSO
+  p = put(line, "fusotx sf=");
+  p = dec(p, s->nsf);
+  p = put(p, " frames=");
+  p = dec(p, s->nf);
+  p = put(p, " trk=");
+  p = dec(p, s->trk);
+  p = put(p, " dmax=");
+  p = sdec(p, pct(s, s->dmax));
+  p = put(p, " big=");
+  p = dec(p, s->dbig);
+  p = put(p, " slack=");
+  p = sdec(p, sdivq(s->slack, 96, 0));
+  *p = 0;
+  api->say(line);
 #endif
   p = put(line, "c4lock w=");
   p = dec(p, s->w);
@@ -1432,7 +1565,15 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
   s.ta = 0;
   s.na = 0;
   for (i = 0; i < NCAL; i++) s.cok[i] = 0;
-  if (api->level < 3) return -1;
+  if (api->level < K6_MODULE_LEVEL) return -1;
+#if C4_FUSO
+#undef NPKT
+#define NPKT (NR + NCAL + NA + NB + s.chn)
+  s.trk = s.dbig = 0;
+  s.dmax = 0;
+  s.slack = 0x7FFFFFFF;
+  if ((r = fuso_prep(&s, ku)) != 0) return r;
+#endif
   p = put(line, "c4lock n=");
   p = dec(p, NPKT);
   p = put(p, " g=");
@@ -1499,7 +1640,10 @@ static int tx_main(const k6_api_t *api, ui_t *ku) {
 int k6_main(const k6_api_t *api) {
   ui_t u;
   int r;
-  ui_begin(&u, api, "C4FM YSF LOCK 440.850", "WAITING FOR QUIET");
+#ifndef K6_TITLE
+#define K6_TITLE "C4FM YSF LOCK 440.850"
+#endif
+  ui_begin(&u, api, K6_TITLE, "WAITING FOR QUIET");
   ui_text(&u, 5, "ANY KEY: STOP");
   ui_now(&u);
   r = tx_main(api, &u);

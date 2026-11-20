@@ -83,6 +83,7 @@ c/common/range_tx*
 c/common/sotto_rx.*
 c/common/surf_core.inc
 c/common/ysf_rx.h
+c/common/ysf_tx.*
 
 [uv380]
 .github/workflows/uv380.yml

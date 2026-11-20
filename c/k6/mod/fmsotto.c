@@ -50,6 +50,7 @@ K6_MODULE_NAME("FM SOTTO");
 #include <stdlib.h>
 #include <string.h>
 #endif
+#include "outbox.h"
 
 #ifndef RUN_MS
 #define RUN_MS 90000u
@@ -80,8 +81,7 @@ K6_MODULE_NAME("FM SOTTO");
 #ifndef FMS_SQ_DBM
 #define FMS_SQ_DBM (-100) /* the outbox records while the carrier is over this */
 #endif
-#define OB_DATA 256u      /* the outbox: a 16-byte header in its first page, superframes from here */
-#define OB_CAP (KM_OB_HI - KM_OB_LO - OB_DATA)
+#define OB_CAP OB_REC_CAP /* the outbox (outbox.h): its header page, then superframes up to the frames */
 #define OB_SECTORS ((RUN_MS / 1000u * 150u + OB_DATA + 4095u) / 4096u)
 #define MAX_IRQ 40000u /* halves with no word from the foreground: the handler stops itself */
 #define MAX_HALVES ((RUN_MS / 1000u + 30u) * 25000u) /* and after this many in all, whatever */
