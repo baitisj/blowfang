@@ -1,0 +1,12 @@
+{
+ "id": "mtx1a",
+ "status": "queued",
+ "queued": "2026-11-20T19:11:43Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "7733d79416a1f8403d8dfd76ba9741e94aaa317d",
+  "path": "jobs/mtx1a"
+ },
+ "runner_commit": "1d84fbd6d47f27a4dc340840d08bbfadb45de88d",
+ "updated": "2026-11-20T19:11:43Z"
+}
