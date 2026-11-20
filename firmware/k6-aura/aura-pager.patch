@@ -390,10 +390,10 @@ index 5f006e4..371e81e 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..485c69e
+index 0000000..cff1d2c
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,5150 @@
+@@ -0,0 +1,5255 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -639,6 +639,8 @@ index 0000000..485c69e
 +        pub fn kl_info(slot: i32, fl: *const KlFlash, out: *mut KlInfo) -> i32;
 +        #[cfg(feature = "voice-explore")]
 +        pub fn kl_page(slot: i32, fl: *const KlFlash, dst: *mut u8, cap: u32) -> i32;
++        #[cfg(banded)]
++        pub fn lz4d(src: *const u8, n: u32, dst: *mut u8, cap: u32) -> i32;
 +        pub fn sp_cb_setup() -> i32;
 +        pub fn sp_cb_mode() -> i32;
 +        pub fn sp_cb_bench(n: u32) -> u32;
@@ -745,6 +747,8 @@ index 0000000..485c69e
 +        // holds it outside the arena
 +        pub sotto_play: unsafe extern "C" fn(*const u8, u32, u32, u32, *const u8) -> i32,
 +        pub msg_mem: unsafe extern "C" fn(*mut u32) -> *mut u8,
++        // level 15: a module's help cards (and packed images, k6_lib.h KM_F_LZ4)
++        pub help: unsafe extern "C" fn(*const u8) -> i32,
 +    }
 +    /// c/k6/k6_lib.h kl_flash_t and kl_info_t
 +    #[repr(C)]
@@ -762,6 +766,8 @@ index 0000000..485c69e
 +        pub level: u8,
 +        pub flags: u8,
 +        pub name: [u8; 12],
++        /// level 15: the packed body's bytes in the slot (0: not packed)
++        pub packed: u16,
 +    }
 +    #[repr(C)]
 +    pub struct KmStatus {
@@ -819,6 +825,7 @@ index 0000000..485c69e
 +    setting: mod_setting,
 +    sotto_play: mod_sotto_play,
 +    msg_mem: mod_msg_mem,
++    help: mod_help,
 +};
 +
 +// ---- level 11: a sotto receiver's message played (Jeff 2026-11-19, "proceed with playback") ----
@@ -910,7 +917,7 @@ index 0000000..485c69e
 +    let f = &p.from[..p.from.iter().position(|&b| b == 0).unwrap_or(FROM_MAX)];
 +    rl!(
 +        "K6 PLAY put r={} n={} codec={:02x} crc={:04x} from={} rerun={}",
-+        r, n, p.codec, crc, core::str::from_utf8(f).unwrap_or("?"), unsafe { RERUN }
++        r, n, p.codec, crc, crate::out::ascii(f), unsafe { RERUN }
 +    );
 +    if r <= 0 {
 +        unsafe { RERUN = 255 };
@@ -1307,7 +1314,7 @@ index 0000000..485c69e
 +    while n < 60 && unsafe { *s.add(n) } != 0 {
 +        n += 1;
 +    }
-+    let t = core::str::from_utf8(unsafe { core::slice::from_raw_parts(s, n) }).unwrap_or("(not text)");
++    let t = crate::out::ascii(unsafe { core::slice::from_raw_parts(s, n) });
 +    rl!("K6 MOD say {}", t);
 +    tlm_add(t.as_bytes());
 +}
@@ -3951,9 +3958,9 @@ index 0000000..485c69e
 +            used += 1;
 +            let nl = i.name.iter().position(|&c| c == 0).unwrap_or(i.name.len());
 +            rl!(
-+                "K6 LIB slot={} r={} code={} serial={} level={} flags={} name={}",
-+                n, r, i.code_len, i.serial, i.level, i.flags,
-+                core::str::from_utf8(&i.name[..nl]).unwrap_or("?")
++                "K6 LIB slot={} r={} code={} packed={} serial={} level={} flags={} name={}",
++                n, r, i.code_len, i.packed, i.serial, i.level, i.flags,
++                crate::out::ascii(&i.name[..nl])
 +            );
 +        }
 +    }
@@ -3962,13 +3969,13 @@ index 0000000..485c69e
 +
 +// ---- the module list (MENU, the release plan, Jeff 2026-11-13) ----
 +//
-+// MENU in EXPLORE or the arena opens it: EXPLORE and ARENA, then the library's modules by
++// MENU in EXPLORE or the arena opens it: EXPLORE, ARENA and STATIONS, then the library's modules by
 +// the names they carry (K6_MODULE_NAME; `SLOT n` without one), code pages and help decks left
 +// out. UP/DOWN pick (wrapping), MENU or # runs the row, EXIT closes it. A module runs from the
 +// arena, as side key 1's re-run does, so EXPLORE is left first.
 +
 +#[cfg(all(feature = "explore", feature = "spilib"))]
-+const MENU_CORE: u8 = 2;
++const MENU_CORE: u8 = 3;
 +#[cfg(all(feature = "explore", feature = "spilib"))]
 +struct Menu {
 +    on: bool,
@@ -3999,6 +4006,9 @@ index 0000000..485c69e
 +/// pages a screen's help may have
 +#[cfg(banded)]
 +const HELP_PAGES: usize = 4;
++/// cards a deck may hold (its index entries read)
++#[cfg(banded)]
++const HELP_CARDS: u32 = 40;
 +
 +#[cfg(banded)]
 +struct Help {
@@ -4023,20 +4033,38 @@ index 0000000..485c69e
 +    help().on
 +}
 +
-+/// The card's page p (8 pixel rows, bit 0 the top one) into buf, from SPI
++/// The card's page p (8 pixel rows, bit 0 the top one) into buf, from SPI. A deck v2 card
++/// (tools/k6_cards.py, docs/k6-lz4.md) is a table of 8 u16 band ends (from the card's start;
++/// band 0 starts at 16), then the bands: 128 bytes as they are, or fewer, one LZ4 block of 128
++/// (c/k6/lz4d.h). A band that doesn't read or decode shows blank.
 +#[cfg(banded)]
 +pub fn help_band(p: u8, buf: &mut [u8; 128]) {
 +    let h = help();
-+    let a = h.addr[h.page as usize] + 128 * p as u32;
-+    if unsafe { lib_fl_read(a, buf.as_mut_ptr(), 128) } != 0 {
++    let a = h.addr[h.page as usize];
++    let mut t = [0u8; 16];
++    let mut z = [0u8; 128];
++    let ok = unsafe { lib_fl_read(a, t.as_mut_ptr(), 16) } == 0 && {
++        let end = |k: usize| u16::from_le_bytes([t[2 * k], t[2 * k + 1]]) as u32;
++        let (lo, hi) = (if p == 0 { 16 } else { end(p as usize - 1) }, end(p as usize));
++        let n = hi.wrapping_sub(lo);
++        if n == 128 {
++            unsafe { lib_fl_read(a + lo, buf.as_mut_ptr(), 128) == 0 }
++        } else {
++            n < 128
++                && unsafe { lib_fl_read(a + lo, z.as_mut_ptr(), n) } == 0
++                && unsafe { ffi::lz4d(z.as_ptr(), n, buf.as_mut_ptr(), 128) } == 128
++        }
++    };
++    if !ok {
 +        buf.iter_mut().for_each(|b| *b = 0);
 +    }
 +}
 +
 +/// Find screen `name`'s cards in the decks and show the first: true if it has any.
-+/// A deck (k6_cards.py): 'K6HC', count, version 1; 16 B entries (name 8 B, page, 3 zero bytes,
-+/// the card's offset u32); the cards. The slot was checked (its tag) when it was installed;
-+/// here every offset is checked against the image's length.
++/// A deck (k6_cards.py): 'K6HC', count, version 2; 16 B entries (name 8 B, page, 3 zero bytes,
++/// the card's offset u32); the cards (help_band). The slot was checked (its tag) when it was
++/// installed; here every offset is checked against the image's length. A version 1 deck
++/// (unpacked cards, before API level 15) is passed over: install the deck again.
 +#[cfg(banded)]
 +#[inline(never)]
 +fn help_open(name: &[u8]) -> bool {
@@ -4050,10 +4078,10 @@ index 0000000..485c69e
 +        let deck = KL_LO + slot as u32 * 0x4000 + 16; // after the module header
 +        let len = i.code_len as u32;
 +        let mut e = [0u8; 16];
-+        if unsafe { lib_fl_read(deck, e.as_mut_ptr(), 16) } != 0 || &e[..4] != b"K6HC" || e[5] != 1 {
++        if unsafe { lib_fl_read(deck, e.as_mut_ptr(), 16) } != 0 || &e[..4] != b"K6HC" || e[5] != 2 {
 +            continue;
 +        }
-+        let count = (e[4] as u32).min(11);
++        let count = (e[4] as u32).min(HELP_CARDS);
 +        for k in 0..count {
 +            if unsafe { lib_fl_read(deck + 16 + 16 * k, e.as_mut_ptr(), 16) } != 0 {
 +                break;
@@ -4061,7 +4089,7 @@ index 0000000..485c69e
 +            let n = e[..8].iter().position(|&c| c == 0).unwrap_or(8);
 +            let off = u32::from_le_bytes([e[12], e[13], e[14], e[15]]);
 +            let page = e[8] as usize;
-+            if &e[..n] == name && page < HELP_PAGES && off >= 16 && off + 1024 <= len {
++            if &e[..n] == name && page < HELP_PAGES && off >= 16 && off + 16 <= len {
 +                h.addr[page] = deck + off;
 +                h.n = h.n.max(page as u8 + 1);
 +            }
@@ -4072,36 +4100,105 @@ index 0000000..485c69e
 +    }
 +    h.page = 0;
 +    h.on = h.n > 0;
-+    rl!("K6 HELP {} pages={}", core::str::from_utf8(name).unwrap_or("?"), h.n);
++    rl!("K6 HELP {} pages={}", crate::out::ascii(name), h.n);
 +    h.on
++}
++
++/// A key while a card is up: UP/DOWN turn its pages, any other press closes it
++#[cfg(banded)]
++fn help_turn(ev: KeyEvent) {
++    let h = help();
++    match (ev.key, ev.kind) {
++        (KeyId::Up, KeyEventKind::Single | KeyEventKind::Repeat) => h.page = h.page.saturating_sub(1),
++        (KeyId::Down, KeyEventKind::Single | KeyEventKind::Repeat) => h.page = (h.page + 1).min(h.n - 1),
++        (_, KeyEventKind::Single | KeyEventKind::Long) => h.on = false,
++        _ => {}
++    }
++}
++
++// ---- level 15: a module's help (Jeff 2026-11-20, "add help API too") ----
++//
++// help(name): the cards of screen `name` (a module's own name, usually) over the module's
++// screen, a key at a time, until a key other than UP/DOWN; the module's screen comes back at
++// its next lcd_flush. The card draws through lcd_flush's hook (ui::mod_flush, which shows the
++// card while one is up). Keys are polled here, the module waiting, as during playback.
++
++#[cfg(banded)]
++unsafe extern "C" fn mod_help(name: *const u8) -> i32 {
++    mod_tx_guard();
++    let c = unsafe { &*addr_of!(MOD_CTX) };
++    if c.tx || c.app.is_null() || name.is_null() {
++        return -1;
++    }
++    let mut nm = [0u8; 8];
++    let mut n = 0;
++    while n < 8 {
++        let b = unsafe { *name.add(n) };
++        if b == 0 {
++            break;
++        }
++        nm[n] = b;
++        n += 1;
++    }
++    if !help_open(&nm[..n]) {
++        return 0;
++    }
++    let pages = help().n as i32;
++    let (app, syst) = unsafe { mod_ctx() };
++    while app.keypad.pop_event().is_some() {}
++    while help().on {
++        unsafe { mod_lcd_flush() };
++        loop {
++            delay::us(syst, 5_000);
++            app.keypad.poll(syst);
++            crate::hal::light::poll();
++            if let Some(ev) = app.keypad.pop_event() {
++                if matches!(ev.kind, KeyEventKind::Single | KeyEventKind::Repeat | KeyEventKind::Long) {
++                    crate::hal::light::touch();
++                    help_turn(ev);
++                    break;
++                }
++            }
++        }
++    }
++    pages
++}
++
++#[cfg(not(banded))]
++unsafe extern "C" fn mod_help(_name: *const u8) -> i32 {
++    -1
 +}
 +
 +/// A key while a card is up, or MENU held to show one: true when help took the key
 +#[cfg(banded)]
 +#[inline(never)]
 +fn help_key(app: &mut App, ev: KeyEvent) -> bool {
-+    let h = help();
-+    if !h.on {
++    if !help().on {
 +        if ev.key != KeyId::Menu || ev.kind != KeyEventKind::Long || stream_on() || app.pager.freq_entry {
 +            return false;
 +        }
-+        let name: &[u8] = if menu().on {
++        // on a module's row in the list: its own cards, by its name (level 15), else the list's
++        let mut nm = [0u8; 12];
++        let m = menu();
++        let own = m.on && m.sel >= MENU_CORE && {
++            let n = menu_row(m.sel, &mut nm).min(8);
++            for c in nm[..n].iter_mut().filter(|c| **c == b' ') {
++                *c = b'_'; // a card's name: "AIS SHIPS" is AIS_SHIP
++            }
++            help_open(&nm[..n])
++        };
++        let name: &[u8] = if m.on {
 +            b"MENU"
 +        } else if explore::on() {
 +            explore::help_name()
 +        } else {
 +            b"ARENA"
 +        };
-+        if !help_open(name) {
++        if !own && !help_open(name) {
 +            explore::help_missing();
 +        }
 +    } else {
-+        match (ev.key, ev.kind) {
-+            (KeyId::Up, KeyEventKind::Single | KeyEventKind::Repeat) => h.page = h.page.saturating_sub(1),
-+            (KeyId::Down, KeyEventKind::Single | KeyEventKind::Repeat) => h.page = (h.page + 1).min(h.n - 1),
-+            (_, KeyEventKind::Single | KeyEventKind::Long) => h.on = false,
-+            _ => {}
-+        }
++        help_turn(ev);
 +    }
 +    if explore::on() {
 +        explore::touch();
@@ -4125,6 +4222,7 @@ index 0000000..485c69e
 +    let core: &[u8] = match i {
 +        0 => b"EXPLORE",
 +        1 => b"ARENA",
++        2 => b"STATIONS",
 +        _ => b"",
 +    };
 +    if !core.is_empty() {
@@ -4198,6 +4296,13 @@ index 0000000..485c69e
 +                        if explore::on() {
 +                            explore::leave(app, syst);
 +                        }
++                    }
++                    // STATIONS (Jeff 2026-11-20): the saved table, in EXPLORE
++                    2 => {
++                        if !explore::on() {
++                            explore::enter(app, syst);
++                        }
++                        explore::stations(app, syst);
 +                    }
 +                    _ => {
 +                        if explore::on() {
@@ -4348,8 +4453,8 @@ index 0000000..485c69e
 +    rl!(
 +        "K6 IFP pkts={} r={} miss={}",
 +        res.nres,
-+        core::str::from_utf8(&codes[..n]).unwrap_or("?"),
-+        core::str::from_utf8(&miss[..ns]).unwrap_or("?")
++        crate::out::ascii(&codes[..n]),
++        crate::out::ascii(&miss[..ns])
 +    );
 +    // back to the pager's set-up, GP0 as it was
 +    app.radio.fd6818.reg_write(syst, MOD_GPIO, gpio);
@@ -5546,10 +5651,10 @@ index 0000000..485c69e
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..38b24f0
+index 0000000..82dfc8c
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2403 @@
+@@ -0,0 +1,2524 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -6107,6 +6212,8 @@ index 0000000..38b24f0
 +    Ask,
 +    /// the station editor (key 8 on a row; c/k6/sted.c in its code page)
 +    Edit,
++    /// MENU > STATIONS: the saved table, a station at a time (in `ask`)
++    Stations,
 +}
 +
 +struct State {
@@ -6174,6 +6281,10 @@ index 0000000..38b24f0
 +    dmr_now: bool,
 +    /// the station editor's state (sted_t), while View::Edit
 +    ed: Sted,
++    /// STATIONS: the station shown (its place among the live entries), and the editor opened
++    /// from there (its EXIT goes back to STATIONS)
++    st_i: u8,
++    st_from: bool,
 +}
 +
 +/// In hal::ram0 since 2026-11-19 (its 600 B left .data for the arena; KNOWN, 256 B, went back to
@@ -6252,6 +6363,8 @@ index 0000000..38b24f0
 +        cust: 0,
 +        dig: [0; 10],
 +    },
++    st_i: 0,
++    st_from: false,
 +};
 +
 +const RT_REC0: RtRec = RtRec {
@@ -6291,6 +6404,7 @@ index 0000000..38b24f0
 +        View::Listen => b"LISTEN",
 +        View::Ask => b"NEWCALL",
 +        View::Edit => b"EDIT",
++        View::Stations => b"STATIONS",
 +    }
 +}
 +
@@ -6367,7 +6481,7 @@ index 0000000..38b24f0
 +
 +fn cstr(b: &[u8]) -> &str {
 +    let n = b.iter().position(|&c| c == 0).unwrap_or(b.len());
-+    core::str::from_utf8(&b[..n]).unwrap_or("?")
++    crate::out::ascii(&b[..n])
 +}
 +
 +/// A saved repeater's candidate gets the table's call (bench 6/7: 440.850 listed under the rule
@@ -6649,7 +6763,7 @@ index 0000000..38b24f0
 +                t.level = rssi_dbm(app, syst);
 +            }
 +        }
-+        View::Ask | View::Edit => {}
++        View::Ask | View::Edit | View::Stations => {}
 +    }
 +    if t.msg_len != 0 && uptime::now().wrapping_sub(t.msg_t) > 25_000 {
 +        t.msg_len = 0;
@@ -6738,6 +6852,7 @@ index 0000000..38b24f0
 +            _ => {}
 +        },
 +        View::Edit => edit_key(app, syst, ev.key),
++        View::Stations => stations_key(app, syst, ev.key),
 +        View::Try => match ev.key {
 +            KeyId::Side1 | KeyId::Exit => {
 +                monitor_off(app, syst);
@@ -6860,7 +6975,95 @@ index 0000000..38b24f0
 +        STED_EXIT | STED_MENU => {
 +            rl!("K6 EX edit end");
 +            t.view = View::List;
++            if core::mem::take(&mut t.st_from) {
++                t.view = View::Stations;
++                st_seek(app, syst, t.st_i as i32);
++            }
 +        }
++        _ => {}
++    }
++}
++
++// ---- STATIONS (MENU's third row: the release plan, Jeff 2026-11-20 "yes please") ----
++//
++// The saved table a station at a time, its record in `ask` (the Ask view's, never on screen at
++// the same time), read on a key, never while drawing (the table's code page would swap in and
++// out of the pool on every band). UP/DOWN step through the live entries (wrapping), 8 edits the
++// one shown, 0 opens the editor on a new one, 3 twice deletes it, EXIT goes to the list. The
++// sweep waits, as for the editor.
++
++/// MENU > STATIONS (EXPLORE already entered)
++pub(super) fn stations(app: &mut App, syst: &mut SYST) {
++    let t = st();
++    if !t.on {
++        return;
++    }
++    if t.rt_res < 0 {
++        note("NO TABLE");
++        return;
++    }
++    pause_sweep(app, syst);
++    t.view = View::Stations;
++    st_seek(app, syst, 0);
++}
++
++/// `ask` = the table's i-th live entry (i wraps), st_i = i; rx_hz 0 when the table is empty
++fn st_seek(app: &mut App, syst: &mut SYST, i: i32) {
++    let t = st();
++    let n = t.rt.live as i32;
++    t.ask = RT_REC0;
++    t.st_i = 0;
++    if n == 0 {
++        return;
++    }
++    let i = i.rem_euclid(n);
++    ctx_on(app, syst);
++    let mut slot = -1;
++    let mut k = 0;
++    loop {
++        slot = unsafe { ffi::rt_next(&mut t.rt, slot, &mut t.ask) };
++        if slot < 0 || k == i {
++            break;
++        }
++        k += 1;
++    }
++    ctx_off();
++    t.st_i = i as u8;
++}
++
++fn stations_key(app: &mut App, syst: &mut SYST, key: KeyId) {
++    let t = st();
++    match key {
++        KeyId::Up | KeyId::Down => st_seek(app, syst, t.st_i as i32 + if key == KeyId::Up { -1 } else { 1 }),
++        KeyId::Digit8 | KeyId::Digit0 => {
++            #[cfg(feature = "voice-explore")]
++            if page::check(page::EDIT) != 0 {
++                note("NO EDITOR PAGE (12)");
++                return;
++            }
++            let r = if key == KeyId::Digit8 { t.ask } else { RT_REC0 };
++            unsafe { ffi::sted_open(&mut t.ed, &r) };
++            t.st_from = true;
++            t.view = View::Edit;
++        }
++        KeyId::Digit3 if t.ask.rx_hz != 0 => {
++            if !t.del_armed {
++                t.del_armed = true;
++                note("3 AGAIN: DELETE");
++                return;
++            }
++            t.del_armed = false;
++            ctx_on(app, syst);
++            let r = unsafe { ffi::rt_delete(&mut t.rt, t.ask.id) };
++            if r >= 0 {
++                unsafe { ffi::ex_unknow(&mut t.ex, t.ask.rx_hz) };
++            }
++            ctx_off();
++            rl!("K6 EX st delete {} r={} live={}", t.ask.rx_hz, r, t.rt.live);
++            note(if r >= 0 { "DELETED" } else { "DELETE FAILED" });
++            st_seek(app, syst, t.st_i as i32);
++        }
++        KeyId::Exit => t.view = View::List,
 +        _ => {}
 +    }
 +}
@@ -7795,7 +7998,7 @@ index 0000000..38b24f0
 +    // the top line: a message for 2.5 s, else the view's own
 +    let msg = t.msg_len != 0;
 +    if msg {
-+        out!(b, "{}", core::str::from_utf8(&t.msg[..t.msg_len as usize]).unwrap_or(""));
++        out!(b, "{}", crate::out::ascii(&t.msg[..t.msg_len as usize]));
 +    }
 +    match t.view {
 +        View::List => {
@@ -7915,6 +8118,29 @@ index 0000000..38b24f0
 +            line(lcd, 4, "5 write new call");
 +            line(lcd, FOOT, "EXIT keep saved");
 +        }
++        View::Stations => {
++            let r = &t.ask;
++            if !msg {
++                out!(b, "STATIONS {}/{}", if r.rx_hz != 0 { t.st_i as u16 + 1 } else { 0 }, t.rt.live);
++            }
++            line(lcd, 0, b.as_str());
++            if r.rx_hz != 0 {
++                let mut b: TextBuf<24> = TextBuf::new();
++                mhz(&mut b, r.rx_hz);
++                out!(b, " #{}", r.id);
++                line(lcd, 1, b.as_str());
++                line(lcd, 2, cstr(&r.call));
++                line(lcd, 3, cstr(&r.name));
++                if r.rx_tone != 0 {
++                    let mut b: TextBuf<24> = TextBuf::new();
++                    tone_text(&mut b, r.rx_tone);
++                    line(lcd, 4, b.as_str());
++                }
++            } else {
++                line(lcd, 2, "NO SAVED STATIONS");
++            }
++            line(lcd, FOOT, "8 edit 0 new 3x2 del");
++        }
 +        View::Edit => {
 +            // Jeff's layout D (2026-11-14): the title in the 5x7, six fields in the 4x6 7 pixel
 +            // rows apart (the selected one inverted), the keys in the 4x6 at the foot
@@ -7944,12 +8170,12 @@ index 0000000..38b24f0
 +                if sel {
 +                    fill(lcd, y - 1, ED_PITCH as u32, BinaryColor::On);
 +                }
-+                glyph::text(lcd, 1, y, core::str::from_utf8(&buf[..n]).unwrap_or(""), true, !sel);
++                glyph::text(lcd, 1, y, crate::out::ascii(&buf[..n]), true, !sel);
 +            }
 +            let (rows, n) = (ED_ROWS as u32, ED_FIELDS as u32);
 +            glyph::scroll_bar(lcd, ED_TOP - 1, rows * ED_PITCH as u32, top as u32, rows, n);
 +            let n = unsafe { ffi::sted_hint(e, buf.as_mut_ptr()) }.clamp(0, 21) as usize;
-+            line(lcd, FOOT, core::str::from_utf8(&buf[..n]).unwrap_or(""));
++            line(lcd, FOOT, crate::out::ascii(&buf[..n]));
 +        }
 +    }
 +}
@@ -10298,10 +10524,10 @@ index 9d2b0c0..86b6938 100644
              app.poll_blink();
 diff --git a/src/out.rs b/src/out.rs
 new file mode 100644
-index 0000000..b20c204
+index 0000000..50efe96
 --- /dev/null
 +++ b/src/out.rs
-@@ -0,0 +1,296 @@
+@@ -0,0 +1,304 @@
 +//! Text output without core::fmt (2026-11-10). The serial report and the pager screens keep
 +//! their format strings, but `rl!` and `out!` hand them to `fmt` here, a small interpreter, with
 +//! the values as a plain array (two words each), in place of core::fmt's formatter, its integer
@@ -10548,6 +10774,14 @@ index 0000000..b20c204
 +    }
 +}
 +
++/// `b` as text, up to its first byte that isn't ASCII: in place of core::str::from_utf8 (376 B
++/// of flash), as everything the pager images show or report is ASCII (names, callsigns, cards).
++#[inline(never)]
++pub fn ascii(b: &[u8]) -> &str {
++    let n = b.iter().position(|&c| c >= 0x80).unwrap_or(b.len());
++    unsafe { core::str::from_utf8_unchecked(&b[..n]) }
++}
++
 +/// `out!(sink, "format", values...)`: core::fmt's `write!`, without core::fmt.
 +#[macro_export]
 +macro_rules! out {
@@ -10599,7 +10833,7 @@ index 0000000..b20c204
 +    }};
 +}
 diff --git a/src/ui/boot.rs b/src/ui/boot.rs
-index 5f5226a..69cb2ec 100644
+index 5f5226a..f2548c6 100644
 --- a/src/ui/boot.rs
 +++ b/src/ui/boot.rs
 @@ -1,17 +1,33 @@
@@ -10662,7 +10896,7 @@ index 5f5226a..69cb2ec 100644
  pub fn draw_logo<D>(lcd: &mut D, page_buf: &[u8; crate::flash_map::BOOT_LOGO_SIZE])
  where
      D: DrawTarget<Color = BinaryColor>,
-@@ -63,19 +78,26 @@ where
+@@ -63,34 +78,35 @@ where
      }
  }
  
@@ -10684,7 +10918,7 @@ index 5f5226a..69cb2ec 100644
      D: DrawTarget<Color = BinaryColor>,
  {
 -    let width = text.chars().count() as i32 * PROFONT_14_POINT.character_size.width as i32;
-+    let width = text.chars().count() as i32 * BIG.character_size.width as i32;
++    let width = text.len() as i32 * BIG.character_size.width as i32;
      let x = (128 - width) / 2;
 -    Text::new(
 -        text,
@@ -10697,9 +10931,11 @@ index 5f5226a..69cb2ec 100644
  }
  
  fn draw_centered_small<D>(lcd: &mut D, text: &str, baseline_y: i32)
-@@ -84,13 +106,7 @@ where
+ where
+     D: DrawTarget<Color = BinaryColor>,
  {
-     let width = text.chars().count() as i32 * FONT_6X10.character_size.width as i32;
+-    let width = text.chars().count() as i32 * FONT_6X10.character_size.width as i32;
++    let width = text.len() as i32 * FONT_6X10.character_size.width as i32;
      let x = (128 - width) / 2;
 -    Text::new(
 -        text,
@@ -10712,7 +10948,12 @@ index 5f5226a..69cb2ec 100644
  }
  
  fn draw_firmware_banner<D>(lcd: &mut D, text: &str, top: i32)
-@@ -102,27 +118,16 @@ where
+@@ -98,31 +114,20 @@ where
+     D: DrawTarget<Color = BinaryColor>,
+ {
+     const PAD: i32 = 6;
+-    let text_width = text.chars().count() as i32 * FONT_6X10.character_size.width as i32;
++    let text_width = text.len() as i32 * FONT_6X10.character_size.width as i32;
      let width = text_width + PAD * 2;
      let x = (128 - width) / 2;
      let height = FONT_6X10.character_size.height;
@@ -11085,7 +11326,7 @@ index 0000000..325b106
 +    lcd.fill_solid(&Rectangle::new(Point::new(126, y), Size::new(2, th)), BinaryColor::On).ok();
 +}
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
-index cdfa0f7..429f08b 100644
+index cdfa0f7..8bcbec0 100644
 --- a/src/ui/mod.rs
 +++ b/src/ui/mod.rs
 @@ -3,9 +3,11 @@ mod chanmgr;
@@ -11117,7 +11358,12 @@ index cdfa0f7..429f08b 100644
  
  // TextBuf
  pub struct TextBuf<const N: usize> {
-@@ -51,13 +56,198 @@ impl<const N: usize> TextBuf<N> {
+@@ -47,17 +52,207 @@ impl<const N: usize> TextBuf<N> {
+     }
+ 
+     pub fn as_str(&self) -> &str {
+-        core::str::from_utf8(&self.buf[..self.len]).unwrap_or("")
++        crate::out::ascii(&self.buf[..self.len])
      }
  }
  
@@ -11153,7 +11399,12 @@ index cdfa0f7..429f08b 100644
 +    let d = unsafe { &mut *(*core::ptr::addr_of!(MOD_DISPLAY) as *mut Display<'static, DI>) };
 +    let s = unsafe { &*core::ptr::addr_of!(app::pager::MOD_SCREEN) };
 +    // the module has the ring (the page buffer's home): a page at a time, 128 bytes of stack
-+    #[cfg(shared_lcd)]
++    // module API level 15: a help card while the module's help() shows one
++    #[cfg(all(shared_lcd, banded))]
++    let help = app::pager::help_on();
++    #[cfg(all(shared_lcd, banded))]
++    d.draw_pages(|page, buf| if help { app::pager::help_band(page, buf) } else { pager::draw_mod_page(buf, page, s) });
++    #[cfg(all(shared_lcd, not(banded)))]
 +    d.draw_pages(|page, buf| pager::draw_mod_page(buf, page, s));
 +    #[cfg(not(shared_lcd))]
 +    {
@@ -11319,7 +11570,7 @@ index cdfa0f7..429f08b 100644
          Ok(())
      }
  }
-@@ -77,6 +267,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
+@@ -77,6 +272,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
              draw_satellite(display.as_draw_target(), app);
          }
          app::Mode::Sstv => draw_sstv(display.as_draw_target(), app),
@@ -11329,7 +11580,7 @@ index cdfa0f7..429f08b 100644
      display.flush();
 diff --git a/src/ui/pager.rs b/src/ui/pager.rs
 new file mode 100644
-index 0000000..831c602
+index 0000000..8846c91
 --- /dev/null
 +++ b/src/ui/pager.rs
 @@ -0,0 +1,467 @@
@@ -11411,7 +11662,7 @@ index 0000000..831c602
 +        let y = 12 + 7 * k as i32;
 +        let mut name = [0u8; 12];
 +        let n = app::pager::menu_row(i, &mut name);
-+        let t = core::str::from_utf8(&name[..n]).unwrap_or("?");
++        let t = crate::out::ascii(&name[..n]);
 +        if i == sel {
 +            lcd.fill_solid(&Rectangle::new(Point::new(0, y - 1), Size::new(128, 7)), BinaryColor::On).ok();
 +        }
@@ -11445,7 +11696,7 @@ index 0000000..831c602
 +    // a receiver module's message playing: its caller (module API level 11, Jeff 2026-11-19)
 +    if matches!(busy, app::pager::Busy::Playing) && !from.is_empty() {
 +        let mut b: TextBuf<24> = TextBuf::new();
-+        out!(b, "  FROM {}", core::str::from_utf8(from).unwrap_or("?"));
++        out!(b, "  FROM {}", crate::out::ascii(from));
 +        line(lcd, 29, b.as_str());
 +    } else if app::pager::arena_stay() {
 +        line(lcd, 29, "  STAYING HERE.");

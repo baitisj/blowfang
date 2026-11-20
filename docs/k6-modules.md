@@ -363,6 +363,17 @@ tap (Jeff, 2026-11-19: "Keep baseband tap"): with bit 1 on in receive, REG_47 se
 the channel before the FM demodulator on the AF pin, which PA11's converter reads
 (docs/k6-mic-probe.md, "The correction").
 
+## API level 15: packed images and help cards
+
+Added 2026-11-20 (Jeff: LZ4 "on SPI in general", "add help API too"; docs/k6-lz4.md). An image
+with flag `KM_F_LZ4` (0x08) carries its code as an LZ4 block. The tag covers the packed bytes,
+and the radio unpacks the code in place and seals it again under its own key. A module that
+runs unpacks on arrival. Library modules and pages stay packed in their slots and unpack on each
+load. `python -m modem.k6 mod ... --lz4` writes one. One new call, `help(name)`, shows the help
+cards of a screen (a module's own: its MENU name cut to 8 characters, each space written as `_`)
+from the decks in slots 13-15. Help decks are version 2 (packed band by band). The radio passes
+over version 1 decks, so they must be installed again.
+
 ## The SPI module library
 
 Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).

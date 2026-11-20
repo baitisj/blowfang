@@ -89,11 +89,22 @@ minute, or now with [EXIT]
 
 = MENU 1
 MODULES
-EXPLORE, ARENA, then the
-modules kept in the radio
+EXPLORE, ARENA, STATIONS, then
+the modules kept in the radio
 [UP][DN] pick
 [MENU] or [#] run it
 [EXIT] back
+hold [MENU] on a module: its help
 a module run from EXPLORE
 clears its unsaved list
 (saved stations stay)
+
+= STATIONS 1
+SAVED STATIONS
+the table EXPLORE keeps, one
+station at a time
+[UP][DN] the next one
+[8] edit it
+[0] a new station
+[3][3] delete it
+[EXIT] back to the list

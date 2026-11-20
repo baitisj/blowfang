@@ -266,7 +266,8 @@ def test_load(bundle, keyfile, monkeypatch):
     radio = Radio()
     r, log = run(["--key-file", str(keyfile), "load", str(bundle), "--verify"], radio, monkeypatch)
     assert r == 0, log
-    for slot, flags, name in ((9, 3, ""), (10, 3, ""), (13, 5, ""), (0, 1, "SURF"), (7, 1, "GROUNDWAVE")):
+    # pages and modules stay packed in their slots (flag 8), the deck unpacked on arrival
+    for slot, flags, name in ((9, 11, ""), (10, 11, ""), (13, 5, ""), (0, 9, "SURF"), (7, 9, "GROUNDWAVE")):
         i = slot_info(radio, slot)
         assert i["r"] == "0" and int(i["flags"]) == flags, (slot, i)
         assert bytes.fromhex(i["name"]).decode() == name
@@ -312,14 +313,15 @@ def test_lost_answer_to_the_last_chunk(bundle, keyfile, monkeypatch):
     """the install happened but its answer was lost: the resent last chunk starts a transfer of
     its own, and the slot read back shows the install is good"""
     monkeypatch.setattr(ki, "TIMEOUT", 0.3)
-    surf = os.path.getsize(bundle / "mod-surf.bin") + 24
+    code = (bundle / "mod-surf.bin").read_bytes()
+    surf = len(k6mod.image(code, k6mod.bin_entry(code), 1, bytes(16), lib=0, lz4=True))   # sent packed
     chunks = -(-surf // 58)
     radio = Radio(drop=(2 + chunks,))        # info, the key probe (1 chunk), then surf's chunks
     r, log = run(["--key-file", str(keyfile), "load", str(bundle), "--only", "0"], radio, monkeypatch)
     assert r == 0, log
     assert slot_info(radio, 0)["r"] == "0"
-    # the last chunk went twice, then the slot was read back (16 + 3,000 + 8 B: 48 reads), then end
-    assert radio.answers == 2 + chunks + 1 + 48 + 1
+    # the last chunk went twice, then the slot was read back (the packed image, 64 B a read), then end
+    assert radio.answers == 2 + chunks + 1 + -(-surf // 64) + 1
     radio.shutdown()
 
 

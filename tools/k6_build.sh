@@ -143,6 +143,9 @@ fi
 $CC $CFLAGS -Oz ${KM:+-DKM_KEY=$KM} -c "$ROOT/c/k6/k6_mod.c" -o "$OUT/k6_mod.o"
 # the SPI module library (k6_lib.h): install / load a module image in its SPI slot
 $CC $CFLAGS -Oz -c "$ROOT/c/k6/k6_lib.c" -o "$OUT/k6_lib.o"
+# the LZ4 block decoder (lz4d.h, docs/k6-lz4.md) for packed module images, slots and help cards:
+# -Os, smaller than -Oz here
+$CC $CFLAGS -Os -c "$ROOT/c/k6/lz4d.c" -o "$OUT/lz4d.o"
 # per packet, not per sample (the PWM conversion is 160 samples in 20 ms): -Oz, about 2 KB less
 $CC $CFLAGS ${K6_PAGER_OPT:--Oz} -c "$ROOT/c/k6/sotto_pager.c" -o "$OUT/sotto_pager.o"
 $CC $CFLAGS -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_dec.c" -o "$OUT/sotto_fx_dec.o"
@@ -179,7 +182,7 @@ $CC $CFLAGS -DKP_PAGE=KP_TABLE -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_table.o"
 $CC $CFLAGS -DKP_PAGE=KP_EDIT -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_edit.o"
 LIBOBJS="$OUT/sotto_pager.o $OUT/k6_mod.o $OUT/sotto_fx_dec.o $OUT/sp_cb.o $OUT/sp_vlr.o $OUT/fx_math.o $OUT/fx_tables.o $OUT/ifpager.o
   $OUT/xscan.o $OUT/xlisten.o $OUT/xdmr.o $OUT/explore.o $OUT/cwid.o $OUT/k6_rt.o $OUT/sted.o"
-LIBOBJS="$LIBOBJS $OUT/k6_lib.o $OUT/k6_rate.o"
+LIBOBJS="$LIBOBJS $OUT/k6_lib.o $OUT/lz4d.o $OUT/k6_rate.o"
 if [ -n "$LR" ]; then     # not hot (field unpacking and shape sums once per 40 ms): -Oz
   $CC $CFLAGS -Oz -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_lr.c" -o "$OUT/sotto_fx_lr.o"
   LIBOBJS="$LIBOBJS $OUT/sotto_fx_lr.o"
@@ -206,8 +209,11 @@ fi
 LIBOBJS="$LIBOBJS ${K6_LIBEXTRA:-}"
 # the images' memcpy family (c/k6/k6_mem.c): in the archive only, the bench links shim.c's
 $CC $CFLAGS -Oz -fno-builtin -c "$ROOT/c/k6/k6_mem.c" -o "$OUT/k6_mem.o"
+# the images' 64-bit divide (c/k6/k6_uldiv.c): 130 B in place of compiler_builtins' 1.3 KB, archive
+# only too (the bench links sotto's cm0/divmod.s)
+$CC $CFLAGS -Oz -c "$ROOT/c/k6/k6_uldiv.c" -o "$OUT/k6_uldiv.o"
 rm -f "$OUT/libsotto_k6.a"
-$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS "$OUT/k6_mem.o"
+$AR rcs "$OUT/libsotto_k6.a" $LIBOBJS "$OUT/k6_mem.o" "$OUT/k6_uldiv.o"
 echo "built $OUT/libsotto_k6.a"
 # no bench for the EXPLORE image's library: it has no decoder to time
 [ "${K6_VOICE:-1}" = 0 ] && exit 0

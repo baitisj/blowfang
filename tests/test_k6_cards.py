@@ -1,5 +1,6 @@
 """Help cards (tools/k6_cards.py): rendering, the page format, decks, the core deck's screens"""
 import os
+import re
 import struct
 import sys
 
@@ -66,22 +67,30 @@ def test_parse_checks_names_and_pages():
 
 
 def test_deck_layout_and_find():
-    cards = [("EXPLORE", 0, bytes([1]) * 1024), ("EXPLORE", 1, bytes([2]) * 1024), ("MENU", 0, bytes([3]) * 1024)]
+    rnd = bytes((i * 37 + i // 7) & 0xFF for i in range(1024))      # a card that doesn't pack
+    cards = [("EXPLORE", 0, bytes([1]) * 1024), ("EXPLORE", 1, rnd), ("MENU", 0, bytes([3]) * 1024)]
     d = kc.deck(cards)
-    assert d[:4] == b"K6HC" and d[4] == 3 and d[5] == 1 and d[6:16] == bytes(10)
-    assert len(d) == 16 + 3 * 16 + 3 * 1024
+    assert d[:4] == b"K6HC" and d[4] == 3 and d[5] == 2 and d[6:16] == bytes(10)
     e = d[16:32]
     assert e[:8] == b"EXPLORE\0" and e[8] == 0 and struct.unpack("<I", e[12:16])[0] == 16 + 48
-    assert kc.find(d, "EXPLORE", 1) == (bytes([2]) * 1024, 2)
+    # version 2: each band packed, or kept as it is when that is no smaller
+    off2 = struct.unpack("<I", d[32 + 12:32 + 16])[0]
+    ends = struct.unpack_from("<8H", d, off2)
+    assert ends == tuple(16 + 128 * (k + 1) for k in range(8))
+    assert len(d) < 16 + 3 * 16 + 3 * 1024
+    assert kc.find(d, "EXPLORE", 1) == (rnd, 2)
+    assert kc.find(d, "EXPLORE", 0) == (bytes([1]) * 1024, 2)
     assert kc.find(d, "MENU", 0) == (bytes([3]) * 1024, 1)
     assert kc.find(d, "EDIT", 0) == (None, 0)
     with pytest.raises(kc.CardError):
-        kc.deck(cards * 4)                         # 12 cards: more than an upload holds
+        kc.deck(cards * 14)                        # 42 cards: more than the radio reads
+    with pytest.raises(kc.CardError):
+        kc.deck([("X", 0, rnd)] * 15)              # 15 unpackable cards: more than a deck's bytes
 
 
 def test_core_deck_covers_every_screen_and_fits_an_upload():
     data, pics = kc.build(open(CORE).read())
-    assert len(data) <= kc.UPLOAD_MAX and len(pics) <= kc.MAX_CARDS == 11
+    assert len(data) <= kc.DECK_MAX and len(pics) <= kc.MAX_CARDS
     names = {}
     for n, p, _ in pics:
         names.setdefault(n, []).append(p)
@@ -99,3 +108,23 @@ def test_a_deck_makes_a_library_image_with_the_deck_flag():
     img = k6mod.image(data, k6mod.bin_entry(data), 1, bytes(16), lib=13, cards=True)
     assert img[13] == k6mod.LIB_FLAG | k6mod.CARDS_FLAG and img[15] == 13
     assert img[16:16 + len(data)] == data and len(img) == 16 + len(data) + 8
+
+
+def test_module_deck_names_are_release_modules_menu_names():
+    """docs/manual/cards/modules.txt (library slot 15): every card's name is a release module's
+    MENU name as a held MENU looks it up (the first 8 characters, a space written as _), and the
+    deck fits"""
+    src = os.path.join(os.path.dirname(CORE), "modules.txt")
+    data, pics = kc.build(open(src).read())
+    assert len(data) <= kc.DECK_MAX and len(pics) <= kc.MAX_CARDS
+    mod = os.path.join(os.path.dirname(CORE), "..", "..", "..", "c", "k6", "mod")
+    menu = set()
+    for ln in open(os.path.join(os.path.dirname(CORE), "..", "..", "..", "tools", "k6_release_modules.txt")):
+        ln = ln.split("#")[0].split()
+        if len(ln) == 2:
+            m = re.search(r'#\s*define\s+K6_NAME\s+"([^"]+)"|K6_MODULE_NAME\("([^"]+)"\)',
+                          open(os.path.join(mod, ln[1] + ".c")).read())
+            name = (m.group(1) or m.group(2)) if m else ln[1].upper()
+            menu.add(name[:8].replace(" ", "_"))
+    for n, p, _ in pics:
+        assert n in menu, n

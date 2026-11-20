@@ -1,0 +1,118 @@
+# The module deck: a card for each module with a screen and keys (tools/k6_cards.py).
+# Install: library slot 15 (slot 13 holds the core deck, 14 FM SOTTO's cell deck).
+# A card's name is its module's MENU name, the first 8 characters, a space written as _:
+# a held MENU on the module's row shows it, and a module shows its own with help() (API
+# level 15).
+
+= SURF 1
+SURF  KEYS  1/2
+[UP][DN] one channel
+[SIDE1][SIDE2] next caret up/dn
+[1][3] zoom in / out
+[#] channel step   [5] centre
+[4] FM DSB AM   [*] monitor
+[7][9] gain dn/up  [8] auto gain
+[0] hold the sweep
+[DN] next page   [EXIT] leave
+
+= SURF 2
+SURF  MORE  2/2
+[A/B] how fast carets fall
+[BAND] 2m 1.25m 70cm GMRS
+  marine+WX airband USER
+[V] type a USER range:
+  low MHz [#] high MHz [MENU]
+  [*] point [DN] back [EXIT] drop
+[MENU] say the bar on serial
+carets: peaks heard lately
+
+= AIS_SHIP 1
+AIS SHIPS
+listens on 162.009 for AIS
+the five nearest stations:
+name or MMSI, km and bearing
+home: the first base station
+the LED lights on each frame
+receive only
+any key ends it
+
+= AIS_CLOC 1
+AIS CLOCK
+listens on 162.009 for AIS
+base stations set the date
+and the UTC second, frames
+fine-tune the clock
+the clock stays until power off
+for ALARM and other modules
+any key ends it
+
+= APRS_CLO 1
+APRS CLOCK
+listens on 144.390 for APRS
+frame stamps set a clock
+the clock stays until power off
+for ALARM and other modules
+lines on serial: minute floor,
+frames heard, the fix
+any key ends it
+
+= ALARM 1
+ALARM CLOCK
+needs the clock: run AIS CLOCK
+or APRS CLOCK first
+shows UTC, the alarm time and
+the time left, then plays the
+MIDI songs on the speaker
+alarm time from the PC:
+  k6_midi.py alarm --at 07:30
+hold any key to cancel
+
+= MIDI 1
+MIDI PLAYER
+plays its songs round and round
+on the speaker
+[any key] the next song
+hold a key 1 s: stop
+songs come from MIDI files
+on the PC (tools/k6_midi.py)
+receive side only
+
+= MORSE 1
+MORSE  RX + TX
+hears MCW: the tape shows the
+dits and dahs, the letters under
+[SIDE1][SIDE2] paddles: send MCW
+  on 440.850, ID at the end
+[UP][DN] send speed 5-40 wpm
+[MENU] iambic B, A, straight
+[*] swap the paddles
+[EXIT] end (after the ID)
+
+= GROUNDWA 1
+GROUNDWAVE
+a turn game for two radios
+[4][6] [SIDE] keys  angle
+[2][8] [UP][DN]  power
+[*][#] previous / next item
+[MENU] or [5] fire
+lobby: [MENU] calls, the other
+radio answers with [MENU]
+[EXIT][EXIT] leave the game
+
+= FUSOTTO_ 1
+FUSOTTO RX
+listens on 440.850 for sotto
+sent as C4FM (FuSotto)
+plays each call with the
+caller's callsign, then
+listens again
+a key while it plays: stop
+
+= SETTINGS 1
+SETTINGS
+LIGHT OFF: backlight time
+[UP][DN] always on, 5 10 15
+  20 30 s, 1 min, 2 min
+[EXIT] save and back
+two minutes with no key:
+  the same

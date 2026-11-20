@@ -7,6 +7,8 @@
      page N         kl_page slot N into the block (never armed; code: its first word, little-endian)
      info N         kl_info slot N (name= the module's name in hex, empty without one)
      flip ADDR      flip the low bit of one SPI flash byte (a worn or overwritten slot)
+     cap N          the block's bytes from here on (11,776 at the start, 16,384 at most)
+     arena OFF N    N bytes of the block from byte OFF (hex), as hex
      keyed 0|1      while keyed the flash calls refuse to program or erase (as the radio's do)
      dump ADDR      the 64 bytes of the emulated SPI flash at ADDR (hex), as hex (the cable
                     session's read, tests/test_k6_install.py)
@@ -22,7 +24,8 @@
 
 #define NOR_BYTES (2u << 20)
 static uint8_t nor[NOR_BYTES];
-static uint32_t arena[11776 / 4];
+static uint32_t arena[16384 / 4];
+static unsigned cap = 11776;   /* the block's bytes: cap N */
 static int keyed;
 static unsigned erases, progs;
 
@@ -61,17 +64,17 @@ int main(void) {
     unsigned n = 0, v = 0;
     if (!strncmp(line, "pkt ", 4)) {
       for (n = 0; n < sizeof p && sscanf(line + 4 + 2 * n, "%2hhx", &p[n]) == 1; n++) {}
-      int r = km_packet(p, (int)n, arena, sizeof arena);
+      int r = km_packet(p, (int)n, arena, cap);
       if (r == KM_READY && (a[13] & KM_F_LIB)) printf("r=%d armed=%d install=%d\n", r, km_armed(), kl_install(a, &FL));
       else printf("r=%d armed=%d\n", r, km_armed());
     } else if (sscanf(line, "load %u", &v) == 1) {
       memset(arena, 0xEE, sizeof arena);
-      int r = kl_load((int)v, &FL, a, sizeof arena);
+      int r = kl_load((int)v, &FL, a, cap);
       printf("r=%d armed=%d code_len=%u\n", r, km_armed(), km_status()->code_len);
     } else if (sscanf(line, "page %u", &v) == 1) {
       memset(arena, 0xEE, sizeof arena);
       km_reset();
-      int r = kl_page((int)v, &FL, a, sizeof arena);
+      int r = kl_page((int)v, &FL, a, cap);
       printf("r=%d armed=%d code=%u\n", r, km_armed(),
              (unsigned)a[KM_HDR] | (unsigned)a[KM_HDR + 1] << 8 | (unsigned)a[KM_HDR + 2] << 16 |
                  (unsigned)a[KM_HDR + 3] << 24);
@@ -84,6 +87,7 @@ int main(void) {
         printf("r=0 code_len=%u entry=%u serial=%u level=%u flags=%u name=", i.code_len, i.entry,
                (unsigned)i.serial, i.level, i.flags);
         for (k = 0; k < KL_NAME && i.name[k]; k++) printf("%02x", (unsigned char)i.name[k]);
+        if (i.packed) printf(" packed=%u", i.packed);
         printf("\n");
       }
     } else if (sscanf(line, "flip %x", &v) == 1) {
@@ -92,6 +96,13 @@ int main(void) {
     } else if (sscanf(line, "dump %x", &v) == 1) {
       unsigned k;
       for (k = 0; k < 64; k++) printf("%02x", nor[(v + k) % NOR_BYTES]);
+      printf("\n");
+    } else if (sscanf(line, "cap %u", &v) == 1) {
+      cap = v <= sizeof arena ? v : (unsigned)sizeof arena;
+      printf("cap=%u\n", cap);
+    } else if (sscanf(line, "arena %x %u", &v, &n) == 2) {
+      unsigned k;
+      for (k = 0; k < n && v + k < sizeof arena; k++) printf("%02x", a[v + k]);
       printf("\n");
     } else if (sscanf(line, "keyed %u", &v) == 1) {
       keyed = (int)v;
