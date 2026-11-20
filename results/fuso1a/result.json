@@ -1,12 +1,12 @@
 {
  "id": "fuso1a",
- "status": "queued",
- "queued": "2026-11-20T15:52:16Z",
+ "status": "running",
+ "since": "2026-11-20T15:52:23Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "e98404f05f2c32af3369bb348dba78abf95b8f9b",
   "path": "jobs/fuso1a"
  },
  "runner_commit": "bceb3b51f8f1e5e3c31adcae764c806754896206",
- "updated": "2026-11-20T15:52:16Z"
+ "updated": "2026-11-20T15:52:23Z"
 }
