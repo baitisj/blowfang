@@ -1,0 +1,277 @@
+{
+ "id": "uvm17stress1",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 20,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2",
+    "freq 441850",
+    "trim 6100"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "phy m17"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 1"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "test"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17_100.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "phy rng"
+   ]
+  }
+ ]
+}
