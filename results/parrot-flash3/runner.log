@@ -1,0 +1,34 @@
+2026-11-20T01:01:31Z job parrot-flash3 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36 at a59e428b9b36f68df4636eb53f4154365d93d3ec
+2026-11-20T01:01:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode parrot --hz 441850000 --gain -40 --minutes 25
+parrot on 441850000 Hz until 01:26:31Z: YSF or M17 sotto heard goes back 2 s later, gain -40 dB
+listening 01:01:31Z
+01:10:08Z heard: ADC peak 231 of 2047 (rx gain 20 dB)
+01:10:08Z heard: burst 7.4 s, carrier +292 Hz
+01:10:08Z heard: no sotto: YSF syncs 0, FICH good 0, kinds {}; M17 frames 0; deviation p50 1388 Hz, p99 7192 Hz
+01:10:41Z heard: ADC peak 116 of 2047 (rx gain 20 dB)
+01:10:41Z heard: burst 3.4 s, carrier +236 Hz
+01:10:41Z heard: no sotto: YSF syncs 0, FICH good 0, kinds {}; M17 frames 0; deviation p50 1747 Hz, p99 7586 Hz
+01:11:06Z heard: ADC peak 55 of 2047 (rx gain 20 dB)
+01:11:06Z heard: burst 8.4 s, carrier +202 Hz
+01:11:06Z heard: YSF sotto 110/110 superframes CRC good, from AG7EW
+parrot ysf 110 superframes: 10.3 s on 441850000 Hz (LO 441850000), gain -40.0 dB, rate 2400000, RF on
+start 01:11:19Z
+end 01:11:29Z: 10.3 s of signal in 10.2 s (kept up)
+listening 01:11:29Z
+01:11:52Z heard: ADC peak 40 of 2047 (rx gain 20 dB)
+01:11:52Z heard: burst 8.2 s, carrier +264 Hz
+01:11:52Z heard: M17 sotto 50/50 frames CRC good, 100 superframes, from AG7EW
+parrot m17 100 superframes: 10.0 s on 441850000 Hz (LO 441850000), gain -40.0 dB, rate 2400000, RF on
+start 01:12:47Z
+end 01:12:57Z: 10.0 s of signal in 9.9 s (kept up)
+listening 01:12:57Z
+01:13:26Z heard: ADC peak 52 of 2047 (rx gain 20 dB)
+01:13:26Z heard: burst 8.1 s, carrier +253 Hz
+01:13:26Z heard: M17 sotto 51/51 frames CRC good, 102 superframes, from AG7EW
+parrot m17 102 superframes: 10.1 s on 441850000 Hz (LO 441850000), gain -40.0 dB, rate 2400000, RF on
+start 01:14:19Z
+end 01:14:29Z: 10.1 s of signal in 10.0 s (kept up)
+listening 01:14:29Z
+2026-11-20T01:15:38Z stopping (cancelled): SIGTERM to the step's process group
+2026-11-20T01:15:38Z step 1 (pluto) rc=-15 (cancelled)
+2026-11-20T01:15:38Z job parrot-flash3 cancelled: step 1 (pluto): cancelled
