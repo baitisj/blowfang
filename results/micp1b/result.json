@@ -1,0 +1,12 @@
+{
+ "id": "micp1b",
+ "status": "queued",
+ "queued": "2026-11-20T02:25:53Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "535c1c67da6b03a69ced684e42045e8a79b1fa5e",
+  "path": "jobs/micp1b"
+ },
+ "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "updated": "2026-11-20T02:25:53Z"
+}
