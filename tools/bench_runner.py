@@ -25,7 +25,7 @@ docs/bench-runner.md has the job format and the rules.
 
 A job is a JSON file: who (the thread, one word), a channel to claim, how long, a checkout, and
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
-ic7100, ic7100.tune, ic7100.power0, logger, logger.stop, wait, uv380.flash, uv380.cmd,
+ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
@@ -93,6 +93,7 @@ JOB_MAX_MIN = 240
 CLAIM_RETRY_S = 30
 STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload": 900,
                 "pluto": 1800, "ic7100": 300, "ic7100.tune": 30, "ic7100.power0": 30,
+                "ic7100.af": 30,
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240}
@@ -536,6 +537,10 @@ def check_step(job, i, step, rs, problems):
         ic7100_limits(job, what, problems, keys=False)
     elif do == "ic7100.power0":
         pass
+    elif do == "ic7100.af":
+        lv = step.get("level")
+        if lv != "restore" and not (isinstance(lv, (int, float)) and 0 <= lv <= IC7100_AF_MAX):
+            problems.append(f"{what}: level 0..{IC7100_AF_MAX:g}, or \"restore\" (the level before the job's first ic7100.af)")
     elif do == "logger":
         s = step.get("seconds")
         if not isinstance(s, (int, float)) or not 0 < s <= LOGGER_MAX_S:
@@ -760,7 +765,8 @@ def command(job, step, rd):
     return None
 
 
-IC7100_STEPS = ("ic7100", "ic7100.tune", "ic7100.power0")
+IC7100_STEPS = ("ic7100", "ic7100.tune", "ic7100.power0", "ic7100.af")
+IC7100_AF_MAX = 0.3     # the speaker's level a job may set (L AF): the IC-7100 as a sound source at the bench
 
 
 def uses_ic7100(step):
@@ -781,6 +787,7 @@ class Ctx:
         self.job, self.rd = job, rd
         self.rig = rig or kb.rigctl()
         self.cancelled = cancelled
+        self.af0 = None                 # the IC-7100's AF level before the job's first ic7100.af
         os.makedirs(rd, exist_ok=True)
         self.log = open(os.path.join(rd, "runner.log"), "a", buffering=1)
 
@@ -815,6 +822,18 @@ def ic7100_ready(ctx, step):
     check_tx_hz(ctx.job, hz, "the IC-7100's frequency", probs)
     if probs:
         raise Refused(probs[0])
+
+
+def ic7100_af(ctx, level):
+    """the IC-7100's speaker level (rigctl L AF), read back: (rc, why). "restore" puts back the
+    level the job's first ic7100.af found"""
+    if ctx.af0 is None:
+        ctx.af0 = float(ctx.rig("l", "AF"))
+    want = ctx.af0 if level == "restore" else float(level)
+    ctx.rig("L", "AF", f"{want:.3f}")
+    got = float(ctx.rig("l", "AF"))
+    ctx.say(f"IC-7100 AF {got:.3f} (was {ctx.af0:.3f} before the job)")
+    return (0, None) if abs(got - want) <= 0.01 else (1, f"AF reads {got:.3f}, not {want:.3f}")
 
 
 def recheck(ctx, step):
@@ -1080,6 +1099,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 rc, why = uv380_send_step(ctx, step, env, timeout, uv380_sotto_module(step["args"]), 45)
             elif step["do"] == "uv380.air":
                 rc, why = uv380_air_step(ctx, step, env, timeout)
+            elif step["do"] == "ic7100.af":
+                rc, why = ic7100_af(ctx, step["level"])
             elif step["do"] == "ic7100.power0":
                 ctx.rig("L", "RFPOWER", "0")
                 p = rig_power(ctx.rig)
@@ -1133,6 +1154,11 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
         if p.poll() is None and (do == "logger" or res["status"] != "done"):
             ctx.say(f"stopping the job's background {do} still running at its end")
             stop_group(p)
+    if ctx.af0 is not None:             # the speaker back as the job found it, whatever happened
+        try:
+            ic7100_af(ctx, "restore")
+        except (OSError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+            ctx.say(f"IC-7100 AF not put back: {type(e).__name__}: {e}")
     res["ended"] = utcnow()
     ctx.say(f"job {job['id']} {res['status']}" + (f": {res.get('reason')}" if res.get("reason") else ""))
     return res

@@ -91,6 +91,7 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `ic7100` | `k6_bench.py --as WHO send WAV --freq HZ` / `id` / `stop` | `--freq` required for send and in the claim, no `--no-id`; IC-7100 rules |
 | `ic7100.tune` | rigctl `F HZ`, `M PKTFM 12000`, `L RFPOWER 0`, read back | 70 cm in the claim; not while held |
 | `ic7100.power0` | rigctl `L RFPOWER 0`, read back | |
+| `ic7100.af` | rigctl `L AF LEVEL`, read back: the IC-7100's speaker as a sound source at the bench (it plays what it receives); `"level": "restore"` puts back what the job's first `ic7100.af` found, and the job's end does that anyway, even after a failed step | level 0..0.3; not while held |
 | `logger` | `k6_bench.py serial-hold WHO -- timeout -s INT SECONDS python3 -m modem.k6_harness listen --k6 CABLE --log RUNDIR/FILE`, in the background | ≤ 6 h; the cable's one reader |
 | `logger.stop` | `k6_bench.py serial-release WHO` | |
 | `wait` | `seconds`, or until `pattern` (regex) shows in the run folder's `file` (default k6.log) | ≤ 1 h |
