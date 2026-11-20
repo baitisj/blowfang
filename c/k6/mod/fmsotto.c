@@ -19,10 +19,10 @@
    superframes as hex, four to a line. tools/k6_fmsotto.py turns a log back into a .bit file.
 
    Lines (under 60 characters):
-     fms start ks=5621 cfgr1=00000002 v25=080001d1 spi=1
+     fms start ks=5621 spi=1
      s 0 0123456789ab...                     (superframes 0-3: 4 x 6 bytes, hex)
      fms 1 sps=8000 pk=13021 skip=0 miss=0 isr=31 rd=15      (each second)
-     fms end n=750 lost=0 miss=0 h=440000
+     fms end n=750 lost=0 miss=0 h=440000 ob=700     (ob: superframes kept in the outbox)
    sps: 8 kHz samples made in the second; pk: their largest |value|; skip: 10 ms blocks the
    encoder fell behind on and skipped in the second (lost: in all); miss: DMA halves lost; isr:
    the interrupt's share of the CPU, %; rd: the SPI reads' share; spi=1: the reads go to SPI1
@@ -77,6 +77,12 @@ K6_MODULE_NAME("FM SOTTO");
 #define LP_B1 8950
 #define LP_A1 (-1314)
 #define LP_A2 2830
+#ifndef FMS_SQ_DBM
+#define FMS_SQ_DBM (-100) /* the outbox records while the carrier is over this */
+#endif
+#define OB_DATA 256u      /* the outbox: a 16-byte header in its first page, superframes from here */
+#define OB_CAP (KM_OB_HI - KM_OB_LO - OB_DATA)
+#define OB_SECTORS ((RUN_MS / 1000u * 150u + OB_DATA + 4095u) / 4096u)
 #define MAX_IRQ 40000u /* halves with no word from the foreground: the handler stops itself */
 #define MAX_HALVES ((RUN_MS / 1000u + 30u) * 25000u) /* and after this many in all, whatever */
 
@@ -99,9 +105,7 @@ K6_MODULE_NAME("FM SOTTO");
 #define NVIC_ICPR 0xE000E280u
 #define SRAM0 0x20000000u
 #define BOOT_VEC 0x08000000u
-#define NVEC 48u
 #define V_HF 3u
-#define V_TIM14 (16u + 19u)
 #define V_DMA1 (16u + 9u)
 #define V_CTX 46u
 #define IRQ_DMA1 9u
@@ -132,6 +136,7 @@ typedef struct {
   volatile uint32_t pw, pk, halves, miss, quiet, isr;
   uint32_t deck; /* the cell deck's address in SPI flash */
   uint32_t rdc, spi; /* TIM17 cycles in SPI reads (foreground); 1: read SPI1 directly */
+  uint32_t rec, obw, obs; /* the outbox: 0 waiting for a carrier, 1 recording, 2 full; bytes, their sum */
 #ifndef FMS_HOST
   const k6_api_t *api;
   uint8_t *ring;
@@ -517,10 +522,34 @@ static char *dec(char *p, uint32_t v) {
 
 static char *kv(char *p, const char *k, uint32_t v) { return dec(put(p, k), v); }
 
-/* "s N hex": the *nf superframes in fr, N the number of the first; returns the count after them */
-static uint32_t say_frames(const k6_api_t *api, char *line, const unsigned char *fr, uint32_t *nf, uint32_t n) {
+/* The outbox (API level 15, Jeff 2026-11-20: "Core SPI outbox"): 64 KB of SPI flash at
+   KM_OB_LO that the core lets a module program and erase, for a sender module to read back.
+     0x000  "K6OB", 1, the codec (KM_SOTTO_1200), 0, 0, superframes (u32), their bytes summed (u32)
+     0x100  the superframes, 6 bytes each, back to back
+   The run erases the sectors it may fill before the DMA starts, records from the first carrier
+   it hears (RSSI over FMS_SQ_DBM) until the carrier has been gone 1 s (the module then ends),
+   and writes the header last, so a recording cut short reads as empty (0xFF). */
+static void ob_put(fe_t *f, const unsigned char *b, uint32_t n) {
+  while (n) {
+    uint32_t a = KM_OB_LO + OB_DATA + f->obw, k = 256u - (a & 255u), i;
+    if (k > n) k = n;
+    if (f->obw + k > OB_CAP) {
+      f->rec = 2;
+      return;
+    }
+    f->api->fl_prog(a, b, k);
+    for (i = 0; i < k; i++) f->obs += b[i];
+    f->obw += k, b += k, n -= k;
+  }
+}
+
+/* "s N hex": the *nf superframes in fr, N the number of the first (and into the outbox while
+   recording); returns the count after them */
+static uint32_t say_frames(fe_t *f, char *line, const unsigned char *fr, uint32_t *nf, uint32_t n) {
+  const k6_api_t *api = f->api;
   uint32_t i;
   char *p = dec(put(line, "s "), n);
+  if (f->rec == 1) ob_put(f, fr, *nf * SLIM_BYTES);
   *p++ = ' ';
   for (i = 0; i < *nf * SLIM_BYTES; i++) p = hex(p, fr[i], 2);
   *p = 0;
@@ -531,8 +560,8 @@ static uint32_t say_frames(const k6_api_t *api, char *line, const unsigned char 
 }
 
 int k6_main(const k6_api_t *api) {
-  uint32_t room = 0, i, bad = 0, apb2, ahb, cfgr1, acr, v25, v46, t0, now, tsec = 0, sec = 0;
-  uint32_t pr = 0, ri = 0, lost = 0, n = 0, nf = 0, pw0 = 0, l0 = 0, r0 = 0, c0 = 0, tq = 0;
+  uint32_t room = 0, i, apb2, ahb, cfgr1, acr, v25, v46, t0, now, tsec = 0, sec = 0;
+  uint32_t pr = 0, ri = 0, lost = 0, n = 0, nf = 0, pw0 = 0, l0 = 0, r0 = 0, c0 = 0, tq = 0, tc = 0, ob;
   uint16_t r33, r34, r7e, r13;
   char line[64], *p;
   unsigned char fr[4 * SLIM_BYTES];
@@ -550,9 +579,10 @@ int k6_main(const k6_api_t *api) {
   f->ring = s;
   f->deck = find_deck(f, s); /* (the ring as its buffer, before the DMA has it) */
   if (!f->deck) return -10;
-  for (i = 2; i < NVEC; i++)
-    if (i != V_HF && i != V_TIM14 && i != V_CTX && i != V_CTX + 1 && rd(SRAM0 + 4u * i) != rd(BOOT_VEC + 4u * i)) bad++;
-  if (bad || rd(SRAM0 + 4u * V_HF) == rd(BOOT_VEC + 4u * V_HF)) return -9;
+  /* the vector copy: the bootloader's DMA entry, the firmware's own HardFault (fmso1a-f checked
+     the whole table; this is the room-saving form) */
+  if (rd(SRAM0 + 4u * V_DMA1) != rd(BOOT_VEC + 4u * V_DMA1) || rd(SRAM0 + 4u * V_HF) == rd(BOOT_VEC + 4u * V_HF))
+    return -9;
   /* the upload's carrier gone */
   t0 = api->ms();
   while (KM_RSSI_DBM(api->fd_read(0x67)) > -80 && api->ms() - t0 < 150000) {
@@ -562,11 +592,13 @@ int k6_main(const k6_api_t *api) {
   if (rd(GPIOB) & (3u << 2)) return -4;
   if (api->level >= 6) {
     api->lcd_text(0, "  FM SOTTO");
-    api->lcd_text(1, "  CODING WHAT");
-    api->lcd_text(2, "  IT HEARS");
+    api->lcd_text(2, "  RECORDING A CALL");
   }
   api->tune(api->rx_hz(), FMS_WIDE);
   api->delay_us(50000);
+  ob = api->level >= 15; /* the outbox: its sectors erased now, before the interrupt runs */
+  for (i = 0; ob && i < OB_SECTORS; i++)
+    if (api->fl_erase(KM_OB_LO + 4096u * i)) ob = 0;
   apb2 = rd(RCC_APB2ENR), ahb = rd(RCC_AHBENR);
   wr(RCC_AHBENR, ahb | 1u);
   if ((apb2 & TIM17EN) || (rd(DMA_CCR1) & 1)) {
@@ -602,10 +634,6 @@ int k6_main(const k6_api_t *api) {
   f->c17 = rd(TIM17_CNT) & 0xFFFF;
 #ifndef FMS_API_READS
   f->spi = (R16(SPI_CR1) & 0x44u) == 0x44u; /* SPE and MSTR: as Aura left it */
-  if (f->spi) { /* and it reads the deck's magic back as fl_read did, or fl_read it is */
-    uint8_t t[4];
-    if (spi_rd(f->deck, t, 4) || t[0] != 'K' || t[1] != '6' || t[2] != 'S' || t[3] != 'C') f->spi = 0;
-  }
 #endif
   slim_enc_init(e);
   /* the handler in: its state, its vector, SRAM at 0, then the DMA with both interrupts */
@@ -622,8 +650,6 @@ int k6_main(const k6_api_t *api) {
   wr(DMA_CCR1, (3u << 12) | (1u << 7) | (1u << 5) | (1u << 2) | (1u << 1) | 1u);
   api->delay_us(20000); /* the rate settles */
   p = kv(put(line, "fms start"), " ks=", 393216000u / f->cav);
-  p = hex(put(p, " cfgr1="), cfgr1, 8);
-  p = hex(put(p, " v25="), v25, 8);
   p = kv(p, " spi=", f->spi);
   *p = 0;
   api->say(line);
@@ -638,7 +664,13 @@ int k6_main(const k6_api_t *api) {
     if (now - tq >= 50) {
       tq = now;
       key = api->key_poll();
-      if (key || now - t0 >= RUN_MS) break;
+      if (key || now - t0 >= RUN_MS || f->rec == 2) break;
+      if (ob) { /* the outbox records one call: from its carrier until 1 s after it drops */
+        if (KM_RSSI_DBM(api->fd_read(0x67)) > FMS_SQ_DBM)
+          f->rec |= 1, tc = now;
+        else if (f->rec && now - tc > 1000)
+          break;
+      }
     }
     if (now - tsec >= 1000) { /* the second's report */
       uint32_t pw = f->pw, c = f->isr, dt = now - tsec, pk = f->pk;
@@ -655,7 +687,7 @@ int k6_main(const k6_api_t *api) {
       pw0 = pw, c0 = c, l0 = lost, r0 = f->rdc, tsec = now;
     }
     if (fe_take(f, &pr, &ri, &lost, x) && slim_encode10(e, x, fr + SLIM_BYTES * nf) && ++nf == 4)
-      n = say_frames(api, line, fr, &nf, n);
+      n = say_frames(f, line, fr, &nf, n);
   }
   /* everything back: the interrupt off first, then the DMA, the map, the vector */
   wr(NVIC_ICER, 1u << IRQ_DMA1);
@@ -670,9 +702,9 @@ int k6_main(const k6_api_t *api) {
      for them, with the interrupt off) */
   wr(SRAM0 + 4u * V_CTX, (uint32_t)f);
   while (slim_flush(e, fr + SLIM_BYTES * nf))
-    if (++nf == 4) n = say_frames(api, line, fr, &nf, n);
+    if (++nf == 4) n = say_frames(f, line, fr, &nf, n);
   wr(SRAM0 + 4u * V_CTX, v46);
-  if (nf) n = say_frames(api, line, fr, &nf, n);
+  if (nf) n = say_frames(f, line, fr, &nf, n);
   wr(TIM17 + 0x00, 0);
   wr(TIM17 + 0x0C, 0);
   wr(RCC_APB2ENR, apb2);
@@ -684,6 +716,11 @@ int k6_main(const k6_api_t *api) {
   p = kv(p, " lost=", lost);
   p = kv(p, " miss=", f->miss);
   p = kv(p, " h=", f->halves);
+  if (f->obw) { /* the header last */
+    uint32_t h[4] = {0x424F364Bu, 1u | KM_SOTTO_1200 << 8, f->obw / SLIM_BYTES, f->obs}; /* "K6OB" */
+    api->fl_prog(KM_OB_LO, h, 16);
+    p = kv(p, " ob=", f->obw / SLIM_BYTES);
+  }
   *p = 0;
   api->say(line);
   ret = !f->halves ? -11 : key && !n ? -2 : (int)n;

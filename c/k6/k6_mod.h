@@ -48,7 +48,7 @@ extern "C" {
 #define KM_HDR 16
 #define KM_TAG 8
 #define KM_ABI 1
-#define KM_LEVEL 14
+#define KM_LEVEL 15
 
 typedef struct k6_api {
   uint16_t abi, level;              /* KM_ABI, KM_LEVEL */
@@ -199,6 +199,12 @@ typedef struct k6_api {
      on the air: the MICIN bit is refused while the PA is on, and tx_pa(1) clears it first.
      tx_on, tx_off, tune and the core after the module write REG_30 whole again. A module that
      writes REG_30 declares K6_MODULE_LEVEL 14. */
+  /* level 15 (2026-11-20, Jeff: "Core SPI outbox"; docs/k6-fm-sotto.md): no new calls. fl_prog
+     and fl_erase also work in the FuSotto outbox, KM_OB_LO .. KM_OB_HI (64 KB after the module
+     library), with the same checks (a page at a time, a 4 KB sector at a time, never keyed, at
+     most KM_FL_ERASES erases a run). FM SOTTO writes what it codes there and a sender module
+     reads it back with fl_read; the layout is fmsotto.c's ("The outbox"). A module that writes
+     the outbox declares K6_MODULE_LEVEL 15 or checks api->level at run time. */
 } k6_api_t;
 
 #define KM_SOTTO_1200 0xA9u         /* sotto_play's codec: sotto 1200, 6-byte 40 ms slots */
@@ -222,6 +228,8 @@ typedef struct k6_api {
 #define KM_FL_HI 0x100000u
 #define KM_FL_READ_HI 0x200000u     /* fl_read: KM_FL_LO up to here */
 #define KM_FL_ERASES 32u
+#define KM_OB_LO 0x190000u          /* level 15: the FuSotto outbox, fl_prog and fl_erase too */
+#define KM_OB_HI 0x1A0000u
 
 #define KM_CAL_ADDR 0x10F000u
 #define KM_CAL_BYTES 64u

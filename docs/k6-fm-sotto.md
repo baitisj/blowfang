@@ -49,12 +49,12 @@ a 1 kHz tone at 3 kHz deviation at 13,440 (-7.7 dBFS). The AGC is frozen at its 
 
 | | bytes |
 | --- | --- |
-| code and constants (-Oz) | 10,646 |
+| code and constants (-Oz) | 10,834 |
 | header and tag | 24 |
 | DMA ring | 512 |
 | front end (filters, clock, 320-sample ring) | 768 |
 | slim encoder state | 3,148 |
-| left of level 13's 15,408 | about 250 |
+| left of level 13's 15,408 | about 100 |
 | stack, deepest (k6_main, encode, coder, search; -fstack-usage) | about 1,210 + fl_read + 116 for the handler, of the 2,136 the module gets |
 
 The first build was 13.6 KB of code, 2.7 KB over. Three hooks added to the slim encoder (sotto
@@ -92,10 +92,10 @@ starts to clip the encoder's input; the bench uses 3 kHz.
 ## Lines
 
 ```
-fms start ks=5621 cfgr1=00000002 v25=080001d1 spi=1
+fms start ks=5621 spi=1
 s 0 0123456789ab...                    superframes 0-3, 4 x 6 bytes as hex
 fms 1 sps=8000 pk=13021 skip=0 miss=0 isr=31 rd=15        each second
-fms end n=750 lost=0 miss=0 h=440000
+fms end n=750 lost=0 miss=0 h=440000 ob=700
 ```
 
 `sps`: 8 kHz samples made in the second (8,000 when the clock is right); `pk`: their largest
@@ -172,6 +172,37 @@ One job, hands-free: install the deck into slot 14 (`k6_upload.py out/fmsotto-ce
 --install 14 --via pluto`), upload fmsotto, wait for `fms start`, the Pluto sends a demo voice
 (3536_f, then 251_m) on 440.850 with 3 kHz deviation and pre-emphasis, the K6 codes it, then
 `tools/k6_fmsotto.py log` makes the WAV.
+
+## The outbox (API level 15)
+
+Jeff, 2026-11-20, picking how the K6 sends what it codes as FuSotto: "Core SPI outbox". There is
+no RAM for it: the core's spare 3,840 B below the vectors is full, the module block is as big as
+the tightest image allows, and fmsotto leaves well under 1 KB, so 20 s of sotto 1200 (3 KB) has
+to go to SPI flash. Level 15 lets a module's `fl_prog` and `fl_erase` work in 64 KB after the
+module library, `KM_OB_LO` 0x190000 to `KM_OB_HI` 0x1A0000 (nothing else in the K6 uses
+0x190000 up), with the repeater table's checks: a page at a time, a 4 KB sector at a time, never
+keyed, at most 32 erases a run. It is the one exception to the no-sotto-store-in-SPI rule.
+
+fmsotto on a level 15 image:
+
+- erases the sectors a RUN_MS recording can fill (5 at 90 s) before the interrupt starts;
+- records one call: from the first carrier over -100 dBm (`FMS_SQ_DBM`, read every 50 ms) until
+  it has been gone 1 s, when the module ends (or RUN_MS, a key, or the outbox full: 435 s);
+- writes each line's four superframes (24 B) with `fl_prog` as it says them, and the header
+  last, so a recording cut short reads as empty:
+
+| offset | |
+| --- | --- |
+| 0x000 | "K6OB", 1, codec (0xA9, sotto 1200), 0, 0, superframes (u32), their bytes summed (u32) |
+| 0x100 | the superframes, 6 bytes each, back to back |
+
+`fms end ... ob=N` says how many it kept. On older images it codes and says the superframes as
+before and writes nothing. To fit (code 10,834 B), the start line lost its `cfgr1=`/`v25=`
+fields, the vector check looks at the DMA entry and HardFault only, and the direct SPI reads
+trust SPI1's set-up (CR1) without the deck read-back.
+
+A sender module (next) reads the outbox with `fl_read` and keys up FuSotto: VW frames
+(c/common/ysf_tx.c) on the K6's C4FM modulator (c4lock.c), with the callsign and a CW ID.
 
 ## Next
 
