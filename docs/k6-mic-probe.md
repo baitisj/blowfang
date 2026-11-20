@@ -356,7 +356,7 @@ the receiver's hiss, tone or no tone. Keyed, all forty captures sit at the floor
 So the answer is measured: **the K6's mic does not reach the MCU in receive, keyed, or with the
 DISC bit, with a tone that a listener heard at the mic.**
 
-## mictx: the mic registers and the receive chain, keyed (2026-11-20, staged)
+## mictx: the mic registers and the receive chain, keyed (2026-11-20)
 
 Jeff, 2026-11-20 8:04 AM PT: "what if we pacified all the hardware that goes from the mic to
 modulate FM and instead modulated AM, deactivated finals, and sampled BUZZER at the end of the
@@ -381,6 +381,26 @@ sitting"), tuned to 445.850 where the Pluto sends a 1,300 Hz tone gated 250 ms o
 control run puts the same Pluto signal on 446.850 with the IC-7100 still on 445.850: the same
 radio signal in the room, and no sound. A register that follows the mic shows the 2 Hz gate in
 its 2 ms captures, or the 1,300 Hz tone in its fast ones, in the sounding run only.
+
+**Run mtx1a** (19:13-19:17 UTC, unattended, IC-7100 AF 0.004 -> 0.200 -> 0.004, Pluto -46 dB,
+the K6 read the sound's carrier at -74 dBm). Both builds ran whole (returns 40, 40):
+
+- **REG_64 is a level meter, not audio.** It holds each value for about 20 ms (ten 2 ms reads
+  alike, 260 back-to-back reads over 30 ms all one value), so at best it is a 50 Hz loudness
+  envelope. It reads 0x7Cxx-0x7Exx for the first 20 ms after the mic ADC comes on, then 14-18
+  with the mic ADC on and 0 with it off. With the tone: 15.6 against 15.3 quiet in the sounding
+  run, 15.9 against 16.0 in the control. It did not follow the sound. Either the IC-7100's
+  speaker was too quiet at the K6's mic (no one listened this time) or the meter needs a voice
+  close up. Either way, 50 values a second cannot carry speech.
+- **REG_6F** sits at 34-37 (6 with the mic ADC off), REG_63 at 0x2B00-0x2C00 and REG_65 at 127:
+  none moves with the tone.
+- **The receive chain forced on while keyed (REG_30 0xFFFF) gives nothing.** The AF pin stays at
+  the converter's floor at every select (sd 0.0004-0.001 of full scale, nothing at 1,300 Hz).
+  With the TX DSP off as well (0xFFFD), select 1 carries the receiver's hiss again (sd 0.05), so
+  the receiver runs, but it hears no mic. REG_64 reads a fixed 32,150-32,305 in that state.
+
+So moving the mic toward the buzzer doesn't work either: keyed, nothing faster than a 50 Hz level
+meter carries the mic, and nothing at all reaches the AF pin.
 
 ## Where this leaves the K6
 
