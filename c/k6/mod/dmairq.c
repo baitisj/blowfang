@@ -200,6 +200,8 @@ int k6_main(const k6_api_t *api) {
   wr(TIM17 + 0x28, 0);
   wr(TIM17 + 0x2C, 0xFFFF);
   wr(TIM17 + 0x14, 1);
+  wr(TIM17 + 0x10, 0);
+  wr(TIM17 + 0x0C, 1u << 8); /* the update DMA request starts channel 1 (fmsotto.c, fmso1d) */
   wr(TIM17 + 0x00, 1);
   c->halves = c->miss = c->ones = c->cyc = c->quiet = 0;
   c->ring = ring;
@@ -267,6 +269,7 @@ int k6_main(const k6_api_t *api) {
   wr(SRAM0 + 4u * V_DMA1, v25);
   wr(SRAM0 + 4u * V_CTX, v46);
   wr(TIM17 + 0x00, 0);
+  wr(TIM17 + 0x0C, 0);
   wr(RCC_APB2ENR, apb2);
   wr(RCC_AHBENR, ahb);
   api->fd_write(0x34, r34);
