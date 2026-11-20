@@ -64,6 +64,10 @@ image refuses it instead of running it short (`modem.k6mod.arena_bytes(level)`).
 (images without EXPLORE) and EXPLORE's state (the voice + EXPLORE image) moved there too, 432
 bytes more. A module that needs more than 14,976 declares `K6_MODULE_LEVEL 13`.
 
+**Module API level 15** (2026-11-20, Jeff: "Core SPI outbox"; docs/k6-fm-sotto.md): no new
+calls. `fl_prog` and `fl_erase` also work in the FuSotto outbox, 0x190000-0x19FFFF
+(`KM_OB_LO`/`KM_OB_HI`), with the repeater table's checks. Same block as level 13.
+
 The hello module is about 360 bytes of code (366 with clang 18 here, 358 in CI), 4 XL packets,
 3.1 s on air at F/1800 per copy; `modem.k6 mod` sends every chunk twice by default.
 

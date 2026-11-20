@@ -370,6 +370,13 @@ all three calls.
 comes up and `rxtrig off MS DBM` when it goes. A job can then start a Pluto capture on another
 radio's key-up, such as the FTM-300DR's own voice call.
 
+## FuSotto calls from the K6 (fusotx, 2026-11-20)
+
+`c/k6/mod/fusotx.c` runs c4lock's chained call with `C4_FUSO`: one sotto VW call of up to 404
+frames, its frames read from SPI a packet at a time (what FM SOTTO recorded, made into frames
+first), the leads at the inner size so the splices don't cost speech, and each chained packet's
+TX done steering the grid through a 40 s call. Details in docs/k6-fm-sotto.md, "Sending it".
+
 ## Receiving C4FM sotto (ysfrx, 2026-11-19)
 
 Jeff, 2026-11-19: "is the K6 able to receive C4FM and decode/synthesize Sotto?" `c/k6/mod/ysfrx.c` is a RAM

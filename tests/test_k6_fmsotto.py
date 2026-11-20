@@ -148,7 +148,8 @@ def test_it_fits_the_module_block(tmp_path):
     # both structs hold only 16- and 32-bit fields: the same size on the PC as on the M0
     fe, enc = map(int, subprocess.run([exe], check=True, capture_output=True, text=True).stdout.split())
     need = 16 + len(code) + 8 + 4 + 512 + (fe + 8) + enc   # the K6's fe_t has two pointers more
-    assert need <= k6mod.ARENA_BYTES_13 - 256, need
+    # 64 B to spare at least (the outbox writer, 2026-11-20, took the rest of the old 256)
+    assert need <= k6mod.ARENA_BYTES_13 - 64, need
 
 
 def test_a_log_back_into_superframes(tmp_path):

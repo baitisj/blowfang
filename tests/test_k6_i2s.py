@@ -26,6 +26,7 @@ NAMES = ["say", "ticks", "fd_read", "fd_write", "delay_us", "tune", "rx_hz", "ms
          "fl_read", "fl_prog", "fl_erase", "lcd_text", "lcd_bar", "lcd_wf", "lcd_flush", "led",
          "clock_set", "clock_get", "lcd_glyphs", "setting"]
 FL_LO, FL_HI, FL_READ_HI = 0x0F0000, 0x100000, 0x200000   # level 5's flash (c/k6/k6_mod.h)
+OB_LO, OB_HI = 0x190000, 0x1A0000                         # level 15's outbox (fl_prog, fl_erase too)
 REFUSED = (0x30, 0x33, 0x36, 0x37)
 PERIOD = 400            # samples between modelled DFS edges
 
@@ -56,8 +57,10 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
     gpiob(off, value, st): takes the module's GPIOB writes (else a write fails the test).
     flash: a dict for level 5: flash["mem"] (a bytearray, 0x0F0000-0x1FFFFF, default all 0xFF) is
     what fl_read reads and fl_prog / fl_erase change, with the firmware's rules (program and
-    erase in 0x0F0000-0x0FFFFF only, a program inside one page and only clearing bits, at most 32
-    erases); flash["progs"], flash["erases"] and flash["refused"] count the calls.
+    erase in 0x0F0000-0x0FFFFF only, and from level 15 in the outbox 0x190000-0x19FFFF too, a
+    program inside one page and only clearing bits, never while keyed, at most 32 erases);
+    flash["progs"], flash["erases"] and flash["refused"] count the calls; flash["read_us"] (us a
+    byte, default 0) is what an fl_read takes.
     lcd: a dict for level 6's screen: lcd["frames"] gets one dict a flush (us, text: six lines,
     bar: six (num, den), wf: the waterfall's rows top first, as bytes, glyphs: level 9's module
     glyphs, six 16-bit columns each), each flush costing 30 ms;
@@ -233,17 +236,19 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
             for k in ("progs", "erases", "refused"):
                 spi.setdefault(k, 0)
             ret = -1
+            writable = (FL_LO <= r0 < FL_HI or (level >= 15 and OB_LO <= r0 < OB_HI)) and not st.get("keyed")
             if name == "fl_read":
                 if FL_LO <= r0 < FL_READ_HI and r2 <= FL_READ_HI - r0:
                     uc.mem_write(r1, bytes(mem[r0 - FL_LO:r0 - FL_LO + r2]))
+                    st["us"] += int(r2 * spi.get("read_us", 0))
                     ret = 0
             elif name == "fl_prog":
-                if FL_LO <= r0 < FL_HI and 0 < r2 <= 256 and (r0 & 255) + r2 <= 256:
+                if writable and 0 < r2 <= 256 and (r0 & 255) + r2 <= 256:
                     for i, b in enumerate(uc.mem_read(r1, r2)):
                         mem[r0 - FL_LO + i] &= b
                     spi["progs"] += 1
                     ret = 0
-            elif FL_LO <= r0 < FL_HI and r0 % 4096 == 0 and spi["erases"] < 32:
+            elif writable and r0 % 4096 == 0 and spi["erases"] < 32:
                 mem[r0 - FL_LO:r0 - FL_LO + 4096] = b"\xff" * 4096
                 spi["erases"] += 1
                 ret = 0
@@ -252,6 +257,10 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
         elif name in ("tx_on", "tx_off", "tx_pa"):
             assert tx is not None, f"{name} called"
             tx.setdefault("log", []).append((name, r0, st["us"]))
+            if name == "tx_on" and not tx.get("on_ret", 0):
+                st["keyed"] = True
+            elif name == "tx_off":
+                st["keyed"] = False
             if fsk is not None and name != "tx_pa":
                 st["us"] += fsk.key(name, st["us"]) or 0   # (tx_on takes 1.4-1.9 s on the radio)
             if level >= 14:                        # the core's REG_30 words, and the PA's state
