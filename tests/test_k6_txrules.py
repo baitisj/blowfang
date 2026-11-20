@@ -33,8 +33,11 @@ INTERACTIVE = {
 FSK_TX = {"c4probe.c", "c4ysf.c", "c4lock.c", "c4ftm.c"}
 # dogtx.c tests the core's stuck key-up backstop: it hangs keyed on purpose (PA off), bench only
 BACKSTOP = {"dogtx.c"}
+# mickey.c keys up twice and, with the PA off, writes REG_30 and REG_47 while keyed (it reads the AF pin in the
+# transmit state): tests/test_k6_micprobe.py checks the same rules with the pins it reads modelled
+KEYED_PROBE = {"mickey.c"}
 MODS = sorted(p for p in glob.glob(os.path.join(ROOT, "c", "k6", "mod", "*.c"))
-              if re.search(r"->\s*tx_on\s*\(", open(p).read()) and os.path.basename(p) not in INTERACTIVE | BACKSTOP | FSK_TX)
+              if re.search(r"->\s*tx_on\s*\(", open(p).read()) and os.path.basename(p) not in INTERACTIVE | BACKSTOP | FSK_TX | KEYED_PROBE)
 IDS = [os.path.basename(p)[:-2] for p in MODS]
 MORSE = {"A": ".-", "G": "--.", "7": "--...", "E": ".", "W": ".--", "S": "...", "O": "---", "T": "-",
          "K": "-.-", "N": "-.", "C": "-.-.", "Q": "--.-", "D": "-..", "I": "..", "R": ".-.", "M": "--"}

@@ -242,12 +242,12 @@ SETTLE = os.path.join(K6, "mod", "settle.c")
 
 
 @need_host
-def test_loader_takes_level_13_refuses_14():
+def test_loader_takes_level_14_refuses_15():
     code = bytes(64)
-    for level in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13):
+    for level in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14):
         rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000 + level, KEY, level=level), 1, 128))
         assert rs[-1] == 3
-    rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000, KEY, level=14), 1, 128))
+    rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000, KEY, level=15), 1, 128))
     assert 3 not in rs
 
 
@@ -259,6 +259,8 @@ def test_arena_by_level():
     # level 13 (sotto's C statics and EXPLORE's state in hal::ram0 too): 432 B more
     assert k6mod.arena_bytes(13) == k6mod.ARENA_BYTES_13 == 15408
     assert k6mod.arena_bytes(13) - k6mod.arena_bytes(12) == 432
+    # level 14 (REG_30's audio bits): the same block
+    assert k6mod.arena_bytes(14) == k6mod.ARENA_BYTES_13
 
 
 # ---- upload ARQ: magic 0xAE asks for a reply, the K6's 0xAF reports (k6_mod.h) ----

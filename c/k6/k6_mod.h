@@ -48,7 +48,7 @@ extern "C" {
 #define KM_HDR 16
 #define KM_TAG 8
 #define KM_ABI 1
-#define KM_LEVEL 13
+#define KM_LEVEL 14
 
 typedef struct k6_api {
   uint16_t abi, level;              /* KM_ABI, KM_LEVEL */
@@ -191,6 +191,14 @@ typedef struct k6_api {
   /* level 13 (2026-11-19, docs/k6-ram0.md): no new calls. The shared block is 15,408 bytes
      (432 more scratch than level 12): sotto's C statics and EXPLORE's state moved to
      0x20000100-0x20000FFF too. A module that needs more than 14,976 declares K6_MODULE_LEVEL 13. */
+  /* level 14 (2026-11-19, Jeff: "mic probe first"; docs/k6-mic-probe.md): no new calls. fd_write
+     takes REG_30 when only its three audio block enables change: bit 9 the AF DAC, bit 2 the
+     MICIN ADC, bit 1 the TX DSP (the tone oscillator). Every other bit (VCO, PLL, RX link, PA
+     gain, RX DSP) must be written as it reads, or the write is refused with -1 as before, so
+     this keys nothing and tx_on stays the only way onto the air. A module never puts the mic
+     on the air: the MICIN bit is refused while the PA is on, and tx_pa(1) clears it first.
+     tx_on, tx_off, tune and the core after the module write REG_30 whole again. A module that
+     writes REG_30 declares K6_MODULE_LEVEL 14. */
 } k6_api_t;
 
 #define KM_SOTTO_1200 0xA9u         /* sotto_play's codec: sotto 1200, 6-byte 40 ms slots */
