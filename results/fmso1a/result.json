@@ -1,12 +1,96 @@
 {
  "id": "fmso1a",
- "status": "running",
- "since": "2026-11-20T08:19:28Z",
+ "who": "fmsotto",
+ "started": "2026-11-20T08:19:30Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T08:19:30Z",
+   "ended": "2026-11-20T08:19:32Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-20T08:19:32Z",
+   "ended": "2026-11-20T08:19:35Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-20T08:19:35Z",
+   "ended": "2026-11-20T08:20:50Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-20T08:20:50Z",
+   "ended": "2026-11-20T08:21:53Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-20T08:21:53Z",
+   "ended": "2026-11-20T08:21:53Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "k6.upload",
+   "started": "2026-11-20T08:21:53Z",
+   "ended": "2026-11-20T08:29:12Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-20T08:29:12Z",
+   "ended": "2026-11-20T08:29:12Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-20T08:29:12Z",
+   "ended": "2026-11-20T08:29:48Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-20T08:29:48Z",
+   "ended": "2026-11-20T08:31:48Z",
+   "rc": 1,
+   "why": "no /fms end/ in /home/baitisj/blowfang-work/runs/queue/fmso1a/k6.log"
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-20T08:31:48Z",
+   "ended": "2026-11-20T08:31:53Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "logger.stop",
+   "started": "2026-11-20T08:31:53Z",
+   "ended": "2026-11-20T08:31:53Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-449e94dbf4ed",
+ "head": "449e94dbf4edc520251fd44843c995df5caf5565",
+ "ended": "2026-11-20T08:31:53Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "764a697fc810a2c41e0b3178a153388a0e1f7895",
   "path": "jobs/fmso1a"
  },
  "runner_commit": "449e94dbf4edc520251fd44843c995df5caf5565",
- "updated": "2026-11-20T08:19:28Z"
+ "updated": "2026-11-20T08:31:54Z"
 }
