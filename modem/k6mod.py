@@ -53,6 +53,10 @@ def tlm_room(level):
 LIB_FLAG = 0x01          # header byte 13: keep it in the SPI module library (c/k6/k6_lib.h)
 PAGE_FLAG = 0x02         # with LIB_FLAG: a code page the image loads itself, never run (kl_page)
 CARDS_FLAG = 0x04        # with LIB_FLAG: a deck of help cards, never run
+LZ4_FLAG = 0x08          # the body is packed (API level 15 on, docs/k6-lz4.md): the unpacked code
+                         # length (u16 LE) and one LZ4 block of the code (modem/lz4.py)
+LEVEL_LZ4 = 15           # the API level a packed image declares, so older images refuse it
+LZ4_MARGIN = 8           # k6_mod.h KM_LZ4_MARGIN: room km_unpack wants beyond the unpacked image
 LIB_SLOTS = 32           # library slots, slot n at 0x110000 + n * 16 KB (12 before the release plan)
 NAME_MAGIC = b"K6NM"     # a module's name block (K6_MODULE_NAME, k6_mod.h): first in its code
 NAME_LEN = 12
@@ -164,7 +168,27 @@ def source_opt(src):
     return m.group(1) if m else "s"
 
 
-def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, magic=b"K6M", cards=False):
+def lz4_body(code):
+    """A packed image's body (LZ4_FLAG): the code's length, then the code as one LZ4 block."""
+    from . import lz4
+    code = bytes(code)
+    block = lz4.compress(code)
+    if lz4.decompress(block, len(code)) != code:
+        raise AssertionError("LZ4 round trip")
+    # km_unpack decodes in place, its packed bytes above its output: the proven bound it sizes
+    # its margin by (k6_mod.h KM_LZ4_MARGIN) holds for this stream
+    if lz4.inplace_excess(block) > len(code) - len(block) + 3 + len(block) // 255:
+        raise AssertionError("LZ4 stream outside km_unpack's in-place bound")
+    return struct.pack("<H", len(code)) + block
+
+
+def unpacked_room(code_len, packed_len):
+    """The RAM km_unpack needs for a packed image: the unpacked image and its margin"""
+    return HDR + code_len + TAG + LZ4_MARGIN + (packed_len >> 7)
+
+
+def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, magic=b"K6M", cards=False,
+          lz4=False):
     """Header + code + SipHash tag (k6_mod.h). tlm: text parts of say lines the K6 sends back
     after the module runs, when the upload asks for a reply (packets(..., arq=True)). lib: a
     slot of the K6's SPI module library (c/k6/k6_lib.h, 0..LIB_SLOTS-1): the K6 keeps the
@@ -172,7 +196,10 @@ def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, ma
     page (with lib): a code page (PAGE_FLAG, tools/k6_pages.py): kept in the slot, never run as a
     module; the image that it was linked against loads it itself. magic: the radio whose API
     table the module is for (b"U3M" the UV-380, modem.uv380mod). cards (with lib): a deck of
-    help cards (CARDS_FLAG), kept in the slot and never run."""
+    help cards (CARDS_FLAG), kept in the slot and never run. lz4: packed (LZ4_FLAG, API level
+    15 at least): smaller over the air, and a module or page stays packed in its library slot,
+    unpacking into RAM each time it loads; a deck or a module that runs at once unpacks on
+    arrival."""
     code = bytes(code)
     if entry >= len(code) or entry & 1 or len(code) > 0xFFFF:
         raise ValueError("bad entry offset or code length")
@@ -180,19 +207,42 @@ def image(code, entry, serial, key, level=LEVEL, tlm=0, lib=None, page=False, ma
         raise ValueError(f"telemetry parts 0..{TLM_MAX}")
     if lib is not None and not 0 <= lib < LIB_SLOTS:
         raise ValueError(f"library slot 0..{LIB_SLOTS - 1}")
-    if lib is not None and 16 + len(code) + 8 > LIB_SLOT_BYTES:
-        raise ValueError(f"{16 + len(code) + 8} bytes is more than a library slot ({LIB_SLOT_BYTES})")
+    body = lz4_body(code) if lz4 else code
+    if lz4 and magic != b"K6M":
+        raise ValueError("packed images are the K6's")
+    if lz4:
+        level = max(level, LEVEL_LZ4)
+        if unpacked_room(len(code), len(body)) > arena_bytes(level):
+            raise ValueError(f"{len(code)} bytes of code unpacked is more than the module block takes")
+    if lib is not None and 16 + len(body) + 8 > LIB_SLOT_BYTES:
+        raise ValueError(f"{16 + len(body) + 8} bytes is more than a library slot ({LIB_SLOT_BYTES})")
     if (page or cards) and lib is None:
         raise ValueError("a page or a deck goes into a library slot")
     if page and cards:
         raise ValueError("a page or a deck, not both")
     flags, slot = (0, 0) if lib is None else (LIB_FLAG | (PAGE_FLAG if page else 0) | (CARDS_FLAG if cards else 0), lib)
+    flags |= LZ4_FLAG if lz4 else 0
     if len(magic) != 3:
         raise ValueError("the magic is three bytes")
-    hdr = bytes(magic) + bytes([ABI]) + struct.pack("<HHIBBBB", len(code), entry, serial & 0xFFFFFFFF, level,
+    hdr = bytes(magic) + bytes([ABI]) + struct.pack("<HHIBBBB", len(body), entry, serial & 0xFFFFFFFF, level,
                                               flags, tlm, slot)
-    body = hdr + code
-    return body + struct.pack("<Q", siphash24(key, body))
+    signed = hdr + body
+    return signed + struct.pack("<Q", siphash24(key, signed))
+
+
+def unpack(img, key):
+    """A packed image as the K6 holds it once km_unpack has run: header (code length unpacked,
+    LZ4_FLAG cleared), code, and the tag over them. An image that isn't packed comes back as it
+    is."""
+    img = bytes(img)
+    if not img[13] & LZ4_FLAG:
+        return img
+    from . import lz4
+    n = struct.unpack_from("<H", img, 4)[0]
+    raw = struct.unpack_from("<H", img, HDR)[0]
+    code = lz4.decompress(img[HDR + 2:HDR + n], raw)
+    hdr = img[:4] + struct.pack("<H", raw) + img[6:13] + bytes([img[13] & ~LZ4_FLAG]) + img[14:16]
+    return hdr + code + struct.pack("<Q", siphash24(key, hdr + code))
 
 
 def data_bytes(length):

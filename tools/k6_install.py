@@ -393,7 +393,8 @@ def sign(entry, serial, key):
     code = open(entry["path"], "rb").read()
     kind = entry["kind"]
     return k6mod.image(code, k6mod.bin_entry(code) if kind == "module" else 0, serial, key,
-                       entry.get("level", 1), lib=entry["slot"], page=kind == "page", cards=kind == "cards")
+                       entry.get("level", 1), lib=entry["slot"], page=kind == "page", cards=kind == "cards",
+                       lz4=entry.get("lz4", False))
 
 
 def sha256(path):
@@ -436,19 +437,22 @@ def cmd_bundle(a, log=print):
         b = open(os.path.join(src, f), "rb").read()
         ids.add(b[-BUILD_ID:])
         files.append(f)
-        lib.append(dict(slot=slot, kind="page", file=f, name=page.upper()))
+        lib.append(dict(slot=slot, kind="page", file=f, name=page.upper(), lz4=True))
     if len(ids) != 1:
         raise InstallError("the pages were linked against different images")
     build_id = ids.pop()
     if data.count(build_id) < 1:
         raise InstallError("the pages weren't linked against this image (its build ID isn't in it)")
     files.append("cards-core.bin")
-    lib.append(dict(slot=CARD_SLOTS[0], kind="cards", file="cards-core.bin", name="HELP"))
+    lib.append(dict(slot=CARD_SLOTS[0], kind="cards", file="cards-core.bin", name="HELP", lz4=True))
+    if os.path.exists(os.path.join(src, "cards-modules.bin")):     # the modules' own cards (API 15)
+        files.append("cards-modules.bin")
+        lib.append(dict(slot=CARD_SLOTS[2], kind="cards", file="cards-modules.bin", name="MOD HELP", lz4=True))
     for slot, name in read_modules_list(a.modules):
         f = f"mod-{name}.bin"
         code = open(os.path.join(src, f), "rb").read()
         files.append(f)
-        lib.append(dict(slot=slot, kind="module", file=f, name=k6mod.module_name(code) or name,
+        lib.append(dict(slot=slot, kind="module", file=f, name=k6mod.module_name(code) or name, lz4=True,
                         level=k6mod.source_level(os.path.join(ROOT, "c", "k6", "mod", name + ".c"))))
     extra = {}
     for key, f in (("cbi", "aura-pager-cbi.bin"), ("vlri", "aura-pager-vlri.bin")):
@@ -477,7 +481,7 @@ The .bin images are builds of Aura (https://github.com/sophiel-meow/bf-k61-firmw
 with blowfang's patch (firmware/k6-aura/aura-pager.patch, GPL-3.0) and sotto's C library (MIT).
 Their complete source is https://github.com/baitisj/blowfang (with its sotto submodule) and Aura
 at the commit firmware/k6-aura/build.sh names. The modules (mod-*.bin), EXPLORE's code pages
-(page-*.bin) and the help deck (cards-core.bin) are blowfang's own code, MIT.
+(page-*.bin) and the help decks (cards-core.bin, cards-modules.bin) are blowfang's own code, MIT.
 
 Nothing here is Baofeng's: no stock firmware, no part of it. Flashing replaces the stock
 firmware for good; back up your radio's SPI flash first (docs/manual/install.md).
@@ -590,13 +594,15 @@ def load(c, bundle, key, serials, log=print, only=None, verify=False, force=Fals
         img = sign(e, serials.next(), key)
         r, have, count, put = c.send_image(img, serials.n & 0xFF)
         slot = LIB_BASE + e["slot"] * LIB_SLOT
-        if r != 3 or put != len(img):
+        # what the slot holds: the image as sent, or a packed deck as it unpacked on arrival
+        kept = k6mod.unpack(img, key) if e["kind"] == "cards" else img
+        if r != 3 or put != len(kept):
             # the last chunk's answer may have been lost and the chunk sent again (it then
             # starts a transfer of its own): the slot itself says whether the install happened
-            if r == 3 or c.read(slot, len(img)) != img:
+            if r == 3 or c.read(slot, len(kept)) != kept:
                 why = KM.get(r, r) if r != 3 else KL.get(put, put)
                 raise InstallError(f"slot {e['slot']} ({e['name']}): {why}")
-        elif verify and c.read(slot, len(img)) != img:
+        elif verify and c.read(slot, len(kept)) != kept:
             raise InstallError(f"slot {e['slot']} ({e['name']}) reads back differently")
         total += len(img)
         log(f"  slot {e['slot']:2d} {e['kind']:6s} {e['name']:12s} {len(img):6d} B")

@@ -157,7 +157,7 @@ def _loader_elf(d, keyed=True):
           "-DSOTTO_V36", "-DSOTTO_PITCH_THIRD", "-DFX_CS512_CONST", "-I" + os.path.join(ROOT, "c"),
           *(["-DKM_KEY=" + ",".join(str(b) for b in KEY)] if keyed else [])]
     objs = []
-    for src in ("c/k6/k6_mod.c", "c/k6/sotto_pager.c", "c/fixed/cm0/rt.c", "c/fixed/cm4/shim.c"):
+    for src in ("c/k6/k6_mod.c", "c/k6/lz4d.c", "c/k6/sotto_pager.c", "c/fixed/cm0/rt.c", "c/fixed/cm4/shim.c"):
         o = os.path.join(d, os.path.basename(src) + ".o")
         subprocess.run(["clang", *fl, "-c", os.path.join(ROOT, src), "-o", o], check=True)
         objs.append(o)

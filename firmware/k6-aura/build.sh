@@ -497,8 +497,10 @@ for m in $K6_MODULES; do
   [ "$(wc -c < "$OUT/mod-$m.bin")" -le $((blk - 24)) ] || { echo "mod-$m.bin: over the $blk-byte module block (level ${lvl:-1})"; exit 1; }
 done
 # the help card decks (tools/k6_cards.py, docs/manual/cards/): out/cards-core.bin goes into
-# library slot 13 with `python -m modem.k6 mod OUT.wav out/cards-core.bin --cards --install 13`
+# library slot 13 with `python -m modem.k6 mod OUT.wav out/cards-core.bin --cards --lz4 --install 13`,
+# the modules' deck out/cards-modules.bin into slot 15 the same way (k6_install.py does both)
 python3 "$ROOT/tools/k6_cards.py" deck "$ROOT/docs/manual/cards/core.txt" -o "$OUT/cards-core.bin"
+python3 "$ROOT/tools/k6_cards.py" deck "$ROOT/docs/manual/cards/modules.txt" -o "$OUT/cards-modules.bin"
 # fmsotto's codebook cells (tools/k6_fmsotto.py): out/fmsotto-cells.bin goes into a free library slot
 # with `python -m modem.k6 mod OUT.wav out/fmsotto-cells.bin --cards --install 14`
 python3 "$ROOT/tools/k6_fmsotto.py" deck "$OUT/fmsotto-cells.bin"

@@ -26,6 +26,11 @@
    while keyed (the caller's flash calls refuse them). Nothing else of the radio's state goes
    to SPI: the message store never does (Jeff's rule).
 
+   Packed slots (API level 15, KM_F_LZ4 below): the image as it arrived, packed; kl_info decodes
+   just the name from its first bytes, and kl_load / kl_page read it to the top of the RAM they
+   are given, check its tag, and unpack it in place there (k6_mod.h km_unpack), so a module
+   loads from fewer SPI bytes and a slot holds more code than the RAM it runs in would take raw.
+
    Load: kl_load reads a slot into RAM (the shared block, as a module arriving over the air),
    checks the header and the tag again (so a slot that wore, or that something else wrote, is
    refused), and arms km_run, which then runs it as it runs any module. No serial check here:
@@ -55,6 +60,11 @@ extern "C" {
 /* header byte 13 (flags), with KM_F_LIB: a deck of help cards (the release plan), never run:
    kl_load and kl_page refuse it */
 #define KM_F_CARDS 0x04
+/* header byte 13 (flags), API level 15 on (docs/k6-lz4.md): the body is packed (k6_mod.h
+   KM_LZ4_MARGIN). A module or a code page is kept in its slot packed, as it came, and unpacks
+   into RAM each time it loads (kl_load, kl_page); a deck or a module that runs at once unpacks
+   on arrival (km_packet), since the help viewer reads a deck's cards straight from SPI */
+#define KM_F_LZ4 0x08
 /* the module name block (K6_MODULE_NAME): magic, then KL_NAME characters */
 #define KL_NAME 12
 
@@ -88,13 +98,16 @@ int kl_load(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap);
    km_run: the code length (its code at dst + KM_HDR), or KL_* (KL_BAD_HDR: not a page). The
    caller checks that the page was linked against it (the page's last bytes). */
 int kl_page(int slot, const kl_flash_t *fl, uint8_t *dst, unsigned cap);
-/* What slot n holds, from its header and the name block alone (no tag check). name: the
-   module's name (NUL padded; all NUL when it has none, or is a page or a deck) */
+/* What slot n holds, from its header and the name block alone (no tag check). code_len: the
+   code's length unpacked; packed: the packed body's length in the slot (0 for an image that
+   isn't packed). name: the module's name (NUL padded; all NUL when it has none, or is a page or
+   a deck) */
 typedef struct {
   uint16_t code_len, entry;
   uint32_t serial;
   uint8_t level, flags;
   char name[KL_NAME];
+  uint16_t packed;
 } kl_info_t;
 int kl_info(int slot, const kl_flash_t *fl, kl_info_t *out);   /* 0, or KL_* */
 

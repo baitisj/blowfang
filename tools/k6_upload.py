@@ -301,6 +301,8 @@ def mod_wav(a, path, serial, xfer, only=None, payload=None, rung=None):
         cmd += ["--api-level", str(a.api_level)]
     if a.install is not None:
         cmd += ["--install", str(a.install)] + (["--cards"] if a.cards else [])
+    if a.lz4:
+        cmd += ["--lz4"]
     if only is not None:
         cmd += ["--only", ",".join(map(str, only))]
     r = subprocess.run(cmd, check=True, capture_output=True, text=True,
@@ -387,6 +389,8 @@ def main():
                     help="keep the image in this SPI module library slot instead of running it (modem.k6 mod --install)")
     ap.add_argument("--cards", action="store_true",
                     help="with --install: SOURCE is a deck .bin, kept and never run (help cards, fmsotto's cell deck)")
+    ap.add_argument("--lz4", action="store_true",
+                    help="send the image packed (modem.k6 mod --lz4; module API level 15 images on): fewer chunks")
     ap.add_argument("--telemetry", type=int, default=4, help="say-line parts to send back (0-12, default 4)")
     ap.add_argument("--payload", choices=("L", "XL"), default="XL",
                     help="chunk size to start with (default XL); see --no-fallback")

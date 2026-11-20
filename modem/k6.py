@@ -389,6 +389,10 @@ def main(argv=None):
     m.add_argument("--cards", action="store_true",
                    help="with --install: SOURCE is a deck of help cards (tools/k6_cards.py deck, "
                         "slots 13-15): kept in the slot, never run; a held MENU shows its cards")
+    m.add_argument("--lz4", action="store_true",
+                   help="send the image packed (LZ4, docs/k6-lz4.md; images with module API level 15 "
+                        "on, older ones refuse it): fewer chunks on the air; a module or page stays "
+                        "packed in its library slot and unpacks each time it loads")
     rp = sub.add_parser("reports", help="a recording of the K6 (the IC-7100's receive audio) -> the "
                                         "K6's 0xAF reports after an --arq upload")
     rp.add_argument("input")
@@ -556,13 +560,15 @@ def main(argv=None):
             sys.exit("--page goes into a library slot: add --install SLOT")
         if a.cards and (a.install is None or not a.source.endswith(".bin")):
             sys.exit("--cards: a deck .bin (tools/k6_cards.py deck) into a library slot: add --install SLOT")
+        if a.lz4:
+            level = max(level, k6mod.LEVEL_LZ4)
         if a.telemetry and 16 + len(code) + 8 > k6mod.tlm_room(level):
             print(f"--telemetry {a.telemetry} off: a {16 + len(code) + 8} B image reaches into the top "
                   f"{k6mod.TLM_BYTES} B of the module block, where the K6 keeps the say lines "
                   f"(they would write over the module's tail)", file=sys.stderr)
             a.telemetry = 0
         img = k6mod.image(code, entry, serial, k6mod.read_key(a.key_file), level, tlm=a.telemetry,
-                          lib=a.install, page=a.page, cards=a.cards)
+                          lib=a.install, page=a.page, cards=a.cards, lz4=a.lz4)
         pk = k6mod.packets(img, a.xfer if a.xfer is not None else serial & 0xFF,
                            pager.PROFILES[a.payload].payload, arq=a.arq)
         n = len(pk)
@@ -572,7 +578,7 @@ def main(argv=None):
         _write(a.output, x, a.rate)
         log(f"module {a.source}: {len(code)} B code, entry +{entry}, API level {level}, serial {serial}, "
             f"xfer {a.xfer if a.xfer is not None else serial & 0xFF}, "
-            f"{len(img)} B image in {n} {a.payload} chunks; {len(pk) * a.copies} packets, "
+            f"{len(img)} B image{' packed' if a.lz4 else ''} in {n} {a.payload} chunks; {len(pk) * a.copies} packets, "
             f"{len(x) / a.rate:.1f} s on air" + ("; reply asked" if a.arq else "")
             + (f"; into library slot {a.install}" if a.install is not None else ""))
         return 0

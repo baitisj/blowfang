@@ -205,7 +205,27 @@ typedef struct k6_api {
      most KM_FL_ERASES erases a run). FM SOTTO writes what it codes there and a sender module
      reads it back with fl_read; the layout is fmsotto.c's ("The outbox"). A module that writes
      the outbox declares K6_MODULE_LEVEL 15 or checks api->level at run time. */
+  /* level 15, also (2026-11-20, Jeff: LZ4 packed uploads and library slots, "add help API too";
+     docs/k6-lz4.md): packed images (header flag KM_F_LZ4, k6_lib.h) and one new call. help(name)
+     shows the help cards of screen name (up to 8 characters; usually the module's MENU name cut
+     to 8, a space written as _: "AIS_SHIP" for AIS SHIPS, docs/manual/cards/modules.txt) from
+     the decks in library slots 13-15, as a held MENU does for the core's screens, over the
+     module's screen: UP/DOWN turn its pages, any other key closes it (and is used up). It
+     returns once the viewer closes: the pages it had, 0 at once when no deck has a card of that
+     name, or -1 (keyed, or an image without the help viewer). The module's own screen comes back
+     at its next lcd_flush. A module that must also run on older images reads api->level at run
+     time and calls it only when it is 15 or more. */
+  int (*help)(const char *name);
 } k6_api_t;
+
+/* A packed image (KM_F_LZ4): the header's code length (bytes 4-5) counts the packed body, which
+   is the unpacked code length (u16 LE) and then one LZ4 block (lz4d.h) of that code; the tag
+   covers the header and that body, so it checks before anything is decoded. The entry offset is
+   into the unpacked code. Unpacking takes the block it unpacks in (km_unpack) to have this many
+   bytes more than the unpacked image, and a byte more for every 128 packed ones, so that
+   decoding in place never writes over bytes it has still to read (modem/lz4.py checks every
+   stream it makes against the same layout). */
+#define KM_LZ4_MARGIN 8u
 
 #define KM_SOTTO_1200 0xA9u         /* sotto_play's codec: sotto 1200, 6-byte 40 ms slots */
 #define KM_PLAY_RERUN 1u            /* sotto_play's flag: listen again after playback */
@@ -322,6 +342,12 @@ int km_tag_check(const uint8_t *a, unsigned code);
    longer than cap) / KM_BAD_TAG / KM_NO_KEY. */
 int km_again(const uint8_t *a, unsigned cap);
 void km_arm(const uint8_t *a, int air);
+/* Unpack the packed image img (KM_F_LZ4, its tag already checked; anywhere inside the cap bytes
+   at a) in place to a: its header, the code, and a new tag over them under this radio's key,
+   with KM_F_LZ4 cleared and the code length the unpacked one, so the image is an ordinary one
+   from here on. The unpacked code length, or KM_BAD_HDR (doesn't fit, or doesn't decode to its
+   length) / KM_NO_KEY. */
+int km_unpack(uint8_t *a, const uint8_t *img, unsigned cap);
 /* SipHash-2-4 (Aumasson and Bernstein), for the tag and the tests */
 uint64_t km_siphash(const uint8_t key[16], const uint8_t *m, unsigned n);
 

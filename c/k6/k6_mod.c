@@ -2,6 +2,7 @@
    SPDX-License-Identifier: MIT */
 #include "k6_mod.h"
 #include "k6_lib.h"
+#include "lz4d.h"
 #include "sotto_pager.h"
 #include <stddef.h>
 
@@ -57,18 +58,30 @@ uint64_t km_siphash(const uint8_t k[16], const uint8_t *m, unsigned n) {
   return v[0] ^ v[1] ^ v[2] ^ v[3];
 }
 
+/* the code length the header's entry must fall inside: a packed image's (KM_F_LZ4) is the
+   unpacked length, the body's first two bytes */
+static unsigned code_lim(const uint8_t *a, unsigned code) {
+  if (!(a[13] & KM_F_LZ4)) return code;
+  return code < 3 ? 0 : (unsigned)(a[16] | a[17] << 8);
+}
+
 /* the whole image is in: is it a module of ours? */
-static int check(const uint8_t *a, unsigned have_bytes, unsigned dl) {
+static int check(uint8_t *a, unsigned have_bytes, unsigned dl, unsigned cap) {
   unsigned code = a[4] | a[5] << 8, entry = a[6] | a[7] << 8, total = KM_HDR + code + KM_TAG;
   uint32_t serial = (uint32_t)a[8] | (uint32_t)a[9] << 8 | (uint32_t)a[10] << 16 | (uint32_t)a[11] << 24;
   if (a[0] != 'K' || a[1] != '6' || a[2] != 'M' || a[3] != KM_ABI || a[12] > KM_LEVEL ||
-      total > have_bytes || total + dl <= have_bytes || entry >= code || (entry & 1))
+      total > have_bytes || total + dl <= have_bytes || entry >= code_lim(a, code) || (entry & 1))
     return KM_BAD_HDR;
   {
     int t = km_tag_check(a, code);
     if (t) return t;
   }
   if (serial <= K.serial) return KM_OLD;
+  /* a packed image (KM_F_LZ4) that runs now, or a packed deck (the help viewer reads its cards
+     straight from SPI), unpacks here, in place; a packed module or page for the library goes
+     into its slot as it came, and unpacks each time it loads (k6_lib.c) */
+  if ((a[13] & KM_F_LZ4) && (!(a[13] & KM_F_LIB) || (a[13] & KM_F_CARDS)) && km_unpack(a, a, cap) < 0)
+    return KM_BAD_HDR;
   km_arm(a, 1);
   /* an image for the SPI library (k6_lib.h): the caller writes it to its slot; it never runs
      from here, even on a caller that doesn't know the flag */
@@ -76,14 +89,43 @@ static int check(const uint8_t *a, unsigned have_bytes, unsigned dl) {
   return KM_READY;
 }
 
-int km_tag_check(const uint8_t *a, unsigned code) {
+/* the tag of the image's first KM_HDR + code bytes under this radio's key into *t: 0, or
+   KM_NO_KEY */
+static int tag(const uint8_t *a, unsigned code, uint64_t *t) {
   const volatile uint8_t *kp = key_store;
   uint8_t key[16];
   int i, same = 1;
   for (i = 0; i < 16; i++) key[i] = kp[i], same &= key[i] == (uint8_t)~placeholder_inv[i];
   if (same) return KM_NO_KEY;
-  if (km_siphash(key, a, KM_HDR + code) != le64(a + KM_HDR + code)) return KM_BAD_TAG;
+  *t = km_siphash(key, a, KM_HDR + code);
   return 0;
+}
+
+int km_tag_check(const uint8_t *a, unsigned code) {
+  uint64_t t;
+  if (tag(a, code, &t)) return KM_NO_KEY;
+  return t != le64(a + KM_HDR + code) ? KM_BAD_TAG : 0;
+}
+
+int km_unpack(uint8_t *a, const uint8_t *img, unsigned cap) {
+  unsigned code = img[4] | img[5] << 8, total = KM_HDR + code + KM_TAG, raw = code_lim(img, code), i;
+  uint8_t *top;
+  uint64_t t;
+  if (!(img[13] & KM_F_LZ4) || !raw || total > cap ||
+      KM_HDR + raw + KM_TAG + KM_LZ4_MARGIN + (code >> 7) > cap)
+    return KM_BAD_HDR;
+  /* the packed image to the block's top (top >= img: the copy runs down), its header to the
+     bottom, then the code decodes upward from a + KM_HDR, its writes always behind its reads */
+  top = a + cap - total;
+  for (i = total; i--;) top[i] = img[i];
+  for (i = 0; i < KM_HDR; i++) a[i] = top[i];
+  if (lz4d(top + KM_HDR + 2, code - 2, a + KM_HDR, raw) != (int)raw) return KM_BAD_HDR;
+  a[4] = (uint8_t)raw, a[5] = (uint8_t)(raw >> 8), a[13] &= (uint8_t)~KM_F_LZ4;
+  /* sealed again, so km_again's and kl_load's checks hold for the unpacked image: the packed
+     one checked under this key before a byte of it was decoded */
+  if (tag(a, raw, &t)) return KM_NO_KEY;
+  for (i = 0; i < 8; i++) a[KM_HDR + raw + i] = (uint8_t)(t >> (8 * i));
+  return (int)raw;
 }
 
 void km_arm(const uint8_t *a, int air) {
@@ -136,7 +178,7 @@ int km_packet(const uint8_t *payload, int len, void *arena, unsigned arena_bytes
   if (K.have < cnt) return K.last = KM_CHUNK;
   K.active = 0;
   n = (cnt - 1u) * dl + n;      /* bytes of image held */
-  return K.last = (int8_t)check(a, n, dl);
+  return K.last = (int8_t)check(a, n, dl, arena_bytes);
 }
 
 int km_run(void *arena, const k6_api_t *api) {
