@@ -1,0 +1,18 @@
+2026-11-20T03:44:34Z job micp6b by micprobe, checkout /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36 at a59e428b9b36f68df4636eb53f4154365d93d3ec
+2026-11-20T03:44:34Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold micprobe -- timeout -s INT --kill-after=10 480 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/micp6b/k6.log
+2026-11-20T03:44:36Z step 1 (logger) rc=0
+2026-11-20T03:44:39Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-20T03:44:39Z step 2 (ic7100.tune) rc=0
+2026-11-20T03:44:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as micprobe send /home/baitisj/blowfang-work/runs/inbox/micp6b/wake.wav --hz 440850000 --dev 3000 --gain -30
+send: wav peak 0.833 of full scale -> 2500 Hz before pre-emphasis
+send wake.wav: 73.2 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 03:44:40Z
+2026-11-20T03:45:35Z stopping (cancelled): SIGTERM to the step's process group
+signal 15 while keyed: unkeying
+2026-11-20T03:45:35Z step 3 (pluto) rc=1 (cancelled)
+2026-11-20T03:45:35Z step 4 (k6.upload) rc=1 (refused: cancelled)
+2026-11-20T03:45:35Z step 5 (pluto) rc=1 (refused: cancelled)
+2026-11-20T03:45:35Z step 6 (wait) rc=1 (refused: cancelled)
+2026-11-20T03:45:35Z step 7 (wait) rc=1 (refused: cancelled)
+2026-11-20T03:45:35Z stopping the job's background logger still running at its end
+2026-11-20T03:45:35Z job micp6b cancelled: step 7 (wait): refused: cancelled
