@@ -1,12 +1,12 @@
 {
  "id": "micr2a",
- "status": "queued",
- "queued": "2026-11-20T05:41:35Z",
+ "status": "running",
+ "since": "2026-11-20T05:41:42Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "e72409618a86aac1918a538dee214aeb143380aa",
   "path": "jobs/micr2a"
  },
  "runner_commit": "3a77493dab192500760cb9c5da0501f9bb4156e3",
- "updated": "2026-11-20T05:41:35Z"
+ "updated": "2026-11-20T05:41:42Z"
 }
