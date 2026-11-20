@@ -17,6 +17,10 @@
                               output select, GP0 at each of its selects, every register, the
                               level meters and PA0, with the room quiet (q=0) and with a tone
                               at the mic (q=1): what follows the sound? (--tone HZ, default 1000)
+  mictx (c/k6/mod/mictx.c)    keyed with the PA off: the mic level registers (back to back and
+                              every 2 ms) and the receive chain run beside the transmitter (the
+                              AF pin at six selects), quiet (lower-case tags) and with a gated
+                              tone at the mic (upper case): each capture against its quiet twin
 
 It prints one line a capture and, with --out, writes each as a 16-bit WAV (and all of them in
 captures.npz). The log is the bench logger's (lines with `K6 MOD say `) or the bare say lines.
@@ -226,6 +230,45 @@ def cfg_report(caps, name, tone=1300.0):
     return out
 
 
+MICTX_GATE = 2.0        # the bench's tone: 250 ms on, 250 ms off
+
+
+def mictx_rate(info, n):
+    """a mictx capture's sample rate (k 0: PA11's converter; 1, 2: fd_reads)"""
+    return af_rate(info, n)
+
+
+def mictx_report(caps, tone=1300.0):
+    """mictx's captures, a line each, the quiet one (tags 0-9 a-j) beside its sounding twin
+    (A-T): mean, standard deviation, the tone's amplitude (k 0, 1) or the gate's (k 2), as raw
+    units (k 0: shares of full scale)"""
+    quiet = "0123456789abcdefghij"
+    loud = "ABCDEFGHIJKLMNOPQRST"
+    out = []
+
+    def look(x, info):
+        if len(x) < 26 or not info.get("ticks"):
+            return None
+        fs = mictx_rate(info, len(x))
+        y = x / 8100.0 if info["k"] == 0 else x
+        f = MICTX_GATE if info["k"] == 2 else tone
+        return y.mean(), y.std(), tone_fit(y, fs, f)[0], fs
+
+    for q, l in zip(quiet, loud):
+        if q not in caps:
+            continue
+        x, info = caps[q]
+        what = (f"AF sel {info['a']}" if info["k"] == 0 else f"REG_{info['a']:02X} " +
+                ("fast" if info["k"] == 1 else "2 ms")) + f" m={info['m']} rx={info['rx']} d={info['d']}"
+        a, b = look(x, info), (look(*caps[l]) if l in caps else None)
+        unit = "gate" if info["k"] == 2 else f"{tone:.0f} Hz"
+
+        def fmt(v):
+            return "-" if v is None else f"mean {v[0]:9.4f} sd {v[1]:8.4f} {unit} {v[2]:8.4f}"
+        out.append(f"mictx {q}/{l} {what:<28} quiet: {fmt(a)} | sound: {fmt(b)}")
+    return out
+
+
 def mic_runs(lines):
     """micprobe's sections -> [{"caps": {(kind, q, st, sel): (samples, info)}, "regs": {(q, st):
     {reg: (least, most)}}, "a0": {(q, st): info}, "notes": [lines]}]. A capture's d lines come
@@ -429,6 +472,12 @@ def main():
             print("\n".join(cfg_report(caps, name, a.tone)))
             for tag, (x, info) in caps.items():
                 keep[f"{name}{i}_{tag}"] = (x, af_rate(info, len(x)))
+    for i, sec in enumerate(sections(lines, "mictx")):
+        caps = captures(sec, "mictx", 4)
+        print("\n".join(ln for ln in sec if ln.startswith("mictx ") and " ticks=" not in ln))
+        print("\n".join(mictx_report(caps, a.tone)))
+        for tag, (x, info) in caps.items():
+            keep[f"mictx{i}_{tag}"] = (x, mictx_rate(info, len(x)))
     for i, (x, info, notes) in enumerate(rec_runs(lines)):
         r = af_rate(info, len(x))
         y = x / info["w"] ** 2
@@ -445,7 +494,7 @@ def main():
             if kind == "af" and len(x):
                 keep[f"micprobe{i}_af_q{q}_st{st}_sel{sel}"] = (x, af_rate(info, len(x)))
     if not keep and not runs:
-        print("no voxcap, afpin, micpin, miclvl, micdisc, mickey, micrec or micprobe capture in the log")
+        print("no voxcap, afpin, micpin, miclvl, micdisc, mickey, mictx, micrec or micprobe capture in the log")
         return 1
     if a.out:
         os.makedirs(a.out, exist_ok=True)

@@ -207,8 +207,8 @@ def test_selftest_fails_without_the_module_compiler(work, tmp_path, monkeypatch,
 # ---- running ----
 
 class Rig:
-    def __init__(self, hz=440850000, power=0.0):
-        self.hz, self.power, self.calls = hz, power, []
+    def __init__(self, hz=440850000, power=0.0, af=0.05):
+        self.hz, self.power, self.af, self.calls = hz, power, af, []
 
     def __call__(self, *a):
         a = [str(x) for x in a]
@@ -219,6 +219,10 @@ class Rig:
             return f"{self.power:.6f}"
         if a[:2] == ["L", "RFPOWER"]:
             self.power = float(a[2])
+        if a == ["l", "AF"]:
+            return f"{self.af:.6f}"
+        if a[:2] == ["L", "AF"]:
+            self.af = float(a[2])
         if a[0] == "F":
             self.hz = int(a[1])
         if a == ["m"]:
@@ -241,6 +245,28 @@ def test_run_job_steps_and_power(work, monkeypatch):
     assert res["status"] == "done", res
     assert rig.power == 0.0 and ["L", "RFPOWER", "0"] in rig.calls
     assert "sent" in open(work / "rd" / "runner.log").read()
+
+
+def test_ic7100_af_sets_the_speaker_and_puts_it_back(work, monkeypatch):
+    """the IC-7100 as a sound source at the bench: its speaker up for a step, back as found at the
+    job's end even when a later step fails"""
+    monkeypatch.setattr(br, "command", fake_command({"pluto": [sys.executable, "-c", "raise SystemExit(3)"]}))
+    rig = Rig(af=0.05)
+    j = job("a", {"do": "ic7100.tune", "hz": 445850000, "mode": "FM"}, {"do": "ic7100.af", "level": 0.2},
+            {"do": "pluto", "args": ["quiet"]}, freq_mhz="bench")
+    res = br.run_job(j, str(work / "rd"), rig)
+    assert res["status"] == "failed" and res["steps"][2]["rc"] == 3 and ["L", "AF", "0.200"] in rig.calls and rig.af == 0.05
+    j["steps"][2]["continue_on_error"] = True
+    j["steps"].append({"do": "ic7100.af", "level": "restore"})
+    rig = Rig(af=0.1)
+    assert br.run_job(j, str(work / "rd2"), rig)["status"] == "done" and rig.af == 0.1
+    assert "IC-7100 AF 0.200 (was 0.100 before the job)" in open(work / "rd2" / "runner.log").read()
+
+
+@pytest.mark.parametrize("level", [0.31, -0.1, "max", None])
+def test_ic7100_af_is_limited(work, level):
+    probs = br.check_job(job("a", {"do": "ic7100.af", "level": level}))
+    assert any("level 0..0.3" in p for p in probs), probs
 
 
 def test_ic7100_hold_and_frequency(work, monkeypatch):

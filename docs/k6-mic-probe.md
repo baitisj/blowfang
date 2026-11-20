@@ -356,6 +356,32 @@ the receiver's hiss, tone or no tone. Keyed, all forty captures sit at the floor
 So the answer is measured: **the K6's mic does not reach the MCU in receive, keyed, or with the
 DISC bit, with a tone that a listener heard at the mic.**
 
+## mictx: the mic registers and the receive chain, keyed (2026-11-20, staged)
+
+Jeff, 2026-11-20 8:04 AM PT: "what if we pacified all the hardware that goes from the mic to
+modulate FM and instead modulated AM, deactivated finals, and sampled BUZZER at the end of the
+*transmit* chain?" mickey had done the keyed, PA-off half and found the AF pin dead, because a
+keyed chip runs its transmit chain and not its receive chain (REG_30 0xC1FA against receive's
+0xBFF1: the RX link bits 13-10 and the RX DSP, bit 0, are off). The chip has no AM transmitter
+(its TX DSP frequency-modulates the synthesizer), so `c/k6/mod/mictx.c` tries what is left
+without hardware, keyed on 440.850 with the PA off after its CW ID, as mickey:
+
+- the mic level registers while the TX DSP runs: REG_64 (the voice amplitude that VOX and other
+  firmwares' mic bar read), REG_6F (AF TX/RX amplitude), REG_63 and REG_65, back to back (an
+  fd_read takes about 117 us, so 8.5 kHz) and every 2 ms (an envelope), with the mic ADC on and,
+  as a control, off;
+- the receive chain switched on beside the transmitter (REG_30 0xFFFF: RX link, AF DAC, RX DSP,
+  mic ADC, TX DSP all on), so whatever the transmit chain makes can reach a demodulator: the AF
+  pin through PA11 at selects 1 (FM), 4 (raw baseband), 5 (USB), 7 (AM), 8 (FSK) and 9, two of
+  them again with the TX DSP off, and the registers again in that state.
+
+Sound with no transmitter near the K6's channel: the bench runner's `ic7100.af` step turns up
+the IC-7100's speaker (Jeff: "L AF 0.2 ... cacophony right at the bench where the K6 is
+sitting"), tuned to 445.850 where the Pluto sends a 1,300 Hz tone gated 250 ms on and off. The
+control run puts the same Pluto signal on 446.850 with the IC-7100 still on 445.850: the same
+radio signal in the room, and no sound. A register that follows the mic shows the 2 Hz gate in
+its 2 ms captures, or the 1,300 Hz tone in its fast ones, in the sounding run only.
+
 ## Where this leaves the K6
 
 - **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or

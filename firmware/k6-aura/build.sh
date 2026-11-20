@@ -420,6 +420,7 @@ miclvl         # level 4, AF select 4 with the mic ADC and TX DSP on over 48 s o
 micpin         # level 4, AF select 4 with the mic ADC and TX DSP on in receive, read by PA11 in whole captures: quiet, then a tone (the receiver's baseband, not the mic; keys nothing, docs/k6-mic-probe.md)
 micprobe       # level 4, the mic ADC switched on in receive: what follows a sound at the mic (AF selects by PA11, GP0, registers; keys nothing, docs/k6-mic-probe.md)
 micrec         # level 4, three seconds of that select as IMA ADPCM, for tools/k6_micprobe.py (keys nothing, docs/k6-mic-probe.md)
+mictx          # level 13, keyed on the bench frequency: its CW ID, then the PA off: the mic level registers and the receive chain run beside the transmitter, read by fd_read and PA11 (the mic never on the air, docs/k6-mic-probe.md)
 midi           # level 2 (screen at 6, LED at 7), songs patched by tools/k6_midi.py, docs/k6-midi.md
 morse          # level 6, docs/k6-morse.md
 pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRFTBE (stage 3)

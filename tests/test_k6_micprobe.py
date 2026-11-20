@@ -776,6 +776,97 @@ def test_mickey_stays_inside_its_time_and_every_way_out_keys_down():
     assert [n for n, _, _ in tx["log"]].count("tx_on") == 1 and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
 
 
+# ---- mictx ----
+
+MICTX = os.path.join(ROOT, "c", "k6", "mod", "mictx.c")
+MICTX_CFG = [(1, 0x64, 1, 0, 1), (1, 0x6F, 1, 0, 1), (2, 0x64, 1, 0, 1), (2, 0x6F, 1, 0, 1), (1, 0x63, 1, 0, 1),
+             (1, 0x65, 1, 0, 1), (2, 0x64, 0, 0, 1), (2, 0x6F, 0, 0, 1), (0, 1, 1, 1, 1), (0, 4, 1, 1, 1),
+             (0, 5, 1, 1, 1), (0, 7, 1, 1, 1), (0, 8, 1, 1, 1), (0, 9, 1, 1, 1), (0, 1, 1, 1, 0), (0, 4, 1, 1, 0),
+             (1, 0x64, 1, 1, 1), (1, 0x6F, 1, 1, 1), (2, 0x64, 1, 1, 1), (2, 0x6F, 1, 1, 1)]
+
+
+def tx_run(level=14, spare=4096, tx=None, rx_hz=HOME_HZ, keys=(), **kw):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1, **kw)
+    tx = {} if tx is None else tx
+    ret, said, regs, writes = run_k6(regs, src=MICTX, code=build(MICTX, KEY_DEFS), mmio=mmio, gpiob=gpiob, tune=tune,
+                                     model=gp0, level=level, spare=spare, tx=tx, rx_hz=rx_hz, keys=keys,
+                                     count=4_000_000_000)
+    return w, tx, ret, said, regs, writes
+
+
+def test_mictx_fits_the_radio():
+    assert k6mod.source_level(MICTX) == 13
+
+
+@need_clang
+def test_mictx_reads_the_mic_registers_and_the_receive_chain_keyed_with_the_pa_off():
+    w, tx, ret, said, regs, writes = tx_run()
+    assert ret == 40, said[-4:]
+    assert said[0] == "mictx start 30=bff1 47=6040 rx=1a46d650" and said[-1] == "mictx done"
+    assert all(len(s) <= 60 for s in said) and "mictx sound rssi=-31" in said
+    assert [s for s in said if s.startswith("mictx keyed")] == ["mictx keyed q=0 30=c1fa 36=007f now=ffff",
+                                                                "mictx keyed q=1 30=c1fa 36=007f now=ffff"]
+    log = tx["log"]
+    ons = [i for i, (n, _, _) in enumerate(log) if n == "tx_on"]
+    assert len(ons) == 2 and [log[i][1] for i in ons] == [30000, 30000]
+    for i in ons:                                  # each keyed pass: AG7EW in CW, then the PA stays off
+        off = next(k for k in range(i, len(log)) if log[k][0] == "tx_off")
+        pa = [(a, us) for n, a, us in log[i + 1:off]]
+        marks = [(us1 - us0) // 60000 for (a0, us0), (a1, us1) in zip(pa, pa[1:]) if a0 == 1]
+        assert marks == [1, 3, 3, 3, 1, 3, 3, 1, 1, 1, 1, 1, 3, 3], marks
+        assert pa[-1][0] == 0
+        mic = [us for r, v, us in tx["w"] if r == 0x30 and v & 4 and log[i][2] < us < log[off][2]]
+        assert mic and min(mic) > pa[-1][1]
+    # the receive chain's bits go over the bus, only with the PA off, and the keyed word goes back
+    assert {v for r, v, _ in tx["w"] if r == 0x30} == {0xC3FE, 0xC3FA, 0xC1FA, 0xFFFF, 0xFFFD}
+    assert [v for r, v, _, _ in w["bus"]] == [0xFFFF, 0xC1FA, 0xFFFF, 0xC1FA]
+    assert all(r == 0x30 and not r36 & 0x80 for r, _, _, r36 in w["bus"])
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+    assert w["tunes"] == [SOUND_HZ, HOME_HZ, HOME_HZ]
+    assert w["moder"] == 0x28000000 and w["odr"] == 0 and w["ospeed"] == 0 and w["amp"] == [False]
+    caps = mp.captures(mp.sections(mp.say_lines("\n".join(said)), "mictx")[0], "mictx", 4)
+    assert "".join(caps) == "0123456789abcdefghijABCDEFGHIJKLMNOPQRST" and all(len(c[0]) == 52 for c in caps.values())
+    assert [tuple(caps[t][1][k] for k in ("k", "a", "m", "rx", "d")) for t in "0123456789abcdefghij"] == MICTX_CFG
+    # the model's REG_64 rises with the mic bit and the sound: the reader sees it, the control doesn't
+    assert caps["A"][0].mean() > 10 * caps["0"][0].mean() and caps["G"][0].mean() == caps["6"][0].mean()
+    rep = mp.mictx_report(caps)
+    assert len(rep) == 20 and rep[0].startswith("mictx 0/A REG_64 fast m=1 rx=0 d=1")
+
+
+@need_clang
+def test_mictx_keys_nothing_off_the_bench_frequency_on_a_busy_channel_or_without_a_transmitter():
+    w, tx, ret, said, regs, writes = tx_run(rx_hz=441_850_000)
+    assert ret == -2 and "log" not in tx and len(said) == 1
+    w, tx, ret, said, regs, writes = tx_run(tx={"on_ret": -1})
+    assert ret == -3 and [n for n, _, _ in tx["log"]].count("tx_on") == 1 and said[-1] == "mictx done"
+    assert not [1 for r, v, _ in tx["w"] if r == 0x30] and regs[0x30] == 0xBFF1 and w["bus"] == []
+    w, tx, ret, said, regs, writes = tx_run(spare=1024)
+    assert ret == -8 and said == [] and "log" not in tx
+    w, tx, ret, said, regs, writes = tx_run(tail_us=600_000_000)       # 440.850 never goes quiet
+    assert ret == -4 and "tx_on" not in [n for n, *_ in tx.get("log", [])] and w["bus"] == []
+
+
+@need_clang
+def test_mictx_stays_inside_its_time_and_every_way_out_keys_down():
+    w, tx, ret, said, regs, writes = tx_run()
+    log = tx["log"]
+    for i in [i for i, (n, _, _) in enumerate(log) if n == "tx_on"]:
+        off = next(k for k in range(i, len(log)) if log[k][0] == "tx_off")
+        assert 0 < log[i][1] <= 120_000 and (log[off][2] - log[i][2]) / 1000 < log[i][1]
+        assert {r for r, _, us in tx["w"] if log[i][2] <= us <= log[off][2]} <= {0x30, 0x47}
+    t_on = log[0][2]
+    dead = t_on + 1_500_000                        # the core's PA cut-off, in the ID
+    w, tx, ret, said, regs, writes = tx_run(tx={"dead_us": dead})
+    offs = [us for n, _, us in tx["log"] if n == "tx_off"]
+    assert ret == -5 and tx["log"][-1][0] == "tx_off" and offs[0] < dead + 200_000
+    assert not [1 for r, v, _ in tx["w"] if r == 0x30 and v & 4] and w["bus"] == [] and regs[0x30] == 0xBFF1
+    t_key = t_on + 1_000_000
+    w, tx, ret, said, regs, writes = tx_run(keys=((t_key, t_key + 5_000_000),))
+    offs = [us for n, _, us in tx["log"] if n == "tx_off"]
+    assert ret == -6 and tx["log"][-1][0] == "tx_off" and offs[0] < t_key + 200_000
+    assert [n for n, _, _ in tx["log"]].count("tx_on") == 1 and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
 # ---- keygo ----
 
 KEYGO = os.path.join(ROOT, "c", "k6", "mod", "keygo.c")
