@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "uvm17stress1",
-  "who": "uv380-multimode",
-  "since": "2026-11-20T01:51:10Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-20T01:51:03Z",
+ "last_poll": "2026-11-20T01:57:06Z",
  "error": null,
  "update": null,
- "updated": "2026-11-20T01:51:10Z"
+ "updated": "2026-11-20T01:57:06Z"
 }

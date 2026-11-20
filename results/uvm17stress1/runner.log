@@ -1,0 +1,304 @@
+2026-11-20T01:51:12Z job uvm17stress1 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36 at a59e428b9b36f68df4636eb53f4154365d93d3ec
+2026-11-20T01:51:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 zero 2 freq 441850 trim 6100 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: zero 2
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: trim 6100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+timeout: listen
+2026-11-20T01:51:27Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:51:27Z step 1 (uv380.cmd) rc=0
+2026-11-20T01:51:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 phy m17 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+phy M17
+timeout: phy m17
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+timeout: listen
+2026-11-20T01:51:33Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850 listen=0
+2026-11-20T01:51:33Z step 2 (uv380.cmd) rc=0
+2026-11-20T01:51:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+timeout: listen 1
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+timeout: listen
+2026-11-20T01:51:39Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:51:39Z step 3 (uv380.cmd) rc=0
+2026-11-20T01:51:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+timeout: listen
+2026-11-20T01:51:44Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:51:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 18 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=9 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4501 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:51:54Z step 4 (uv380.air) rc=0
+2026-11-20T01:51:54Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:51:55Z
+end 01:52:04Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:52:05Z step 5 (pluto) rc=0
+2026-11-20T01:52:13Z step 6 (wait) rc=0
+2026-11-20T01:52:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:52:19Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:52:19Z step 7 (uv380.cmd) rc=0
+2026-11-20T01:52:19Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:52:23Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:52:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 24 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=28 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4520 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:52:33Z step 8 (uv380.air) rc=0
+2026-11-20T01:52:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:52:34Z
+end 01:52:44Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:52:44Z step 9 (pluto) rc=0
+2026-11-20T01:52:52Z step 10 (wait) rc=0
+2026-11-20T01:52:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:52:59Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:52:59Z step 11 (uv380.cmd) rc=0
+2026-11-20T01:52:59Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:53:03Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:53:03Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 25 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=18 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4510 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:53:13Z step 12 (uv380.air) rc=0
+2026-11-20T01:53:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:53:14Z
+end 01:53:24Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:53:24Z step 13 (pluto) rc=0
+2026-11-20T01:53:32Z step 14 (wait) rc=0
+2026-11-20T01:53:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:53:38Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:53:38Z step 15 (uv380.cmd) rc=0
+2026-11-20T01:53:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:53:43Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:53:43Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 30 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=8 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4500 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:53:53Z step 16 (uv380.air) rc=0
+2026-11-20T01:53:53Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:53:54Z
+end 01:54:03Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:54:04Z step 17 (pluto) rc=0
+2026-11-20T01:54:12Z step 18 (wait) rc=0
+2026-11-20T01:54:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:54:18Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:54:18Z step 19 (uv380.cmd) rc=0
+2026-11-20T01:54:18Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:54:22Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:54:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 29 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=27 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4519 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:54:32Z step 20 (uv380.air) rc=0
+2026-11-20T01:54:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:54:33Z
+end 01:54:43Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:54:43Z step 21 (pluto) rc=0
+2026-11-20T01:54:51Z step 22 (wait) rc=0
+2026-11-20T01:54:51Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:54:58Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:54:58Z step 23 (uv380.cmd) rc=0
+2026-11-20T01:54:58Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:55:02Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:55:02Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 27 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=17 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4509 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:55:12Z step 24 (uv380.air) rc=0
+2026-11-20T01:55:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:55:13Z
+end 01:55:23Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:55:23Z step 25 (pluto) rc=0
+2026-11-20T01:55:31Z step 26 (wait) rc=0
+2026-11-20T01:55:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=11 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=11 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:55:37Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:55:37Z step 27 (uv380.cmd) rc=0
+2026-11-20T01:55:37Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=11 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:55:42Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:55:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 6 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=6 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4498 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:55:52Z step 28 (uv380.air) rc=0
+2026-11-20T01:55:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:55:53Z
+end 01:56:02Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:56:03Z step 29 (pluto) rc=0
+2026-11-20T01:56:11Z step 30 (wait) rc=0
+2026-11-20T01:56:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:56:17Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:56:17Z step 31 (uv380.cmd) rc=0
+2026-11-20T01:56:17Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:56:21Z note: the UV-380's listener is on; it refuses a send while it hears a carrier
+2026-11-20T01:56:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 air m17 test --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 14 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=26 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4518 ms
+mod say sotto done
+ok air ret=80
+2026-11-20T01:56:31Z step 32 (uv380.air) rc=0
+2026-11-20T01:56:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/uvm17stress1/m17_100.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.728 of full scale -> 3494 Hz before pre-emphasis
+send m17_100.wav: 10.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:56:32Z
+end 01:56:42Z: 10.0 s of signal in 9.9 s (kept up)
+2026-11-20T01:56:42Z step 33 (pluto) rc=0
+2026-11-20T01:56:50Z step 34 (wait) rc=0
+2026-11-20T01:56:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:56:57Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:56:57Z step 35 (uv380.cmd) rc=0
+2026-11-20T01:56:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 phy rng tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvm17stress1/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
+timeout: listen 0
+phy K6 RNG
+timeout: phy rng
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
+timeout: listen
+2026-11-20T01:57:05Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-20T01:57:05Z step 36 (uv380.cmd) rc=0
+2026-11-20T01:57:05Z job uvm17stress1 done

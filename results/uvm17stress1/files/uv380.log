@@ -1,0 +1,122 @@
+
+listen on=0 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+phy M17
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=5 last=150 pv=0/150
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 18 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=9 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4501 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=100 pv=0/100
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 24 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=28 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4520 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=7 last=100 pv=0/100
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 25 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=18 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4510 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=100 pv=0/100
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 30 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=8 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4500 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=9 last=100 pv=0/100
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 29 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=27 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4519 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=100 pv=0/100
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 27 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=17 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4509 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=11 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=11 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=11 last=100 pv=0/100
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 6 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=6 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4498 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=100 pv=0/100
+mod say sotto m17 sf=210/400 first=000102030405 last=e6e7e8e9eaeb bytes=5184 tx_ms=4970 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=0 dry=0
+mod say tx_tone ok
+mod say ident keyed after 14 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=147 bytes=5184/5184 edges=148 first=26 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 4518 ms
+mod say sotto done
+ok air ret=80
+listen on=1 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=1 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
+listen on=0 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
+phy K6 RNG
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=13 last=100 pv=0/100
