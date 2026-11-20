@@ -1,0 +1,68 @@
+{
+ "id": "micp2a",
+ "who": "micprobe",
+ "freq_mhz": "bench",
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 420,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:micprobe.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "30"
+   ],
+   "continue_on_error": true,
+   "sha256": "a610e5d3869226b3791b0b74282a749a8ff356402c5feb4d9ac9ad7dcaedf3e2"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone1k60.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "micprobe done",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
