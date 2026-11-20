@@ -24,7 +24,8 @@
    Writes, all put back: REG_30 (bits 9, 2, keyed with the PA off only), REG_47 (the select),
    the tuning, PA11's mode, speed and output bit, PB2. Returns the captures made, or -8
    (scratch under 3 KB), -6 (a key), -5 (the PA would not go off, or REG_30 did not take the
-   bits), -3 (tx_on refused), -2 (not on the bench frequency), -1 (no transmitter). Level 4.
+   bits), -4 (the bench frequency is busy), -3 (tx_on refused), -2 (not on the bench frequency),
+   -1 (no transmitter). Level 4.
    SPDX-License-Identifier: MIT */
 #ifndef K6_MODULE_LEVEL
 #define K6_MODULE_LEVEL 4
@@ -124,7 +125,9 @@ static int pass(const run_t *r, const char *tags, uint32_t q, uint32_t r47, int 
   uint16_t ticks[N_CFG];
   uint32_t k, i, j, s30 = 0, now = 0;
   const char *s;
-  int e = api->tx_on(TX_MS);
+  int e;
+  if (rssi(api) >= RSSI_ON) return -4; /* never onto a busy channel */
+  e = api->tx_on(TX_MS);
   if (e != 0) return -3;
   e = hold(api, 0, 5);
   for (s = CW_TEXT; *s && !e; s++) {

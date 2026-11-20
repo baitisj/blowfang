@@ -681,11 +681,12 @@ def test_micdisc_says_no_sound_and_refuses_a_keyed_chip():
 KEY_DEFS = [("N_MAX", "52u"), ("PRE", "300u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"), ("WAIT_MS", "3000u")]
 
 
-def key_run(level=14, spare=4096, tx=None, rx_hz=HOME_HZ, **kw):
+def key_run(level=14, spare=4096, tx=None, rx_hz=HOME_HZ, keys=(), **kw):
     w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1, **kw)
     tx = {} if tx is None else tx
     ret, said, regs, writes = run_k6(regs, src=MICKEY, code=build(MICKEY, KEY_DEFS), mmio=mmio, gpiob=gpiob, tune=tune,
-                                     model=gp0, level=level, spare=spare, tx=tx, rx_hz=rx_hz, count=4_000_000_000)
+                                     model=gp0, level=level, spare=spare, tx=tx, rx_hz=rx_hz, keys=keys,
+                                     count=4_000_000_000)
     return w, tx, ret, said, regs, writes
 
 
@@ -728,6 +729,51 @@ def test_mickey_keys_nothing_off_the_bench_frequency_or_without_a_transmitter():
     assert not [1 for r, v, _ in tx["w"] if r == 0x30] and regs[0x30] == 0xBFF1
     w, tx, ret, said, regs, writes = key_run(spare=1024)
     assert ret == -8 and said == [] and "log" not in tx
+
+
+# mickey keys up, so the transmit rules of tests/test_k6_txrules.py hold for it too. It is checked here and not
+# there because it keys up twice and, with the PA off, writes REG_30 and REG_47 while keyed
+
+@need_clang
+@pytest.mark.parametrize("hz", [146_520_000, 446_000_000, 440_800_000])
+def test_mickey_only_on_440_850(hz):
+    w, tx, ret, said, regs, writes = key_run(rx_hz=hz)
+    assert ret == -2 and "log" not in tx
+
+
+@need_clang
+def test_mickey_never_on_a_busy_channel_and_needs_level_3():
+    w, tx, ret, said, regs, writes = key_run(tail_us=600_000_000)       # 440.850 never goes quiet
+    assert ret == -4 and "tx_on" not in [n for n, *_ in tx.get("log", [])] and said[-1] == "mickey done"
+    assert not [1 for r, *_ in tx.get("w", []) if r == 0x30] and regs[0x30] == 0xBFF1
+    w, tx, ret, said, regs, writes = key_run(level=2)
+    assert ret == -1 and "log" not in tx and said == []
+
+
+@need_clang
+def test_mickey_stays_inside_its_time_and_every_way_out_keys_down():
+    w, tx, ret, said, regs, writes = key_run()
+    log = tx["log"]
+    ons = [i for i, (n, _, _) in enumerate(log) if n == "tx_on"]
+    for i in ons:                                  # inside what it asked for, and only its two registers written keyed
+        off = next(k for k in range(i, len(log)) if log[k][0] == "tx_off")
+        assert 0 < log[i][1] <= 120_000 and (log[off][2] - log[i][2]) / 1000 < log[i][1]
+        assert {r for r, _, us in tx["w"] if log[i][2] <= us <= log[off][2]} <= {0x30, 0x47}
+    assert log[-1][0] == "tx_off"
+    t_on = log[0][2]
+    # the core's time limit: the PA is dead from 1.5 s after the key-up (in the ID)
+    dead = t_on + 1_500_000
+    w, tx, ret, said, regs, writes = key_run(tx={"dead_us": dead})
+    offs = [us for n, _, us in tx["log"] if n == "tx_off"]
+    assert ret == -5 and tx["log"][-1][0] == "tx_off" and offs[0] < dead + 200_000
+    assert [n for n, _, _ in tx["log"]].count("tx_on") == 1 and regs[0x30] == 0xBFF1
+    assert not [1 for r, v, _ in tx["w"] if r == 0x30 and v & 4]                      # the mic bit never set
+    # a key press in the ID
+    t_key = t_on + 1_000_000
+    w, tx, ret, said, regs, writes = key_run(keys=((t_key, t_key + 5_000_000),))
+    offs = [us for n, _, us in tx["log"] if n == "tx_off"]
+    assert ret == -6 and tx["log"][-1][0] == "tx_off" and offs[0] < t_key + 200_000
+    assert [n for n, _, _ in tx["log"]].count("tx_on") == 1 and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
 
 
 # ---- micrec ----
