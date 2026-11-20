@@ -402,6 +402,16 @@ the K6 read the sound's carrier at -74 dBm). Both builds ran whole (returns 40, 
 So moving the mic toward the buzzer doesn't work either: keyed, nothing faster than a 50 Hz level
 meter carries the mic, and nothing at all reaches the AF pin.
 
+## mic64: does REG_64 hear the IC-7100 at all? (2026-11-20)
+
+Jeff: "Prove to yourself that the IC-7100 is actually producing tone by measuring a change in
+REG_64. Try modulating AF from 0 to 0.3." mtx1a's REG_64 captures were only 0.55 s long.
+`c/k6/mod/mic64.c` waits for the job's first tone on 445.850, keys up on 440.850, sends its CW
+ID, then with the PA off and the mic ADC on reads REG_64 every 20 ms for 105 s (5,252 samples),
+while the job sends the tone again and again and steps the IC-7100's AF between them (0.3, 0,
+0.15, 0, 0.3, 0). The serial log's time stamps line the samples up with the runner's steps
+(sample 0 is 0.5 s after the `mic64 go` line). `tools/k6_micprobe.py` prints a line a second.
+
 ## Where this leaves the K6
 
 - **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or

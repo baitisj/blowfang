@@ -17,6 +17,8 @@
                               output select, GP0 at each of its selects, every register, the
                               level meters and PA0, with the room quiet (q=0) and with a tone
                               at the mic (q=1): what follows the sound? (--tone HZ, default 1000)
+  mic64 (c/k6/mod/mic64.c)    keyed with the PA off and the mic ADC on: REG_64 every 20 ms for
+                              105 s while the job steps the sound at the mic; a line a second
   mictx (c/k6/mod/mictx.c)    keyed with the PA off: the mic level registers (back to back and
                               every 2 ms) and the receive chain run beside the transmitter (the
                               AF pin at six selects), quiet (lower-case tags) and with a gated
@@ -269,6 +271,21 @@ def mictx_report(caps, tone=1300.0):
     return out
 
 
+def m64_report(caps, sec=1.0):
+    """mic64's REG_64 log: the run, then one line a second (mean, min, max)"""
+    if "A" not in caps:
+        return []
+    x, info = caps["A"]
+    step = info["step"] / 1000.0
+    out = [f"mic64: {len(x)} samples every {info['step']} ms ({len(x) * step:.1f} s, ticks say "
+           f"{info['ticks'] * 1e-4 / max(len(x), 1) * 1000:.2f} ms each)" + ("  (lines lost)" if info["short"] else "")]
+    k = max(1, int(round(sec / step)))
+    for i in range(0, len(x), k):
+        y = x[i:i + k]
+        out.append(f"mic64 {i * step:6.1f} s: mean {y.mean():8.2f} min {y.min():6.0f} max {y.max():6.0f}")
+    return out
+
+
 def mic_runs(lines):
     """micprobe's sections -> [{"caps": {(kind, q, st, sel): (samples, info)}, "regs": {(q, st):
     {reg: (least, most)}}, "a0": {(q, st): info}, "notes": [lines]}]. A capture's d lines come
@@ -478,6 +495,12 @@ def main():
         print("\n".join(mictx_report(caps, a.tone)))
         for tag, (x, info) in caps.items():
             keep[f"mictx{i}_{tag}"] = (x, mictx_rate(info, len(x)))
+    for i, sec in enumerate(sections(lines, "mic64")):
+        caps = captures(sec, "mic64", 4)
+        print("\n".join(ln for ln in sec if ln.startswith("mic64 ") and " ticks=" not in ln))
+        print("\n".join(m64_report(caps)))
+        for tag, (x, info) in caps.items():
+            keep[f"mic64{i}_{tag}"] = (x, 1000.0 / info["step"])
     for i, (x, info, notes) in enumerate(rec_runs(lines)):
         r = af_rate(info, len(x))
         y = x / info["w"] ** 2
