@@ -29,7 +29,9 @@ that pin"), with the runs that took it down, because the way it went wrong is wo
 - **Nor keyed, nor by the guide's "DISC baseband" mode.** Keyed with the PA off, every AF
   select is silent with the mic ADC on. REG_44 bit 0, where the FD6818 guide switches the mic
   pin into the receive audio chain, changes nothing on this chip. So the standing answer holds:
-  **the K6's mic cannot reach the MCU without a hardware change.**
+  **the K6's mic cannot reach the MCU without a hardware change.** One reservation: nobody was
+  listening when these last runs played their tone at the mic, so they are to be repeated with
+  a listener ("Two more tries", below).
 - **No flash was needed.** The probe sets the two bits over the chip's bus pins, under the rule
   API level 14 will give `fd_write` (below).
 
@@ -306,6 +308,16 @@ Three things to keep:
 Both use the Pluto at gain -46 dB to play a 1,300 Hz tone through the room's radio (no leak,
 and clear of the converter's own 1 kHz line), and take the same captures with the room quiet.
 
+**Nobody heard the tone in these two runs, so their "with the tone" halves are not yet
+confirmed.** The K6 read the Pluto's carrier on 445.850 MHz at -76 dBm both times, far above a
+squelch, so the room's radio very likely played it. But whether it did, how loud, and where its
+speaker sat at 03:44 and 03:48 UTC is not known (Jeff, asked afterwards: "I don't know if it
+did. We should check again later"). The same holds for the receive sweep of probe 2, whose
+only sounding passes had the leaking Pluto as their source. A negative here is only as good as
+the sound at the mic, so the three runs (the receive sweep, micdisc, mickey) are to be made
+again with the clean tone and a listener at the radio. Until then "no mic" is the likely
+answer, not the measured one.
+
 **micdisc: the guide's DISC baseband mode** (run micp6a, 03:41 UTC). The FD6818 guide has a
 mode for sets whose receiver is another chip: that receiver's discriminator goes into MICIN and
 the chip runs it through its receive audio chain to AFOUT, switched on by REG_44 bit 0 with the
@@ -325,12 +337,18 @@ captures quiet and twenty with the tone: all forty sit at the converter's floor,
 0.00024 of full scale, with nothing at 1,300 Hz above 0.00007. Keyed, the chip puts nothing on
 its AF pin at all.
 
+The module was then given the rule every keying module has, to read the channel before each
+key-up and refuse a busy one (-4), and run again unattended (micp8a, 04:24 UTC): both key-ups
+went ahead on the quiet channel and the forty captures read the same floor (0.00014 to
+0.00023).
+
 ## Where this leaves the K6
 
 - **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or
   off, and with the guide's DISC bit: no AF select, GP0 select or register carries it. What is
   left is hardware (a wire from the mic to an ADC pin), which Jeff has ruled out. The probe
-  stops here.
+  stops here, but for one repeat of the last three runs with a listener who confirms the tone
+  was playing at the mic.
 - **Received audio is within the MCU's reach** by the beep pin: the slim sotto 1200 encoder
   (27 % of the CPU, sotto's `docs/slim-encoder.md`) can be fed from a voice the K6 hears on FM.
   For that the converter belongs on a timer interrupt in the firmware: as a module it takes the
