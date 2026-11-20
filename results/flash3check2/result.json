@@ -1,0 +1,12 @@
+{
+ "id": "flash3check2",
+ "status": "queued",
+ "queued": "2026-11-20T00:54:50Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "87cc4098608c53428420e4b0bad6e1289a7c05ba",
+  "path": "jobs/flash3check2"
+ },
+ "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "updated": "2026-11-20T00:54:50Z"
+}
