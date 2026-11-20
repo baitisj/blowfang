@@ -1,0 +1,160 @@
+{
+ "id": "mtx1a",
+ "who": "micprobe",
+ "freq_mhz": "bench",
+ "minutes": 25,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 1500,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:mictx.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "13",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "037f6f8c12c532c9928afd6d30375c45bbff1f1980f21360c519283e19c8b236"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 445850000,
+   "mode": "FM"
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0.2
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:gate1300.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "mictx done",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": "restore"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:mictx_ctl.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "13",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "76abc08d06623f05a28d48d9e29f8b22d66dba2efa23bdfc3c2fb8ddb6410754"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 445850000,
+   "mode": "FM"
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0.2
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:gate1300.wav",
+    "--hz",
+    "446850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "mictx done",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": "restore"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
