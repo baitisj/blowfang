@@ -776,6 +776,36 @@ def test_mickey_stays_inside_its_time_and_every_way_out_keys_down():
     assert [n for n, _, _ in tx["log"]].count("tx_on") == 1 and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
 
 
+# ---- keygo ----
+
+KEYGO = os.path.join(ROOT, "c", "k6", "mod", "keygo.c")
+
+
+def keygo_run(carrier_us, keys, level=13, defs=()):
+    from test_k6_i2s import START, rssi_reg
+    regs = {**START, 0x67: lambda us: rssi_reg(-60 if us < carrier_us else -110)}
+    lcd = {}
+    ret, said, regs, writes = run_k6(regs, src=KEYGO, code=build(KEYGO, defs), level=level, keys=keys,
+                                     lcd=lcd if level >= 6 else None)
+    return ret, said, writes, lcd
+
+
+@need_clang
+def test_keygo_arms_after_the_upload_and_goes_on_a_key_press():
+    ret, said, writes, lcd = keygo_run(2_000_000, ((4_000_000, 4_100_000),))
+    assert ret == 1 and said == ["keygo armed", "keygo go"] and not writes
+    assert lcd["scr"]["text"][1] == "GO"
+    # a key held through the arming must be let go and pressed again
+    ret, said, *_ = keygo_run(2_000_000, ((1_000_000, 3_500_000),), level=4, defs=[("KEYGO_WAIT_MS", "6000u")])
+    assert ret == -7 and said == ["keygo armed", "keygo timeout"]
+    ret, said, *_ = keygo_run(2_000_000, ((1_000_000, 3_500_000), (4_000_000, 4_100_000)), level=4,
+                              defs=[("KEYGO_WAIT_MS", "6000u")])
+    assert ret == 1 and said == ["keygo armed", "keygo go"]
+    # a key while the upload's carrier is still up is not the go
+    ret, said, *_ = keygo_run(5_000_000, ((1_000_000, 1_100_000),), level=4, defs=[("KEYGO_WAIT_MS", "8000u")])
+    assert ret == -7 and said == ["keygo armed", "keygo timeout"]
+
+
 # ---- micrec ----
 
 REC_BYTES = 390

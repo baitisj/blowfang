@@ -407,6 +407,7 @@ iflive_h1500
 iflive_h1600
 iflive_k6t
 iflive_tsweep
+keygo          # level 4, a bench job's go button: armed once the upload's carrier is gone, says "keygo go" at the release of a key press (keys nothing, docs/bench-runner.md)
 libls          # level 5, the SPI module library's slots with the modules' names (reads only, docs/k6-modules.md)
 loram          # level 1, does anything write 0x20000000-0x20000FFF (hal::txdog)
 micdisc        # level 4, the guide's DISC baseband mode (REG_44 bit 0) tried as a way from the mic to the AF pin, every select (keys nothing, docs/k6-mic-probe.md)
