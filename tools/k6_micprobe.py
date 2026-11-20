@@ -191,6 +191,41 @@ def af_report(caps, fs=None, name="afpin"):
     return out
 
 
+LVL_ST = {1: "mic ADC off", 2: "mic route", 3: "AGC bit flipped"}
+
+
+def lvl_report(caps, tone=1000.0):
+    """miclvl's captures, a line each: when (ms after the sound), the kind (st), REG_19, the
+    tone's amplitude and the rest of 300-3000 Hz, both as shares of full scale"""
+    out = []
+    for tag, (x, info) in caps.items():
+        if len(x) < 64 or not info.get("ticks"):
+            continue
+        fs, full = af_rate(info, len(x)), float(info.get("w", 90)) ** 2
+        t = np.arange(len(x)) / fs
+        a = np.stack([np.cos(2 * np.pi * tone * t), np.sin(2 * np.pi * tone * t)], 1)
+        c, *_ = np.linalg.lstsq(a, x - x.mean(), rcond=None)
+        rest = band_rms(x - x.mean() - a @ c, fs, 300, 3000)
+        out.append(f"miclvl {tag}: {info['ms'] / 1000:6.2f} s  {LVL_ST.get(info['st'], info['st']):<15} "
+                   f"19={info['19']:04x}  rest {x.mean() / full:.3f}  {tone:.0f} Hz {np.hypot(*c) / full:.5f}  "
+                   f"others {rest / full:.5f}" + ("  (lines lost)" if info["short"] else ""))
+    return out
+
+
+def cfg_report(caps, name, tone=1300.0):
+    """micdisc's and mickey's captures, a line each: the settings its line gives, then the mean,
+    300-3000 Hz rms and the tone's amplitude, as shares of full scale (w 90)"""
+    out = []
+    for tag, (x, info) in caps.items():
+        if len(x) < 26 or not info.get("ticks"):
+            continue
+        fs, y = af_rate(info, len(x)), x / 8100.0
+        keys = " ".join(f"{k}={v:x}" for k, v in info.items() if k not in ("ticks", "short", "rssi", "n"))
+        out.append(f"{name} {tag}: {keys:<24} mean {y.mean():.3f}  300-3000 Hz {band_rms(y, fs, 300, 3000):.5f}  "
+                   f"{tone:.0f} Hz {tone_fit(y, fs, tone)[0]:.5f}" + ("  (lines lost)" if info["short"] else ""))
+    return out
+
+
 def mic_runs(lines):
     """micprobe's sections -> [{"caps": {(kind, q, st, sel): (samples, info)}, "regs": {(q, st):
     {reg: (least, most)}}, "a0": {(q, st): info}, "notes": [lines]}]. A capture's d lines come
@@ -362,7 +397,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("log")
     ap.add_argument("--out", help="write WAVs and captures.npz here")
-    ap.add_argument("--tone", type=float, default=1000.0, help="micprobe: the sounding tone, Hz (default 1000)")
+    ap.add_argument("--tone", type=float, default=1000.0, help="the sounding tone, Hz (default 1000)")
     a = ap.parse_args()
     lines = say_lines(open(a.log, errors="replace").read())
     keep = {}
@@ -378,6 +413,20 @@ def main():
             print(sec[0])
             print("\n".join(ln for ln in sec if re.match(name + r" (carrier|no carrier|sound|no sound|check)", ln)))
             print("\n".join(af_report(caps, name=name)))
+            for tag, (x, info) in caps.items():
+                keep[f"{name}{i}_{tag}"] = (x, af_rate(info, len(x)))
+    for i, sec in enumerate(sections(lines, "miclvl")):
+        caps = captures(sec, "miclvl", 4)
+        print(sec[0])
+        print("\n".join(ln for ln in sec if re.match(r"miclvl (sound|no sound|check)", ln)))
+        print("\n".join(lvl_report(caps, a.tone)))
+        for tag, (x, info) in caps.items():
+            keep[f"miclvl{i}_{tag}"] = (x, af_rate(info, len(x)))
+    for name in ("micdisc", "mickey"):
+        for i, sec in enumerate(sections(lines, name)):
+            caps = captures(sec, name, 4)
+            print("\n".join(ln for ln in sec if ln.startswith(name + " ") and " ticks=" not in ln))
+            print("\n".join(cfg_report(caps, name, a.tone)))
             for tag, (x, info) in caps.items():
                 keep[f"{name}{i}_{tag}"] = (x, af_rate(info, len(x)))
     for i, (x, info, notes) in enumerate(rec_runs(lines)):
@@ -396,7 +445,7 @@ def main():
             if kind == "af" and len(x):
                 keep[f"micprobe{i}_af_q{q}_st{st}_sel{sel}"] = (x, af_rate(info, len(x)))
     if not keep and not runs:
-        print("no voxcap, afpin, micpin, micrec or micprobe capture in the log")
+        print("no voxcap, afpin, micpin, miclvl, micdisc, mickey, micrec or micprobe capture in the log")
         return 1
     if a.out:
         os.makedirs(a.out, exist_ok=True)

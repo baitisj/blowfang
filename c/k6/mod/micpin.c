@@ -1,7 +1,9 @@
-/* micpin: the K6's mic, read by the MCU through the beep pin (2026-11-20, docs/k6-mic-probe.md)
-   micprobe's one hit, looked at properly: with the FD6818's mic ADC and TX DSP switched on
-   while the K6 receives (micadc.h; the PA off, nothing keyed), REG_47's AF output select 4
-   puts the mic's audio on the AF pin, where PA11's converter (pa11adc.h) reads it.
+/* micpin: micprobe's one hit, AF select 4 with the mic ADC and TX DSP on, in whole captures
+   (2026-11-20, docs/k6-mic-probe.md). It was read as the K6's mic. It is the receiver's raw
+   baseband, and the tone in it was the bench's Pluto leaking in by radio (the write-up's "The
+   correction"). The captures: with the FD6818's mic ADC and TX DSP switched on while the K6
+   receives (micadc.h; the PA off, nothing keyed), REG_47's AF output select 4 on the AF pin,
+   read by PA11's converter (pa11adc.h).
 
    Captures, each dumped whole as four hex digits a sample for tools/k6_micprobe.py:
      Q  2,990 samples, select 4, the room quiet: the floor

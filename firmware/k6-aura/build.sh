@@ -409,9 +409,12 @@ iflive_k6t
 iflive_tsweep
 libls          # level 5, the SPI module library's slots with the modules' names (reads only, docs/k6-modules.md)
 loram          # level 1, does anything write 0x20000000-0x20000FFF (hal::txdog)
-micpin         # level 4, the mic's audio on the AF pin (mic ADC and TX DSP on in receive, select 4) read by PA11: quiet, then a tone at the mic (keys nothing, docs/k6-mic-probe.md)
+micdisc        # level 4, the guide's DISC baseband mode (REG_44 bit 0) tried as a way from the mic to the AF pin, every select (keys nothing, docs/k6-mic-probe.md)
+mickey         # level 4, keyed on the bench frequency: its CW ID, then the PA off and every AF select read by PA11 with the mic ADC on (the mic never on the air, docs/k6-mic-probe.md)
+miclvl         # level 4, AF select 4 with the mic ADC and TX DSP on over 48 s of a stepped tone: as is, the mic ADC off, the mic AGC bit flipped (keys nothing, docs/k6-mic-probe.md)
+micpin         # level 4, AF select 4 with the mic ADC and TX DSP on in receive, read by PA11 in whole captures: quiet, then a tone (the receiver's baseband, not the mic; keys nothing, docs/k6-mic-probe.md)
 micprobe       # level 4, the mic ADC switched on in receive: what follows a sound at the mic (AF selects by PA11, GP0, registers; keys nothing, docs/k6-mic-probe.md)
-micrec         # level 4, three seconds from the mic by that route as IMA ADPCM, for tools/k6_micprobe.py (keys nothing, docs/k6-mic-probe.md)
+micrec         # level 4, three seconds of that select as IMA ADPCM, for tools/k6_micprobe.py (keys nothing, docs/k6-mic-probe.md)
 midi           # level 2 (screen at 6, LED at 7), songs patched by tools/k6_midi.py, docs/k6-midi.md
 morse          # level 6, docs/k6-morse.md
 pfprobe        # level 2, prefetch back on from RAM: HSI switch + MEM_MODE + PRFTBE (stage 3)

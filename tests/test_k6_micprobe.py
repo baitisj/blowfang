@@ -29,6 +29,9 @@ AFPIN = os.path.join(ROOT, "c", "k6", "mod", "afpin.c")
 MICPROBE = os.path.join(ROOT, "c", "k6", "mod", "micprobe.c")
 MICPIN = os.path.join(ROOT, "c", "k6", "mod", "micpin.c")
 MICREC = os.path.join(ROOT, "c", "k6", "mod", "micrec.c")
+MICLVL = os.path.join(ROOT, "c", "k6", "mod", "miclvl.c")
+MICDISC = os.path.join(ROOT, "c", "k6", "mod", "micdisc.c")
+MICKEY = os.path.join(ROOT, "c", "k6", "mod", "mickey.c")
 
 
 def build(src, defs=()):
@@ -569,6 +572,162 @@ def test_micpin_says_no_sound_and_refuses_a_keyed_chip_or_a_small_scratch():
     ret, said, regs, writes = run_k6(regs, src=MICPIN, code=build(MICPIN, PIN_DEFS), mmio=mmio, gpiob=gpiob, tune=tune,
                                      model=gp0, level=4, spare=4096)
     assert ret == -5 and w["bus"] == [] and said[-1] == "micpin done"
+
+
+# ---- miclvl ----
+
+LVL_N = 299
+LVL_DEFS = [("N", f"{LVL_N}u"), ("PRE", "400u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"), ("WAIT_MS", "3000u"),
+            ("RUN_MS", "700u")]
+
+
+def lvl_run(spare=4096, **kw):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4, **kw)
+    regs[0x19] = 0x1041
+    ret, said, regs, writes = run_k6(regs, src=MICLVL, code=build(MICLVL, LVL_DEFS), mmio=mmio, gpiob=gpiob, tune=tune,
+                                     model=gp0, level=4, spare=spare, count=2_000_000_000)
+    return w, ret, said, regs, writes
+
+
+@need_clang
+def test_miclvl_takes_the_route_with_and_without_the_mic_adc_and_the_agc():
+    w, ret, said, regs, writes = lvl_run()
+    assert ret == 5, said[-4:]
+    assert said[0] == "miclvl start 30=bff1 48=82df 19=1041 7d=e952" and said[-1] == "miclvl done"
+    assert all(len(s) <= 60 for s in said) and "miclvl sound rssi=-31" in said and "miclvl check rssi=-31" in said
+    # REG_30 by the rule only: both bits, both again after the retune, the TX DSP alone, both, then off
+    assert [v for r, v, _, _ in w["bus"]] == [0xBFF7, 0xBFF7, 0xBFF3, 0xBFF7, 0xBFF1]
+    assert all(r == 0x30 and pa == 0x007F for r, _, _, pa in w["bus"])
+    assert {r for r, _ in writes} == {0x30, 0x47, 0x19} and (0x19, 0x9041) in writes
+    assert [regs[r] for r in (0x30, 0x47, 0x19)] == [0xBFF1, 0x6040, 0x1041]
+    assert w["tunes"] == [SOUND_HZ, HOME_HZ, SOUND_HZ, HOME_HZ]
+    assert w["moder"] == 0x28000000 and w["odr"] == 0 and w["ospeed"] == 0 and w["amp"] == [False]
+    caps = mp.captures(mp.sections(mp.say_lines("\n".join(said)), "miclvl")[0], "miclvl", 4)
+    assert list(caps) == list("01234") and all(len(caps[t][0]) == LVL_N for t in caps)
+    assert [caps[t][1]["st"] for t in caps] == [2, 2, 1, 2, 3]
+    assert [caps[t][1]["19"] for t in caps] == [0x1041] * 4 + [0x9041]
+    assert caps["0"][1]["ms"] == 0 and caps["1"][1]["ms"] < caps["2"][1]["ms"] < caps["4"][1]["ms"]
+    amp = {t: mp.tone_fit(caps[t][0], AF_FS[1], 1000)[0] for t in caps}
+    # (the model: the mic's tone on select 4 while the mic ADC is on and the room sounds)
+    assert min(amp["1"], amp["3"], amp["4"]) > 30 * max(amp["0"], amp["2"]), amp
+    rep = mp.lvl_report(caps)
+    assert len(rep) == 5 and "mic ADC off" in rep[2] and "AGC bit flipped" in rep[4] and "19=9041" in rep[4]
+
+
+@need_clang
+def test_miclvl_says_no_sound_and_refuses_a_keyed_chip_or_a_small_scratch():
+    w, ret, said, regs, writes = lvl_run(sound=False)
+    assert ret == 1 and said[-2:] == ["miclvl no sound", "miclvl done"]
+    assert [regs[r] for r in (0x30, 0x47, 0x19)] == [0xBFF1, 0x6040, 0x1041]
+    w, ret, said, regs, writes = lvl_run(spare=512)
+    assert ret == -8 and said == [] and w["bus"] == []
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4)
+    regs[0x36] = 0x00FF
+    ret, said, regs, writes = run_k6(regs, src=MICLVL, code=build(MICLVL, LVL_DEFS), mmio=mmio, gpiob=gpiob, tune=tune,
+                                     model=gp0, level=4, spare=4096)
+    assert ret == -5 and w["bus"] == [] and said[-1] == "miclvl done"
+
+
+# ---- micdisc ----
+
+DISC_DEFS = [("N", "130u"), ("PRE", "300u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"), ("WAIT_MS", "3000u")]
+
+
+def disc_run(spare=4096, **kw):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1, **kw)
+    regs[0x44], regs[0x7E] = 0x8ED8, 0x37EE
+    ret, said, regs, writes = run_k6(regs, src=MICDISC, code=build(MICDISC, DISC_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=4, spare=spare, count=4_000_000_000)
+    return w, ret, said, regs, writes
+
+
+@need_clang
+def test_micdisc_tries_the_guides_disc_mode_on_every_select_and_puts_it_back():
+    w, ret, said, regs, writes = disc_run()
+    assert ret == 44, said[-4:]
+    assert said[0] == "micdisc start 30=bff1 44=8ed8 47=6040 7e=37ee" and said[-1] == "micdisc done"
+    assert all(len(s) <= 60 for s in said) and "micdisc sound rssi=-31" in said and "micdisc check rssi=-31" in said
+    assert all(r == 0x30 and v in (0xBFF1, 0xBFF5, 0xBFF7) and pa == 0x007F for r, v, _, pa in w["bus"])
+    assert {r for r, _ in writes} == {0x30, 0x44, 0x47} and {v for r, v in writes if r == 0x44} == {0x8ED8, 0x8ED9}
+    assert [regs[r] for r in (0x30, 0x44, 0x47)] == [0xBFF1, 0x8ED8, 0x6040]
+    assert w["tunes"] == [SOUND_HZ, HOME_HZ, SOUND_HZ, HOME_HZ]
+    assert w["moder"] == 0x28000000 and w["odr"] == 0 and w["ospeed"] == 0 and w["amp"] == [False]
+    caps = mp.captures(mp.sections(mp.say_lines("\n".join(said)), "micdisc")[0], "micdisc", 4)
+    assert "".join(caps) == "0123456789abcdefghijklABCDEFGHIJKLMNOPQRSTUV"
+    half = [(caps[t][1]["st"], caps[t][1]["d"], caps[t][1]["sel"]) for t in "0123456789abcdefghijkl"]
+    assert half == [(0, 0, 1), (1, 0, 1), (0, 1, 1)] + [(1, 1, k) for k in range(16)] + [(2, 1, 1), (2, 1, 4), (2, 1, 9)]
+    assert [caps[t][1]["44"] for t in "012l"] == [0x8ED8, 0x8ED8, 0x8ED9, 0x8ED9]
+    amp = {t: mp.tone_fit(caps[t][0], AF_FS[1], 1000)[0] for t in caps}
+    # (the model: the mic's tone on select 1 while the mic ADC is on and the room sounds)
+    assert min(amp[t] for t in "BET") > 30 * max(amp[t] for t in "14jACDF"), amp
+    rep = mp.cfg_report(caps, "micdisc", 1000)
+    assert len(rep) == 44 and rep[4].startswith("micdisc 4: st=1 d=1 sel=1 44=8ed9")
+
+
+@need_clang
+def test_micdisc_says_no_sound_and_refuses_a_keyed_chip():
+    w, ret, said, regs, writes = disc_run(sound=False)
+    assert ret == 22 and said[-2:] == ["micdisc no sound", "micdisc done"]
+    assert [regs[r] for r in (0x30, 0x44, 0x47)] == [0xBFF1, 0x8ED8, 0x6040]
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1)
+    regs[0x36], regs[0x44] = 0x00FF, 0x8ED8
+    ret, said, regs, writes = run_k6(regs, src=MICDISC, code=build(MICDISC, DISC_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=4, spare=4096)
+    assert ret == -5 and w["bus"] == [] and regs[0x44] == 0x8ED8 and said[-1] == "micdisc done"
+
+
+# ---- mickey ----
+
+KEY_DEFS = [("N_MAX", "52u"), ("PRE", "300u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"), ("WAIT_MS", "3000u")]
+
+
+def key_run(level=14, spare=4096, tx=None, rx_hz=HOME_HZ, **kw):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1, **kw)
+    tx = {} if tx is None else tx
+    ret, said, regs, writes = run_k6(regs, src=MICKEY, code=build(MICKEY, KEY_DEFS), mmio=mmio, gpiob=gpiob, tune=tune,
+                                     model=gp0, level=level, spare=spare, tx=tx, rx_hz=rx_hz, count=4_000_000_000)
+    return w, tx, ret, said, regs, writes
+
+
+@need_clang
+def test_mickey_sends_its_id_then_reads_every_select_keyed_with_the_pa_off():
+    w, tx, ret, said, regs, writes = key_run()
+    assert ret == 40, said[-4:]
+    assert said[0] == "mickey start 30=bff1 47=6040 rx=1a46d650" and said[-1] == "mickey done"
+    assert all(len(s) <= 60 for s in said) and "mickey sound rssi=-31" in said
+    assert [s for s in said if s.startswith("mickey keyed")] == ["mickey keyed q=0 30=c1fa 36=007f now=c3fa",
+                                                                 "mickey keyed q=1 30=c1fa 36=007f now=c3fa"]
+    log = tx["log"]
+    ons = [i for i, (n, _, _) in enumerate(log) if n == "tx_on"]
+    assert len(ons) == 2 and [log[i][1] for i in ons] == [20000, 20000]
+    for i in ons:                                  # each keyed pass: AG7EW in CW (15 elements), then the PA stays off
+        off = next(k for k in range(i, len(log)) if log[k][0] == "tx_off")
+        pa = [(a, us) for n, a, us in log[i + 1:off]]
+        marks = [(us1 - us0) // 60000 for (a0, us0), (a1, us1) in zip(pa, pa[1:]) if a0 == 1]
+        assert marks == [1, 3, 3, 3, 1, 3, 3, 1, 1, 1, 1, 1, 3, 3], marks
+        assert pa[-1][0] == 0
+        # REG_30 gets the AF DAC and the mic ADC only after the last PA-off, and never another PA-on
+        mic = [us for r, v, us in tx["w"] if r == 0x30 and v & 4 and log[i][2] < us < log[off][2]]
+        assert mic and min(mic) > pa[-1][1]
+    assert {v for r, v, _ in tx["w"] if r == 0x30} == {0xC3FE, 0xC3FA, 0xC1FA}
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040 and w["bus"] == []
+    assert w["tunes"] == [SOUND_HZ, HOME_HZ, HOME_HZ]
+    assert w["moder"] == 0x28000000 and w["odr"] == 0 and w["ospeed"] == 0 and w["amp"] == [False]
+    caps = mp.captures(mp.sections(mp.say_lines("\n".join(said)), "mickey")[0], "mickey", 4)
+    assert "".join(caps) == "0123456789abcdefghijABCDEFGHIJKLMNOPQRST" and all(len(c[0]) == 52 for c in caps.values())
+    assert [(caps[t][1]["m"], caps[t][1]["sel"]) for t in "0123456789abcdefghij"] == \
+        [(1, k) for k in range(16)] + [(0, 1), (0, 3), (0, 4), (0, 9)]
+
+
+@need_clang
+def test_mickey_keys_nothing_off_the_bench_frequency_or_without_a_transmitter():
+    w, tx, ret, said, regs, writes = key_run(rx_hz=441_850_000)
+    assert ret == -2 and "log" not in tx and len(said) == 1
+    w, tx, ret, said, regs, writes = key_run(tx={"on_ret": -1})
+    assert ret == -3 and [n for n, _, _ in tx["log"]].count("tx_on") == 1 and said[-1] == "mickey done"
+    assert not [1 for r, v, _ in tx["w"] if r == 0x30] and regs[0x30] == 0xBFF1
+    w, tx, ret, said, regs, writes = key_run(spare=1024)
+    assert ret == -8 and said == [] and "log" not in tx
 
 
 # ---- micrec ----

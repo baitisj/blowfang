@@ -47,7 +47,7 @@ static void mic_bus_write(const k6_api_t *api, uint32_t reg, uint32_t v) {
 
 /* REG_30's mic ADC and TX DSP bits = on. Returns 0 (taken by fd_write), 1 (by the bus pins),
    or -1: not in receive with the PA off, or the register did not read back. */
-static int mic_state(const k6_api_t *api, uint32_t on) {
+static int __attribute__((unused)) mic_state(const k6_api_t *api, uint32_t on) {
   uint32_t now = api->fd_read(0x30), want = (now & ~MIC_BITS) | (on & MIC_BITS);
   int via = 0;
   if ((now & 0x0008u) || !(now & 0x0001u) || (api->fd_read(0x36) & 0x0080u)) return -1;

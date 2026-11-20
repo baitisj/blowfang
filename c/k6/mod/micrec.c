@@ -1,7 +1,10 @@
-/* micrec: three seconds from the K6's own mic, recorded by the MCU (2026-11-20,
-   docs/k6-mic-probe.md). The route micprobe found and micpin confirmed: the FD6818's mic ADC
-   and TX DSP on while the K6 receives (micadc.h; the PA off, nothing keyed), REG_47's AF output
-   select 4, PA11 as the converter (pa11adc.h) at 200 turns a sample, about 8 kHz.
+/* micrec: three seconds of AF select 4 with the mic ADC and TX DSP on, recorded by the MCU
+   (2026-11-20, docs/k6-mic-probe.md). Written as a recording "from the K6's own mic"; what that
+   select carries in this state is the receiver's raw baseband, and the voice it recorded was
+   the bench's Pluto leaking in by radio (the write-up's "The correction"). Kept as the recorder
+   it is: the FD6818's mic ADC and TX DSP on while the K6 receives (micadc.h; the PA off, nothing
+   keyed), REG_47's AF output select 4, PA11 as the converter (pa11adc.h) at 200 turns a sample,
+   about 8 kHz.
 
    A sample (0 .. 40000) loses its slow part (y - a running mean over 32 samples' worth), is
    scaled by 8 and coded as 4-bit IMA ADPCM into the scratch: as many samples as it holds, two

@@ -6,7 +6,9 @@ the MCU with no hardware change, before anything is built on it. `docs/k6-fd6818
 the standing answer, "no": the mic goes to the FD6818's MICIN pin, and the chip hands the MCU
 meters and decoder results, never samples.
 
-This page is the probe: what was tried, what the radio said, and the one rule it needed.
+This page is the probe: what was tried, what the radio said, and the one rule it needed. It
+also holds a claim that was made and withdrawn the same evening ("the chip can put the mic on
+that pin"), with the runs that took it down, because the way it went wrong is worth keeping.
 
 ## Short answer
 
@@ -17,12 +19,17 @@ This page is the probe: what was tried, what the radio said, and the one rule it
   tone sent to the K6 comes back at 39 to 41 dB SINAD.
 - **The VOX pin is a dead end.** PA0 sits near 0 V in receive and shows neither a waveform nor
   a loudness.
-- **The level is low so far**: a speaker a foot from the mic reads about 26 dB over the
-  converter's floor. Speech at the mic is louder, and the converter has gain left to find.
-- **The chip can put the mic on that pin.** With the mic ADC and the TX DSP switched on while
-  the K6 receives (REG_30 bits 2 and 1; the PA off, nothing keyed), REG_47's AF output select 4
-  carries the mic's audio, and PA11 reads it: a 1 kHz tone played at the mic comes back with its
-  harmonics, and three seconds of speech come back as speech (`c/k6/mod/micrec.c`).
+- **The mic does not reach the MCU in receive.** With the mic ADC and the TX DSP switched on
+  while the K6 receives (REG_30 bits 2 and 1; the PA off, nothing keyed), no AF output select,
+  no GP0 select and no register carries the mic. For an hour select 4 looked like it did: a
+  tone and a voice "played at the mic" came back on it. They had come by radio. That select is
+  the receiver's raw baseband, and the Pluto that fed the room's speaker was leaking into it
+  ("The correction", below; Jeff's ear caught it: "sounds like mic audio is mixed with fm
+  audio").
+- **Nor keyed, nor by the guide's "DISC baseband" mode.** Keyed with the PA off, every AF
+  select is silent with the mic ADC on. REG_44 bit 0, where the FD6818 guide switches the mic
+  pin into the receive audio chain, changes nothing on this chip. So the standing answer holds:
+  **the K6's mic cannot reach the MCU without a hardware change.**
 - **No flash was needed.** The probe sets the two bits over the chip's bus pins, under the rule
   API level 14 will give `fd_write` (below).
 
@@ -133,6 +140,9 @@ Probe 2 has to turn the chip's mic ADC on while it receives, which is REG_30 bit
 
 ## Probe 2: the mic ADC on, with no flash
 
+(Read this section with "The correction" after it: the measurements stand, the reading of
+select 4 as the mic does not. Every "sound" pass here had the Pluto on the air on 445.850 MHz.)
+
 Jeff chose (2026-11-19) not to flash for the probe: where `fd_write` refuses REG_30, the
 module writes that one register over the chip's bus pins itself (PB3 SCN, PB5 SCK, PB6 SDA,
 as Aura's driver does), under level 14's rule and no other: only bits 2 and 1 change, never
@@ -170,11 +180,10 @@ about the sound in the room. State 1 (the mic ADC on) reads the same.
 
 **State 2 (the mic ADC and the TX DSP on) silences the AF pin**: all sixteen selects sit at
 the converter's floor (0.0002) in the quiet pass. In the sound pass fifteen still do, and
-**select 4 reads 0.0026, with its energy at 1 kHz and 3 kHz**: the mic's audio, by way of the
-transmit side's audio chain (the 3 kHz is the small speaker's third harmonic, lifted by the
-pre-emphasis), on the AF pin where PA11 reads it.
+**select 4 reads 0.0026, with its energy at 1 kHz and 3 kHz**. This was read as the mic's audio
+by way of the transmit side's audio chain. It was the Pluto's signal (below).
 
-Nothing else followed the sound:
+Nothing else followed the sound, or the Pluto:
 
 - GP0: selects 9 and 11 wander by themselves in every state, 12 to 15 are bit streams whose
   density does not move at 1 kHz, the rest are constant.
@@ -183,14 +192,14 @@ Nothing else followed the sound:
   4 in every state, and nothing reads fast enough to matter.
 - PA0 stays at 0 to 2 counts.
 
-### micpin: the hit, looked at properly
+### micpin: the hit, looked at more closely (and still misread)
 
 `c/k6/mod/micpin.c` holds state 2 and select 4 and takes whole captures. Run micp3a,
 2026-11-20 02:47 UTC, the same tone from the same radio:
 
 | Capture | 300-3000 Hz rms | 1 kHz | 3 kHz | |
 | --- | --- | --- | --- | --- |
-| Q: the room quiet | 0.00054 | | | room noise: three times the converter's floor |
+| Q: the room quiet, the Pluto off | 0.00054 | | | three times the converter's floor |
 | a: select 4, gains as found | 0.0023 | 0.0019 | 0.0018 | also 2, 4 and 5 kHz, and 120, 240, 360 Hz |
 | b: REG_48's AF gain 2 at its most | 0.0030 | 0.0027 | 0.0020 | +2 dB |
 | c: and REG_7D's mic sensitivity at its most | 0.0026 | 0.0022 | 0.0018 | no more |
@@ -199,20 +208,17 @@ Nothing else followed the sound:
 | f: as c, the TX DSP off again | 0.035 | | | the receiver's noise is back and covers it |
 | L: as c, 0.72 s at 9 kHz | 0.0034 | 0.0025 | 0.0014 | the first one listened to |
 
-Four separate captures carry the tone at 1,000 Hz with its harmonic series; the 120 Hz series
-is mains hum from the monitoring radio's speaker, which the mic heard too. The quiet capture
-and select 5 carry neither. So:
+Four separate captures carry the tone at 1,000 Hz with harmonics and a 120 Hz series; the quiet
+capture and select 5 carry neither. At the time this read as a recipe for the mic (state 2,
+select 4), with the 120 Hz series as hum from the monitoring radio's speaker and the harmonics
+as that speaker's distortion. What the table does show:
 
-- **The recipe:** REG_30 bits 2 and 1 set (the mic ADC and the TX DSP) with the chip otherwise
-  in receive, REG_47's select at 4, the amplifier off, PA11 as the converter.
-- **The TX DSP is needed.** With the mic ADC alone, select 4 carries the receiver's own
-  baseband noise. With the TX DSP on the receive audio stops and the transmit side's audio
-  (mic, pre-emphasis, its filters) takes its place on that select.
-- **The level:** the whole mic signal is 0.0034 of full scale against a floor of 0.00017, 26 dB,
-  for a small speaker a foot away. The AF gain register gives 2 dB and the mic sensitivity
-  register nothing (the transmit side has its own gain control).
+- with the mic ADC alone, select 4 carries the receiver's noise; with the TX DSP on as well the
+  receive audio stops and select 4 goes quiet until a strong signal is on the air;
+- neither the AF gain register nor the mic sensitivity register moves the level by much, which
+  was a hint: a mic signal would have followed REG_7D.
 
-### micrec: three seconds of speech
+### micrec: three seconds of "speech"
 
 `c/k6/mod/micrec.c` records as long as the scratch allows: the converter at 200 turns a
 sample (8 kHz), each sample less its running mean, times 8, as 4-bit IMA ADPCM (25,584
@@ -222,24 +228,112 @@ writes two WAVs: as recorded, and with the pre-emphasis undone.
 Run micp4a, 2026-11-20 02:56 UTC: the Pluto sends a 12 s voice clip (a LibriSpeech reader) on
 445.850 MHz, and the monitoring radio's speaker is a foot from the K6. 25,584 samples at
 7,954 Hz, none clipped. The recording's loudness follows the clip's from 1.55 s in, which is
-where the recording began (envelope correlation 0.62), but the speech stands only about 9 dB
-over a steady floor: room noise, and the monitoring radio's hum at 120, 240 and 360 Hz. That
-floor is acoustic. The quiet room already reads three times the converter's own noise, and
-the mic is made for a mouth an inch away, not a speaker a foot away.
+where the recording began (envelope correlation 0.62), with the speech only a few dB over a
+steady floor. Jeff listened: "sounds like mic audio is mixed with fm audio".
 
-## What a product needs from here
+Run micp4b, 03:03 UTC, the speaker moved to an inch from the mic: no louder. Above 600 Hz the
+two recordings are the same size within 1 dB, the 120 Hz line doubled, and the match to the
+clip fell to 0.26. A voice twelve times closer should have come up about 20 dB.
 
-- **The converter on a timer interrupt.** As a module it takes the whole CPU while it runs
-  (constant-time bit-banging), so a recording is as long as the RAM that holds it. A sotto
-  encoder beside it needs the loop in the firmware, on a timer: about 75 CPU cycles a turn at
-  200 kHz is 16 % of the CPU and, by the first-order rule, still some 40 dB in a 3 kHz band.
-  The slim sotto 1200 encoder takes 27 % (sotto's `docs/slim-encoder.md`).
-- **More level.** The converter's full scale is set by the charge of its two pulses (6 CPU
-  cycles through 4.7k). Shorter pulses, or the pin's 40k pull resistors in place of the
-  pull-down's drive, make the same audio a larger share of full scale. Untried.
-- **The pre-emphasis undone** (one pole, in the encoder's front end) and the receive audio's
-  return when the mic bits are cleared, which the core's retune already does.
-- **API level 14 on the radio**, so that the bits go through `fd_write`.
+## The correction: it came by radio
 
-Whatever becomes of the mic, received audio is within the MCU's reach by the same pin: the
-slim encoder can also be fed from a voice the K6 hears on FM.
+`c/k6/mod/miclvl.c` holds the same state and select and takes one 84 ms capture a second for
+48 s, in rotation: the route as above, the mic ADC off (the TX DSP alone), and REG_19's bit 15
+flipped (the chip's mic AGC, on in 0x1041). Four runs, 2026-11-20 03:17 to 03:34 UTC:
+
+**micp5d: a 1 kHz tone at the mic in steps of loudness** (the Pluto on 445.850 MHz at 3,000,
+1,500, 750, 375 Hz deviation, then carrier only; the monitoring radio an inch from the mic).
+Of full scale:
+
+| Step | 1 kHz | 2 kHz | 3 kHz | 119 Hz |
+| --- | --- | --- | --- | --- |
+| full | 0.0020 | 0.0002 | 0.0018 | 0.0057 |
+| half | 0.0003 | 0.0027 | 0.0004 | 0.0055 |
+| quarter | 0.0037 | 0.0006 | 0.0002 | 0.0060 |
+| eighth | 0.0014 | 0.0002 | 0.0001 | 0.0057 |
+| carrier only | 0.0003 | 0.0003 | 0.0002 | 0.0058 |
+
+The level does not follow the loudness: at half the fundamental is gone and the second
+harmonic stands alone. No speaker does that. An FM signal's envelope does (Bessel terms of the
+deviation, odd or even by the phase the modulation happens to stop at). The mic ADC bit and
+the AGC bit change nothing in any step, and the 119 Hz series is there whenever the Pluto's
+carrier is, tone or no tone.
+
+**micp5e: Jeff's test, a 700 Hz tone on the K6's own channel** (the Pluto on 440.850 MHz, -71
+dBm, nothing playing in the room). The carrier alone puts a line at 1,214 Hz on select 4,
+0.010 of full scale: the carrier itself, shifted down by the difference between the Pluto's
+frequency and the chip's. With the tone on, the line grows sidebands 700 Hz apart (524, 1,917,
+2,619 Hz). **Select 4 with the TX DSP on is the receiver's baseband before any demodulator**,
+which is what the BK4819's register notes call selects 4 and 5 ("baseband", for SSB).
+
+**micp5f: the control, the stepped tone on 446.850 MHz**, a channel no radio in the room
+listens to, so nothing plays. The K6 records the same table as micp5d, step for step (1 kHz
+0.0021, 0.0004, 0.0036, 0.0015; the same 119 Hz series). The sound was never needed.
+
+**micp5g: the Pluto's power stepped** (the quarter-level tone on 445.850 MHz at gain -30, -38,
+-46 dB; the room's tone the same each time, since an FM receiver's volume does not follow the
+signal's strength). The 119 Hz line falls from 0.0053 to 0.0008 for 8 dB less power, 16 dB,
+and is gone at 16 dB less: a second-order leak, 2 dB for each dB. The tone goes with it. With
+the leak gone and the speaker still an inch from the mic, no steady tone is left above 0.0004
+of full scale (receive audio on the same pin: 0.06 to 0.09).
+
+So the "mic route" was this: the Pluto's transmission is not pure FM (its carrier leak beats
+with the FM signal, and it carries a 119 Hz ripple), a signal 5 or 6 MHz off the K6's channel
+at -61 dBm reaches the chip's mixer, the mixer's second-order term turns that signal's envelope
+into baseband, and select 4 hands the baseband to PA11. Every "sound" test had the Pluto on
+the air, and none had the Pluto on the air without the sound until micp5f.
+
+Three things to keep:
+
+- **A sound source fed by a transmitter needs its control**: the transmitter on with no sound
+  (another channel), or the sound with no transmitter. At gain -46 the Pluto still drives the
+  room's radio and leaks nothing the converter can see: that is the clean way to play a sound
+  at the K6.
+- **The converter has a 1 kHz line of its own**, 0.0005 to 0.0012 of full scale with a second
+  harmonic, there with no signal at all (most likely the firmware's 1 ms interrupt stretching
+  one turn in every thousand or so). Test tones should sit elsewhere, and a firmware version of
+  the converter on its own timer would not have it.
+- **A wake carrier before the upload**: the K6 leaves its upload screen after 60 s and its
+  EXPLORE screen can be deaf to the bench channel for a minute at a time (it was, for the first
+  try at micp5d). The jobs since send 65 s of Morse ID on 440.850 MHz first.
+
+## Two more tries, with a clean sound
+
+Both use the Pluto at gain -46 dB to play a 1,300 Hz tone through the room's radio (no leak,
+and clear of the converter's own 1 kHz line), and take the same captures with the room quiet.
+
+**micdisc: the guide's DISC baseband mode** (run micp6a, 03:41 UTC). The FD6818 guide has a
+mode for sets whose receiver is another chip: that receiver's discriminator goes into MICIN and
+the chip runs it through its receive audio chain to AFOUT, switched on by REG_44 bit 0 with the
+mic ADC beside the RX DSP. If this chip had it, the mic would come out of the AF pin like
+received audio. `c/k6/mod/micdisc.c` flips the bit (0x8ED8 to 0x8ED9) and reads all sixteen
+selects with the mic ADC on, and three with the TX DSP on too. The table is the receive table
+of probe 2 again: the receiver's hiss on select 1 (0.062 of full scale) whether the bit is set
+or not, the same twelve noisy selects, no 1,300 Hz anywhere. The bit does something else here,
+or nothing (the guide describes chip ID 0x6818; this one reads 0x4819).
+
+**mickey: keyed** (run micp7a, 03:45 UTC; Jeff chose "one keyed probe, then stop").
+`c/k6/mod/mickey.c` keys up on 440.850 MHz (`tx_on`, the core's guards), sends AG7EW in CW with
+the PA, then with the PA off and the chip still in its transmit state (REG_30 = 0xC1FA) sets
+the AF DAC and mic ADC bits (0xC3FE, over the bus pins; never with the PA on, so the mic is
+never on the air) and reads the sixteen selects, then four with the mic ADC off. Twenty
+captures quiet and twenty with the tone: all forty sit at the converter's floor, 0.00014 to
+0.00024 of full scale, with nothing at 1,300 Hz above 0.00007. Keyed, the chip puts nothing on
+its AF pin at all.
+
+## Where this leaves the K6
+
+- **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or
+  off, and with the guide's DISC bit: no AF select, GP0 select or register carries it. What is
+  left is hardware (a wire from the mic to an ADC pin), which Jeff has ruled out. The probe
+  stops here.
+- **Received audio is within the MCU's reach** by the beep pin: the slim sotto 1200 encoder
+  (27 % of the CPU, sotto's `docs/slim-encoder.md`) can be fed from a voice the K6 hears on FM.
+  For that the converter belongs on a timer interrupt in the firmware: as a module it takes the
+  whole CPU while it runs (constant-time bit-banging), so a recording is as long as the RAM
+  that holds it. About 75 CPU cycles a turn at 200 kHz is 16 % of the CPU and, by the
+  first-order rule, still some 40 dB in a 3 kHz band.
+- **The baseband select is a find of its own**: with the TX DSP bit on, select 4 gives the MCU
+  the channel before the FM demodulator, as audio (a carrier 1.2 kHz off tune is a 1.2 kHz
+  tone). That is a second way to a receiver in software, beside GP0's 1-bit stream
+  (`docs/k6-i2s-probe.md`), and it needs API level 14 or the bus-pin write.
