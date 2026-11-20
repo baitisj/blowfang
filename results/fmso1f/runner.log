@@ -1,0 +1,39 @@
+2026-11-20T09:44:30Z job fmso1f by fmsotto, checkout /home/baitisj/blowfang-work/worktrees/inbox-9c28c0ce0ff5 at 9c28c0ce0ff568a9429369ce90fab3b68a50b73b
+2026-11-20T09:44:30Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold fmsotto -- timeout -s INT --kill-after=10 1100 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/fmso1f/k6.log
+2026-11-20T09:44:32Z step 1 (logger) rc=0
+2026-11-20T09:44:35Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-20T09:44:35Z step 2 (ic7100.tune) rc=0
+2026-11-20T09:44:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9c28c0ce0ff5/tools/pluto_bench.py --as fmsotto send /home/baitisj/blowfang-work/runs/inbox/fmso1f/wake.wav --hz 440850000 --dev 3000 --gain -30
+send: wav peak 0.833 of full scale -> 2500 Hz before pre-emphasis
+send wake.wav: 73.2 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 09:44:36Z
+end 09:45:49Z: 73.2 s of signal in 73.1 s (kept up)
+2026-11-20T09:45:49Z step 3 (pluto) rc=0
+2026-11-20T09:45:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9c28c0ce0ff5/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/fmso1f/fmsotto.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --api-level 13 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/fmso1f/k6-rate.json --telemetry 0 --rounds 1 --run-s 0
+01:45:53 send 1: 88 of 88 XL chunks at F/1800 (serial 1795167951, xfer 207); module /home/baitisj/blowfang-work/runs/inbox/fmso1f/fmsotto.bin: 10646 B code, entry +16, API level 13, serial 1795167951, xfer 207, 10670 B image in 88 XL chunks; 176 packets, 113.2 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 120.6 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 09:45:54Z
+end 09:47:54Z: 120.6 s of signal in 120.5 s (kept up)
+01:47:54 listening for the K6's report
+01:48:21 no report heard
+01:48:21 no report after a whole send: the K6 may be set to L packets, so the next send is 184 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 88 chunks sent were lost
+01:48:22 CW ID
+2026-11-20T09:48:22Z step 4 (k6.upload) rc=0
+2026-11-20T09:48:22Z seen /fms start/ in /home/baitisj/blowfang-work/runs/queue/fmso1f/k6.log
+2026-11-20T09:48:22Z step 5 (wait) rc=0
+2026-11-20T09:48:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9c28c0ce0ff5/tools/pluto_bench.py --as fmsotto send /home/baitisj/blowfang-work/runs/inbox/fmso1f/voices.wav --hz 440850000 --dev 6723 --gain -30 --preemph
+send: wav peak 1.000 of full scale -> 6723 Hz before pre-emphasis
+send voices.wav: 34.4 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 09:48:23Z
+end 09:48:57Z: 34.4 s of signal in 34.3 s (kept up)
+2026-11-20T09:48:57Z step 6 (pluto) rc=0
+2026-11-20T09:49:25Z seen /fms end/ in /home/baitisj/blowfang-work/runs/queue/fmso1f/k6.log
+2026-11-20T09:49:25Z step 7 (wait) rc=0
+2026-11-20T09:49:30Z step 8 (wait) rc=0
+2026-11-20T09:49:30Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release fmsotto
+the port is free (fmsotto let go)
+2026-11-20T09:49:31Z step 9 (logger.stop) rc=0
+2026-11-20T09:49:31Z job fmso1f done

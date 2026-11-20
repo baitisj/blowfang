@@ -1,12 +1,81 @@
 {
  "id": "fmso1f",
- "status": "running",
- "since": "2026-11-20T09:44:28Z",
+ "who": "fmsotto",
+ "started": "2026-11-20T09:44:30Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T09:44:30Z",
+   "ended": "2026-11-20T09:44:32Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-20T09:44:32Z",
+   "ended": "2026-11-20T09:44:35Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-20T09:44:35Z",
+   "ended": "2026-11-20T09:45:49Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-20T09:45:49Z",
+   "ended": "2026-11-20T09:48:22Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-20T09:48:22Z",
+   "ended": "2026-11-20T09:48:22Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-20T09:48:22Z",
+   "ended": "2026-11-20T09:48:57Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-20T09:48:57Z",
+   "ended": "2026-11-20T09:49:25Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-20T09:49:25Z",
+   "ended": "2026-11-20T09:49:30Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "logger.stop",
+   "started": "2026-11-20T09:49:30Z",
+   "ended": "2026-11-20T09:49:31Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-9c28c0ce0ff5",
+ "head": "9c28c0ce0ff568a9429369ce90fab3b68a50b73b",
+ "ended": "2026-11-20T09:49:31Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "9ae008389e4148b462b40dcde0f9de8bc057267c",
   "path": "jobs/fmso1f"
  },
  "runner_commit": "9c28c0ce0ff568a9429369ce90fab3b68a50b73b",
- "updated": "2026-11-20T09:44:28Z"
+ "updated": "2026-11-20T09:49:31Z"
 }
