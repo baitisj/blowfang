@@ -1,0 +1,1608 @@
+1795189957.745	?	�s��6{3��6���Vk�C�f{c��+s�F�vf��++���#c+[++���#c+�#�FKk+#�&+�k�F��{�v#�6�c��F���V&c�F&��K��F&����FV&�Kc#�6VV�F�&&f�FM&&v����K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8480 build=305eb04-20261119T2227Z
+1795189969.622	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8480 build=305eb04-20261119T2227Z
+1795189981.501	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8480 build=305eb04-20261119T2227Z
+1795189993.383	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8480 build=305eb04-20261119T2227Z
+1795190005.264	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8450 build=305eb04-20261119T2227Z
+1795190017.147	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-63 batt=8470 build=305eb04-20261119T2227Z
+1795190029.026	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8470 build=305eb04-20261119T2227Z
+1795190033.633	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=0 have=88/88 rssi=-69 noise=17
+1795190034.234	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=1 have=88/88 rssi=-69 noise=18
+1795190035.036	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=2 have=88/88 rssi=-69 noise=18
+1795190035.637	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=3 have=88/88 rssi=-69 noise=17
+1795190036.237	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=4 have=88/88 rssi=-69 noise=17
+1795190036.838	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=5 have=88/88 rssi=-69 noise=17
+1795190037.439	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=6 have=88/88 rssi=-69 noise=16
+1795190038.240	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=7 have=88/88 rssi=-69 noise=18
+1795190038.841	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=8 have=88/88 rssi=-69 noise=17
+1795190039.442	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=9 have=88/88 rssi=-69 noise=16
+1795190040.043	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=10 have=88/88 rssi=-69 noise=17
+1795190040.644	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=11 have=88/88 rssi=-69 noise=17
+1795190041.445	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=12 have=88/88 rssi=-69 noise=17
+1795190042.046	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=13 have=88/88 rssi=-69 noise=19
+1795190042.647	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=14 have=88/88 rssi=-69 noise=16
+1795190043.248	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=15 have=88/88 rssi=-69 noise=15
+1795190043.849	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=16 have=88/88 rssi=-69 noise=17
+1795190044.650	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=17 have=88/88 rssi=-69 noise=17
+1795190045.251	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=18 have=88/88 rssi=-69 noise=17
+1795190045.852	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=19 have=88/88 rssi=-69 noise=16
+1795190046.453	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=20 have=88/88 rssi=-69 noise=16
+1795190047.054	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=21 have=88/88 rssi=-69 noise=17
+1795190047.856	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=22 have=88/88 rssi=-69 noise=17
+1795190048.457	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=23 have=88/88 rssi=-69 noise=15
+1795190049.058	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=24 have=88/88 rssi=-69 noise=17
+1795190049.659	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=25 have=88/88 rssi=-69 noise=15
+1795190050.260	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=26 have=88/88 rssi=-69 noise=17
+1795190051.061	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=27 have=88/88 rssi=-69 noise=16
+1795190051.662	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=28 have=88/88 rssi=-69 noise=17
+1795190052.263	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=29 have=88/88 rssi=-69 noise=17
+1795190052.864	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=30 have=88/88 rssi=-69 noise=16
+1795190053.465	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=31 have=88/88 rssi=-69 noise=17
+1795190054.266	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=32 have=88/88 rssi=-69 noise=16
+1795190054.867	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=33 have=88/88 rssi=-69 noise=17
+1795190055.468	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=34 have=88/88 rssi=-69 noise=17
+1795190056.069	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=35 have=88/88 rssi=-69 noise=15
+1795190056.670	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=36 have=88/88 rssi=-69 noise=17
+1795190057.271	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=37 have=88/88 rssi=-69 noise=16
+1795190058.072	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=38 have=88/88 rssi=-69 noise=15
+1795190058.673	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=39 have=88/88 rssi=-69 noise=17
+1795190059.274	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=40 have=88/88 rssi=-69 noise=17
+1795190059.875	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=41 have=88/88 rssi=-69 noise=17
+1795190060.476	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=42 have=88/88 rssi=-69 noise=16
+1795190061.278	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=43 have=88/88 rssi=-69 noise=17
+1795190061.879	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=44 have=88/88 rssi=-69 noise=16
+1795190062.480	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=45 have=88/88 rssi=-69 noise=17
+1795190063.081	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=46 have=88/88 rssi=-69 noise=16
+1795190063.682	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=47 have=88/88 rssi=-69 noise=16
+1795190064.483	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=48 have=88/88 rssi=-69 noise=18
+1795190065.085	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=49 have=88/88 rssi=-69 noise=16
+1795190065.686	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=50 have=88/88 rssi=-69 noise=17
+1795190066.287	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=51 have=88/88 rssi=-69 noise=16
+1795190066.888	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=52 have=88/88 rssi=-69 noise=17
+1795190067.689	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=53 have=88/88 rssi=-69 noise=16
+1795190068.290	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=54 have=88/88 rssi=-69 noise=19
+1795190068.891	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=55 have=88/88 rssi=-69 noise=17
+1795190069.492	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=56 have=88/88 rssi=-69 noise=18
+1795190070.093	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=57 have=88/88 rssi=-69 noise=15
+1795190070.894	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=58 have=88/88 rssi=-69 noise=18
+1795190071.495	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=59 have=88/88 rssi=-69 noise=16
+1795190072.096	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=60 have=88/88 rssi=-69 noise=15
+1795190072.698	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=61 have=88/88 rssi=-69 noise=18
+1795190073.299	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=62 have=88/88 rssi=-69 noise=15
+1795190074.100	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=63 have=88/88 rssi=-69 noise=17
+1795190074.701	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=64 have=88/88 rssi=-69 noise=16
+1795190075.302	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=65 have=88/88 rssi=-69 noise=17
+1795190075.903	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=66 have=88/88 rssi=-69 noise=17
+1795190076.504	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=67 have=88/88 rssi=-69 noise=16
+1795190077.305	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=68 have=88/88 rssi=-69 noise=17
+1795190077.906	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=69 have=88/88 rssi=-69 noise=17
+1795190078.507	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=70 have=88/88 rssi=-69 noise=16
+1795190079.108	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=71 have=88/88 rssi=-69 noise=16
+1795190079.709	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=72 have=88/88 rssi=-69 noise=17
+1795190080.310	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=73 have=88/88 rssi=-69 noise=17
+1795190081.111	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=74 have=88/88 rssi=-69 noise=17
+1795190081.712	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=75 have=88/88 rssi=-69 noise=18
+1795190082.313	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=76 have=88/88 rssi=-69 noise=15
+1795190082.914	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=77 have=88/88 rssi=-69 noise=17
+1795190083.515	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=78 have=88/88 rssi=-69 noise=15
+1795190084.317	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=79 have=88/88 rssi=-69 noise=15
+1795190084.918	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=80 have=88/88 rssi=-69 noise=16
+1795190085.519	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=81 have=88/88 rssi=-69 noise=18
+1795190086.120	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=82 have=88/88 rssi=-69 noise=17
+1795190086.721	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=83 have=88/88 rssi=-69 noise=17
+1795190087.522	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=84 have=88/88 rssi=-69 noise=17
+1795190088.123	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=85 have=88/88 rssi=-69 noise=18
+1795190088.724	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=86 have=88/88 rssi=-69 noise=17
+1795190089.325	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=87 have=88/88 rssi=-69 noise=18
+1795190089.926	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=88 have=88/88 rssi=-69 noise=17
+1795190090.727	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=89 have=88/88 rssi=-69 noise=16
+1795190091.329	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=90 have=88/88 rssi=-69 noise=16
+1795190091.930	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=91 have=88/88 rssi=-69 noise=16
+1795190092.531	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=92 have=88/88 rssi=-69 noise=17
+1795190093.132	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=93 have=88/88 rssi=-69 noise=17
+1795190093.933	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=94 have=88/88 rssi=-69 noise=18
+1795190094.534	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=95 have=88/88 rssi=-69 noise=18
+1795190095.135	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=96 have=88/88 rssi=-69 noise=16
+1795190095.736	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=97 have=88/88 rssi=-69 noise=15
+1795190096.336	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=98 have=88/88 rssi=-69 noise=16
+1795190097.138	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=99 have=88/88 rssi=-69 noise=18
+1795190097.739	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=100 have=88/88 rssi=-69 noise=16
+1795190098.340	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=101 have=88/88 rssi=-69 noise=17
+1795190098.941	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=102 have=88/88 rssi=-69 noise=18
+1795190099.542	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=103 have=88/88 rssi=-69 noise=18
+1795190100.343	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=104 have=88/88 rssi=-69 noise=17
+1795190100.944	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=105 have=88/88 rssi=-69 noise=17
+1795190101.545	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=106 have=88/88 rssi=-69 noise=15
+1795190102.147	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=107 have=88/88 rssi=-69 noise=19
+1795190102.748	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=108 have=88/88 rssi=-69 noise=17
+1795190103.549	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=109 have=88/88 rssi=-69 noise=16
+1795190104.150	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=110 have=88/88 rssi=-69 noise=17
+1795190104.751	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=111 have=88/88 rssi=-69 noise=17
+1795190105.352	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=112 have=88/88 rssi=-69 noise=16
+1795190105.953	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=113 have=88/88 rssi=-69 noise=17
+1795190106.554	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=114 have=88/88 rssi=-69 noise=17
+1795190107.355	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=115 have=88/88 rssi=-69 noise=15
+1795190107.956	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=116 have=88/88 rssi=-69 noise=17
+1795190108.557	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=117 have=88/88 rssi=-69 noise=17
+1795190109.158	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=118 have=88/88 rssi=-69 noise=17
+1795190109.759	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=119 have=88/88 rssi=-69 noise=17
+1795190110.560	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=120 have=88/88 rssi=-69 noise=16
+1795190111.161	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=121 have=88/88 rssi=-69 noise=17
+1795190111.762	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=122 have=88/88 rssi=-69 noise=18
+1795190112.363	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=123 have=88/88 rssi=-69 noise=17
+1795190112.964	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=124 have=88/88 rssi=-69 noise=16
+1795190113.765	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=125 have=88/88 rssi=-69 noise=17
+1795190114.366	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=126 have=88/88 rssi=-69 noise=16
+1795190114.967	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=127 have=88/88 rssi=-69 noise=18
+1795190115.568	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=128 have=88/88 rssi=-69 noise=17
+1795190116.169	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=129 have=88/88 rssi=-69 noise=19
+1795190116.971	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=130 have=88/88 rssi=-69 noise=17
+1795190117.571	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=131 have=88/88 rssi=-69 noise=17
+1795190118.173	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=132 have=88/88 rssi=-69 noise=16
+1795190118.773	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=0 have=88/88 rssi=-69 noise=17
+1795190119.374	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=1 have=88/88 rssi=-69 noise=16
+1795190120.176	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=2 have=88/88 rssi=-69 noise=17
+1795190120.777	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=3 have=88/88 rssi=-69 noise=17
+1795190121.378	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=4 have=88/88 rssi=-69 noise=16
+1795190121.979	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=5 have=88/88 rssi=-69 noise=17
+1795190122.579	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=6 have=88/88 rssi=-69 noise=17
+1795190123.381	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=7 have=88/88 rssi=-69 noise=16
+1795190123.982	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=8 have=88/88 rssi=-69 noise=16
+1795190124.583	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=9 have=88/88 rssi=-69 noise=16
+1795190125.184	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=10 have=88/88 rssi=-69 noise=17
+1795190125.785	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=11 have=88/88 rssi=-69 noise=17
+1795190126.586	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=12 have=88/88 rssi=-69 noise=15
+1795190127.187	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=13 have=88/88 rssi=-69 noise=18
+1795190127.788	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=14 have=88/88 rssi=-69 noise=16
+1795190128.389	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=15 have=88/88 rssi=-69 noise=16
+1795190128.990	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=16 have=88/88 rssi=-69 noise=18
+1795190129.591	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=17 have=88/88 rssi=-69 noise=17
+1795190130.393	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=18 have=88/88 rssi=-69 noise=17
+1795190130.994	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=19 have=88/88 rssi=-69 noise=17
+1795190131.595	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=20 have=88/88 rssi=-69 noise=18
+1795190132.195	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=21 have=88/88 rssi=-69 noise=16
+1795190132.796	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=22 have=88/88 rssi=-69 noise=17
+1795190133.598	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=23 have=88/88 rssi=-69 noise=16
+1795190134.199	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=24 have=88/88 rssi=-69 noise=16
+1795190134.800	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=25 have=88/88 rssi=-69 noise=17
+1795190135.401	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=26 have=88/88 rssi=-69 noise=17
+1795190136.002	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=27 have=88/88 rssi=-69 noise=17
+1795190136.803	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=28 have=88/88 rssi=-69 noise=17
+1795190137.404	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=29 have=88/88 rssi=-69 noise=16
+1795190138.005	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=30 have=88/88 rssi=-69 noise=17
+1795190138.606	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=31 have=88/88 rssi=-69 noise=18
+1795190139.207	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=32 have=88/88 rssi=-69 noise=17
+1795190140.009	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=33 have=88/88 rssi=-69 noise=18
+1795190140.610	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=34 have=88/88 rssi=-69 noise=16
+1795190141.211	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=35 have=88/88 rssi=-69 noise=15
+1795190141.812	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=36 have=88/88 rssi=-69 noise=16
+1795190142.412	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=37 have=88/88 rssi=-69 noise=16
+1795190143.214	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=38 have=88/88 rssi=-69 noise=17
+1795190143.815	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=39 have=88/88 rssi=-69 noise=15
+1795190144.416	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=40 have=88/88 rssi=-69 noise=17
+1795190145.017	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=41 have=88/88 rssi=-69 noise=16
+1795190145.618	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=42 have=88/88 rssi=-69 noise=16
+1795190146.420	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=43 have=88/88 rssi=-69 noise=15
+1795190147.021	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=44 have=88/88 rssi=-69 noise=17
+1795190147.622	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=45 have=88/88 rssi=-69 noise=17
+1795190148.223	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=46 have=88/88 rssi=-69 noise=17
+1795190148.824	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=47 have=88/88 rssi=-69 noise=15
+1795190149.625	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=48 have=88/88 rssi=-69 noise=19
+1795190150.226	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=49 have=88/88 rssi=-69 noise=18
+1795190150.827	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=50 have=88/88 rssi=-69 noise=16
+1795190151.428	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=51 have=88/88 rssi=-69 noise=17
+1795190152.029	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=52 have=88/88 rssi=-69 noise=16
+1795190152.630	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=53 have=88/88 rssi=-69 noise=16
+1795190153.432	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=54 have=88/88 rssi=-69 noise=17
+1795190154.033	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=55 have=88/88 rssi=-69 noise=16
+1795190154.634	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=56 have=88/88 rssi=-69 noise=17
+1795190155.235	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=57 have=88/88 rssi=-69 noise=16
+1795190155.836	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=58 have=88/88 rssi=-69 noise=17
+1795190156.637	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=59 have=88/88 rssi=-69 noise=16
+1795190157.238	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=60 have=88/88 rssi=-69 noise=18
+1795190157.839	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=61 have=88/88 rssi=-69 noise=17
+1795190158.440	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=62 have=88/88 rssi=-69 noise=17
+1795190159.041	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=63 have=88/88 rssi=-69 noise=16
+1795190159.842	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=64 have=88/88 rssi=-69 noise=16
+1795190160.443	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=65 have=88/88 rssi=-69 noise=16
+1795190161.044	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=66 have=88/88 rssi=-69 noise=16
+1795190161.645	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=67 have=88/88 rssi=-69 noise=18
+1795190162.246	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=68 have=88/88 rssi=-69 noise=15
+1795190163.048	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=69 have=88/88 rssi=-69 noise=17
+1795190163.649	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=70 have=88/88 rssi=-69 noise=16
+1795190164.250	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=71 have=88/88 rssi=-69 noise=16
+1795190164.851	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=72 have=88/88 rssi=-69 noise=17
+1795190165.452	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=73 have=88/88 rssi=-69 noise=17
+1795190166.253	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=74 have=88/88 rssi=-69 noise=18
+1795190166.854	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=75 have=88/88 rssi=-69 noise=16
+1795190167.455	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=76 have=88/88 rssi=-69 noise=15
+1795190168.057	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=77 have=88/88 rssi=-69 noise=17
+1795190168.658	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=78 have=88/88 rssi=-69 noise=16
+1795190169.459	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=79 have=88/88 rssi=-69 noise=16
+1795190170.060	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=80 have=88/88 rssi=-69 noise=16
+1795190170.661	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=81 have=88/88 rssi=-69 noise=16
+1795190171.262	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=82 have=88/88 rssi=-69 noise=17
+1795190171.863	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=83 have=88/88 rssi=-69 noise=17
+1795190172.664	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=84 have=88/88 rssi=-69 noise=18
+1795190173.265	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=85 have=88/88 rssi=-69 noise=17
+1795190173.866	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=86 have=88/88 rssi=-69 noise=17
+1795190174.467	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=87 have=88/88 rssi=-69 noise=18
+1795190175.068	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=88 have=88/88 rssi=-69 noise=17
+1795190175.869	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=89 have=88/88 rssi=-69 noise=17
+1795190176.471	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=90 have=88/88 rssi=-69 noise=17
+1795190177.071	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=91 have=88/88 rssi=-69 noise=17
+1795190177.673	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=92 have=88/88 rssi=-69 noise=16
+1795190178.274	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=93 have=88/88 rssi=-69 noise=18
+1795190178.875	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=94 have=88/88 rssi=-69 noise=15
+1795190179.676	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=95 have=88/88 rssi=-69 noise=17
+1795190180.277	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=96 have=88/88 rssi=-69 noise=16
+1795190180.878	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=97 have=88/88 rssi=-69 noise=17
+1795190181.479	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=98 have=88/88 rssi=-69 noise=16
+1795190182.080	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=99 have=88/88 rssi=-69 noise=16
+1795190182.881	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=100 have=88/88 rssi=-69 noise=17
+1795190183.482	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=101 have=88/88 rssi=-69 noise=18
+1795190184.084	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=102 have=88/88 rssi=-69 noise=17
+1795190184.684	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=103 have=88/88 rssi=-69 noise=18
+1795190185.285	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=104 have=88/88 rssi=-69 noise=17
+1795190186.087	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=105 have=88/88 rssi=-69 noise=17
+1795190186.688	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=106 have=88/88 rssi=-69 noise=16
+1795190187.289	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=107 have=88/88 rssi=-69 noise=16
+1795190187.890	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=108 have=88/88 rssi=-69 noise=18
+1795190188.491	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=109 have=88/88 rssi=-69 noise=16
+1795190189.292	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=110 have=88/88 rssi=-69 noise=16
+1795190189.894	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=111 have=88/88 rssi=-69 noise=16
+1795190190.495	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=112 have=88/88 rssi=-69 noise=17
+1795190191.095	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=113 have=88/88 rssi=-69 noise=16
+1795190191.696	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=114 have=88/88 rssi=-69 noise=16
+1795190192.498	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=115 have=88/88 rssi=-69 noise=17
+1795190193.099	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=116 have=88/88 rssi=-69 noise=16
+1795190193.700	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=117 have=88/88 rssi=-69 noise=16
+1795190194.301	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=118 have=88/88 rssi=-69 noise=16
+1795190194.902	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=119 have=88/88 rssi=-69 noise=17
+1795190195.703	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=120 have=88/88 rssi=-69 noise=16
+1795190196.304	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=121 have=88/88 rssi=-69 noise=16
+1795190196.905	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=122 have=88/88 rssi=-69 noise=16
+1795190197.506	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=123 have=88/88 rssi=-69 noise=17
+1795190198.107	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=124 have=88/88 rssi=-69 noise=17
+1795190198.909	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=125 have=88/88 rssi=-69 noise=16
+1795190199.510	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=126 have=88/88 rssi=-69 noise=17
+1795190200.111	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=127 have=88/88 rssi=-69 noise=17
+1795190200.712	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=128 have=88/88 rssi=-69 noise=15
+1795190201.313	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=129 have=88/88 rssi=-69 noise=17
+1795190201.914	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=130 have=88/88 rssi=-69 noise=18
+1795190202.715	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=131 have=88/88 rssi=-69 noise=15
+1795190203.316	305eb04-20261119T2227Z	K6 MOD r=-2 xfer=207 chunk=132 have=88/88 rssi=-69 noise=17
+1795190211.158	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-115 batt=8470 build=305eb04-20261119T2227Z
+1795190223.036	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8470 build=305eb04-20261119T2227Z
+1795190234.913	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-113 batt=8450 build=305eb04-20261119T2227Z
+1795190246.788	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-111 batt=8470 build=305eb04-20261119T2227Z
+1795190258.664	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-109 batt=8490 build=305eb04-20261119T2227Z
+1795190270.540	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8490 build=305eb04-20261119T2227Z
+1795190282.417	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8490 build=305eb04-20261119T2227Z
+1795190294.292	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8470 build=305eb04-20261119T2227Z
+1795190306.169	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-109 batt=8470 build=305eb04-20261119T2227Z
+1795190318.047	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-109 batt=8490 build=305eb04-20261119T2227Z
+1795190329.926	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8490 build=305eb04-20261119T2227Z
+1795190341.803	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-109 batt=8510 build=305eb04-20261119T2227Z
+1795190353.681	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-115 batt=8490 build=305eb04-20261119T2227Z
+1795190365.558	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8480 build=305eb04-20261119T2227Z
+1795190377.436	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-115 batt=8470 build=305eb04-20261119T2227Z
+1795190389.314	305eb04-20261119T2227Z	K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-114 batt=8460 build=305eb04-20261119T2227Z
+1795190394.122	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=0 have=1/85 rssi=-69 noise=15
+1795190394.924	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=1 have=2/85 rssi=-69 noise=16
+1795190395.525	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=2 have=3/85 rssi=-69 noise=17
+1795190396.126	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=3 have=4/85 rssi=-69 noise=16
+1795190396.727	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=4 have=5/85 rssi=-69 noise=18
+1795190397.529	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=5 have=6/85 rssi=-69 noise=17
+1795190398.129	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=6 have=7/85 rssi=-69 noise=17
+1795190398.730	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=7 have=8/85 rssi=-69 noise=16
+1795190399.331	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=8 have=9/85 rssi=-69 noise=17
+1795190399.932	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=9 have=10/85 rssi=-69 noise=18
+1795190400.734	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=10 have=11/85 rssi=-69 noise=17
+1795190401.335	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=11 have=12/85 rssi=-69 noise=16
+1795190401.936	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=12 have=13/85 rssi=-69 noise=17
+1795190402.537	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=13 have=14/85 rssi=-69 noise=17
+1795190403.138	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=14 have=15/85 rssi=-69 noise=18
+1795190403.939	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=15 have=16/85 rssi=-69 noise=17
+1795190404.540	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=16 have=17/85 rssi=-69 noise=17
+1795190405.141	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=17 have=18/85 rssi=-69 noise=17
+1795190405.742	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=18 have=19/85 rssi=-69 noise=16
+1795190406.343	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=19 have=20/85 rssi=-69 noise=16
+1795190406.944	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=20 have=21/85 rssi=-69 noise=17
+1795190407.746	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=21 have=22/85 rssi=-69 noise=16
+1795190408.347	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=22 have=23/85 rssi=-69 noise=17
+1795190408.948	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=23 have=24/85 rssi=-69 noise=15
+1795190409.549	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=24 have=25/85 rssi=-69 noise=17
+1795190410.150	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=25 have=26/85 rssi=-69 noise=17
+1795190410.951	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=26 have=27/85 rssi=-69 noise=17
+1795190411.552	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=27 have=28/85 rssi=-69 noise=16
+1795190412.153	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=28 have=29/85 rssi=-69 noise=17
+1795190412.754	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=29 have=30/85 rssi=-69 noise=17
+1795190413.355	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=30 have=31/85 rssi=-69 noise=15
+1795190414.157	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=31 have=32/85 rssi=-69 noise=17
+1795190414.758	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=32 have=33/85 rssi=-69 noise=18
+1795190415.359	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=33 have=34/85 rssi=-69 noise=16
+1795190415.960	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=34 have=35/85 rssi=-69 noise=16
+1795190416.561	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=35 have=36/85 rssi=-69 noise=16
+1795190417.362	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=36 have=37/85 rssi=-69 noise=17
+1795190417.963	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=37 have=38/85 rssi=-69 noise=17
+1795190418.564	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=38 have=39/85 rssi=-69 noise=16
+1795190419.165	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=39 have=40/85 rssi=-69 noise=16
+1795190419.766	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=40 have=41/85 rssi=-69 noise=15
+1795190420.567	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=41 have=42/85 rssi=-69 noise=18
+1795190421.169	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=42 have=43/85 rssi=-69 noise=16
+1795190421.769	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=43 have=44/85 rssi=-69 noise=16
+1795190422.370	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=44 have=45/85 rssi=-69 noise=16
+1795190422.971	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=45 have=46/85 rssi=-69 noise=18
+1795190423.773	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=46 have=47/85 rssi=-69 noise=17
+1795190424.374	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=47 have=48/85 rssi=-69 noise=17
+1795190424.975	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=48 have=49/85 rssi=-69 noise=17
+1795190425.576	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=49 have=50/85 rssi=-69 noise=17
+1795190426.177	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=50 have=51/85 rssi=-69 noise=14
+1795190426.978	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=51 have=52/85 rssi=-69 noise=16
+1795190427.580	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=52 have=53/85 rssi=-69 noise=17
+1795190428.181	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=53 have=54/85 rssi=-69 noise=18
+1795190428.782	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=54 have=55/85 rssi=-69 noise=16
+1795190429.383	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=55 have=56/85 rssi=-69 noise=17
+1795190429.984	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=56 have=57/85 rssi=-69 noise=17
+1795190430.785	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=57 have=58/85 rssi=-69 noise=15
+1795190431.386	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=58 have=59/85 rssi=-69 noise=16
+1795190431.987	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=59 have=60/85 rssi=-69 noise=17
+1795190432.588	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=60 have=61/85 rssi=-69 noise=16
+1795190433.189	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=61 have=62/85 rssi=-69 noise=17
+1795190433.991	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=62 have=63/85 rssi=-69 noise=16
+1795190434.592	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=63 have=64/85 rssi=-69 noise=18
+1795190435.193	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=64 have=65/85 rssi=-69 noise=17
+1795190435.793	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=65 have=66/85 rssi=-69 noise=16
+1795190436.394	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=66 have=67/85 rssi=-69 noise=17
+1795190437.196	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=67 have=68/85 rssi=-69 noise=15
+1795190437.797	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=68 have=69/85 rssi=-69 noise=17
+1795190438.398	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=69 have=70/85 rssi=-69 noise=16
+1795190438.999	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=70 have=71/85 rssi=-69 noise=16
+1795190439.600	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=71 have=72/85 rssi=-69 noise=17
+1795190440.401	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=72 have=73/85 rssi=-69 noise=16
+1795190441.002	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=73 have=74/85 rssi=-69 noise=17
+1795190441.603	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=74 have=75/85 rssi=-69 noise=17
+1795190442.204	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=75 have=76/85 rssi=-69 noise=16
+1795190442.805	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=76 have=77/85 rssi=-69 noise=17
+1795190443.607	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=77 have=78/85 rssi=-69 noise=16
+1795190444.208	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=78 have=79/85 rssi=-69 noise=17
+1795190444.809	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=79 have=80/85 rssi=-69 noise=15
+1795190445.410	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=80 have=81/85 rssi=-69 noise=17
+1795190446.011	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=81 have=82/85 rssi=-69 noise=16
+1795190446.812	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=82 have=83/85 rssi=-69 noise=18
+1795190447.413	305eb04-20261119T2227Z	K6 MOD r=1 xfer=115 chunk=83 have=84/85 rssi=-69 noise=17
+1795190448.014	305eb04-20261119T2227Z	K6 MOD r=3 xfer=115 chunk=84 have=85/85 rssi=-69 noise=17
+1795190448.014	305eb04-20261119T2227Z	K6 MOD run serial=1795190387 code=10276 B at 0x20001194 stack=2136 B scratch=5108 B
+1795190463.040	305eb04-20261119T2227Z	K6 MOD ret=-12 (0xfffffff4) in 15048 ms stack_free=0 B
+1795190463.040	305eb04-20261119T2227Z	K6 RAM stack ran out (free=0 B): rebooting, no report, no key-up
+1795190463.440	305eb04-20261119T2227Z	 K6 CB r=1 mode=1 crc=d5856ecd ms=99.5
+1795190463.440	305eb04-20261119T2227Z	K6 CB bench n=1000 ms=35.3 us_per_read=35 sum=9ae62243 reads=1000
+1795190463.440	305eb04-20261119T2227Z	K6 VLR r=1 crc=0884ef5c ms=69.8
+1795190463.464	305eb04-20261119T2227Z	K6 ARENA bytes=15408 at 0x20001184 ram0=3820 store=4096 ring=1280 dec=10032 need=3552
+1795190463.464	305eb04-20261119T2227Z	K6 TXDOG on cfgr1=00000002
+1795190463.464	305eb04-20261119T2227Z	K6 FONT 5x7 crc=07acb73c ok=1
+1795190463.464	305eb04-20261119T2227Z	K6 LIB slot=0 r=0 code=9332 serial=1795129129 level=6 flags=1 name=SURF
+1795190463.489	305eb04-20261119T2227Z	K6 LIB slot=1 r=0 code=6118 serial=1795129130 level=2 flags=1 name=AIS SHIPS
+1795190463.489	305eb04-20261119T2227Z	K6 LIB slot=2 r=0 code=6134 serial=1795129131 level=2 flags=1 name=AIS CLOCK
+1795190463.489	305eb04-20261119T2227Z	K6 LIB slot=3 r=0 code=7702 serial=1795129132 level=2 flags=1 name=APRS CLOCK
+1795190463.513	305eb04-20261119T2227Z	K6 LIB slot=4 r=0 code=6399 serial=1795129133 level=8 flags=1 name=ALARM
+1795190463.513	305eb04-20261119T2227Z	K6 LIB slot=5 r=0 code=4051 serial=1795129134 level=2 flags=1 name=MIDI
+1795190463.513	305eb04-20261119T2227Z	K6 LIB slot=6 r=0 code=5302 serial=1795129135 level=6 flags=1 name=MORSE
+1795190463.513	305eb04-20261119T2227Z	K6 LIB slot=7 r=0 code=11747 serial=1795129136 level=6 flags=1 name=GROUNDWAVE
+1795190463.538	305eb04-20261119T2227Z	K6 LIB slot=8 r=0 code=8512 serial=1795129462 level=2 flags=1 name=FUSOTTO RX
+1795190463.538	305eb04-20261119T2227Z	K6 LIB slot=9 r=0 code=3020 serial=1795129124 level=1 flags=3 name=
+1795190463.538	305eb04-20261119T2227Z	K6 LIB slot=10 r=0 code=5804 serial=1795129125 level=1 flags=3 name=
+1795190463.562	305eb04-20261119T2227Z	K6 LIB slot=11 r=0 code=6372 serial=1795129126 level=1 flags=3 name=
+1795190463.562	305eb04-20261119T2227Z	K6 LIB slot=12 r=0 code=3956 serial=1795129127 level=1 flags=3 name=
+1795190463.562	305eb04-20261119T2227Z	K6 LIB slot=13 r=0 code=9376 serial=1795129128 level=1 flags=5 name=
+1795190463.562	305eb04-20261119T2227Z	K6 LIB slot=14 r=0 code=4182 serial=1795162851 level=1 flags=5 name=
+1795190463.587	305eb04-20261119T2227Z	K6 LIB slot=16 r=0 code=5272 serial=1795129137 level=2 flags=1 name=CW LISTEN
+1795190463.587	305eb04-20261119T2227Z	K6 LIB slot=17 r=0 code=6066 serial=1795129138 level=2 flags=1 name=POCSAG
+1795190463.587	305eb04-20261119T2227Z	K6 LIB slot=18 r=0 code=9670 serial=1795129139 level=2 flags=1 name=DMR RX
+1795190463.611	305eb04-20261119T2227Z	K6 LIB slot=19 r=0 code=3896 serial=1795129140 level=2 flags=1 name=SAME RX
+1795190463.611	305eb04-20261119T2227Z	K6 LIB slot=20 r=0 code=9478 serial=1795129141 level=2 flags=1 name=FT8 RX
+1795190463.611	305eb04-20261119T2227Z	K6 LIB slot=21 r=0 code=6163 serial=1795129142 level=2 flags=1 name=RANGE RX
+1795190463.611	305eb04-20261119T2227Z	K6 LIB slot=22 r=0 code=4476 serial=1795129143 level=2 flags=1 name=RX MAP
+1795190463.636	305eb04-20261119T2227Z	K6 LIB slot=23 r=0 code=4914 serial=1795129144 level=2 flags=1 name=WSPR IQ
+1795190463.636	305eb04-20261119T2227Z	K6 LIB slot=24 r=0 code=3346 serial=1795129145 level=5 flags=1 name=STATION LIST
+1795190463.636	305eb04-20261119T2227Z	K6 LIB slot=25 r=0 code=1405 serial=1795129146 level=8 flags=1 name=CLOCK
+1795190463.660	305eb04-20261119T2227Z	K6 LIB slot=26 r=0 code=2693 serial=1795129147 level=3 flags=1 name=FT8 TX
+1795190463.660	305eb04-20261119T2227Z	K6 LIB slot=27 r=0 code=3950 serial=1795129148 level=3 flags=1 name=WSPR TX
+1795190463.660	305eb04-20261119T2227Z	K6 LIB slot=28 r=0 code=4426 serial=1795129149 level=3 flags=1 name=WSPR BEACON
+1795190463.685	305eb04-20261119T2227Z	K6 LIB slot=29 r=0 code=5695 serial=1795129150 level=3 flags=1 name=RANGE TX
+1795190463.685	305eb04-20261119T2227Z	K6 LIB slot=30 r=0 code=2352 serial=1795129151 level=3 flags=1 name=CW KEY
+1795190463.685	305eb04-20261119T2227Z	K6 LIB slot=31 r=0 code=1583 serial=1795129152 level=10 flags=1 name=SETTINGS
+1795190463.685	305eb04-20261119T2227Z	K6 LIB used=31
+1795190463.709	305eb04-20261119T2227Z	K6 CFG why=enter chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=0 bl=0 rssi=0 batt=8410 build=305eb04-20261119T2227Z
+1795190463.909	305eb04-20261119T2227Z	K6 EX at boot (arena: EXIT twice, or the CW wake)
+1795190463.909	305eb04-20261119T2227Z	K6 EX quiet 0 s: EXPLORE
+1795190464.110	305eb04-20261119T2227Z	K6 EX band ALL bins=988 r=0
+1795190464.110	305eb04-20261119T2227Z	K6 EX enter cap=60 rt=11 live=11 repairs=0 xl=280 xd=416
+1795190464.310	305eb04-20261119T2227Z	K6 MOD say F0 -98 q-138: -87 -96 -97 -97 -98 -98 -98 -99
+1795190464.510	305eb04-20261119T2227Z	K6 MOD say F1 -98 q-136: -96 -97 -97 -92 -96 -98 -98 -98
+1795190464.510	305eb04-20261119T2227Z	K6 MOD say F2 -115 q-145: -114 -114 -115 -115 -114 -114 -114 -112
+1795190465.512	305eb04-20261119T2227Z	K6 MOD say S0 0 871 c0 h0
+1795190465.512	305eb04-20261119T2227Z	K6 MOD say S1 0 138 c0 h0
+1795190466.513	305eb04-20261119T2227Z	K6 MOD say S2 0 875 c0 h0
+1795190466.513	305eb04-20261119T2227Z	K6 MOD say N 144.000 -71 fl-98 b0
+1795190466.513	305eb04-20261119T2227Z	K6 MOD say X 144.000 -71
+1795190466.714	305eb04-20261119T2227Z	K6 MOD say N 144.190 -84 fl-98 b19
+1795190466.714	305eb04-20261119T2227Z	K6 MOD say N 144.220 -83 fl-98 b21
+1795190466.914	305eb04-20261119T2227Z	K6 MOD say W 144.190 0 -84 a2919
+1795190466.914	305eb04-20261119T2227Z	K6 MOD say N 144.250 -77 fl-98 b24
+1795190466.914	305eb04-20261119T2227Z	K6 MOD say H 144.220 0 -83 a3023
+1795190467.114	305eb04-20261119T2227Z	K6 MOD say N 144.270 -82 fl-98 b27
+1795190467.114	305eb04-20261119T2227Z	K6 MOD say H 144.250 6 -75 a3153
+1795190467.114	305eb04-20261119T2227Z	K6 MOD say H 144.270 0 -82 a3275
+1795190468.116	305eb04-20261119T2227Z	K6 MOD say F0 -97 q-136: -84 -92 -92 -94 -94 -97 -98 -96
+1795190468.116	305eb04-20261119T2227Z	K6 MOD say B0 5 drop 0
+1795190468.116	305eb04-20261119T2227Z	K6 MOD say S0 1 1657 c5 h5
+1795190468.316	305eb04-20261119T2227Z	K6 MOD say S1 1 159 c0 h0
+1795190468.517	305eb04-20261119T2227Z	K6 MOD say N 440.850 -70 fl-115 b527
+1795190469.318	305eb04-20261119T2227Z	K6 MOD say N 443.525 -84 fl-115 b742
+1795190469.719	305eb04-20261119T2227Z	K6 MOD say S2 1 1366 c6 h2
+1795190469.919	305eb04-20261119T2227Z	K6 MOD say N 144.290 -87 fl-97 b29
+1795190470.119	305eb04-20261119T2227Z	K6 MOD say N 144.320 -87 fl-97 b32
+1795190470.119	305eb04-20261119T2227Z	K6 MOD say W 144.290 0 -87 a6067
+1795190470.119	305eb04-20261119T2227Z	K6 MOD say H 443.525 612 -84 a5485
+1795190470.119	305eb04-20261119T2227Z	K6 MOD say W 144.320 0 -87 a6247
+1795190471.121	305eb04-20261119T2227Z	K6 MOD say S0 2 1461 c3 h2
+1795190471.321	305eb04-20261119T2227Z	K6 MOD say S1 2 174 c0 h0
+1795190472.523	305eb04-20261119T2227Z	K6 MOD say S2 2 1190 c2 h0
+1795190472.523	305eb04-20261119T2227Z	K6 MOD say CWID listen rx=443525000 th=24 s=120
+1795190472.523	305eb04-20261119T2227Z	K6 MOD say DMR listen lvl=-84 frozen=1 adj=7
+1795190472.523	305eb04-20261119T2227Z	K6 EX t started adj=7 known=0
+1795190472.523	305eb04-20261119T2227Z	K6 EX auto 443525000 listens=1 heard=0 max=120
+1795190472.523	305eb04-20261119T2227Z	K6 EX t 0 a 8783
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 0 b r=0
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 0 c
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 1 a 8848
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 1 b r=0
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 1 c
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 2 a 8913
+1795190472.723	305eb04-20261119T2227Z	K6 MOD say CTCSS 1365
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 2 b r=0
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 2 c
+1795190472.723	305eb04-20261119T2227Z	K6 EX t 3 a 8980
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 3 b r=0
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 3 c
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 4 a 9045
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 4 b r=0
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 4 c
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 5 a 9111
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 5 b r=0
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 5 c
+1795190472.924	305eb04-20261119T2227Z	K6 EX t 6 a 9198
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 6 b r=0
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 6 c
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 7 a 9264
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 7 b r=0
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 7 c
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 8 a 9328
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 8 b r=0
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 8 c
+1795190473.124	305eb04-20261119T2227Z	K6 EX t 9 a 9393
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 9 b r=0
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 9 c
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 10 a 9458
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 10 b r=0
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 10 c
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 11 a 9523
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 11 b r=0
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 11 c
+1795190473.324	305eb04-20261119T2227Z	K6 EX t 12 a 9610
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 12 b r=0
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 12 c
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 13 a 9674
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 13 b r=0
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 13 c
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 14 a 9739
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 14 b r=0
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 14 c
+1795190473.524	305eb04-20261119T2227Z	K6 EX t 15 a 9805
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 15 b r=0
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 15 c
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 16 a 9870
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 16 b r=0
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 16 c
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 17 a 9936
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 17 b r=0
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 17 c
+1795190473.725	305eb04-20261119T2227Z	K6 EX t 18 a 10023
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 18 b r=0
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 18 c
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 19 a 10088
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 19 b r=0
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 19 c
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 20 a 10153
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 20 b r=0
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 20 c
+1795190473.925	305eb04-20261119T2227Z	K6 EX t 21 a 10220
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 21 b r=0
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 21 c
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 22 a 10286
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 22 b r=0
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 22 c
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 23 a 10352
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 23 b r=0
+1795190474.125	305eb04-20261119T2227Z	K6 EX t 23 c
+1795190474.326	305eb04-20261119T2227Z	K6 EX t 24 a 10440
+1795190474.326	305eb04-20261119T2227Z	K6 EX t 24 b r=0
+1795190474.326	305eb04-20261119T2227Z	K6 EX t 24 c
+1795190474.326	305eb04-20261119T2227Z	K6 EX t 25 a 10506
+1795190474.326	305eb04-20261119T2227Z	K6 EX t 25 b r=0
+1795190474.326	305eb04-20261119T2227Z	K6 EX t 25 c
+1795190474.326	305eb04-20261119T2227Z	K6 EX t 26 a 10573
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 26 b r=0
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 26 c
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 27 a 10639
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 27 b r=0
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 27 c
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 28 a 10705
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 28 b r=0
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 28 c
+1795190474.526	305eb04-20261119T2227Z	K6 EX t 29 a 10771
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 29 b r=0
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 29 c
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 30 a 10858
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 30 b r=0
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 30 c
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 31 a 10924
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 31 b r=0
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 31 c
+1795190474.726	305eb04-20261119T2227Z	K6 EX t 32 a 10990
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 32 b r=0
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 32 c
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 33 a 11056
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 33 b r=0
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 33 c
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 34 a 11122
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 34 b r=0
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 34 c
+1795190474.927	305eb04-20261119T2227Z	K6 EX t 35 a 11188
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 35 b r=0
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 35 c
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 36 a 11275
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 36 b r=0
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 36 c
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 37 a 11341
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 37 b r=0
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 37 c
+1795190475.127	305eb04-20261119T2227Z	K6 EX t 38 a 11407
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 38 b r=0
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 38 c
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 39 a 11472
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 39 b r=0
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 39 c
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 40 a 11537
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 40 b r=0
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 40 c
+1795190475.327	305eb04-20261119T2227Z	K6 EX t 41 a 11603
+1795190475.527	305eb04-20261119T2227Z	K6 EX t 41 b r=0
+1795190475.527	305eb04-20261119T2227Z	K6 EX t 41 c
+1795190475.527	305eb04-20261119T2227Z	K6 EX t 42 a 11689
+1795190475.527	305eb04-20261119T2227Z	K6 EX t 42 b r=0
+1795190475.527	305eb04-20261119T2227Z	K6 EX t 42 c
+1795190475.527	305eb04-20261119T2227Z	K6 EX t 43 a 11754
+1795190475.527	305eb04-20261119T2227Z	K6 EX t 43 b r=0
+1795190475.528	305eb04-20261119T2227Z	K6 EX t 43 c
+1795190475.528	305eb04-20261119T2227Z	K6 EX t 44 a 11819
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 44 b r=0
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 44 c
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 45 a 11885
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 45 b r=0
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 45 c
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 46 a 11951
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 46 b r=0
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 46 c
+1795190475.728	305eb04-20261119T2227Z	K6 EX t 47 a 12017
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 47 b r=0
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 47 c
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 48 a 12103
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 48 b r=0
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 48 c
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 49 a 12169
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 49 b r=0
+1795190475.928	305eb04-20261119T2227Z	K6 EX t 49 c
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 50 a 12234
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 50 b r=0
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 50 c
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 51 a 12300
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 51 b r=0
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 51 c
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 52 a 12365
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 52 b r=0
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 52 c
+1795190476.128	305eb04-20261119T2227Z	K6 EX t 53 a 12432
+1795190476.328	305eb04-20261119T2227Z	K6 EX t 53 b r=0
+1795190476.328	305eb04-20261119T2227Z	K6 EX t 53 c
+1795190476.328	305eb04-20261119T2227Z	K6 EX t 54 a 12519
+1795190476.328	305eb04-20261119T2227Z	K6 EX t 54 b r=0
+1795190476.328	305eb04-20261119T2227Z	K6 EX t 54 c
+1795190476.328	305eb04-20261119T2227Z	K6 EX t 55 a 12584
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 55 b r=0
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 55 c
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 56 a 12650
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 56 b r=0
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 56 c
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 57 a 12717
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 57 b r=0
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 57 c
+1795190476.529	305eb04-20261119T2227Z	K6 EX t 58 a 12783
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 58 b r=0
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 58 c
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 59 a 12848
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 59 b r=0
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 59 c
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 60 a 12935
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 60 b r=0
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 60 c
+1795190476.729	305eb04-20261119T2227Z	K6 EX t 61 a 13002
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 61 b r=0
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 61 c
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 62 a 13066
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 62 b r=0
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 62 c
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 63 a 13131
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 63 b r=0
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 63 c
+1795190476.929	305eb04-20261119T2227Z	K6 EX t 64 a 13197
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 64 b r=0
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 64 c
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 65 a 13263
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 65 b r=0
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 65 c
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 66 a 13350
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 66 b r=0
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 66 c
+1795190477.130	305eb04-20261119T2227Z	K6 EX t 67 a 13416
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 67 b r=0
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 67 c
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 68 a 13483
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 68 b r=0
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 68 c
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 69 a 13549
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 69 b r=0
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 69 c
+1795190477.330	305eb04-20261119T2227Z	K6 EX t 70 a 13614
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 70 b r=0
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 70 c
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 71 a 13679
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 71 b r=0
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 71 c
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 72 a 13766
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 72 b r=0
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 72 c
+1795190477.530	305eb04-20261119T2227Z	K6 EX t 73 a 13831
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 73 b r=0
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 73 c
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 74 a 13896
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 74 b r=0
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 74 c
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 75 a 13961
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 75 b r=0
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 75 c
+1795190477.730	305eb04-20261119T2227Z	K6 EX t 76 a 14027
+1795190477.931	305eb04-20261119T2227Z	K6 EX t 76 b r=0
+1795190477.931	305eb04-20261119T2227Z	K6 EX t 76 c
+1795190477.931	305eb04-20261119T2227Z	K6 EX t 77 a 14093
+1795190477.931	305eb04-20261119T2227Z	K6 EX t 77 b r=0
+1795190477.931	305eb04-20261119T2227Z	K6 EX t 77 c
+1795190477.931	305eb04-20261119T2227Z	K6 EX t 78 a 14181
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 78 b r=0
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 78 c
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 79 a 14247
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 79 b r=0
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 79 c
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 80 a 14313
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 80 b r=0
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 80 c
+1795190478.131	305eb04-20261119T2227Z	K6 EX t 81 a 14379
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 81 b r=0
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 81 c
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 82 a 14446
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 82 b r=0
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 82 c
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 83 a 14513
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 83 b r=0
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 83 c
+1795190478.331	305eb04-20261119T2227Z	K6 EX t 84 a 14599
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 84 b r=0
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 84 c
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 85 a 14665
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 85 b r=0
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 85 c
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 86 a 14731
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 86 b r=0
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 86 c
+1795190478.532	305eb04-20261119T2227Z	K6 EX t 87 a 14796
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 87 b r=0
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 87 c
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 88 a 14861
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 88 b r=0
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 88 c
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 89 a 14926
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 89 b r=0
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 89 c
+1795190478.732	305eb04-20261119T2227Z	K6 EX t 90 a 15014
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 90 b r=0
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 90 c
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 91 a 15079
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 91 b r=0
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 91 c
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 92 a 15144
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 92 b r=0
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 92 c
+1795190478.932	305eb04-20261119T2227Z	K6 EX t 93 a 15210
+1795190479.132	305eb04-20261119T2227Z	K6 EX t 93 b r=0
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 93 c
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 94 a 15276
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 94 b r=0
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 94 c
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 95 a 15342
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 95 b r=0
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 95 c
+1795190479.133	305eb04-20261119T2227Z	K6 EX t 96 a 15430
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 96 b r=0
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 96 c
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 97 a 15496
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 97 b r=0
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 97 c
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 98 a 15562
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 98 b r=0
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 98 c
+1795190479.333	305eb04-20261119T2227Z	K6 EX t 99 a 15628
+1795190479.533	305eb04-20261119T2227Z	K6 EX t 99 b r=0
+1795190479.533	305eb04-20261119T2227Z	K6 EX t 99 c
+1795190481.336	305eb04-20261119T2227Z	K6 EX t 128 a 17478
+1795190481.336	305eb04-20261119T2227Z	K6 EX t 128 b r=0
+1795190481.336	305eb04-20261119T2227Z	K6 EX t 128 c
+1795190483.339	305eb04-20261119T2227Z	K6 EX t 160 a 19533
+1795190483.339	305eb04-20261119T2227Z	K6 EX t 160 b r=0
+1795190483.339	305eb04-20261119T2227Z	K6 EX t 160 c
+1795190485.342	305eb04-20261119T2227Z	K6 EX t 192 a 21562
+1795190485.342	305eb04-20261119T2227Z	K6 EX t 192 b r=0
+1795190485.342	305eb04-20261119T2227Z	K6 EX t 192 c
+1795190487.345	305eb04-20261119T2227Z	K6 EX t 224 a 23613
+1795190487.546	305eb04-20261119T2227Z	K6 EX t 224 b r=0
+1795190487.546	305eb04-20261119T2227Z	K6 EX t 224 c
+1795190489.549	305eb04-20261119T2227Z	K6 EX t 256 a 25665
+1795190489.549	305eb04-20261119T2227Z	K6 EX t 256 b r=0
+1795190489.549	305eb04-20261119T2227Z	K6 EX t 256 c
+1795190491.552	305eb04-20261119T2227Z	K6 EX t 288 a 27695
+1795190491.552	305eb04-20261119T2227Z	K6 EX t 288 b r=0
+1795190491.552	305eb04-20261119T2227Z	K6 EX t 288 c
+1795190493.555	305eb04-20261119T2227Z	K6 EX t 320 a 29749
+1795190493.555	305eb04-20261119T2227Z	K6 EX t 320 b r=0
+1795190493.555	305eb04-20261119T2227Z	K6 EX t 320 c
+1795190495.558	305eb04-20261119T2227Z	K6 EX t 352 a 31788
+1795190495.758	305eb04-20261119T2227Z	K6 EX t 352 b r=0
+1795190495.758	305eb04-20261119T2227Z	K6 EX t 352 c
+1795190497.761	305eb04-20261119T2227Z	K6 EX t 384 a 33845
+1795190497.761	305eb04-20261119T2227Z	K6 EX t 384 b r=0
+1795190497.761	305eb04-20261119T2227Z	K6 EX t 384 c
+1795190499.764	305eb04-20261119T2227Z	K6 EX t 416 a 35879
+1795190499.764	305eb04-20261119T2227Z	K6 EX t 416 b r=0
+1795190499.765	305eb04-20261119T2227Z	K6 EX t 416 c
+1795190501.768	305eb04-20261119T2227Z	K6 EX t 448 a 37934
+1795190501.768	305eb04-20261119T2227Z	K6 EX t 448 b r=0
+1795190501.768	305eb04-20261119T2227Z	K6 EX t 448 c
+1795190503.771	305eb04-20261119T2227Z	K6 EX t 480 a 39987
+1795190503.971	305eb04-20261119T2227Z	K6 EX t 480 b r=0
+1795190503.972	305eb04-20261119T2227Z	K6 EX t 480 c
+1795190505.774	305eb04-20261119T2227Z	K6 EX t 512 a 42014
+1795190505.975	305eb04-20261119T2227Z	K6 EX t 512 b r=0
+1795190505.975	305eb04-20261119T2227Z	K6 EX t 512 c
+1795190507.978	305eb04-20261119T2227Z	K6 EX t 544 a 44062
+1795190507.979	305eb04-20261119T2227Z	K6 EX t 544 b r=0
+1795190507.979	305eb04-20261119T2227Z	K6 EX t 544 c
+1795190509.982	305eb04-20261119T2227Z	K6 EX t 576 a 46092
+1795190509.982	305eb04-20261119T2227Z	K6 EX t 576 b r=0
+1795190509.982	305eb04-20261119T2227Z	K6 EX t 576 c
+1795190511.986	305eb04-20261119T2227Z	K6 EX t 608 a 48152
+1795190511.986	305eb04-20261119T2227Z	K6 EX t 608 b r=0
+1795190511.986	305eb04-20261119T2227Z	K6 EX t 608 c
+1795190513.989	305eb04-20261119T2227Z	K6 EX t 640 a 50179
+1795190513.989	305eb04-20261119T2227Z	K6 EX t 640 b r=0
+1795190513.989	305eb04-20261119T2227Z	K6 EX t 640 c
+1795190515.993	305eb04-20261119T2227Z	K6 EX t 672 a 52229
+1795190516.194	305eb04-20261119T2227Z	K6 EX t 672 b r=0
+1795190516.194	305eb04-20261119T2227Z	K6 EX t 672 c
+1795190518.198	305eb04-20261119T2227Z	K6 EX t 704 a 54281
+1795190518.198	305eb04-20261119T2227Z	K6 EX t 704 b r=0
+1795190518.198	305eb04-20261119T2227Z	K6 EX t 704 c
+1795190520.201	305eb04-20261119T2227Z	K6 EX t 736 a 56315
+1795190520.201	305eb04-20261119T2227Z	K6 EX t 736 b r=0
+1795190520.201	305eb04-20261119T2227Z	K6 EX t 736 c
+1795190522.204	305eb04-20261119T2227Z	K6 EX t 768 a 58363
+1795190522.204	305eb04-20261119T2227Z	K6 EX t 768 b r=0
+1795190522.204	305eb04-20261119T2227Z	K6 EX t 768 c
+1795190524.207	305eb04-20261119T2227Z	K6 EX t 800 a 60389
+1795190524.207	305eb04-20261119T2227Z	K6 EX t 800 b r=0
+1795190524.207	305eb04-20261119T2227Z	K6 EX t 800 c
+1795190526.210	305eb04-20261119T2227Z	K6 EX t 832 a 62443
+1795190526.411	305eb04-20261119T2227Z	K6 EX t 832 b r=0
+1795190526.411	305eb04-20261119T2227Z	K6 EX t 832 c
+1795190528.414	305eb04-20261119T2227Z	K6 EX t 864 a 64481
+1795190528.415	305eb04-20261119T2227Z	K6 EX t 864 b r=0
+1795190528.415	305eb04-20261119T2227Z	K6 EX t 864 c
+1795190530.417	305eb04-20261119T2227Z	K6 EX t 896 a 66529
+1795190530.418	305eb04-20261119T2227Z	K6 EX t 896 b r=0
+1795190530.418	305eb04-20261119T2227Z	K6 EX t 896 c
+1795190532.421	305eb04-20261119T2227Z	K6 EX t 928 a 68580
+1795190532.421	305eb04-20261119T2227Z	K6 EX t 928 b r=0
+1795190532.421	305eb04-20261119T2227Z	K6 EX t 928 c
+1795190534.425	305eb04-20261119T2227Z	K6 EX t 960 a 70614
+1795190534.625	305eb04-20261119T2227Z	K6 EX t 960 b r=0
+1795190534.625	305eb04-20261119T2227Z	K6 EX t 960 c
+1795190536.428	305eb04-20261119T2227Z	K6 EX t 992 a 72666
+1795190536.628	305eb04-20261119T2227Z	K6 EX t 992 b r=0
+1795190536.628	305eb04-20261119T2227Z	K6 EX t 992 c
+1795190538.632	305eb04-20261119T2227Z	K6 EX t 1024 a 74694
+1795190538.632	305eb04-20261119T2227Z	K6 EX t 1024 b r=0
+1795190538.632	305eb04-20261119T2227Z	K6 EX t 1024 c
+1795190540.635	305eb04-20261119T2227Z	K6 EX t 1056 a 76744
+1795190540.635	305eb04-20261119T2227Z	K6 EX t 1056 b r=0
+1795190540.635	305eb04-20261119T2227Z	K6 EX t 1056 c
+1795190542.638	305eb04-20261119T2227Z	K6 EX t 1088 a 78780
+1795190542.638	305eb04-20261119T2227Z	K6 EX t 1088 b r=0
+1795190542.638	305eb04-20261119T2227Z	K6 EX t 1088 c
+1795190544.642	305eb04-20261119T2227Z	K6 EX t 1120 a 80836
+1795190544.842	305eb04-20261119T2227Z	K6 EX t 1120 b r=0
+1795190544.842	305eb04-20261119T2227Z	K6 EX t 1120 c
+1795190546.846	305eb04-20261119T2227Z	K6 EX t 1152 a 82889
+1795190546.846	305eb04-20261119T2227Z	K6 EX t 1152 b r=0
+1795190546.846	305eb04-20261119T2227Z	K6 EX t 1152 c
+1795190548.849	305eb04-20261119T2227Z	K6 EX t 1184 a 84915
+1795190548.850	305eb04-20261119T2227Z	K6 EX t 1184 b r=0
+1795190548.850	305eb04-20261119T2227Z	K6 EX t 1184 c
+1795190550.852	305eb04-20261119T2227Z	K6 EX t 1216 a 86968
+1795190550.852	305eb04-20261119T2227Z	K6 EX t 1216 b r=0
+1795190550.852	305eb04-20261119T2227Z	K6 EX t 1216 c
+1795190552.855	305eb04-20261119T2227Z	K6 EX t 1248 a 88998
+1795190552.855	305eb04-20261119T2227Z	K6 EX t 1248 b r=0
+1795190552.855	305eb04-20261119T2227Z	K6 EX t 1248 c
+1795190554.857	305eb04-20261119T2227Z	K6 EX t 1280 a 91051
+1795190555.057	305eb04-20261119T2227Z	K6 EX t 1280 b r=0
+1795190555.057	305eb04-20261119T2227Z	K6 EX t 1280 c
+1795190556.859	305eb04-20261119T2227Z	K6 EX t 1312 a 93081
+1795190557.060	305eb04-20261119T2227Z	K6 EX t 1312 b r=0
+1795190557.060	305eb04-20261119T2227Z	K6 EX t 1312 c
+1795190559.062	305eb04-20261119T2227Z	K6 EX t 1344 a 95135
+1795190559.062	305eb04-20261119T2227Z	K6 EX t 1344 b r=0
+1795190559.062	305eb04-20261119T2227Z	K6 EX t 1344 c
+1795190561.065	305eb04-20261119T2227Z	K6 EX t 1376 a 97187
+1795190561.065	305eb04-20261119T2227Z	K6 EX t 1376 b r=0
+1795190561.065	305eb04-20261119T2227Z	K6 EX t 1376 c
+1795190563.067	305eb04-20261119T2227Z	K6 EX t 1408 a 99219
+1795190563.067	305eb04-20261119T2227Z	K6 EX t 1408 b r=0
+1795190563.067	305eb04-20261119T2227Z	K6 EX t 1408 c
+1795190565.070	305eb04-20261119T2227Z	K6 EX t 1440 a 101267
+1795190565.270	305eb04-20261119T2227Z	K6 EX t 1440 b r=0
+1795190565.270	305eb04-20261119T2227Z	K6 EX t 1440 c
+1795190567.272	305eb04-20261119T2227Z	K6 EX t 1472 a 103299
+1795190567.272	305eb04-20261119T2227Z	K6 EX t 1472 b r=0
+1795190567.272	305eb04-20261119T2227Z	K6 EX t 1472 c
+1795190567.673	305eb04-20261119T2227Z	K6 EX t end tone=1365 dmr=0
+1795190567.673	305eb04-20261119T2227Z	K6 MOD say DMR end n=0 h=0 lost=6 steps=1481
+1795190567.673	305eb04-20261119T2227Z	K6 MOD say DMR rate busy=40 ks=5677 ctcss=1365/1264
+1795190567.673	305eb04-20261119T2227Z	K6 MOD say DMR diag e=6 o=0 g=420 clk=1000 kx=5673
+1795190567.873	305eb04-20261119T2227Z	K6 EX t stopped
+1795190567.873	305eb04-20261119T2227Z	K6 EX t applied 1
+1795190567.873	305eb04-20261119T2227Z	K6 EX heard 443525000 tone=1365 dmr=0 rt=1 saved_tone=1365
+1795190567.873	305eb04-20261119T2227Z	K6 MOD say CWID end time msgs=0 short=6
+1795190567.873	305eb04-20261119T2227Z	K6 EX t xl stopped
+1795190567.873	305eb04-20261119T2227Z	K6 EX t monitor off
+1795190568.073	305eb04-20261119T2227Z	K6 MOD say F0 -96 q-136: -87 -92 -93 -93 -93 -96 -95 -98
+1795190568.273	305eb04-20261119T2227Z	K6 MOD say N 144.300 -83 fl-96 b30
+1795190568.273	305eb04-20261119T2227Z	K6 MOD say H 440.850 3803 -69 a4765
+1795190568.273	305eb04-20261119T2227Z	K6 MOD say H 443.525 1963 -85 a6607
+1795190568.473	305eb04-20261119T2227Z	K6 MOD say W 144.300 0 -83 a104327
+1795190569.074	305eb04-20261119T2227Z	K6 MOD say S0 3 1173 c1 h1
+1795190569.274	305eb04-20261119T2227Z	K6 MOD say F1 -94 q-135: -93 -94 -92 -89 -93 -94 -93 -93
+1795190569.474	305eb04-20261119T2227Z	K6 MOD say S1 3 190 c0 h0
+1795190569.675	305eb04-20261119T2227Z	K6 MOD say F2 -110 q-144: -109 -109 -110 -109 -109 -109 -111 -110
+1795190570.075	305eb04-20261119T2227Z	K6 MOD say N 440.925 -92 fl-110 b534
+1795190570.876	305eb04-20261119T2227Z	K6 MOD say S2 3 1354 c2 h1
+1795190571.277	305eb04-20261119T2227Z	K6 MOD say W 144.300 0 -86 a107193
+1795190572.077	305eb04-20261119T2227Z	K6 MOD say S0 4 1163 c1 h1
+1795190572.277	305eb04-20261119T2227Z	K6 MOD say S1 4 238 c0 h0
+1795190573.479	305eb04-20261119T2227Z	K6 MOD say S2 4 1148 c1 h0
+1795190573.479	305eb04-20261119T2227Z	K6 MOD say CWID listen rx=440925000 th=24 s=120
+1795190573.679	305eb04-20261119T2227Z	K6 MOD say DMR listen lvl=-92 frozen=1 adj=8
+1795190573.679	305eb04-20261119T2227Z	K6 MOD say DMR known: shut till clear
+1795190573.679	305eb04-20261119T2227Z	K6 EX t started adj=8 known=1
+1795190573.679	305eb04-20261119T2227Z	K6 EX auto 440925000 listens=1 heard=0 max=120
+1795190573.679	305eb04-20261119T2227Z	K6 EX t 0 a 109766
+1795190573.679	305eb04-20261119T2227Z	K6 EX t 0 b r=0
+1795190573.679	305eb04-20261119T2227Z	K6 EX t 0 c
+1795190573.679	305eb04-20261119T2227Z	K6 EX t 1 a 109831
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 1 b r=0
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 1 c
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 2 a 109896
+1795190573.879	305eb04-20261119T2227Z	K6 MOD say DMR on bs d r2=229 +213
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 2 b r=0
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 2 c
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 3 a 109988
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 3 b r=0
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 3 c
+1795190573.879	305eb04-20261119T2227Z	K6 EX t 4 a 110055
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 4 b r=0
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 4 c
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 5 a 110120
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 5 b r=0
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 5 c
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 6 a 110185
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 6 b r=0
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 6 c
+1795190574.080	305eb04-20261119T2227Z	K6 EX t 7 a 110252
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 7 b r=0
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 7 c
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 8 a 110318
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 8 b r=0
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 8 c
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 9 a 110407
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 9 b r=0
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 9 c
+1795190574.280	305eb04-20261119T2227Z	K6 EX t 10 a 110473
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 10 b r=0
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 10 c
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 11 a 110539
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 11 b r=0
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 11 c
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 12 a 110605
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 12 b r=0
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 12 c
+1795190574.480	305eb04-20261119T2227Z	K6 EX t 13 a 110671
+1795190574.680	305eb04-20261119T2227Z	K6 EX t 13 b r=0
+1795190574.680	305eb04-20261119T2227Z	K6 EX t 13 c
+1795190574.680	305eb04-20261119T2227Z	K6 EX t 14 a 110737
+1795190574.680	305eb04-20261119T2227Z	K6 EX t 14 b r=0
+1795190574.680	305eb04-20261119T2227Z	K6 EX t 14 c
+1795190574.680	305eb04-20261119T2227Z	K6 EX t 15 a 110826
+1795190574.680	305eb04-20261119T2227Z	K6 EX t 15 b r=0
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 15 c
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 16 a 110892
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 16 b r=0
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 16 c
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 17 a 110958
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 17 b r=0
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 17 c
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 18 a 111025
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 18 b r=0
+1795190574.880	305eb04-20261119T2227Z	K6 EX t 18 c
+1795190575.080	305eb04-20261119T2227Z	K6 EX t 19 a 111091
+1795190575.080	305eb04-20261119T2227Z	K6 EX t 19 b r=0
+1795190575.080	305eb04-20261119T2227Z	K6 EX t 19 c
+1795190575.080	305eb04-20261119T2227Z	K6 EX t 20 a 111157
+1795190575.080	305eb04-20261119T2227Z	K6 EX t 20 b r=0
+1795190575.080	305eb04-20261119T2227Z	K6 EX t 20 c
+1795190575.080	305eb04-20261119T2227Z	K6 EX t 21 a 111246
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 21 b r=0
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 21 c
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 22 a 111311
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 22 b r=0
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 22 c
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 23 a 111377
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 23 b r=0
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 23 c
+1795190575.281	305eb04-20261119T2227Z	K6 EX t 24 a 111443
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 24 b r=0
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 24 c
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 25 a 111508
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 25 b r=0
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 25 c
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 26 a 111574
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 26 b r=0
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 26 c
+1795190575.481	305eb04-20261119T2227Z	K6 EX t 27 a 111663
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 27 b r=0
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 27 c
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 28 a 111728
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 28 b r=0
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 28 c
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 29 a 111793
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 29 b r=0
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 29 c
+1795190575.681	305eb04-20261119T2227Z	K6 EX t 30 a 111859
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 30 b r=0
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 30 c
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 31 a 111926
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 31 b r=0
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 31 c
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 32 a 111992
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 32 b r=0
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 32 c
+1795190575.881	305eb04-20261119T2227Z	K6 EX t 33 a 112082
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 33 b r=0
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 33 c
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 34 a 112147
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 34 b r=0
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 34 c
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 35 a 112213
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 35 b r=0
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 35 c
+1795190576.081	305eb04-20261119T2227Z	K6 EX t 36 a 112279
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 36 b r=0
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 36 c
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 37 a 112345
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 37 b r=0
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 37 c
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 38 a 112411
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 38 b r=0
+1795190576.281	305eb04-20261119T2227Z	K6 EX t 38 c
+1795190576.481	305eb04-20261119T2227Z	K6 EX t 39 a 112501
+1795190576.481	305eb04-20261119T2227Z	K6 EX t 39 b r=0
+1795190576.481	305eb04-20261119T2227Z	K6 EX t 39 c
+1795190576.481	305eb04-20261119T2227Z	K6 EX t 40 a 112567
+1795190576.481	305eb04-20261119T2227Z	K6 EX t 40 b r=0
+1795190576.481	305eb04-20261119T2227Z	K6 EX t 40 c
+1795190576.481	305eb04-20261119T2227Z	K6 EX t 41 a 112633
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 41 b r=0
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 41 c
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 42 a 112699
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 42 b r=0
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 42 c
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 43 a 112765
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 43 b r=0
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 43 c
+1795190576.682	305eb04-20261119T2227Z	K6 EX t 44 a 112831
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 44 b r=0
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 44 c
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 45 a 112920
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 45 b r=0
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 45 c
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 46 a 112987
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 46 b r=0
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 46 c
+1795190576.882	305eb04-20261119T2227Z	K6 EX t 47 a 113053
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 47 b r=0
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 47 c
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 48 a 113119
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 48 b r=0
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 48 c
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 49 a 113185
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 49 b r=0
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 49 c
+1795190577.082	305eb04-20261119T2227Z	K6 EX t 50 a 113251
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 50 b r=0
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 50 c
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 51 a 113340
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 51 b r=0
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 51 c
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 52 a 113406
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 52 b r=0
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 52 c
+1795190577.282	305eb04-20261119T2227Z	K6 EX t 53 a 113472
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 53 b r=0
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 53 c
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 54 a 113539
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 54 b r=0
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 54 c
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 55 a 113605
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 55 b r=0
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 55 c
+1795190577.482	305eb04-20261119T2227Z	K6 EX t 56 a 113671
+1795190577.682	305eb04-20261119T2227Z	K6 EX t 56 b r=0
+1795190577.682	305eb04-20261119T2227Z	K6 EX t 56 c
+1795190577.682	305eb04-20261119T2227Z	K6 EX t 57 a 113761
+1795190577.682	305eb04-20261119T2227Z	K6 EX t 57 b r=0
+1795190577.682	305eb04-20261119T2227Z	K6 EX t 57 c
+1795190577.682	305eb04-20261119T2227Z	K6 EX t 58 a 113827
+1795190577.883	305eb04-20261119T2227Z	K6 MOD say DMR off 3967
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 58 b r=0
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 58 c
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 59 a 113919
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 59 b r=0
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 59 c
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 60 a 113986
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 60 b r=0
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 60 c
+1795190577.883	305eb04-20261119T2227Z	K6 EX t 61 a 114051
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 61 b r=0
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 61 c
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 62 a 114116
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 62 b r=0
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 62 c
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 63 a 114181
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 63 b r=0
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 63 c
+1795190578.083	305eb04-20261119T2227Z	K6 EX t 64 a 114246
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 64 b r=0
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 64 c
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 65 a 114335
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 65 b r=0
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 65 c
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 66 a 114402
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 66 b r=0
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 66 c
+1795190578.283	305eb04-20261119T2227Z	K6 EX t 67 a 114468
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 67 b r=0
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 67 c
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 68 a 114535
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 68 b r=0
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 68 c
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 69 a 114601
+1795190578.483	305eb04-20261119T2227Z	K6 MOD say DMR on bs d r2=195 +4918
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 69 b r=0
+1795190578.483	305eb04-20261119T2227Z	K6 EX t 69 c
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 70 a 114693
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 70 b r=0
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 70 c
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 71 a 114759
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 71 b r=0
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 71 c
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 72 a 114825
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 72 b r=0
+1795190578.683	305eb04-20261119T2227Z	K6 EX t 72 c
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 73 a 114890
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 73 b r=0
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 73 c
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 74 a 114956
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 74 b r=0
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 74 c
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 75 a 115022
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 75 b r=0
+1795190578.883	305eb04-20261119T2227Z	K6 EX t 75 c
+1795190579.083	305eb04-20261119T2227Z	K6 EX t 76 a 115111
+1795190579.084	305eb04-20261119T2227Z	K6 EX t 76 b r=0
+1795190579.084	305eb04-20261119T2227Z	K6 EX t 76 c
+1795190579.084	305eb04-20261119T2227Z	K6 EX t 77 a 115176
+1795190579.084	305eb04-20261119T2227Z	K6 EX t 77 b r=0
+1795190579.084	305eb04-20261119T2227Z	K6 EX t 77 c
+1795190579.084	305eb04-20261119T2227Z	K6 EX t 78 a 115241
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 78 b r=0
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 78 c
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 79 a 115307
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 79 b r=0
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 79 c
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 80 a 115372
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 80 b r=0
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 80 c
+1795190579.284	305eb04-20261119T2227Z	K6 EX t 81 a 115438
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 81 b r=0
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 81 c
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 82 a 115527
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 82 b r=0
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 82 c
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 83 a 115592
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 83 b r=0
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 83 c
+1795190579.484	305eb04-20261119T2227Z	K6 EX t 84 a 115657
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 84 b r=0
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 84 c
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 85 a 115722
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 85 b r=0
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 85 c
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 86 a 115788
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 86 b r=0
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 86 c
+1795190579.684	305eb04-20261119T2227Z	K6 EX t 87 a 115854
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 87 b r=0
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 87 c
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 88 a 115943
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 88 b r=0
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 88 c
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 89 a 116008
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 89 b r=0
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 89 c
+1795190579.884	305eb04-20261119T2227Z	K6 EX t 90 a 116073
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 90 b r=0
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 90 c
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 91 a 116138
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 91 b r=0
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 91 c
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 92 a 116203
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 92 b r=0
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 92 c
+1795190580.084	305eb04-20261119T2227Z	K6 EX t 93 a 116269
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 93 b r=0
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 93 c
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 94 a 116357
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 94 b r=0
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 94 c
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 95 a 116422
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 95 b r=0
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 95 c
+1795190580.285	305eb04-20261119T2227Z	K6 EX t 96 a 116487
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 96 b r=0
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 96 c
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 97 a 116552
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 97 b r=0
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 97 c
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 98 a 116617
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 98 b r=0
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 98 c
+1795190580.485	305eb04-20261119T2227Z	K6 EX t 99 a 116683
+1795190580.685	305eb04-20261119T2227Z	K6 EX t 99 b r=0
+1795190580.685	305eb04-20261119T2227Z	K6 EX t 99 c
+1795190582.487	305eb04-20261119T2227Z	K6 EX t 128 a 118564
+1795190582.487	305eb04-20261119T2227Z	K6 EX t 128 b r=0
+1795190582.487	305eb04-20261119T2227Z	K6 EX t 128 c
+1795190584.490	305eb04-20261119T2227Z	K6 EX t 160 a 120600
+1795190584.490	305eb04-20261119T2227Z	K6 EX t 160 b r=0
+1795190584.490	305eb04-20261119T2227Z	K6 EX t 160 c
+1795190586.492	305eb04-20261119T2227Z	K6 EX t 192 a 122666
+1795190586.692	305eb04-20261119T2227Z	K6 EX t 192 b r=0
+1795190586.692	305eb04-20261119T2227Z	K6 EX t 192 c
+1795190588.695	305eb04-20261119T2227Z	K6 EX t 224 a 124703
+1795190588.695	305eb04-20261119T2227Z	K6 EX t 224 b r=0
+1795190588.695	305eb04-20261119T2227Z	K6 EX t 224 c
+1795190588.895	305eb04-20261119T2227Z	K6 MOD say DMR off 10404
+1795190590.697	305eb04-20261119T2227Z	K6 EX t 256 a 126761
+1795190590.697	305eb04-20261119T2227Z	K6 EX t 256 b r=0
+1795190590.697	305eb04-20261119T2227Z	K6 EX t 256 c
+1795190592.699	305eb04-20261119T2227Z	K6 EX t 288 a 128822
+1795190592.699	305eb04-20261119T2227Z	K6 EX t 288 b r=0
+1795190592.699	305eb04-20261119T2227Z	K6 EX t 288 c
+1795190592.899	305eb04-20261119T2227Z	K6 MOD say DMR on bs d r2=198 +19215
+1795190594.702	305eb04-20261119T2227Z	K6 EX t 320 a 130884
+1795190594.902	305eb04-20261119T2227Z	K6 EX t 320 b r=0
+1795190594.902	305eb04-20261119T2227Z	K6 EX t 320 c
+1795190596.904	305eb04-20261119T2227Z	K6 EX t 352 a 132924
+1795190596.904	305eb04-20261119T2227Z	K6 EX t 352 b r=0
+1795190596.904	305eb04-20261119T2227Z	K6 EX t 352 c
+1795190598.907	305eb04-20261119T2227Z	K6 EX t 384 a 134992
+1795190598.907	305eb04-20261119T2227Z	K6 EX t 384 b r=0
+1795190598.907	305eb04-20261119T2227Z	K6 EX t 384 c
+1795190600.909	305eb04-20261119T2227Z	K6 EX t 416 a 137050
+1795190601.109	305eb04-20261119T2227Z	K6 EX t 416 b r=0
+1795190601.109	305eb04-20261119T2227Z	K6 EX t 416 c
+1795190602.911	305eb04-20261119T2227Z	K6 EX t 448 a 139090
+1795190603.111	305eb04-20261119T2227Z	K6 EX t 448 b r=0
+1795190603.111	305eb04-20261119T2227Z	K6 EX t 448 c
+1795190603.312	305eb04-20261119T2227Z	K6 MOD say DMR off 10435
+1795190605.114	305eb04-20261119T2227Z	K6 EX t 480 a 141176
+1795190605.114	305eb04-20261119T2227Z	K6 EX t 480 b r=0
+1795190605.114	305eb04-20261119T2227Z	K6 EX t 480 c
+1795190607.116	305eb04-20261119T2227Z	K6 EX t 512 a 143210
+1795190607.116	305eb04-20261119T2227Z	K6 EX t 512 b r=0
+1795190607.116	305eb04-20261119T2227Z	K6 EX t 512 c
+1795190609.119	305eb04-20261119T2227Z	K6 EX t 544 a 145268
+1795190609.319	305eb04-20261119T2227Z	K6 EX t 544 b r=0
+1795190609.319	305eb04-20261119T2227Z	K6 EX t 544 c
+1795190611.321	305eb04-20261119T2227Z	K6 EX t 576 a 147306
+1795190611.321	305eb04-20261119T2227Z	K6 EX t 576 b r=0
+1795190611.321	305eb04-20261119T2227Z	K6 EX t 576 c
+1795190613.324	305eb04-20261119T2227Z	K6 EX t 608 a 149366
+1795190613.324	305eb04-20261119T2227Z	K6 EX t 608 b r=0
+1795190613.324	305eb04-20261119T2227Z	K6 EX t 608 c
+1795190615.326	305eb04-20261119T2227Z	K6 EX t 640 a 151397
+1795190615.326	305eb04-20261119T2227Z	K6 EX t 640 b r=0
+1795190615.326	305eb04-20261119T2227Z	K6 EX t 640 c
+1795190617.329	305eb04-20261119T2227Z	K6 EX t end tone=0 dmr=1
+1795190617.329	305eb04-20261119T2227Z	K6 MOD say DMR end n=3 h=237 lost=0 steps=672
+1795190617.329	305eb04-20261119T2227Z	K6 MOD say DMR rate busy=45 ks=5677 ctcss=0/1
+1795190617.329	305eb04-20261119T2227Z	K6 MOD say DMR diag e=0 o=0 g=244 clk=999 kx=5675
+1795190617.329	305eb04-20261119T2227Z	K6 EX t stopped
+1795190617.329	305eb04-20261119T2227Z	K6 EX t applied 1
+1795190617.529	305eb04-20261119T2227Z	K6 EX heard 440925000 tone=0 dmr=1 rt=1 saved_tone=1318
+1795190617.529	305eb04-20261119T2227Z	K6 MOD say CWID end time msgs=0 short=0
+1795190617.529	305eb04-20261119T2227Z	K6 EX t xl stopped
+1795190617.529	305eb04-20261119T2227Z	K6 EX t monitor off
+1795190617.529	305eb04-20261119T2227Z	K6 MOD say F0 -98 q-138: -88 -94 -95 -97 -98 -97 -97 -99
+1795190617.729	305eb04-20261119T2227Z	K6 MOD say H 440.925 3394 -92 a106123
+1795190617.930	305eb04-20261119T2227Z	K6 MOD say N 144.340 -85 fl-98 b34
+1795190618.130	305eb04-20261119T2227Z	K6 MOD say W 144.340 0 -85 a153957
+1795190618.931	305eb04-20261119T2227Z	K6 MOD say S0 5 1341 c1 h1
+1795190619.131	305eb04-20261119T2227Z	K6 MOD say S1 5 240 c0 h0
+1795190620.333	305eb04-20261119T2227Z	K6 MOD say S2 5 1124 c0 h0
+1795190620.533	305eb04-20261119T2227Z	K6 MOD say N 144.310 -83 fl-98 b31
+1795190620.733	305eb04-20261119T2227Z	K6 MOD say H 144.310 0 -83 a156603
+1795190621.534	305eb04-20261119T2227Z	K6 MOD say S0 6 1305 c1 h1
+1795190621.734	305eb04-20261119T2227Z	K6 MOD say S1 6 222 c0 h0
+1795190622.935	305eb04-20261119T2227Z	K6 MOD say S2 6 1183 c2 h0
+1795190623.136	305eb04-20261119T2227Z	K6 MOD say CWID listen rx=443525000 th=24 s=60
+1795190623.136	305eb04-20261119T2227Z	K6 MOD say DMR listen lvl=-84 frozen=1 adj=7
+1795190623.136	305eb04-20261119T2227Z	K6 EX t started adj=7 known=0
+1795190623.136	305eb04-20261119T2227Z	K6 EX auto 443525000 listens=2 heard=95 max=60
+1795190623.136	305eb04-20261119T2227Z	K6 EX t 0 a 159182
+1795190623.136	305eb04-20261119T2227Z	K6 EX t 0 b r=0
+1795190623.136	305eb04-20261119T2227Z	K6 EX t 0 c
+1795190623.136	305eb04-20261119T2227Z	K6 EX t 1 a 159248
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 1 b r=0
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 1 c
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 2 a 159314
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 2 b r=0
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 2 c
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 3 a 159378
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 3 b r=0
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 3 c
+1795190623.336	305eb04-20261119T2227Z	K6 EX t 4 a 159443
+1795190623.536	305eb04-20261119T2227Z	K6 MOD say CTCSS 1365
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 4 b r=0
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 4 c
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 5 a 159511
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 5 b r=0
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 5 c
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 6 a 159599
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 6 b r=0
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 6 c
+1795190623.536	305eb04-20261119T2227Z	K6 EX t 7 a 159664
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 7 b r=0
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 7 c
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 8 a 159730
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 8 b r=0
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 8 c
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 9 a 159795
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 9 b r=0
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 9 c
+1795190623.736	305eb04-20261119T2227Z	K6 EX t 10 a 159861
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 10 b r=0
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 10 c
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 11 a 159928
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 11 b r=0
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 11 c
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 12 a 160017
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 12 b r=0
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 12 c
+1795190623.936	305eb04-20261119T2227Z	K6 EX t 13 a 160083
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 13 b r=0
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 13 c
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 14 a 160149
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 14 b r=0
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 14 c
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 15 a 160215
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 15 b r=0
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 15 c
+1795190624.136	305eb04-20261119T2227Z	K6 EX t 16 a 160281
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 16 b r=0
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 16 c
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 17 a 160347
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 17 b r=0
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 17 c
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 18 a 160435
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 18 b r=0
+1795190624.337	305eb04-20261119T2227Z	K6 EX t 18 c
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 19 a 160500
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 19 b r=0
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 19 c
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 20 a 160565
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 20 b r=0
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 20 c
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 21 a 160630
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 21 b r=0
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 21 c
+1795190624.537	305eb04-20261119T2227Z	K6 EX t 22 a 160695
+1795190624.737	305eb04-20261119T2227Z	K6 EX t 22 b r=0
+1795190624.737	305eb04-20261119T2227Z	K6 EX t 22 c
+1795190624.737	305eb04-20261119T2227Z	K6 EX t 23 a 160760
+1795190624.737	305eb04-20261119T2227Z	K6 EX t 23 b r=0
+1795190624.737	305eb04-20261119T2227Z	K6 EX t 23 c
+1795190624.737	305eb04-20261119T2227Z	K6 EX t 24 a 160848
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 24 b r=0
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 24 c
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 25 a 160913
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 25 b r=0
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 25 c
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 26 a 160979
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 26 b r=0
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 26 c
+1795190624.937	305eb04-20261119T2227Z	K6 EX t 27 a 161045
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 27 b r=0
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 27 c
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 28 a 161111
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 28 b r=0
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 28 c
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 29 a 161177
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 29 b r=0
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 29 c
+1795190625.137	305eb04-20261119T2227Z	K6 EX t 30 a 161266
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 30 b r=0
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 30 c
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 31 a 161332
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 31 b r=0
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 31 c
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 32 a 161397
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 32 b r=0
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 32 c
+1795190625.338	305eb04-20261119T2227Z	K6 EX t 33 a 161462
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 33 b r=0
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 33 c
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 34 a 161528
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 34 b r=0
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 34 c
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 35 a 161594
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 35 b r=0
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 35 c
+1795190625.538	305eb04-20261119T2227Z	K6 EX t 36 a 161682
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 36 b r=0
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 36 c
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 37 a 161747
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 37 b r=0
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 37 c
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 38 a 161812
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 38 b r=0
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 38 c
+1795190625.738	305eb04-20261119T2227Z	K6 EX t 39 a 161879
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 39 b r=0
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 39 c
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 40 a 161946
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 40 b r=0
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 40 c
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 41 a 162012
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 41 b r=0
+1795190625.938	305eb04-20261119T2227Z	K6 EX t 41 c
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 42 a 162101
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 42 b r=0
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 42 c
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 43 a 162167
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 43 b r=0
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 43 c
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 44 a 162233
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 44 b r=0
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 44 c
+1795190626.138	305eb04-20261119T2227Z	K6 EX t 45 a 162299
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 45 b r=0
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 45 c
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 46 a 162366
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 46 b r=0
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 46 c
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 47 a 162432
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 47 b r=0
+1795190626.338	305eb04-20261119T2227Z	K6 EX t 47 c
+1795190626.538	305eb04-20261119T2227Z	K6 EX t 48 a 162521
+1795190626.538	305eb04-20261119T2227Z	K6 EX t 48 b r=0
+1795190626.538	305eb04-20261119T2227Z	K6 EX t 48 c
+1795190626.538	305eb04-20261119T2227Z	K6 EX t 49 a 162586
+1795190626.538	305eb04-20261119T2227Z	K6 EX t 49 b r=0
+1795190626.538	305eb04-20261119T2227Z	K6 EX t 49 c
+1795190626.538	305eb04-20261119T2227Z	K6 EX t 50 a 162651
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 50 b r=0
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 50 c
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 51 a 162716
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 51 b r=0
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 51 c
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 52 a 162781
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 52 b r=0
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 52 c
+1795190626.739	305eb04-20261119T2227Z	K6 EX t 53 a 162849
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 53 b r=0
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 53 c
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 54 a 162938
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 54 b r=0
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 54 c
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 55 a 163004
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 55 b r=0
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 55 c
+1795190626.939	305eb04-20261119T2227Z	K6 EX t 56 a 163070
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 56 b r=0
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 56 c
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 57 a 163137
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 57 b r=0
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 57 c
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 58 a 163202
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 58 b r=0
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 58 c
+1795190627.139	305eb04-20261119T2227Z	K6 EX t 59 a 163269
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 59 b r=0
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 59 c
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 60 a 163357
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 60 b r=0
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 60 c
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 61 a 163422
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 61 b r=0
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 61 c
+1795190627.339	305eb04-20261119T2227Z	K6 EX t 62 a 163487
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 62 b r=0
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 62 c
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 63 a 163553
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 63 b r=0
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 63 c
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 64 a 163618
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 64 b r=0
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 64 c
+1795190627.539	305eb04-20261119T2227Z	K6 EX t 65 a 163683
+1795190627.739	305eb04-20261119T2227Z	K6 EX t 65 b r=0
+1795190627.739	305eb04-20261119T2227Z	K6 EX t 65 c
+1795190627.739	305eb04-20261119T2227Z	K6 EX t 66 a 163771
+1795190627.739	305eb04-20261119T2227Z	K6 EX t 66 b r=0
+1795190627.739	305eb04-20261119T2227Z	K6 EX t 66 c
+1795190627.739	305eb04-20261119T2227Z	K6 EX t 67 a 163837
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 67 b r=0
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 67 c
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 68 a 163903
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 68 b r=0
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 68 c
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 69 a 163969
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 69 b r=0
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 69 c
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 70 a 164036
+1795190627.939	305eb04-20261119T2227Z	K6 EX t 70 b r=0
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 70 c
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 71 a 164102
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 71 b r=0
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 71 c
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 72 a 164192
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 72 b r=0
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 72 c
+1795190628.140	305eb04-20261119T2227Z	K6 EX t 73 a 164258
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 73 b r=0
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 73 c
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 74 a 164324
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 74 b r=0
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 74 c
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 75 a 164389
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 75 b r=0
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 75 c
+1795190628.340	305eb04-20261119T2227Z	K6 EX t 76 a 164455
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 76 b r=0
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 76 c
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 77 a 164521
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 77 b r=0
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 77 c
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 78 a 164609
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 78 b r=0
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 78 c
+1795190628.540	305eb04-20261119T2227Z	K6 EX t 79 a 164674
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 79 b r=0
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 79 c
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 80 a 164740
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 80 b r=0
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 80 c
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 81 a 164807
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 81 b r=0
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 81 c
+1795190628.740	305eb04-20261119T2227Z	K6 EX t 82 a 164873
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 82 b r=0
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 82 c
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 83 a 164940
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 83 b r=0
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 83 c
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 84 a 165029
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 84 b r=0
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 84 c
+1795190628.940	305eb04-20261119T2227Z	K6 EX t 85 a 165095
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 85 b r=0
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 85 c
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 86 a 165161
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 86 b r=0
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 86 c
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 87 a 165227
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 87 b r=0
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 87 c
+1795190629.140	305eb04-20261119T2227Z	K6 EX t 88 a 165292
+1795190629.340	305eb04-20261119T2227Z	K6 EX t 88 b r=0
+1795190629.340	305eb04-20261119T2227Z	K6 EX t 88 c
+1795190629.340	305eb04-20261119T2227Z	K6 EX t 89 a 165358
+1795190629.341	305eb04-20261119T2227Z	K6 EX t 89 b r=0
+1795190629.341	305eb04-20261119T2227Z	K6 EX t 89 c
+1795190629.341	305eb04-20261119T2227Z	K6 EX t 90 a 165446
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 90 b r=0
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 90 c
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 91 a 165512
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 91 b r=0
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 91 c
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 92 a 165577
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 92 b r=0
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 92 c
+1795190629.541	305eb04-20261119T2227Z	K6 EX t 93 a 165642
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 93 b r=0
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 93 c
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 94 a 165707
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 94 b r=0
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 94 c
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 95 a 165772
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 95 b r=0
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 95 c
+1795190629.741	305eb04-20261119T2227Z	K6 EX t 96 a 165860
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 96 b r=0
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 96 c
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 97 a 165925
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 97 b r=0
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 97 c
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 98 a 165991
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 98 b r=0
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 98 c
+1795190629.941	305eb04-20261119T2227Z	K6 EX t 99 a 166057
+1795190630.141	305eb04-20261119T2227Z	K6 EX t 99 b r=0
+1795190630.141	305eb04-20261119T2227Z	K6 EX t 99 c
+1795190631.944	305eb04-20261119T2227Z	K6 EX t 128 a 167910
+1795190631.944	305eb04-20261119T2227Z	K6 EX t 128 b r=0
+1795190631.944	305eb04-20261119T2227Z	K6 EX t 128 c
+1795190633.949	305eb04-20261119T2227Z	K6 EX t 160 a 169968
+1795190633.949	305eb04-20261119T2227Z	K6 EX t 160 b r=0
+1795190633.949	305eb04-20261119T2227Z	K6 EX t 160 c
+1795190635.954	305eb04-20261119T2227Z	K6 EX t 192 a 172002
+1795190635.954	305eb04-20261119T2227Z	K6 EX t 192 b r=0
+1795190635.954	305eb04-20261119T2227Z	K6 EX t 192 c
