@@ -296,6 +296,8 @@ def mod_wav(a, path, serial, xfer, only=None, payload=None, rung=None):
            "--payload", payload or a.payload, "--level", str(a.level), "--arq", "--telemetry", str(a.telemetry)]
     if a.api_level:
         cmd += ["--api-level", str(a.api_level)]
+    if a.install is not None:
+        cmd += ["--install", str(a.install)] + (["--cards"] if a.cards else [])
     if only is not None:
         cmd += ["--only", ",".join(map(str, only))]
     r = subprocess.run(cmd, check=True, capture_output=True, text=True,
@@ -378,6 +380,10 @@ def main():
     ap.add_argument("source", help="module C source or its built .bin (CI's mod-*.bin)")
     ap.add_argument("--key-file", required=True)
     ap.add_argument("--api-level", type=int)
+    ap.add_argument("--install", type=int, metavar="SLOT",
+                    help="keep the image in this SPI module library slot instead of running it (modem.k6 mod --install)")
+    ap.add_argument("--cards", action="store_true",
+                    help="with --install: SOURCE is a deck .bin, kept and never run (help cards, fmsotto's cell deck)")
     ap.add_argument("--telemetry", type=int, default=4, help="say-line parts to send back (0-12, default 4)")
     ap.add_argument("--payload", choices=("L", "XL"), default="XL",
                     help="chunk size to start with (default XL); see --no-fallback")
@@ -410,6 +416,8 @@ def main():
     ap.add_argument("--rate-state", metavar="JSON", help="the rate ladder's state file (default $BLOWFANG_WORK/state/k6-rate.json)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    if a.cards and (a.install is None or not a.source.endswith(".bin")):
+        sys.exit("--cards: a deck .bin into a library slot: add --install SLOT")
     ladder = a.phy == "F" and a.baud == 1800     # the ladder starts from F/1800, as the K6 boots
     want = a.rate if ladder else "F18"
     rates = load_rates(a.rate_state)
