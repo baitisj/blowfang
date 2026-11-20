@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "micp6b",
-   "who": "micprobe",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "micp6b",
+  "who": "micprobe",
+  "since": "2026-11-20T03:44:32Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-20T03:44:30Z",
  "error": null,
  "update": null,
- "updated": "2026-11-20T03:44:30Z"
+ "updated": "2026-11-20T03:44:32Z"
 }
