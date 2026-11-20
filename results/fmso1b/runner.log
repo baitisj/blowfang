@@ -1,0 +1,8 @@
+2026-11-20T08:35:06Z job fmso1b by fmsotto, checkout /home/baitisj/blowfang-work/worktrees/inbox-449e94dbf4ed at 449e94dbf4edc520251fd44843c995df5caf5565
+2026-11-20T08:35:06Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold fmsotto -- timeout -s INT --kill-after=10 60 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/fmso1b/k6.log
+2026-11-20T08:35:08Z step 1 (logger) rc=0
+2026-11-20T08:35:53Z step 2 (wait) rc=0
+2026-11-20T08:35:53Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release fmsotto
+the port is free (fmsotto let go)
+2026-11-20T08:35:54Z step 3 (logger.stop) rc=0
+2026-11-20T08:35:54Z job fmso1b done
