@@ -1,0 +1,29 @@
+2026-11-20T03:13:20Z job micp5c by micprobe, checkout /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36 at a59e428b9b36f68df4636eb53f4154365d93d3ec
+2026-11-20T03:13:20Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold micprobe -- timeout -s INT --kill-after=10 400 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/micp5c/k6.log
+2026-11-20T03:13:22Z step 1 (logger) rc=0
+2026-11-20T03:13:26Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-20T03:13:26Z step 2 (ic7100.tune) rc=0
+2026-11-20T03:13:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/micp5c/miclvl.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --api-level 4 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/micp5c/k6-rate.json --telemetry 0 --rounds 1 --run-s 0
+19:13:28 send 1: 20 of 20 XL chunks at F/1800 (serial 1795144408, xfer 216); module /home/baitisj/blowfang-work/runs/inbox/micp5c/miclvl.bin: 2336 B code, entry +0, API level 4, serial 1795144408, xfer 216, 2360 B image in 20 XL chunks; 40 packets, 26.1 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 33.5 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 03:13:29Z
+end 03:14:03Z: 33.5 s of signal in 33.4 s (kept up)
+19:14:03 listening for the K6's report
+19:14:30 no report heard
+19:14:30 no report after a whole send: the K6 may be set to L packets, so the next send is 41 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 20 chunks sent were lost
+19:14:30 CW ID
+2026-11-20T03:14:31Z step 3 (k6.upload) rc=0
+2026-11-20T03:14:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as micprobe send /home/baitisj/blowfang-work/runs/inbox/micp5c/tone700steps.wav --hz 440850000 --dev 3000 --gain -40
+send: wav peak 0.885 of full scale -> 2655 Hz before pre-emphasis
+send tone700steps.wav: 55.4 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 03:14:31Z
+2026-11-20T03:15:22Z stopping (cancelled): SIGTERM to the step's process group
+signal 15 while keyed: unkeying
+2026-11-20T03:15:22Z step 4 (pluto) rc=1 (cancelled)
+2026-11-20T03:15:22Z step 5 (wait) rc=1 (refused: cancelled)
+2026-11-20T03:15:22Z step 6 (wait) rc=1 (refused: cancelled)
+2026-11-20T03:15:22Z stopping the job's background logger still running at its end
+2026-11-20T03:15:22Z job micp5c cancelled: step 6 (wait): refused: cancelled
