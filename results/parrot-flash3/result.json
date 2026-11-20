@@ -1,0 +1,12 @@
+{
+ "id": "parrot-flash3",
+ "status": "queued",
+ "queued": "2026-11-20T01:01:22Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "6e55d011a2ed3cc23dbe4a572d7fc85209a3f540",
+  "path": "jobs/parrot-flash3"
+ },
+ "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "updated": "2026-11-20T01:01:22Z"
+}
