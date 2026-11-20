@@ -1,12 +1,12 @@
 {
  "id": "micp5f",
- "status": "queued",
- "queued": "2026-11-20T03:24:42Z",
+ "status": "running",
+ "since": "2026-11-20T03:24:45Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "425c1bd4f66b50f0342ad5c713a9d629be842318",
   "path": "jobs/micp5f"
  },
  "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
- "updated": "2026-11-20T03:24:42Z"
+ "updated": "2026-11-20T03:24:45Z"
 }
