@@ -361,6 +361,7 @@ dfskcap_dmr2   # level 2, dfskcap_dmr's second table, an hour: the sync word wit
 dfskcap_dmr3   # level 2, dfskcap_dmr with the receiver's gain stepped down: how weak may DMR be for the chip to find its sync (receive only, docs/k6-dmr.md)
 dfskcap_dmr4   # level 2, dfskcap_dmr3 in blocks tuned at every setting, not tuned, and not tuned with the AFC on: does the tuning's restart cost the weak steps (receive only, docs/k6-dmr.md)
 dfskcap_dmr5   # level 2, dfskcap_dmr tuned 0.2 to 1.3 kHz off the repeater either way: where does the chip's slicer sit (receive only, docs/k6-dmr.md)
+dmairq         # level 2, can a module take DMA channel 1's interrupts through the SRAM vector table (the FM receiver's front end, docs/k6-fm-sotto.md)
 dmrcap         # level 2, docs/k6-dmr.md
 dmrdet         # level 2, docs/k6-dmr.md
 dmrrx          # level 2 (its screen at 6), docs/k6-dmr.md
@@ -372,6 +373,7 @@ fdtime         # level 2, how long the module API's calls take (xdmr's gap betwe
 fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
 fesw           # level 2, the receive front end's band switch as an attenuator: how much the wrong path loses (receive only, docs/k6-fesw.md)
 fesw_vhf       # level 2, fesw on fifteen frequencies of the VHF path, 136 to 174 MHz: is the 2 m floor the same everywhere (receive only, docs/k6-fesw.md)
+fmsotto        # level 13, FM SOTTO: what the K6 hears on FM, demodulated from the IF in DMA interrupts and coded live as sotto 1200, said as hex (receive only; needs out/fmsotto-cells.bin in a library slot, docs/k6-fm-sotto.md)
 fskaprs        # level 2, the chip's FSK modem on AX.25 packets (docs/k6-aprs-clock.md)
 fsk24rx        # level 2, the chip's FSK modem on plain FSK at 2400 baud from the pre-equalised IC-7100, 440.850 bench (receive only, docs/k6-fsk24.md)
 fsk24rx_sweep  # level 2, fsk24rx in 12 s slots of D/2400, D/1800 (two bandwidths) and D/1200 while the Pluto steps its level down: receive sensitivity (receive only, docs/k6-fsk24.md)
@@ -468,7 +470,8 @@ EOF
 # that says #define K6_MODULE_OPT z gets -Oz instead of -Os. Linked at two addresses: the
 # same bytes, or it isn't position-independent.
 MODF="--target=thumbv6m-none-eabi -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -Os -fropi -ffreestanding
-  -fno-builtin -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -Wall -Werror -I$ROOT/c/k6"
+  -fno-builtin -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -Wall -Werror -I$ROOT/c/k6
+  -isystem $ROOT/c/k6/mod/libc"
 for m in $K6_MODULES; do
   opt=$(sed -n 's/^[[:space:]]*#[[:space:]]*define[[:space:]]*K6_MODULE_OPT[[:space:]]*\([sz]\).*/\1/p' "$ROOT/c/k6/mod/$m.c")
   clang $(echo $MODF | sed "s/ -Os / -O${opt:-s} /") -c "$ROOT/c/k6/mod/$m.c" -o "$HERE/build/$m.o"
@@ -487,3 +490,6 @@ done
 # the help card decks (tools/k6_cards.py, docs/manual/cards/): out/cards-core.bin goes into
 # library slot 13 with `python -m modem.k6 mod OUT.wav out/cards-core.bin --cards --install 13`
 python3 "$ROOT/tools/k6_cards.py" deck "$ROOT/docs/manual/cards/core.txt" -o "$OUT/cards-core.bin"
+# fmsotto's codebook cells (tools/k6_fmsotto.py): out/fmsotto-cells.bin goes into a free library slot
+# with `python -m modem.k6 mod OUT.wav out/fmsotto-cells.bin --cards --install 14`
+python3 "$ROOT/tools/k6_fmsotto.py" deck "$OUT/fmsotto-cells.bin"

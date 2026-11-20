@@ -159,6 +159,7 @@ jobs:
             tests/test_k6_dmrsign.py \
             tests/test_k6_explore.py \
             tests/test_k6_fesw.py \
+            tests/test_k6_fmsotto.py \
             tests/test_k6_fsk24.py \
             tests/test_k6_ft8.py \
             tests/test_k6_ft8tx.py \

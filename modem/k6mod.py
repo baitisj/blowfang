@@ -64,7 +64,8 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
 LINK = os.path.join(ROOT, "c", "k6", "mod", "module.ld")
 CFLAGS = ["--target=thumbv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-mfloat-abi=soft", "-Os",
           "-fropi", "-ffreestanding", "-fno-builtin", "-nostdlib", "-ffunction-sections",
-          "-fdata-sections", "-fomit-frame-pointer", "-Wall", "-Werror", "-I" + os.path.join(ROOT, "c", "k6")]
+          "-fdata-sections", "-fomit-frame-pointer", "-Wall", "-Werror", "-I" + os.path.join(ROOT, "c", "k6"),
+          "-isystem", os.path.join(ROOT, "c", "k6", "mod", "libc")]   # string.h for C written against a libc (m0rt.h)
 ENTRY = "k6_main"
 
 _M = (1 << 64) - 1
