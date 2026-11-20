@@ -412,6 +412,16 @@ while the job sends the tone again and again and steps the IC-7100's AF between 
 0.15, 0, 0.3, 0). The serial log's time stamps line the samples up with the runner's steps
 (sample 0 is 0.5 s after the `mic64 go` line). `tools/k6_micprobe.py` prints a line a second.
 
+**Run m64a** (20:09:09-20:10:54 UTC, unattended; the Pluto's 10 s tone on 445.850 at -46 dB,
+the K6 reading its carrier at -74 dBm; IC-7100 AF 0.30, 0, 0.15, 0, 0.30, 0 between sends).
+REG_64 sat at 138-140 (one-second means; single reads 132-149) the whole 105 s: the same with
+AF 0.30 and the tone playing as with AF 0, and the same between sends with no carrier at all. It
+did not move with the IC-7100's level, so it can't prove the IC-7100 made a sound. (In mtx1a it
+read 14-18; there REG_47 was at select 1 for those captures, here at its receive value 0x6040,
+which suggests REG_64 measures something on the AF side rather than the mic.) With micr2a's
+result (Jeff heard the tone at the mic, and no register followed it in receive), REG_64 has not
+followed a sound at the K6's mic in any state tried.
+
 ## Where this leaves the K6
 
 - **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or
