@@ -254,33 +254,32 @@ static int host_fl_read(uint32_t a, void *buf, uint32_t n);
 #define SPIN 20000u
 #define R8(a) (*(volatile uint8_t *)(uintptr_t)(a))
 #define R16(a) (*(volatile uint16_t *)(uintptr_t)(a))
-static int spi_x(uint8_t o, uint8_t *in) {
-  uint32_t k = 0;
-  while (!(R16(SPI_SR) & 2u))
-    if (++k > SPIN) return -1;
-  R8(SPI_DR) = o;
-  while (!(R16(SPI_SR) & 1u))
-    if (++k > SPIN) return -1;
-  *in = R8(SPI_DR);
-  return 0;
-}
 static int spi_rd(uint32_t a, uint8_t *b, uint32_t n) {
-  uint32_t i, k = 0;
-  int r = 0;
-  uint8_t d;
+  /* READ, 3 address bytes, n bytes in. Up to 3 bytes in flight: the SPI's 4-byte receive FIFO
+     can't overrun (Aura set it up for byte reads, FRXTH), and the master stops clocking when
+     nothing is queued, so the DMA handler can interrupt anywhere. fmso1e, a byte at a time:
+     27 % of the CPU in reads, about 1.9 us a byte */
+  uint32_t tx = 0, rx = 0, k = 0, end = n + 4u;
   while (R16(SPI_SR) & 0x80u)
     if (++k > SPIN) return -1;
-  for (i = 0; i < 8 && (R16(SPI_SR) & 1u); i++) (void)R8(SPI_DR);
+  for (k = 0; k < 8 && (R16(SPI_SR) & 1u); k++) (void)R8(SPI_DR);
   wr(GPIOA + 0x28u, CS_PA2);
-  r |= spi_x(0x03, &d);
-  r |= spi_x((uint8_t)(a >> 16), &d);
-  r |= spi_x((uint8_t)(a >> 8), &d);
-  r |= spi_x((uint8_t)a, &d);
-  for (i = 0; i < n && !r; i++) r |= spi_x(0, b + i);
+  for (k = 0; rx < end;) {
+    uint32_t sr = R16(SPI_SR);
+    if (tx < end && tx - rx < 3u && (sr & 2u)) {
+      R8(SPI_DR) = tx == 0 ? 0x03 : tx < 4u ? (uint8_t)(a >> (8u * (3u - tx))) : 0;
+      tx++;
+    }
+    if (sr & 1u) {
+      uint8_t d = R8(SPI_DR);
+      if (rx >= 4u) b[rx - 4u] = d;
+      rx++, k = 0;
+    } else if (++k > SPIN) break;
+  }
   for (k = 0; (R16(SPI_SR) & 0x80u) && k < SPIN; k++) {
   }
   wr(GPIOA + 0x18u, CS_PA2);
-  return r;
+  return rx < end ? -1 : 0;
 }
 static int fl_rd(const fe_t *cf, uint32_t a, void *b, uint32_t n) {
   fe_t *f = (fe_t *)cf;
@@ -478,8 +477,10 @@ static void dma_isr(void) {
   f->c17 = t0;
   w = (const uint32_t *)(f->ring + ((fl & 4u) && !(fl & 2u) ? 0u : HALF));
   for (i = 0; i < HALF / 4u; i += 16) { /* 64 samples: PB1 in each byte */
+    /* four words a turn (one at a time, the loop was most of the handler's time) */
+    const uint32_t *q = w + i, m = 0x02020202u;
     uint32_t a = 0, j;
-    for (j = 0; j < 16; j++) a += w[i + j] & 0x02020202u;
+    for (j = 0; j < 16; j += 4, q += 4) a += (q[0] & m) + (q[1] & m) + (q[2] & m) + (q[3] & m);
     a >>= 1;
     a = (a & 0x00FF00FFu) + ((a >> 8) & 0x00FF00FFu);
     fe_count(f, (int)((a & 0xFFFF) + (a >> 16)) * 2 - 64);
@@ -601,6 +602,10 @@ int k6_main(const k6_api_t *api) {
   f->c17 = rd(TIM17_CNT) & 0xFFFF;
 #ifndef FMS_API_READS
   f->spi = (R16(SPI_CR1) & 0x44u) == 0x44u; /* SPE and MSTR: as Aura left it */
+  if (f->spi) { /* and it reads the deck's magic back as fl_read did, or fl_read it is */
+    uint8_t t[4];
+    if (spi_rd(f->deck, t, 4) || t[0] != 'K' || t[1] != '6' || t[2] != 'S' || t[3] != 'C') f->spi = 0;
+  }
 #endif
   slim_enc_init(e);
   /* the handler in: its state, its vector, SRAM at 0, then the DMA with both interrupts */

@@ -49,12 +49,12 @@ a 1 kHz tone at 3 kHz deviation at 13,440 (-7.7 dBFS). The AGC is frozen at its 
 
 | | bytes |
 | --- | --- |
-| code and constants (-Oz) | 10,622 |
+| code and constants (-Oz) | 10,646 |
 | header and tag | 24 |
 | DMA ring | 512 |
 | front end (filters, clock, 320-sample ring) | 768 |
 | slim encoder state | 3,148 |
-| left of level 13's 15,408 | about 330 |
+| left of level 13's 15,408 | about 250 |
 | stack, deepest (k6_main, encode, coder, search; -fstack-usage) | about 1,210 + fl_read + 116 for the handler, of the 2,136 the module gets |
 
 The first build was 13.6 KB of code, 2.7 KB over. Three hooks added to the slim encoder (sotto
@@ -152,6 +152,19 @@ started while the upload was still on the air (its quiet wait gave up after 30 s
 came after the module's 60 s. The quiet wait is now up to 150 s and RUN_MS 90 s.
 (fmso1c had waited for a `K6 BOOT` line after the power cycle; the line came out garbled as the
 radio powered up, so the job never started.)
+
+**fmso1e (09:38-09:41Z).** Everything worked: `sps=8000` each second (the clock right), 0 halves
+lost, the module back after its 90 s. But `skip=19` a second: 81 % of real time, with the
+handler at `isr=40` and the reads at `rd=27` (about 1.9 us a byte, a byte at a time).
+
+**fmso1f (09:46-09:49Z): real time.** The reads keep up to 3 bytes in flight (the receive FIFO
+holds 4, and the master stops clocking when nothing is queued, so the handler can break in
+anywhere), and the handler's popcount takes four words a turn. `isr=31 rd=13 skip=0 miss=0`
+every second; 2,251 superframes in 90 s, `lost=0`. Against the voices the Pluto sent (pre-limited,
+pre-emphasised; aligned by cross-correlation), the K6's sotto 1200 scores PESQ-NB 2.11 (3536_f)
+and 1.93 (251_m); the model gave 2.06 and 2.22. Before using the direct reads the module reads
+the deck's magic back with them, or uses `fl_read` (`spi=0`). Code 10,646 B. The WAV is in the
+project files, `k6-fmsotto/fmso1f-k6-coded-realtime.wav`.
 
 ## The bench run
 
