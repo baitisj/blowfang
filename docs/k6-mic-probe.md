@@ -516,6 +516,54 @@ the air instead (Jeff's suggestion). The K6 sends its CW ID as a "ready" call an
 The job's `pluto_bench.py cue` hears the call and only then sends the tone. The K6 captures
 while the tone plays, and the next call waits until the tone has gone.
 
+**Run mgn1d** (04:21-04:24 UTC, cable out, cued): 4 of 4 calls heard; it repeats mgn1b within
+2 dB (REG_7D 0 to 31 is +15 dB, flat above 24 with the AGC off; the AGC bit does nothing).
+
+**Plan 2** (`MG_PLAN 2`, staged as mgn2a for a daytime run, Jeff 2026-11-21: "prioritize the
+analog gain settings before we apply digital gain"): REG_48 already reads 0x82df (AF DAC gain 15
+of 15, and micsotto sets AF gain 2 to 63), so plan 2 scores, all at REG_7D 31, the chip's TX
+compressor (REG_29 2:1, 4:1, 2:1 with a 0 dB point of 64; REG_31 bit 3), TX pre-emphasis off
+and the TX 300 Hz high-pass off (REG_2B), REG_40's deviation at its most, and PA11's converter
+at hold 2.
+
+## mickrec: a voice at REG_7D 31, cued (2026-11-21)
+
+`c/k6/mod/mickrec.c` records a cable-out ADPCM take keyed with the PA off at REG_7D 31, cued
+like micgain, with a digital gain on top of its x8. GAIN 8 clipped 14 % (mkr2a, voice251 from
+the IC-7100), GAIN 3 with a 9 dB louder clip 34 % (mkr2b); GAIN 1 recorded Jeff's own voice
+cleanly (mkr2d, 05:29 UTC, 0.13 % clipped). Jeff's takes ran as local jobs on hamlet and never
+went to the public jobs branch. `tools/k6_mic2sotto.py` turns a take into sotto 1200 on the PC.
+
+## micsotto: the mic coded live as sotto 1200 (2026-11-21)
+
+`c/k6/mod/micsotto.c` runs PA11's converter from TIM17's update interrupt (W_IRQ turns every
+125 us, 8 kHz) through the SRAM vector copy, as fmsotto takes its DMA interrupt, and codes the
+samples live with the slim sotto 1200 encoder in the foreground (fmsotto's SPI glue: the
+codebook and the cell deck in library slot 14). The superframes stay in RAM (about 3.4 s), go
+out as hex after the replug, and go to the core's message store, so the K6 plays them.
+
+| Run (UTC) | W_IRQ | Interrupt CPU | SPI reads | Blocks lost | Superframes |
+| --- | --- | --- | --- | --- | --- |
+| msot1a 05:4x, Jeff's voice | 96 | 54 % | 11 % | 97 of ~480 (20 %) | 95 (3.8 s) |
+| msot1b 06:07, Jeff's voice | 48 | 28 % | 11 % | 0 | 86 (3.4 s) |
+
+- **The first radio run worked**, and Jeff heard his coded voice on the K6's speaker (key 5 on
+  RAM ARENA replays the stored message).
+- **msot1a played into the cable:** the core plays a message only once the module returns, and
+  the cable in the jack mutes the speaker. micsotto now asks for the cable out again after the
+  dump, and only then returns.
+- **Uploading another module wipes the stored take.** Let the listener hear it first.
+- **The cue is fragile:** it fires on any 1.5-15 s burst. msot1b's first tries lost it to a
+  2.1 s burst right after the upload and a weak 5.2 s one (ADC peak 12; the K6's call reads
+  63-66). `pluto_bench.py cue` now takes `--min-s`, `--max-s` and `--min-peak`.
+
+**micspi** (`c/k6/mod/micspi.c`, level 15): micsotto writing its superframes into the SPI
+outbox (outbox.h) four at a time as they come, so a take runs up to 60 s; no cue (the screen
+says TALK NOW after the CW call) and any key ends the take. The outbox is erased before the
+first keying; level 15's fl_prog takes an outbox page while keyed with the PA off (the mic is
+live only then). The header goes last, so fusotx.c can send the take as FuSotto. The hex comes
+back from the outbox after the replug, and the first 20 s play.
+
 ## Where this leaves the K6
 
 (Written before the cable was noticed. Superseded by micaf above: the mic does reach the MCU, keyed with the PA off.)

@@ -20,7 +20,8 @@ docs/pluto-bench.md has the bench notes.
          --gains -70,-73,... [--preemph] [--out J]  sensitivity ladder; times to J for a report)
   python3 tools/pluto_bench.py cue WAV [--hz F]     wait for one burst on --listen-hz (a K6 module's
          [--listen-hz F] [--wait-s 900]             CW ID: its over-the-air "ready" call), then send
-         [--delay-s 1] [send's options]             WAV as send does (tools/pluto_parrot.py cue)
+         [--delay-s 1] [--min-s S] [--max-s S]      WAV as send does (tools/pluto_parrot.py cue);
+         [--min-peak P] [send's options]            --min-s 3.5 --min-peak 30: only a K6 call
   python3 tools/pluto_bench.py rx OUT [--hz F]      capture, TX down: OUT.cf32 = complex64 at 240 kHz
          [--seconds 10] [--gain 30]                 (beside it OUT.cf32.json: frequency, rate, xo),
                                                     OUT.wav = the FM discriminator, flat, 48 kHz,
@@ -623,6 +624,9 @@ def main(argv=None):
     cu.add_argument("--listen-hz", type=int, default=HZ, help="where the call comes (the K6's bench frequency)")
     cu.add_argument("--wait-s", type=float, default=900.0, help="how long to wait for the call")
     cu.add_argument("--delay-s", type=float, default=1.0, help="after the call ends, before the send")
+    cu.add_argument("--min-s", type=float, default=None, help="shortest call, s (default: pluto_parrot.CUE_MIN_S)")
+    cu.add_argument("--max-s", type=float, default=None, help="longest call, s (default: pluto_parrot.CUE_MAX_S)")
+    cu.add_argument("--min-peak", type=float, default=0.0, help="weakest call, ADC peak of 2047 (the K6's: 63-66)")
     cu.add_argument("--rx-gain", type=int, default=10, help="RX gain, dB (manual; the K6 keys 5 W nearby)")
     cu.add_argument("--dev", type=float, default=3000.0, help="peak deviation at full scale, Hz")
     cu.add_argument("--peak", type=float, default=None, metavar="HZ", help="as send --peak")

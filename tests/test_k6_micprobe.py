@@ -1077,12 +1077,23 @@ def test_micaf_with_no_second_carrier_still_reports_two_passes():
 
 MICKREC = os.path.join(ROOT, "c", "k6", "mod", "mickrec.c")
 MKR_DEFS = [("MAX_BYTES", "520u"), ("PRE", "100u"), ("HOLD_MS", "200u"), ("WAIT_MS", "20000u"),
-            ("KEY_WAIT_MS", "60000u")]
+            ("KEY_WAIT_MS", "60000u"), ("DROP_MS", "300u")]
 
 
 def mkr_run(keys, level=14, tx=None, sound=True):
+    """sound: the job's Pluto answers the K6's call (pluto_bench cue) as in mgn_run"""
     w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4, sound=sound)
     tx = {} if tx is None else tx
+    base = regs[0x67]
+
+    def rssi(us):
+        v = base(us)
+        if w["tuned"] == SOUND_HZ:
+            on = sound and any(b + CUE_DELAY_US <= us < b + CUE_DELAY_US + CUE_SOUND_US for _, b in calls(tx.get("log", [])))
+            return 250 if on else 60
+        return v
+    regs[0x67] = rssi
+    regs[0x7D] = 0xE95C
     lcd = {}
     ret, said, regs, writes = run_k6(regs, src=MICKREC, code=build(MICKREC, MKR_DEFS), mmio=mmio, gpiob=gpiob,
                                      tune=tune, model=gp0, level=level, spare=4096, tx=tx, rx_hz=HOME_HZ,
@@ -1103,12 +1114,19 @@ def test_mickrec_records_keyed_with_the_pa_off_and_speaks_after_the_replug_key()
     assert said[0] == "mickrec start 30=bff1 47=6040 48=82df rx=1a46d650" and said[-1] == "mickrec done"
     assert all(len(x) <= 60 for x in said)
     log = tx["log"]
-    t_on = next(us for n, _, us in log if n == "tx_on")
-    t_off = next(us for n, _, us in log if n == "tx_off")
-    assert pull < t_on < t_off < plug
+    cw = calls(log)
+    assert len(cw) == 2 and pull < cw[0][0]                       # the call, and the last ID
+    ons = [us for n, _, us in log if n == "tx_on"]
+    offs = [us for n, _, us in log if n == "tx_off"]
+    t_on, t_off = [(a, b) for a, b in zip(ons, offs) if (a, b) not in cw][0]
+    s0, s1 = cw[0][1] + CUE_DELAY_US, cw[0][1] + CUE_DELAY_US + CUE_SOUND_US
+    assert s0 < t_on < t_off < s1 <= cw[1][0] and cw[1][1] < plug   # recorded inside the clip, ID after it
     mic = [us for r, v, us in tx["w"] if r == 0x30 and v & 4]
     assert mic and min(mic) > t_on and max(mic) < t_off
-    assert "mickrec keyed 30=c1fa" in said[said.index(next(x for x in said if x.startswith("mickrec keyed")))]
+    sens = [(v, us) for r, v, us in tx["w"] if r == 0x7D]
+    assert sens[0][0] == 0xE95F and t_on < sens[0][1] < t_off and regs[0x7D] == 0xE95C
+    keyed = next(x for x in said if x.startswith("mickrec keyed"))
+    assert keyed.startswith("mickrec keyed 30=c1fa") and keyed.endswith(" 7d=e95f g=01")
     runs = mp.rec_runs(mp.say_lines("\n".join(said)))
     assert len(runs) == 1
     x, info, notes = runs[0]
@@ -1118,12 +1136,12 @@ def test_mickrec_records_keyed_with_the_pa_off_and_speaks_after_the_replug_key()
 
 
 @need_clang
-def test_mickrec_without_sound_or_key_keys_nothing():
+def test_mickrec_without_a_key_keys_nothing_and_without_a_cue_only_calls():
     w, tx, ret, said, regs, lcd = mkr_run(())
     assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "mickrec done"
     pull = 1_000_000
     w, tx, ret, said, regs, lcd = mkr_run(((pull, pull + 200_000), (40_000_000, 40_200_000)), sound=False)
-    assert ret == -9 and "tx_on" not in [n for n, _, _ in tx.get("log", [])]
+    assert ret == -9 and len(calls(tx["log"])) == 1 and [n for n, _, _ in tx["log"]].count("tx_on") == 1
     assert not [x for x in said if x.startswith("p ")]
 
 
@@ -1151,7 +1169,7 @@ def calls(log):
     return out
 
 
-def mgn_run(keys, level=14, tx=None, cue=True):
+def mgn_run(keys, level=14, tx=None, cue=True, defs=()):
     """the job's Pluto as a cue (pluto_bench cue): CUE_DELAY_US after each K6 call ends, its
     carrier on 445.850 for CUE_SOUND_US"""
     w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4)
@@ -1167,7 +1185,7 @@ def mgn_run(keys, level=14, tx=None, cue=True):
     regs[0x67] = rssi
     regs[0x19], regs[0x7D] = 0x1041, 0xE95C
     lcd = {}
-    ret, said, regs, writes = run_k6(regs, src=MICGAIN, code=build(MICGAIN, MGN_DEFS), mmio=mmio, gpiob=gpiob,
+    ret, said, regs, writes = run_k6(regs, src=MICGAIN, code=build(MICGAIN, list(MGN_DEFS) + list(defs)), mmio=mmio, gpiob=gpiob,
                                      tune=tune, model=gp0, level=level, spare=8192, tx=tx, rx_hz=HOME_HZ,
                                      keys=keys, lcd=lcd, count=8_000_000_000)
     return w, tx, ret, said, regs, lcd
@@ -1208,6 +1226,27 @@ def test_micgain_steps_the_agc_and_sensitivity_keyed_in_four_passes():
     rows = [x.split() for x in said if x.startswith(("a ", "b "))]
     assert len(rows) == 4 * 10 * 2 and all(len(r) == (8 if r[0] == "a" else 6) for r in rows)
     assert regs[0x19] == 0x1041 and regs[0x7D] == 0xE95C and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_micgain_plan2_steps_the_chips_tx_stages_at_full_sensitivity_and_puts_them_back():
+    pull, plug = 1_000_000, 200_000_000
+    w, tx, ret, said, regs, lcd = mgn_run(((pull, pull + 200_000), (plug, plug + 200_000)), defs=[("MG_PLAN", "2")])
+    assert ret == 4, said[-6:]
+    assert said[1] == "micgain plan 2 29=0000 2b=0000 31=0000 40=0000 48=82df" and said[2] == "micgain go"
+    assert all(len(x) <= 60 for x in said)
+    on_spans = [(a, b) for a, b in zip([us for n, _, us in tx["log"] if n == "tx_on"],
+                                       [us for n, _, us in tx["log"] if n == "tx_off"]) if (a, b) not in calls(tx["log"])]
+    ws = {r: [(v, us) for rr, v, us in tx["w"] if rr == r] for r in (0x29, 0x2B, 0x31, 0x40, 0x7D)}
+    assert all(any(a <= us <= b for a, b in on_spans) for r in ws for _, us in ws[r])   # only while keyed
+    assert [v for v, _ in ws[0x29]][:11] == [0, 0xAB40, 0xEB40, 0xA040, 0, 0, 0, 0, 0xAB40, 0, 0]
+    assert [v for v, _ in ws[0x31]][:10] == [0, 8, 8, 8, 0, 0, 0, 0, 8, 0]
+    assert [v for v, _ in ws[0x2B]][:10] == [0, 0, 0, 0, 1, 5, 0, 0, 1, 0]
+    assert [v for v, _ in ws[0x40]][:10] == [0, 0, 0, 0, 0, 0, 0x1FFF, 0, 0, 0]
+    assert all(v & 0x1F == 31 for v, _ in ws[0x7D][:10])
+    rows = [x for x in said if x.startswith("a ")]
+    assert len(rows) == 4 * 10
+    assert all(regs.get(r, 0) == 0 for r in (0x29, 0x2B, 0x31, 0x40)) and regs[0x7D] == 0xE95C
 
 
 @need_clang
@@ -1311,3 +1350,49 @@ def test_micrec_at_once_without_the_bench_and_its_refusals():
     assert ret == 0 and said[-2:] == ["micrec no sound", "micrec done"] and w["bus"] == []
     w, ret, said, regs, writes = rec_run(spare=512)
     assert ret == -8 and said == []
+
+
+# ---- micsotto: the mic coded live as sotto 1200, cable out ----
+
+MICSOTTO = os.path.join(ROOT, "c", "k6", "mod", "micsotto.c")
+
+
+@need_clang
+def test_micsotto_fits_the_radio_with_room_for_its_superframes(tmp_path):
+    """code under build.sh's 11,776-byte check, and in level 13's block: the header, the code, the
+    tag, then st_t, the encoder's state and at least 60 superframes (2.4 s)"""
+    import re
+    import subprocess
+    assert k6mod.source_level(MICSOTTO) == 13
+    code = k6mod.build(MICSOTTO)[0]
+    assert len(code) + 24 <= 11_776
+    probe = os.path.join(os.path.dirname(MICSOTTO), "_micsotto_sizes.c")
+    with open(probe, "w") as f:
+        f.write('#include "micsotto.c"\nconst unsigned MS_SIZES[2] = {sizeof(st_t), sizeof(struct slim_enc)};\n')
+    try:
+        asm = subprocess.run(["clang", "--target=thumbv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-Oz", "-fropi",
+                              "-ffreestanding", "-fno-builtin", "-nostdlib", "-I" + os.path.join(ROOT, "c", "k6"),
+                              "-isystem", os.path.join(ROOT, "c", "k6", "mod", "libc"), "-S", probe, "-o", "-"],
+                             check=True, capture_output=True, text=True).stdout
+    finally:
+        os.remove(probe)
+    st, enc = map(int, re.findall(r"\.long\s+(\d+)", asm.split("MS_SIZES:")[1])[:2])
+    room = k6mod.ARENA_BYTES_13 - (16 + len(code) + 8 + 4) - st - enc
+    assert room // 6 >= 60, (len(code), st, enc, room)
+
+
+MICSPI = os.path.join(ROOT, "c", "k6", "mod", "micspi.c")
+
+
+@need_clang
+def test_micspi_is_level_15_and_leaves_room_to_play_20_s():
+    """micspi keeps four superframes in RAM (the rest go to the outbox); after the take the
+    encoder's memory holds up to MAX_SF (500, 20 s) read back from the outbox to play"""
+    assert k6mod.source_level(MICSPI) == 15
+    code = k6mod.build(MICSPI)[0]
+    room = k6mod.arena_bytes(15) - (16 + len(code) + 8 + 4)
+    assert room >= 548 + 3148 + 4 * 6, (len(code), room)
+    assert (room - 548) // 6 >= 500
+    src = open(MICSOTTO).read()
+    main = src[src.index("int k6_main"):]
+    assert main.index("api->fl_erase") < main.index("er = call(api)")   # erased before the first keying

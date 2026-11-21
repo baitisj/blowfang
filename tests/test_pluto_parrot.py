@@ -276,9 +276,21 @@ def test_cue_ignores_a_blip_and_sends_nothing_without_a_call(monkeypatch, capsys
     assert sent == [] and "not a cue" in capsys.readouterr().out
 
 
+def test_cue_with_a_floor_ignores_a_weak_or_short_burst_and_takes_the_call(monkeypatch, capsys):
+    weak = cw_iq(ag7ew_units(), amp=40.0)                          # msot1b: peak 12 vs the K6's 63-66
+    short = cw_iq([1] * 30, amp=1000.0)                            # 1.8 s: msot1b's burst after the upload
+    a, sent, setups = cue_world(monkeypatch, [weak + short + cw_iq(ag7ew_units())])
+    a.min_s, a.min_peak, a.wait_s = 3.5, 200.0, 30.0
+    secs = pp.cue(a, np.zeros(10))
+    out = capsys.readouterr().out
+    assert sent == [(445_850_000, "cue tone")] and secs >= 3.5
+    assert out.count("not a cue") == 2, out
+
+
 def test_runner_takes_a_cue_on_the_bench_channels():
     args = ["cue", "job:t.wav", "--hz", "445850000", "--listen-hz", "440850000", "--gain", "-46", "--wait-s", "1700"]
     assert runner_problems(args, freq="bench") == []
+    assert runner_problems(args + ["--min-s", "3.5", "--min-peak", "30"], freq="bench") == []
 
 
 @pytest.mark.parametrize("args, why", [
