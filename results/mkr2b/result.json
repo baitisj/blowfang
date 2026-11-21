@@ -1,12 +1,12 @@
 {
  "id": "mkr2b",
- "status": "queued",
- "queued": "2026-11-21T04:53:21Z",
+ "status": "running",
+ "since": "2026-11-21T04:53:28Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "73ae0cf86da71d8f0dd308855820d02690b42f89",
   "path": "jobs/mkr2b"
  },
  "runner_commit": "6bb97ac715225f01ca68895cae0091bb7ce9b3b6",
- "updated": "2026-11-21T04:53:21Z"
+ "updated": "2026-11-21T04:53:28Z"
 }
