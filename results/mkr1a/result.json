@@ -1,12 +1,109 @@
 {
  "id": "mkr1a",
- "status": "running",
- "since": "2026-11-21T02:12:10Z",
+ "who": "micprobe",
+ "started": "2026-11-21T02:12:12Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-21T02:12:12Z",
+   "ended": "2026-11-21T02:12:14Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T02:12:14Z",
+   "ended": "2026-11-21T02:12:17Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-21T02:12:17Z",
+   "ended": "2026-11-21T02:13:32Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-21T02:13:32Z",
+   "ended": "2026-11-21T02:14:48Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T02:14:48Z",
+   "ended": "2026-11-21T02:14:51Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "ic7100.af",
+   "started": "2026-11-21T02:14:51Z",
+   "ended": "2026-11-21T02:14:53Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-21T02:14:53Z",
+   "ended": "2026-11-21T02:16:53Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-21T02:16:53Z",
+   "ended": "2026-11-21T02:17:14Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "ic7100.af",
+   "started": "2026-11-21T02:17:14Z",
+   "ended": "2026-11-21T02:17:15Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T02:17:15Z",
+   "ended": "2026-11-21T02:17:19Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-21T02:17:19Z",
+   "ended": "2026-11-21T02:19:50Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-21T02:19:50Z",
+   "ended": "2026-11-21T02:19:55Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "logger.stop",
+   "started": "2026-11-21T02:19:55Z",
+   "ended": "2026-11-21T02:19:55Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-5d0384d2011d",
+ "head": "5d0384d2011d49a798bb389a98bc64f444ec5d4a",
+ "ended": "2026-11-21T02:19:56Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "8ead3f15366eca9b44895a0f813563d2e3e98ac3",
   "path": "jobs/mkr1a"
  },
  "runner_commit": "5d0384d2011d49a798bb389a98bc64f444ec5d4a",
- "updated": "2026-11-21T02:12:10Z"
+ "updated": "2026-11-21T02:19:57Z"
 }
