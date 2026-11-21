@@ -412,7 +412,7 @@ def rec_runs(lines):
     lines' bytes decoded and scaled back (the module codes 8 times the sample's distance from
     its running mean). Bytes of a lost line are zeros, and info["short"] counts the lines."""
     out = []
-    for sec in sections(lines, "micrec"):
+    for sec in sections(lines, "micrec") + sections(lines, "mickrec"):
         data, info, notes, short = bytearray(), {}, [sec[0]], 0
         for ln in sec[1:]:
             m = re.fullmatch(r"p ([0-9a-f]{4}) ((?:[0-9a-f]{2})+)", ln)
