@@ -390,10 +390,10 @@ index 5f006e4..371e81e 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..cff1d2c
+index 0000000..41dd48b
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,5255 @@
+@@ -0,0 +1,5290 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -1127,9 +1127,38 @@ index 0000000..cff1d2c
 +#[cfg(not(feature = "lean"))]
 +fn rx_led_poll(now: u16) {
 +    if let Some(t) = unsafe { *addr_of!(RX_LED_T) } {
-+        if now.wrapping_sub(t) >= RX_LED_TICKS {
++        let ticks = if unsafe { *addr_of!(MOD_LED) } != 0 { MOD_LED_TICKS } else { RX_LED_TICKS };
++        if now.wrapping_sub(t) >= ticks {
 +            rx_led(false);
 +        }
++    }
++}
++
++// Jeff, 2026-11-21: while RAM ARENA takes a module over the air, the LED alternates green and
++// orange. Green stays lit through the transfer and the red TX LED (the FD6818's GPIO5) joins it
++// on every other module packet. Both go dark when the transfer ends (run, kept or refused), and
++// MOD_LED_TICKS after the last packet when the sender stops partway; red is never left lit, as
++// it means transmit.
++#[cfg(not(feature = "lean"))]
++const MOD_LED_TICKS: u16 = 15_000; // 1.5 s
++
++/// 0 when the module LED is off, else 1 + the packets counted (bit 0 picks the colour)
++#[cfg(not(feature = "lean"))]
++static mut MOD_LED: u8 = 0;
++
++/// A module packet partway through a transfer (on), or the transfer over (off)
++#[cfg(not(feature = "lean"))]
++fn upload_led(app: &mut App, syst: &mut SYST, on: bool) {
++    let n = unsafe { &mut *addr_of_mut!(MOD_LED) };
++    if on {
++        *n = (*n % 2) + 1;
++        rx_led(true);
++        unsafe { *addr_of_mut!(RX_LED_T) = Some(uptime::now()) };
++        app.radio.fd6818.set_tx_led(syst, *n == 2);
++    } else if *n != 0 {
++        *n = 0;
++        rx_led(false);
++        app.radio.fd6818.set_tx_led(syst, false);
 +    }
 +}
 +
@@ -3131,6 +3160,10 @@ index 0000000..cff1d2c
 +    }
 +    let now = uptime::now();
 +    rx_led_poll(now);
++    #[cfg(not(feature = "lean"))]
++    if unsafe { *addr_of!(MOD_LED) } != 0 && unsafe { (*addr_of!(RX_LED_T)).is_none() } {
++        upload_led(app, syst, false); // the sender stopped partway: red off too
++    }
 +    let dt = now.wrapping_sub(app.pager.last_tick) as u32;
 +    app.pager.idle_ticks = app.pager.idle_ticks.saturating_add(dt);
 +    app.pager.cfg_ticks = app.pager.cfg_ticks.saturating_add(dt);
@@ -3722,6 +3755,8 @@ index 0000000..cff1d2c
 +        "K6 MOD r={} xfer={} chunk={} have={}/{} rssi={} noise={}",
 +        r, st.xfer, st.chunk, st.have, st.count, app.pager.sync_rssi, app.pager.sync_noise
 +    );
++    #[cfg(not(feature = "lean"))]
++    upload_led(app, syst, st.active != 0);
 +    if r != -1 {
 +        // its CRC checked: the link works in these settings
 +        app.pager.idle_ticks = 0;
