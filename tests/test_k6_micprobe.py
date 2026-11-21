@@ -1077,12 +1077,23 @@ def test_micaf_with_no_second_carrier_still_reports_two_passes():
 
 MICKREC = os.path.join(ROOT, "c", "k6", "mod", "mickrec.c")
 MKR_DEFS = [("MAX_BYTES", "520u"), ("PRE", "100u"), ("HOLD_MS", "200u"), ("WAIT_MS", "20000u"),
-            ("KEY_WAIT_MS", "60000u")]
+            ("KEY_WAIT_MS", "60000u"), ("DROP_MS", "300u")]
 
 
 def mkr_run(keys, level=14, tx=None, sound=True):
+    """sound: the job's Pluto answers the K6's call (pluto_bench cue) as in mgn_run"""
     w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4, sound=sound)
     tx = {} if tx is None else tx
+    base = regs[0x67]
+
+    def rssi(us):
+        v = base(us)
+        if w["tuned"] == SOUND_HZ:
+            on = sound and any(b + CUE_DELAY_US <= us < b + CUE_DELAY_US + CUE_SOUND_US for _, b in calls(tx.get("log", [])))
+            return 250 if on else 60
+        return v
+    regs[0x67] = rssi
+    regs[0x7D] = 0xE95C
     lcd = {}
     ret, said, regs, writes = run_k6(regs, src=MICKREC, code=build(MICKREC, MKR_DEFS), mmio=mmio, gpiob=gpiob,
                                      tune=tune, model=gp0, level=level, spare=4096, tx=tx, rx_hz=HOME_HZ,
@@ -1103,12 +1114,19 @@ def test_mickrec_records_keyed_with_the_pa_off_and_speaks_after_the_replug_key()
     assert said[0] == "mickrec start 30=bff1 47=6040 48=82df rx=1a46d650" and said[-1] == "mickrec done"
     assert all(len(x) <= 60 for x in said)
     log = tx["log"]
-    t_on = next(us for n, _, us in log if n == "tx_on")
-    t_off = next(us for n, _, us in log if n == "tx_off")
-    assert pull < t_on < t_off < plug
+    cw = calls(log)
+    assert len(cw) == 2 and pull < cw[0][0]                       # the call, and the last ID
+    ons = [us for n, _, us in log if n == "tx_on"]
+    offs = [us for n, _, us in log if n == "tx_off"]
+    t_on, t_off = [(a, b) for a, b in zip(ons, offs) if (a, b) not in cw][0]
+    s0, s1 = cw[0][1] + CUE_DELAY_US, cw[0][1] + CUE_DELAY_US + CUE_SOUND_US
+    assert s0 < t_on < t_off < s1 <= cw[1][0] and cw[1][1] < plug   # recorded inside the clip, ID after it
     mic = [us for r, v, us in tx["w"] if r == 0x30 and v & 4]
     assert mic and min(mic) > t_on and max(mic) < t_off
-    assert "mickrec keyed 30=c1fa" in said[said.index(next(x for x in said if x.startswith("mickrec keyed")))]
+    sens = [(v, us) for r, v, us in tx["w"] if r == 0x7D]
+    assert sens[0][0] == 0xE95F and t_on < sens[0][1] < t_off and regs[0x7D] == 0xE95C
+    keyed = next(x for x in said if x.startswith("mickrec keyed"))
+    assert keyed.startswith("mickrec keyed 30=c1fa") and keyed.endswith(" 7d=e95f g=08")
     runs = mp.rec_runs(mp.say_lines("\n".join(said)))
     assert len(runs) == 1
     x, info, notes = runs[0]
@@ -1118,12 +1136,12 @@ def test_mickrec_records_keyed_with_the_pa_off_and_speaks_after_the_replug_key()
 
 
 @need_clang
-def test_mickrec_without_sound_or_key_keys_nothing():
+def test_mickrec_without_a_key_keys_nothing_and_without_a_cue_only_calls():
     w, tx, ret, said, regs, lcd = mkr_run(())
     assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "mickrec done"
     pull = 1_000_000
     w, tx, ret, said, regs, lcd = mkr_run(((pull, pull + 200_000), (40_000_000, 40_200_000)), sound=False)
-    assert ret == -9 and "tx_on" not in [n for n, _, _ in tx.get("log", [])]
+    assert ret == -9 and len(calls(tx["log"])) == 1 and [n for n, _, _ in tx["log"]].count("tx_on") == 1
     assert not [x for x in said if x.startswith("p ")]
 
 
