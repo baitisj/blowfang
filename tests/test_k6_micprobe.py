@@ -1126,7 +1126,7 @@ def test_mickrec_records_keyed_with_the_pa_off_and_speaks_after_the_replug_key()
     sens = [(v, us) for r, v, us in tx["w"] if r == 0x7D]
     assert sens[0][0] == 0xE95F and t_on < sens[0][1] < t_off and regs[0x7D] == 0xE95C
     keyed = next(x for x in said if x.startswith("mickrec keyed"))
-    assert keyed.startswith("mickrec keyed 30=c1fa") and keyed.endswith(" 7d=e95f g=08")
+    assert keyed.startswith("mickrec keyed 30=c1fa") and keyed.endswith(" 7d=e95f g=01")
     runs = mp.rec_runs(mp.say_lines("\n".join(said)))
     assert len(runs) == 1
     x, info, notes = runs[0]

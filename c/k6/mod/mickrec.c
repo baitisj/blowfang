@@ -15,9 +15,9 @@
    of full scale). Key-down; once the clip's carrier has gone, a last CW ID. Then PLUG CABLE IN /
    THEN ANY KEY, and only then the lines (micrec's own format, so tools/k6_micprobe.py reads them):
      mickrec start 30=bff1 47=6040 48=82df rx=1a46d650
-     mickrec keyed 30=c1fa 36=007f now=c3fe 7d=e95f g=08
+     mickrec keyed 30=c1fa 36=007f now=c3fe 7d=e95f g=01
      p 0000 0123...
-     micrec p ticks=7c38 n=6400 w=c8 rest=5d20 over=0000 g=08
+     micrec p ticks=7c38 n=6400 w=c8 rest=5d20 over=0000 g=01
      mickrec done
    The mic is never on the air: its bit is set only while REG_36 says the PA is off, checked
    every 512 samples. Writes, all put back: REG_30, REG_47, REG_48, REG_7D, the tuning, PA11's mode, speed
@@ -64,7 +64,7 @@
 #define MIC_SENS 31u /* REG_7D [4:0] while recording */
 #endif
 #ifndef GAIN
-#define GAIN 8 /* digital, on top of mkr1a's x8 */
+#define GAIN 1 /* digital, on top of x8 (mkr2a: 8 clipped 14 %, mkr2b: 3 with a 9 dB louder clip, 34 %) */
 #endif
 #ifndef DROP_MS
 #define DROP_MS 1000u
