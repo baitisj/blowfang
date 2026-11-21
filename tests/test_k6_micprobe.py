@@ -1130,7 +1130,7 @@ def test_mickrec_without_sound_or_key_keys_nothing():
 # ---- micgain: the mic AGC and REG_7D stepped, cable out ----
 
 MICGAIN = os.path.join(ROOT, "c", "k6", "mod", "micgain.c")
-MGN_DEFS = [("N_CAP", "64u"), ("PRE", "16u"), ("SET_MS", "20u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"),
+MGN_DEFS = [("N_CAP", "64u"), ("PRE", "16u"), ("SET_MS", "20u"), ("PULL_MS", "500u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"),
             ("DROP_MS", "300u"), ("WAIT_MS", "20000u"), ("KEY_WAIT_MS", "60000u")]
 
 
@@ -1164,6 +1164,7 @@ def test_micgain_steps_the_agc_and_sensitivity_keyed_in_four_passes():
     w, tx, ret, said, regs, lcd = mgn_run(((pull, pull + 200_000), (plug, plug + 200_000)))
     assert ret == 4, said[-6:]
     assert said[0] == "micgain start 19=1041 7d=e95c 47=6040 rx=1a46d650" and said[-1] == "micgain done"
+    assert said[1] == "micgain go"
     assert all(len(x) <= 60 for x in said)
     assert [x.split()[2] for x in said if x.startswith("micgain pass")] == ["q=0", "q=1", "q=2", "q=3"]
     assert all(x.endswith("e=0") for x in said if x.startswith("micgain pass"))

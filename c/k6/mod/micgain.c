@@ -11,9 +11,11 @@
    a carrier has stayed HOLD_MS on SOUND_HZ after the last one dropped (the job steps the IC-7100's
    AF: 0.1, 0.2, 0.3, then 0 as the control), each keyed afresh with its CW ID.
 
-   The screen runs the bench, as micout: PULL CABLE / THEN ANY KEY, the passes, PLUG CABLE IN /
-   THEN ANY KEY, and only then the lines:
+   The screen runs the bench: CABLE STILL IN: / PRESS ANY KEY, then the line "micgain go" (the
+   job starts its tones on it, so nothing sounds before the K6 listens), PULL CABLE NOW for
+   PULL_MS, the passes, PLUG CABLE IN / THEN ANY KEY, and only then the lines:
      micgain start 19=1041 7d=e95c 47=6040 rx=1a46d650
+     micgain go
      micgain pass q=1 rssi=-4c e=0
      a 1 05 0e3a 0000000000012345 0000000000000678 0f20 1a40
                                     q, setting, ticks, v, g1300, lowest, highest sample
@@ -58,6 +60,9 @@
 #endif
 #ifndef WAIT_MS
 #define WAIT_MS 300000u
+#endif
+#ifndef PULL_MS
+#define PULL_MS 15000u /* after the key, to pull the cable (the job waits 20 s after "micgain go") */
 #endif
 #ifndef KEY_WAIT_MS
 #define KEY_WAIT_MS 1200000u
@@ -321,11 +326,14 @@ int k6_main(const k6_api_t *api) {
   for (q = 0; q < N_PASS; q++) at[q] = err[q] = made[q] = 0;
   wr(MIC_GPIOB + MIC_BRR, AMP);
   wr(PA11_GPIOA + PA11_OSPEEDR, ospeed | (3u << (2 * PA11_PIN)));
-  co_show(api, "MICGAIN CABLE OUT", "PULL CABLE", "THEN ANY KEY");
+  co_show(api, "MICGAIN CABLE OUT", "CABLE STILL IN:", "PRESS ANY KEY");
   if (co_key(api, KEY_WAIT_MS) < 0) {
     ret = -7;
     goto out;
   }
+  api->say("micgain go"); /* (the job starts its tones 20 s after this line) */
+  co_show(api, "MICGAIN CABLE OUT", "PULL CABLE NOW", "THEN QUIET");
+  for (t0 = api->ms(); api->ms() - t0 < PULL_MS;) api->delay_us(20000);
   co_show(api, "MICGAIN CABLE OUT", "QUIET PLEASE", "PASS 0");
   /* the upload's tail is long gone by the key, but wait for a quiet second all the same */
   t0 = api->ms();
