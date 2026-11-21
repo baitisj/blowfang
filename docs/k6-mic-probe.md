@@ -12,6 +12,15 @@ that pin"), with the runs that took it down, because the way it went wrong is wo
 
 ## Short answer
 
+**Read this first (2026-11-20 22:59 UTC, Jeff): every mic test below ran with the programming
+cable in the K6's jack.** The cable sits on the mic line (as on the UV-380, whose USB cable
+switches its internal mic out), so the negatives below say nothing about the mic: "no path to
+the MCU" is untested. What stands: PA11 reads the chip's AF output, REG_64 is a 20 ms level
+meter, select 4 with the TX DSP on is the receiver's raw baseband, and the "mic" sounds of
+micp4/micp5 were the Pluto's carrier leaking in (their 120/240/360 Hz hum rides on the Pluto's
+signal: it fell 2 dB per dB of Pluto power in micp5g). The retest is micout, below.
+
+
 - **The MCU has an audio input after all: the beep pin.** PA11, the voice prompts' PWM pin,
   shares a node with the FD6818's audio output. Run as a one-pin delta-sigma converter
   (`c/k6/mod/pa11adc.h`) it digitises whatever the chip puts on its AF pin, with no part added:
@@ -402,7 +411,43 @@ the K6 read the sound's carrier at -74 dBm). Both builds ran whole (returns 40, 
 So moving the mic toward the buzzer doesn't work either: keyed, nothing faster than a 50 Hz level
 meter carries the mic, and nothing at all reaches the AF pin.
 
+## mic64: does REG_64 hear the IC-7100 at all? (2026-11-20)
+
+Jeff: "Prove to yourself that the IC-7100 is actually producing tone by measuring a change in
+REG_64. Try modulating AF from 0 to 0.3." mtx1a's REG_64 captures were only 0.55 s long.
+`c/k6/mod/mic64.c` waits for the job's first tone on 445.850, keys up on 440.850, sends its CW
+ID, then with the PA off and the mic ADC on reads REG_64 every 20 ms for 105 s (5,252 samples),
+while the job sends the tone again and again and steps the IC-7100's AF between them (0.3, 0,
+0.15, 0, 0.3, 0). The serial log's time stamps line the samples up with the runner's steps
+(sample 0 is 0.5 s after the `mic64 go` line). `tools/k6_micprobe.py` prints a line a second.
+
+**Run m64a** (20:09:09-20:10:54 UTC, unattended; the Pluto's 10 s tone on 445.850 at -46 dB,
+the K6 reading its carrier at -74 dBm; IC-7100 AF 0.30, 0, 0.15, 0, 0.30, 0 between sends).
+REG_64 sat at 138-140 (one-second means; single reads 132-149) the whole 105 s: the same with
+AF 0.30 and the tone playing as with AF 0, and the same between sends with no carrier at all. It
+did not move with the IC-7100's level, so it can't prove the IC-7100 made a sound. (In mtx1a it
+read 14-18; there REG_47 was at select 1 for those captures, here at its receive value 0x6040,
+which suggests REG_64 measures something on the AF side rather than the mic.) With micr2a's
+result (Jeff heard the tone at the mic, and no register followed it in receive), REG_64 has not
+followed a sound at the K6's mic in any state tried.
+
+## micout: mic64 with the cable pulled (2026-11-20)
+
+`c/k6/mod/micout.c` is mic64 built with `MIC64_OUT`. Nothing the K6 says with the cable out
+reaches the logger, so the screen runs the bench: PULL CABLE / THEN ANY KEY; then QUIET PLEASE
+while it waits for the sound's carrier on 445.850 MHz and records REG_64 keyed with the PA off
+(105 s, every 20 ms); TALK NOW for the last 1,000 samples (20 s), when the person at the bench
+talks into the mic; then key-down and PLUG CABLE IN / THEN ANY KEY. Only after that key does it
+send its lines, mic64's own plus `mic64 out talk=N` (the first TALK NOW sample). The sound is the
+Pluto at gain -46 playing a 1,300 Hz tone keyed by micscan's 31-chip m-sequence (100 ms chips,
+nine periods) through the IC-7100 on 445.850 MHz: once at AF 0.3, once at AF 0 as the control.
+A level meter that hears the room correlates with the pattern whatever the alignment, and the
+talk window needs no pattern at all.
+
 ## Where this leaves the K6
+
+(Written before the cable was noticed: the mic line is open again until micout runs.)
+
 
 - **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or
   off, and with the guide's DISC bit: no AF select, GP0 select or register carries it. What is

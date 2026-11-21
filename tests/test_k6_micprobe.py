@@ -391,6 +391,7 @@ def mic_world(af_sel=9, gp_sel=7, sound=True, tail_us=400_000):
     def gpiob(off, value, st):
         assert off in (0x18, 0x28), hex(off)
         w["us"], pins = st["us"], w["pins"]
+        w["regs"] = st["regs"]                     # (REG_64's model reads REG_30 even with PA11 untouched)
         level = int(off == 0x18)
         if value == 4:
             w["amp"].append(bool(level))
@@ -865,6 +866,127 @@ def test_mictx_stays_inside_its_time_and_every_way_out_keys_down():
     offs = [us for n, _, us in tx["log"] if n == "tx_off"]
     assert ret == -6 and tx["log"][-1][0] == "tx_off" and offs[0] < t_key + 200_000
     assert [n for n, _, _ in tx["log"]].count("tx_on") == 1 and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+# ---- mic64 ----
+
+MIC64 = os.path.join(ROOT, "c", "k6", "mod", "mic64.c")
+M64_DEFS = [("N_MAX", "52u"), ("SETTLE_MS", "100u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"),
+            ("WAIT_MS", "3000u")]
+
+
+def m64_run(level=14, spare=4096, tx=None, rx_hz=HOME_HZ, keys=(), **kw):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1, **kw)
+    tx = {} if tx is None else tx
+    ret, said, regs, writes = run_k6(regs, src=MIC64, code=build(MIC64, M64_DEFS), mmio=mmio, gpiob=gpiob, tune=tune,
+                                     model=gp0, level=level, spare=spare, tx=tx, rx_hz=rx_hz, keys=keys,
+                                     count=4_000_000_000)
+    return w, tx, ret, said, regs, writes
+
+
+def test_mic64_fits_the_radio():
+    assert k6mod.source_level(MIC64) == 13
+
+
+@need_clang
+def test_mic64_logs_reg_64_every_20_ms_keyed_with_the_pa_off():
+    w, tx, ret, said, regs, writes = m64_run()
+    assert ret == 52, said[-4:]
+    assert said[0] == "mic64 start 30=bff1 47=6040 rx=1a46d650" and said[-1] == "mic64 done"
+    assert all(len(x) <= 60 for x in said) and "mic64 sound rssi=-31" in said and "mic64 go" in said
+    assert "mic64 keyed 30=c1fa 36=007f now=c3fe late=0000" in said
+    log = tx["log"]
+    ons = [i for i, (n, _, _) in enumerate(log) if n == "tx_on"]
+    assert len(ons) == 1 and log[ons[0]][1] == 118000
+    off = next(k for k in range(ons[0], len(log)) if log[k][0] == "tx_off")
+    pa = [(a, us) for n, a, us in log[ons[0] + 1:off]]
+    marks = [(us1 - us0) // 60000 for (a0, us0), (a1, us1) in zip(pa, pa[1:]) if a0 == 1]
+    assert marks == [1, 3, 3, 3, 1, 3, 3, 1, 1, 1, 1, 1, 3, 3], marks
+    assert pa[-1][0] == 0
+    mic = [us for r, v, us in tx["w"] if r == 0x30 and v & 4]
+    assert mic and min(mic) > pa[-1][1] and max(mic) < log[off][2]
+    assert {r for r, _, us in tx["w"] if log[ons[0]][2] <= us <= log[off][2]} <= {0x30, 0x47}
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040 and w["tunes"] == [SOUND_HZ, HOME_HZ, HOME_HZ]
+    assert w["amp"] == [False]
+    caps = mp.captures(mp.sections(mp.say_lines("\n".join(said)), "mic64")[0], "mic64", 4)
+    x, info = caps["A"]
+    assert len(x) == 52 and info["step"] == 20 and 195 < info["ticks"] / 52 < 205   # 20 ms in 100 us ticks
+    assert x.min() > 100                           # the model's REG_64 with the mic bit and the sound
+    rep = mp.m64_report(caps)
+    assert rep and rep[0].startswith("mic64: 52 samples every 20 ms")
+
+
+@need_clang
+def test_mic64_keys_nothing_off_the_bench_frequency_on_a_busy_channel_or_without_a_transmitter():
+    w, tx, ret, said, regs, writes = m64_run(rx_hz=441_850_000)
+    assert ret == -2 and "log" not in tx and len(said) == 1
+    w, tx, ret, said, regs, writes = m64_run(tx={"on_ret": -1})
+    assert ret == -3 and [n for n, _, _ in tx["log"]].count("tx_on") == 1 and said[-1] == "mic64 done"
+    assert not [1 for r, v, _ in tx["w"] if r == 0x30] and regs[0x30] == 0xBFF1
+    w, tx, ret, said, regs, writes = m64_run(spare=1024)
+    assert ret == -8 and said == [] and "log" not in tx
+    w, tx, ret, said, regs, writes = m64_run(level=2)
+    assert ret == -1 and said == []
+
+
+@need_clang
+def test_mic64_every_way_out_keys_down():
+    w, tx, ret, said, regs, writes = m64_run()
+    t_on = next(us for n, _, us in tx["log"] if n == "tx_on")
+    dead = t_on + 1_500_000                        # the core's PA cut-off, in the ID
+    w, tx, ret, said, regs, writes = m64_run(tx={"dead_us": dead})
+    offs = [us for n, _, us in tx["log"] if n == "tx_off"]
+    assert ret == -5 and tx["log"][-1][0] == "tx_off" and offs[0] < dead + 200_000
+    assert not [1 for r, v, _ in tx["w"] if r == 0x30 and v & 4] and regs[0x30] == 0xBFF1
+    t_key = t_on + 4_200_000                       # a key press while logging (the ID takes ~3.6 s)
+    w, tx, ret, said, regs, writes = m64_run(keys=((t_key, t_key + 5_000_000),))
+    offs = [us for n, _, us in tx["log"] if n == "tx_off"]
+    assert ret == -6 and tx["log"][-1][0] == "tx_off" and offs[0] < t_key + 200_000
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+# ---- micout: mic64 with the cable pulled ----
+
+MICOUT = os.path.join(ROOT, "c", "k6", "mod", "micout.c")
+MOUT_DEFS = M64_DEFS + [("TALK_N", "13u"), ("KEY_WAIT_MS", "60000u")]
+
+
+def mout_run(keys, level=14, tx=None, **kw):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1, **kw)
+    tx = {} if tx is None else tx
+    lcd = {}
+    ret, said, regs, writes = run_k6(regs, src=MICOUT, code=build(MICOUT, MOUT_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=level, spare=4096, tx=tx, rx_hz=HOME_HZ,
+                                     keys=keys, lcd=lcd, count=6_000_000_000)
+    return w, tx, ret, said, regs, lcd
+
+
+def test_micout_fits_the_radio():
+    assert k6mod.source_level(MICOUT) == 13
+    assert len(k6mod.build(MICOUT)[0]) <= 11_776
+
+
+@need_clang
+def test_micout_waits_for_the_pull_records_then_speaks_only_after_the_replug_key():
+    pull, plug = 1_000_000, 40_000_000
+    w, tx, ret, said, regs, lcd = mout_run(((pull, pull + 200_000), (plug, plug + 200_000)))
+    assert ret == 52, said[-4:]
+    log = tx["log"]
+    t_on = next(us for n, _, us in log if n == "tx_on")
+    t_off = next(us for n, _, us in log if n == "tx_off")
+    assert pull < t_on < t_off < plug                # keyed only after the pull key, down before the plug key
+    assert "mic64 out talk=0027" in said             # 52 - 13
+    i = said.index("mic64 out talk=0027")
+    assert said[i + 1].startswith("mic64 keyed 30=c1fa") and said[-1] == "mic64 done"
+    assert lcd["scr"]["text"][2] == "SENDING" and lcd["scr"]["text"][0] == "MIC64 CABLE OUT"
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_micout_without_the_pull_key_keys_nothing():
+    w, tx, ret, said, regs, lcd = mout_run(())
+    assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "mic64 done"
+    assert lcd["scr"]["text"][2] == "PULL CABLE"
 
 
 # ---- keygo ----
