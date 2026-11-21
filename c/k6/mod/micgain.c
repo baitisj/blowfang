@@ -88,6 +88,9 @@
 #ifndef SET_MS
 #define SET_MS 300u
 #endif
+#ifndef MG_PLAN
+#define MG_PLAN 1 /* 1: REG_19 bit 15 x REG_7D (mgn1b, mgn1d); 2: the chip's TX stages at REG_7D 31 */
+#endif
 #define N_SET 10u
 #define N_CFG N_SET
 #define N_PASS 4u
@@ -113,8 +116,32 @@ typedef struct {
   res_t *res;
   uint32_t m_in;
   uint16_t r47, r19, r48, r7d;
+#if MG_PLAN == 2
+  uint16_t r29, r2b, r31, r40;
+#endif
   int wide;
 } run_t;
+
+#if MG_PLAN == 2
+/* plan 2 (2026-11-21, Jeff: "prioritize the analog gain settings before we apply digital
+   gain"): REG_48's AF gains already read 0x82df (AF DAC gain 15 of 15) and micsotto sets gain 2
+   to 63, REG_7D is at 31; what else in the chip's transmit path moves select 4 (BK4819 map):
+     0 as micsotto          1 REG_29 compressor 2:1 (0 dB point 86, noise point 64), REG_31 bit 3
+     2 compressor 4:1       3 compressor 2:1, 0 dB point 64
+     4 REG_2B bit 0 (TX pre-emphasis off)    5 REG_2B bits 0, 2 (and the TX 300 Hz high-pass off)
+     6 REG_40's deviation [11:0] at 0xFFF    7 REG_40's deviation halved
+     8 compressor 2:1 and pre-emphasis off   9 as micsotto again (drift)
+   each from the registers as found, all put back after the pass */
+static void set2(const run_t *r, uint32_t k) {
+  const k6_api_t *api = r->api;
+  uint16_t c29 = 0, comp = k == 1 || k == 2 || k == 3 || k == 8, dev = r->r40 & 0x0FFFu;
+  if (comp) c29 = (uint16_t)((k == 2 ? 3u : 2u) << 14 | (k == 3 ? 64u : 86u) << 7 | 64u);
+  api->fd_write(0x29, comp ? c29 : r->r29);
+  api->fd_write(0x31, (uint16_t)(comp ? r->r31 | 0x0008u : r->r31));
+  api->fd_write(0x2B, (uint16_t)(k == 4 || k == 8 ? r->r2b | 0x0001u : k == 5 ? r->r2b | 0x0005u : r->r2b));
+  api->fd_write(0x40, (uint16_t)(k == 6 ? r->r40 | 0x1FFFu : k == 7 ? (r->r40 & ~0x0FFFu) | (dev >> 1) : r->r40));
+}
+#endif
 
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
@@ -255,12 +282,20 @@ static int pass(const run_t *r, res_t *o) {
     api->fd_write(0x48, (uint16_t)(r->r48 | 0x03F0u));
   }
   for (k = 0; k < N_SET && !e; k++) {
+#if MG_PLAN == 2
+    uint32_t t;
+    if (api->fd_read(0x36) & 0x0080u) e = -5;
+    if (e) break;
+    api->fd_write(0x7D, (uint16_t)(r->r7d | 0x001Fu));
+    set2(r, k);
+#else
     static const uint8_t SENS[5] = {0, 8, 18, 24, 31};
     uint32_t t;
     if (api->fd_read(0x36) & 0x0080u) e = -5;
     if (e) break;
     api->fd_write(0x19, (uint16_t)(k < 5 ? r->r19 & ~AGC_OFF : r->r19 | AGC_OFF));
     api->fd_write(0x7D, (uint16_t)((r->r7d & ~0x001Fu) | SENS[k % 5]));
+#endif
     for (t = api->ms(); api->ms() - t < SET_MS;) {
       if (api->key_poll()) e = -6;
       if (e) break;
@@ -271,6 +306,12 @@ static int pass(const run_t *r, res_t *o) {
   api->fd_write(0x19, r->r19);
   api->fd_write(0x7D, r->r7d);
   api->fd_write(0x48, r->r48);
+#if MG_PLAN == 2
+  api->fd_write(0x29, r->r29);
+  api->fd_write(0x31, r->r31);
+  api->fd_write(0x2B, r->r2b);
+  api->fd_write(0x40, r->r40);
+#endif
   if (s30 && api->fd_read(0x30) != s30 && api->fd_write(0x30, (uint16_t)s30) != 0) mic_bus_write(api, 0x30, s30);
   api->fd_write(0x47, r->r47);
   api->tx_off();
@@ -344,6 +385,12 @@ int k6_main(const k6_api_t *api) {
   r.r19 = api->fd_read(0x19);
   r.r48 = api->fd_read(0x48);
   r.r7d = api->fd_read(0x7D);
+#if MG_PLAN == 2
+  r.r29 = api->fd_read(0x29);
+  r.r2b = api->fd_read(0x2B);
+  r.r31 = api->fd_read(0x31);
+  r.r40 = api->fd_read(0x40);
+#endif
   r.wide = api->fd_read(0x43) == 0x3028; /* (as gp0cap.c tells the filter) */
   r.line = line = (char *)(((uint32_t)api->scratch(&room) + 7) & ~7u);
   r.res = (res_t *)(line + 64);
@@ -356,6 +403,15 @@ int k6_main(const k6_api_t *api) {
   p = hexn(put(p, " rx="), home, 8);
   *p = 0;
   api->say(line);
+#if MG_PLAN == 2
+  p = hexn(put(line, "micgain plan 2 29="), r.r29, 4);
+  p = hexn(put(p, " 2b="), r.r2b, 4);
+  p = hexn(put(p, " 31="), r.r31, 4);
+  p = hexn(put(p, " 40="), r.r40, 4);
+  p = hexn(put(p, " 48="), r.r48, 4);
+  *p = 0;
+  api->say(line);
+#endif
   if (home != BENCH_HZ) return -2;
   for (q = 0; q < N_PASS; q++) at[q] = err[q] = made[q] = 0;
   wr(MIC_GPIOB + MIC_BRR, AMP);

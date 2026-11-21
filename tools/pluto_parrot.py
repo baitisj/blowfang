@@ -238,9 +238,11 @@ def run(a):
 
 
 def cue(a, track, rate=None):
-    """wait up to a.wait_s for one burst CUE_MIN_S..CUE_MAX_S long on a.listen_hz (shorter or
-    longer ones are told and ignored), then after a.delay_s send track on a.hz. -> the burst's
-    length in s; SystemExit when none came"""
+    """wait up to a.wait_s for one burst CUE_MIN_S..CUE_MAX_S long (a.min_s, a.max_s when set) on
+    a.listen_hz, its ADC peak at least a.min_peak (0: any; shorter, longer or weaker ones are told
+    and ignored), then after a.delay_s send track on a.hz. -> the burst's length in s; SystemExit
+    when none came. (msot1b, 11-21: a 2.1 s burst right after an upload and a weak 5.2 s one, peak
+    12 where the K6's call reads 63-66, each spent a cue; --min-s 3.5 --min-peak 30 keeps both out)"""
     import types
     import pluto_bench as pb
     pb.check_tx(a.hz, a.offset_hz, a.gain)
@@ -249,8 +251,10 @@ def cue(a, track, rate=None):
     t_end = time.time() + a.wait_s
     la = types.SimpleNamespace(hz=a.listen_hz, rx_gain=a.rx_gain, uri=a.uri)
     got = None
-    print(f"cue: listening on {a.listen_hz} Hz up to {a.wait_s:.0f} s for a burst of {CUE_MIN_S:g}-{CUE_MAX_S:g} s,"
-          f" then {a.what} on {a.hz} Hz", flush=True)
+    lo, hi = getattr(a, "min_s", None) or CUE_MIN_S, getattr(a, "max_s", None) or CUE_MAX_S
+    floor = getattr(a, "min_peak", None) or 0
+    print(f"cue: listening on {a.listen_hz} Hz up to {a.wait_s:.0f} s for a burst of {lo:g}-{hi:g} s"
+          f"{f', peak {floor:g} or more' if floor else ''}, then {a.what} on {a.hz} Hz", flush=True)
     while got is None and time.time() < t_end:
         rx = Listener(la, rate, q, t_end)
         try:
@@ -262,7 +266,7 @@ def cue(a, track, rate=None):
                         break
                     continue
                 secs = len(burst) / FS
-                ok = CUE_MIN_S <= secs <= CUE_MAX_S
+                ok = lo <= secs <= hi and peak >= floor
                 print(f"{time.strftime('%H:%M:%S', time.gmtime())}Z cue: heard a burst of {secs:.1f} s, ADC peak "
                       f"{peak:.0f} of 2047{'' if ok else ' (not a cue: ignored)'}", flush=True)
                 if ok:

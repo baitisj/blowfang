@@ -1169,7 +1169,7 @@ def calls(log):
     return out
 
 
-def mgn_run(keys, level=14, tx=None, cue=True):
+def mgn_run(keys, level=14, tx=None, cue=True, defs=()):
     """the job's Pluto as a cue (pluto_bench cue): CUE_DELAY_US after each K6 call ends, its
     carrier on 445.850 for CUE_SOUND_US"""
     w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4)
@@ -1185,7 +1185,7 @@ def mgn_run(keys, level=14, tx=None, cue=True):
     regs[0x67] = rssi
     regs[0x19], regs[0x7D] = 0x1041, 0xE95C
     lcd = {}
-    ret, said, regs, writes = run_k6(regs, src=MICGAIN, code=build(MICGAIN, MGN_DEFS), mmio=mmio, gpiob=gpiob,
+    ret, said, regs, writes = run_k6(regs, src=MICGAIN, code=build(MICGAIN, list(MGN_DEFS) + list(defs)), mmio=mmio, gpiob=gpiob,
                                      tune=tune, model=gp0, level=level, spare=8192, tx=tx, rx_hz=HOME_HZ,
                                      keys=keys, lcd=lcd, count=8_000_000_000)
     return w, tx, ret, said, regs, lcd
@@ -1226,6 +1226,27 @@ def test_micgain_steps_the_agc_and_sensitivity_keyed_in_four_passes():
     rows = [x.split() for x in said if x.startswith(("a ", "b "))]
     assert len(rows) == 4 * 10 * 2 and all(len(r) == (8 if r[0] == "a" else 6) for r in rows)
     assert regs[0x19] == 0x1041 and regs[0x7D] == 0xE95C and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_micgain_plan2_steps_the_chips_tx_stages_at_full_sensitivity_and_puts_them_back():
+    pull, plug = 1_000_000, 200_000_000
+    w, tx, ret, said, regs, lcd = mgn_run(((pull, pull + 200_000), (plug, plug + 200_000)), defs=[("MG_PLAN", "2")])
+    assert ret == 4, said[-6:]
+    assert said[1] == "micgain plan 2 29=0000 2b=0000 31=0000 40=0000 48=82df" and said[2] == "micgain go"
+    assert all(len(x) <= 60 for x in said)
+    on_spans = [(a, b) for a, b in zip([us for n, _, us in tx["log"] if n == "tx_on"],
+                                       [us for n, _, us in tx["log"] if n == "tx_off"]) if (a, b) not in calls(tx["log"])]
+    ws = {r: [(v, us) for rr, v, us in tx["w"] if rr == r] for r in (0x29, 0x2B, 0x31, 0x40, 0x7D)}
+    assert all(any(a <= us <= b for a, b in on_spans) for r in ws for _, us in ws[r])   # only while keyed
+    assert [v for v, _ in ws[0x29]][:11] == [0, 0xAB40, 0xEB40, 0xA040, 0, 0, 0, 0, 0xAB40, 0, 0]
+    assert [v for v, _ in ws[0x31]][:10] == [0, 8, 8, 8, 0, 0, 0, 0, 8, 0]
+    assert [v for v, _ in ws[0x2B]][:10] == [0, 0, 0, 0, 1, 5, 0, 0, 1, 0]
+    assert [v for v, _ in ws[0x40]][:10] == [0, 0, 0, 0, 0, 0, 0x1FFF, 0, 0, 0]
+    assert all(v & 0x1F == 31 for v, _ in ws[0x7D][:10])
+    rows = [x for x in said if x.startswith("a ")]
+    assert len(rows) == 4 * 10
+    assert all(regs.get(r, 0) == 0 for r in (0x29, 0x2B, 0x31, 0x40)) and regs[0x7D] == 0xE95C
 
 
 @need_clang
