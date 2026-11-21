@@ -1,0 +1,23 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/mkr2b/k6-rate.json"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 35746,
+  "sha256": "3c71aee8057c2d3d4b69eaf217630f9e2f0d513e1d1c5ecfe8828a8f1538492a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/mkr2b/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 54253,
+  "sha256": "54d0e04a12b9eadb24c77ca2e08cd1fab671f92dd993d2d2d745685440435393",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/mkr2b/k6.log"
+ }
+]
