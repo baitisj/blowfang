@@ -1,12 +1,12 @@
 {
  "id": "mgn1d",
- "status": "queued",
- "queued": "2026-11-21T04:18:01Z",
+ "status": "running",
+ "since": "2026-11-21T04:18:07Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "93f9b535267ba82f27032e166e8264e05814537c",
   "path": "jobs/mgn1d"
  },
  "runner_commit": "6bb97ac715225f01ca68895cae0091bb7ce9b3b6",
- "updated": "2026-11-21T04:18:01Z"
+ "updated": "2026-11-21T04:18:07Z"
 }
