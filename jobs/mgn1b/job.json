@@ -1,0 +1,162 @@
+{
+ "id": "mgn1b",
+ "who": "micprobe",
+ "freq_mhz": "bench",
+ "minutes": 45,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 2700,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:micgain.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "13",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "694f1076c7aac7fd40447d2c39e089bab0308ef83aa3263cd96d8498cc00787b"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 445850000,
+   "mode": "FM"
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0.1
+  },
+  {
+   "do": "wait",
+   "pattern": "micgain go",
+   "seconds": 1800
+  },
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone20.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0.2
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone20.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0.3
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone20.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone20.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": "restore"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "wait",
+   "pattern": "micgain done",
+   "seconds": 2100,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}
