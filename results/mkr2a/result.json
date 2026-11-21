@@ -1,12 +1,102 @@
 {
  "id": "mkr2a",
- "status": "running",
- "since": "2026-11-21T04:34:41Z",
+ "who": "micprobe",
+ "started": "2026-11-21T04:34:43Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-21T04:34:43Z",
+   "ended": "2026-11-21T04:34:45Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T04:34:45Z",
+   "ended": "2026-11-21T04:34:48Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-21T04:34:48Z",
+   "ended": "2026-11-21T04:36:02Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-21T04:36:02Z",
+   "ended": "2026-11-21T04:37:22Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T04:37:22Z",
+   "ended": "2026-11-21T04:37:25Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "ic7100.af",
+   "started": "2026-11-21T04:37:25Z",
+   "ended": "2026-11-21T04:37:27Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "pluto",
+   "started": "2026-11-21T04:37:27Z",
+   "ended": "2026-11-21T04:41:39Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "ic7100.af",
+   "started": "2026-11-21T04:41:39Z",
+   "ended": "2026-11-21T04:41:41Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T04:41:41Z",
+   "ended": "2026-11-21T04:41:44Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-21T04:41:44Z",
+   "ended": "2026-11-21T04:42:03Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-21T04:42:03Z",
+   "ended": "2026-11-21T04:42:08Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "logger.stop",
+   "started": "2026-11-21T04:42:08Z",
+   "ended": "2026-11-21T04:42:08Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-6bb97ac71522",
+ "head": "6bb97ac715225f01ca68895cae0091bb7ce9b3b6",
+ "ended": "2026-11-21T04:42:09Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "1640262e7bef0a7da39d45eda0f2f7239b92c1af",
   "path": "jobs/mkr2a"
  },
  "runner_commit": "6bb97ac715225f01ca68895cae0091bb7ce9b3b6",
- "updated": "2026-11-21T04:34:41Z"
+ "updated": "2026-11-21T04:42:10Z"
 }
