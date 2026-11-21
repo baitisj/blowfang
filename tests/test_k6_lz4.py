@@ -263,3 +263,30 @@ def test_uldivmod_matches_python(tmp_path):
         assert (q, m) == (a // b, a % b), (a, b)
         assert mu.reg_read(A.UC_ARM_REG_SP) == 0x20008000
         assert [mu.reg_read(reg) for reg in saved] == [0x1111 * (i + 3) for i in range(8)]
+
+
+def test_last_8_bytes_stay_literals():
+    """a packed block ends with its data's last 8 bytes, so the radio reads a packed page's build
+    ID from its slot as stored (explore.rs page::check)"""
+    r = random.Random(3)
+    for data in [bytes(64), bytes(range(256)) * 4, b"ab" * 500, bytes(r.getrandbits(8) for _ in range(300))]:
+        blk = lz4.compress(data)
+        assert blk[-8:] == data[-8:]
+        assert lz4.decompress(blk, len(data)) == data
+    for f in ("page-sweep.bin", "page-listen.bin", "page-table.bin", "page-edit.bin"):
+        path = os.path.join(ROOT, "firmware", "k6-aura", "out", f)
+        if os.path.exists(path):
+            data = open(path, "rb").read()
+            assert lz4.compress(data)[-8:] == data[-8:]
+
+
+def test_packed_page_image_ends_with_its_build_id():
+    """a packed page's slot image: header, raw length, LZ4 block, tag; the 8 bytes before the tag
+    are the page's build ID, where page::check reads them; the header's packed length points
+    there"""
+    r = random.Random(5)
+    code = bytes(r.getrandbits(8) for _ in range(600)) + bytes(1200) + b"BUILDID8"
+    img = k6mod.image(code, 0, 77, KEY, level=15, lib=10, page=True, lz4=True)
+    p = struct.unpack_from("<H", img, 4)[0]
+    assert img[13] & k6mod.LZ4_FLAG and len(img) == 16 + p + 8
+    assert img[16 + p - 8:16 + p] == b"BUILDID8"
