@@ -416,6 +416,7 @@ libls          # level 5, the SPI module library's slots with the modules' names
 loram          # level 1, does anything write 0x20000000-0x20000FFF (hal::txdog)
 mic64          # level 13, keyed on the bench frequency: its CW ID, then the PA off and the mic ADC on, REG_64 every 20 ms for 105 s (the mic never on the air, docs/k6-mic-probe.md)
 micaf          # level 13, cable out: every AF select in receive and keyed with the PA off, scored on the radio for a 1,300 Hz tone in three passes (the mic never on the air, docs/k6-mic-probe.md)
+micgain        # level 13, cable out: the mic AGC (REG_19 bit 15) on and off with REG_7D's mic sensitivity 0-31, keyed with the PA off at AF select 4, scored on the radio in four tone passes (the mic never on the air, docs/k6-mic-probe.md)
 micdisc        # level 4, the guide's DISC baseband mode (REG_44 bit 0) tried as a way from the mic to the AF pin, every select (keys nothing, docs/k6-mic-probe.md)
 mickey         # level 4, keyed on the bench frequency: its CW ID, then the PA off and every AF select read by PA11 with the mic ADC on (the mic never on the air, docs/k6-mic-probe.md)
 mickrec        # level 13, cable out: 3.2 s of the mic at AF select 4, keyed with the PA off, as IMA ADPCM for tools/k6_micprobe.py (the mic never on the air, docs/k6-mic-probe.md)

@@ -1127,6 +1127,69 @@ def test_mickrec_without_sound_or_key_keys_nothing():
     assert not [x for x in said if x.startswith("p ")]
 
 
+# ---- micgain: the mic AGC and REG_7D stepped, cable out ----
+
+MICGAIN = os.path.join(ROOT, "c", "k6", "mod", "micgain.c")
+MGN_DEFS = [("N_CAP", "64u"), ("PRE", "16u"), ("SET_MS", "20u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"),
+            ("DROP_MS", "300u"), ("WAIT_MS", "20000u"), ("KEY_WAIT_MS", "60000u")]
+
+
+def mgn_run(keys, level=14, tx=None):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4)
+    tx = {} if tx is None else tx
+    base = regs[0x67]
+
+    def rssi(us):
+        v = base(us)
+        if w["tuned"] == SOUND_HZ and w["sound_at"] is not None and us >= w["sound_at"]:
+            return 60 if (us - w["sound_at"]) % 3_000_000 >= 2_000_000 else v
+        return v
+    regs[0x67] = rssi
+    regs[0x19], regs[0x7D] = 0x1041, 0xE95C
+    lcd = {}
+    ret, said, regs, writes = run_k6(regs, src=MICGAIN, code=build(MICGAIN, MGN_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=level, spare=8192, tx=tx, rx_hz=HOME_HZ,
+                                     keys=keys, lcd=lcd, count=8_000_000_000)
+    return w, tx, ret, said, regs, lcd
+
+
+def test_micgain_fits_the_radio():
+    assert k6mod.source_level(MICGAIN) == 13
+    assert len(k6mod.build(MICGAIN)[0]) <= 11_776
+
+
+@need_clang
+def test_micgain_steps_the_agc_and_sensitivity_keyed_in_four_passes():
+    pull, plug = 1_000_000, 200_000_000
+    w, tx, ret, said, regs, lcd = mgn_run(((pull, pull + 200_000), (plug, plug + 200_000)))
+    assert ret == 4, said[-6:]
+    assert said[0] == "micgain start 19=1041 7d=e95c 47=6040 rx=1a46d650" and said[-1] == "micgain done"
+    assert all(len(x) <= 60 for x in said)
+    assert [x.split()[2] for x in said if x.startswith("micgain pass")] == ["q=0", "q=1", "q=2", "q=3"]
+    assert all(x.endswith("e=0") for x in said if x.startswith("micgain pass"))
+    log = tx["log"]
+    ons = [us for n, _, us in log if n == "tx_on"]
+    offs = [us for n, _, us in log if n == "tx_off"]
+    assert len(ons) == 4 and pull < ons[0] and max(offs[:4]) < plug
+    on_spans = list(zip(ons, offs))
+    w19 = [(v, us) for r, v, us in tx["w"] if r == 0x19]
+    w7d = [(v, us) for r, v, us in tx["w"] if r == 0x7D]
+    assert all(any(a <= us <= b for a, b in on_spans) for _, us in w19 + w7d)   # only while keyed
+    sens = [v & 0x1F for v, _ in w7d]
+    assert sens[:11] == [0, 8, 18, 24, 31, 0, 8, 18, 24, 31, 0x1C]               # then put back
+    agc = [v >> 15 for v, _ in w19]
+    assert agc[:11] == [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0]
+    rows = [x.split() for x in said if x.startswith(("a ", "b "))]
+    assert len(rows) == 4 * 10 * 2 and all(len(r) == (8 if r[0] == "a" else 6) for r in rows)
+    assert regs[0x19] == 0x1041 and regs[0x7D] == 0xE95C and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_micgain_without_the_pull_key_keys_nothing():
+    w, tx, ret, said, regs, lcd = mgn_run(())
+    assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "micgain done"
+
+
 # ---- keygo ----
 
 KEYGO = os.path.join(ROOT, "c", "k6", "mod", "keygo.c")
