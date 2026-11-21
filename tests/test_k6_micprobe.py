@@ -1329,3 +1329,32 @@ def test_micrec_at_once_without_the_bench_and_its_refusals():
     assert ret == 0 and said[-2:] == ["micrec no sound", "micrec done"] and w["bus"] == []
     w, ret, said, regs, writes = rec_run(spare=512)
     assert ret == -8 and said == []
+
+
+# ---- micsotto: the mic coded live as sotto 1200, cable out ----
+
+MICSOTTO = os.path.join(ROOT, "c", "k6", "mod", "micsotto.c")
+
+
+@need_clang
+def test_micsotto_fits_the_radio_with_room_for_its_superframes(tmp_path):
+    """code under build.sh's 11,776-byte check, and in level 13's block: the header, the code, the
+    tag, then st_t, the encoder's state and at least 60 superframes (2.4 s)"""
+    import re
+    import subprocess
+    assert k6mod.source_level(MICSOTTO) == 13
+    code = k6mod.build(MICSOTTO)[0]
+    assert len(code) + 24 <= 11_776
+    probe = os.path.join(os.path.dirname(MICSOTTO), "_micsotto_sizes.c")
+    with open(probe, "w") as f:
+        f.write('#include "micsotto.c"\nconst unsigned MS_SIZES[2] = {sizeof(st_t), sizeof(struct slim_enc)};\n')
+    try:
+        asm = subprocess.run(["clang", "--target=thumbv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-Oz", "-fropi",
+                              "-ffreestanding", "-fno-builtin", "-nostdlib", "-I" + os.path.join(ROOT, "c", "k6"),
+                              "-isystem", os.path.join(ROOT, "c", "k6", "mod", "libc"), "-S", probe, "-o", "-"],
+                             check=True, capture_output=True, text=True).stdout
+    finally:
+        os.remove(probe)
+    st, enc = map(int, re.findall(r"\.long\s+(\d+)", asm.split("MS_SIZES:")[1])[:2])
+    room = k6mod.ARENA_BYTES_13 - (16 + len(code) + 8 + 4) - st - enc
+    assert room // 6 >= 60, (len(code), st, enc, room)
