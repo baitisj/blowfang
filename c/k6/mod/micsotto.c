@@ -8,9 +8,9 @@
    sensitivity at 31 is the most (micgain, mgn1b/mgn1d). mickrec records it as ADPCM, but the
    converter takes the whole CPU while it runs, so a recording is as long as the RAM. Here the
    converter runs from TIM17's interrupt instead, W_IRQ turns every 125 us (an 8 kHz sample;
-   about half the CPU), and the foreground runs the slim sotto 1200 encoder as fmsotto does (its
-   SPI glue copied from fmsotto.c: the codebook and the cell deck read from SPI flash), so 6 bytes
-   cover 40 ms and the scratch holds MAX_SF superframes.
+   about a quarter of the CPU), and the foreground runs the slim sotto 1200 encoder as fmsotto
+   does (its SPI glue copied from fmsotto.c: the codebook and the cell deck read from SPI flash),
+   so 6 bytes cover 40 ms and the scratch holds MAX_SF superframes.
 
    Between the turns the converter's capacitor keeps integrating the audio through its
    resistors (4.7k, 3.9 nF: 18 us), so the next turns count that charge too: the gap scales the
@@ -32,8 +32,9 @@
                                     in the SPI reads)
      s 0 0123456789ab...                     (superframes 0-3: 4 x 6 bytes, hex: k6_fmsotto.py log)
      micsotto end n=200 lost=0 e=0
-   and the superframes go to the core's message store (sotto_play): once the module returns the
-   K6 plays them on its speaker, as VOICE MSG plays a message, and its play key plays them again.
+   and the superframes go to the core's message store (sotto_play); PULL CABLE / THEN ANY KEY
+   again (the cable mutes the speaker), and once the module returns the K6 plays them on its
+   speaker, as VOICE MSG plays a message, and its key 5 plays them again.
 
    The mic is never on the air: its bit is set only while REG_36 says the PA is off, checked each
    second. Writes, all put back: REG_30, REG_47, REG_48, REG_7D, the tuning, PA11's mode, speed and
@@ -63,7 +64,7 @@ K6_MODULE_NAME("MIC SOTTO");
 #define MAX_SF 500u /* 20 s: under the message store's 3,200 B */
 #endif
 #ifndef W_IRQ
-#define W_IRQ 96u /* converter turns a sample: ~61 us of the 125 */
+#define W_IRQ 48u /* turns a sample, ~30 us of the 125 (msot1a, 96: 54 % CPU, 20 % blocks lost) */
 #endif
 #ifndef HOLD
 #define HOLD 3u
@@ -592,6 +593,11 @@ back:
   p = dec(p, (uint32_t)(er < 0 ? -er : er));
   *p = 0;
   api->say(line);
-  if (n && api->level >= 11) api->sotto_play(sf, n, KM_SOTTO_1200, 0, "K6 MIC");
+  if (n && api->level >= 11 && api->sotto_play(sf, n, KM_SOTTO_1200, 0, "K6 MIC") == 0) {
+    /* the cable in the jack mutes the speaker, and the core plays only once the module returns
+       (msot1a played into the cable): the cable out again first */
+    co_show(api, "MIC SOTTO PLAYBACK", "PULL CABLE", "THEN ANY KEY");
+    co_key(api, KEY_WAIT_MS);
+  }
   return ret ? ret : er ? er : (int)n;
 }
