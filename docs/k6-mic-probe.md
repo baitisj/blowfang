@@ -18,7 +18,7 @@ switches its internal mic out), so the negatives below say nothing about the mic
 the MCU" is untested. What stands: PA11 reads the chip's AF output, REG_64 is a 20 ms level
 meter, select 4 with the TX DSP on is the receiver's raw baseband, and the "mic" sounds of
 micp4/micp5 were the Pluto's carrier leaking in (their 120/240/360 Hz hum rides on the Pluto's
-signal: it fell 2 dB per dB of Pluto power in micp5g). The retest is micout, below.
+signal: it fell 2 dB per dB of Pluto power in micp5g). The retests are micout and micaf, below: the mic reaches PA11 keyed with the PA off.
 
 
 - **The MCU has an audio input after all: the beep pin.** PA11, the voice prompts' PWM pin,
@@ -444,9 +444,81 @@ nine periods) through the IC-7100 on 445.850 MHz: once at AF 0.3, once at AF 0 a
 A level meter that hears the room correlates with the pattern whatever the alignment, and the
 talk window needs no pattern at all.
 
+**Run mout1a** (2026-11-21 01:25-01:29 UTC, Jeff at the K6, cable out). REG_64 follows the
+IC-7100's speaker: in the AF 0.3 pass every 3.1 s period of the m-sequence correlates at about
+0.70 (the best of shuffled data: 0.08), at the same lag (28 samples) every period, the tone's
+on-chips 7 counts above its off-chips; the Pluto's closing Morse ident, still at AF 0.3, lifts
+REG_64 from 141 to 167-192. The AF 0 pass and the last 20 s read 0.09-0.15: noise. With the
+cable in (m64a) REG_64 sat at 138-140 whatever the AF. The cable was the whole of it.
+
+## micaf: the AF selects with the cable out, scored on the radio (2026-11-21)
+
+`c/k6/mod/micaf.c` takes each capture (PA11 at hold 3, ~17.8 kHz, 1,024 samples after 2,400 to
+settle) and keeps only its variance and Goertzel powers at 1,300 Hz (the tone) and 1,150, 1,450
+and 1,700 Hz (`cableout.h` runs the screen as micout does). 36 configurations a pass: receive
+with the mic ADC and TX DSP on, selects 0-15; keyed with the PA off, selects 0-15 with the mic
+ADC and 1, 3, 4, 9 without. Three passes: quiet, the Pluto's steady 1,300 Hz tone (gain -46,
+445.850 MHz) through the IC-7100 at AF 0.3, and the same at AF 0.
+
+**Run maf1a** (01:41-01:54 UTC, Jeff at the K6, cable out). Tone over the mean of the three neighbours, and rms in
+counts of 8,100 (the converter's floor: 2.9):
+
+| Keyed, PA off, mic ADC on: select | 1 | 3 | 4 | 5 | 9 | 11 | 12 | 13 | 14 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| AF 0.3: tone / neighbours | +28.2 | +31.6 | **+33.6** | +27.9 | +32.8 | +30.2 | +33.2 | +28.2 | +31.7 |
+| AF 0.3: rms | 10.5 | 13.2 | 12.3 | 14.1 | 13.3 | 13.9 | 12.7 | 15.9 | 13.3 |
+| AF 0 (control): rms | 3.0 | 3.7 | 3.9 | 3.5 | 3.2 | 4.0 | 3.5 | 3.5 | 3.6 |
+
+The other keyed selects, and every keyed select with the mic ADC off, sit at the floor in all
+three passes. In receive, selects 1, 3-5, 9, 11-14 carry the receiver's hiss (rms 14-50) in
+both sounding passes alike, with no tone. The quiet pass, run straight after the pull, was loud
+on the keyed mic selects (rms 42-76) with no tone: handling noise at the mic.
+
+**So the K6's mic reaches the MCU with no hardware change**: keyed, with the PA off, the mic ADC
+on (REG_30 bit 2) and the AF DAC on, the chip puts the mic on its AF output at nine selects, and
+PA11's converter reads it. Not in receive. `c/k6/mod/mickrec.c` records 3.2 s of select 4 that
+way, cable out, for an ear.
+
+## micgain: the mic AGC bit and REG_7D (2026-11-21)
+
+`c/k6/mod/micgain.c` keys as micaf does (PA off, mic ADC and AF DAC on) at select 4 and scores
+ten settings a pass the same way, plus each capture's lowest and highest sample: REG_19 bit 15
+clear (the mic AGC on) or set (off), each with REG_7D's mic sensitivity [4:0] at 0, 8, 18, 24
+and 31. Each setting gets 300 ms to settle. Four passes, with the IC-7100 at AF 0.1, 0.2, 0.3,
+and 0 as the control, playing the Pluto's 1,300 Hz tone (gain -46, 445.850 MHz).
+
+**Run mgn1b** (03:29-03:31 UTC, Jeff at the K6, cable out). Tone amplitude in counts of 8,100:
+
+| Setting | AF 0.1 | AF 0.2 | AF 0.3 | AF 0 (control) |
+| --- | --- | --- | --- | --- |
+| AGC on, 7D 0 | 0.2 | 0.6 | 1.7 | 0.1 |
+| AGC on, 7D 8 | 0.2 | 1.1 | 2.3 | 0.3 |
+| AGC on, 7D 18 | 0.1 | 1.6 | 4.4 | 0.2 |
+| AGC on, 7D 24 | 0.4 | 1.9 | 7.1 | 0.1 |
+| AGC on, 7D 31 | 0.9 | 3.1 | **12.0** | 0.2 |
+| AGC off, 7D 0 | 0.1 | 0.7 | 2.0 | 0.1 |
+| AGC off, 7D 8 | 0.3 | 0.7 | 3.1 | 0.1 |
+| AGC off, 7D 18 | 0.2 | 1.6 | 5.7 | 0.2 |
+| AGC off, 7D 24 | 0.5 | 2.1 | 7.6 | 0.2 |
+| AGC off, 7D 31 | 0.9 | 3.1 | 11.6 | 0.3 |
+
+- **REG_7D works:** 0 to 31 is about +17 dB at AF 0.3 (and +14 dB at 0.2), rising all the way. Use 31.
+- **REG_19 bit 15 does nothing here:** on and off agree within 1 dB at every level, and the
+  loud pass shows no compression. On this keyed path the mic AGC is out of the loop.
+- **Lots of headroom:** the loudest tone is 0.15 % of full scale, and the widest capture spans
+  56 counts of 16,200. A recorder can multiply on the MCU long before it clips.
+
+The first try (mgn1a, 03:12 UTC) scored nothing: its job played the tones before Jeff's key
+press. mgn1b started them from the line the K6 says on that key press, cable still in. The
+K6's CW ID at the start of each pass keyed on top of the tone (Jeff heard it), but before the
+captures. With the cable out the job can't read the log, so micgain now cues each pass over
+the air instead (Jeff's suggestion). The K6 sends its CW ID as a "ready" call and keys down.
+The job's `pluto_bench.py cue` hears the call and only then sends the tone. The K6 captures
+while the tone plays, and the next call waits until the tone has gone.
+
 ## Where this leaves the K6
 
-(Written before the cable was noticed: the mic line is open again until micout runs.)
+(Written before the cable was noticed. Superseded by micaf above: the mic does reach the MCU, keyed with the PA off.)
 
 
 - **The mic:** no path to the MCU. In receive, keyed, with the mic ADC and the TX DSP on or

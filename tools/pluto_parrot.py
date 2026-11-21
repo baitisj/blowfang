@@ -17,6 +17,13 @@ below 6 dB. The burst (ident and message, one
 key-up) is then decoded as modem.ysf and modem.m17 decode a capture, and the RX stops while the
 reply goes out. A burst with no sotto in it (FM voice, a DN call) gets no reply.
 
+cue() is the same ear used as a trigger (Jeff 2026-11-21, after the K6 micgain run mgn1b: "send
+a trigger message then a call back that goes over the air for each stage"): pluto_bench.py cue
+waits for one burst on --listen-hz between CUE_MIN_S and CUE_MAX_S long (a K6 module's CW ID,
+its "ready" call, sent while its programming cable is out and the job can't read its log), then
+sends the job's audio on --hz. One stage per job step, so the steps in between (the IC-7100's AF)
+still run between the stages.
+
 Standard bench rules: 70 cm only, gain <= -30 dB, ident on every send. SPDX-License-Identifier: MIT
 """
 import os
@@ -42,6 +49,8 @@ END_QUIET_S = 1.0
 PRE_S = 0.2                  # kept from before the burst's first loud chunk
 MAX_BURST_S = 40.0           # the UV-380 keys 5 s at most; anything longer is not ours
 MIN_SOTTO_SF = 5             # superframes: less is noise, not a message
+CUE_MIN_S = 1.5             # a cue burst (with PRE_S and END_QUIET_S): a K6 CW ID of 5 letters is ~4-5 s
+CUE_MAX_S = 15.0
 DEV = {"ysf": 5400.0, "m17": 4800.0}     # pluto_bench send --dev for a WAV_HALF wav (2.7 / 2.4 kHz)
 HALF = 0.5
 
@@ -226,3 +235,45 @@ def run(a):
             print(f"receive stopped: {rx.err}", flush=True)
             break
     print(f"parrot done: {replies} replies", flush=True)
+
+
+def cue(a, track, rate=None):
+    """wait up to a.wait_s for one burst CUE_MIN_S..CUE_MAX_S long on a.listen_hz (shorter or
+    longer ones are told and ignored), then after a.delay_s send track on a.hz. -> the burst's
+    length in s; SystemExit when none came"""
+    import types
+    import pluto_bench as pb
+    pb.check_tx(a.hz, a.offset_hz, a.gain)
+    rate = rate or pb.RATE
+    q = rate // FS
+    t_end = time.time() + a.wait_s
+    la = types.SimpleNamespace(hz=a.listen_hz, rx_gain=a.rx_gain, uri=a.uri)
+    got = None
+    print(f"cue: listening on {a.listen_hz} Hz up to {a.wait_s:.0f} s for a burst of {CUE_MIN_S:g}-{CUE_MAX_S:g} s,"
+          f" then {a.what} on {a.hz} Hz", flush=True)
+    while got is None and time.time() < t_end:
+        rx = Listener(la, rate, q, t_end)
+        try:
+            while time.time() < t_end:
+                try:
+                    burst, peak = rx.bursts.get(timeout=1.0)
+                except queue.Empty:
+                    if not rx.alive():
+                        break
+                    continue
+                secs = len(burst) / FS
+                ok = CUE_MIN_S <= secs <= CUE_MAX_S
+                print(f"{time.strftime('%H:%M:%S', time.gmtime())}Z cue: heard a burst of {secs:.1f} s, ADC peak "
+                      f"{peak:.0f} of 2047{'' if ok else ' (not a cue: ignored)'}", flush=True)
+                if ok:
+                    got = secs
+                    break
+        finally:
+            rx.stop()
+        if got is None and rx.err:
+            raise SystemExit(f"cue: receive stopped: {rx.err}")
+    if got is None:
+        raise SystemExit(f"cue: no burst on {a.listen_hz} Hz in {a.wait_s:.0f} s")
+    time.sleep(a.delay_s)
+    pb.send(track, a.hz, a.offset_hz, a.gain, rate, a.uri, not getattr(a, "rf_off", False), a.what)
+    return got

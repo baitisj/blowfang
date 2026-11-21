@@ -989,6 +989,242 @@ def test_micout_without_the_pull_key_keys_nothing():
     assert lcd["scr"]["text"][2] == "PULL CABLE"
 
 
+# ---- micaf: the AF selects scored on the radio, cable out ----
+
+MICAF = os.path.join(ROOT, "c", "k6", "mod", "micaf.c")
+MAF_DEFS = [("N_CAP", "64u"), ("PRE", "16u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"),
+            ("DROP_MS", "300u"), ("WAIT_MS", "20000u"), ("KEY_WAIT_MS", "60000u")]
+
+
+def maf_run(keys, drop=True, level=14, tx=None):
+    """the bench's carrier on 445.850 drops for 1 s in every 3 once it starts (drop): the job's
+    two sends, AF 0.3 then AF 0"""
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=1)
+    tx = {} if tx is None else tx
+    base = regs[0x67]
+
+    def rssi(us):
+        v = base(us)
+        if drop and w["tuned"] == SOUND_HZ and w["sound_at"] is not None and us >= w["sound_at"]:
+            return 60 if (us - w["sound_at"]) % 3_000_000 >= 2_000_000 else v
+        return v
+    regs[0x67] = rssi
+    lcd = {}
+    ret, said, regs, writes = run_k6(regs, src=MICAF, code=build(MICAF, MAF_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=level, spare=8192, tx=tx, rx_hz=HOME_HZ,
+                                     keys=keys, lcd=lcd, count=8_000_000_000)
+    return w, tx, ret, said, regs, lcd
+
+
+def maf_parse(said):
+    out = {}
+    for ln in said:
+        f = ln.split()
+        if f[0] == "a":
+            out.setdefault((int(f[1]), int(f[2], 16)), {}).update(ticks=int(f[3], 16), v=int(f[4], 16), g0=int(f[5], 16))
+        elif f[0] == "b":
+            out[(int(f[1]), int(f[2], 16))].update(g=[int(x, 16) for x in f[3:6]])
+    return out
+
+
+def test_micaf_fits_the_radio():
+    assert k6mod.source_level(MICAF) == 13
+    assert len(k6mod.build(MICAF)[0]) <= 11_776
+
+
+@need_clang
+def test_micaf_three_passes_scored_and_said_only_after_the_replug_key():
+    pull, plug = 1_000_000, 200_000_000
+    w, tx, ret, said, regs, lcd = maf_run(((pull, pull + 200_000), (plug, plug + 200_000)))
+    assert ret == 3, said[-6:]
+    assert said[0] == "micaf start 30=bff1 47=6040 rx=1a46d650" and said[-1] == "micaf done"
+    assert all(len(x) <= 60 for x in said)
+    assert [x.split()[2] for x in said if x.startswith("micaf pass")] == ["q=0", "q=1", "q=2"]
+    assert all(x.endswith("e=0") for x in said if x.startswith("micaf pass"))
+    log = tx["log"]
+    ons = [us for n, _, us in log if n == "tx_on"]
+    offs = [us for n, _, us in log if n == "tx_off"]
+    assert len(ons) == 3 and pull < ons[0] and max(offs[:3]) < plug
+    mic = [us for r, v, us in tx["w"] if r == 0x30 and v & 4]
+    assert mic                                     # the mic bit, keyed, only with the PA off (the core checks)
+    res = maf_parse(said)
+    assert sorted({c for _, c in res}) == list(range(0x10)) + list(range(0x10, 0x20)) + [0x20, 0x21, 0x22, 0x23]
+    assert len(res) == 3 * 36
+    # the model's mic route: a 1 kHz tone at select 1 with the mic bit on, once the room sounds
+    loud = res[(1, 0x01)]["v"]
+    assert loud > 20 * max(res[(0, 0x01)]["v"], 1) and loud > 20 * max(res[(1, 0x05)]["v"], 1)
+    assert res[(1, 0x11)]["v"] > 20 * max(res[(1, 0x21)]["v"], 1)   # keyed: with the mic bit, not without
+    assert lcd["scr"]["text"][2] == "SENDING"
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_micaf_without_the_pull_key_keys_nothing_and_says_no_scores():
+    w, tx, ret, said, regs, lcd = maf_run(())
+    assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])]
+    assert said[-1] == "micaf done" and not [x for x in said if x.startswith(("a ", "b "))]
+
+
+@need_clang
+def test_micaf_with_no_second_carrier_still_reports_two_passes():
+    pull, plug = 1_000_000, 200_000_000
+    w, tx, ret, said, regs, lcd = maf_run(((pull, pull + 200_000), (plug, plug + 200_000)), drop=False)
+    assert ret == 2 and "micaf pass q=2 rssi=" in " ".join(said) and said[-1] == "micaf done"
+    assert [x for x in said if x.startswith("micaf pass q=2")][0].endswith("e=-9")
+
+
+# ---- mickrec: the mic recorded keyed with the PA off, cable out ----
+
+MICKREC = os.path.join(ROOT, "c", "k6", "mod", "mickrec.c")
+MKR_DEFS = [("MAX_BYTES", "520u"), ("PRE", "100u"), ("HOLD_MS", "200u"), ("WAIT_MS", "20000u"),
+            ("KEY_WAIT_MS", "60000u")]
+
+
+def mkr_run(keys, level=14, tx=None, sound=True):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4, sound=sound)
+    tx = {} if tx is None else tx
+    lcd = {}
+    ret, said, regs, writes = run_k6(regs, src=MICKREC, code=build(MICKREC, MKR_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=level, spare=4096, tx=tx, rx_hz=HOME_HZ,
+                                     keys=keys, lcd=lcd, count=6_000_000_000)
+    return w, tx, ret, said, regs, lcd
+
+
+def test_mickrec_fits_the_radio():
+    assert k6mod.source_level(MICKREC) == 13
+    assert len(k6mod.build(MICKREC)[0]) <= 11_776
+
+
+@need_clang
+def test_mickrec_records_keyed_with_the_pa_off_and_speaks_after_the_replug_key():
+    pull, plug = 1_000_000, 60_000_000
+    w, tx, ret, said, regs, lcd = mkr_run(((pull, pull + 200_000), (plug, plug + 200_000)))
+    assert ret == 1040, said[-4:]
+    assert said[0] == "mickrec start 30=bff1 47=6040 48=82df rx=1a46d650" and said[-1] == "mickrec done"
+    assert all(len(x) <= 60 for x in said)
+    log = tx["log"]
+    t_on = next(us for n, _, us in log if n == "tx_on")
+    t_off = next(us for n, _, us in log if n == "tx_off")
+    assert pull < t_on < t_off < plug
+    mic = [us for r, v, us in tx["w"] if r == 0x30 and v & 4]
+    assert mic and min(mic) > t_on and max(mic) < t_off
+    assert "mickrec keyed 30=c1fa" in said[said.index(next(x for x in said if x.startswith("mickrec keyed")))]
+    runs = mp.rec_runs(mp.say_lines("\n".join(said)))
+    assert len(runs) == 1
+    x, info, notes = runs[0]
+    assert info["n"] == 1040 and len(x) == 1040 and info["short"] == 0
+    assert x.std() > 20                            # the model's 1 kHz tone on select 4 with the mic bit
+    assert regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040 and lcd["scr"]["text"][2] == "SENDING"
+
+
+@need_clang
+def test_mickrec_without_sound_or_key_keys_nothing():
+    w, tx, ret, said, regs, lcd = mkr_run(())
+    assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "mickrec done"
+    pull = 1_000_000
+    w, tx, ret, said, regs, lcd = mkr_run(((pull, pull + 200_000), (40_000_000, 40_200_000)), sound=False)
+    assert ret == -9 and "tx_on" not in [n for n, _, _ in tx.get("log", [])]
+    assert not [x for x in said if x.startswith("p ")]
+
+
+# ---- micgain: the mic AGC and REG_7D stepped, cable out ----
+
+MICGAIN = os.path.join(ROOT, "c", "k6", "mod", "micgain.c")
+MGN_DEFS = [("N_CAP", "64u"), ("PRE", "16u"), ("SET_MS", "20u"), ("PULL_MS", "500u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"),
+            ("DROP_MS", "300u"), ("WAIT_MS", "20000u"), ("KEY_WAIT_MS", "60000u"), ("READY_GAP_MS", "500u")]
+CUE_DELAY_US, CUE_SOUND_US = 1_000_000, 3_000_000
+
+
+def calls(log):
+    """the K6's calls (CW IDs at full power) in a tx log: (keyed, keyed down) spans with the PA
+    switched on at least 5 times (the CW's elements); a pass keys once with the PA off"""
+    out, on, n = [], None, 0
+    for name, arg, us in log:
+        if name == "tx_on":
+            on, n = us, 0
+        elif name == "tx_pa" and arg == 1:
+            n += 1
+        elif name == "tx_off" and on is not None:
+            if n >= 5:
+                out.append((on, us))
+            on = None
+    return out
+
+
+def mgn_run(keys, level=14, tx=None, cue=True):
+    """the job's Pluto as a cue (pluto_bench cue): CUE_DELAY_US after each K6 call ends, its
+    carrier on 445.850 for CUE_SOUND_US"""
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4)
+    tx = {} if tx is None else tx
+    base = regs[0x67]
+
+    def rssi(us):
+        v = base(us)
+        if w["tuned"] == SOUND_HZ and w["sound_at"] is not None and us >= w["sound_at"]:
+            on = cue and any(b + CUE_DELAY_US <= us < b + CUE_DELAY_US + CUE_SOUND_US for _, b in calls(tx.get("log", [])))
+            return v if on else 60
+        return v
+    regs[0x67] = rssi
+    regs[0x19], regs[0x7D] = 0x1041, 0xE95C
+    lcd = {}
+    ret, said, regs, writes = run_k6(regs, src=MICGAIN, code=build(MICGAIN, MGN_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=level, spare=8192, tx=tx, rx_hz=HOME_HZ,
+                                     keys=keys, lcd=lcd, count=8_000_000_000)
+    return w, tx, ret, said, regs, lcd
+
+
+def test_micgain_fits_the_radio():
+    assert k6mod.source_level(MICGAIN) == 13
+    assert len(k6mod.build(MICGAIN)[0]) <= 11_776
+
+
+@need_clang
+def test_micgain_steps_the_agc_and_sensitivity_keyed_in_four_passes():
+    pull, plug = 1_000_000, 200_000_000
+    w, tx, ret, said, regs, lcd = mgn_run(((pull, pull + 200_000), (plug, plug + 200_000)))
+    assert ret == 4, said[-6:]
+    assert said[0] == "micgain start 19=1041 7d=e95c 47=6040 rx=1a46d650" and said[-1] == "micgain done"
+    assert said[1] == "micgain go"
+    assert all(len(x) <= 60 for x in said)
+    assert [x.split()[2] for x in said if x.startswith("micgain pass")] == ["q=0", "q=1", "q=2", "q=3"]
+    assert all(x.endswith("e=0") for x in said if x.startswith("micgain pass"))
+    log = tx["log"]
+    ons = [us for n, _, us in log if n == "tx_on"]
+    offs = [us for n, _, us in log if n == "tx_off"]
+    cw = calls(log)
+    assert len(cw) == 5 and pull < cw[0][0]                       # a call before each pass, one after
+    sounds = [(b + CUE_DELAY_US, b + CUE_DELAY_US + CUE_SOUND_US) for _, b in cw]
+    assert not any(a < s1 and s0 < b for a, b in cw for s0, s1 in sounds)   # never keyed on the sound
+    on_spans = [(a, b) for a, b in zip(ons, offs) if (a, b) not in cw]
+    assert len(on_spans) == 4 and max(offs) < plug
+    assert all(s0 < a and b < s1 for (a, b), (s0, s1) in zip(on_spans, sounds))   # captures inside each
+    w19 = [(v, us) for r, v, us in tx["w"] if r == 0x19]
+    w7d = [(v, us) for r, v, us in tx["w"] if r == 0x7D]
+    assert all(any(a <= us <= b for a, b in on_spans) for _, us in w19 + w7d)   # only while keyed
+    sens = [v & 0x1F for v, _ in w7d]
+    assert sens[:11] == [0, 8, 18, 24, 31, 0, 8, 18, 24, 31, 0x1C]               # then put back
+    agc = [v >> 15 for v, _ in w19]
+    assert agc[:11] == [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0]
+    rows = [x.split() for x in said if x.startswith(("a ", "b "))]
+    assert len(rows) == 4 * 10 * 2 and all(len(r) == (8 if r[0] == "a" else 6) for r in rows)
+    assert regs[0x19] == 0x1041 and regs[0x7D] == 0xE95C and regs[0x30] == 0xBFF1 and regs[0x47] == 0x6040
+
+
+@need_clang
+def test_micgain_without_the_pull_key_keys_nothing():
+    w, tx, ret, said, regs, lcd = mgn_run(())
+    assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "micgain done"
+
+
+@need_clang
+def test_micgain_with_no_cue_calls_once_and_keys_no_pass():
+    pull, plug = 1_000_000, 60_000_000
+    w, tx, ret, said, regs, lcd = mgn_run(((pull, pull + 200_000), (plug, plug + 200_000)), cue=False)
+    assert ret == 0 and len(calls(tx["log"])) == 1
+    assert [n for n, _, _ in tx["log"]].count("tx_on") == 1
+    assert "micgain pass q=0 rssi=" in said[2] and said[2].endswith("e=-9")
+
+
 # ---- keygo ----
 
 KEYGO = os.path.join(ROOT, "c", "k6", "mod", "keygo.c")

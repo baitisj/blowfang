@@ -40,6 +40,7 @@ python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
 python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
 python3 tools/pluto_bench.py fsk24 --sweep --follow LOG --gain -70   the K6 sensitivity sweep
 python3 tools/pluto_bench.py steps WAV --gains -70,-73,... [--preemph] [--dev 3000 | --peak HZ] [--out J]
+python3 tools/pluto_bench.py cue WAV --hz F --listen-hz F [--wait-s 900] [--delay-s 1] [send's options]
 ```
 
 - **Match an upload's level with `--peak`.** `--dev` is full scale, and `modem.k6` wavs are half
@@ -66,6 +67,14 @@ python3 tools/pluto_bench.py steps WAV --gains -70,-73,... [--preemph] [--dev 30
 - **steps:** one audio file sent once at each TX gain, each send a transmission of its own (ID
   first and last), with the times in `--out` for a report against a receiver's log: a
   sensitivity ladder through any receiver, with no module on it.
+
+- **cue:** the over-the-air trigger for a module running with its programming cable out, when
+  the job can't read its log (Jeff 2026-11-21, after the micgain run mgn1b). It listens on
+  `--listen-hz` for one burst 1.5-15 s long (the K6's CW ID, its "ready" call), ignores shorter
+  or longer ones, then sends WAV on `--hz` as `send` does. One stage per job step, so steps in
+  between (the IC-7100's AF) run between stages. The ear is the parrot's (tools/pluto_parrot.py):
+  RX LO 50 kHz above the channel, channel power 10 dB over the floor. The runner wants both
+  frequencies inside the job's claim and `--wait-s` at most 1700.
 
 Python can use it as a library: `pluto_bench.capture()`, `measure()`, `audio_track()` and
 `send()`, where `send()` takes a frequency track in Hz at 48 kHz.
