@@ -133,9 +133,19 @@ to the first byte that isn't ASCII, and the boot screen counts bytes. That saves
 because each call site gets shorter too.
 
 Built with ATfE 22.1 (CI's compiler), the image is 119,436 of 122,880 B with all of this and the outbox (#225), so
-3,444 B are free. The image on the radio before this change had 1,980 B free. The EXPLORE-only
+3,444 B are free (3,296 with the upload LED below). The image on the radio before this change had 1,980 B free. The EXPLORE-only
 image has 9,684 B free. Not done: `compiler_builtins`' 32-bit divide (390 B) could be cut the
 same way, but it is on hot paths, so it stays.
+
+## The upload LED
+
+Jeff, 2026-11-21: "When RAM ARENA is loading a module over the air, can we make the LED alternate
+between Green and Orange?" While a module transfer is partway, green stays lit and the red TX
+LED (the FD6818's GPIO5) joins it on every other module packet, so the LED goes green, orange,
+green with each packet (about 0.4 s apart at F/1800). Both go dark when the transfer ends (the
+module runs, goes into the library, or is refused) and 1.5 s after the last packet when the
+sender stops partway, so red never stays lit to look like a transmission. It costs 148 B
+(`upload_led` in the Aura patch); the lean images leave it out, as they leave out the RX LED.
 
 ## Install after the flash
 
