@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "mgn1a",
-  "who": "micprobe",
-  "since": "2026-11-21T03:05:42Z"
- },
+ "running": null,
  "waiting": [],
- "last_poll": "2026-11-21T03:05:36Z",
+ "last_poll": "2026-11-21T03:18:22Z",
  "error": null,
  "update": null,
- "updated": "2026-11-21T03:05:42Z"
+ "updated": "2026-11-21T03:18:22Z"
 }
