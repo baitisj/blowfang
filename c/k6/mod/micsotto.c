@@ -45,20 +45,30 @@
    vector copy isn't the bootloader's table), -10 (no cell deck), -11 (no samples: the interrupt
    never ran), -12 (TIM17 in use), -13 (no sound within WAIT_MS). Level 13.
    SPDX-License-Identifier: MIT */
+#ifndef K6_MODULE_LEVEL
 #define K6_MODULE_LEVEL 13
+#endif
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "m0rt.h"
 #include "micadc.h"
 #include "pa11adc.h"
 #include "cableout.h"
+#if MS_SPI
+#include "outbox.h"
+#define OB_N_SF ((REC_MS / 40u < OB_REC_CAP / SLIM_BYTES) ? REC_MS / 40u : OB_REC_CAP / SLIM_BYTES)
+#define OB_SECTORS ((OB_DATA + OB_N_SF * SLIM_BYTES + 4095u) / 4096u)
+#endif
 K6_MODULE_NAME("MIC SOTTO");
 
+#ifndef MS_SPI
+#define MS_SPI 0 /* 1 (micspi.c, level 15): the superframes into the SPI outbox as they come */
+#endif
 #ifndef MS_CUE
-#define MS_CUE 1
+#define MS_CUE !MS_SPI
 #endif
 #ifndef REC_MS
-#define REC_MS 8000u
+#define REC_MS (MS_SPI ? 60000u : 8000u)
 #endif
 #ifndef MAX_SF
 #define MAX_SF 500u /* 20 s: under the message store's 3,200 B */
@@ -404,10 +414,30 @@ static int sound(const k6_api_t *api, int drop, int wide) {
   return e;
 }
 
+#if MS_SPI
+/* superframes k .. k+m-1 (m <= 4, from b) into the outbox, a page at a time: their byte sum */
+static uint32_t ob_put(const k6_api_t *api, uint32_t k, const uint8_t *b, uint32_t m) {
+  uint32_t a = KM_OB_LO + OB_DATA + k * SLIM_BYTES, n = m * SLIM_BYTES, sum = 0, c, i;
+  for (i = 0; i < n; i++) sum += b[i];
+  while (n) {
+    c = 256u - (a & 255u);
+    if (c > n) c = n;
+    api->fl_prog(a, b, c);
+    a += c, b += c, n -= c;
+  }
+  return sum;
+}
+#endif
+
 static void say_frames(const k6_api_t *api, char *line, const uint8_t *sf, uint32_t i, uint32_t n) {
   uint32_t k;
   char *p = dec(put(line, "s "), i);
   *p++ = ' ';
+#if MS_SPI
+  uint8_t b[4 * SLIM_BYTES];
+  api->fl_read(KM_OB_LO + OB_DATA + i * SLIM_BYTES, b, n * SLIM_BYTES);
+  sf = b - i * SLIM_BYTES;
+#endif
   for (k = 0; k < n * SLIM_BYTES; k++) p = hex(p, sf[i * SLIM_BYTES + k], 2);
   *p = 0;
   api->say(line);
@@ -418,6 +448,9 @@ int k6_main(const k6_api_t *api) {
            ospeed = rd(PA11_GPIOA + PA11_OSPEEDR), amp = rd(MIC_GPIOB + PA11_ODR) & AMP, home = api->rx_hz();
   uint32_t room = 0, i, apb2, cfgr1, acr, v38, v46, t0, now, cap, s30 = 0, want;
   uint32_t pr = 0, ri = 0, lost = 0, n = 0, pw0 = 0, dt = 0, pkm = 0;
+#if MS_SPI
+  uint32_t obs = 0;
+#endif
   uint16_t r47 = api->fd_read(0x47), r48 = api->fd_read(0x48), r7d = api->fd_read(0x7D);
   int32_t g = AGC_G0;
   char line[64], *p;
@@ -430,9 +463,12 @@ int k6_main(const k6_api_t *api) {
   f = (st_t *)s;
   e = (slim_enc_t *)(void *)(f + 1);
   sf = (uint8_t *)e + slim_enc_bytes();
-  if (room < sizeof(st_t) + slim_enc_bytes() + 50u * SLIM_BYTES) return -8;
+  if (room < sizeof(st_t) + slim_enc_bytes() + (MS_SPI ? 4u : 50u) * SLIM_BYTES) return -8;
   cap = (room - (uint32_t)(sf - s)) / SLIM_BYTES;
   if (cap > MAX_SF) cap = MAX_SF;
+#if MS_SPI
+  cap = OB_N_SF; /* (in RAM only the four the outbox hasn't taken yet) */
+#endif
   memset(f, 0, sizeof *f);
   f->api = api;
   f->m_in = moder & ~(3u << (2 * PA11_PIN));
@@ -448,6 +484,11 @@ int k6_main(const k6_api_t *api) {
     return -9;
   apb2 = rd(RCC_APB2ENR);
   if (apb2 & TIM17EN) return -12;
+#if MS_SPI
+  if (api->level < 15) return -14;
+  for (i = 0; i < OB_SECTORS; i++) /* the outbox erased now: never while keyed */
+    if (api->fl_erase(KM_OB_LO + 4096u * i)) return -14;
+#endif
   wr(MIC_GPIOB + MIC_BRR, AMP);
   wr(PA11_GPIOA + PA11_OSPEEDR, ospeed | (3u << (2 * PA11_PIN)));
   co_show(api, "MIC SOTTO CABLE OUT", "PULL CABLE", "THEN ANY KEY");
@@ -470,7 +511,7 @@ int k6_main(const k6_api_t *api) {
   }
 #endif
   if (er) goto back;
-  co_show(api, "MIC SOTTO CABLE OUT", "RECORDING", "");
+  co_show(api, "MIC SOTTO CABLE OUT", "RECORDING", MS_SPI ? "ANY KEY ENDS IT" : "");
   /* keyed with the PA off, the mic on (mickrec's record()) */
   if (rssi(api) >= RSSI_ON) er = -4;
   else if (api->tx_on(TX_MS) != 0) er = -3;
@@ -515,7 +556,11 @@ int k6_main(const k6_api_t *api) {
   pr -= pr % BLK, ri -= ri % BLK;
   while (!er) {
     now = api->ms();
+#if MS_SPI
+    if (api->key_poll()) break; /* the end of the take, not an error */
+#else
     if (api->key_poll()) er = -6;
+#endif
     if (now - t0 >= REC_MS || n + 1 >= cap) break;
     if (now - dt >= 1000) { /* each second: the PA still off */
       dt = now;
@@ -531,7 +576,12 @@ int k6_main(const k6_api_t *api) {
       else if (g < AGC_MAX) g += (g >> 6) + 1;                 /* up 2.4 dB a second */
       if (g < AGC_MIN) g = AGC_MIN;
       for (i = 0; i < BLK; i++) x[i] = (int16_t)sat16((x[i] * g) >> 8);
+#if MS_SPI
+      if (slim_encode10(e, x, sf + SLIM_BYTES * (n & 3u)) && (++n & 3u) == 0) /* a page write: ~1 ms */
+        obs += ob_put(api, n - 4u, sf, 4u);
+#else
       if (slim_encode10(e, x, sf + SLIM_BYTES * n)) n++;
+#endif
     }
   }
   /* the interrupt off, the map and the vector back */
@@ -546,7 +596,13 @@ int k6_main(const k6_api_t *api) {
   wr(FLASH_ACR, acr);
   wr(SRAM0 + 4u * V_TIM17, v38);
   wr(RCC_APB2ENR, apb2);
+#if MS_SPI
+  while (n < cap && slim_flush(e, sf + SLIM_BYTES * (n & 3u)))
+    if ((++n & 3u) == 0) obs += ob_put(api, n - 4u, sf, 4u);
+  if (n & 3u) obs += ob_put(api, n & ~3u, sf, n & 3u);
+#else
   while (n < cap && slim_flush(e, sf + SLIM_BYTES * n)) n++; /* (the context entry still ours) */
+#endif
   wr(SRAM0 + 4u * V_CTX, v46);
 keyed:
   if (s30 && api->fd_read(0x30) != s30 && api->fd_write(0x30, (uint16_t)s30) != 0) mic_bus_write(api, 0x30, s30);
@@ -554,6 +610,12 @@ keyed:
   api->fd_write(0x48, r48);
   api->fd_write(0x7D, r7d);
   api->tx_off();
+#if MS_SPI
+  if (n) { /* the header last, keyed down (outbox.h: fusotx sends it as FuSotto) */
+    uint32_t h[4] = {OB_MAGIC, 1u | KM_SOTTO_1200 << 8, n, obs};
+    api->fl_prog(KM_OB_LO, h, 16);
+  }
+#endif
 #if MS_CUE
   if (!er && sound(api, 1, wide) == 0) call(api); /* the voice's carrier gone, the last ID */
 #else
@@ -593,7 +655,16 @@ back:
   p = dec(p, (uint32_t)(er < 0 ? -er : er));
   *p = 0;
   api->say(line);
-  if (n && api->level >= 11 && api->sotto_play(sf, n, KM_SOTTO_1200, 0, "K6 MIC") == 0) {
+#if MS_SPI
+  sf = (uint8_t *)e; /* the first of it back from the outbox into the encoder's memory, to play */
+  cap = (room - (uint32_t)(sf - s)) / SLIM_BYTES;
+  i = n < cap ? n : cap;
+  if (i > MAX_SF) i = MAX_SF;
+  api->fl_read(KM_OB_LO + OB_DATA, sf, i * SLIM_BYTES);
+#else
+  i = n;
+#endif
+  if (i && api->level >= 11 && api->sotto_play(sf, i, KM_SOTTO_1200, 0, "K6 MIC") == 0) {
     /* the cable in the jack mutes the speaker, and the core plays only once the module returns
        (msot1a played into the cable): the cable out again first */
     co_show(api, "MIC SOTTO PLAYBACK", "PULL CABLE", "THEN ANY KEY");

@@ -236,7 +236,10 @@ def run(regs, moder=0, i2s_en=(0x31, 1), gp0_gate=True, src=SRC, model=None, spa
             for k in ("progs", "erases", "refused"):
                 spi.setdefault(k, 0)
             ret = -1
-            writable = (FL_LO <= r0 < FL_HI or (level >= 15 and OB_LO <= r0 < OB_HI)) and not st.get("keyed")
+            in_ob = level >= 15 and OB_LO <= r0 < OB_HI
+            writable = (FL_LO <= r0 < FL_HI or in_ob) and not st.get("keyed")
+            if name == "fl_prog" and in_ob and st.get("keyed") and not st.get("pa", True):
+                writable = True                    # level 15: an outbox page keyed with the PA off
             if name == "fl_read":
                 if FL_LO <= r0 < FL_READ_HI and r2 <= FL_READ_HI - r0:
                     uc.mem_write(r1, bytes(mem[r0 - FL_LO:r0 - FL_LO + r2]))

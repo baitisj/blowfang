@@ -1379,3 +1379,20 @@ def test_micsotto_fits_the_radio_with_room_for_its_superframes(tmp_path):
     st, enc = map(int, re.findall(r"\.long\s+(\d+)", asm.split("MS_SIZES:")[1])[:2])
     room = k6mod.ARENA_BYTES_13 - (16 + len(code) + 8 + 4) - st - enc
     assert room // 6 >= 60, (len(code), st, enc, room)
+
+
+MICSPI = os.path.join(ROOT, "c", "k6", "mod", "micspi.c")
+
+
+@need_clang
+def test_micspi_is_level_15_and_leaves_room_to_play_20_s():
+    """micspi keeps four superframes in RAM (the rest go to the outbox); after the take the
+    encoder's memory holds up to MAX_SF (500, 20 s) read back from the outbox to play"""
+    assert k6mod.source_level(MICSPI) == 15
+    code = k6mod.build(MICSPI)[0]
+    room = k6mod.arena_bytes(15) - (16 + len(code) + 8 + 4)
+    assert room >= 548 + 3148 + 4 * 6, (len(code), room)
+    assert (room - 548) // 6 >= 500
+    src = open(MICSOTTO).read()
+    main = src[src.index("int k6_main"):]
+    assert main.index("api->fl_erase") < main.index("er = call(api)")   # erased before the first keying

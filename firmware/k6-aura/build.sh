@@ -423,6 +423,7 @@ mickrec        # level 13, cable out: 3.2 s of the mic at AF select 4, keyed wit
 miclvl         # level 4, AF select 4 with the mic ADC and TX DSP on over 48 s of a stepped tone: as is, the mic ADC off, the mic AGC bit flipped (keys nothing, docs/k6-mic-probe.md)
 micout         # level 13, mic64 with the programming cable pulled (it takes the mic out): the screen asks for the pull and the replug, the dump only after (the mic never on the air, docs/k6-mic-probe.md)
 micsotto       # level 13, cable out: the mic coded live as sotto 1200 (PA11's converter in TIM17's interrupt, keyed with the PA off), played back on the speaker and said as hex after the replug (the mic never on the air; needs out/fmsotto-cells.bin in a library slot, docs/k6-mic-probe.md)
+micspi         # level 15, cable out: micsotto with its superframes into the SPI outbox as they come (up to 60 s, any key ends the take; fl_prog keyed with the PA off), the header last so fusotx sends it (docs/k6-mic-probe.md)
 micpin         # level 4, AF select 4 with the mic ADC and TX DSP on in receive, read by PA11 in whole captures: quiet, then a tone (the receiver's baseband, not the mic; keys nothing, docs/k6-mic-probe.md)
 micprobe       # level 4, the mic ADC switched on in receive: what follows a sound at the mic (AF selects by PA11, GP0, registers; keys nothing, docs/k6-mic-probe.md)
 micrec         # level 4, three seconds of that select as IMA ADPCM, for tools/k6_micprobe.py (keys nothing, docs/k6-mic-probe.md)
