@@ -75,6 +75,12 @@ measures how far each packed stream's writes run ahead of its reads (`inplace_ex
 - **Library modules and EXPLORE's pages:** they are installed packed and stay packed in their
   slot. `kl_load` and `kl_page` read the packed image high in the block and unpack it on every
   load. This costs about 1-3 ms a load and saves 5-6 % of the SPI read.
+- **EXPLORE's page check:** before EXPLORE borrows anything, `page::check` (explore.rs) makes
+  sure each page in SPI was built for this image by reading its last 8 bytes, the build ID.
+  The packer keeps every block's last 8 bytes as literals (`KEEP_TAIL`), so a packed page's
+  slot ends with the same ID. The check reads it there and decodes the block's first bytes for
+  the page's magic. The first level 15 flash (ca214f1, 2026-11-21) read the ID at the unpacked
+  offset, refused the packed pages (`K6 EX pages missing: ... r=-10`) and stayed in VOICE MSG.
 
 ## Help decks v2 (tools/k6_cards.py)
 
@@ -133,7 +139,8 @@ to the first byte that isn't ASCII, and the boot screen counts bytes. That saves
 because each call site gets shorter too.
 
 Built with ATfE 22.1 (CI's compiler), the image is 119,436 of 122,880 B with all of this and the outbox (#225), so
-3,444 B are free (3,296 with the upload LED below). The image on the radio before this change had 1,980 B free. The EXPLORE-only
+3,444 B are free (3,296 with the upload LED below, 3,216 with the packed page check and the
+keyed outbox write of #232). The image on the radio before this change had 1,980 B free. The EXPLORE-only
 image has 9,684 B free. Not done: `compiler_builtins`' 32-bit divide (390 B) could be cut the
 same way, but it is on hot paths, so it stays.
 

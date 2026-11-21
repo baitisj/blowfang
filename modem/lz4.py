@@ -8,13 +8,17 @@ one), and the reference decoder that mirrors the radio's c/k6/lz4d.c byte for by
                            at worst, decoding in place (see k6_mod.h KM_LZ4_MARGIN)
 
 Every block follows the format's end rules (the last 5 bytes are literals, the last match starts
-12 or more bytes before the end), so the reference lz4 tools decode it too.
+12 or more bytes before the end), so the reference lz4 tools decode it too. It keeps the last 8
+bytes as literals (KEEP_TAIL): a block's last 8 bytes are then its data's last 8, which is where
+a page ends with its image's build ID, so the radio checks a packed page's ID in SPI without
+decoding it (explore.rs page::check).
 SPDX-License-Identifier: MIT"""
 
 MIN_MATCH = 4
 LAST_LITERALS = 5
 MF_LIMIT = 12
 MAX_OFFSET = 65535
+KEEP_TAIL = 8          # the last bytes kept as literals (a page's build ID, see above)
 CHAIN = 512           # match candidates looked at per position
 
 
@@ -29,7 +33,7 @@ def _matches(data):
     best = [(0, 0)] * n
     head = {}
     prev = [-1] * n
-    limit = n - LAST_LITERALS          # a match may not run into the last 5 bytes
+    limit = n - max(LAST_LITERALS, KEEP_TAIL)   # no match runs into the last 8 bytes
     for i in range(n - MIN_MATCH + 1):
         key = data[i:i + 4]
         j = head.get(key, -1)

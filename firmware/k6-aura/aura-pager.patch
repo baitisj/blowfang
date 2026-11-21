@@ -390,7 +390,7 @@ index 5f006e4..371e81e 100644
      }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..41dd48b
+index 0000000..111b7db
 --- /dev/null
 +++ b/src/app/pager.rs
 @@ -0,0 +1,5297 @@
@@ -639,7 +639,7 @@ index 0000000..41dd48b
 +        pub fn kl_info(slot: i32, fl: *const KlFlash, out: *mut KlInfo) -> i32;
 +        #[cfg(feature = "voice-explore")]
 +        pub fn kl_page(slot: i32, fl: *const KlFlash, dst: *mut u8, cap: u32) -> i32;
-+        #[cfg(banded)]
++        #[cfg(any(banded, feature = "voice-explore"))]
 +        pub fn lz4d(src: *const u8, n: u32, dst: *mut u8, cap: u32) -> i32;
 +        pub fn sp_cb_setup() -> i32;
 +        pub fn sp_cb_mode() -> i32;
@@ -5693,10 +5693,10 @@ index 0000000..41dd48b
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..82dfc8c
+index 0000000..1aa4347
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2524 @@
+@@ -0,0 +1,2538 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -5806,6 +5806,9 @@ index 0000000..82dfc8c
 +    /// Whether slot p holds a page made for this image, from its header and its last bytes
 +    /// alone (the pool untouched): 0, a k6_lib.h KL_* (-1 the slot is empty), -10 made for
 +    /// another image, -11 not this page. load checks the rest (the tag, the table).
++    /// A packed page (level 15, docs/k6-lz4.md) is the raw length (u16) and an LZ4 block whose
++    /// last 8 bytes modem/lz4.py keeps as literals, so its build ID is the slot's last 8 bytes
++    /// as stored; its magic comes from decoding the block's first bytes.
 +    pub fn check(p: u8) -> i32 {
 +        let fl = &super::super::LIB_FL;
 +        let mut i = super::pffi::KlInfo::default();
@@ -5814,23 +5817,34 @@ index 0000000..82dfc8c
 +            return r;
 +        }
 +        let n = i.code_len as usize;
-+        if i.flags & 2 == 0 || KM_HDR + n + 8 > arena::DEC_BYTES || n < 8 + 4 * FNS[p as usize] as usize + ID_BYTES {
++        let packed = i.packed as usize;
++        if i.flags & 2 == 0 || KM_HDR + n + 8 > arena::DEC_BYTES || n < 8 + 4 * FNS[p as usize] as usize + ID_BYTES
++            || (packed != 0 && packed < 2 + 16)
++        {
 +            return -11;
 +        }
++        let tail = if packed != 0 { packed } else { n };
 +        let base = 0x11_0000 + 0x4000 * SLOT[p as usize] as u32 + KM_HDR as u32;
-+        let mut w = [0u32; 1];
++        let mut head = [0u8; 16];
++        let mut w = [0u8; 4];
 +        let mut id = [0u8; ID_BYTES];
 +        unsafe {
-+            if (fl.read)(base, w.as_mut_ptr() as *mut u8, 4) != 0
-+                || (fl.read)(base + (n - ID_BYTES) as u32, id.as_mut_ptr(), ID_BYTES as u32) != 0
++            if (fl.read)(base, head.as_mut_ptr(), 16) != 0
++                || (fl.read)(base + (tail - ID_BYTES) as u32, id.as_mut_ptr(), ID_BYTES as u32) != 0
 +            {
 +                return -4;
++            }
++            if packed != 0 {
++                // the first 4 bytes it decodes (it stops short of the block's end: -1, the bytes kept)
++                super::pffi::lz4d(head.as_ptr().add(2), 14, w.as_mut_ptr(), 4);
++            } else {
++                w.copy_from_slice(&head[..4]);
 +            }
 +        }
 +        if id != unsafe { *addr_of!(k6_build_id) } {
 +            return -10;
 +        }
-+        if w[0] != magic(p) {
++        if u32::from_le_bytes(w) != magic(p) {
 +            return -11;
 +        }
 +        0
