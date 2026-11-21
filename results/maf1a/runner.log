@@ -1,0 +1,55 @@
+2026-11-21T01:41:06Z job maf1a by micprobe, checkout /home/baitisj/blowfang-work/worktrees/inbox-5d0384d2011d at 5d0384d2011d49a798bb389a98bc64f444ec5d4a
+2026-11-21T01:41:06Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold micprobe -- timeout -s INT --kill-after=10 2700 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/maf1a/k6.log
+2026-11-21T01:41:08Z step 1 (logger) rc=0
+2026-11-21T01:41:11Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-21T01:41:11Z step 2 (ic7100.tune) rc=0
+2026-11-21T01:41:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5d0384d2011d/tools/pluto_bench.py --as micprobe send /home/baitisj/blowfang-work/runs/inbox/maf1a/wake.wav --hz 440850000 --dev 3000 --gain -30
+send: wav peak 0.833 of full scale -> 2500 Hz before pre-emphasis
+send wake.wav: 73.2 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 01:41:12Z
+end 01:42:25Z: 73.2 s of signal in 73.1 s (kept up)
+2026-11-21T01:42:26Z step 3 (pluto) rc=0
+2026-11-21T01:42:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5d0384d2011d/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/maf1a/micaf.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --api-level 13 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/maf1a/k6-rate.json --telemetry 0 --rounds 1 --run-s 0
+17:42:29 send 1: 33 of 33 XL chunks at F/1800 (serial 1795225348, xfer 4); module /home/baitisj/blowfang-work/runs/inbox/maf1a/micaf.bin: 3932 B code, entry +0, API level 13, serial 1795225348, xfer 4, 3956 B image in 33 XL chunks; 66 packets, 42.8 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 50.2 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 01:42:30Z
+end 01:43:20Z: 50.2 s of signal in 50.0 s (kept up)
+17:43:20 listening for the K6's report
+17:43:46 no report heard
+17:43:46 no report after a whole send: the K6 may be set to L packets, so the next send is 69 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 33 chunks sent were lost
+17:43:46 CW ID
+2026-11-21T01:43:46Z step 4 (k6.upload) rc=0
+2026-11-21T01:43:49Z IC-7100 F 445850000 M FM RFPOWER 0.00
+2026-11-21T01:43:49Z step 5 (ic7100.tune) rc=0
+2026-11-21T01:43:52Z IC-7100 AF 0.298 (was 0.004 before the job)
+2026-11-21T01:43:52Z step 6 (ic7100.af) rc=0
+2026-11-21T01:46:22Z step 7 (wait) rc=0
+2026-11-21T01:46:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5d0384d2011d/tools/pluto_bench.py --as micprobe send /home/baitisj/blowfang-work/runs/inbox/maf1a/tone30.wav --hz 445850000 --dev 3000 --gain -46
+send: wav peak 0.500 of full scale -> 1500 Hz before pre-emphasis
+send tone30.wav: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 01:46:23Z
+end 01:47:00Z: 37.4 s of signal in 37.3 s (kept up)
+2026-11-21T01:47:00Z step 8 (pluto) rc=0
+2026-11-21T01:47:02Z IC-7100 AF 0.000 (was 0.004 before the job)
+2026-11-21T01:47:02Z step 9 (ic7100.af) rc=0
+2026-11-21T01:47:02Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5d0384d2011d/tools/pluto_bench.py --as micprobe send /home/baitisj/blowfang-work/runs/inbox/maf1a/tone30.wav --hz 445850000 --dev 3000 --gain -46
+send: wav peak 0.500 of full scale -> 1500 Hz before pre-emphasis
+send tone30.wav: 37.4 s on 445850000 Hz (LO 445850000.0), gain -46.0 dB, rate 2400000, RF on
+start 01:47:03Z
+end 01:47:40Z: 37.4 s of signal in 37.3 s (kept up)
+2026-11-21T01:47:41Z step 10 (pluto) rc=0
+2026-11-21T01:47:42Z IC-7100 AF 0.004 (was 0.004 before the job)
+2026-11-21T01:47:42Z step 11 (ic7100.af) rc=0
+2026-11-21T01:47:46Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-21T01:47:46Z step 12 (ic7100.tune) rc=0
+2026-11-21T01:54:39Z seen /micaf done/ in /home/baitisj/blowfang-work/runs/queue/maf1a/k6.log
+2026-11-21T01:54:39Z step 13 (wait) rc=0
+2026-11-21T01:54:44Z step 14 (wait) rc=0
+2026-11-21T01:54:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release micprobe
+the port is free (micprobe let go)
+2026-11-21T01:54:45Z step 15 (logger.stop) rc=0
+2026-11-21T01:54:46Z IC-7100 AF 0.004 (was 0.004 before the job)
+2026-11-21T01:54:46Z job maf1a done

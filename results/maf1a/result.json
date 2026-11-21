@@ -1,12 +1,123 @@
 {
  "id": "maf1a",
- "status": "running",
- "since": "2026-11-21T01:41:04Z",
+ "who": "micprobe",
+ "started": "2026-11-21T01:41:06Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-21T01:41:06Z",
+   "ended": "2026-11-21T01:41:08Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T01:41:08Z",
+   "ended": "2026-11-21T01:41:11Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-21T01:41:11Z",
+   "ended": "2026-11-21T01:42:26Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-21T01:42:26Z",
+   "ended": "2026-11-21T01:43:46Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T01:43:46Z",
+   "ended": "2026-11-21T01:43:49Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "ic7100.af",
+   "started": "2026-11-21T01:43:49Z",
+   "ended": "2026-11-21T01:43:52Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-21T01:43:52Z",
+   "ended": "2026-11-21T01:46:22Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-21T01:46:22Z",
+   "ended": "2026-11-21T01:47:00Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "ic7100.af",
+   "started": "2026-11-21T01:47:00Z",
+   "ended": "2026-11-21T01:47:02Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-21T01:47:02Z",
+   "ended": "2026-11-21T01:47:41Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "ic7100.af",
+   "started": "2026-11-21T01:47:41Z",
+   "ended": "2026-11-21T01:47:42Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T01:47:42Z",
+   "ended": "2026-11-21T01:47:46Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-21T01:47:46Z",
+   "ended": "2026-11-21T01:54:39Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "wait",
+   "started": "2026-11-21T01:54:39Z",
+   "ended": "2026-11-21T01:54:44Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "logger.stop",
+   "started": "2026-11-21T01:54:44Z",
+   "ended": "2026-11-21T01:54:45Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-5d0384d2011d",
+ "head": "5d0384d2011d49a798bb389a98bc64f444ec5d4a",
+ "ended": "2026-11-21T01:54:46Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "dfcb3a90c92f6b2963bf657056c89eb42cd039cd",
   "path": "jobs/maf1a"
  },
  "runner_commit": "5d0384d2011d49a798bb389a98bc64f444ec5d4a",
- "updated": "2026-11-21T01:41:04Z"
+ "updated": "2026-11-21T01:54:46Z"
 }
