@@ -18,6 +18,9 @@ docs/pluto-bench.md has the bench notes.
                                                     k6_upload sends (PLUTO_PEAK_HZ)
   python3 tools/pluto_bench.py steps WAV            the same audio at each TX gain in turn (a
          --gains -70,-73,... [--preemph] [--out J]  sensitivity ladder; times to J for a report)
+  python3 tools/pluto_bench.py cue WAV [--hz F]     wait for one burst on --listen-hz (a K6 module's
+         [--listen-hz F] [--wait-s 900]             CW ID: its over-the-air "ready" call), then send
+         [--delay-s 1] [send's options]             WAV as send does (tools/pluto_parrot.py cue)
   python3 tools/pluto_bench.py rx OUT [--hz F]      capture, TX down: OUT.cf32 = complex64 at 240 kHz
          [--seconds 10] [--gain 30]                 (beside it OUT.cf32.json: frequency, rate, xo),
                                                     OUT.wav = the FM discriminator, flat, 48 kHz,
@@ -398,7 +401,8 @@ def cmd_quiet(a):
     print("TX LO powerdown =", get("out", PHY, "altvoltage1", "powerdown", uri=a.uri))
 
 
-def cmd_send(a):
+def wav_track(a):
+    """the wav a.wav as an FM track (a.dev, a.peak, a.preemph), its scaling printed"""
     from scipy.io import wavfile
     fs, x = wavfile.read(a.wav)
     x = np.asarray(x, float)
@@ -409,7 +413,11 @@ def cmd_send(a):
     dev = full_scale_dev(x, a.dev, a.peak)
     print(f"send: wav peak {np.max(np.abs(x)):.3f} of full scale -> {np.max(np.abs(x)) * dev:.0f} Hz "
           f"before pre-emphasis", flush=True)
-    track = audio_track(x, fs, dev, a.preemph)
+    return audio_track(x, fs, dev, a.preemph)
+
+
+def cmd_send(a):
+    track = wav_track(a)
     send(track, a.hz, a.offset_hz, a.gain, a.rate, a.uri, not a.rf_off,
          f"send {os.path.basename(a.wav)}")
 
@@ -540,6 +548,12 @@ def cmd_rx(a):
           f" floor {m['floor_dbfs']:.1f} dBFS, signal on {m['share']:.0%}")
 
 
+def cmd_cue(a):
+    import pluto_parrot
+    a.what = f"cue {os.path.basename(a.wav)}"
+    pluto_parrot.cue(a, wav_track(a), a.rate)
+
+
 def cmd_parrot(a):
     import pluto_parrot
     pluto_parrot.run(a)
@@ -603,6 +617,17 @@ def main(argv=None):
                         "3000 matches k6_upload's F/1800 uploads")
     s.add_argument("--preemph", action="store_true", help="750 us pre-emphasis (voice)")
     tx_args(s)
+    cu = sub.add_parser("cue", help="wait for one burst on --listen-hz (a module's CW 'ready' call), then send WAV")
+    cu.add_argument("wav")
+    cu.add_argument("--hz", type=int, default=HZ, help="where the WAV goes")
+    cu.add_argument("--listen-hz", type=int, default=HZ, help="where the call comes (the K6's bench frequency)")
+    cu.add_argument("--wait-s", type=float, default=900.0, help="how long to wait for the call")
+    cu.add_argument("--delay-s", type=float, default=1.0, help="after the call ends, before the send")
+    cu.add_argument("--rx-gain", type=int, default=10, help="RX gain, dB (manual; the K6 keys 5 W nearby)")
+    cu.add_argument("--dev", type=float, default=3000.0, help="peak deviation at full scale, Hz")
+    cu.add_argument("--peak", type=float, default=None, metavar="HZ", help="as send --peak")
+    cu.add_argument("--preemph", action="store_true", help="750 us pre-emphasis (voice)")
+    tx_args(cu)
     f = sub.add_parser("fsk24")
     f.add_argument("--rounds", type=int, default=20)
     f.add_argument("--sweep", action="store_true",
@@ -650,7 +675,8 @@ def main(argv=None):
     if a.as_who:
         os.environ["K6_BENCH_AS"] = a.as_who
     {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx, "steps": cmd_steps,
-     "measure": cmd_measure, "cal": cmd_cal, "parrot": cmd_parrot}[a.cmd](a)
+     "measure": cmd_measure, "cal": cmd_cal, "parrot": cmd_parrot,
+     "cue": cmd_cue}[a.cmd](a)
 
 
 if __name__ == "__main__":

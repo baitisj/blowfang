@@ -202,3 +202,90 @@ def test_a_burst_20_db_over_the_noise_in_its_channel_is_heard():
     assert len(bursts) == 1
     mode, got, src, lines = pp.heard(bursts[0])
     assert mode == "ysf" and got[:len(msg)] == msg, lines
+
+
+# ---- cue: the over-the-air trigger ----
+
+def cw_iq(text_units, unit_s=0.06, fs=pp.FS, lead_s=1.0, tail_s=3.0, amp=1000.0, seed=4):
+    """keyed carrier (1 = on) RX_IF_HZ below the LO, as int16 IQ bytes at fs"""
+    env = np.repeat(np.array(text_units, float), int(unit_s * fs))
+    env = np.concatenate([np.zeros(int(lead_s * fs)), env, np.zeros(int(tail_s * fs))])
+    t = np.arange(len(env)) / fs
+    z = np.exp(-2j * np.pi * (pp.RX_IF_HZ - 300.0) * t) * amp * env
+    rng = np.random.default_rng(seed)
+    z = z + (rng.standard_normal(len(z)) + 1j * rng.standard_normal(len(z))) * 5
+    raw = np.empty(2 * len(z), np.int16)
+    raw[0::2], raw[1::2] = np.round(z.real), np.round(z.imag)
+    return raw.tobytes()
+
+
+def cue_world(monkeypatch, streams):
+    import io
+    import types
+    sent, setups = [], []
+    data = list(reversed(streams))
+
+    class Proc:
+        def __init__(self, *a, **k):
+            self.stdout = io.BytesIO(data.pop() if data else b"")
+            self.stderr = io.BytesIO(b"")
+            self.returncode = None
+
+        def poll(self):
+            return 0 if self.stdout.tell() >= len(self.stdout.getbuffer()) else None
+
+        def kill(self):
+            self.stdout.seek(0, 2)
+
+        def wait(self):
+            return 0
+
+    pb = types.SimpleNamespace(RATE=pp.FS, CHUNK=13107, URI="ip:x", RX_DEV="rx",
+                               check_tx=lambda *a: 0, park_rx=lambda *a: None,
+                               setup=lambda *a, **k: setups.append(k.get("rx_hz")),
+                               send=lambda track, hz, *a: sent.append((hz, a[-1])))
+    monkeypatch.setitem(sys.modules, "pluto_bench", pb)
+    monkeypatch.setattr(pp.subprocess, "Popen", Proc)
+    a = types.SimpleNamespace(hz=445_850_000, listen_hz=440_850_000, gain=-46.0, offset_hz=0.0, wait_s=3.0,
+                              delay_s=0.0, rx_gain=10, uri=None, what="cue tone")
+    return a, sent, setups
+
+
+def ag7ew_units():
+    """AG7EW in CW units, as the K6's micgain call keys it (1 = carrier)"""
+    morse = {"A": ".-", "G": "--.", "7": "--...", "E": ".", "W": ".--"}
+    u = [0] * 5
+    for ch in "AG7EW":
+        for i, el in enumerate(morse[ch]):
+            u += [1] * (3 if el == "-" else 1) + [0] * (1 if i < len(morse[ch]) - 1 else 3)
+    return u
+
+
+def test_cue_sends_after_the_k6_call(monkeypatch, capsys):
+    a, sent, setups = cue_world(monkeypatch, [cw_iq(ag7ew_units())])
+    secs = pp.cue(a, np.zeros(10))
+    assert sent == [(445_850_000, "cue tone")]
+    assert setups == [440_850_000 + pp.RX_IF_HZ]                 # listened on the call's channel
+    assert pp.CUE_MIN_S <= secs <= pp.CUE_MAX_S
+
+
+def test_cue_ignores_a_blip_and_sends_nothing_without_a_call(monkeypatch, capsys):
+    a, sent, setups = cue_world(monkeypatch, [cw_iq([1] * 4)])  # 0.24 s: a click, not a call
+    with pytest.raises(SystemExit):
+        pp.cue(a, np.zeros(10))
+    assert sent == [] and "not a cue" in capsys.readouterr().out
+
+
+def test_runner_takes_a_cue_on_the_bench_channels():
+    args = ["cue", "job:t.wav", "--hz", "445850000", "--listen-hz", "440850000", "--gain", "-46", "--wait-s", "1700"]
+    assert runner_problems(args, freq="bench") == []
+
+
+@pytest.mark.parametrize("args, why", [
+    (["cue", "job:t.wav", "--hz", "445850000"], "--listen-hz"),
+    (["cue", "job:t.wav", "--hz", "445850000", "--listen-hz", "440850000", "--wait-s", "2000"], "over 1700"),
+    (["cue", "job:t.wav", "--hz", "445850000", "--listen-hz", "440850000", "--gain", "-20"], "above"),
+])
+def test_runner_refuses_a_bad_cue(args, why):
+    probs = runner_problems(args, freq="bench")
+    assert probs and any(why in p for p in probs), probs

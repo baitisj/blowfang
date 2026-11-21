@@ -97,8 +97,9 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240}
-PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot")
-PLUTO_TX = ("send", "steps", "fsk24", "parrot")
+PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue")
+PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
+CUE_MAX_S = 1700                            # a cue waits for its call this long at most (the step: 1800 s, with the send)
 PARROT_MAX_MIN = 25                         # a parrot holds the bench: 25 min at most (the step's 1800 s)
 IC7100_SUBS = ("send", "id", "stop")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
@@ -491,6 +492,14 @@ def check_step(job, i, step, rs, problems):
                     problems.append(f"{what}: parrot --minutes {m} is over {PARROT_MAX_MIN}")
             if "--hz" not in args:
                 problems.append(f"{what}: parrot needs --hz (its channel, inside the job's claim)")
+        if args[0] == "cue":
+            if "--hz" not in args or "--listen-hz" not in args:
+                problems.append(f"{what}: cue needs --hz and --listen-hz (inside the job's claim)")
+            for f in opts(args, "--listen-hz"):
+                check_tx_hz(job, as_hz(f), what, problems)
+            for ws in opts(args, "--wait-s") or ["900"]:
+                if float(ws) > CUE_MAX_S:
+                    problems.append(f"{what}: cue --wait-s {ws} is over {CUE_MAX_S}")
         if step.get("background") and args[0] != "rx":
             problems.append(f"{what}: only a Pluto rx (receive) may run in the background")
         if args[0] in PLUTO_TX:

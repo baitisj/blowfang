@@ -1131,10 +1131,29 @@ def test_mickrec_without_sound_or_key_keys_nothing():
 
 MICGAIN = os.path.join(ROOT, "c", "k6", "mod", "micgain.c")
 MGN_DEFS = [("N_CAP", "64u"), ("PRE", "16u"), ("SET_MS", "20u"), ("PULL_MS", "500u"), ("QUIET_WAIT_MS", "3000u"), ("HOLD_MS", "200u"),
-            ("DROP_MS", "300u"), ("WAIT_MS", "20000u"), ("KEY_WAIT_MS", "60000u")]
+            ("DROP_MS", "300u"), ("WAIT_MS", "20000u"), ("KEY_WAIT_MS", "60000u"), ("READY_GAP_MS", "500u")]
+CUE_DELAY_US, CUE_SOUND_US = 1_000_000, 3_000_000
 
 
-def mgn_run(keys, level=14, tx=None):
+def calls(log):
+    """the K6's calls (CW IDs at full power) in a tx log: (keyed, keyed down) spans with the PA
+    switched on at least 5 times (the CW's elements); a pass keys once with the PA off"""
+    out, on, n = [], None, 0
+    for name, arg, us in log:
+        if name == "tx_on":
+            on, n = us, 0
+        elif name == "tx_pa" and arg == 1:
+            n += 1
+        elif name == "tx_off" and on is not None:
+            if n >= 5:
+                out.append((on, us))
+            on = None
+    return out
+
+
+def mgn_run(keys, level=14, tx=None, cue=True):
+    """the job's Pluto as a cue (pluto_bench cue): CUE_DELAY_US after each K6 call ends, its
+    carrier on 445.850 for CUE_SOUND_US"""
     w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4)
     tx = {} if tx is None else tx
     base = regs[0x67]
@@ -1142,7 +1161,8 @@ def mgn_run(keys, level=14, tx=None):
     def rssi(us):
         v = base(us)
         if w["tuned"] == SOUND_HZ and w["sound_at"] is not None and us >= w["sound_at"]:
-            return 60 if (us - w["sound_at"]) % 3_000_000 >= 2_000_000 else v
+            on = cue and any(b + CUE_DELAY_US <= us < b + CUE_DELAY_US + CUE_SOUND_US for _, b in calls(tx.get("log", [])))
+            return v if on else 60
         return v
     regs[0x67] = rssi
     regs[0x19], regs[0x7D] = 0x1041, 0xE95C
@@ -1171,8 +1191,13 @@ def test_micgain_steps_the_agc_and_sensitivity_keyed_in_four_passes():
     log = tx["log"]
     ons = [us for n, _, us in log if n == "tx_on"]
     offs = [us for n, _, us in log if n == "tx_off"]
-    assert len(ons) == 4 and pull < ons[0] and max(offs[:4]) < plug
-    on_spans = list(zip(ons, offs))
+    cw = calls(log)
+    assert len(cw) == 5 and pull < cw[0][0]                       # a call before each pass, one after
+    sounds = [(b + CUE_DELAY_US, b + CUE_DELAY_US + CUE_SOUND_US) for _, b in cw]
+    assert not any(a < s1 and s0 < b for a, b in cw for s0, s1 in sounds)   # never keyed on the sound
+    on_spans = [(a, b) for a, b in zip(ons, offs) if (a, b) not in cw]
+    assert len(on_spans) == 4 and max(offs) < plug
+    assert all(s0 < a and b < s1 for (a, b), (s0, s1) in zip(on_spans, sounds))   # captures inside each
     w19 = [(v, us) for r, v, us in tx["w"] if r == 0x19]
     w7d = [(v, us) for r, v, us in tx["w"] if r == 0x7D]
     assert all(any(a <= us <= b for a, b in on_spans) for _, us in w19 + w7d)   # only while keyed
@@ -1189,6 +1214,15 @@ def test_micgain_steps_the_agc_and_sensitivity_keyed_in_four_passes():
 def test_micgain_without_the_pull_key_keys_nothing():
     w, tx, ret, said, regs, lcd = mgn_run(())
     assert ret == -7 and "tx_on" not in [n for n, _, _ in tx.get("log", [])] and said[-1] == "micgain done"
+
+
+@need_clang
+def test_micgain_with_no_cue_calls_once_and_keys_no_pass():
+    pull, plug = 1_000_000, 60_000_000
+    w, tx, ret, said, regs, lcd = mgn_run(((pull, pull + 200_000), (plug, plug + 200_000)), cue=False)
+    assert ret == 0 and len(calls(tx["log"])) == 1
+    assert [n for n, _, _ in tx["log"]].count("tx_on") == 1
+    assert "micgain pass q=0 rssi=" in said[2] and said[2].endswith("e=-9")
 
 
 # ---- keygo ----

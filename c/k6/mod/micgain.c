@@ -7,13 +7,22 @@
    the capture's lowest and highest sample (clipping):
      settings 0-4: the mic AGC on (REG_19 bit 15 clear), REG_7D's mic sensitivity [4:0] = 0, 8,
      18, 24, 31; settings 5-9: the AGC off (bit 15 set), the same five
-   SET_MS after each change before its capture (the AGC's time to settle). Four passes, each once
-   a carrier has stayed HOLD_MS on SOUND_HZ after the last one dropped (the job steps the IC-7100's
-   AF: 0.1, 0.2, 0.3, then 0 as the control), each keyed afresh with its CW ID.
+   SET_MS after each change before its capture (the AGC's time to settle). Four passes (the job
+   steps the IC-7100's AF: 0.1, 0.2, 0.3, then 0 as the control).
 
-   The screen runs the bench: CABLE STILL IN: / PRESS ANY KEY, then the line "micgain go" (the
-   job starts its tones on it, so nothing sounds before the K6 listens), PULL CABLE NOW for
-   PULL_MS, the passes, PLUG CABLE IN / THEN ANY KEY, and only then the lines:
+   With the cable out the job can't read this log, so each pass is cued over the air (Jeff
+   2026-11-21, after mgn1b: "send a trigger message then a call back that goes over the air for
+   each stage"): the K6 sends its CW ID on BENCH_HZ at full power as the call "ready for pass N"
+   and keys down; the job's Pluto hears that call (pluto_bench cue), then sends the sound's
+   carrier on SOUND_HZ (its MCW ID, the tone, its MCW ID); the K6 waits for that carrier to stay
+   HOLD_MS (past the Pluto's ID), keys again with the PA off for the captures, and keys down. Once
+   the carrier has been gone DROP_MS, and READY_GAP_MS more (the job's next steps set up), the
+   next call goes out; after the last pass a last CW ID closes the run. So nothing the K6 sends
+   lands on the tone (mgn1b's CW, keyed on top of it, swamped the IC-7100), and each PA-off key
+   sits between two CW IDs a few seconds apart.
+
+   The screen runs the bench: CABLE STILL IN: / PRESS ANY KEY, then the line "micgain go", PULL
+   CABLE NOW for PULL_MS, the passes, PLUG CABLE IN / THEN ANY KEY, and only then the lines:
      micgain start 19=1041 7d=e95c 47=6040 rx=1a46d650
      micgain go
      micgain pass q=1 rssi=-4c e=0
@@ -62,7 +71,10 @@
 #define WAIT_MS 300000u
 #endif
 #ifndef PULL_MS
-#define PULL_MS 15000u /* after the key, to pull the cable (the job waits 20 s after "micgain go") */
+#define PULL_MS 15000u /* after the key, to pull the cable */
+#endif
+#ifndef READY_GAP_MS
+#define READY_GAP_MS 6000u /* after a sound's carrier drops, before the next call (the Pluto listens again) */
 #endif
 #ifndef KEY_WAIT_MS
 #define KEY_WAIT_MS 1200000u
@@ -203,11 +215,8 @@ static void capture(const run_t *r, uint32_t cfg, res_t *o) {
   }
 }
 
-/* one keyed pass: the ID, then with the PA off and the mic on at SEL, the N_SET settings.
-   0 or a negative error (REG_19, REG_7D, REG_30 put back and keyed down either way) */
-static int pass(const run_t *r, res_t *o) {
-  const k6_api_t *api = r->api;
-  uint32_t k, s30 = 0, want;
+/* the call: the CW ID at full power on the bench frequency, keyed down after. 0 or a negative error */
+static int call(const k6_api_t *api) {
   const char *s;
   int e;
   if (rssi(api) >= RSSI_ON) return -4; /* never onto a busy channel */
@@ -221,7 +230,19 @@ static int pass(const run_t *r, res_t *o) {
       if (!e) e = hold(api, 0, b ? 1 : 3);
     }
   }
-  if (!e && api->tx_pa(0) < 0) e = -5;
+  api->tx_off();
+  return e;
+}
+
+/* one keyed pass, with the PA off and the mic on at SEL: the N_SET settings.
+   0 or a negative error (REG_19, REG_7D, REG_30 put back and keyed down either way) */
+static int pass(const run_t *r, res_t *o) {
+  const k6_api_t *api = r->api;
+  uint32_t k, s30 = 0, want;
+  int e = 0;
+  if (rssi(api) >= RSSI_ON) return -4; /* never onto a busy channel */
+  if (api->tx_on(TX_MS) != 0) return -3;
+  if (api->tx_pa(0) < 0) e = -5;
   if (!e) {
     s30 = api->fd_read(0x30);
     if (api->fd_read(0x36) & 0x0080u) e = -5; /* the PA is still on: no mic bit */
@@ -256,7 +277,7 @@ static int pass(const run_t *r, res_t *o) {
   return e;
 }
 
-/* a carrier on SOUND_HZ that stays HOLD_MS, after (drop) one that has been gone DROP_MS:
+/* on SOUND_HZ: (drop) the last carrier gone DROP_MS, or else a carrier that stays HOLD_MS:
    0 (tuned home again), -6 a key, -9 none within WAIT_MS */
 static int sound(const run_t *r, int drop, int *dbm_at) {
   const k6_api_t *api = r->api;
@@ -274,6 +295,7 @@ static int sound(const run_t *r, int drop, int *dbm_at) {
       if (e) goto out;
       api->delay_us(20000);
     }
+    goto out;
   }
   for (;;) {
     if (rssi(api) < RSSI_ON) {
@@ -293,6 +315,18 @@ static int sound(const run_t *r, int drop, int *dbm_at) {
 out:
   api->tune(home, r->wide);
   api->delay_us(300000);
+  return e;
+}
+
+/* the last sound's carrier gone, then READY_GAP_MS: 0, -6 a key, -9 */
+static int gap(const run_t *r) {
+  const k6_api_t *api = r->api;
+  int e = sound(r, 1, 0);
+  uint32_t t;
+  for (t = api->ms(); !e && api->ms() - t < READY_GAP_MS;) {
+    if (api->key_poll()) e = -6;
+    api->delay_us(20000);
+  }
   return e;
 }
 
@@ -347,7 +381,9 @@ int k6_main(const k6_api_t *api) {
     res_t *o = r.res + q * N_CFG;
     co_show(api, "MICGAIN CABLE OUT", "QUIET PLEASE",
             q == 0 ? "PASS 0 AF 0.1" : q == 1 ? "PASS 1 AF 0.2" : q == 2 ? "PASS 2 AF 0.3" : "PASS 3 CONTROL");
-    e = sound(&r, q > 0, &at[q]);
+    if (q > 0) e = gap(&r);
+    if (!e) e = call(api);
+    if (!e) e = sound(&r, 0, &at[q]);
     if (e) {
       err[q] = e;
       break;
@@ -360,6 +396,7 @@ int k6_main(const k6_api_t *api) {
     if (e) break;
     ret++;
   }
+  if (ret == (int)N_PASS && gap(&r) == 0) call(api); /* the last ID: the run is over */
 out:
   api->tx_off();
   api->tune(home, r.wide); /* (REG_30 whole again: the core's receive word) */

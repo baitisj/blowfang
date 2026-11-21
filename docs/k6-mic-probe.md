@@ -479,6 +479,43 @@ on (REG_30 bit 2) and the AF DAC on, the chip puts the mic on its AF output at n
 PA11's converter reads it. Not in receive. `c/k6/mod/mickrec.c` records 3.2 s of select 4 that
 way, cable out, for an ear.
 
+## micgain: the mic AGC bit and REG_7D (2026-11-21)
+
+`c/k6/mod/micgain.c` keys as micaf does (PA off, mic ADC and AF DAC on) at select 4 and scores
+ten settings a pass the same way, plus each capture's lowest and highest sample: REG_19 bit 15
+clear (the mic AGC on) or set (off), each with REG_7D's mic sensitivity [4:0] at 0, 8, 18, 24
+and 31. Each setting gets 300 ms to settle. Four passes, with the IC-7100 at AF 0.1, 0.2, 0.3,
+and 0 as the control, playing the Pluto's 1,300 Hz tone (gain -46, 445.850 MHz).
+
+**Run mgn1b** (03:29-03:31 UTC, Jeff at the K6, cable out). Tone amplitude in counts of 8,100:
+
+| Setting | AF 0.1 | AF 0.2 | AF 0.3 | AF 0 (control) |
+| --- | --- | --- | --- | --- |
+| AGC on, 7D 0 | 0.2 | 0.6 | 1.7 | 0.1 |
+| AGC on, 7D 8 | 0.2 | 1.1 | 2.3 | 0.3 |
+| AGC on, 7D 18 | 0.1 | 1.6 | 4.4 | 0.2 |
+| AGC on, 7D 24 | 0.4 | 1.9 | 7.1 | 0.1 |
+| AGC on, 7D 31 | 0.9 | 3.1 | **12.0** | 0.2 |
+| AGC off, 7D 0 | 0.1 | 0.7 | 2.0 | 0.1 |
+| AGC off, 7D 8 | 0.3 | 0.7 | 3.1 | 0.1 |
+| AGC off, 7D 18 | 0.2 | 1.6 | 5.7 | 0.2 |
+| AGC off, 7D 24 | 0.5 | 2.1 | 7.6 | 0.2 |
+| AGC off, 7D 31 | 0.9 | 3.1 | 11.6 | 0.3 |
+
+- **REG_7D works:** 0 to 31 is about +17 dB at AF 0.3 (and +14 dB at 0.2), rising all the way. Use 31.
+- **REG_19 bit 15 does nothing here:** on and off agree within 1 dB at every level, and the
+  loud pass shows no compression. On this keyed path the mic AGC is out of the loop.
+- **Lots of headroom:** the loudest tone is 0.15 % of full scale, and the widest capture spans
+  56 counts of 16,200. A recorder can multiply on the MCU long before it clips.
+
+The first try (mgn1a, 03:12 UTC) scored nothing: its job played the tones before Jeff's key
+press. mgn1b started them from the line the K6 says on that key press, cable still in. The
+K6's CW ID at the start of each pass keyed on top of the tone (Jeff heard it), but before the
+captures. With the cable out the job can't read the log, so micgain now cues each pass over
+the air instead (Jeff's suggestion). The K6 sends its CW ID as a "ready" call and keys down.
+The job's `pluto_bench.py cue` hears the call and only then sends the tone. The K6 captures
+while the tone plays, and the next call waits until the tone has gone.
+
 ## Where this leaves the K6
 
 (Written before the cable was noticed. Superseded by micaf above: the mic does reach the MCU, keyed with the PA off.)
