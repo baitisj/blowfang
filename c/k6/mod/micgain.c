@@ -129,17 +129,18 @@ typedef struct {
      0 as micsotto          1 REG_29 compressor 2:1 (0 dB point 86, noise point 64), REG_31 bit 3
      2 compressor 4:1       3 compressor 2:1, 0 dB point 64
      4 REG_2B bit 0 (TX pre-emphasis off)    5 REG_2B bits 0, 2 (and the TX 300 Hz high-pass off)
-     6 REG_40's deviation [11:0] at 0xFFF    7 REG_40's deviation halved
+     6 REG_40's deviation [11:0] at 0xFFF    7 as 0, PA11's converter at hold 2 (not 3: a
+                                               shorter pull-down, more counts a charge)
      8 compressor 2:1 and pre-emphasis off   9 as micsotto again (drift)
    each from the registers as found, all put back after the pass */
 static void set2(const run_t *r, uint32_t k) {
   const k6_api_t *api = r->api;
-  uint16_t c29 = 0, comp = k == 1 || k == 2 || k == 3 || k == 8, dev = r->r40 & 0x0FFFu;
+  uint16_t c29 = 0, comp = k == 1 || k == 2 || k == 3 || k == 8;
   if (comp) c29 = (uint16_t)((k == 2 ? 3u : 2u) << 14 | (k == 3 ? 64u : 86u) << 7 | 64u);
   api->fd_write(0x29, comp ? c29 : r->r29);
   api->fd_write(0x31, (uint16_t)(comp ? r->r31 | 0x0008u : r->r31));
   api->fd_write(0x2B, (uint16_t)(k == 4 || k == 8 ? r->r2b | 0x0001u : k == 5 ? r->r2b | 0x0005u : r->r2b));
-  api->fd_write(0x40, (uint16_t)(k == 6 ? r->r40 | 0x1FFFu : k == 7 ? (r->r40 & ~0x0FFFu) | (dev >> 1) : r->r40));
+  api->fd_write(0x40, (uint16_t)(k == 6 ? r->r40 | 0x1FFFu : r->r40));
 }
 #endif
 
@@ -205,7 +206,7 @@ static int64_t smul(int32_t a, int32_t b) {
 static int32_t mulq14(int32_t c, int32_t s) { return (s >> 14) * c + (((s & 0x3FFF) * c) >> 14); }
 
 /* one capture at select sel, scored into *o */
-static void capture(const run_t *r, uint32_t cfg, res_t *o) {
+static void capture(const run_t *r, uint32_t cfg, res_t *o, uint32_t hold) {
   const k6_api_t *api = r->api;
   pa11_t c = {0, 0, 0, 0};
   uint32_t i, k, t0 = 0, sum = 0, lo = 0xFFFFu, hi = 0;
@@ -213,7 +214,7 @@ static void capture(const run_t *r, uint32_t cfg, res_t *o) {
   for (i = 0; i < PRE + N_CAP; i++) {
     uint32_t y;
     if (i == PRE) t0 = api->ticks();
-    y = pa11_sample(r->m_in, HOLD, W, &c);
+    y = pa11_sample(r->m_in, hold, W, &c);
     if (i >= PRE) r->buf[i - PRE] = (uint16_t)y;
   }
   o->ticks = (uint16_t)(api->ticks() - t0);
@@ -301,7 +302,11 @@ static int pass(const run_t *r, res_t *o) {
       if (e) break;
       api->delay_us(10000);
     }
-    if (!e) capture(r, k, o++);
+#if MG_PLAN == 2
+    if (!e) capture(r, k, o++, k == 7 ? 2u : HOLD);
+#else
+    if (!e) capture(r, k, o++, HOLD);
+#endif
   }
   api->fd_write(0x19, r->r19);
   api->fd_write(0x7D, r->r7d);
