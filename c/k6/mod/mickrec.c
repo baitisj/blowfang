@@ -4,19 +4,23 @@
    receive. This records select SEL there as micrec does (PA11 at 200 turns a sample, ~8 kHz, less
    a running mean, times 8, 4-bit IMA ADPCM, 3.2 s in 12.8 KB) for tools/k6_micprobe.py to decode.
 
-   The screen runs the bench, as micout: PULL CABLE / THEN ANY KEY. Then it waits for a carrier
-   that stays HOLD_MS on SOUND_HZ (the IC-7100 there plays the bench's voice clip at the mic),
-   keys up on the bench frequency (tx_on: the core's guards, low power), sends AG7EW in CW with
-   the PA, and with the PA OFF sets the mic ADC and the AF DAC (REG_30 bits 2, 9), select SEL and
-   the AF gain, settles PRE samples and records. Key-down, PLUG CABLE IN / THEN ANY KEY, and only
-   then the lines (micrec's own format, so tools/k6_micprobe.py reads them):
+   The screen runs the bench, as micout: PULL CABLE / THEN ANY KEY. Then the run is cued over the
+   air, as micgain's passes are (pluto_bench cue): the K6 sends AG7EW in CW at full power on the
+   bench frequency as its "ready" call and keys down; the job's Pluto hears it and sends the voice
+   clip on SOUND_HZ (the IC-7100 there plays it at the mic); once that carrier has stayed HOLD_MS
+   (past the Pluto's MCW ID) the K6 keys up again (tx_on: the core's guards) with the PA OFF, sets
+   the mic ADC and the AF DAC (REG_30 bits 2, 9), select SEL, the AF gain and REG_7D's mic
+   sensitivity MIC_SENS (micgain, mgn1b/mgn1d: 31 is the most, +15-17 dB over 0), settles PRE
+   samples and records, GAIN times louder than mkr1a's (digital: the loudest of mkr1a was 1.6 %
+   of full scale). Key-down; once the clip's carrier has gone, a last CW ID. Then PLUG CABLE IN /
+   THEN ANY KEY, and only then the lines (micrec's own format, so tools/k6_micprobe.py reads them):
      mickrec start 30=bff1 47=6040 48=82df rx=1a46d650
-     mickrec keyed 30=c1fa 36=007f now=c3fe
+     mickrec keyed 30=c1fa 36=007f now=c3fe 7d=e95f g=01
      p 0000 0123...
-     micrec p ticks=7c38 n=6400 w=c8 rest=5d20 over=0000
+     micrec p ticks=7c38 n=6400 w=c8 rest=5d20 over=0000 g=01
      mickrec done
    The mic is never on the air: its bit is set only while REG_36 says the PA is off, checked
-   every 512 samples. Writes, all put back: REG_30, REG_47, REG_48, the tuning, PA11's mode, speed
+   every 512 samples. Writes, all put back: REG_30, REG_47, REG_48, REG_7D, the tuning, PA11's mode, speed
    and output bit, PB2. Returns the samples, or -9 (no sound), -8 (scratch under 1 KB), -7 (no
    key), -6 (a key mid-run), -5 (the PA would not go off, or REG_30 did not take the bits), -4
    (the bench frequency busy), -3 (tx_on refused), -2 (not on the bench frequency), -1 (no
@@ -55,6 +59,15 @@
 #endif
 #ifndef SEL
 #define SEL 4u
+#endif
+#ifndef MIC_SENS
+#define MIC_SENS 31u /* REG_7D [4:0] while recording */
+#endif
+#ifndef GAIN
+#define GAIN 1 /* digital, on top of x8 (mkr2a: 8 clipped 14 %, mkr2b: 3 with a 9 dB louder clip, 34 %) */
+#endif
+#ifndef DROP_MS
+#define DROP_MS 1000u
 #endif
 #define RSSI_ON -90 /* dBm: the sound's carrier is sent weak */
 #define HOLD 3u
@@ -150,13 +163,8 @@ typedef struct {
   uint32_t ticks, n, rest, over, s30, now;
 } rec_t;
 
-/* keyed: the ID, then with the PA off the recording into rec (n samples). 0 or a negative
-   error; keyed down and REG_30 put back either way */
-static int record(const k6_api_t *api, uint32_t m_in, uint16_t r47, uint16_t r48, uint8_t *rec, rec_t *o) {
-  pa11_t c = {0, 0, 0, 0};
-  ima_t ima = {0, 0};
-  int32_t mean = 0;
-  uint32_t i, j, t0 = 0, want;
+/* the call: the CW ID at full power on the bench frequency, keyed down after. 0 or a negative error */
+static int call(const k6_api_t *api) {
   const char *s;
   int e;
   if (rssi(api) >= RSSI_ON) return -4; /* never onto a busy channel */
@@ -170,7 +178,22 @@ static int record(const k6_api_t *api, uint32_t m_in, uint16_t r47, uint16_t r48
       if (!e) e = hold(api, 0, b ? 1 : 3);
     }
   }
-  if (!e && api->tx_pa(0) < 0) e = -5;
+  api->tx_off();
+  return e;
+}
+
+/* keyed with the PA off: the recording into rec (n samples). 0 or a negative error; keyed down
+   and REG_30, REG_7D put back either way */
+static int record(const k6_api_t *api, uint32_t m_in, uint16_t r47, uint16_t r48, uint16_t r7d, uint8_t *rec,
+                  rec_t *o) {
+  pa11_t c = {0, 0, 0, 0};
+  ima_t ima = {0, 0};
+  int32_t mean = 0;
+  uint32_t i, j, t0 = 0, want;
+  int e = 0;
+  if (rssi(api) >= RSSI_ON) return -4; /* never onto a busy channel */
+  if (api->tx_on(TX_MS) != 0) return -3;
+  if (api->tx_pa(0) < 0) e = -5;
   if (!e) {
     o->s30 = api->fd_read(0x30);
     if (api->fd_read(0x36) & 0x0080u) e = -5; /* the PA is still on: no mic bit */
@@ -181,6 +204,7 @@ static int record(const k6_api_t *api, uint32_t m_in, uint16_t r47, uint16_t r48
   if (!e) {
     api->fd_write(0x47, (uint16_t)((r47 & ~0x0F00u) | (SEL << 8)));
     api->fd_write(0x48, (uint16_t)(r48 | 0x03F0u));
+    api->fd_write(0x7D, (uint16_t)((r7d & ~0x001Fu) | MIC_SENS));
     api->delay_us(20000);
   }
   for (i = 0; i < PRE + o->n && !e; i++) {
@@ -194,7 +218,7 @@ static int record(const k6_api_t *api, uint32_t m_in, uint16_t r47, uint16_t r48
       t0 = api->ticks();
       o->rest = (uint32_t)mean >> 5;
     }
-    x = (y - mean) >> 2; /* 8 times the sample's distance from the running mean */
+    x = ((y - mean) >> 2) * GAIN; /* 8 GAIN times the sample's distance from the running mean */
     if (x > 32767 || x < -32768) {
       x = x < 0 ? -32768 : 32767;
       o->over++;
@@ -212,6 +236,7 @@ static int record(const k6_api_t *api, uint32_t m_in, uint16_t r47, uint16_t r48
     mic_bus_write(api, 0x30, o->s30);
   api->fd_write(0x47, r47);
   api->fd_write(0x48, r48);
+  api->fd_write(0x7D, r7d);
   api->tx_off();
   return e;
 }
@@ -220,13 +245,14 @@ int k6_main(const k6_api_t *api) {
   uint32_t moder = rd(PA11_GPIOA + PA11_MODER), odr = rd(PA11_GPIOA + PA11_ODR) & (1u << PA11_PIN),
            ospeed = rd(PA11_GPIOA + PA11_OSPEEDR), amp = rd(MIC_GPIOB + PA11_ODR) & AMP, home = api->rx_hz(),
            m_in = moder & ~(3u << (2 * PA11_PIN)), room = 0, t0, t1 = 0, up = 0, bytes, i, j;
-  uint16_t r47 = api->fd_read(0x47), r48 = api->fd_read(0x48);
+  uint16_t r47 = api->fd_read(0x47), r48 = api->fd_read(0x48), r7d = api->fd_read(0x7D);
   int wide = api->fd_read(0x43) == 0x3028; /* (as gp0cap.c tells the filter) */
   char *line = (char *)(((uint32_t)api->scratch(&room) + 3) & ~3u), *p;
   uint8_t *rec = (uint8_t *)line + 64;
-  rec_t o = {0, 0, 0, 0, 0, 0};
+  rec_t o;
   int ret = 0, e = 0;
   if (api->level < 6) return -1;
+  o.ticks = o.n = o.rest = o.over = o.s30 = o.now = 0; /* (no memset: no runtime library) */
   if (room < 1024) return -8;
   bytes = room - 68;
   if (bytes > MAX_BYTES) bytes = MAX_BYTES;
@@ -244,6 +270,17 @@ int k6_main(const k6_api_t *api) {
   co_show(api, "MICKREC CABLE OUT", "PULL CABLE", "THEN ANY KEY");
   if (co_key(api, KEY_WAIT_MS) < 0) {
     ret = -7;
+    goto out;
+  }
+  co_show(api, "MICKREC CABLE OUT", "QUIET PLEASE", "CALLING");
+  /* a quiet second on the bench frequency, then the call */
+  for (t0 = t1 = api->ms(); api->ms() - t0 < 30000u && api->ms() - t1 < 1000u;) {
+    if (rssi(api) >= RSSI_ON) t1 = api->ms();
+    api->delay_us(20000);
+  }
+  e = call(api);
+  if (e) {
+    ret = e;
     goto out;
   }
   co_show(api, "MICKREC CABLE OUT", "QUIET PLEASE", "WAITING");
@@ -268,7 +305,17 @@ int k6_main(const k6_api_t *api) {
   api->delay_us(300000);
   if (!e) {
     co_show(api, "MICKREC CABLE OUT", "QUIET PLEASE", "RECORDING");
-    e = record(api, m_in, r47, r48, rec, &o);
+    e = record(api, m_in, r47, r48, r7d, rec, &o);
+  }
+  if (!e) { /* the clip's carrier gone DROP_MS, then the last ID */
+    api->tune(SOUND_HZ, wide);
+    for (t0 = t1 = api->ms(); api->ms() - t0 < WAIT_MS && api->ms() - t1 < DROP_MS;) {
+      if (rssi(api) >= RSSI_ON) t1 = api->ms();
+      api->delay_us(20000);
+    }
+    api->tune(home, wide);
+    api->delay_us(300000);
+    call(api);
   }
   ret = e ? e : (int)o.n;
 out:
@@ -276,6 +323,7 @@ out:
   api->tune(home, wide); /* (REG_30 whole again: the core's receive word) */
   api->fd_write(0x47, r47);
   api->fd_write(0x48, r48);
+  api->fd_write(0x7D, r7d);
   wr(PA11_GPIOA + PA11_MODER, moder);
   wr(PA11_GPIOA + PA11_OSPEEDR, ospeed);
   wr(PA11_GPIOA + PA11_BSRR, odr ? 1u << PA11_PIN : 1u << (PA11_PIN + 16));
@@ -288,6 +336,8 @@ out:
     p = hexn(put(line, "mickrec keyed 30="), o.s30, 4);
     p = hexn(put(p, " 36="), api->fd_read(0x36), 4);
     p = hexn(put(p, " now="), o.now, 4);
+    p = hexn(put(p, " 7d="), (r7d & ~0x001Fu) | MIC_SENS, 4);
+    p = hexn(put(p, " g="), GAIN, 2);
     *p = 0;
     api->say(line);
   }
@@ -305,6 +355,7 @@ out:
     p = hexn(put(p, " w="), W, 2);
     p = hexn(put(p, " rest="), o.rest, 4);
     p = hexn(put(p, " over="), o.over, 4);
+    p = hexn(put(p, " g="), GAIN, 2);
     *p = 0;
     api->say(line);
   }

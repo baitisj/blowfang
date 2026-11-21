@@ -202,7 +202,9 @@ typedef struct k6_api {
   /* level 15 (2026-11-20, Jeff: "Core SPI outbox"; docs/k6-fm-sotto.md): no new calls. fl_prog
      and fl_erase also work in the FuSotto outbox, KM_OB_LO .. KM_OB_HI (64 KB after the module
      library), with the same checks (a page at a time, a 4 KB sector at a time, never keyed, at
-     most KM_FL_ERASES erases a run). FM SOTTO writes what it codes there and a sender module
+     most KM_FL_ERASES erases a run), but for one: fl_prog takes an outbox page while keyed too
+     when REG_36 says the PA is off (2026-11-21, Jeff: "record to SPI"; the mic is live only then,
+     micsotto); erase the outbox before keying. FM SOTTO writes what it codes there and a sender module
      reads it back with fl_read; the layout is fmsotto.c's ("The outbox"). A module that writes
      the outbox declares K6_MODULE_LEVEL 15 or checks api->level at run time. */
   /* level 15, also (2026-11-20, Jeff: LZ4 packed uploads and library slots, "add help API too";
