@@ -3,7 +3,7 @@
 as OUTDIR/<MHz>_<UTC>.flac, plus OUTDIR/levels.json (each channel's level each 0.1 s, dBFS) and
 OUTDIR/overs.json (channel, start, length, bytes).
 
-  pluto_chan.py STREAM OUTDIR --hz 442250000,442300000,... [--t0 EPOCH]
+  pluto_chan.py STREAM OUTDIR --hz 440250000,440300000,... [--t0 EPOCH]
 STREAM is a file, or - for stdin (ssh root@pluto 'iio_readdev ... | pluto_chan -f ...' | ...).
 """
 import argparse
