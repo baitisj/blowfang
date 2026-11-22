@@ -382,6 +382,7 @@ def psd_db(v, ref):
 RIQ_HDR = struct.Struct("<4sHHHHQIQQIqIHH4s")
 RIQ_MAX = 1 << 20
 RIQ_PORT = 9010
+XO_NOMINAL = 40_000_000                     # the Pluto's 40 MHz reference, uncorrected
 
 
 def riq_messages(sock, until):
@@ -450,6 +451,12 @@ def cmd_riq(a):
                "keep_s": keep, "configs": [], "counts": {}, "flags": {}, "gaps": 0, "bytes": 0}
     with kb.ptt_lock():
         ssh(CLEAN, timeout=20)
+        # the producer insists on an exact 25.6 Msps readback; a crystal correction (xo_correction) left by
+        # another job makes it read 25599999 and the producer quits (kws-bins-1, efw-4b, 11-22). Run on
+        # the nominal crystal and put the old value back afterwards
+        rc, xo = ssh(PHY_DIR + " cat $d/xo_correction; echo %d > $d/xo_correction" % XO_NOMINAL, timeout=20)
+        xo = xo.strip().splitlines()[-1] if rc == 0 and xo.strip() else ""
+        summary["xo_correction_before"] = xo
         rc, o = ssh("cat > /tmp/pluto-fpga-source && chmod 755 /tmp/pluto-fpga-source",
                     stdin=open(a.producer, "rb").read(), timeout=60)
         if rc:
@@ -505,6 +512,8 @@ def cmd_riq(a):
         time.sleep(3)
         _, log = ssh("cat /tmp/pluto-fpga-source.log; " + CLEAN + "; rm -f /tmp/pluto-fpga-source", timeout=20)
         ssh(PHY_DIR + " echo 2400000000 > $d/out_altvoltage0_RX_LO_frequency", timeout=20)   # park the RX LO
+        if xo.isdigit() and int(xo) != XO_NOMINAL:
+            ssh(PHY_DIR + f" echo {int(xo)} > $d/xo_correction", timeout=20)
     summary["producer_log"] = log[-2000:]
     summary["first"] = {str(k): v for k, v in first.items()}
     with open(a.out + ".json", "w") as f:
