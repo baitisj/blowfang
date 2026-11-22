@@ -47,6 +47,7 @@ tools/k6-*
 tools/k6_cc/
 tools/pluto_bench.py
 tools/pluto_parrot.py
+tools/pluto_chan/
 tools/bench_runner.py
 tools/bench_inbox.py
 tools/pluto_fw_update.sh
