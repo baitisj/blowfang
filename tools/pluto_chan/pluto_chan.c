@@ -341,6 +341,8 @@ int main(int argc, char **argv)
         }
         chan_init(&ch[j], hz, lo, rate);
     }
+    const char *ns = getenv("NSAMP");           /* stop after this many samples (reading a device) */
+    long nsamp = ns ? atol(ns) : 0;
     const char *am = getenv("A1MODE");
     if (am)
         a1mode = atoi(am);
@@ -361,7 +363,7 @@ int main(int argc, char **argv)
     clock_gettime(CLOCK_MONOTONIC, &t0);
     long total = 0;
     size_t got;
-    while ((got = fread(raw, 4, BLK, stdin)) > 0) {
+    while ((got = fread(raw, 4, nsamp && nsamp - total < BLK ? (size_t)(nsamp - total) : BLK, stdin)) > 0) {
         for (size_t s = 0; s < got; s++) {
             xr[L1 - 1 + s] = raw[2 * s] * (1.0f / 2048);
             xi[L1 - 1 + s] = raw[2 * s + 1] * (1.0f / 2048);
