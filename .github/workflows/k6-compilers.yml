@@ -5,6 +5,9 @@
 name: K6 compiler study
 on:
   workflow_dispatch:
+  # a release: pushing any tag runs it too
+  push:
+    tags: ['**']
   pull_request:
     paths:
       - tools/k6_cc/**

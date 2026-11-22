@@ -10,6 +10,9 @@ name: RT-950 firmware
 on:
   push:
     branches: [main]
+    # a release: pushing any tag runs everything (GitHub skips paths: for tag pushes, and
+    # tools/ci_scope.py builds every radio on a push)
+    tags: ['**']
     # docs only ([ignore] in .github/ci-radios.txt): no run at all. tools/ci_scope.py --paths
     # prints this list and --check keeps it equal to the map
     paths:

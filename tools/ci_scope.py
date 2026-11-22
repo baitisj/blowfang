@@ -7,8 +7,8 @@ way: this tool treats it as one more radio, whose workflow is a light Python tes
 
 The map is .github/ci-radios.txt: one section per radio, listing the paths it builds from.
 A pull request runs a radio's jobs when it changes a file in that radio's section. Everything
-runs on a push to main, the weekly run, "Run workflow" (any branch), and a pull request labelled
-ci-full (add the label, then re-run the jobs or push). A changed file the map doesn't place
+runs on a push to main, a pushed tag (a release), the weekly run, "Run workflow" (any branch), and a
+pull request labelled ci-full (add the label, then re-run the jobs or push). A changed file the map doesn't place
 runs every radio, so a gap in the map costs time, never a missed test.
 
   python3 tools/ci_scope.py                    # what this branch's PR would run (against origin/main)
@@ -321,6 +321,8 @@ def check(m):
         for ev in FILTER_EVENTS:
             if have.get(ev) != want:
                 errors.append(f"{wf}: on.{ev}.paths isn't [ignore]'s filter (tools/ci_scope.py --paths prints it)")
+        if not re.search(r"(?m)^    tags:", src):
+            errors.append(f"{wf}: on.push needs tags: so a release tag runs every job")
         tests = sorted(set(WORKFLOW_TEST.findall(src)))
         for t in tests:
             if t not in fileset:

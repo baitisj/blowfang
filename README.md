@@ -102,7 +102,7 @@ Forbidden files job) fails if a workflow's copy differs from the map. Only the g
 runs on a docs-only change.
 
 Everything else still builds on every push to main (the images hamlet flashes come from there),
-on the weekly run, from "Run workflow" on any branch, and on a PR with the `ci-full` label (add
+on every pushed tag (cutting a release always runs full CI), on the weekly run, from "Run workflow" on any branch, and on a PR with the `ci-full` label (add
 it, then re-run the jobs). A file the map doesn't place builds every radio.
 
 To see what your branch will build, and to check the map after adding files:
