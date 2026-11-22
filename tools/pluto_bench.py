@@ -781,6 +781,16 @@ def cmd_cal(a):
 # ---- chan: the channelizer on the Pluto's own ARM (tools/pluto_chan/) ----
 CHAN_ALLOWED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pluto_chan", "allowed.sha256")
 CHAN_REMOTE = "/tmp/pluto_chan"
+# the RX DMA buffer read straight from /dev/iio:deviceN (iio_readdev hands each sample to a callback,
+# a third of an A9 core at 2.4 MS/s): find cf-ad9361-lpc, enable I and Q of RX1 only, start it
+CHAN_DEV_SETUP = ("for d in /sys/bus/iio/devices/iio:device*; do [ \"$(cat $d/name)\" = " + RX_DEV
+                  + " ] && D=$d; done; N=${D##*/}; echo 0 > $D/buffer/enable;"
+                  " for c in $D/scan_elements/*_en; do echo 0 > $c; done;"
+                  " echo 1 > $D/scan_elements/in_voltage0_en; echo 1 > $D/scan_elements/in_voltage1_en;"
+                  f" echo {CHUNK} > $D/buffer/length; echo 1 > $D/buffer/enable")
+CHAN_CLEAN = ("killall pluto_chan iio_readdev 2>/dev/null; sleep 1;"
+              " for d in /sys/bus/iio/devices/iio:device*; do [ \"$(cat $d/name)\" = " + RX_DEV
+              + " ] && echo 0 > $d/buffer/enable; done; true")
 SSH_OPTS = ["-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=10", "-o", "PubkeyAuthentication=no", "-o", "NumberOfPasswordPrompts=1"]
 
@@ -842,7 +852,10 @@ def cmd_chan(a):
         if abs(h - a.hz) < 15_000 or abs(h - a.hz) > RATE / 2 - 40e3:
             raise SystemExit(f"chan: {h} must be 15 kHz to {(RATE / 2 - 40e3) / 1e3:.0f} kHz from the LO {a.hz}")
     sha = chan_allowed(a.bin)
-    r = ssh_run(a.uri, f"cat > {CHAN_REMOTE} && chmod 755 {CHAN_REMOTE} && sha256sum {CHAN_REMOTE}",
+    import signal
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit("chan: stopped (SIGTERM)"))   # the finally below runs
+    ssh_run(a.uri, CHAN_CLEAN, timeout=30)       # a run cut short may have left one going (11-22 06:07Z)
+    r = ssh_run(a.uri, f"rm -f {CHAN_REMOTE}; cat > {CHAN_REMOTE} && chmod 755 {CHAN_REMOTE} && sha256sum {CHAN_REMOTE}",
                 stdin=open(a.bin, "rb").read())
     if r.returncode or sha not in r.stdout.decode():
         raise SystemExit(f"chan: upload failed: {(r.stdout + r.stderr).decode(errors='replace').strip()}")
@@ -850,8 +863,12 @@ def cmd_chan(a):
     os.makedirs(a.out, exist_ok=True)
     setup(RATE, rx_hz=a.hz, rx_gain=a.gain, uri=a.uri, rx_bw=WIDE_BW)
     n = int(a.seconds * RATE)
-    remote = (f"iio_readdev -b {CHUNK} -s {n} {RX_DEV} voltage0 voltage1 | THREADS={int(a.threads)} {CHAN_REMOTE} -f {a.hz} {RATE} "
-              + " ".join(str(h) for h in hzs))
+    run = (f"THREADS={int(a.threads)} A1MODE={int(a.a1mode)} NSAMP={n} {CHAN_REMOTE} -f {a.hz} {RATE} "
+           + " ".join(str(h) for h in hzs))
+    if a.reader == "readdev":
+        remote = f"iio_readdev -b {CHUNK} -s {n} {RX_DEV} voltage0 voltage1 | {run}"
+    else:                                        # the IIO buffer's own device: no copy through a pipe
+        remote = CHAN_DEV_SETUP + f"; {run} < /dev/$N; R=$?; echo 0 > $D/buffer/enable; exit $R"
     cmd, env, ask = ssh_cmd(a.uri, remote)
     t0 = time.time()
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, env=env)
@@ -864,9 +881,9 @@ def cmd_chan(a):
             p.kill()
         os.unlink(ask)
         park_rx(a.uri)
-        ssh_run(a.uri, f"rm -f {CHAN_REMOTE}", timeout=20)
+        ssh_run(a.uri, CHAN_CLEAN + f"; rm -f {CHAN_REMOTE}", timeout=30)
     took = time.time() - t0
-    meta = {"lo_hz": int(a.hz), "rate": RATE, "threads": a.threads, "gain": a.gain, "rx_bw": WIDE_BW, "bin_sha256": sha,
+    meta = {"lo_hz": int(a.hz), "rate": RATE, "threads": a.threads, "a1mode": a.a1mode, "reader": a.reader, "gain": a.gain, "rx_bw": WIDE_BW, "bin_sha256": sha,
             "seconds": a.seconds, "took_s": round(took, 1), "pluto_stderr": err, "rc": rc,
             "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), **res}
     with open(os.path.join(a.out, "chan.json"), "w") as f:
@@ -874,7 +891,7 @@ def cmd_chan(a):
     print(err)
     print(f"chan: {a.seconds:.0f} s in {took:.1f} s on {len(hzs)} channels, {res['overs']} overs,"
           f" {res['bytes']} bytes ({res['bytes'] / max(a.seconds, 1):.0f} B/s)"
-          f" ({'kept up' if took < a.seconds + 15 else 'SLOW: the Pluto did not keep up'})")
+          f" ({'kept up' if took < a.seconds * 1.03 + 10 else 'SLOW: the Pluto did not keep up'})")
     if rc:
         raise SystemExit(f"chan: the Pluto side exited {rc}")
 
@@ -962,7 +979,12 @@ def main(argv=None):
     ch.add_argument("--channels", default="", metavar="HZ,HZ,...")
     ch.add_argument("--seconds", type=float, default=60.0)
     ch.add_argument("--gain", type=int, default=50, help="RX gain, dB (manual)")
+    ch.add_argument("--reader", choices=("dev", "readdev"), default="readdev",
+                    help="readdev: iio_readdev into a pipe (default; any build); dev: pluto_chan reads"
+                         " /dev/iio:deviceN itself (builds with NSAMP, 2026-11-22 06:20Z on)")
     ch.add_argument("--threads", type=int, default=2, help="worker threads on the Pluto (its A9 has 2 cores)")
+    ch.add_argument("--a1mode", type=int, default=0, choices=(0, 1, 2),
+                    help="pluto_chan's first stage: 0 LO in the taps, 1 mix then boxcars, 2 none (a CPU floor)")
     ch.add_argument("--probe", action="store_true", help="only report the Pluto's CPU, memory and iio_readdev")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)
