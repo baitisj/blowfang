@@ -11,21 +11,21 @@ General findings (how a radio behaves, a method, a rule of thumb) are not.
 
 Markdown, a block (paragraphs, lists, tables, whole sections):
 
-    <!-- site-specific: begin -->
+    <!-- SITE-SPECIFIC: begin -->
     ...
-    <!-- site-specific: end -->
+    <!-- SITE-SPECIFIC: end -->
 
 Keep a blank line on each side of the markers, so the block around them still renders.
 
-Markdown, one line: `<!-- site-specific -->` at its start. One table row: the same comment at
-the start of its first cell, `| <!-- site-specific --> serial | ... |` (a comment line between
+Markdown, one line: `<!-- SITE-SPECIFIC -->` at its start. One table row: the same comment at
+the start of its first cell, `| <!-- SITE-SPECIFIC --> serial | ... |` (a comment line between
 rows would split the table).
 
-Code, scripts and job files: a comment with the same words, `site-specific:` and why, on the
+Code, scripts and job files: a comment with the same words, `SITE-SPECIFIC:` and why, on the
 line or above the block.
 
-Find everything marked:
+Find everything marked (other threads also write a bare `SITE-SPECIFIC` in headings, notes and PR bodies, which the same grep finds):
 
-    grep -rn "site-specific" docs tools tests
+    grep -rn "SITE-SPECIFIC" docs tools tests
 
 Docs written before 2026-11-22 are not marked yet; mark them when you next edit them.

@@ -17,11 +17,11 @@ discriminator. That's the path the K6's chip FSK at 2400 baud needed (docs/k6-fs
 | --- | --- |
 | model | PlutoSDR Rev.B, ad9364 (tunes 70 MHz to 6 GHz, so 2 m works without an unlock) |
 | firmware | stock ADI v0.39 (kernel 6.1) since 11-16 19:51Z (was v0.30-27-gd5bb PlutoWeb, with an auto-started OpenWebRX) |
-| <!-- site-specific --> serial | 104473ae73930001edff2200de632ddf03 |
-| <!-- site-specific --> crystal | 40 MHz, +-25 ppm. Measured 11-16 against the IC-7100: 39,999,447 Hz (-13.8 ppm; it read the IC-7100 5.15 kHz high on 440.850 with the old xo_correction 39999914). With that stored, a second check read +150 Hz (0.3 ppm) |
-| <!-- site-specific --> on hamlet | USB, libiio 0.26 on hamlet. The tool's default URI is `ip:192.168.2.1` (the Pluto's USB network link; hamlet is 192.168.2.254). The `usb:` address changes with each replug (1.35.5, 1.37.5, 1.38.5 on 11-16), and streaming over `usb:` fails (below). A udev rule gives libiio devices mode 666. No pyadi-iio: the tool uses the command-line tools |
+| <!-- SITE-SPECIFIC --> serial | 104473ae73930001edff2200de632ddf03 |
+| <!-- SITE-SPECIFIC --> crystal | 40 MHz, +-25 ppm. Measured 11-16 against the IC-7100: 39,999,447 Hz (-13.8 ppm; it read the IC-7100 5.15 kHz high on 440.850 with the old xo_correction 39999914). With that stored, a second check read +150 Hz (0.3 ppm) |
+| <!-- SITE-SPECIFIC --> on hamlet | USB, libiio 0.26 on hamlet. The tool's default URI is `ip:192.168.2.1` (the Pluto's USB network link; hamlet is 192.168.2.254). The `usb:` address changes with each replug (1.35.5, 1.37.5, 1.38.5 on 11-16), and streaming over `usb:` fails (below). A udev rule gives libiio devices mode 666. No pyadi-iio: the tool uses the command-line tools |
 | TX port | rubber duck (Jeff, 11-16) |
-| <!-- site-specific --> RX port | the stock stub, which is poor at 440 MHz on purpose (see below). Since 11-22 03:54Z: the big 2 m/70 cm antenna (Jeff), for repeater and control-channel captures; see "Antennas and what the receiver hears" |
+| <!-- SITE-SPECIFIC --> RX port | the stock stub, which is poor at 440 MHz on purpose (see below). Since 11-22 03:54Z: the big 2 m/70 cm antenna (Jeff), for repeater and control-channel captures; see "Antennas and what the receiver hears" |
 
 **Protect the receiver.** The AD936x's RX input is rated to about +2.5 dBm. A 5 W HT a metre
 away, duck to duck, puts about +10 dBm on it. So keep the stub (or a stub plus a 20-30 dB SMA
@@ -139,7 +139,7 @@ antenna covers; and check sample peaks for clipping before trusting a floor. Lev
 Pluto's own scale, dB re full scale minus the RX gain, so they compare with each other but are
 not dBm.
 
-<!-- site-specific: begin -->
+<!-- SITE-SPECIFIC: begin -->
 
 On 11-22 03:54Z Jeff moved the big 2 m/70 cm antenna onto the RX port. A passive study ran beside
 the other jobs that night (jobs antstudy-1122a/b, bigant-1122a-d, all receive only). The stub sat on the bench and the big antenna is wherever Jeff mounted it, so "gain
@@ -182,4 +182,4 @@ What it hears (one pass, 11-22 04:44-04:46Z):
 
 Scripts and job files: project files position/antenna/ (antana.py) and position/p25/.
 
-<!-- site-specific: end -->
+<!-- SITE-SPECIFIC: end -->
