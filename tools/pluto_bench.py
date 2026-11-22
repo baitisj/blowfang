@@ -788,7 +788,7 @@ CHAN_DEV_SETUP = ("for d in /sys/bus/iio/devices/iio:device*; do [ \"$(cat $d/na
                   " for c in $D/scan_elements/*_en; do echo 0 > $c; done;"
                   " echo 1 > $D/scan_elements/in_voltage0_en; echo 1 > $D/scan_elements/in_voltage1_en;"
                   f" echo {CHUNK} > $D/buffer/length; echo 1 > $D/buffer/enable")
-CHAN_CLEAN = ("killall pluto_chan iio_readdev 2>/dev/null; sleep 1;"
+CHAN_CLEAN = ("killall pluto_chan iio_readdev pluto-fpga-source 2>/dev/null; sleep 1;"
               " for d in /sys/bus/iio/devices/iio:device*; do [ \"$(cat $d/name)\" = " + RX_DEV
               + " ] && echo 0 > $d/buffer/enable; done; true")
 SSH_OPTS = ["-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-o", "LogLevel=ERROR",
@@ -848,6 +848,8 @@ def cmd_chan(a):
     hzs = [int(float(v)) for v in a.channels.split(",") if v.strip()]
     if a.hz is None or not hzs:
         raise SystemExit("chan: --hz LO and --channels are required")
+    if a.bins:
+        return chan_bins(a, hzs, pc)
     for h in hzs:
         if abs(h - a.hz) < 15_000 or abs(h - a.hz) > RATE / 2 - 40e3:
             raise SystemExit(f"chan: {h} must be 15 kHz to {(RATE / 2 - 40e3) / 1e3:.0f} kHz from the LO {a.hz}")
@@ -892,6 +894,82 @@ def cmd_chan(a):
     print(f"chan: {a.seconds:.0f} s in {took:.1f} s on {len(hzs)} channels, {res['overs']} overs,"
           f" {res['bytes']} bytes ({res['bytes'] / max(a.seconds, 1):.0f} B/s)"
           f" ({'kept up' if took < a.seconds * 1.03 + 10 else 'SLOW: the Pluto did not keep up'})")
+    if rc:
+        raise SystemExit(f"chan: the Pluto side exited {rc}")
+
+
+BIN_HZ = 50_000           # earshot's channelizer: 512 bins of 50 kHz over 25.6 MS/s, 100 kS/s each
+BINS_SPAN = 9_900_000     # inside the 20 MHz RF filter it sets
+RIQ_PORT = 9010
+PRODUCER_REMOTE = "/tmp/pluto-fpga-source"
+
+
+def bin_stream(hz, lo):
+    """earshot's stream ID for a frequency: the nearest bin k (k * 50 kHz from the LO, k - 512 below
+    it), plus one"""
+    return round((hz - lo) / BIN_HZ) % 512 + 1
+
+
+def chan_bins(a, hzs, pc):
+    """chan --bins: earshot's FPGA channelizer splits the band in the Pluto's PL (fpga loaded it), its
+    producer serves the bins on the Pluto, and pluto_chan -R there reads them from it over the
+    loopback: the A9 only mixes, filters and demodulates 100 kS/s a channel. Overs back as usual."""
+    import hashlib
+    import signal
+    import pluto_fw as pf
+    want = pf.EARSHOT.get("producer")
+    psha = hashlib.sha256(open(a.bins, "rb").read()).hexdigest()
+    if not want or psha != want:
+        raise SystemExit(f"chan: {os.path.basename(a.bins)} (sha256 {psha[:16]}...) is not the pinned earshot producer")
+    for h in hzs:
+        if abs(h - a.hz) > BINS_SPAN:
+            raise SystemExit(f"chan: {h} is over {BINS_SPAN / 1e6:.1f} MHz from the LO {a.hz}")
+    if a.hz < 300e6 and a.gain > 50:
+        raise SystemExit("chan: VHF gain at most 50 (the big antenna clips the Pluto above it)")
+    sha = chan_allowed(a.bin)
+    ids = sorted({bin_stream(h, a.hz) for h in hzs})
+    host = (a.uri or URI).split(":", 1)[1] if (a.uri or URI).startswith("ip:") else "192.168.2.1"
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit("chan: stopped (SIGTERM)"))
+    ssh_run(a.uri, CHAN_CLEAN, timeout=30)
+    for src, dst, h in ((a.bin, CHAN_REMOTE, sha), (a.bins, PRODUCER_REMOTE, psha)):
+        r = ssh_run(a.uri, f"rm -f {dst}; cat > {dst} && chmod 755 {dst} && sha256sum {dst}",
+                    stdin=open(src, "rb").read())
+        if r.returncode or h not in r.stdout.decode():
+            raise SystemExit(f"chan: upload of {os.path.basename(src)} failed: {(r.stdout + r.stderr).decode(errors='replace').strip()}")
+    print(f"chan: pluto_chan ({sha[:16]}...) and the producer ({psha[:16]}...) in the Pluto's RAM; streams {ids}")
+    os.makedirs(a.out, exist_ok=True)
+    quiet(a.uri)
+    c = load_cal()
+    if c:
+        put("dev", PHY, "xo_correction", int(c["xo"]), uri=a.uri)
+    remote = (f"{PRODUCER_REMOTE} --port {RIQ_PORT} --center {int(a.hz)} --gain {int(a.gain)}"
+              f" --forward-streams {','.join(map(str, ids))} --seconds {int(a.seconds) + 10}"
+              " > /tmp/pluto-fpga-source.log 2>&1 < /dev/null & P=$!;"
+              f" NSAMP={int(a.seconds * 100_000)} {CHAN_REMOTE} -f -R {host}:{RIQ_PORT} {int(a.hz)} "
+              + " ".join(str(h) for h in hzs)
+              + "; R=$?; kill $P 2>/dev/null; sleep 2; tail -20 /tmp/pluto-fpga-source.log >&2; exit $R")
+    cmd, env, ask = ssh_cmd(a.uri, remote)
+    t0 = time.time()
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, env=env)
+    try:
+        res = pc.write_stream(p.stdout, a.out, hzs, t0)
+        err = p.stderr.read().decode(errors="replace").strip()
+        rc = p.wait(timeout=30)
+    finally:
+        if p.poll() is None:
+            p.kill()
+        os.unlink(ask)
+        ssh_run(a.uri, CHAN_CLEAN + f"; rm -f {CHAN_REMOTE} {PRODUCER_REMOTE}", timeout=30)
+        park_rx(a.uri)
+    took = time.time() - t0
+    meta = {"lo_hz": int(a.hz), "source": "earshot bins", "streams": ids, "gain": a.gain, "bin_sha256": sha,
+            "producer_sha256": psha, "seconds": a.seconds, "took_s": round(took, 1), "pluto_stderr": err, "rc": rc,
+            "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), **res}
+    with open(os.path.join(a.out, "chan.json"), "w") as f:
+        json.dump(meta, f, indent=1)
+    print(err)
+    print(f"chan: {a.seconds:.0f} s in {took:.1f} s on {len(hzs)} channels from {len(ids)} bins, {res['overs']} overs,"
+          f" {res['bytes']} bytes ({res['bytes'] / max(a.seconds, 1):.0f} B/s)")
     if rc:
         raise SystemExit(f"chan: the Pluto side exited {rc}")
 
@@ -986,6 +1064,9 @@ def main(argv=None):
     ch.add_argument("--a1mode", type=int, default=3, choices=(0, 1, 2, 3),
                     help="pluto_chan's first stage: 3 mix then one 63-tap stage (default, fastest on the Pluto),"
                          " 0 LO in a 9-tap triangle, 1 mix then boxcars, 2 none (a CPU floor)")
+    ch.add_argument("--bins", metavar="PRODUCER",
+                    help="read earshot's FPGA channelizer bins instead of raw IQ (pluto_fw.py fpga loads it): its"
+                         " pluto-fpga-source, pinned in pluto_fw.py; the LO may be up to 9.9 MHz from each channel")
     ch.add_argument("--probe", action="store_true", help="only report the Pluto's CPU, memory and iio_readdev")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)

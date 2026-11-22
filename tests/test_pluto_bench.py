@@ -313,3 +313,20 @@ def test_chan_stream_to_files(tmp_path):
     assert fs == 8000 and np.array_equal(y, x)
     lv = json.load(open(tmp_path / "levels.json"))
     assert lv["levels_dbfs_100ms"] == [[-70] * 10, [-30] * 10]
+
+
+def test_bin_stream_ids():
+    """earshot's stream ID = bin + 1, bin k at LO + k * 50 kHz, k - 512 below the LO (earshot README)"""
+    assert [pl.bin_stream(h, 160_000_000) for h in (162_400_000, 162_475_000, 162_550_000)] == [49, 51, 52]
+    assert pl.bin_stream(470_309_441, 470_000_000) == 7
+    assert pl.bin_stream(146_145_000, 146_195_000) == 512
+    assert pl.bin_stream(145_230_000, 146_300_000) == 512 - 21 + 1
+
+
+def test_chan_bins_refuses_an_unpinned_producer(tmp_path):
+    """chan --bins: the producer that goes onto the Pluto must be the one pinned in pluto_fw.py"""
+    p = tmp_path / "pluto-fpga-source"
+    p.write_bytes(b"\x7fELF not pinned")
+    a = pl.main.__globals__["argparse"].Namespace(bins=str(p), hz=146_300_000, gain=45, bin="x", uri=None)
+    with pytest.raises(SystemExit, match="not the pinned earshot producer"):
+        pl.chan_bins(a, [146_610_000], None)
