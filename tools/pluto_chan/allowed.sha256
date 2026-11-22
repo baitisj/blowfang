@@ -8,4 +8,4 @@ cca84f32697db19cd3c4dc2c9b51948940d0ebca8add1a3711266fe6242619ca  pluto_chan.arm
 349c24caa2c48586621ba1f0e99d75b8f4390e6dfe15e1e2d20182c140cc5336  pluto_chan.armhf  A1MODE 3 (780b's stage A, default) beside 0-2; noise squelch on the overs; read(2) blocks (2026-11-22 06:45Z)
 eb821c3351e2fd9edfac9e1cce214454590ddba5ec981ec11794f4dac7674b23  pluto_chan.armhf  as 349c plus -R: reads earshot's RIQ1 bins (chan --bins) (2026-11-22 08:25Z)
 2b9e31d6363e7695691dde9806fc520ec1d391f43a30d46ffce19193da3d2927  pluto_chan.armhf  as eb82; the squelch closes on level alone, opens under noise ratio 1.3 (2026-11-22 15:25Z)
-d9801e60ffce7f10a96d9523e76de46af00021669efe74cac5f87de142c231e7  pluto_chan.armhf  as 2b9e plus the band summary from earshot's PSD (-R) (2026-11-22 16:45Z)
+284744a6925f81a7ae93eea70a1bad56d2259ba14c97310ca348e07d6f6bc015  pluto_chan.armhf  as 2b9e plus the band heat map from earshot's PSD (-R, BAND) (2026-11-22 16:55Z)

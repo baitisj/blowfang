@@ -924,6 +924,11 @@ def chan_bins(a, hzs, pc):
     for h in hzs:
         if abs(h - a.hz) > BINS_SPAN:
             raise SystemExit(f"chan: {h} is over {BINS_SPAN / 1e6:.1f} MHz from the LO {a.hz}")
+    band = None
+    if a.band:
+        band = [int(float(v)) for v in a.band.split(",")]
+        if len(band) != 2 or not band[0] < band[1]:
+            raise SystemExit("chan: --band LO_HZ,HI_HZ")
     if a.hz < 300e6 and a.gain > 50:
         raise SystemExit("chan: VHF gain at most 50 (the big antenna clips the Pluto above it)")
     sha = chan_allowed(a.bin)
@@ -951,7 +956,8 @@ def chan_bins(a, hzs, pc):
     remote = (f"{PRODUCER_REMOTE} --port {RIQ_PORT} --center {int(a.hz)} --gain {int(a.gain)}"
               f" --forward-streams {','.join(map(str, ids))} --seconds {int(a.seconds) + 10}"
               " > /tmp/pluto-fpga-source.log 2>&1 < /dev/null & P=$!;"
-              f" NSAMP={int(a.seconds * 100_000)} {CHAN_REMOTE} -f -R {host}:{RIQ_PORT} {int(a.hz)} "
+              + (f" BAND={band[0]},{band[1]}" if band else "")
+              + f" NSAMP={int(a.seconds * 100_000)} {CHAN_REMOTE} -f -R {host}:{RIQ_PORT} {int(a.hz)} "
               + " ".join(str(h) for h in seen)
               + "; R=$?; kill $P 2>/dev/null; sleep 2; tail -20 /tmp/pluto-fpga-source.log >&2; exit $R")
     cmd, env, ask = ssh_cmd(a.uri, remote)
@@ -1075,6 +1081,8 @@ def main(argv=None):
     ch.add_argument("--bins", metavar="PRODUCER",
                     help="read earshot's FPGA channelizer bins instead of raw IQ (pluto_fw.py fpga loads it): its"
                          " pluto-fpga-source, pinned in pluto_fw.py; the LO may be up to 9.9 MHz from each channel")
+    ch.add_argument("--band", metavar="LO_HZ,HI_HZ",
+                    help="with --bins: the heat map's range (band.json: the most active 50 kHz bins), default all 25.6 MHz")
     ch.add_argument("--probe", action="store_true", help="only report the Pluto's CPU, memory and iio_readdev")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)

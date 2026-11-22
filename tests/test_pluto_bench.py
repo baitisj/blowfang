@@ -333,17 +333,17 @@ def test_chan_bins_refuses_an_unpinned_producer(tmp_path):
 
 
 def test_chan_band_summary(tmp_path):
-    """pluto_chan -R's 'S' record (earshot's PSD summary) -> band.json, bins low to high around the LO"""
+    """pluto_chan -R's 'S' record (the heat map of earshot's PSD) -> band.json, bins of the band of
+    interest low to high around the LO, the most active first"""
     import io
     import struct
 
     from pluto_chan import pluto_chan as pc
-    n = 8
-    act = [0, 0, 0, 0, 0, 0, 30, 0]
-    js = json.dumps({"psd_bins": n, "frames": 6000, "center_hz": 146_300_000, "rate_hz": 100_000,
-                     "max_db": [-60.0] * n, "mean_db": [-61.0] * n, "active_frames": act}).encode()
+    js = json.dumps({"psd_bins": 512, "frames": 6000, "center_hz": 146_300_000, "k0": 202, "k1": 205,
+                     "heat_s": 10.0, "score_s": [0, 12.5, 0, 3.0], "active_frames": [0, 100, 0, 20],
+                     "max_db": [-60.0, -30.0, -61.0, -50.0], "heat_db": [[0, 20, 0, 0]]}).encode()
     s = b"S" + bytes([0]) + struct.pack("<II", 0, len(js)) + js + b"E" + bytes([0]) + struct.pack("<I", 6000)
     r = pc.write_stream(io.BytesIO(s), str(tmp_path), [146_610_000], 0.0)
     assert r["secs"] == 600.0
     b = json.load(open(tmp_path / "band.json"))
-    assert b["busiest"][0]["mhz"] == 146.4 and b["busiest"][0]["active_s"] == 3.0
+    assert [t["mhz"] for t in b["top"]] == [143.65, 143.75] and b["top"][0]["active_s"] == 10.0

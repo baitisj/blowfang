@@ -559,55 +559,118 @@ static int riq_open(const char *src)
     return -1;
 }
 
-/* -R: the band's activity from earshot's PSD (type 2, float32 dB a bin, low to high, ~10 a second):
- * per bin the max, the mean, a floor that follows down at once and up 0.02 dB a frame, and the
- * frames more than 10 dB over that floor. One 'S' record of JSON at the end. */
+/* -R: a heat map of the band from earshot's PSD (type 2, float32 dB a bin, low to high, 10 a second),
+ * after the K6 SURF carets (Jeff 11-22): only the bins in $BAND ("LO_HZ,HI_HZ", default all), and per
+ * bin a score = sum(excess * dt) / peak excess, where excess is the bin's power over its noise (linear)
+ * and the noise is the larger of the bin's own floor (follows down at once, up 0.02 dB a frame) and the
+ * band's median that frame (a static crash lifts every bin at once, so it scores nothing). The score
+ * is in seconds: how long the bin was busy, weighted by how near its own peak it was. Also the frames
+ * 10 dB over the noise, the max, and a heat map of the excess (dB, max over 10 s columns). One 'S'
+ * record of JSON at the end. */
 #define PSD_MAX 1024
-static int psd_n;
+#define HEAT_COLS 180                /* 30 min of 10 s columns; longer runs fold two columns into one */
+static int psd_n, psd_k0, psd_k1 = -1, heat_cols, heat_step = 100;
 static long psd_frames;
-static double psd_sum[PSD_MAX], psd_center, psd_rate;
-static float psd_max[PSD_MAX], psd_floor[PSD_MAX];
+static double psd_center, band_lo, band_hi;
+static double psd_ex[PSD_MAX];
+static float psd_max[PSD_MAX], psd_floor[PSD_MAX], psd_peak[PSD_MAX];
 static uint32_t psd_act[PSD_MAX];
+static uint8_t heat[HEAT_COLS][PSD_MAX];
 
-static void psd_frame(const uint8_t *p, int n, double cen, double rate)
+static int cmpf(const void *a, const void *b)
 {
-    if (n > PSD_MAX)
+    float x = *(const float *)a, y = *(const float *)b;
+    return (x > y) - (x < y);
+}
+
+static void psd_frame(const uint8_t *p, int n, double cen)
+{
+    if (n > PSD_MAX || n < 8)
         return;
-    if (psd_n != n) {
-        psd_n = n; psd_frames = 0;
-        for (int k = 0; k < n; k++) { psd_sum[k] = 0; psd_max[k] = -1e9f; psd_floor[k] = 1e9f; psd_act[k] = 0; }
+    if (psd_n != n) {                            /* first frame: the bins of the band of interest */
+        psd_n = n; psd_frames = 0; heat_cols = 0; heat_step = 100;
+        psd_center = cen;
+        psd_k0 = 0; psd_k1 = n - 1;
+        if (band_hi > band_lo) {
+            psd_k0 = (int)ceil((band_lo - cen) / RQ_BIN + n / 2.0);
+            psd_k1 = (int)floor((band_hi - cen) / RQ_BIN + n / 2.0);
+            if (psd_k0 < 0) psd_k0 = 0;
+            if (psd_k1 > n - 1) psd_k1 = n - 1;
+        }
+        for (int k = 0; k < n; k++) {
+            psd_ex[k] = 0; psd_max[k] = -1e9f; psd_floor[k] = 1e9f; psd_peak[k] = 0; psd_act[k] = 0;
+        }
+        memset(heat, 0, sizeof heat);
     }
-    psd_center = cen; psd_rate = rate;
-    for (int k = 0; k < n; k++) {
-        float v;
-        memcpy(&v, p + 4 * k, 4);                  /* little endian, as the Pluto and hamlet are */
-        if (!(v > -400 && v < 400))
+    if (psd_k1 < psd_k0)
+        return;
+    float v[PSD_MAX], srt[PSD_MAX];
+    int m = 0;
+    for (int k = psd_k0; k <= psd_k1; k++) {
+        float x;
+        memcpy(&x, p + 4 * k, 4);                  /* little endian, as the Pluto and hamlet are */
+        if (!(x > -400 && x < 400))
+            x = -400;
+        v[k] = x; srt[m++] = x;
+    }
+    qsort(srt, m, sizeof(float), cmpf);
+    float med = srt[m / 2];
+    long col = psd_frames / heat_step;
+    if (col >= HEAT_COLS) {                      /* fold: halve the time resolution */
+        for (int c = 0; c < HEAT_COLS / 2; c++)
+            for (int k = psd_k0; k <= psd_k1; k++)
+                heat[c][k] = heat[2 * c][k] > heat[2 * c + 1][k] ? heat[2 * c][k] : heat[2 * c + 1][k];
+        memset(heat[HEAT_COLS / 2], 0, sizeof heat[0] * (HEAT_COLS / 2));
+        heat_step *= 2;
+        col = psd_frames / heat_step;
+    }
+    if (col + 1 > heat_cols)
+        heat_cols = (int)col + 1;
+    for (int k = psd_k0; k <= psd_k1; k++) {
+        float x = v[k];
+        if (x > psd_max[k]) psd_max[k] = x;
+        if (x < psd_floor[k]) psd_floor[k] = x; else psd_floor[k] += 0.02f;
+        if (psd_frames < 50)                     /* let the floors settle */
             continue;
-        psd_sum[k] += v;
-        if (v > psd_max[k]) psd_max[k] = v;
-        if (v < psd_floor[k]) psd_floor[k] = v; else psd_floor[k] += 0.02f;
-        if (psd_frames > 50 && v > psd_floor[k] + 10)
+        float nz = psd_floor[k] > med ? psd_floor[k] : med, over = x - nz;
+        if (over > 3) {
+            float ex = powf(10, x / 10) - powf(10, nz / 10);
+            psd_ex[k] += ex * 0.1;
+            if (ex > psd_peak[k]) psd_peak[k] = ex;
+        }
+        if (over > 10)
             psd_act[k]++;
+        uint8_t h = over <= 0 ? 0 : over >= 60 ? 60 : (uint8_t)lrintf(over);
+        if (h > heat[col][k]) heat[col][k] = h;
     }
     psd_frames++;
 }
 
 static void psd_note(void)
 {
-    if (!psd_n || !psd_frames)
+    if (!psd_n || !psd_frames || psd_k1 < psd_k0)
         return;
-    size_t cap = 64 + (size_t)psd_n * 40, len = 0;
+    int nb = psd_k1 - psd_k0 + 1;
+    size_t cap = 256 + (size_t)nb * (40 + 3 * heat_cols), len = 0;
     char *j = malloc(cap);
-    len += snprintf(j + len, cap - len, "{\"psd_bins\":%d,\"frames\":%ld,\"center_hz\":%.0f,\"rate_hz\":%.0f,\"max_db\":[",
-                    psd_n, psd_frames, psd_center, psd_rate);
-    for (int k = 0; k < psd_n; k++)
-        len += snprintf(j + len, cap - len, "%s%.1f", k ? "," : "", psd_max[k]);
-    len += snprintf(j + len, cap - len, "],\"mean_db\":[");
-    for (int k = 0; k < psd_n; k++)
-        len += snprintf(j + len, cap - len, "%s%.1f", k ? "," : "", psd_sum[k] / psd_frames);
+    len += snprintf(j + len, cap - len, "{\"psd_bins\":%d,\"frames\":%ld,\"center_hz\":%.0f,\"k0\":%d,\"k1\":%d,"
+                    "\"heat_s\":%.1f,\"score_s\":[", psd_n, psd_frames, psd_center, psd_k0, psd_k1, heat_step / 10.0);
+    for (int k = psd_k0; k <= psd_k1; k++)
+        len += snprintf(j + len, cap - len, "%s%.1f", k > psd_k0 ? "," : "",
+                        psd_peak[k] > 0 ? psd_ex[k] / psd_peak[k] : 0.0);
     len += snprintf(j + len, cap - len, "],\"active_frames\":[");
-    for (int k = 0; k < psd_n; k++)
-        len += snprintf(j + len, cap - len, "%s%u", k ? "," : "", psd_act[k]);
+    for (int k = psd_k0; k <= psd_k1; k++)
+        len += snprintf(j + len, cap - len, "%s%u", k > psd_k0 ? "," : "", psd_act[k]);
+    len += snprintf(j + len, cap - len, "],\"max_db\":[");
+    for (int k = psd_k0; k <= psd_k1; k++)
+        len += snprintf(j + len, cap - len, "%s%.1f", k > psd_k0 ? "," : "", psd_max[k]);
+    len += snprintf(j + len, cap - len, "],\"heat_db\":[");
+    for (int c = 0; c < heat_cols && c < HEAT_COLS; c++) {
+        len += snprintf(j + len, cap - len, "%s[", c ? "," : "");
+        for (int k = psd_k0; k <= psd_k1; k++)
+            len += snprintf(j + len, cap - len, "%s%u", k > psd_k0 ? "," : "", heat[c][k]);
+        len += snprintf(j + len, cap - len, "]");
+    }
     len += snprintf(j + len, cap - len, "]}");
     flac_note(j, len);
     free(j);
@@ -625,6 +688,9 @@ static int riq_main(const char *src, double lo, int nargs, char **hzs, long nsam
         riq_init(&rq[j], &ch[j], hz, lo);
         fprintf(stderr, "pluto_chan: %.0f Hz from stream %u\n", hz, rq[j].sid);
     }
+    const char *band = getenv("BAND");          /* "LO_HZ,HI_HZ": the heat map's range */
+    if (band && strchr(band, ','))
+        band_lo = atof(band), band_hi = atof(strchr(band, ',') + 1);
     int fd = riq_open(src);
     if (fd < 0) {
         fprintf(stderr, "pluto_chan: cannot open %s\n", src);
@@ -652,7 +718,7 @@ static int riq_main(const char *src, double lo, int nargs, char **hzs, long nsam
         if (type == 4 && fmt == 3 && nmsg < 4)
             fprintf(stderr, "pluto_chan: config %.*s\n", nb < 300 ? (int)nb : 300, (const char *)pay);
         if (type == 2 && fmt == 2) {
-            psd_frame(pay, (int)(nb / 4), (double)(int64_t)le(hd + 44, 8), (double)le(hd + 40, 4));
+            psd_frame(pay, (int)(nb / 4), (double)(int64_t)le(hd + 44, 8));
             continue;
         }
         if (type != 1 || fmt != 1)

@@ -39,15 +39,16 @@ def read_stream(f):
 
 
 def band_activity(s):
-    """the 'S' summary -> per bin its frequency and active seconds, the busiest first (bin k of n is
-    centre + (k - n/2) * 50 kHz: earshot's PSD runs low to high; checked on the NOAA carriers 11-22)"""
-    n = s["psd_bins"]
-    fps = 10.0                                    # earshot's PSD comes 10 times a second
-    step = 50_000.0                               # earshot's bins (the header's rate is a stream's 100 kS/s)
-    rows = [{"mhz": (s["center_hz"] + (k - n / 2) * step) / 1e6, "active_s": s["active_frames"][k] / fps,
-             "max_db": s["max_db"][k], "mean_db": s["mean_db"][k]} for k in range(n)]
-    busiest = sorted((r for r in rows if r["active_s"] > 0), key=lambda r: -r["active_s"])
-    return {**s, "bin_hz": step, "fps": fps, "rows": rows, "busiest": busiest[:40]}
+    """the 'S' summary (pluto_chan.c says how it is made) -> per bin of the band of interest its
+    frequency, score (s: sum of excess power x time over its peak excess, noise = the larger of the
+    bin's floor and the band's median), active seconds (10 dB over the noise) and max; the most active
+    first. Bin k of n is centre + (k - n/2) * 50 kHz (earshot's PSD runs low to high; checked on the
+    NOAA carriers 11-22)."""
+    n, k0, step = s["psd_bins"], s["k0"], 50_000.0
+    rows = [{"mhz": round((s["center_hz"] + (k0 + i - n / 2) * step) / 1e6, 3), "score_s": s["score_s"][i],
+             "active_s": s["active_frames"][i] / 10.0, "max_db": s["max_db"][i]} for i in range(len(s["score_s"]))]
+    top = sorted((r for r in rows if r["score_s"] > 0), key=lambda r: -r["score_s"])
+    return {**s, "bin_hz": step, "rows": rows, "top": top[:40]}
 
 
 def write_stream(f, outdir, hzs, t0):
@@ -72,7 +73,7 @@ def write_stream(f, outdir, hzs, t0):
             with open(os.path.join(outdir, "band.json"), "w") as o:
                 json.dump(band, o)
             total += 10 + len(body)
-            print("band: busiest " + ", ".join(f"{b['mhz']:.3f} ({b['active_s']:.0f} s)" for b in band["busiest"][:8]), flush=True)
+            print("band: most active " + ", ".join(f"{b['mhz']:.3f} ({b['score_s']:.0f} s)" for b in band["top"][:8]), flush=True)
         else:
             total += 6
             secs = tick / 10
