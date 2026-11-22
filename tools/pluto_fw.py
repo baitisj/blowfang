@@ -9,6 +9,7 @@
     pluto_fw.py fpga BIT CHANCTL ENSURE LOAD load earshot's tested channelizer into the PL at
                                              runtime with earshot's own loader (ENSURE, LOAD =
                                              fpga/sw/ensure_pluto_fpga.sh, pluto_runtime_load.sh)
+    pluto_fw.py psd OUT.json --hz LO [--gain G]   the channelizer's 512-bin PSD at an RX LO (receive)
     pluto_fw.py reboot                       reboot the Pluto (stock PL again), wait for it
     pluto_fw.py flash IMAGE.itb BACKUPDIR    write a pinned FIT to the firmware partition, read it
                                              back and compare, then boot it (bench_runner: the
@@ -153,6 +154,22 @@ INFO = ("echo fw=$(cat /opt/VERSIONS 2>/dev/null | grep -m1 -i 'firmware\\|pluto
 CLEAN = "killall pluto_chan iio_readdev pluto-fpga-source 2>/dev/null; true"
 
 
+def quiet():
+    """every boot (and earshot's ad9361 rebind) brings the TX up at 2.45 GHz with the DDS tones
+    keyed: TX LO down, RX LO parked, tones off (pluto_bench.quiet), right away"""
+    import pluto_bench as pb
+    for _ in range(5):
+        try:
+            pb.quiet("ip:" + HOST)
+            print("quiet: TX LO down, DDS tones off, RX LO parked")
+            return True
+        except (SystemExit, Exception) as e:     # iiod can take a few seconds after ssh answers
+            print(f"quiet: retry ({e})")
+            time.sleep(4)
+    print("quiet: FAILED; run pluto_bench quiet")
+    return False
+
+
 def info():
     rc, out = ssh(INFO)
     print(out)
@@ -207,6 +224,7 @@ def cmd_backup(a):
             dfu("-a", "firmware.dfu", "-e", timeout=60)
         if not wait_ssh():
             raise SystemExit("backup: the Pluto did not come back on ssh after DFU (replug it)")
+        quiet()
     fw = os.path.join(a.out, "firmware.bin")
     d = open(fw, "rb").read(1 << 26)
     if d[:4] == b"\xd0\x0d\xfe\xed":
@@ -237,6 +255,7 @@ def cmd_ramboot(a):
         if not wait_ssh(180):
             raise SystemExit("ramboot: no ssh after the RAM boot; power-cycle the Pluto (flash is unchanged)")
         time.sleep(5)
+        quiet()
         out = info()
     if "+dma" in name and "dma_probe@4000000" not in out:
         raise SystemExit("ramboot: booted, but the DMA reservation is missing")
@@ -282,10 +301,63 @@ def cmd_fpga(a):
             env["PATH"] = shim + os.pathsep + env.get("PATH", "")
         ssh(CLEAN, timeout=20)
         r = subprocess.run(["bash", os.path.join(sw, EARSHOT_SCRIPTS["ensure"]), bit, tool], env=env, timeout=600)
+        quiet()                                  # the ad9361 rebind restarts the TX with its tones
         out = info()
     if r.returncode:
         raise SystemExit(f"fpga: earshot's loader exited {r.returncode} (a reboot gives the stock PL back)")
     print("fpga: channelizer loaded" + (" (pl_is_chan=yes)" if "pl_is_chan=yes" in out else ""))
+
+
+PHY_DIR = ("d=$(grep -l ad9361-phy /sys/bus/iio/devices/iio:device*/name | xargs dirname);"
+           " [ -n \"$d\" ] || { echo no ad9361-phy; exit 1; };")
+
+
+def cmd_psd(a):
+    """the channelizer's own 512-bin PSD (chanctl psd) at an RX LO: 25.6 Msps, 20 MHz RF filter,
+    manual gain (earshot's activity detector needs it; VHF clips above 50 on the big antenna).
+    Receive only. Needs the channelizer loaded (fpga) and /tmp/chanctl on the Pluto."""
+    import k6_bench as kb
+    rate, bw = 25_600_000, 20_000_000
+    if not 70e6 <= a.hz <= 6e9:
+        raise SystemExit("psd: --hz out of range")
+    if not 0 <= a.gain <= 71:
+        raise SystemExit("psd: --gain 0..71")
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)) or ".", exist_ok=True)
+    frames = []
+    with kb.ptt_lock():
+        setup = (PHY_DIR + " echo manual > $d/in_voltage0_gain_control_mode;"
+                 f" echo {rate} > $d/in_voltage_sampling_frequency; echo {bw} > $d/in_voltage_rf_bandwidth;"
+                 f" echo {int(a.hz)} > $d/out_altvoltage0_RX_LO_frequency; echo {a.gain} > $d/in_voltage0_hardwaregain;"
+                 " echo 1 > $d/out_altvoltage1_TX_LO_powerdown 2>/dev/null;"
+                 " for x in in_voltage_sampling_frequency in_voltage_rf_bandwidth out_altvoltage0_RX_LO_frequency"
+                 " in_voltage0_hardwaregain; do echo \"$x=$(cat $d/$x)\"; done;"
+                 " /tmp/chanctl start && sleep 3 && /tmp/chanctl info")
+        rc, out = ssh(setup, timeout=40)
+        print(out)
+        if rc:
+            raise SystemExit(f"psd: setup failed (rc {rc})")
+        for i in range(a.frames):
+            rc, p = ssh("/tmp/chanctl psd", timeout=20)
+            if rc:
+                raise SystemExit(f"psd: chanctl psd failed: {p[-200:]}")
+            frames.append(json.loads(p.strip().splitlines()[-1]))
+            time.sleep(a.every)
+        rc, act = ssh("/tmp/chanctl active", timeout=20)
+        ssh(PHY_DIR + " echo 2400000000 > $d/out_altvoltage0_RX_LO_frequency", timeout=20)   # park the RX LO
+    n = len(frames[0])
+    mean = [sum(f[k] for f in frames) / len(frames) for k in range(n)]
+    floor = sorted(mean)[n // 2]
+    # earshot design.md: bin k is RF offset k * 50 kHz from the LO, k >= 256 the negative offsets
+    off = lambda k: (k if k < n // 2 else k - n) * 50_000
+    top = sorted(range(n), key=lambda k: -mean[k])[:16]
+    res = {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "lo_hz": int(a.hz), "gain": a.gain,
+           "rate": rate, "bins": n, "frames": len(frames), "setup": out, "active": act,
+           "median": floor, "top_bins": [[k, int(a.hz) + off(k), round(mean[k], 1), round(mean[k] / max(floor, 1), 2)]
+                                    for k in top],
+           "mean": mean}
+    with open(a.out, "w") as f:
+        json.dump(res, f)
+    print(json.dumps({k: v for k, v in res.items() if k not in ("mean", "setup")}, indent=1))
 
 
 def cmd_reboot(a):
@@ -300,6 +372,7 @@ def cmd_reboot(a):
         if not wait_ssh(180):
             raise SystemExit("reboot: no ssh after 3 min (replug the Pluto)")
         time.sleep(5)
+        quiet()
         info()
 
 
@@ -344,6 +417,7 @@ def cmd_flash(a):
         if not wait_ssh(180):
             raise SystemExit("flash: written and verified, but no ssh after boot (replug; DFU recovery in RECOVERY)")
         time.sleep(5)
+        quiet()
         info()
     print(f"flash: {name} on flash and booted")
 
@@ -367,6 +441,13 @@ def main(argv=None):
     p.add_argument("ensure")
     p.add_argument("load")
     p.set_defaults(fn=cmd_fpga)
+    p = sub.add_parser("psd")
+    p.add_argument("out")
+    p.add_argument("--hz", type=float, required=True, help="RX LO, Hz (the 20 MHz window's centre)")
+    p.add_argument("--gain", type=float, default=40)
+    p.add_argument("--frames", type=int, default=10)
+    p.add_argument("--every", type=float, default=1.0)
+    p.set_defaults(fn=cmd_psd)
     sub.add_parser("reboot").set_defaults(fn=cmd_reboot)
     p = sub.add_parser("flash")
     p.add_argument("image")
