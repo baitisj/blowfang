@@ -1145,6 +1145,82 @@ def test_mickrec_without_a_key_keys_nothing_and_without_a_cue_only_calls():
     assert not [x for x in said if x.startswith("p ")]
 
 
+# ---- micalias: the mic three ways (micsotto's burst, 32 kHz raw, continuous), cable out ----
+
+MICALIAS = os.path.join(ROOT, "c", "k6", "mod", "micalias.c")
+MAL_DEFS = [("PRE", "100u"), ("PRE_SEG", "32u"), ("SETTLE_MS", "50u"), ("KEY_WAIT_MS", "60000u")]
+
+
+def mal_run(keys, spare=4096):
+    w, regs, mmio, gpiob, tune, gp0 = mic_world(af_sel=4, sound=False)
+    t = {"rcc": {}, "tim": {}, "polls": 0}
+
+    def rcc_r(uc, off, size, st):
+        return t["rcc"].get(off, 0)
+
+    def rcc_w(uc, off, size, value, st):
+        t["rcc"][off] = value
+
+    def tim_r(uc, off, size, st):
+        if off == 0x10:                                # UIF: each poll a period over (no idle time modelled)
+            assert t["rcc"].get(0x18, 0) & (1 << 18) and t["tim"].get(0x00, 0) & 1, "TIM17 polled while off"
+            t["polls"] += 1
+            return 1
+        return t["tim"].get(off, 0)
+
+    def tim_w(uc, off, size, value, st):
+        assert t["rcc"].get(0x18, 0) & (1 << 18), "TIM17 written with its clock off"
+        t["tim"][off] = value
+    mmio = mmio + [(0x40021000, 0x400, rcc_r, rcc_w), (0x40014800, 0x400, tim_r, tim_w)]
+    regs[0x7D] = 0xE95C
+    tx, lcd = {}, {}
+    ret, said, regs, writes = run_k6(regs, src=MICALIAS, code=build(MICALIAS, MAL_DEFS), mmio=mmio, gpiob=gpiob,
+                                     tune=tune, model=gp0, level=15, spare=spare, tx=tx, rx_hz=HOME_HZ,
+                                     keys=keys, lcd=lcd, count=6_000_000_000)
+    return t, tx, ret, said, regs, lcd
+
+
+def test_micalias_fits_the_radio():
+    assert k6mod.source_level(MICALIAS) == 13
+    code = k6mod.build(MICALIAS)[0]
+    assert len(code) <= 11_776
+    room = k6mod.arena_bytes(13) - (16 + len(code) + 8 + 4)
+    assert (room - 68) // 6 >= 1560                # 0.2 s a way at 8 kHz
+
+
+@need_clang
+def test_micalias_records_three_sounds_three_ways_keyed_with_the_pa_off():
+    keys = [(us, us + 200_000) for us in (1_000_000, 4_000_000, 8_000_000, 12_000_000, 30_000_000)]
+    t, tx, ret, said, regs, lcd = mal_run(keys)
+    n = (4096 - 68) // 6 // 52 * 52
+    assert ret == 12 * n, said[-3:]
+    assert said[0] == f"micalias start 30=bff1 7d=e95c n={n}" and said[-1] == "micalias done e=0"
+    assert all(len(x) <= 60 for x in said)
+    log = tx["log"]
+    cw = calls(log)
+    ons = [us for nm, _, us in log if nm == "tx_on"]
+    assert len(cw) == 1 and len(ons) == 4 and cw[0][0] > max(ons[:3])    # three takes, then the ID
+    assert not [us for nm, on, us in log if nm == "tx_pa" and on and us < cw[0][0]]   # the PA off in the takes
+    mic = [v for r, v, _ in tx["w"] if r == 0x30 and v & 4]
+    assert mic and regs[0x30] == 0xBFF1 and regs[0x7D] == 0xE95C and regs[0x47] == 0x6040
+    assert t["rcc"][0x18] == 0 and not t["tim"][0x00] & 1     # TIM17 off and unclocked again
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import k6_micalias as ma
+    seg = ma.segments(mp.say_lines("\n".join(said)))
+    assert sorted(seg) == [a + b for a in "123" for b in "ABC"]
+    for k, (x, info) in seg.items():
+        assert len(x) == (2 * n if k[1] == "B" else n) and info["hz"] == (32000 if k[1] == "B" else 8000)
+        assert info["w"] == {"A": 48, "B": 12, "C": 176}[k[1]] and x.std() > 0
+    assert lcd["scr"]["text"][2] == "SENDING"
+    assert ma.report(seg)                         # (the model has no 7 kHz tone: the report only runs)
+
+
+@need_clang
+def test_micalias_without_a_key_keys_nothing():
+    t, tx, ret, said, regs, lcd = mal_run(())
+    assert ret == -7 and "tx_on" not in [nm for nm, _, _ in tx.get("log", [])] and said[-1] == "micalias done e=0"
+
+
 # ---- micgain: the mic AGC and REG_7D stepped, cable out ----
 
 MICGAIN = os.path.join(ROOT, "c", "k6", "mod", "micgain.c")
