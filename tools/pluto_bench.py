@@ -316,8 +316,9 @@ class Decimator:
         return out.astype(np.complex64)
 
 
-def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE):
-    """-> complex64 at IQ_FS_SAVE, the meta dict"""
+def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE, sink=None):
+    """-> complex64 at IQ_FS_SAVE, the meta dict; with sink, each part goes to sink(part) instead
+    and nothing is kept (y is then empty): long captures without holding the IQ in memory"""
     import k6_bench as kb
     del kb                                  # imported for its error if the tools dir is missing
     setup(rate, rx_hz=hz, rx_gain=gain, uri=uri)
@@ -331,7 +332,12 @@ def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE):
             raw = p.stdout.read(4 * CHUNK)
             if not raw:
                 break
-            parts.append(dec(raw[: len(raw) // 4 * 4]))
+            part = dec(raw[: len(raw) // 4 * 4])
+            if sink is None:
+                parts.append(part)
+            else:
+                sink(part)
+                parts.append(part[:0])
         err = p.stderr.read().decode(errors="replace").strip()
     finally:
         if p.poll() is None:
@@ -533,7 +539,59 @@ def cmd_steps(a):
         time.sleep(a.pause)
 
 
+class AudioSink:
+    """complex64 parts at IQ_FS_SAVE -> FM discriminator audio at fs, written to a WAV as it comes
+    (no IQ kept), and the carrier level each 0.1 s (dBFS): rx --wav-only"""
+
+    def __init__(self, path, fs=8000):
+        import soundfile as sf
+        from scipy import signal as sps
+        self.sps, self.q = sps, IQ_FS_SAVE // fs
+        self.wav = sf.SoundFile(path, "w", samplerate=fs, channels=1, subtype="PCM_16")
+        self.hc = sps.firwin(255, 8000, fs=IQ_FS_SAVE)           # the channel
+        self.zc = np.zeros(len(self.hc) - 1, complex)
+        self.ha = sps.firwin(255, 0.45 * fs, fs=IQ_FS_SAVE)       # audio, before the decimation
+        self.za = np.zeros(len(self.ha) - 1)
+        self.last, self.k, self.acc, self.levels = 1 + 0j, 0, [], []
+
+    def __call__(self, part):
+        if not len(part):
+            return
+        x, self.zc = self.sps.lfilter(self.hc, 1.0, part.astype(complex), zi=self.zc)
+        self.acc.extend(np.abs(x) ** 2)
+        n10 = IQ_FS_SAVE // 10
+        while len(self.acc) >= n10:
+            self.levels.append(round(10 * np.log10(np.mean(self.acc[:n10]) + 1e-20), 1))
+            del self.acc[:n10]
+        d = np.angle(x * np.conj(np.concatenate([[self.last], x[:-1]]))) * IQ_FS_SAVE / (2 * np.pi)
+        self.last = x[-1]
+        a, self.za = self.sps.lfilter(self.ha, 1.0, d, zi=self.za)
+        out = a[(-self.k) % self.q::self.q]
+        self.k = (self.k + len(a)) % self.q
+        self.wav.write(np.clip(out / WAV_FULL_DEV, -1, 1).astype(np.float32))
+
+    def close(self):
+        self.wav.close()
+
+
 def cmd_rx(a):
+    if a.wav_only:
+        if not a.out.endswith(".wav"):
+            raise SystemExit("rx --wav-only: OUT must end in .wav")
+        snk = AudioSink(a.out, a.wav_rate)
+        try:
+            _, meta = capture(a.seconds, a.hz, a.gain, a.uri, sink=snk)
+        finally:
+            snk.close()
+        lv = np.array(snk.levels) if snk.levels else np.zeros(1)
+        floor = float(np.percentile(lv, 10))
+        meta.update(wav_rate=a.wav_rate, levels_dbfs_100ms=snk.levels, floor_dbfs=floor)
+        with open(a.out + ".json", "w") as f:
+            json.dump(meta, f)
+        print(f"{a.out}: {len(snk.levels) / 10:.1f} s on {a.hz} Hz, FM audio at {a.wav_rate} Hz only"
+              f" (no IQ kept), floor {floor:.1f} dBFS, carrier (floor + 20 dB) on"
+              f" {float(np.mean(lv > floor + 20)):.0%}")
+        return
     y, meta = capture(a.seconds, a.hz, a.gain, a.uri)
     base = a.out
     if base.endswith(".wav"):
@@ -660,6 +718,10 @@ def main(argv=None):
     r.add_argument("--hz", type=int, default=HZ)
     r.add_argument("--seconds", type=float, default=10.0)
     r.add_argument("--gain", type=int, default=30, help="RX gain, dB (manual)")
+    r.add_argument("--wav-only", action="store_true",
+                   help="OUT.wav: stream the FM audio to the WAV and keep no IQ (long receive captures)")
+    r.add_argument("--wav-rate", type=int, default=8000, choices=(8000, 16000, 24000, 48000),
+                   help="--wav-only: the WAV's sample rate")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)
     pa.add_argument("--minutes", type=float, default=20.0)
