@@ -939,14 +939,20 @@ def chan_bins(a, hzs, pc):
     print(f"chan: pluto_chan ({sha[:16]}...) and the producer ({psha[:16]}...) in the Pluto's RAM; streams {ids}")
     os.makedirs(a.out, exist_ok=True)
     quiet(a.uri)
+    # the producer refuses a sample-rate readback that is not exactly 25.6 MS/s, and the stored
+    # crystal cal (xo_correction) makes it read 25599999 (kws-bins-1, 11-22): leave the AD9361 on
+    # the nominal crystal and move the targets instead. With the crystal slow by e, the LO and the
+    # sample clock both run slow by e, so a carrier on f shows at f * XO_NOMINAL / xo from the LO.
+    put("dev", PHY, "xo_correction", XO_NOMINAL, uri=a.uri)
     c = load_cal()
-    if c:
-        put("dev", PHY, "xo_correction", int(c["xo"]), uri=a.uri)
+    k = XO_NOMINAL / int(c["xo"]) if c else 1.0
+    seen = [round(h * k) for h in hzs]
+    ids = sorted({bin_stream(h, a.hz) for h in seen})
     remote = (f"{PRODUCER_REMOTE} --port {RIQ_PORT} --center {int(a.hz)} --gain {int(a.gain)}"
               f" --forward-streams {','.join(map(str, ids))} --seconds {int(a.seconds) + 10}"
               " > /tmp/pluto-fpga-source.log 2>&1 < /dev/null & P=$!;"
               f" NSAMP={int(a.seconds * 100_000)} {CHAN_REMOTE} -f -R {host}:{RIQ_PORT} {int(a.hz)} "
-              + " ".join(str(h) for h in hzs)
+              + " ".join(str(h) for h in seen)
               + "; R=$?; kill $P 2>/dev/null; sleep 2; tail -20 /tmp/pluto-fpga-source.log >&2; exit $R")
     cmd, env, ask = ssh_cmd(a.uri, remote)
     t0 = time.time()
@@ -962,7 +968,7 @@ def chan_bins(a, hzs, pc):
         ssh_run(a.uri, CHAN_CLEAN + f"; rm -f {CHAN_REMOTE} {PRODUCER_REMOTE}", timeout=30)
         park_rx(a.uri)
     took = time.time() - t0
-    meta = {"lo_hz": int(a.hz), "source": "earshot bins", "streams": ids, "gain": a.gain, "bin_sha256": sha,
+    meta = {"lo_hz": int(a.hz), "source": "earshot bins", "streams": ids, "xo_scale": k, "gain": a.gain, "bin_sha256": sha,
             "producer_sha256": psha, "seconds": a.seconds, "took_s": round(took, 1), "pluto_stderr": err, "rc": rc,
             "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), **res}
     with open(os.path.join(a.out, "chan.json"), "w") as f:
@@ -972,6 +978,8 @@ def chan_bins(a, hzs, pc):
           f" {res['bytes']} bytes ({res['bytes'] / max(a.seconds, 1):.0f} B/s)")
     if rc:
         raise SystemExit(f"chan: the Pluto side exited {rc}")
+    if res.get("secs", 0) < 0.5 * a.seconds:
+        raise SystemExit(f"chan: only {res.get('secs', 0):.1f} s of {a.seconds:.0f} came back (the producer's log is above)")
 
 
 def main(argv=None):
