@@ -104,7 +104,7 @@ PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
 # tools/pluto_fw.py: the Pluto's boot image and runtime PL (the earshot channelizer, Jeff 11-22). Every
 # image it puts on the Pluto is pinned by sha256 in pluto_fw.py on main; flash is its own step
 # (pluto.flash), a local submit only (bench_inbox REMOTE_NO_STEPS)
-PLUTO_FW_SUBS = ("doctor", "info", "backup", "ramboot", "fpga", "psd", "reboot")
+PLUTO_FW_SUBS = ("doctor", "info", "backup", "ramboot", "fpga", "psd", "riq", "reboot")
 CUE_MAX_S = 1700                            # a cue waits for its call this long at most (the step: 1800 s, with the send)
 PARROT_MAX_MIN = 25                         # a parrot holds the bench: 25 min at most (the step's 1800 s)
 IC7100_SUBS = ("send", "id", "stop")

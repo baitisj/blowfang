@@ -88,6 +88,8 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `k6.update` | `k6_update.py IMAGE --port CABLE --aura … --trigger "sh bin/k6-reset-trigger.sh" --window 0.6` | the image itself keyed with our key (no placeholder), sha256, commit; IC-7100 rules (the reset packet) |
 | `k6.upload` | `k6_upload.py MODULE --key-file KEY ARGS` | `--freq` in the claim, `--pluto-gain` ≤ -30, no `--key-file` from the job; IC-7100 rules (it sets the rig's mode and records its audio) |
 | `pluto` | `pluto_bench.py --as WHO ARGS`; with `"background": true` an `rx` runs beside the next steps (to hear a UV-380 send) | `send` / `steps` / `fsk24` / `parrot`: `--hz` in the claim, every gain ≤ -30 dB; `parrot` (tools/pluto_parrot.py: each YSF or M17 sotto message heard goes back in the same mode) names its `--hz`, runs `--minutes` ≤ 25, no `--save`; `rx` anywhere; only `rx` may run in the background; checkout has the keeper fix |
+| `pluto.fw` | `pluto_fw.py --as WHO ARGS`: the Pluto's boot image and earshot's channelizer (doctor, info, backup, ramboot, fpga, psd, riq, reboot; see the tool's docstring) | args[0] one of those; every image, script and producer it puts on the Pluto is pinned by sha256 in pluto_fw.py; receive only |
+| `pluto.flash` | `pluto_fw.py --as WHO flash IMAGE.itb BACKUPDIR`: a pinned FIT into the firmware partition, read back and compared | exactly two args; local submit only, never the inbox |
 | `ic7100` | `k6_bench.py --as WHO send WAV --freq HZ` / `id` / `stop` | `--freq` required for send and in the claim, no `--no-id`; IC-7100 rules |
 | `ic7100.tune` | rigctl `F HZ`, `M PKTFM 12000`, `L RFPOWER 0`, read back | 70 cm in the claim; not while held |
 | `ic7100.power0` | rigctl `L RFPOWER 0`, read back | |
