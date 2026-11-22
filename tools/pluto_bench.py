@@ -316,9 +316,10 @@ class Decimator:
         return out.astype(np.complex64)
 
 
-def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE, sink=None):
+def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE, sink=None, raw=False):
     """-> complex64 at IQ_FS_SAVE, the meta dict; with sink, each part goes to sink(part) instead
-    and nothing is kept (y is then empty): long captures without holding the IQ in memory"""
+    and nothing is kept (y is then empty): long captures without holding the IQ in memory.
+    raw=True hands the sink the int16 IQ at rate as read, not decimated (rx --channels)"""
     import k6_bench as kb
     del kb                                  # imported for its error if the tools dir is missing
     setup(rate, rx_hz=hz, rx_gain=gain, uri=uri)
@@ -329,10 +330,14 @@ def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE, sink=None):
     dec, parts, t0 = Decimator(rate, rate // IQ_FS_SAVE), [], time.time()
     try:
         while True:
-            raw = p.stdout.read(4 * CHUNK)
-            if not raw:
+            chunk = p.stdout.read(4 * CHUNK)
+            if not chunk:
                 break
-            part = dec(raw[: len(raw) // 4 * 4])
+            if raw:
+                sink(chunk[: len(chunk) // 4 * 4])
+                parts.append(np.zeros(0, np.complex64))
+                continue
+            part = dec(chunk[: len(chunk) // 4 * 4])
             if sink is None:
                 parts.append(part)
             else:
@@ -574,7 +579,127 @@ class AudioSink:
         self.wav.close()
 
 
+class StreamFir:
+    """a decimating FIR over a stream: x in parts, h applied, every q-th output kept; the parts
+    can be any size and the state carries over (only the kept outputs are computed)"""
+
+    def __init__(self, h, q, dtype=np.complex64):
+        self.h, self.q = np.asarray(h[::-1], np.float32), q
+        self.tail, self.ph = np.zeros(len(h) - 1, dtype), 0
+
+    def __call__(self, x):
+        from numpy.lib.stride_tricks import sliding_window_view
+        z = np.concatenate([self.tail, x.astype(self.tail.dtype)])
+        L = len(self.h)
+        w = sliding_window_view(z, L)[self.ph::self.q]
+        y = w @ self.h if len(w) else np.zeros(0, z.dtype)
+        self.ph += len(w) * self.q - (len(z) - (L - 1))
+        self.tail = z[len(z) - (L - 1):]
+        return y
+
+
+class ChannelSink:
+    """int16 IQ at rate, centred on lo_hz -> one FM channel at hz: mixed down, filtered to 32 kS/s,
+    discriminated, 8 kHz audio to a WAV and the carrier level each 0.1 s (rx --channels: several of
+    these share one capture). Only the kept samples of each filter are computed, so six channels
+    run in real time on hamlet"""
+    FS1 = 32_000
+
+    def __init__(self, path, hz, lo_hz, rate=RATE, fs=8000):
+        from math import gcd
+
+        import soundfile as sf
+        from scipy import signal as sps
+        self.hz, self.off, self.rate = int(hz), int(hz) - int(lo_hz), rate
+        if rate % self.FS1 or self.FS1 % fs:
+            raise SystemExit(f"rx --channels: rate {rate} must be a multiple of {self.FS1}")
+        if abs(self.off) > rate / 2 - 40e3:
+            raise SystemExit(f"rx --channels: {hz} is {self.off / 1e3:+.1f} kHz from the LO {lo_hz}, "
+                             f"outside +-{(rate / 2 - 40e3) / 1e3:.0f} kHz")
+        self.mix = StreamFir(sps.firwin(601, 8000, fs=rate), rate // self.FS1)    # the channel, +-8 kHz
+        self.aud = StreamFir(sps.firwin(127, 0.45 * fs, fs=self.FS1), self.FS1 // fs, np.float32)
+        p = rate // gcd(rate, abs(self.off) or rate)                            # the LO table's period
+        self.tab = np.exp(-2j * np.pi * self.off * np.arange(p) / rate).astype(np.complex64)
+        self.n, self.last, self.acc, self.levels = 0, np.complex64(1), np.zeros(0, np.float32), []
+        self.wav = sf.SoundFile(path, "w", samplerate=fs, channels=1, subtype="PCM_16")
+
+    def __call__(self, iq):
+        """iq: complex64 at rate, scaled as the Decimator's (full scale 1.0)"""
+        lo = self.tab[(self.n + np.arange(len(iq))) % len(self.tab)]
+        self.n = (self.n + len(iq)) % len(self.tab)
+        x = self.mix(iq * lo)
+        if not len(x):
+            return
+        self.acc = np.concatenate([self.acc, (np.abs(x) ** 2).astype(np.float32)])
+        n10 = self.FS1 // 10
+        k = len(self.acc) // n10 * n10
+        for v in self.acc[:k].reshape(-1, n10).mean(axis=1):
+            self.levels.append(round(10 * np.log10(float(v) + 1e-20), 1))
+        self.acc = self.acc[k:]
+        d = np.angle(x * np.conj(np.concatenate([[self.last], x[:-1]]))) * self.FS1 / (2 * np.pi)
+        self.last = x[-1]
+        self.wav.write(np.clip(self.aud(d.astype(np.float32)) / WAV_FULL_DEV, -1, 1))
+
+    def close(self):
+        self.wav.close()
+
+
+class MultiSink:
+    """one raw capture -> a ChannelSink each"""
+
+    def __init__(self, sinks):
+        self.sinks = sinks
+
+    def __call__(self, chunk):
+        x = np.frombuffer(chunk, np.int16).astype(np.float32)
+        iq = ((x[0::2] + 1j * x[1::2]) / 2048.0).astype(np.complex64)
+        for s in self.sinks:
+            s(iq)
+
+    def close(self):
+        for s in self.sinks:
+            s.close()
+
+
+def channel_path(out, hz):
+    """rx --channels: OUT.wav -> OUT_442.2500.wav for each channel"""
+    return f"{out[:-4]}_{hz / 1e6:.4f}.wav"
+
+
+def rx_channels(a):
+    """rx OUT.wav --channels HZ,HZ,...: the LO at --hz, one WAV and levels json per channel"""
+    hzs = [int(float(v)) for v in a.channels.split(",") if v.strip()]
+    if not a.out.endswith(".wav"):
+        raise SystemExit("rx --channels: OUT must end in .wav")
+    for h in hzs:
+        if abs(h - a.hz) < 15_000:
+            raise SystemExit(f"rx --channels: {h} is within 15 kHz of the LO {a.hz} (its DC spur):"
+                             " move --hz between channels")
+    sinks = [ChannelSink(channel_path(a.out, h), h, a.hz, RATE, a.wav_rate) for h in hzs]
+    ms = MultiSink(sinks)
+    t0 = time.time()
+    try:
+        _, meta = capture(a.seconds, a.hz, a.gain, a.uri, sink=ms, raw=True)
+    finally:
+        ms.close()
+    took = time.time() - t0
+    for s in sinks:
+        lv = np.array(s.levels) if s.levels else np.zeros(1)
+        floor = float(np.percentile(lv, 10))
+        m = dict(meta, hz=s.hz, lo_hz=int(a.hz), wav_rate=a.wav_rate, levels_dbfs_100ms=s.levels,
+                 floor_dbfs=floor)
+        with open(channel_path(a.out, s.hz) + ".json", "w") as f:
+            json.dump(m, f)
+        print(f"{channel_path(a.out, s.hz)}: {len(s.levels) / 10:.1f} s on {s.hz} Hz"
+              f" ({s.off / 1e3:+.1f} kHz from the LO), floor {floor:.1f} dBFS, carrier (floor + 20 dB)"
+              f" on {float(np.mean(lv > floor + 20)):.0%}")
+    print(f"{len(sinks)} channels in {took:.1f} s for {a.seconds:.0f} s of capture"
+          f" ({'kept up' if took < a.seconds + 10 else 'SLOW: samples may have been dropped'})")
+
+
 def cmd_rx(a):
+    if a.channels:
+        return rx_channels(a)
     if a.wav_only:
         if not a.out.endswith(".wav"):
             raise SystemExit("rx --wav-only: OUT must end in .wav")
@@ -722,6 +847,10 @@ def main(argv=None):
                    help="OUT.wav: stream the FM audio to the WAV and keep no IQ (long receive captures)")
     r.add_argument("--wav-rate", type=int, default=8000, choices=(8000, 16000, 24000, 48000),
                    help="--wav-only: the WAV's sample rate")
+    r.add_argument("--channels", metavar="HZ,HZ,...", default=None,
+                   help="FM audio only (as --wav-only) for each of these channels at once, all within"
+                        " +-1.16 MHz of --hz (the LO; keep it 15 kHz or more off every channel):"
+                        " OUT_<MHz>.wav and .json each. --wav-rate 8000 or 16000")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)
     pa.add_argument("--minutes", type=float, default=20.0)

@@ -238,3 +238,46 @@ def test_wav_only_sink_streams_fm_audio(tmp_path):
     assert abs(np.argmax(np.abs(np.fft.rfft(y))) * r / len(y) - 1000) < 2
     assert abs(np.std(y) * np.sqrt(2) * pl.WAV_FULL_DEV - 2500) < 100
     assert len(s.levels) == 20 and all(abs(v + 20) < 0.5 for v in s.levels)
+
+
+def test_channels_sink_splits_one_capture(tmp_path):
+    """rx --channels: one int16 IQ stream at 2.4 MS/s with two FM carriers -> a WAV each with its
+    own tone and deviation, the empty channel's level 40 dB down, parts of odd sizes"""
+    import soundfile as sf
+    rate, lo = pl.RATE, 443_000_000
+    t = np.arange(rate) / rate                     # 1 s
+    iq = np.zeros(len(t), complex)
+    for hz, tone, dev in ((442_250_000, 1000, 2500), (443_650_000, 700, 4000)):
+        ph = 2 * np.pi * (hz - lo) * t + 2 * np.pi * np.cumsum(dev * np.sin(2 * np.pi * tone * t)) / rate
+        iq += 0.1 * np.exp(1j * ph)
+    raw = np.empty(2 * len(t), np.int16)
+    raw[0::2], raw[1::2] = np.round(iq.real * 2048), np.round(iq.imag * 2048)
+    raw = raw.tobytes()
+    hzs = (442_250_000, 443_650_000, 442_825_000)
+    sinks = [pl.ChannelSink(pl.channel_path(str(tmp_path / "c.wav"), h), h, lo) for h in hzs]
+    ms = pl.MultiSink(sinks)
+    i = 0
+    while i < len(raw):
+        n = 4 * 77_777
+        ms(raw[i:i + n])
+        i += n
+    ms.close()
+    for s, (tone, dev) in zip(sinks[:2], ((1000, 2500), (700, 4000))):
+        x, r = sf.read(pl.channel_path(str(tmp_path / "c.wav"), s.hz))
+        assert r == 8000 and abs(len(x) - 8000) <= 2
+        y = x[1000:]
+        assert abs(np.argmax(np.abs(np.fft.rfft(y))) * r / len(y) - tone) < 2
+        assert abs(np.std(y) * np.sqrt(2) * pl.WAV_FULL_DEV - dev) < 150
+        assert len(s.levels) == 10 and all(abs(v + 20) < 0.7 for v in s.levels[1:])
+    assert max(sinks[2].levels[1:]) < -60
+    assert tmp_path.joinpath("c_442.8250.wav").exists()
+
+
+def test_stream_fir_matches_one_piece():
+    from scipy import signal as sps
+    x = np.random.default_rng(1).standard_normal(5000).astype(np.float32)
+    h = sps.firwin(31, 0.2)
+    f = pl.StreamFir(h, 3, np.float32)
+    y = np.concatenate([f(x[i:i + 101]) for i in range(0, len(x), 101)])
+    ref = sps.lfilter(h, 1.0, x)[::3]
+    assert len(y) == len(ref) and np.allclose(y, ref, atol=1e-4)

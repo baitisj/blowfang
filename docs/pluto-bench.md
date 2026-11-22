@@ -35,6 +35,8 @@ python3 tools/pluto_bench.py info                    state, tuning range, stored
 python3 tools/pluto_bench.py quiet                   TX LO down, DDS test tones off
 python3 tools/pluto_bench.py send WAV [--hz F] [--dev 3000 | --peak HZ] [--gain -60] [--preemph] [--rf-off]
 python3 tools/pluto_bench.py rx OUT.cf32|OUT.wav [--hz F] [--seconds 10] [--gain 30]
+python3 tools/pluto_bench.py rx OUT.wav --wav-only [--wav-rate 8000]     FM audio only, no IQ kept
+python3 tools/pluto_bench.py rx OUT.wav --hz LO --channels F1,F2,...    one FM WAV per channel
 python3 tools/pluto_bench.py measure CAP.cf32        offset (Hz, ppm), peak deviation, level, floor
 python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
 python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
@@ -54,6 +56,15 @@ python3 tools/pluto_bench.py cue WAV --hz F --listen-hz F [--wait-s 900] [--dela
   (frequency, rate, gain, the xo_correction in use, the UTC start). Name it `.wav` to also get the
   FM discriminator as 48 kHz audio: flat, with no de-emphasis, and 5 kHz deviation as full scale.
   It receives anywhere from 70 MHz to 6 GHz.
+- **rx --wav-only:** streams the FM audio to the WAV (8 kHz by default) and keeps no IQ, plus the
+  carrier level each 0.1 s in the `.json`: long receive captures (20 minutes is 19 MB).
+- **rx --channels:** several FM channels from one capture (a channelizer, the idea behind
+  RTLSDR-Airband and trunk-recorder's conventional mode). `--hz` is the LO; every channel must sit
+  within +-1.16 MHz of it (the 2.4 MS/s stream) and 15 kHz or more away from it (the DC spur). Each
+  channel is mixed down, filtered to +-8 kHz at 32 kS/s, discriminated and written as
+  `OUT_<MHz>.wav` with its own `.json` of levels, as `--wav-only` does. Six channels take about 1.5
+  times the CPU of one `--wav-only` capture; the last line says whether it kept up. One band at a
+  time: the Pluto has one RX LO, so 2 m and 70 cm need separate captures.
 - **measure:** reads only where the signal is 20 dB over the capture's floor.
 - **cal:** calibrates against a carrier on a known frequency; the IC-7100's TCXO is the bench
   reference. `--save` writes `$BLOWFANG_WORK/state/pluto-cal.json`, and every later command sets the
