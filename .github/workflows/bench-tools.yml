@@ -60,7 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 tools/ci_scope.py --github bench
 
-  # Plain Python, about a minute: no submodule, no compilers, no emulated M0.
+  # Plain Python, about a minute: no submodule, no firmware build, no emulated M0.
   # Add a new test file as one line, in alphabetical order.
   bench-tests:
     needs: scope
@@ -72,6 +72,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install numpy scipy soundfile pytest pytest-xdist
+      # bench_runner.py selftest checks the UV-380 send steps can find a module compiler
+      # (clang, ld.lld, llvm-objcopy, llvm-nm); nothing here compiles firmware
+      - name: clang and lld (the runner's selftest looks for them)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang lld llvm
       - name: Pluto, bench runner and inbox
         run: |
           python -m pytest -q -n auto --durations=8 \
