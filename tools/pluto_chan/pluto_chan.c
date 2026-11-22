@@ -7,10 +7,12 @@
  * of 8 kHz FM audio, channel after channel (WAV_FULL_DEV Hz of deviation = 32767). Only audio
  * crosses the USB link: 16 kB/s a channel.
  *
- * Per channel, a mix and three decimating FIRs that compute only the outputs they keep:
- *   mix: the channel to 0 Hz with a table of one LO period (the offset rounded to 1 kHz when its
- *      period would be long; FM does not mind), in runs the compiler vectorizes;
- *   A: low-pass, real taps, RATE -> RATE/QA (160 kS/s at 2.4 MS/s);
+ * Per channel, three decimating FIRs that compute only the outputs they keep:
+ *   A1: the mix to 0 Hz and a 9-tap triangle (two 5-sample boxcars, CIC order 2) in one pass,
+ *      RATE -> 480 kS/s, with the LO folded into the taps (a table per output phase: the offset
+ *      rounded to 5 kHz keeps it at most 480 phases; the rest is turned out after A2). The
+ *      triangle's nulls sit on the bands that fold onto the channel, -70 dB at 480 kHz +- 8 kHz;
+ *   A2: low-pass, 21 real taps, -> 160 kS/s;
  *   B: low-pass +-8 kHz, -> 32 kS/s; discriminator;
  *   C: audio low-pass 3.6 kHz, -> 8 kS/s.
  * With -f, stdout carries squelch-gated overs instead, each a HamFLAC stream (flacout.cpp).
@@ -29,8 +31,10 @@
 
 #define FS1 32000                 /* after stage B */
 #define FS2 8000                  /* audio out */
-#define LA 63                     /* stage A taps */
-#define LB 95                     /* stage B taps */
+#define FSA 480000                /* after stage A1 */
+#define L1 9                      /* stage A1: triangle taps */
+#define LA 21                     /* stage A2 taps */
+#define LB 63                     /* stage B taps */
 #define LC 63                     /* stage C taps */
 #define WAV_FULL_DEV 5000.0f
 #define MAXCH 16
@@ -54,10 +58,14 @@ static void firwin(float *h, int n, double fc, double fs)
 
 typedef struct {
     double hz, off;
-    int qa, qb, qc;
-    float ha[LA], hb[LB], hc[LC];  /* reversed (symmetric anyway) */
-    float *lr_, *li_; int lp, lk;  /* LO table (period lp) and the position in it */
-    float *mr, *mi; int nm, pa;    /* mixed input: samples held, the next stage-A window */
+    int q1, qa, qb, qc;
+    float h1[L1], ha[LA], hb[LB], hc[LC];  /* symmetric, so reversed is the same */
+    float *tr, *ti; int nq, q;     /* A1 taps with the LO in them, a set per output phase */
+    int p1;                        /* the next A1 window, as an index into the shared block */
+    float *lr_, *li_; int lp, lk;  /* A1MODE=1: the LO table (one period) and the place in it */
+    float *mr, *mi, *sr, *si;      /* A1MODE=1: the mixed block and its 5-sample sums */
+    float zr, zi, wr, wi; int zn;  /* the residual offset turned out after A2 (a phasor) */
+    float *ar_, *ai_; int na2, pa; /* stage A2 input */
     float *br, *bi; int nb, pb;    /* stage B input ring (linear, compacted) */
     float lr, li;                  /* discriminator: last sample */
     float *c; int nc, pc;          /* stage C input */
@@ -74,25 +82,39 @@ static void chan_init(chan_t *c, double hz, double lo, int rate)
 {
     memset(c, 0, sizeof *c);
     c->hz = hz; c->off = hz - lo;
-    c->qa = rate / 160000; c->qb = 160000 / FS1; c->qc = FS1 / FS2;
-    firwin(c->ha, LA, 12000, rate);              /* pass +-8 kHz, alias-free to 160k - 8k */
-    firwin(c->hb, LB, 8000, 160000);
+    c->q1 = rate / FSA; c->qa = FSA / 160000; c->qb = 160000 / FS1; c->qc = FS1 / FS2;
+    for (int k = 0; k < L1; k++)                 /* 1 2 3 4 5 4 3 2 1, over 25 */
+        c->h1[k] = (float)(5 - abs(k - 4)) / 25.0f;
+    firwin(c->ha, LA, 30000, FSA);               /* pass +-8 kHz, stop by ~100 kHz (160k - 8k folds) */
+    firwin(c->hb, LB, 7500, 160000);             /* stop by ~12 kHz: 20 kHz neighbours out */
     firwin(c->hc, LC, 0.45 * FS2, FS1);
-    long off = lrint(c->off), g = rate, t = labs(off);
+    long off = lrint(c->off / 5000.0) * 5000, g = rate, t = labs(off);
     while (t) { long r = g % t; g = t; t = r; }  /* gcd(rate, |off|) */
-    if (rate / g > MAXP) {                       /* round to 1 kHz: period at most rate/1000 */
-        off = lrint(c->off / 1000.0) * 1000;
-        g = rate; t = labs(off);
-        while (t) { long r = g % t; g = t; t = r; }
-    }
-    c->lp = off ? (int)(rate / g) : 1;
-    c->lr_ = malloc(c->lp * sizeof(float)); c->li_ = malloc(c->lp * sizeof(float));
-    for (int k = 0; k < c->lp; k++) {
+    int lp = off ? (int)(rate / g) : 1;          /* the LO's period, at most rate / 5000 */
+    int a = lp, b = c->q1;
+    while (b) { int r = a % b; a = b; b = r; }
+    c->nq = lp / a;                              /* the output phases visited: lp / gcd(lp, q1) */
+    c->lp = lp;
+    c->lr_ = malloc(lp * sizeof(float)); c->li_ = malloc(lp * sizeof(float));
+    for (int k = 0; k < lp; k++) {
         c->lr_[k] = (float)cos(-2 * M_PI * (double)off * k / rate);
         c->li_[k] = (float)sin(-2 * M_PI * (double)off * k / rate);
     }
-    c->mr = calloc(LA + BLK, sizeof(float)); c->mi = calloc(LA + BLK, sizeof(float));
-    c->nm = LA - 1;                              /* zero history */
+    c->mr = calloc(L1 + BLK, sizeof(float)); c->mi = calloc(L1 + BLK, sizeof(float));
+    c->sr = calloc(L1 + BLK, sizeof(float)); c->si = calloc(L1 + BLK, sizeof(float));
+    c->tr = malloc(c->nq * L1 * sizeof(float)); c->ti = malloc(c->nq * L1 * sizeof(float));
+    for (int q = 0; q < c->nq; q++)
+        for (int k = 0; k < L1; k++) {
+            long n = ((long)q * c->q1 + k) % lp;
+            double ph = -2 * M_PI * (double)off * n / rate;
+            c->tr[q * L1 + k] = (float)(c->h1[k] * cos(ph));
+            c->ti[q * L1 + k] = (float)(c->h1[k] * sin(ph));
+        }
+    double res = c->off - off;                   /* |res| <= 2.5 kHz, turned at 160 kS/s */
+    c->zr = 1; c->zi = 0;
+    c->wr = (float)cos(-2 * M_PI * res / 160000); c->wi = (float)sin(-2 * M_PI * res / 160000);
+    c->ar_ = calloc(LA + BLK, sizeof(float)); c->ai_ = calloc(LA + BLK, sizeof(float));
+    c->na2 = LA - 1;
     c->br = calloc(BLK + LB, sizeof(float)); c->bi = calloc(BLK + LB, sizeof(float));
     c->nb = LB - 1;                              /* zero history */
     c->c = calloc(BLK + LC, sizeof(float)); c->nc = LC - 1;
@@ -150,17 +172,21 @@ static void stage_b(chan_t *c)
     }
 }
 
-/* mix the block (xr/xi, n samples) into the channel's buffer, then stage A on it */
-static void stage_a(chan_t *c, const float *restrict xr_, const float *restrict xi_, int n)
+static int a1mode;                 /* $A1MODE: 0 the LO in the taps (default), 1 mix then boxcars,
+                                      2 nothing (the read and the conversion alone: a floor) */
+
+/* A1MODE=1: mix the block to 0 Hz from the LO table, then the triangle as two boxcars */
+static int stage_a1_mix(chan_t *c, const float *restrict xr_, const float *restrict xi_, int n)
 {
-    float *restrict mr = c->mr + c->nm, *restrict mi = c->mi + c->nm;
+    float *restrict mr = c->mr, *restrict mi = c->mi;     /* [0, L1-1) history, then the block */
+    const float *restrict x0r = xr_ + (L1 - 1), *restrict x0i = xi_ + (L1 - 1);
     for (int s0 = 0; s0 < n;) {                  /* runs inside one LO period: no modulo inside */
         int run = c->lp - c->lk;
         if (run > n - s0)
             run = n - s0;
         const float *restrict lr = c->lr_ + c->lk, *restrict li = c->li_ + c->lk;
-        const float *restrict ar = xr_ + s0, *restrict ai = xi_ + s0;
-        float *restrict orr = mr + s0, *restrict oi = mi + s0;
+        const float *restrict ar = x0r + s0, *restrict ai = x0i + s0;
+        float *restrict orr = mr + (L1 - 1) + s0, *restrict oi = mi + (L1 - 1) + s0;
         for (int k = 0; k < run; k++) {
             orr[k] = ar[k] * lr[k] - ai[k] * li[k];
             oi[k] = ar[k] * li[k] + ai[k] * lr[k];
@@ -170,24 +196,79 @@ static void stage_a(chan_t *c, const float *restrict xr_, const float *restrict 
         if (c->lk == c->lp)
             c->lk = 0;
     }
-    c->nm += n;
-    const float *restrict h = c->ha;
-    while (c->pa + LA <= c->nm) {
-        const float *restrict r = c->mr + c->pa, *restrict i = c->mi + c->pa;
+    const int end = (L1 - 1) + n, ns = end - 4;
+    float *restrict qr = c->sr, *restrict qi = c->si;
+    for (int k = 0; k < ns; k++) {
+        qr[k] = mr[k] + mr[k + 1] + mr[k + 2] + mr[k + 3] + mr[k + 4];
+        qi[k] = mi[k] + mi[k + 1] + mi[k + 2] + mi[k + 3] + mi[k + 4];
+    }
+    float *restrict o1r = c->ar_, *restrict o1i = c->ai_;
+    int n2 = c->na2, p = c->p1;
+    while (p + L1 <= end) {
+        o1r[n2] = (qr[p] + qr[p + 1] + qr[p + 2] + qr[p + 3] + qr[p + 4]) * (1.0f / 25);
+        o1i[n2] = (qi[p] + qi[p + 1] + qi[p + 2] + qi[p + 3] + qi[p + 4]) * (1.0f / 25);
+        n2++;
+        p += c->q1;
+    }
+    memmove(mr, mr + n, (L1 - 1) * sizeof(float));
+    memmove(mi, mi + n, (L1 - 1) * sizeof(float));
+    c->p1 = p - n;
+    return n2;
+}
+
+/* A1 over the shared block (xr/xi: L1-1 samples of history, then n new), then A2 and B */
+static void stage_a(chan_t *c, const float *restrict xr_, const float *restrict xi_, int n)
+{
+    if (a1mode == 2)
+        return;
+    float *restrict o1r = c->ar_, *restrict o1i = c->ai_;
+    int n2 = c->na2, p = c->p1, q = c->q;
+    const int end = (L1 - 1) + n, nq = c->nq, q1 = c->q1;
+    if (a1mode == 1) {
+        n2 = stage_a1_mix(c, xr_, xi_, n);
+        p = c->p1 + n;                           /* so that the lines below leave it as it is */
+    } else
+    while (p + L1 <= end) {
+        const float *restrict tr = c->tr + q * L1, *restrict ti = c->ti + q * L1;
+        const float *restrict r = xr_ + p, *restrict i = xi_ + p;
+        float sr = 0, si = 0;
+        for (int k = 0; k < L1; k++) {
+            sr += tr[k] * r[k] - ti[k] * i[k];
+            si += tr[k] * i[k] + ti[k] * r[k];
+        }
+        o1r[n2] = sr; o1i[n2] = si; n2++;
+        p += q1;
+        if (++q == nq)
+            q = 0;
+    }
+    c->p1 = p - n;                               /* the block moves on by n */
+    c->q = q;
+    c->na2 = n2;
+    int keep;
+    const float *restrict h = c->ha;             /* A2: decimate qa */
+    while (c->pa + LA <= c->na2) {
+        const float *restrict r = c->ar_ + c->pa, *restrict i = c->ai_ + c->pa;
         float sr = 0, si = 0;
         for (int k = 0; k < LA; k++) {
             sr += h[k] * r[k];
             si += h[k] * i[k];
         }
-        c->br[c->nb] = sr;
-        c->bi[c->nb] = si;
+        float zr = c->zr, zi = c->zi;            /* turn out the residual offset */
+        c->br[c->nb] = sr * zr - si * zi;
+        c->bi[c->nb] = sr * zi + si * zr;
         c->nb++;
+        c->zr = zr * c->wr - zi * c->wi;
+        c->zi = zr * c->wi + zi * c->wr;
+        if (++c->zn == 1024) {                   /* keep |z| = 1 */
+            float m = 1.0f / sqrtf(c->zr * c->zr + c->zi * c->zi);
+            c->zr *= m; c->zi *= m; c->zn = 0;
+        }
         c->pa += c->qa;
     }
-    int keep = c->nm - c->pa;                    /* compact: from the next window on */
-    memmove(c->mr, c->mr + c->pa, keep * sizeof(float));
-    memmove(c->mi, c->mi + c->pa, keep * sizeof(float));
-    c->nm = keep; c->pa = 0;
+    keep = c->na2 - c->pa;
+    memmove(c->ar_, c->ar_ + c->pa, keep * sizeof(float));
+    memmove(c->ai_, c->ai_ + c->pa, keep * sizeof(float));
+    c->na2 = keep; c->pa = 0;
     stage_b(c);
 }
 
@@ -243,8 +324,8 @@ int main(int argc, char **argv)
     }
     double lo = atof(argv[1]);
     int rate = atoi(argv[2]);
-    if (rate % 160000) {
-        fprintf(stderr, "pluto_chan: RATE must be a multiple of 160000\n");
+    if (rate % FSA) {
+        fprintf(stderr, "pluto_chan: RATE must be a multiple of %d\n", FSA);
         return 2;
     }
     nch = argc - 3;
@@ -260,13 +341,16 @@ int main(int argc, char **argv)
         }
         chan_init(&ch[j], hz, lo, rate);
     }
+    const char *am = getenv("A1MODE");
+    if (am)
+        a1mode = atoi(am);
     const char *te = getenv("THREADS");
     if (te)
         nthr = atoi(te);
     if (nthr < 1) nthr = 1;
     if (nthr > nch) nthr = nch;
-    xr = calloc(BLK, sizeof(float));
-    xi = calloc(BLK, sizeof(float));
+    xr = calloc(L1 - 1 + BLK, sizeof(float));   /* L1-1 samples of history, then the block */
+    xi = calloc(L1 - 1 + BLK, sizeof(float));
     static int16_t raw[2 * BLK];
     pthread_t th[MAXCH];
     pthread_barrier_init(&bar_go, NULL, nthr + 1);
@@ -279,12 +363,14 @@ int main(int argc, char **argv)
     size_t got;
     while ((got = fread(raw, 4, BLK, stdin)) > 0) {
         for (size_t s = 0; s < got; s++) {
-            xr[s] = raw[2 * s] * (1.0f / 2048);
-            xi[s] = raw[2 * s + 1] * (1.0f / 2048);
+            xr[L1 - 1 + s] = raw[2 * s] * (1.0f / 2048);
+            xi[L1 - 1 + s] = raw[2 * s + 1] * (1.0f / 2048);
         }
         nblk = (int)got;
         pthread_barrier_wait(&bar_go);           /* the workers run the channels */
         pthread_barrier_wait(&bar_done);
+        memmove(xr, xr + got, (L1 - 1) * sizeof(float));   /* the history for the next block */
+        memmove(xi, xi + got, (L1 - 1) * sizeof(float));
         while (1) {                              /* a record when every channel has 0.1 s */
             int ok = 1;
             for (int j = 0; j < nch; j++)
@@ -303,7 +389,7 @@ int main(int argc, char **argv)
         flac_finish();
     clock_gettime(CLOCK_MONOTONIC, &t1);
     double el = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
-    fprintf(stderr, "pluto_chan: %d channels on %d threads, %.2f s of input in %.2f s (%.0f%% of real time)\n",
-            nch, nthr, total / (double)rate, el, 100 * el / (total / (double)rate));
+    fprintf(stderr, "pluto_chan: A1MODE %d, %d channels on %d threads, %.2f s of input in %.2f s (%.0f%% of real time)\n",
+            a1mode, nch, nthr, total / (double)rate, el, 100 * el / (total / (double)rate));
     return 0;
 }

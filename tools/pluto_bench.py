@@ -850,7 +850,7 @@ def cmd_chan(a):
     os.makedirs(a.out, exist_ok=True)
     setup(RATE, rx_hz=a.hz, rx_gain=a.gain, uri=a.uri, rx_bw=WIDE_BW)
     n = int(a.seconds * RATE)
-    remote = (f"iio_readdev -b {CHUNK} -s {n} {RX_DEV} voltage0 voltage1 | THREADS={int(a.threads)} {CHAN_REMOTE} -f {a.hz} {RATE} "
+    remote = (f"iio_readdev -b {CHUNK} -s {n} {RX_DEV} voltage0 voltage1 | THREADS={int(a.threads)} A1MODE={int(a.a1mode)} {CHAN_REMOTE} -f {a.hz} {RATE} "
               + " ".join(str(h) for h in hzs))
     cmd, env, ask = ssh_cmd(a.uri, remote)
     t0 = time.time()
@@ -866,7 +866,7 @@ def cmd_chan(a):
         park_rx(a.uri)
         ssh_run(a.uri, f"rm -f {CHAN_REMOTE}", timeout=20)
     took = time.time() - t0
-    meta = {"lo_hz": int(a.hz), "rate": RATE, "threads": a.threads, "gain": a.gain, "rx_bw": WIDE_BW, "bin_sha256": sha,
+    meta = {"lo_hz": int(a.hz), "rate": RATE, "threads": a.threads, "a1mode": a.a1mode, "gain": a.gain, "rx_bw": WIDE_BW, "bin_sha256": sha,
             "seconds": a.seconds, "took_s": round(took, 1), "pluto_stderr": err, "rc": rc,
             "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), **res}
     with open(os.path.join(a.out, "chan.json"), "w") as f:
@@ -963,6 +963,8 @@ def main(argv=None):
     ch.add_argument("--seconds", type=float, default=60.0)
     ch.add_argument("--gain", type=int, default=50, help="RX gain, dB (manual)")
     ch.add_argument("--threads", type=int, default=2, help="worker threads on the Pluto (its A9 has 2 cores)")
+    ch.add_argument("--a1mode", type=int, default=0, choices=(0, 1, 2),
+                    help="pluto_chan's first stage: 0 LO in the taps, 1 mix then boxcars, 2 none (a CPU floor)")
     ch.add_argument("--probe", action="store_true", help="only report the Pluto's CPU, memory and iio_readdev")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)

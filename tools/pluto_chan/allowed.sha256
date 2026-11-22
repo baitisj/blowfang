@@ -3,3 +3,4 @@
 # then arm-linux-gnueabihf-strip); a job ships the binary as job:pluto_chan.armhf.
 df2974aef3baf22c20afe79d921a9b7a572039c09655f49a7d1e45b6c22bba75  pluto_chan.armhf  armhf static, stripped; Ubuntu gcc 13.2 arm-linux-gnueabihf, HamFLAC main 6a6e708, 2026-11-22
 780b154b0b9a6c7e8334dc4127d6b1d544de3c59d644e342524155c79d10a842  pluto_chan.armhf  2 threads, LO tables instead of trig (2026-11-22 05:40Z); same toolchain and HamFLAC
+cca84f32697db19cd3c4dc2c9b51948940d0ebca8add1a3711266fe6242619ca  pluto_chan.armhf  A1 with the LO in the taps (A1MODE 0), mix+boxcars (1), floor (2); A2 21 taps, B 63 (2026-11-22 06:15Z)
