@@ -10,6 +10,11 @@
                                              runtime with earshot's own loader (ENSURE, LOAD =
                                              fpga/sw/ensure_pluto_fpga.sh, pluto_runtime_load.sh)
     pluto_fw.py psd OUT.json --hz LO [--gain G]   the channelizer's 512-bin PSD at an RX LO (receive)
+    pluto_fw.py riq PRODUCER OUT --hz LO --streams IDS --seconds N [--gain G] [--keep S]
+                                             run earshot's RIQ1 producer (pluto-fpga-source) and record
+                                             its selected bins: OUT.riq (raw RIQ1, first S seconds),
+                                             OUT.jsonl (per stream per second: power, peak, centroid),
+                                             OUT.json (config, counts, the producer's log). Receive only
     pluto_fw.py reboot                       reboot the Pluto (stock PL again), wait for it
     pluto_fw.py flash IMAGE.itb BACKUPDIR    write a pinned FIT to the firmware partition, read it
                                              back and compare, then boot it (bench_runner: the
@@ -57,6 +62,9 @@ EARSHOT = {
     "chanctl": "06b725538ed9df147fe4fd7dbd6df8cb6857871544258de310828422845a60e5",
     "ensure": "faa3514271e1ca3371d7b79b830911f0674d517a2e97a67d1052df84191fb8d5",   # fpga/sw/ensure_pluto_fpga.sh
     "load": "e48abd7dabe5a5a5cbdcc45b5f76b0185b5480face9ef67230d7c401c812e017",     # fpga/sw/pluto_runtime_load.sh
+    # fpga/sw/pluto_fpga_source.c at 8a3f459, same build as chanctl: the RIQ1 producer (offload/PROTOCOL.md),
+    # RX only; it never opens a transmit device
+    "producer": "c462e7586d0a197005feb213125e93efc41f57259125c240a177d5ca50b56429",
 }
 EARSHOT_SCRIPTS = {
     "ensure": "ensure_pluto_fpga.sh",
@@ -141,7 +149,7 @@ def wait_dfu(alt="firmware.dfu", seconds=40):
 
 def need(tool):
     if not shutil.which(tool):
-        raise SystemExit(f"{tool} is not installed on this host (Debian/Ubuntu: sudo apt install {tool})")
+        raise SystemExit(f"{tool} is not installed on this host (hamlet is Arch: paru -S {tool})")
 
 
 INFO = ("echo fw=$(cat /opt/VERSIONS 2>/dev/null | grep -m1 -i 'firmware\\|plutosdr' | tr -s ' ');"
@@ -350,14 +358,160 @@ def cmd_psd(a):
     # earshot design.md: bin k is RF offset k * 50 kHz from the LO, k >= 256 the negative offsets
     off = lambda k: (k if k < n // 2 else k - n) * 50_000
     top = sorted(range(n), key=lambda k: -mean[k])[:16]
+    # PSD registers are "long PSD (Q8 log2)" (earshot fpga/docs/design.md): value / 256 = log2(power),
+    # so a difference of 256 is 3.01 dB. Bins beyond the 20 MHz RF filter (|offset| > 10 MHz) are
+    # the filter's skirt and alias pairs, not signals: in_band false
     res = {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "lo_hz": int(a.hz), "gain": a.gain,
-           "rate": rate, "bins": n, "frames": len(frames), "setup": out, "active": act,
-           "median": floor, "top_bins": [[k, int(a.hz) + off(k), round(mean[k], 1), round(mean[k] / max(floor, 1), 2)]
-                                    for k in top],
+           "rate": rate, "bins": n, "frames": len(frames), "setup": out, "active": act, "unit": "Q8 log2",
+           "median": floor,
+           "top_bins_cols": ["bin", "rf_hz", "mean_q8log2", "db_over_median", "in_band"],
+           "top_bins": [[k, int(a.hz) + off(k), round(mean[k], 1), psd_db(mean[k], floor), abs(off(k)) <= bw / 2]
+                        for k in top],
            "mean": mean}
     with open(a.out, "w") as f:
         json.dump(res, f)
     print(json.dumps({k: v for k, v in res.items() if k not in ("mean", "setup")}, indent=1))
+
+
+def psd_db(v, ref):
+    """dB between two Q8 log2 PSD values"""
+    return round((v - ref) / 256 * 10 * 0.30102999566, 1)
+
+
+# RIQ1 header (earshot offload/PROTOCOL.md): 64 bytes, little endian
+RIQ_HDR = struct.Struct("<4sHHHHQIQQIqIHH4s")
+RIQ_MAX = 1 << 20
+RIQ_PORT = 9010
+
+
+def riq_messages(sock, until):
+    """yield (header tuple, payload, host time) from the producer until the deadline or EOF"""
+    import socket
+    buf = bytearray()
+    sock.settimeout(1.0)
+    while time.time() < until:
+        try:
+            d = sock.recv(1 << 16)
+        except socket.timeout:
+            continue
+        if not d:
+            return
+        buf += d
+        while len(buf) >= 64:
+            h = RIQ_HDR.unpack_from(buf)
+            if h[0] != b"RIQ1" or h[1] != 1 or h[2] != 64 or h[11] > RIQ_MAX:
+                raise SystemExit(f"riq: bad header {bytes(buf[:16]).hex()}")
+            if len(buf) < 64 + h[11]:
+                break
+            yield h, bytes(buf[:64 + h[11]]), time.time()
+            del buf[:64 + h[11]]
+
+
+def riq_second(iq, rate):
+    """one second of one stream: power (dBFS), the FFT peak's offset (parabolic), and the power-weighted
+    mean frequency (the centroid: an FM carrier's offset, whatever its audio)"""
+    import numpy as np
+    x = (iq[0::2] + 1j * iq[1::2]) / 32768.0
+    p = float(np.mean(np.abs(x) ** 2)) or 1e-20
+    w = np.hanning(len(x))
+    s = np.abs(np.fft.fftshift(np.fft.fft(x * w))) ** 2
+    k = int(np.argmax(s))
+    d = 0.0
+    if 0 < k < len(s) - 1:
+        a_, b_, c_ = np.log(s[k - 1] + 1e-30), np.log(s[k] + 1e-30), np.log(s[k + 1] + 1e-30)
+        den = a_ - 2 * b_ + c_
+        d = 0.5 * (a_ - c_) / den if den else 0.0
+    peak = (k + d - len(s) / 2) * rate / len(s)
+    cen = float(np.angle(np.sum(x[1:] * np.conj(x[:-1])))) * rate / (2 * np.pi)
+    return {"dbfs": round(10 * np.log10(p), 2), "peak_hz": round(peak, 3),
+            "peak_db": round(10 * np.log10(s[k] / max(float(np.median(s)), 1e-30)), 1), "centroid_hz": round(cen, 3)}
+
+
+def cmd_riq(a):
+    """earshot's producer at an LO, its selected bins recorded here (RX only; the producer saves the
+    receive settings and puts them back when it ends). Needs the channelizer loaded (fpga)."""
+    import socket
+    import numpy as np
+    import k6_bench as kb
+    pinned(a.producer, "producer")
+    if not 70e6 <= a.hz <= 6e9:
+        raise SystemExit("riq: --hz out of range")
+    if not 0 <= a.gain <= 71:
+        raise SystemExit("riq: --gain 0..71")
+    if not 1 <= a.seconds <= 780:
+        raise SystemExit("riq: --seconds 1..780 (the step's 900 s)")
+    ids = [int(v) for v in a.streams.split(",") if v.strip()]
+    if not ids or len(ids) > 8 or any(not 1 <= i <= 512 for i in ids):
+        raise SystemExit("riq: --streams 1..8 stream IDs, each 1..512 (bin + 1)")
+    keep = max(0.0, min(a.keep, 60.0))
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)) or ".", exist_ok=True)
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit("riq: stopped (SIGTERM)"))
+    summary = {"utc_start": None, "lo_hz": int(a.hz), "gain": a.gain, "streams": ids, "seconds": a.seconds,
+               "keep_s": keep, "configs": [], "counts": {}, "flags": {}, "gaps": 0, "bytes": 0}
+    with kb.ptt_lock():
+        ssh(CLEAN, timeout=20)
+        rc, o = ssh("cat > /tmp/pluto-fpga-source && chmod 755 /tmp/pluto-fpga-source",
+                    stdin=open(a.producer, "rb").read(), timeout=60)
+        if rc:
+            raise SystemExit(f"riq: copying the producer failed: {o[-200:]}")
+        start = (f"/tmp/pluto-fpga-source --port {RIQ_PORT} --center {int(a.hz)} --gain {a.gain:g}"
+                 f" --forward-streams {','.join(map(str, ids))} --seconds {int(a.seconds) + 2}"
+                 " > /tmp/pluto-fpga-source.log 2>&1 < /dev/null &")
+        rc, o = ssh(start, timeout=20)
+        sock = None
+        for _ in range(20):
+            try:
+                sock = socket.create_connection((HOST, RIQ_PORT), timeout=3)
+                break
+            except OSError:
+                time.sleep(0.5)
+        if sock is None:
+            _, log = ssh("cat /tmp/pluto-fpga-source.log; " + CLEAN, timeout=20)
+            raise SystemExit(f"riq: the producer did not listen on {RIQ_PORT}: {log[-300:]}")
+        t0 = time.time()
+        summary["utc_start"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0))
+        acc = {i: [] for i in ids}
+        nacc = {i: 0 for i in ids}
+        first = {}
+        with open(a.out + ".riq", "wb") as raw, open(a.out + ".jsonl", "w") as js:
+            try:
+                for h, msg, ht in riq_messages(sock, t0 + a.seconds + 1):
+                    typ, flags, sid, seq, fs, rate, ctr, nb = h[3], h[4], h[6], h[7], h[8], h[9], h[10], h[11]
+                    summary["bytes"] += len(msg)
+                    summary["counts"][str(typ)] = summary["counts"].get(str(typ), 0) + 1
+                    for bit, name in ((8, "discontinuity"), (16, "overflow")):
+                        if flags & bit:
+                            summary["flags"][name] = summary["flags"].get(name, 0) + 1
+                    if ht - t0 < keep:
+                        raw.write(msg)
+                    if typ == 4:
+                        summary["configs"].append(json.loads(msg[64:].decode(errors="replace")))
+                    elif typ == 5:
+                        summary["gaps"] += 1
+                    elif typ == 1 and sid in acc and rate > 0:
+                        first.setdefault(sid, (fs, ht, ctr))
+                        acc[sid].append(np.frombuffer(msg[64:], dtype="<i2"))
+                        nacc[sid] += nb // 4
+                        if nacc[sid] >= rate:              # one second of this stream
+                            iq = np.concatenate(acc[sid]).astype(np.float64)
+                            row = {"t": round(ht - t0, 3), "stream": sid, "center_hz": ctr,
+                                   "first_sample": int(fs) + nb // 4 - nacc[sid], "n": nacc[sid]}
+                            row.update(riq_second(iq[:2 * rate], rate))
+                            js.write(json.dumps(row) + "\n")
+                            js.flush()
+                            acc[sid], nacc[sid] = [], 0
+            finally:
+                sock.close()
+        time.sleep(3)
+        _, log = ssh("cat /tmp/pluto-fpga-source.log; " + CLEAN + "; rm -f /tmp/pluto-fpga-source", timeout=20)
+        ssh(PHY_DIR + " echo 2400000000 > $d/out_altvoltage0_RX_LO_frequency", timeout=20)   # park the RX LO
+    summary["producer_log"] = log[-2000:]
+    summary["first"] = {str(k): v for k, v in first.items()}
+    with open(a.out + ".json", "w") as f:
+        json.dump(summary, f, indent=1)
+    print(json.dumps({k: v for k, v in summary.items() if k != "configs"}, indent=1))
+    if not summary["counts"].get("1"):
+        raise SystemExit("riq: no IQ messages came")
 
 
 def cmd_reboot(a):
@@ -448,6 +602,15 @@ def main(argv=None):
     p.add_argument("--frames", type=int, default=10)
     p.add_argument("--every", type=float, default=1.0)
     p.set_defaults(fn=cmd_psd)
+    p = sub.add_parser("riq")
+    p.add_argument("producer")
+    p.add_argument("out", help="output prefix: OUT.riq, OUT.jsonl, OUT.json")
+    p.add_argument("--hz", type=float, required=True, help="RX LO, Hz (the 20 MHz window's centre)")
+    p.add_argument("--streams", required=True, help="stream IDs (bin + 1), comma separated, at most 8")
+    p.add_argument("--seconds", type=float, required=True)
+    p.add_argument("--gain", type=float, default=40)
+    p.add_argument("--keep", type=float, default=4.0, help="seconds of raw RIQ1 kept in OUT.riq (0..60)")
+    p.set_defaults(fn=cmd_riq)
     sub.add_parser("reboot").set_defaults(fn=cmd_reboot)
     p = sub.add_parser("flash")
     p.add_argument("image")
