@@ -17,11 +17,11 @@ discriminator. That's the path the K6's chip FSK at 2400 baud needed (docs/k6-fs
 | --- | --- |
 | model | PlutoSDR Rev.B, ad9364 (tunes 70 MHz to 6 GHz, so 2 m works without an unlock) |
 | firmware | stock ADI v0.39 (kernel 6.1) since 11-16 19:51Z (was v0.30-27-gd5bb PlutoWeb, with an auto-started OpenWebRX) |
-| serial | 104473ae73930001edff2200de632ddf03 |
-| crystal | 40 MHz, +-25 ppm. Measured 11-16 against the IC-7100: 39,999,447 Hz (-13.8 ppm; it read the IC-7100 5.15 kHz high on 440.850 with the old xo_correction 39999914). With that stored, a second check read +150 Hz (0.3 ppm) |
-| on hamlet | USB, libiio 0.26 on hamlet. The tool's default URI is `ip:192.168.2.1` (the Pluto's USB network link; hamlet is 192.168.2.254). The `usb:` address changes with each replug (1.35.5, 1.37.5, 1.38.5 on 11-16), and streaming over `usb:` fails (below). A udev rule gives libiio devices mode 666. No pyadi-iio: the tool uses the command-line tools |
+| <!-- SITE-SPECIFIC --> serial | 104473ae73930001edff2200de632ddf03 |
+| <!-- SITE-SPECIFIC --> crystal | 40 MHz, +-25 ppm. Measured 11-16 against the IC-7100: 39,999,447 Hz (-13.8 ppm; it read the IC-7100 5.15 kHz high on 440.850 with the old xo_correction 39999914). With that stored, a second check read +150 Hz (0.3 ppm) |
+| <!-- SITE-SPECIFIC --> on hamlet | USB, libiio 0.26 on hamlet. The tool's default URI is `ip:192.168.2.1` (the Pluto's USB network link; hamlet is 192.168.2.254). The `usb:` address changes with each replug (1.35.5, 1.37.5, 1.38.5 on 11-16), and streaming over `usb:` fails (below). A udev rule gives libiio devices mode 666. No pyadi-iio: the tool uses the command-line tools |
 | TX port | rubber duck (Jeff, 11-16) |
-| RX port | the stock stub, which is poor at 440 MHz on purpose (see below) |
+| <!-- SITE-SPECIFIC --> RX port | the stock stub, which is poor at 440 MHz on purpose (see below). Since 11-22 03:54Z: the big 2 m/70 cm antenna (Jeff), for repeater and control-channel captures; see "Antennas and what the receiver hears" |
 
 **Protect the receiver.** The AD936x's RX input is rated to about +2.5 dBm. A 5 W HT a metre
 away, duck to duck, puts about +10 dBm on it. So keep the stub (or a stub plus a 20-30 dB SMA
@@ -153,3 +153,57 @@ xo_correction stay. v0.39 (2024-10-15, Linux 6.1), installed 11-16 with this scr
   2.7, port 8073) at boot: 460.25 MHz, 600 kS/s, gain 73. Transmit stays free. The fix is to turn
   PlutoWeb's autostart off, or to install stock ADI firmware. Jeff installed v0.39 at 19:51Z,
   and receive has worked since.
+
+## Antennas and what the receiver hears (11-22)
+
+How to read an antenna with the Pluto, passively: compare captures at the same frequency and
+the same RX gain, on steady signals (TV pilots, NOAA, control channels, broadcast carriers);
+read the receiver's own floor at high gain on an empty frequency well above the bands the
+antenna covers; and check sample peaks for clipping before trusting a floor. Levels are the
+Pluto's own scale, dB re full scale minus the RX gain, so they compare with each other but are
+not dBm.
+
+<!-- SITE-SPECIFIC: begin -->
+
+On 11-22 03:54Z Jeff moved the big 2 m/70 cm antenna onto the RX port. A passive study ran beside
+the other jobs that night (jobs antstudy-1122a/b, bigant-1122a-d, all receive only). The stub sat on the bench and the big antenna is wherever Jeff mounted it, so "gain
+over the stub" mixes antenna gain and location, and it varies with the station's direction.
+
+Same frequency, same RX gain, stub (11-18) against the big antenna (11-22):
+
+| signal | gain | stub | big antenna | change |
+| --- | --- | --- | --- | --- |
+| P25 control channel 770.31875 (WSDOT site 48) | 40 | at the noise | 47 dB over the floor | at least +22 dB |
+| other 769-773 MHz control and voice channels | 40 | at the noise | 39-49 dB over the floor | at least +13 to +21 dB |
+| 863.819 narrow carrier | 65 | 18 dB over the floor | 44 dB over the floor | +16 dB |
+| TV channel 14 pilot (470.309) | 30 | -125 (+-3 dB over 13 captures, 11-18 06-10Z) | -119 | +6 dB |
+| TV channel 35 pilot (596.309) | 30 | at the noise (-132) | -123 | at least +10 dB |
+| weak signals 426.3-426.7 | 65 | -130..-133 | -124 | +6 to +9 dB (they come and go) |
+
+The receiver's own floor, at gain 70, is -154/-155 on this scale (900, 1300 and 2000 MHz with the
+big antenna). At 433.5 MHz the floor reads -149: the antenna brings in about 6 dB of outside noise
+over the Pluto's own, so on 70 cm the site sets the floor and more RX gain buys nothing. At 852
+and 855 MHz (gain 65) the floor is the Pluto's own, -154.
+
+On 11-18 the stub's floor at 851-869 MHz (gain 65) read -127, 27 dB higher than now, with sample
+peaks at 0.2-0.3 of full scale against 0.01 now. Something impulsive was on the bench that day,
+which fits the broadband site noise first seen 11-18/19 (project memory hamlet-vhf-noise).
+
+**Overload on VHF.** At gain 70 the 2 m and 222 MHz captures clip (sample peaks 0.48 at 145.0, 0.58
+at 147.0, 0.98 at 223.5 MHz). With this antenna, keep VHF captures at gain 50 or below; at gain 40
+NOAA reads cleanly.
+
+What it hears (one pass, 11-22 04:44-04:46Z):
+
+| band | heard |
+| --- | --- |
+| FM broadcast (gain 20) | all ten channels tried; strongest 88.1, 92.9, 105.7 MHz |
+| NOAA Weather Radio (gain 40) | 162.400, 162.475 and 162.550 all, 36-44 dB over the floor |
+| UHF TV (gain 30) | pilots on channels 14, 17, 22, 23, 24, 28 (strongest, 25 dB over the floor), 30-32. Channels 14, 24, 26 and 35 also carry a flat wideband signal with only a weak pilot on top, likely ATSC 3.0 (OFDM, no pilot) sharing the channel with a distant ATSC 1.0 station; not checked further |
+| 700 MHz | LTE downlinks at 739, 751 (strongest) and 763 MHz; WSDOT P25 at 769-775 |
+| 800 MHz | 851.8125 and 863.819 MHz only |
+| above 1 GHz (gain 30) | PCS 1960 MHz moderate; AWS 2120 and Wi-Fi 2437 MHz weak |
+
+Scripts and job files: project files position/antenna/ (antana.py) and position/p25/.
+
+<!-- SITE-SPECIFIC: end -->
