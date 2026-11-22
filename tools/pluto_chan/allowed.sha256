@@ -1,0 +1,4 @@
+# pluto_chan builds that tools/pluto_bench.py chan may copy into the Pluto's RAM and run.
+# One sha256 a line, then a note. Add a line only for a build from a reviewed commit (build.sh,
+# then arm-linux-gnueabihf-strip); a job ships the binary as job:pluto_chan.armhf.
+df2974aef3baf22c20afe79d921a9b7a572039c09655f49a7d1e45b6c22bba75  pluto_chan.armhf  armhf static, stripped; Ubuntu gcc 13.2 arm-linux-gnueabihf, HamFLAC main 6a6e708, 2026-11-22

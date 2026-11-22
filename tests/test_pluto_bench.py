@@ -2,6 +2,7 @@
 (the transmit checks, the IQ it streams, the FM audio it makes, its measurements and calibration,
 how it reads iio_attr).
 SPDX-License-Identifier: MIT"""
+import json
 import os
 import sys
 
@@ -281,3 +282,34 @@ def test_stream_fir_matches_one_piece():
     y = np.concatenate([f(x[i:i + 101]) for i in range(0, len(x), 101)])
     ref = sps.lfilter(h, 1.0, x)[::3]
     assert len(y) == len(ref) and np.allclose(y, ref, atol=1e-4)
+
+
+def test_chan_refuses_an_unlisted_binary(tmp_path):
+    """chan: only a build whose sha256 is in tools/pluto_chan/allowed.sha256 goes onto the Pluto"""
+    b = tmp_path / "evil.armhf"
+    b.write_bytes(b"\x7fELF not reviewed")
+    with pytest.raises(SystemExit, match="not in"):
+        pl.chan_allowed(str(b))
+
+
+def test_chan_stream_to_files(tmp_path):
+    """pluto_chan -f's records (levels, an over, the end) -> a FLAC an over, levels.json, overs.json"""
+    import io
+    import struct
+
+    import soundfile as sf
+    from pluto_chan import pluto_chan as pc
+    x = (3000 * np.sin(2 * np.pi * 500 * np.arange(8000) / 8000)).astype(np.int16)
+    fb = io.BytesIO()
+    sf.write(fb, x, 8000, format="FLAC", subtype="PCM_16")
+    flac = fb.getvalue()
+    s = b"L" + bytes([2]) + struct.pack("<I", 0) + struct.pack("20b", *([-70] * 10 + [-30] * 10))
+    s += b"O" + bytes([1]) + struct.pack("<II", 7, len(flac)) + flac
+    s += b"E" + bytes([0]) + struct.pack("<I", 20)
+    r = pc.write_stream(io.BytesIO(s), str(tmp_path), [442250000, 443650000], 0.0)
+    assert r["overs"] == 1 and r["secs"] == 2.0 and r["bytes"] == len(s)
+    name = "443.6500_19700101T0000007Z.flac"
+    y, fs = sf.read(str(tmp_path / name), dtype="int16")
+    assert fs == 8000 and np.array_equal(y, x)
+    lv = json.load(open(tmp_path / "levels.json"))
+    assert lv["levels_dbfs_100ms"] == [[-70] * 10, [-30] * 10]

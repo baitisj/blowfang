@@ -37,6 +37,8 @@ python3 tools/pluto_bench.py send WAV [--hz F] [--dev 3000 | --peak HZ] [--gain 
 python3 tools/pluto_bench.py rx OUT.cf32|OUT.wav [--hz F] [--seconds 10] [--gain 30]
 python3 tools/pluto_bench.py rx OUT.wav --wav-only [--wav-rate 8000]     FM audio only, no IQ kept
 python3 tools/pluto_bench.py rx OUT.wav --hz LO --channels F1,F2,...    one FM WAV per channel
+python3 tools/pluto_bench.py chan BIN OUTDIR --hz LO --channels F1,F2,... [--seconds 60] [--gain 50]
+python3 tools/pluto_bench.py chan --probe                            the Pluto's CPU, memory, iio_readdev
 python3 tools/pluto_bench.py measure CAP.cf32        offset (Hz, ppm), peak deviation, level, floor
 python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
 python3 tools/pluto_bench.py fsk24 [--rounds 20]     docs/k6-fsk24.md run 3
@@ -65,6 +67,17 @@ python3 tools/pluto_bench.py cue WAV --hz F --listen-hz F [--wait-s 900] [--dela
   `OUT_<MHz>.wav` with its own `.json` of levels, as `--wav-only` does. Six channels take about 1.5
   times the CPU of one `--wav-only` capture; the last line says whether it kept up. One band at a
   time: the Pluto has one RX LO, so 2 m and 70 cm need separate captures.
+- **chan:** the same split done on the Pluto's own ARM (Jeff 2026-11-22: "an on device
+  channelizer", with HamFLAC to cut the bandwidth). `tools/pluto_chan/` is a small C program
+  (`build.sh`, static armhf). The tool sets the radio up from hamlet as `rx` does, copies BIN into
+  the Pluto's RAM over SSH on the USB Ethernet (192.168.2.1, root, `$PLUTO_PASS` or the stock
+  password), and runs `iio_readdev | pluto_chan -f` there. Each channel is squelch gated and
+  each over comes back as its own HamFLAC stream, so idle channels cost a few bytes a second
+  (`tools/pluto_chan/flacout.cpp` has the format). OUTDIR gets `<MHz>_<UTC>.flac` an over,
+  `levels.json`, `overs.json` and `chan.json` (timing, the Pluto's own report). BIN must be listed
+  in `tools/pluto_chan/allowed.sha256`: a queued job ships the binary as a job file, and root on
+  the Pluto could key its TX, so only a reviewed build may go there. Nothing is flashed; a
+  reboot or the tool's own cleanup removes it.
 - **measure:** reads only where the signal is 20 dB over the capture's floor.
 - **cal:** calibrates against a carrier on a known frequency; the IC-7100's TCXO is the bench
   reference. `--save` writes `$BLOWFANG_WORK/state/pluto-cal.json`, and every later command sets the

@@ -97,7 +97,8 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240}
-PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue")
+CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
+PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
 CUE_MAX_S = 1700                            # a cue waits for its call this long at most (the step: 1800 s, with the send)
 PARROT_MAX_MIN = 25                         # a parrot holds the bench: 25 min at most (the step's 1800 s)
@@ -492,6 +493,10 @@ def check_step(job, i, step, rs, problems):
                     problems.append(f"{what}: parrot --minutes {m} is over {PARROT_MAX_MIN}")
             if "--hz" not in args:
                 problems.append(f"{what}: parrot needs --hz (its channel, inside the job's claim)")
+        if args[0] == "chan":                # receive only; the binary's hash is checked by pluto_bench
+            for sec in opts(args, "--seconds") or ["60"]:
+                if float(sec) > CHAN_MAX_S:
+                    problems.append(f"{what}: chan --seconds {sec} is over {CHAN_MAX_S}")
         if args[0] == "cue":
             if "--hz" not in args or "--listen-hz" not in args:
                 problems.append(f"{what}: cue needs --hz and --listen-hz (inside the job's claim)")
@@ -1595,6 +1600,8 @@ def sample_jobs(tmp, co, key):
         ("Pluto ladder reaching -25", J("bad-gains", {"do": "pluto", "args": ["steps", wav, "--gains", "-70,-50,-25"]}), False),
         ("Pluto send off the claimed channel", J("bad-chan", {"do": "pluto", "args": ["send", wav, "--hz", "441850000"]}), False),
         ("claim on 2 m", J("bad-claim", {"do": "wait", "seconds": 1}, freq_mhz=146.52), False),
+        ("Pluto channelizer on its ARM, 2 channels for 20 min", J("ok-chan", {"do": "pluto", "args": ["chan", os.path.join(tmp, "pc.armhf"), os.path.join(tmp, "c"), "--hz", "443000000", "--channels", "442250000,443650000", "--seconds", "1200"]}), True),
+        ("Pluto channelizer longer than its step may run", J("bad-chan", {"do": "pluto", "args": ["chan", os.path.join(tmp, "pc.armhf"), os.path.join(tmp, "c"), "--seconds", "1700"]}), False),
         ("anything naming ttyUSB2", J("bad-tty", {"do": "pluto", "args": ["rx", "/dev/ttyUSB2"]}), False),
         ("module with the job's own key file", J("bad-key", {"do": "k6.upload", "module": mod, "sha256": h(mod), "args": ["--key-file", key_path()]}), False),
         ("a file in /tmp", J("bad-tmp", {"do": "ic7100", "args": ["send", "/tmp/x.wav", "--freq", "440850000"]}), False),

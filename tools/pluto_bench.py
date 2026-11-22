@@ -79,6 +79,7 @@ FS_TRACK = 48_000
 IQ_FS_SAVE = 240_000
 WAV_FULL_DEV = 5000.0       # rx OUT.wav: this deviation = full scale
 AMP = 0.5 * 32767           # the DAC takes the top 12 of 16 bits; half scale
+WIDE_BW = 2_000_000          # RX analog filter for several channels (rx --channels, chan)
 CHUNK = 1 << 17             # samples a buffer (about 55 ms at 2.4 MS/s)
 TX_DEV = "cf-ad9361-dds-core-lpc"
 RX_DEV = "cf-ad9361-lpc"
@@ -155,14 +156,16 @@ def quiet(uri=None):
         put("out", TX_DEV, ch, "raw", 0, uri=uri, check=False)   # the DDS test tones off
 
 
-def setup(rate=RATE, tx_hz=None, rx_hz=None, gain=None, rx_gain=None, uri=None):
+def setup(rate=RATE, tx_hz=None, rx_hz=None, gain=None, rx_gain=None, uri=None, rx_bw=200000):
+    """rx_bw: the RX analog filter, Hz (200 kHz for one channel; rx --channels and chan open it to
+    WIDE_BW so channels 750 kHz off the LO are not cut)"""
     quiet(uri)
     c = load_cal()
     if c:
         put("dev", PHY, "xo_correction", int(c["xo"]), uri=uri)
     put("out", PHY, "voltage0", "sampling_frequency", int(rate), uri=uri)
     put("out", PHY, "voltage0", "rf_bandwidth", 200000, uri=uri)
-    put("in", PHY, "voltage0", "rf_bandwidth", 200000, uri=uri)
+    put("in", PHY, "voltage0", "rf_bandwidth", int(rx_bw), uri=uri)
     if tx_hz is not None:
         put("out", PHY, "altvoltage1", "frequency", int(tx_hz), uri=uri)
         put("out", PHY, "voltage0", "hardwaregain", f"{gain:.2f}", uri=uri)
@@ -316,13 +319,13 @@ class Decimator:
         return out.astype(np.complex64)
 
 
-def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE, sink=None, raw=False):
+def capture(seconds, hz=HZ, gain=30, uri=None, rate=RATE, sink=None, raw=False, rx_bw=200000):
     """-> complex64 at IQ_FS_SAVE, the meta dict; with sink, each part goes to sink(part) instead
     and nothing is kept (y is then empty): long captures without holding the IQ in memory.
     raw=True hands the sink the int16 IQ at rate as read, not decimated (rx --channels)"""
     import k6_bench as kb
     del kb                                  # imported for its error if the tools dir is missing
-    setup(rate, rx_hz=hz, rx_gain=gain, uri=uri)
+    setup(rate, rx_hz=hz, rx_gain=gain, uri=uri, rx_bw=rx_bw)
     xo = get("dev", PHY, "xo_correction", uri=uri)
     n = int(seconds * rate)
     cmd = ["iio_readdev", "-u", uri or URI, "-b", str(CHUNK), "-s", str(n), RX_DEV, "voltage0", "voltage1"]
@@ -679,7 +682,7 @@ def rx_channels(a):
     ms = MultiSink(sinks)
     t0 = time.time()
     try:
-        _, meta = capture(a.seconds, a.hz, a.gain, a.uri, sink=ms, raw=True)
+        _, meta = capture(a.seconds, a.hz, a.gain, a.uri, sink=ms, raw=True, rx_bw=WIDE_BW)
     finally:
         ms.close()
     took = time.time() - t0
@@ -775,6 +778,105 @@ def cmd_cal(a):
         print(f"saved {cal_path()}: every later command sets xo_correction {xo}")
 
 
+# ---- chan: the channelizer on the Pluto's own ARM (tools/pluto_chan/) ----
+CHAN_ALLOWED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pluto_chan", "allowed.sha256")
+CHAN_REMOTE = "/tmp/pluto_chan"
+SSH_OPTS = ["-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-o", "LogLevel=ERROR",
+            "-o", "ConnectTimeout=10", "-o", "PubkeyAuthentication=no", "-o", "NumberOfPasswordPrompts=1"]
+
+
+def chan_allowed(path):
+    """the binary's sha256 must be listed in tools/pluto_chan/allowed.sha256 (on main): a queued job
+    names the file, but only a reviewed build goes onto the Pluto, which could otherwise key its TX"""
+    import hashlib
+    h = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    ok = set()
+    if os.path.exists(CHAN_ALLOWED):
+        for line in open(CHAN_ALLOWED):
+            if line.strip() and not line.startswith("#"):
+                ok.add(line.split()[0].lower())
+    if h not in ok:
+        raise SystemExit(f"chan: {os.path.basename(path)} (sha256 {h[:16]}...) is not in {CHAN_ALLOWED}")
+    return h
+
+
+def ssh_cmd(uri, remote):
+    """ssh to the Pluto over its USB Ethernet (stock firmware: root / analog, from $PLUTO_PASS)"""
+    import tempfile
+    host = (uri or URI).split(":", 1)[1] if (uri or URI).startswith("ip:") else None
+    if not host:
+        raise SystemExit("chan: needs an ip: URI (the Pluto's USB Ethernet)")
+    fd, ask = tempfile.mkstemp(prefix="pluto_ask_", suffix=".sh")
+    os.write(fd, b"#!/bin/sh\necho \"${PLUTO_PASS:-analog}\"\n")
+    os.close(fd)
+    os.chmod(ask, 0o700)
+    env = dict(os.environ, SSH_ASKPASS=ask, SSH_ASKPASS_REQUIRE="force", DISPLAY=os.environ.get("DISPLAY", ":0"))
+    return ["ssh"] + SSH_OPTS + [f"root@{host}", remote], env, ask
+
+
+def ssh_run(uri, remote, stdin=None, timeout=60):
+    cmd, env, ask = ssh_cmd(uri, remote)
+    try:
+        return subprocess.run(cmd, input=stdin, capture_output=True, env=env, timeout=timeout, check=False,
+                              stdin=None if stdin is not None else subprocess.DEVNULL)
+    finally:
+        os.unlink(ask)
+
+
+def cmd_chan(a):
+    """the channelizer on the Pluto: setup from here (as rx), the IQ read and split on the Pluto,
+    only gated HamFLAC overs and levels back over the link"""
+    import pluto_chan.pluto_chan as pc
+    if a.probe:
+        r = ssh_run(a.uri, "uname -a; grep -m1 -i 'model name\\|Processor' /proc/cpuinfo; nproc; free;"
+                           " which iio_readdev; iio_readdev -h 2>&1 | head -3; cat /etc/os-release 2>/dev/null"
+                           " | head -2; df -h /tmp | tail -1")
+        print(r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace"))
+        return
+    if not a.bin or not a.out:
+        raise SystemExit("chan: BIN and OUTDIR (or --probe)")
+    hzs = [int(float(v)) for v in a.channels.split(",") if v.strip()]
+    for h in hzs:
+        if abs(h - a.hz) < 15_000 or abs(h - a.hz) > RATE / 2 - 40e3:
+            raise SystemExit(f"chan: {h} must be 15 kHz to {(RATE / 2 - 40e3) / 1e3:.0f} kHz from the LO {a.hz}")
+    sha = chan_allowed(a.bin)
+    r = ssh_run(a.uri, f"cat > {CHAN_REMOTE} && chmod 755 {CHAN_REMOTE} && sha256sum {CHAN_REMOTE}",
+                stdin=open(a.bin, "rb").read())
+    if r.returncode or sha not in r.stdout.decode():
+        raise SystemExit(f"chan: upload failed: {(r.stdout + r.stderr).decode(errors='replace').strip()}")
+    print(f"chan: {os.path.basename(a.bin)} ({sha[:16]}...) in the Pluto's RAM at {CHAN_REMOTE}")
+    os.makedirs(a.out, exist_ok=True)
+    setup(RATE, rx_hz=a.hz, rx_gain=a.gain, uri=a.uri, rx_bw=WIDE_BW)
+    n = int(a.seconds * RATE)
+    remote = (f"iio_readdev -b {CHUNK} -s {n} {RX_DEV} voltage0 voltage1 | {CHAN_REMOTE} -f {a.hz} {RATE} "
+              + " ".join(str(h) for h in hzs))
+    cmd, env, ask = ssh_cmd(a.uri, remote)
+    t0 = time.time()
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, env=env)
+    try:
+        res = pc.write_stream(p.stdout, a.out, hzs, t0)
+        err = p.stderr.read().decode(errors="replace").strip()
+        rc = p.wait(timeout=30)
+    finally:
+        if p.poll() is None:
+            p.kill()
+        os.unlink(ask)
+        park_rx(a.uri)
+        ssh_run(a.uri, f"rm -f {CHAN_REMOTE}", timeout=20)
+    took = time.time() - t0
+    meta = {"lo_hz": int(a.hz), "rate": RATE, "gain": a.gain, "rx_bw": WIDE_BW, "bin_sha256": sha,
+            "seconds": a.seconds, "took_s": round(took, 1), "pluto_stderr": err, "rc": rc,
+            "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t0)), **res}
+    with open(os.path.join(a.out, "chan.json"), "w") as f:
+        json.dump(meta, f, indent=1)
+    print(err)
+    print(f"chan: {a.seconds:.0f} s in {took:.1f} s on {len(hzs)} channels, {res['overs']} overs,"
+          f" {res['bytes']} bytes ({res['bytes'] / max(a.seconds, 1):.0f} B/s)"
+          f" ({'kept up' if took < a.seconds + 15 else 'SLOW: the Pluto did not keep up'})")
+    if rc:
+        raise SystemExit(f"chan: the Pluto side exited {rc}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="tools/pluto_bench.py", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -851,6 +953,14 @@ def main(argv=None):
                    help="FM audio only (as --wav-only) for each of these channels at once, all within"
                         " +-1.16 MHz of --hz (the LO; keep it 15 kHz or more off every channel):"
                         " OUT_<MHz>.wav and .json each. --wav-rate 8000 or 16000")
+    ch = sub.add_parser("chan", help="FM channels split on the Pluto's ARM, gated HamFLAC overs back (tools/pluto_chan/)")
+    ch.add_argument("bin", nargs="?", help="pluto_chan.armhf (its sha256 listed in tools/pluto_chan/allowed.sha256)")
+    ch.add_argument("out", nargs="?", help="OUTDIR: <MHz>_<UTC>.flac a over, levels.json, overs.json, chan.json")
+    ch.add_argument("--hz", type=int, default=443_000_000, help="the RX LO, between channels")
+    ch.add_argument("--channels", default="", metavar="HZ,HZ,...")
+    ch.add_argument("--seconds", type=float, default=60.0)
+    ch.add_argument("--gain", type=int, default=50, help="RX gain, dB (manual)")
+    ch.add_argument("--probe", action="store_true", help="only report the Pluto's CPU, memory and iio_readdev")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)
     pa.add_argument("--minutes", type=float, default=20.0)
@@ -869,7 +979,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.as_who:
         os.environ["K6_BENCH_AS"] = a.as_who
-    {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx, "steps": cmd_steps,
+    {"info": cmd_info, "quiet": cmd_quiet, "send": cmd_send, "fsk24": cmd_fsk24, "rx": cmd_rx, "chan": cmd_chan, "steps": cmd_steps,
      "measure": cmd_measure, "cal": cmd_cal, "parrot": cmd_parrot,
      "cue": cmd_cue}[a.cmd](a)
 
