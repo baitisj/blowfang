@@ -32,6 +32,9 @@
 #include <time.h>
 #include <errno.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #define FS1 32000                 /* after stage B */
 #define FS2 8000                  /* audio out */
@@ -170,6 +173,19 @@ static void stage_c(chan_t *c, float d)
     }
 }
 
+/* one channel-filtered sample at FS1: the level, then the discriminator, angle(x * conj(last)) */
+static void disc(chan_t *c, float sr, float si)
+{
+    c->pacc += sr * sr + si * si;
+    if (++c->pn == FS1 / 10) {
+        c->level = (float)(10 * log10(c->pacc / c->pn + 1e-20));
+        c->pacc = 0; c->pn = 0;
+    }
+    float pr = sr * c->lr + si * c->li, pi = si * c->lr - sr * c->li;
+    c->lr = sr; c->li = si;
+    stage_c(c, atan2f(pi, pr) * (FS1 / (2 * (float)M_PI)));
+}
+
 static void stage_b(chan_t *c)
 {
     while (c->pb + LB <= c->nb) {
@@ -180,15 +196,7 @@ static void stage_b(chan_t *c)
             si += c->hb[k] * i[k];
         }
         c->pb += c->qb;
-        c->pacc += sr * sr + si * si;
-        if (++c->pn == FS1 / 10) {
-            c->level = (float)(10 * log10(c->pacc / c->pn + 1e-20));
-            c->pacc = 0; c->pn = 0;
-        }
-        /* discriminator: angle(x * conj(last)) */
-        float pr = sr * c->lr + si * c->li, pi = si * c->lr - sr * c->li;
-        c->lr = sr; c->li = si;
-        stage_c(c, atan2f(pi, pr) * (FS1 / (2 * (float)M_PI)));
+        disc(c, sr, si);
     }
     if (c->pb > 4096) {
         memmove(c->br, c->br + c->pb, (c->nb - c->pb) * sizeof(float));
@@ -401,15 +409,266 @@ static void emit(void)
     fflush(stdout);
 }
 
+/* ---- -R: earshot's FPGA channelizer bins (RIQ1 over TCP, offload/PROTOCOL.md) instead of raw IQ ----
+ * The Pluto's PL splits 25.6 MS/s into 512 bins of 50 kHz, each a 100 kS/s complex stream (stream ID =
+ * bin + 1; bin k at LO + k * 50 kHz, k - 512 for k >= 256). Per channel: the bin nearest the target,
+ * a mix by the rest of the offset (at most 25 kHz), then one polyphase FIR that resamples 100 kS/s to
+ * FS1 (up 8, down 25) and is the channel filter as well; then the same discriminator, audio stage and
+ * gate as above. A few MAC/s million a channel: the A9 has room for all 16. This is our own reader
+ * written from the protocol text; no earshot code is linked. */
+#define RQ_RATE 100000
+#define RQ_UP 8
+#define RQ_DN 25                     /* 100000 * 8 / 25 = FS1 */
+#define RQ_PH 63                     /* taps a phase */
+#define RQ_BIN 50000.0
+#define RQ_MAXPAY (1 << 20)
+
+typedef struct {
+    double hz;                       /* the target */
+    uint32_t sid;                    /* its stream */
+    float hp[RQ_UP][RQ_PH];          /* the prototype by phase, newest input first */
+    float *xr, *xi; long n0, nx;     /* mixed input held, its first index (absolute), how many */
+    long m;                          /* the next output, absolute at FS1 */
+    long next;                       /* the next input sample expected (the stream's first-sample) */
+    double ph;                       /* the mix's phase (cycles) */
+    long got;                        /* samples fed, zeros for gaps included */
+} riq_t;
+static riq_t rq[MAXCH];
+static double rq_scale = 1.0 / 2048;
+
+static void riq_init(riq_t *q, chan_t *c, double hz, double lo)
+{
+    memset(q, 0, sizeof *q);
+    memset(c, 0, sizeof *c);
+    q->hz = hz;
+    long k = lrint((hz - lo) / RQ_BIN);
+    q->sid = (uint32_t)(((k % 512) + 512) % 512) + 1;
+    static float h[RQ_UP * RQ_PH];
+    firwin(h, RQ_UP * RQ_PH, 7500, (double)RQ_RATE * RQ_UP);   /* as stage B: +-7.5 kHz */
+    for (int p = 0; p < RQ_UP; p++)
+        for (int j = 0; j < RQ_PH; j++)
+            q->hp[p][j] = h[p + RQ_UP * j] * RQ_UP;
+    q->xr = calloc(RQ_PH + RQ_RATE, sizeof(float)); q->xi = calloc(RQ_PH + RQ_RATE, sizeof(float));
+    q->n0 = -(RQ_PH - 1); q->nx = RQ_PH - 1;      /* zero history */
+    q->next = -1;
+    c->hz = hz; c->qc = FS1 / FS2;
+    firwin(c->hc, LC, 0.45 * FS2, FS1);
+    c->c = calloc(BLK + LC, sizeof(float)); c->nc = LC - 1;
+    c->lr = 1; c->li = 0;
+}
+
+/* n samples of the channel's stream (NULL: n zeros, a gap), centred on cen Hz */
+static void riq_feed(riq_t *q, chan_t *c, const uint8_t *iq, long n, double cen)
+{
+    while (n > 0) {
+        long room = RQ_RATE - (q->nx - (RQ_PH - 1));
+        long run = n < room ? n : room;
+        double f = (q->hz - cen) / RQ_RATE;       /* cycles a sample */
+        float *xr = q->xr + q->nx, *xi = q->xi + q->nx;
+        double ph = q->ph;
+        float wr = (float)cos(-2 * M_PI * f), wi = (float)sin(-2 * M_PI * f);
+        float zr = (float)cos(-2 * M_PI * ph), zi = (float)sin(-2 * M_PI * ph);
+        for (long s = 0; s < run; s++) {
+            float ir = 0, ii = 0;
+            if (iq) {
+                const uint8_t *b = iq + 4 * s;
+                ir = (int16_t)(b[0] | b[1] << 8) * (float)rq_scale;
+                ii = (int16_t)(b[2] | b[3] << 8) * (float)rq_scale;
+            }
+            xr[s] = ir * zr - ii * zi;
+            xi[s] = ir * zi + ii * zr;
+            float t = zr * wr - zi * wi;
+            zi = zr * wi + zi * wr; zr = t;
+        }
+        q->ph = fmod(ph + f * run, 1.0);
+        q->nx += run; q->got += run;
+        if (iq)
+            iq += 4 * run;
+        n -= run;
+        for (;;) {                                /* outputs whose newest input is here */
+            long t = RQ_DN * q->m, ni = t / RQ_UP;
+            int p = (int)(t % RQ_UP);
+            if (ni >= q->n0 + q->nx)
+                break;
+            const float *h = q->hp[p], *r = q->xr + (ni - q->n0), *i = q->xi + (ni - q->n0);
+            float sr = 0, si = 0;
+            for (int j = 0; j < RQ_PH; j++) {
+                sr += h[j] * r[-j];
+                si += h[j] * i[-j];
+            }
+            disc(c, sr, si);
+            q->m++;
+        }
+        long keep0 = (RQ_DN * q->m) / RQ_UP - (RQ_PH - 1);   /* the oldest input still wanted */
+        long drop = keep0 - q->n0;
+        if (drop > 0) {
+            memmove(q->xr, q->xr + drop, (q->nx - drop) * sizeof(float));
+            memmove(q->xi, q->xi + drop, (q->nx - drop) * sizeof(float));
+            q->n0 += drop; q->nx -= drop;
+        }
+    }
+}
+
+static int read_full(int fd, void *buf, size_t n)
+{
+    size_t have = 0;
+    while (have < n) {
+        ssize_t r = read(fd, (char *)buf + have, n - have);
+        if (r < 0 && errno == EINTR)
+            continue;
+        if (r <= 0)
+            return 0;
+        have += (size_t)r;
+    }
+    return 1;
+}
+
+static uint64_t le(const uint8_t *b, int n)
+{
+    uint64_t v = 0;
+    for (int k = n - 1; k >= 0; k--)
+        v = v << 8 | b[k];
+    return v;
+}
+
+/* "-" is stdin; else HOST:PORT, retried for 15 s while the producer starts */
+static int riq_open(const char *src)
+{
+    if (!strcmp(src, "-"))
+        return 0;
+    char host[64];
+    const char *colon = strrchr(src, ':');
+    if (!colon || colon - src >= (int)sizeof host)
+        return -1;
+    memcpy(host, src, colon - src); host[colon - src] = 0;
+    struct sockaddr_in a;
+    memset(&a, 0, sizeof a);
+    a.sin_family = AF_INET;
+    a.sin_port = htons((uint16_t)atoi(colon + 1));
+    if (inet_pton(AF_INET, host, &a.sin_addr) != 1)
+        return -1;
+    for (int tries = 0; tries < 30; tries++) {
+        int fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (fd >= 0 && connect(fd, (struct sockaddr *)&a, sizeof a) == 0)
+            return fd;
+        if (fd >= 0)
+            close(fd);
+        usleep(500000);
+    }
+    return -1;
+}
+
+static int riq_main(const char *src, double lo, int nargs, char **hzs, long nsamp)
+{
+    nch = nargs;
+    for (int j = 0; j < nch; j++) {
+        double hz = atof(hzs[j]);
+        if (fabs(hz - lo) > 10e6) {
+            fprintf(stderr, "pluto_chan: %.0f is more than 10 MHz from the LO\n", hz);
+            return 2;
+        }
+        riq_init(&rq[j], &ch[j], hz, lo);
+        fprintf(stderr, "pluto_chan: %.0f Hz from stream %u\n", hz, rq[j].sid);
+    }
+    int fd = riq_open(src);
+    if (fd < 0) {
+        fprintf(stderr, "pluto_chan: cannot open %s\n", src);
+        return 1;
+    }
+    static uint8_t pay[RQ_MAXPAY];
+    uint8_t hd[64];
+    long nmsg = 0, ngap = 0;
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    while (read_full(fd, hd, 64)) {
+        if (memcmp(hd, "RIQ1", 4) || le(hd + 4, 2) != 1 || le(hd + 6, 2) != 64) {
+            fprintf(stderr, "pluto_chan: not a RIQ1 header\n");
+            return 1;
+        }
+        uint32_t nb = (uint32_t)le(hd + 52, 4);
+        if (nb > RQ_MAXPAY) {
+            fprintf(stderr, "pluto_chan: RIQ1 payload of %u bytes\n", nb);
+            return 1;
+        }
+        if (!read_full(fd, pay, nb))
+            break;
+        nmsg++;
+        unsigned type = (unsigned)le(hd + 8, 2), fmt = (unsigned)le(hd + 56, 2);
+        if (type == 4 && fmt == 3 && nmsg < 4)
+            fprintf(stderr, "pluto_chan: config %.*s\n", nb < 300 ? (int)nb : 300, (const char *)pay);
+        if (type != 1 || fmt != 1)
+            continue;
+        uint32_t sid = (uint32_t)le(hd + 20, 4);
+        long first = (long)le(hd + 32, 8), n = nb / 4;
+        uint32_t rate = (uint32_t)le(hd + 40, 4);
+        unsigned bits = (unsigned)le(hd + 58, 2);
+        double cen = (double)(int64_t)le(hd + 44, 8);
+        if (rate != RQ_RATE)
+            continue;
+        if (bits >= 8 && bits <= 16)
+            rq_scale = 1.0 / (1 << (bits - 1));
+        for (int j = 0; j < nch; j++) {
+            riq_t *q = &rq[j];
+            if (q->sid != sid)
+                continue;
+            const uint8_t *p = pay;
+            long m = n;
+            if (q->next >= 0 && first > q->next) {        /* a gap: zeros, up to 1 s */
+                long z = first - q->next;
+                riq_feed(q, &ch[j], NULL, z < RQ_RATE ? z : RQ_RATE, cen);
+                ngap++;
+            } else if (q->next >= 0 && first < q->next) {  /* overlap (pre-roll): skip what we have */
+                long skip = q->next - first;
+                if (skip >= m)
+                    continue;
+                p += 4 * skip; m -= skip;
+            }
+            riq_feed(q, &ch[j], p, m, cen);
+            q->next = first + n;
+        }
+        while (1) {
+            int ok = 1;
+            for (int j = 0; j < nch; j++)
+                ok &= ch[j].na >= FS2 / 10;
+            if (!ok)
+                break;
+            emit();
+        }
+        if (nsamp) {
+            int all = 1;
+            for (int j = 0; j < nch; j++)
+                all &= rq[j].got >= nsamp;
+            if (all)
+                break;
+        }
+    }
+    if (gated)
+        flac_finish();
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    double el = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
+    long least = rq[0].got;
+    for (int j = 1; j < nch; j++)
+        if (rq[j].got < least)
+            least = rq[j].got;
+    fprintf(stderr, "pluto_chan: RIQ1, %d channels, %ld messages, %ld gaps, %.2f s of the slowest stream in %.2f s\n",
+            nch, nmsg, ngap, least / (double)RQ_RATE, el);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     if (argc > 1 && !strcmp(argv[1], "-f")) {
         gated = 1;
         argv++; argc--;
     }
+    if (argc > 4 && !strcmp(argv[1], "-R")) {
+        const char *ns = getenv("NSAMP");        /* stop once every stream gave this many samples */
+        return riq_main(argv[2], atof(argv[3]), argc - 4, argv + 4, ns ? atol(ns) : 0);
+    }
     if (argc < 4) {
         fprintf(stderr, "usage: %s [-f] LO_HZ RATE HZ1 [HZ2 ...]  (int16 IQ on stdin)\n"
-                "  -f: squelch-gated overs, each a HamFLAC stream (flacout.cpp says the format)\n", argv[0]);
+                "       %s [-f] -R HOST:PORT|- LO_HZ HZ1 [HZ2 ...]  (earshot's RIQ1 bins)\n"
+                "  -f: squelch-gated overs, each a HamFLAC stream (flacout.cpp says the format)\n", argv[0], argv[0]);
         return 2;
     }
     double lo = atof(argv[1]);

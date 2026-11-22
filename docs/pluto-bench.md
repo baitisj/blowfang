@@ -38,6 +38,7 @@ python3 tools/pluto_bench.py rx OUT.cf32|OUT.wav [--hz F] [--seconds 10] [--gain
 python3 tools/pluto_bench.py rx OUT.wav --wav-only [--wav-rate 8000]     FM audio only, no IQ kept
 python3 tools/pluto_bench.py rx OUT.wav --hz LO --channels F1,F2,...    one FM WAV per channel
 python3 tools/pluto_bench.py chan BIN OUTDIR --hz LO --channels F1,F2,... [--seconds 60] [--gain 50]
+python3 tools/pluto_bench.py chan BIN OUTDIR --bins PRODUCER --hz LO --channels ...   from earshot's FPGA bins
 python3 tools/pluto_bench.py chan --probe                            the Pluto's CPU, memory, iio_readdev
 python3 tools/pluto_bench.py measure CAP.cf32        offset (Hz, ppm), peak deviation, level, floor
 python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
@@ -78,6 +79,17 @@ python3 tools/pluto_bench.py cue WAV --hz F --listen-hz F [--wait-s 900] [--dela
   in `tools/pluto_chan/allowed.sha256`: a queued job ships the binary as a job file, and root on
   the Pluto could key its TX, so only a reviewed build may go there. Nothing is flashed; a
   reboot or the tool's own cleanup removes it.
+  On the A9 the full-rate first stage is the limit: about 8 channels at 2.4 MS/s (build 780b, 114%
+  of real time; the split first stage of A1MODE 0/1 was slower there, 174-305%).
+- **chan --bins PRODUCER:** the same overs, but the band is split by earshot's FPGA channelizer
+  (github.com/coryking/earshot, GPL-3; `pluto_fw.py fpga` loads it): 512 bins of 50 kHz across
+  25.6 MS/s, each a 100 kS/s stream. The tool copies earshot's producer (pinned in `pluto_fw.py`)
+  and pluto_chan into the Pluto's RAM, starts the producer for the channels' bins, and
+  `pluto_chan -R` reads them on the Pluto over TCP (RIQ1, earshot's offload/PROTOCOL.md; our own
+  reader, no earshot code linked). Per channel the A9 only mixes inside the bin (at most 25 kHz),
+  resamples 100 to 32 kS/s through one polyphase FIR (the +-7.5 kHz channel filter), demodulates
+  and gates. Channels may sit up to 9.9 MHz from the LO, so all of 2 m fits one run; VHF gain at
+  most 50 on the big antenna.
 - **measure:** reads only where the signal is 20 dB over the capture's floor.
 - **cal:** calibrates against a carrier on a known frequency; the IC-7100's TCXO is the bench
   reference. `--save` writes `$BLOWFANG_WORK/state/pluto-cal.json`, and every later command sets the

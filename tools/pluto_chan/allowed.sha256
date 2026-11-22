@@ -6,3 +6,4 @@ df2974aef3baf22c20afe79d921a9b7a572039c09655f49a7d1e45b6c22bba75  pluto_chan.arm
 cca84f32697db19cd3c4dc2c9b51948940d0ebca8add1a3711266fe6242619ca  pluto_chan.armhf  A1 with the LO in the taps (A1MODE 0), mix+boxcars (1), floor (2); A2 21 taps, B 63 (2026-11-22 06:15Z)
 83dde09b3021c293e40a8f7b2bf92b3bcedf0c50950f016654e9ee1df534890c  pluto_chan.armhf  as above plus NSAMP (chan --reader dev) (2026-11-22 06:20Z)
 349c24caa2c48586621ba1f0e99d75b8f4390e6dfe15e1e2d20182c140cc5336  pluto_chan.armhf  A1MODE 3 (780b's stage A, default) beside 0-2; noise squelch on the overs; read(2) blocks (2026-11-22 06:45Z)
+eb821c3351e2fd9edfac9e1cce214454590ddba5ec981ec11794f4dac7674b23  pluto_chan.armhf  as 349c plus -R: reads earshot's RIQ1 bins (chan --bins) (2026-11-22 08:25Z)
