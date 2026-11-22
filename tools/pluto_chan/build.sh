@@ -7,10 +7,10 @@ H=${HAMFLAC:?set HAMFLAC to a github.com/baitisj/hamflac checkout}
 O=${OUT:-build}
 mkdir -p "$O"
 build() {  # CC CXX FLAGS NAME
-  $1 -O3 -ffast-math -Wall $3 -c pluto_chan.c -o "$O/pc_$4.o"
+  $1 -O3 -ffast-math -Wall -pthread $3 -c pluto_chan.c -o "$O/pc_$4.o"
   $2 -O2 -std=c++20 -Wall $3 -I"$H/include" -I"$H/src" -I"$H/third_party/dr_libs" -c flacout.cpp -o "$O/fo_$4.o"
   $2 -O2 -std=c++20 $3 -I"$H/include" -I"$H/src" -I"$H/third_party/dr_libs" -c "$H/src/hamflac.cpp" -o "$O/hf_$4.o"
-  $2 $3 -o "$O/$4" "$O/pc_$4.o" "$O/fo_$4.o" "$O/hf_$4.o" -lm $5
+  $2 $3 -o "$O/$4" "$O/pc_$4.o" "$O/fo_$4.o" "$O/hf_$4.o" -lm -pthread $5
 }
 build cc c++ "" pluto_chan
 command -v arm-linux-gnueabihf-g++ >/dev/null && \
