@@ -983,8 +983,9 @@ def main(argv=None):
                     help="readdev: iio_readdev into a pipe (default; any build); dev: pluto_chan reads"
                          " /dev/iio:deviceN itself (builds with NSAMP, 2026-11-22 06:20Z on)")
     ch.add_argument("--threads", type=int, default=2, help="worker threads on the Pluto (its A9 has 2 cores)")
-    ch.add_argument("--a1mode", type=int, default=0, choices=(0, 1, 2),
-                    help="pluto_chan's first stage: 0 LO in the taps, 1 mix then boxcars, 2 none (a CPU floor)")
+    ch.add_argument("--a1mode", type=int, default=3, choices=(0, 1, 2, 3),
+                    help="pluto_chan's first stage: 3 mix then one 63-tap stage (default, fastest on the Pluto),"
+                         " 0 LO in a 9-tap triangle, 1 mix then boxcars, 2 none (a CPU floor)")
     ch.add_argument("--probe", action="store_true", help="only report the Pluto's CPU, memory and iio_readdev")
     pa = sub.add_parser("parrot", help="send back each YSF or M17 sotto message heard (tools/pluto_parrot.py)")
     pa.add_argument("--hz", type=int, default=441_850_000)

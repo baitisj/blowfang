@@ -7,7 +7,10 @@
 //                                             tick (0.1 s from the start, lead-in included)
 //   'E' u8 0   u32 tick                       the end of the stream
 // The gate: a floor per channel that follows the level down at once and up 0.2 dB/s; the
-// squelch opens 12 dB over it and closes after 0.5 s under floor + 8 dB. An over keeps 0.3 s
+// squelch opens 12 dB over it with the audio quieted (a noise squelch: the variance of the
+// first difference over the variance, about 1.6 for the discriminator's noise and 0.1-0.6 under
+// a carrier, measured 11-22; open under 1.2) and closes after 0.5 s under floor + 8 dB or noisy.
+// The level gate alone opened on broadband bursts that lifted every channel at once. An over keeps 0.3 s
 // before the opening and the 0.5 s hang, and is cut every 60 s on a long carrier.
 #include <cmath>
 #include <cstdint>
@@ -24,6 +27,20 @@ constexpr int kTick = 800;            // 0.1 s at 8 kHz
 constexpr int kMaxCh = 16;
 constexpr float kOpenDb = 12.0f, kCloseDb = 8.0f, kRiseDb = 0.02f;
 constexpr int kHang = 5, kPre = 3, kMaxTicks = 600;
+constexpr float kQuietOpen = 1.2f, kQuietClose = 1.4f;
+
+float noise_ratio(const int16_t* a, int n)
+{
+    double m = 0, v = 0, d = 0;
+    for (int i = 0; i < n; i++)
+        m += a[i];
+    m /= n;
+    for (int i = 0; i < n; i++)
+        v += (a[i] - m) * (a[i] - m);
+    for (int i = 1; i < n; i++)
+        d += double(a[i] - a[i - 1]) * (a[i] - a[i - 1]);
+    return v > 0 ? float(d / v) : 2.0f;
+}
 
 struct Gate {
     bool init = false, open = false;
@@ -75,8 +92,9 @@ extern "C" void flac_tick(int ch, int nch, const int16_t* aud, int n, float leve
     float v = std::fmax(-127.0f, std::fmin(0.0f, std::round(level)));
     s.lv[tick % 10] = int8_t(v);
     std::vector<int16_t> a(aud, aud + n);
+    const float nr = noise_ratio(aud, n);
     if (!s.open) {
-        if (level > s.floor + kOpenDb) {
+        if (level > s.floor + kOpenDb && nr < kQuietOpen) {
             s.open = true;
             s.below = 0;
             s.start = tick - uint32_t(s.pre.size());
@@ -91,7 +109,7 @@ extern "C" void flac_tick(int ch, int nch, const int16_t* aud, int n, float leve
         }
     } else {
         s.over.insert(s.over.end(), a.begin(), a.end());
-        s.below = level < s.floor + kCloseDb ? s.below + 1 : 0;
+        s.below = (level < s.floor + kCloseDb || nr > kQuietClose) ? s.below + 1 : 0;
         if (s.below >= kHang) {
             flush_over(ch, s);
             s.open = false;

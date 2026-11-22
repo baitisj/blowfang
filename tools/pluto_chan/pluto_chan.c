@@ -7,7 +7,9 @@
  * of 8 kHz FM audio, channel after channel (WAV_FULL_DEV Hz of deviation = 32767). Only audio
  * crosses the USB link: 16 kB/s a channel.
  *
- * Per channel, three decimating FIRs that compute only the outputs they keep:
+ * Per channel, decimating FIRs that compute only the outputs they keep. By default (A1MODE 3) a mix
+ * from a table of one LO period, then stage A: 63 real taps, RATE -> 160 kS/s, then B and C below.
+ * A1MODE 0 and 1 split stage A in two (slower on the Pluto's A9, kept to measure against):
  *   A1: the mix to 0 Hz and a 9-tap triangle (two 5-sample boxcars, CIC order 2) in one pass,
  *      RATE -> 480 kS/s, with the LO folded into the taps (a table per output phase: the offset
  *      rounded to 5 kHz keeps it at most 480 phases; the rest is turned out after A2). The
@@ -28,11 +30,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <unistd.h>
 
 #define FS1 32000                 /* after stage B */
 #define FS2 8000                  /* audio out */
 #define FSA 480000                /* after stage A1 */
 #define L1 9                      /* stage A1: triangle taps */
+#define L0 63                     /* stage A, A1MODE=3 */
 #define LA 21                     /* stage A2 taps */
 #define LB 63                     /* stage B taps */
 #define LC 63                     /* stage C taps */
@@ -65,6 +70,9 @@ typedef struct {
     float *lr_, *li_; int lp, lk;  /* A1MODE=1: the LO table (one period) and the place in it */
     float *mr, *mi, *sr, *si;      /* A1MODE=1: the mixed block and its 5-sample sums */
     float zr, zi, wr, wi; int zn;  /* the residual offset turned out after A2 (a phasor) */
+    float h0[L0];                  /* A1MODE=3: one 63-tap stage A at RATE (build 780b) */
+    float *l0r, *l0i; int lp0, lk0;/* A1MODE=3: its LO table, offset exact or to 1 kHz */
+    float *m0r, *m0i; int nm0, pa0;/* A1MODE=3: the mixed input and the next window */
     float *ar_, *ai_; int na2, pa; /* stage A2 input */
     float *br, *bi; int nb, pb;    /* stage B input ring (linear, compacted) */
     float lr, li;                  /* discriminator: last sample */
@@ -119,6 +127,23 @@ static void chan_init(chan_t *c, double hz, double lo, int rate)
     c->nb = LB - 1;                              /* zero history */
     c->c = calloc(BLK + LC, sizeof(float)); c->nc = LC - 1;
     c->lr = 1; c->li = 0;
+    firwin(c->h0, L0, 12000, rate);              /* A1MODE=3: pass +-8 kHz, alias-free to 152k */
+    long o0 = lrint(c->off);
+    g = rate; t = labs(o0);
+    while (t) { long r = g % t; g = t; t = r; }
+    if (rate / g > MAXP) {                       /* round to 1 kHz: period at most rate/1000 */
+        o0 = lrint(c->off / 1000.0) * 1000;
+        g = rate; t = labs(o0);
+        while (t) { long r = g % t; g = t; t = r; }
+    }
+    c->lp0 = o0 ? (int)(rate / g) : 1;
+    c->l0r = malloc(c->lp0 * sizeof(float)); c->l0i = malloc(c->lp0 * sizeof(float));
+    for (int k = 0; k < c->lp0; k++) {
+        c->l0r[k] = (float)cos(-2 * M_PI * (double)o0 * k / rate);
+        c->l0i[k] = (float)sin(-2 * M_PI * (double)o0 * k / rate);
+    }
+    c->m0r = calloc(L0 + BLK, sizeof(float)); c->m0i = calloc(L0 + BLK, sizeof(float));
+    c->nm0 = L0 - 1;
 }
 
 static void emit(void);
@@ -172,8 +197,54 @@ static void stage_b(chan_t *c)
     }
 }
 
-static int a1mode;                 /* $A1MODE: 0 the LO in the taps (default), 1 mix then boxcars,
-                                      2 nothing (the read and the conversion alone: a floor) */
+static int a1mode = 3;             /* $A1MODE: 3 (default) mix from a table, then one 63-tap stage A
+                                      straight to 160 kS/s, the fastest on the Pluto (114% of real
+                                      time for 8 channels, 11-22); 0 the LO in a 9-tap triangle, 1 mix
+                                      then boxcars (both slower there: 174-305%); 2 nothing (a floor) */
+
+/* A1MODE=3: mix the block (n new samples after L1-1 of history) into the channel's buffer, then
+ * a 63-tap stage A at RATE that keeps every qa*q1-th output, into stage B's input */
+static void stage_a0(chan_t *c, const float *restrict xr_, const float *restrict xi_, int n)
+{
+    float *restrict mr = c->m0r + c->nm0, *restrict mi = c->m0i + c->nm0;
+    const float *restrict x0r = xr_ + (L1 - 1), *restrict x0i = xi_ + (L1 - 1);
+    for (int s0 = 0; s0 < n;) {                  /* runs inside one LO period: no modulo inside */
+        int run = c->lp0 - c->lk0;
+        if (run > n - s0)
+            run = n - s0;
+        const float *restrict lr = c->l0r + c->lk0, *restrict li = c->l0i + c->lk0;
+        const float *restrict ar = x0r + s0, *restrict ai = x0i + s0;
+        float *restrict orr = mr + s0, *restrict oi = mi + s0;
+        for (int k = 0; k < run; k++) {
+            orr[k] = ar[k] * lr[k] - ai[k] * li[k];
+            oi[k] = ar[k] * li[k] + ai[k] * lr[k];
+        }
+        s0 += run;
+        c->lk0 += run;
+        if (c->lk0 == c->lp0)
+            c->lk0 = 0;
+    }
+    c->nm0 += n;
+    const float *restrict h = c->h0;
+    const int qd = c->q1 * c->qa;
+    while (c->pa0 + L0 <= c->nm0) {
+        const float *restrict r = c->m0r + c->pa0, *restrict i = c->m0i + c->pa0;
+        float sr = 0, si = 0;
+        for (int k = 0; k < L0; k++) {
+            sr += h[k] * r[k];
+            si += h[k] * i[k];
+        }
+        c->br[c->nb] = sr;
+        c->bi[c->nb] = si;
+        c->nb++;
+        c->pa0 += qd;
+    }
+    int keep = c->nm0 - c->pa0;                  /* compact: from the next window on */
+    memmove(c->m0r, c->m0r + c->pa0, keep * sizeof(float));
+    memmove(c->m0i, c->m0i + c->pa0, keep * sizeof(float));
+    c->nm0 = keep; c->pa0 = 0;
+    stage_b(c);
+}
 
 /* A1MODE=1: mix the block to 0 Hz from the LO table, then the triangle as two boxcars */
 static int stage_a1_mix(chan_t *c, const float *restrict xr_, const float *restrict xi_, int n)
@@ -221,6 +292,10 @@ static void stage_a(chan_t *c, const float *restrict xr_, const float *restrict 
 {
     if (a1mode == 2)
         return;
+    if (a1mode == 3) {
+        stage_a0(c, xr_, xi_, n);
+        return;
+    }
     float *restrict o1r = c->ar_, *restrict o1i = c->ai_;
     int n2 = c->na2, p = c->p1, q = c->q;
     const int end = (L1 - 1) + n, nq = c->nq, q1 = c->q1;
@@ -287,6 +362,21 @@ static void *worker(void *arg)
             stage_a(&ch[j], xr, xi, nblk);
         pthread_barrier_wait(&bar_done);
     }
+}
+
+/* up to n samples (4 bytes each) from stdin; short only at the end of the input */
+static size_t read_block(int16_t *raw, size_t n)
+{
+    size_t want = 4 * n, have = 0;
+    while (have < want) {
+        ssize_t r = read(0, (char *)raw + have, want - have);
+        if (r < 0 && errno == EINTR)
+            continue;
+        if (r <= 0)
+            break;
+        have += (size_t)r;
+    }
+    return have / 4;
 }
 
 static void emit(void)
@@ -363,7 +453,8 @@ int main(int argc, char **argv)
     clock_gettime(CLOCK_MONOTONIC, &t0);
     long total = 0;
     size_t got;
-    while ((got = fread(raw, 4, nsamp && nsamp - total < BLK ? (size_t)(nsamp - total) : BLK, stdin)) > 0) {
+    /* read(2) in whole blocks, not stdio: from /dev/iio:deviceN each call is one DMA block copy */
+    while ((got = read_block(raw, nsamp && nsamp - total < BLK ? (size_t)(nsamp - total) : BLK)) > 0) {
         for (size_t s = 0; s < got; s++) {
             xr[L1 - 1 + s] = raw[2 * s] * (1.0f / 2048);
             xi[L1 - 1 + s] = raw[2 * s + 1] * (1.0f / 2048);
