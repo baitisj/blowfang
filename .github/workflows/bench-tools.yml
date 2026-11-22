@@ -1,0 +1,87 @@
+# Bench tools: the ADALM-Pluto SDR (tools/pluto_bench.py, tools/pluto_parrot.py, tools/pluto_fw.py,
+# the on-Pluto channelizer tools/pluto_chan/) and the hamlet bench runner and its jobs inbox. They
+# run on hamlet, not on a radio, so their pull requests run these Python tests and no radio's
+# firmware build ([bench] in .github/ci-radios.txt).
+name: Bench tools
+
+on:
+  push:
+    branches: [main]
+    # docs only ([ignore] in .github/ci-radios.txt): no run at all. tools/ci_scope.py --paths
+    # prints this list and --check keeps it equal to the map
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!*.md'
+      - '!LICENSE'
+      - '!.gitignore'
+      - '!docs/**'
+      - '!.github/workflows/guard.yml'
+      - '!.github/workflows/k6-compilers.yml'
+      - '!tools/hamlet_prune_worktrees.sh'
+      - 'docs/manual/cards/**'
+      - 'docs/k6-insights/**'
+      - 'docs/k6-modules.md'
+  pull_request:
+    # docs only ([ignore] in .github/ci-radios.txt): no run at all. tools/ci_scope.py --paths
+    # prints this list and --check keeps it equal to the map
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!*.md'
+      - '!LICENSE'
+      - '!.gitignore'
+      - '!docs/**'
+      - '!.github/workflows/guard.yml'
+      - '!.github/workflows/k6-compilers.yml'
+      - '!tools/hamlet_prune_worktrees.sh'
+      - 'docs/manual/cards/**'
+      - 'docs/k6-insights/**'
+      - 'docs/k6-modules.md'
+  workflow_dispatch:
+
+jobs:
+  # Whether this change touches the bench tools at all (.github/ci-radios.txt, tools/ci_scope.py):
+  # a pull request that doesn't skips the tests below, and a skipped job counts as passed.
+  scope:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: scope
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/ci_scope.py --github bench
+
+  # Plain Python, about a minute: no submodule, no firmware build, no emulated M0.
+  # Add a new test file as one line, in alphabetical order.
+  bench-tests:
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy scipy soundfile pytest pytest-xdist
+      # bench_runner.py selftest checks the UV-380 send steps can find a module compiler
+      # (clang, ld.lld, llvm-objcopy, llvm-nm); nothing here compiles firmware
+      - name: clang and lld (the runner's selftest looks for them)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang lld llvm
+      - name: Pluto, bench runner and inbox
+        run: |
+          python -m pytest -q -n auto --durations=8 \
+            tests/test_bench_inbox.py \
+            tests/test_bench_runner.py \
+            tests/test_pluto_bench.py \
+            tests/test_pluto_fw.py \
+            tests/test_pluto_parrot.py \
+            tests/test_sdr.py
