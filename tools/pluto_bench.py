@@ -836,6 +836,8 @@ def cmd_chan(a):
     if not a.bin or not a.out:
         raise SystemExit("chan: BIN and OUTDIR (or --probe)")
     hzs = [int(float(v)) for v in a.channels.split(",") if v.strip()]
+    if a.hz is None or not hzs:
+        raise SystemExit("chan: --hz LO and --channels are required")
     for h in hzs:
         if abs(h - a.hz) < 15_000 or abs(h - a.hz) > RATE / 2 - 40e3:
             raise SystemExit(f"chan: {h} must be 15 kHz to {(RATE / 2 - 40e3) / 1e3:.0f} kHz from the LO {a.hz}")
@@ -956,7 +958,7 @@ def main(argv=None):
     ch = sub.add_parser("chan", help="FM channels split on the Pluto's ARM, gated HamFLAC overs back (tools/pluto_chan/)")
     ch.add_argument("bin", nargs="?", help="pluto_chan.armhf (its sha256 listed in tools/pluto_chan/allowed.sha256)")
     ch.add_argument("out", nargs="?", help="OUTDIR: <MHz>_<UTC>.flac a over, levels.json, overs.json, chan.json")
-    ch.add_argument("--hz", type=int, default=443_000_000, help="the RX LO, between channels")
+    ch.add_argument("--hz", type=int, required=False, default=None, help="the RX LO, between channels (required unless --probe)")
     ch.add_argument("--channels", default="", metavar="HZ,HZ,...")
     ch.add_argument("--seconds", type=float, default=60.0)
     ch.add_argument("--gain", type=int, default=50, help="RX gain, dB (manual)")

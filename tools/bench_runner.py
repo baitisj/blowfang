@@ -1600,7 +1600,7 @@ def sample_jobs(tmp, co, key):
         ("Pluto ladder reaching -25", J("bad-gains", {"do": "pluto", "args": ["steps", wav, "--gains", "-70,-50,-25"]}), False),
         ("Pluto send off the claimed channel", J("bad-chan", {"do": "pluto", "args": ["send", wav, "--hz", "441850000"]}), False),
         ("claim on 2 m", J("bad-claim", {"do": "wait", "seconds": 1}, freq_mhz=146.52), False),
-        ("Pluto channelizer on its ARM, 2 channels for 20 min", J("ok-chan", {"do": "pluto", "args": ["chan", os.path.join(tmp, "pc.armhf"), os.path.join(tmp, "c"), "--hz", "443000000", "--channels", "442250000,443650000", "--seconds", "1200"]}), True),
+        ("Pluto channelizer on its ARM, 2 channels for 20 min", J("ok-chan", {"do": "pluto", "args": ["chan", os.path.join(tmp, "pc.armhf"), os.path.join(tmp, "c"), "--hz", "441000000", "--channels", "440300000,441700000", "--seconds", "1200"]}), True),
         ("Pluto channelizer longer than its step may run", J("bad-chan", {"do": "pluto", "args": ["chan", os.path.join(tmp, "pc.armhf"), os.path.join(tmp, "c"), "--seconds", "1700"]}), False),
         ("anything naming ttyUSB2", J("bad-tty", {"do": "pluto", "args": ["rx", "/dev/ttyUSB2"]}), False),
         ("module with the job's own key file", J("bad-key", {"do": "k6.upload", "module": mod, "sha256": h(mod), "args": ["--key-file", key_path()]}), False),
