@@ -90,6 +90,11 @@ touches that radio, using the map in `.github/ci-radios.txt`. If it doesn't, the
 show as skipped, which counts as passed. Shared code (the sotto submodule, `c/common/`, the
 shared `modem/` files) builds every radio that uses it.
 
+The Pluto SDR and hamlet bench runner tools (`tools/pluto_*`, `tools/pluto_chan/`,
+`tools/bench_*` and their tests) are the map's `[bench]` section. A change there runs only
+`bench-tools.yml`, about a minute of plain Python tests, and no radio's firmware build. A new file
+named like those lands in `[bench]` with no new map line.
+
 A change that touches only docs (the map's `[ignore]` section) starts no radio workflow at all,
 on a pull request or on a push to main: each radio workflow's `paths:` filter is `[ignore]`
 turned inside out. `python3 tools/ci_scope.py --paths` prints that list, and `--check` (the

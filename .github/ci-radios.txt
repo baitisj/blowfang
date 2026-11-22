@@ -10,6 +10,8 @@
 #
 #   [ignore]   never builds anything (docs), unless a ! line takes the path back
 #   [all]      builds every radio (the codec submodule, this map and its tool)
+#   [bench]    the Pluto SDR and hamlet bench runner tools: a light Python test job
+#              (bench-tools.yml), never a radio's firmware build
 #   [<radio>]  that radio's sources, the tests its workflow runs and what they import, and its
 #              own workflow file (one .github/workflows/ line a section)
 # A path no section names builds every radio, and the Forbidden files job fails until it's added.
@@ -45,13 +47,6 @@ modem/
 tools/k6_*
 tools/k6-*
 tools/k6_cc/
-tools/pluto_bench.py
-tools/pluto_parrot.py
-tools/pluto_chan/
-tools/bench_runner.py
-tools/bench_inbox.py
-tools/pluto_fw_update.sh
-tools/pluto_fw.py
 tools/gen_ft8_tables.py
 tools/midi_songs/
 tools/nwr_watch.py
@@ -62,12 +57,6 @@ tests/k6_live_emu.py
 tests/k6_web_driver.cjs
 web/k6-installer/
 tests/test_nwr_watch.py
-tests/test_pluto_bench.py
-tests/test_pluto_parrot.py
-tests/test_pluto_fw.py
-tests/test_sdr.py
-tests/test_bench_runner.py
-tests/test_bench_inbox.py
 tests/test_psk31.py
 tests/test_range_rx.py
 tests/durations.json
@@ -177,3 +166,33 @@ sim/k6digi/__init__.py
 sim/k6digi/ft8_wav.py
 sim/k6digi/ft8ref.py
 sim/k6digi/wsprref.py
+
+[bench]
+.github/workflows/bench-tools.yml
+# The Pluto SDR (tools/pluto_bench.py, the on-Pluto channelizer tools/pluto_chan/, the firmware
+# helpers) and the hamlet bench runner and its jobs inbox. These run on hamlet, not on a radio, so
+# a change here runs only bench-tools.yml's Python tests. The wildcard lines place a new
+# tools/pluto_*, tools/bench_*, tests/test_pluto_* or tests/test_bench_* file here with no new
+# line, so a new Pluto tool can't fall through to "build every radio".
+tools/pluto_*
+tools/pluto_chan/
+tools/bench_*
+tests/test_pluto_*
+tests/test_bench_*
+tests/test_sdr.py
+# the radios' Python those tests import (a change there runs this job as well as its radio's)
+modem/__init__.py
+modem/c6phy.py
+modem/fsk.py
+modem/fsk24.py
+modem/k6.py
+modem/k6mod.py
+modem/m17.py
+modem/psk31.py
+modem/sdr.py
+modem/uv380mod.py
+modem/ysf.py
+sim/k6if/__init__.py
+sim/k6if/dmr.py
+tools/k6_bench.py
+tools/k6_upload.py
