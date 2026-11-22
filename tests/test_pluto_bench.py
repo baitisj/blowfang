@@ -218,3 +218,23 @@ def test_peak_puts_the_wavs_own_peak_at_the_deviation():
     assert abs(np.max(np.abs(pl.audio_track(x, 48000, dev))) - 3000.0) < 1.0
     with pytest.raises(SystemExit):
         pl.full_scale_dev(np.zeros(10), 3000.0, peak=3000.0)
+
+
+def test_wav_only_sink_streams_fm_audio(tmp_path):
+    """rx --wav-only: parts in, 8 kHz discriminator audio out, the same tone and deviation as one
+    piece, and a carrier level each 0.1 s"""
+    import soundfile as sf
+    fs = pl.IQ_FS_SAVE
+    t = np.arange(2 * fs) / fs
+    iq = (0.1 * np.exp(1j * 2 * np.pi * np.cumsum(2500 * np.sin(2 * np.pi * 1000 * t)) / fs)).astype(np.complex64)
+    out = str(tmp_path / "a.wav")
+    s = pl.AudioSink(out, 8000)
+    for i in range(0, len(iq), 13107):            # odd part sizes: the filters keep their state
+        s(iq[i:i + 13107])
+    s.close()
+    x, r = sf.read(out)
+    assert r == 8000 and abs(len(x) - 16000) <= 1
+    y = x[2000:]
+    assert abs(np.argmax(np.abs(np.fft.rfft(y))) * r / len(y) - 1000) < 2
+    assert abs(np.std(y) * np.sqrt(2) * pl.WAV_FULL_DEV - 2500) < 100
+    assert len(s.levels) == 20 and all(abs(v + 20) < 0.5 for v in s.levels)
