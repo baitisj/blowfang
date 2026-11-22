@@ -26,7 +26,7 @@ docs/bench-runner.md has the job format and the rules.
 A job is a JSON file: who (the thread, one word), a channel to claim, how long, a checkout, and
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
-uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air), turned into one
+uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -96,10 +96,15 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "ic7100.af": 30,
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
-                "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240}
+                "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240,
+                "pluto.fw": 900, "pluto.flash": 900}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
+# tools/pluto_fw.py: the Pluto's boot image and runtime PL (the earshot channelizer, Jeff 11-22). Every
+# image it puts on the Pluto is pinned by sha256 in pluto_fw.py on main; flash is its own step
+# (pluto.flash), a local submit only (bench_inbox REMOTE_NO_STEPS)
+PLUTO_FW_SUBS = ("doctor", "info", "backup", "ramboot", "fpga", "psd", "reboot")
 CUE_MAX_S = 1700                            # a cue waits for its call this long at most (the step: 1800 s, with the send)
 PARROT_MAX_MIN = 25                         # a parrot holds the bench: 25 min at most (the step's 1800 s)
 IC7100_SUBS = ("send", "id", "stop")
@@ -479,6 +484,18 @@ def check_step(job, i, step, rs, problems):
                     problems.append(f"{what}: --pluto-gain {g} is above {PLUTO_GAIN_MAX:g} dB")
             check_pluto_checkout(job, what, problems)
         ic7100_limits(job, what, problems)
+    elif do == "pluto.fw":                   # images pinned by sha256 in pluto_fw.py itself
+        if not args or args[0] not in PLUTO_FW_SUBS:
+            problems.append(f"{what}: args[0] must be one of {', '.join(PLUTO_FW_SUBS)}")
+        elif "--as" in args:
+            problems.append(f"{what}: --as is the runner's to set")
+        elif step.get("background"):
+            problems.append(f"{what}: never in the background")
+    elif do == "pluto.flash":
+        if len(args) != 2 or any(a.startswith("-") for a in args):
+            problems.append(f"{what}: args are IMAGE.itb BACKUPDIR (a pinned FIT and pluto.fw backup's folder)")
+        elif step.get("background"):
+            problems.append(f"{what}: never in the background")
     elif do == "pluto":
         if not args or args[0] not in PLUTO_SUBS:
             problems.append(f"{what}: args[0] must be one of {', '.join(PLUTO_SUBS)}")
@@ -757,6 +774,10 @@ def command(job, step, rd):
     if do == "pluto":
         return [py(), tool("pluto_bench.py"), "--as", who] + args, co, bool(step.get("background")) and \
             args[0] == "rx"
+    if do == "pluto.fw":
+        return [py(), tool("pluto_fw.py"), "--as", who] + args, co, False
+    if do == "pluto.flash":
+        return [py(), tool("pluto_fw.py"), "--as", who, "flash"] + args, co, False
     if do == "ic7100":
         return [py(), bench_bin(), "--as", who] + args, co, False
     if do == "logger":
@@ -1628,6 +1649,10 @@ def sample_jobs(tmp, co, key):
         ("UV-380 DMR voice with a module path", J("bad-dvoice", {"do": "uv380.voice", "args": ["../txreq.c"]}, freq_mhz=441.850), False),
         ("Pluto send in the background", J("bad-bgtx", {"do": "pluto", "args": ["send", wav, "--gain", "-60"], "background": True}), False),
         ("UV-380 to 440.850 under a 441.850 claim", J("bad-uvfreq", {"do": "uv380.cmd", "args": ["freq 440850"]}, freq_mhz=441.850), False),
+        ("Pluto flash backup over DFU", J("ok-fwbackup", {"do": "pluto.fw", "args": ["backup", os.path.join(tmp, "bk")]}), True),
+        ("Pluto RAM boot of a FIT", J("ok-ramboot", {"do": "pluto.fw", "args": ["ramboot", wav]}), True),
+        ("Pluto firmware: a sub-command that isn't one", J("bad-fwsub", {"do": "pluto.fw", "args": ["shell", "reboot"]}), False),
+        ("Pluto flash with an extra option", J("bad-fwflash", {"do": "pluto.flash", "args": [wav, os.path.join(tmp, "bk"), "--force"]}), False),
     ]
 
 
@@ -1638,6 +1663,8 @@ def inbox_samples():
         ("Pluto send of a pushed WAV", J("in-ok", {"do": "pluto", "args": ["send", "job:x.wav", "--gain", "-60"]}), True),
         ("UV-380 M17 from a branch's module, Pluto capture in the run folder", J("in-m17", {"do": "pluto", "args": ["rx", "run:m.cf32", "--hz", "441900000"], "background": True}, {"do": "uv380.m17", "args": ["bert"]}, freq_mhz=441.850, sources_commit="519e64f"), True),
         ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),
+        ("a Pluto flash", J("in-plutoflash", {"do": "pluto.flash", "args": ["job:r.itb", "run:bk"]}), False),
+        ("a Pluto RAM boot of a pushed FIT", J("in-ramboot", {"do": "pluto.fw", "args": ["ramboot", "job:r.itb"]}), True),
         ("a K6 module as C source", J("in-c", {"do": "k6.upload", "module": "job:m.c"}), False),
         ("a hamlet path", J("in-path", {"do": "pluto", "args": ["send", "/home/baitisj/blowfang-work/x.wav"]}), False),
         ("a name climbing out", J("in-dots", {"do": "pluto", "args": ["send", "job:../x.wav"]}), False),

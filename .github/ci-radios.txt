@@ -51,6 +51,7 @@ tools/pluto_chan/
 tools/bench_runner.py
 tools/bench_inbox.py
 tools/pluto_fw_update.sh
+tools/pluto_fw.py
 tools/gen_ft8_tables.py
 tools/midi_songs/
 tools/nwr_watch.py
@@ -63,6 +64,7 @@ web/k6-installer/
 tests/test_nwr_watch.py
 tests/test_pluto_bench.py
 tests/test_pluto_parrot.py
+tests/test_pluto_fw.py
 tests/test_sdr.py
 tests/test_bench_runner.py
 tests/test_bench_inbox.py
