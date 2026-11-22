@@ -4,6 +4,9 @@ name: Forbidden files
 on:
   push:
     branches: [main]
+    # a release: pushing any tag runs everything (GitHub skips paths: for tag pushes, and
+    # tools/ci_scope.py builds every radio on a push)
+    tags: ['**']
   pull_request:
 
 jobs:

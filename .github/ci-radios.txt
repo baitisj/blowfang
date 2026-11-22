@@ -1,7 +1,7 @@
 # Which radios a change builds and tests (tools/ci_scope.py reads this; README "CI" says how).
 # A pull request runs a radio's workflow jobs when it changes a path in that radio's section;
-# the other radios' jobs show as skipped. A push to main, the weekly run, "Run workflow" and a PR
-# labelled ci-full build everything.
+# the other radios' jobs show as skipped. A push to main, a pushed tag (a release), the weekly
+# run, "Run workflow" and a PR labelled ci-full build everything.
 #
 # One path a line, from the top of the repository. A line ending / (or a plain name, like sotto)
 # takes everything inside it. * and ? stay inside one folder and ** crosses folders; a line with
