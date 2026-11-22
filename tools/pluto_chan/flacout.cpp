@@ -9,8 +9,10 @@
 // The gate: a floor per channel that follows the level down at once and up 0.2 dB/s; the
 // squelch opens 12 dB over it with the audio quieted (a noise squelch: the variance of the
 // first difference over the variance, about 1.6 for the discriminator's noise and 0.1-0.6 under
-// a carrier, measured 11-22; open under 1.2) and closes after 0.5 s under floor + 8 dB or noisy.
-// The level gate alone opened on broadband bursts that lifted every channel at once. An over keeps 0.3 s
+// a carrier, measured 11-22; open under 1.3) and closes after 0.5 s under floor + 8 dB.
+// The level gate alone opened on broadband bursts that lifted every channel at once. Closing on
+// noisy audio too chopped a weak 146.800 carrier into 1 s pieces (kws-bins-night r9, 11-22), so
+// closing is on level alone. An over keeps 0.3 s
 // before the opening and the 0.5 s hang, and is cut every 60 s on a long carrier.
 #include <cmath>
 #include <cstdint>
@@ -27,7 +29,7 @@ constexpr int kTick = 800;            // 0.1 s at 8 kHz
 constexpr int kMaxCh = 16;
 constexpr float kOpenDb = 12.0f, kCloseDb = 8.0f, kRiseDb = 0.02f;
 constexpr int kHang = 5, kPre = 3, kMaxTicks = 600;
-constexpr float kQuietOpen = 1.2f, kQuietClose = 1.4f;
+constexpr float kQuietOpen = 1.3f;
 
 float noise_ratio(const int16_t* a, int n)
 {
@@ -109,7 +111,7 @@ extern "C" void flac_tick(int ch, int nch, const int16_t* aud, int n, float leve
         }
     } else {
         s.over.insert(s.over.end(), a.begin(), a.end());
-        s.below = (level < s.floor + kCloseDb || nr > kQuietClose) ? s.below + 1 : 0;
+        s.below = level < s.floor + kCloseDb ? s.below + 1 : 0;   // level only: a weak carrier's noisy audio stays in
         if (s.below >= kHang) {
             flush_over(ch, s);
             s.open = false;
