@@ -15,7 +15,8 @@ import time
 
 
 def read_stream(f):
-    """-> yields ('L', nch, tick, [[10 levels] per channel]), ('O', ch, tick, flac), ('E', 0, tick)"""
+    """-> yields ('L', nch, tick, [[10 levels] per channel]), ('O', ch, tick, flac), ('S', 0, tick, json),
+    ('E', 0, tick)"""
     while True:
         h = f.read(6)
         if len(h) < 6:
@@ -27,11 +28,26 @@ def read_stream(f):
         elif kind == "O":
             n = struct.unpack("<I", f.read(4))[0]
             yield "O", a, tick, f.read(n)
+        elif kind == "S":
+            n = struct.unpack("<I", f.read(4))[0]
+            yield "S", a, tick, f.read(n)
         elif kind == "E":
             yield "E", 0, tick, None
             return
         else:
             raise SystemExit(f"pluto_chan.py: bad record {h!r}")
+
+
+def band_activity(s):
+    """the 'S' summary -> per bin its frequency and active seconds, the busiest first (bin k of n is
+    centre + (k - n/2) * 50 kHz: earshot's PSD runs low to high; checked on the NOAA carriers 11-22)"""
+    n = s["psd_bins"]
+    fps = 10.0                                    # earshot's PSD comes 10 times a second
+    step = 50_000.0                               # earshot's bins (the header's rate is a stream's 100 kS/s)
+    rows = [{"mhz": (s["center_hz"] + (k - n / 2) * step) / 1e6, "active_s": s["active_frames"][k] / fps,
+             "max_db": s["max_db"][k], "mean_db": s["mean_db"][k]} for k in range(n)]
+    busiest = sorted((r for r in rows if r["active_s"] > 0), key=lambda r: -r["active_s"])
+    return {**s, "bin_hz": step, "fps": fps, "rows": rows, "busiest": busiest[:40]}
 
 
 def write_stream(f, outdir, hzs, t0):
@@ -51,6 +67,12 @@ def write_stream(f, outdir, hzs, t0):
             overs.append({"ch": x, "hz": hzs[x], "tick": tick, "file": name, "bytes": len(body)})
             total += 10 + len(body)
             print(f"{name}: {len(body)} bytes", flush=True)
+        elif kind == "S":
+            band = band_activity(json.loads(body))
+            with open(os.path.join(outdir, "band.json"), "w") as o:
+                json.dump(band, o)
+            total += 10 + len(body)
+            print("band: busiest " + ", ".join(f"{b['mhz']:.3f} ({b['active_s']:.0f} s)" for b in band["busiest"][:8]), flush=True)
         else:
             total += 6
             secs = tick / 10

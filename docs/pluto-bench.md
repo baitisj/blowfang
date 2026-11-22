@@ -89,7 +89,9 @@ python3 tools/pluto_bench.py cue WAV --hz F --listen-hz F [--wait-s 900] [--dela
   reader, no earshot code linked). Per channel the A9 only mixes inside the bin (at most 25 kHz),
   resamples 100 to 32 kS/s through one polyphase FIR (the +-7.5 kHz channel filter), demodulates
   and gates. Channels may sit up to 9.9 MHz from the LO, so all of 2 m fits one run; VHF gain at
-  most 50 on the big antenna.
+  most 50 on the big antenna. Each run also keeps earshot's 512-bin PSD (10 a second) as a band
+  summary: OUTDIR/band.json gives every 50 kHz bin across the 25.6 MHz its max, mean and the seconds
+  it sat 10 dB over its own floor, busiest first, to find where the traffic is.
 - **measure:** reads only where the signal is 20 dB over the capture's floor.
 - **cal:** calibrates against a carrier on a known frequency; the IC-7100's TCXO is the bench
   reference. `--save` writes `$BLOWFANG_WORK/state/pluto-cal.json`, and every later command sets the

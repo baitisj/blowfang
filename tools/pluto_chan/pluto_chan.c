@@ -153,6 +153,7 @@ static void emit(void);
 static int gated;                  /* -f: squelch-gated HamFLAC overs (flacout.cpp) */
 void flac_tick(int ch, int nch, const int16_t *aud, int n, float level);   /* flacout.cpp */
 void flac_finish(void);
+void flac_note(const char *json, size_t n);                                /* flacout.cpp */
 
 static void stage_c(chan_t *c, float d)
 {
@@ -558,6 +559,60 @@ static int riq_open(const char *src)
     return -1;
 }
 
+/* -R: the band's activity from earshot's PSD (type 2, float32 dB a bin, low to high, ~10 a second):
+ * per bin the max, the mean, a floor that follows down at once and up 0.02 dB a frame, and the
+ * frames more than 10 dB over that floor. One 'S' record of JSON at the end. */
+#define PSD_MAX 1024
+static int psd_n;
+static long psd_frames;
+static double psd_sum[PSD_MAX], psd_center, psd_rate;
+static float psd_max[PSD_MAX], psd_floor[PSD_MAX];
+static uint32_t psd_act[PSD_MAX];
+
+static void psd_frame(const uint8_t *p, int n, double cen, double rate)
+{
+    if (n > PSD_MAX)
+        return;
+    if (psd_n != n) {
+        psd_n = n; psd_frames = 0;
+        for (int k = 0; k < n; k++) { psd_sum[k] = 0; psd_max[k] = -1e9f; psd_floor[k] = 1e9f; psd_act[k] = 0; }
+    }
+    psd_center = cen; psd_rate = rate;
+    for (int k = 0; k < n; k++) {
+        float v;
+        memcpy(&v, p + 4 * k, 4);                  /* little endian, as the Pluto and hamlet are */
+        if (!(v > -400 && v < 400))
+            continue;
+        psd_sum[k] += v;
+        if (v > psd_max[k]) psd_max[k] = v;
+        if (v < psd_floor[k]) psd_floor[k] = v; else psd_floor[k] += 0.02f;
+        if (psd_frames > 50 && v > psd_floor[k] + 10)
+            psd_act[k]++;
+    }
+    psd_frames++;
+}
+
+static void psd_note(void)
+{
+    if (!psd_n || !psd_frames)
+        return;
+    size_t cap = 64 + (size_t)psd_n * 40, len = 0;
+    char *j = malloc(cap);
+    len += snprintf(j + len, cap - len, "{\"psd_bins\":%d,\"frames\":%ld,\"center_hz\":%.0f,\"rate_hz\":%.0f,\"max_db\":[",
+                    psd_n, psd_frames, psd_center, psd_rate);
+    for (int k = 0; k < psd_n; k++)
+        len += snprintf(j + len, cap - len, "%s%.1f", k ? "," : "", psd_max[k]);
+    len += snprintf(j + len, cap - len, "],\"mean_db\":[");
+    for (int k = 0; k < psd_n; k++)
+        len += snprintf(j + len, cap - len, "%s%.1f", k ? "," : "", psd_sum[k] / psd_frames);
+    len += snprintf(j + len, cap - len, "],\"active_frames\":[");
+    for (int k = 0; k < psd_n; k++)
+        len += snprintf(j + len, cap - len, "%s%u", k ? "," : "", psd_act[k]);
+    len += snprintf(j + len, cap - len, "]}");
+    flac_note(j, len);
+    free(j);
+}
+
 static int riq_main(const char *src, double lo, int nargs, char **hzs, long nsamp)
 {
     nch = nargs;
@@ -596,6 +651,10 @@ static int riq_main(const char *src, double lo, int nargs, char **hzs, long nsam
         unsigned type = (unsigned)le(hd + 8, 2), fmt = (unsigned)le(hd + 56, 2);
         if (type == 4 && fmt == 3 && nmsg < 4)
             fprintf(stderr, "pluto_chan: config %.*s\n", nb < 300 ? (int)nb : 300, (const char *)pay);
+        if (type == 2 && fmt == 2) {
+            psd_frame(pay, (int)(nb / 4), (double)(int64_t)le(hd + 44, 8), (double)le(hd + 40, 4));
+            continue;
+        }
         if (type != 1 || fmt != 1)
             continue;
         uint32_t sid = (uint32_t)le(hd + 20, 4);
@@ -642,16 +701,18 @@ static int riq_main(const char *src, double lo, int nargs, char **hzs, long nsam
                 break;
         }
     }
-    if (gated)
+    if (gated) {
+        psd_note();
         flac_finish();
+    }
     clock_gettime(CLOCK_MONOTONIC, &t1);
     double el = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
     long least = rq[0].got;
     for (int j = 1; j < nch; j++)
         if (rq[j].got < least)
             least = rq[j].got;
-    fprintf(stderr, "pluto_chan: RIQ1, %d channels, %ld messages, %ld gaps, %.2f s of the slowest stream in %.2f s\n",
-            nch, nmsg, ngap, least / (double)RQ_RATE, el);
+    fprintf(stderr, "pluto_chan: RIQ1, %d channels, %ld messages, %ld gaps, %ld PSD frames, %.2f s of the slowest stream in %.2f s\n",
+            nch, nmsg, ngap, psd_frames, least / (double)RQ_RATE, el);
     return 0;
 }
 

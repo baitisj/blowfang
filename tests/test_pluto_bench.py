@@ -330,3 +330,20 @@ def test_chan_bins_refuses_an_unpinned_producer(tmp_path):
     a = pl.main.__globals__["argparse"].Namespace(bins=str(p), hz=146_300_000, gain=45, bin="x", uri=None)
     with pytest.raises(SystemExit, match="not the pinned earshot producer"):
         pl.chan_bins(a, [146_610_000], None)
+
+
+def test_chan_band_summary(tmp_path):
+    """pluto_chan -R's 'S' record (earshot's PSD summary) -> band.json, bins low to high around the LO"""
+    import io
+    import struct
+
+    from pluto_chan import pluto_chan as pc
+    n = 8
+    act = [0, 0, 0, 0, 0, 0, 30, 0]
+    js = json.dumps({"psd_bins": n, "frames": 6000, "center_hz": 146_300_000, "rate_hz": 100_000,
+                     "max_db": [-60.0] * n, "mean_db": [-61.0] * n, "active_frames": act}).encode()
+    s = b"S" + bytes([0]) + struct.pack("<II", 0, len(js)) + js + b"E" + bytes([0]) + struct.pack("<I", 6000)
+    r = pc.write_stream(io.BytesIO(s), str(tmp_path), [146_610_000], 0.0)
+    assert r["secs"] == 600.0
+    b = json.load(open(tmp_path / "band.json"))
+    assert b["busiest"][0]["mhz"] == 146.4 and b["busiest"][0]["active_s"] == 3.0
