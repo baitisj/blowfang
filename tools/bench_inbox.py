@@ -32,7 +32,7 @@ the repository can queue it:
   - the tools run from main: "tools_commit" may pin a commit on main (default: main's tip). The
     UV-380 module steps may build the checkout's module sources from any pushed commit
     ("sources_commit"), once the module's #include files are checked to stay inside that tree
-  - no flashes (k6.install, k6.flash, k6.update, uv380.flash) and no .c K6 modules: those stay
+  - no flashes (k6.install, k6.flash, k6.update, uv380.flash, pluto.flash) and no .c K6 modules: those stay
     a local submit on hamlet. A K6 module comes built (.bin), and the runner signs it
   - every other check is the runner's own, unchanged (bench_runner.check_job)
 
@@ -67,7 +67,7 @@ RETURN_JOB_MAX = 40 << 20
 LOG_MAX = 512 << 10
 KEEP_WORKTREES = 6                 # inbox-* / src-* worktrees kept beside the ones in use
 FINAL = ("done", "failed", "refused", "cancelled")
-REMOTE_NO_STEPS = ("k6.install", "k6.flash", "k6.update", "uv380.flash")
+REMOTE_NO_STEPS = ("k6.install", "k6.flash", "k6.update", "uv380.flash", "pluto.flash")
 SOURCES_STEPS = ("uv380.send", "uv380.m17", "uv380.ysf", "uv380.voice", "uv380.sotto", "uv380.rx")
 PATH_FIELDS = ("bundle", "image", "module", "radio_tool")
 RUNNER_FILES = ("bench_runner.py", "bench_inbox.py", "k6_bench.py", "k6-reset-trigger.sh")
