@@ -38,7 +38,7 @@ python3 tools/pluto_bench.py rx OUT.cf32|OUT.wav [--hz F] [--seconds 10] [--gain
 python3 tools/pluto_bench.py rx OUT.wav --wav-only [--wav-rate 8000]     FM audio only, no IQ kept
 python3 tools/pluto_bench.py rx OUT.wav --hz LO --channels F1,F2,...    one FM WAV per channel
 python3 tools/pluto_bench.py chan BIN OUTDIR --hz LO --channels F1,F2,... [--seconds 60] [--gain 50]
-python3 tools/pluto_bench.py chan BIN OUTDIR --bins PRODUCER --hz LO --channels ...   from earshot's FPGA bins
+python3 tools/pluto_bench.py chan BIN OUTDIR --bins PRODUCER --hz LO --channels ... [--band LO,HI]   from earshot's FPGA bins
 python3 tools/pluto_bench.py chan --probe                            the Pluto's CPU, memory, iio_readdev
 python3 tools/pluto_bench.py measure CAP.cf32        offset (Hz, ppm), peak deviation, level, floor
 python3 tools/pluto_bench.py cal CAP.cf32 [--ref-hz F] [--save]
@@ -89,7 +89,13 @@ python3 tools/pluto_bench.py cue WAV --hz F --listen-hz F [--wait-s 900] [--dela
   reader, no earshot code linked). Per channel the A9 only mixes inside the bin (at most 25 kHz),
   resamples 100 to 32 kS/s through one polyphase FIR (the +-7.5 kHz channel filter), demodulates
   and gates. Channels may sit up to 9.9 MHz from the LO, so all of 2 m fits one run; VHF gain at
-  most 50 on the big antenna.
+  most 50 on the big antenna. Each run also turns earshot's 512-bin PSD (10 a second) into a heat
+  map of `--band LO_HZ,HI_HZ` (after the K6 SURF carets, Jeff 11-22). OUTDIR/band.json ranks its
+  50 kHz bins by a score in seconds: the sum of power over noise times time, over the bin's own peak
+  over noise, so a bin scores how long it was busy weighted by how near its peak it was. Noise is the
+  larger of the bin's floor and the band's median that frame, so a static crash that lifts every bin
+  scores nothing. It also holds the seconds 10 dB over the noise, the max, and the heat map itself
+  (dB over noise, max per 10 s column).
 - **measure:** reads only where the signal is 20 dB over the capture's floor.
 - **cal:** calibrates against a carrier on a known frequency; the IC-7100's TCXO is the bench
   reference. `--save` writes `$BLOWFANG_WORK/state/pluto-cal.json`, and every later command sets the

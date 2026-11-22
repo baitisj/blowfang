@@ -5,6 +5,7 @@
 //                                             (dBFS, rounded, clamped to -127..0)
 //   'O' u8 ch  u32 tick  u32 nbytes  FLAC     one over: 8 kHz mono 16-bit FLAC (HamFLAC), from
 //                                             tick (0.1 s from the start, lead-in included)
+//   'S' u8 0   u32 tick  u32 nbytes  JSON     a summary (-R: the band's activity from the PSD)
 //   'E' u8 0   u32 tick                       the end of the stream
 // The gate: a floor per channel that follows the level down at once and up 0.2 dB/s; the
 // squelch opens 12 dB over it with the audio quieted (a noise squelch: the variance of the
@@ -132,6 +133,16 @@ extern "C" void flac_tick(int ch, int nch, const int16_t* aud, int n, float leve
             fflush(stdout);
         }
     }
+}
+
+extern "C" void flac_note(const char* json, size_t n)
+{
+    put("S", 1);
+    uint8_t z = 0;
+    put(&z, 1);
+    put_u32(tick);
+    put_u32(uint32_t(n));
+    put(json, n);
 }
 
 extern "C" void flac_finish(void)
