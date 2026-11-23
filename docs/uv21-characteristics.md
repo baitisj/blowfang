@@ -118,7 +118,7 @@ flashed over stock pages 0-5, cable in. Console read at 16:35-16:37Z.
 | External crystal | did not start within 50 ms when enabled (HEXT ready never set): run on the internal clock or the bootloader's PLL | M 11-23 |
 | Supply | 3,315 mV (internal 1.2 V reference); ADC ch0 (PA0) 2-13, ch1 (PA1) 2694 | M 11-23 |
 | PTT | one press = one break on USART1 RX, as expected | M 11-23 |
-| Keys | 12 keys decoded on columns PB4, PB9, PB10 (names in `radios/uv21/bringup/board.h`, assuming the presses came in the order asked); the three side keys ground rows PC14 (top), PB14 (middle), PF6 (bottom) on their own; 9 * 0 # and CENTER, VFO/MR, A/B still to map (the first image dropped column PB11: fixed) | M 11-23 |
+| Keys | 15 keys decoded on columns PB0 (VFO/MR, CENTER, A/B), PB4, PB9, PB10 (names in `radios/uv21/bringup/board.h`, assuming the presses came in the order asked); the three side keys ground rows PC14 (top), PB14 (middle), PF6 (bottom) on their own; 9 * 0 # still to map, likely column PB11 (the first image dropped column PB11: fixed) | M 11-23 |
 
 ## To measure
 

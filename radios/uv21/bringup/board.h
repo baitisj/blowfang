@@ -64,9 +64,10 @@
 #define KEY_COLS PIN(PORT_B, 0), PIN(PORT_B, 4), PIN(PORT_B, 9), PIN(PORT_B, 10), PIN(PORT_B, 11)
 #define KEY_ROWS PIN(PORT_C, 13), PIN(PORT_C, 14), PIN(PORT_F, 6), PIN(PORT_B, 14)
 /* run (bring-up press test, 11-23 16:35Z, assuming the presses came in the order asked): names
- * by matrix bit. 0 = not seen yet (column PB0, and PB11 which the first image couldn't print). */
+ * by matrix bit. PB0's keys from a second capture, 11-23 16:47Z. 0 = not seen yet: PB11, which the
+ * first image couldn't print (likely 9 * 0 #), and PB0/PF6. */
 #define KEY_NAMES \
-    0, 0, 0, 0,                             /* PB0: rows PC13 PC14 PF6 PB14 */ \
+    "VFO/MR", "CENTER", 0, "A/B",           /* PB0: rows PC13 PC14 PF6 PB14 */ \
     "EXIT", "2", "MENU", "4",               /* PB4 */ \
     "6", "7", "DOWN", "8",                  /* PB9 */ \
     "1", "3", "UP", "5",                    /* PB10 */ \
