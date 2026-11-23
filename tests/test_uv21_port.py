@@ -223,6 +223,15 @@ def test_boots_on_the_internal_clock_and_says_so(port):
     assert all(not (v & 1 << 16) for a, v in port.writes if a == 0x40021000)   # HEXT never enabled
 
 
+def test_the_serial_port_runs_at_115200_on_the_60_mhz_clock(port):
+    # the 5RH's divisor (1042) was for 120 MHz: at 60 MHz it gives 57,600 baud, and then neither
+    # the console nor the bootloader's command-42 reset gets through (port 2 on the radio)
+    cfg = [v for a, v in port.writes if a == 0x40021004][-1]
+    assert cfg & 0x3 == 2 and (cfg >> 11) & 7 < 4                       # PLL; APB2 (USART1) undivided
+    div = [v for a, v in port.writes if a == 0x40013808][-1] & 0xFFFF   # USART1 BAUDR
+    assert abs(60_000_000 / div - 115_200) < 115_200 * 0.01, (div, 60_000_000 / div)
+
+
 def test_drives_only_the_uv21_pins(port):
     modes = {(p, b): port.pins.mode(p, b) for p in (A, B, C, F) for b in range(16)}
     outs = {k for k, m in modes.items() if m == 1}

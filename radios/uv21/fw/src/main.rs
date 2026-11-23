@@ -248,7 +248,8 @@ fn main() -> ! {
     board::init_side_key2_pin(&dp.gpioa);
 
     // uart
-    let div: u16 = 1042;
+    // UV-21: from the clock this port runs at (the 5RH's 1042 was for 120 MHz: 57,600 baud here)
+    let div: u16 = ((SCLK_HZ + BAUD / 2) / BAUD) as u16;
     dp.usart1.baudr().write(|w| unsafe { w.div().bits(div) });
     dp.usart1.ctrl1().write(|w| {
         w.uen()
