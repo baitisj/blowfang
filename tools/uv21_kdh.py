@@ -2,8 +2,8 @@
 """The Baofeng UV-21 Pro's KDH bootloader and the one-page dumper (radios/uv21/dumper).
 
   uv21_kdh.py probe --port P --out RUN
-      bootloader handshake only (the radio must be in flash mode: side key held at power-on).
-      Nothing is erased or written; a power cycle without the key boots the stock firmware.
+      bootloader handshake only (the radio must be in flash mode: both side keys held at power-on).
+      Nothing is erased or written; a power cycle without the keys boots the stock firmware.
 
   uv21_kdh.py flash --port P --out RUN --image IMG --sha256 HEX
       write IMG to the app area (0x08001000 up) through the bootloader: region 1 only, never

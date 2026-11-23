@@ -26,6 +26,9 @@ board `5RHNRFB-YP07`), and the UV-5RM open firmware's `tools/flash.py`:
   separate command we never send.
 - the reply echoes the command and puts 06 (ACK) or an error code (E1, E2, E3, E5) in the next
   byte.
+- flash mode: at power-on the bootloader enters update mode when both side keys are held (Side 1
+  on PB6, Side 2 on PA15, active low, checked twice 50 ms apart), or when a frame with command
+  42 (`AA 42 00 00 00 83 F4 EF`) arrives within about 200 ms. Otherwise it starts the app.
 
 So a one-package update costs exactly page 0 of the 60 KB app (0x08001000-0x080013FF). Every
 other page, the bootloader itself and region 2 stay as they are.
@@ -52,7 +55,7 @@ that, plus a byte-exact read-back.
 | # | What | Runner step | Hands-on |
 |---|---|---|---|
 | 1 | CPS clone read: codeplug, model and version replies, probes of the rest of the address space | `kplug.read` | none |
-| 2-4 | One local job (Jeff's go): bootloader handshake, flash the dumper (one package), capture two agreeing passes (about 3.5 minutes each for a 2 MB SPI flash). A failed step ends the job, so no answer to the handshake means nothing is written | `kdh.probe`, `kdh.flash`, `kdh.dump` | power on holding the side key (flash mode) first |
+| 2-4 | One local job (Jeff's go): bootloader handshake, flash the dumper (one package), capture two agreeing passes (about 3.5 minutes each for a 2 MB SPI flash). A failed step ends the job, so no answer to the handshake means nothing is written | `kdh.probe`, `kdh.flash`, `kdh.dump` | power on holding both side keys (flash mode) first |
 | 5 | Rebuild page 0 (below) | none | none |
 | 6 | Restore stock: flash the rebuilt page 0 alone, then repeat step 1 and compare | `kdh.flash` (local, Jeff's go) | flash mode |
 | 7 | The first blowfang bring-up image | `kdh.flash` (local, Jeff's go) | flash mode |
