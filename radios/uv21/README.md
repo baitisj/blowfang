@@ -124,8 +124,9 @@ It reports, on the K-plug serial line (115200 8N1, text) and on the screen:
   reference) and whether the external crystal starts; it runs on the internal 8 MHz clock;
 - the RF chip's ID (register 0) and, on `r`, all 128 registers; the SPI flash's JEDEC ID; the LCD
   controller's ID (a read the stock firmware never does, so it may read all ones);
-- each key press as a matrix bit (column x 8 + row, columns PB0 PB4 PB9 PB10 PB11, rows PC13
-  PC14 PF6 PB14), and a census of every input pin, so a key nobody mapped still shows up;
+- each key press as a matrix bit (column x 4 + row, columns PB0 PB4 PB9 PB10 PB11, rows PC13
+  PC14 PF6 PB14) with its name once board.h knows it, the side keys (which ground a row on their
+  own) as side bits, and a census of every input pin, so a key nobody mapped still shows up;
 - PTT, which is also the serial receive pin: a press reads as a break (`ptt break n=...`);
 - the screen: a one-pixel white frame on the outermost pixels (shows the controller's offsets),
   a red square top left (shows a flip or rotation), labelled R G B W bars (red drawn blue means

@@ -394,10 +394,19 @@ def test_screen_test_pattern(radio):
 
 
 def test_keys_ptt_and_pin_census(radio):
-    radio.pressed.add((1, 2))                                      # column PB4, row PF6
-    assert "keys direct=00 matrix=00000400" in radio.run(until="matrix=00000400\r\n")
+    radio.pressed.add((1, 2))                                      # column PB4, row PF6: MENU
+    assert "keys matrix=00000040 side=0 direct=00 name=MENU" in radio.run(until="name=MENU\r\n")
     radio.pressed.clear()
-    assert "keys direct=00 matrix=00000000" in radio.run(until="matrix=00000000\r\n")
+    assert "keys matrix=00000000 side=0" in radio.run(until="matrix=00000000 side=0 direct=00\r\n")
+    radio.pressed.add((4, 3))                                      # the fifth column (PB11): bit 19
+    assert "keys matrix=00080000 side=0" in radio.run(until="matrix=00080000 side=0 direct=00\r\n")
+    radio.pressed.clear()
+    radio.run(until="matrix=00000000 side=0 direct=00\r\n")
+    radio.ext[(C, 14)] = 0                                         # the top side key grounds row PC14
+    out = radio.run(until="name=SIDE TOP\r\n")
+    assert "keys matrix=00000000 side=2 direct=00 name=SIDE TOP" in out
+    del radio.ext[(C, 14)]
+    radio.run(until="matrix=00000000 side=0 direct=00\r\n")
     radio.ext[(A, 12)] = 1                                         # a pin nobody mapped
     out = radio.run(until="pins a=1040 b=4000 c=6000 f=0040\r\n")   # PA6 MISO and the rows pulled up
     assert "pins a=1040 b=4000 c=6000 f=0040" in out

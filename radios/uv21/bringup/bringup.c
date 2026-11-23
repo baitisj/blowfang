@@ -461,19 +461,27 @@ static void keys_init(void) {
 #endif
 }
 
-/* pressed keys: matrix bit (col * 8 + row), direct key bit i (KEY_DIRECT order) */
+/* pressed keys: matrix bit (col * rows + row); side bit r for a key that grounds row r itself
+   (low with no column driven: the UV-21's side keys); direct key bit i (KEY_DIRECT order) */
 struct keys {
-    uint32_t matrix, direct;
+    uint32_t matrix, side, direct;
 };
 
-static struct keys keys_scan(void) {
-    struct keys k = {0, 0};
 #ifdef KEY_COLS
+_Static_assert(sizeof key_cols * sizeof key_rows <= 32, "the matrix must fit 32 bits");
+#endif
+
+static struct keys keys_scan(void) {
+    struct keys k = {0, 0, 0};
+#ifdef KEY_COLS
+    delay_us(5);
+    for (uint32_t r = 0; r < COUNT(key_rows); r++)   /* no column driven: a row low is a side key */
+        if (!gget(key_rows[r])) k.side |= 1u << r;
     for (uint32_t c = 0; c < COUNT(key_cols); c++) {
         gset(key_cols[c], 0);
         delay_us(5);
         for (uint32_t r = 0; r < COUNT(key_rows); r++)
-            if (!gget(key_rows[r])) k.matrix |= 1u << (c * 8 + r);
+            if (!(k.side >> r & 1) && !gget(key_rows[r])) k.matrix |= 1u << (c * COUNT(key_rows) + r);
         gset(key_cols[c], 1);
     }
 #endif
@@ -482,6 +490,34 @@ static struct keys keys_scan(void) {
         if (!gget(key_direct[i])) k.direct |= 1u << i;
 #endif
     return k;
+}
+
+static int keys_same(struct keys a, struct keys b) {
+    return a.matrix == b.matrix && a.side == b.side && a.direct == b.direct;
+}
+
+/* the name of the one key held, from board.h's tables (0: none, several, or not named yet) */
+static const char *key_name(struct keys k) {
+#if defined(KEY_COLS) && defined(KEY_NAMES)
+    static const char *const names[] = {KEY_NAMES};
+    static const char *const side_names[] = {SIDE_NAMES};
+    uint32_t n = 0, m = k.matrix, s = k.side;
+    const char *name = 0;
+    for (uint32_t b = 0; b < 32; b++) {
+        if (m >> b & 1) {
+            n++;
+            name = b < COUNT(names) ? names[b] : 0;
+        }
+        if (s >> b & 1) {
+            n++;
+            name = b < COUNT(side_names) ? side_names[b] : 0;
+        }
+    }
+    return n == 1 && !k.direct ? name : 0;
+#else
+    (void)k;
+    return 0;
+#endif
 }
 
 static const uint8_t ports[] = {PORT_A, PORT_B, PORT_C, PORT_F};
@@ -644,7 +680,7 @@ static void help(void) {
 /* ---- the screen ---- */
 
 #ifdef LCD_CS
-static struct keys shown_keys = {~0u, ~0u};
+static struct keys shown_keys = {~0u, ~0u, ~0u};
 
 static void screen_static(void) {
     lcd_fill(0, 0, LCD_W, LCD_H, BLACK);
@@ -671,15 +707,17 @@ static void screen_static(void) {
     lcd_text(4, 112, "KEY", GREY);
     lcd_text(4, 126, "PTT", GREY);
     lcd_text(4, 140, "UP", GREY);
-    shown_keys.matrix = shown_keys.direct = ~0u;
+    shown_keys.matrix = shown_keys.side = shown_keys.direct = ~0u;
 }
 
 static void screen_live(struct keys keys, uint32_t secs) {
     lcd_decat(44, 98, vdd_mv(), WHITE);
-    if (keys.matrix != shown_keys.matrix || keys.direct != shown_keys.direct) {
-        uint32_t fg = keys.matrix || keys.direct ? AMBER : WHITE;
-        lcd_hexat(44, 112, keys.direct, 2, fg);
-        lcd_hexat(68, 112, keys.matrix, 6, fg);
+    if (keys.matrix != shown_keys.matrix || keys.side != shown_keys.side ||
+        keys.direct != shown_keys.direct) {
+        const char *n = key_name(keys);
+        lcd_text(44, 112, "        ", WHITE);
+        if (n) lcd_text(44, 112, n, AMBER);
+        else if (keys.matrix || keys.side || keys.direct) lcd_hexat(44, 112, keys.matrix | keys.side << 24, 8, AMBER);
         shown_keys = keys;
     }
     lcd_decat(44, 126, breaks, WHITE);
@@ -807,11 +845,16 @@ void reset(void) {
         if (now() - last_tick < HZ / 50) continue;   /* the rest every 20 ms */
         last_tick += HZ / 50;
         struct keys k = keys_scan();
-        if (k.matrix == keys.matrix && k.direct == keys.direct &&      /* two scans alike */
-            (k.matrix != keys_shown.matrix || k.direct != keys_shown.direct)) {
+        if (keys_same(k, keys) && !keys_same(k, keys_shown)) {        /* two scans alike */
             puts_("keys");
-            kv_hex("direct", k.direct, 2);
             kv_hex("matrix", k.matrix, 8);
+            kv_hex("side", k.side, 1);
+            kv_hex("direct", k.direct, 2);
+            const char *n = key_name(k);
+            if (n) {
+                puts_(" name=");
+                puts_(n);
+            }
             nl();
             keys_shown = k;
         }

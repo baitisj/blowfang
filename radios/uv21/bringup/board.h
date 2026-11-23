@@ -29,7 +29,7 @@
 #define UART_RX PIN(PORT_A, 10)             /* also PTT, active low: a press reads as a break */
 #define UART_AF 1
 
-/* RF chip (BK4819 family, inferred), dump: bit-banged 3-wire. SCN low frames a transaction,
+/* RF chip: BK4829 (run: register 0 reads 0x4829, bring-up 11-23), dump: bit-banged 3-wire. SCN low frames a transaction,
  * 8-bit address (bit 7 = read), 16-bit data, MSB first. SDA is shared with an I2C device at 0x60
  * (SCL PA4, left alone here). The transmitter's PA enables are the RF chip's GPIO2/GPIO3, so with
  * reads only, nothing here can key it. */
@@ -54,10 +54,20 @@
 #define LCD_H 160
 #define LCD_MADCTL 0x00                     /* stock's value */
 
-/* Keys, dump: columns driven low one at a time, rows read with pull-ups. Which key is which
- * needs a press test: this image prints each press as matrix bit (column * 8 + row). */
+/* Keys, dump: columns driven low one at a time, rows read with pull-ups. Each press prints as
+ * matrix bit (column * 4 + row). The three side keys ground a row themselves (they read with no
+ * column driven), so they print as side bit (row). */
 #define KEY_COLS PIN(PORT_B, 0), PIN(PORT_B, 4), PIN(PORT_B, 9), PIN(PORT_B, 10), PIN(PORT_B, 11)
 #define KEY_ROWS PIN(PORT_C, 13), PIN(PORT_C, 14), PIN(PORT_F, 6), PIN(PORT_B, 14)
+/* run (bring-up press test, 11-23 16:35Z, assuming the presses came in the order asked): names
+ * by matrix bit. 0 = not seen yet (column PB0, and PB11 which the first image couldn't print). */
+#define KEY_NAMES \
+    0, 0, 0, 0,                             /* PB0: rows PC13 PC14 PF6 PB14 */ \
+    "EXIT", "2", "MENU", "4",               /* PB4 */ \
+    "6", "7", "DOWN", "8",                  /* PB9 */ \
+    "1", "3", "UP", "5",                    /* PB10 */ \
+    0, 0, 0, 0                              /* PB11 */
+#define SIDE_NAMES 0, "SIDE TOP", "SIDE BOT", "SIDE MID"   /* rows PC13, PC14, PF6, PB14 */
 
 /* ADC channels to report (channel n = PA n for 0-7, PB0 = 8, PB1 = 9): the UV-5RM's VOX and
  * battery channels, which no other function here uses. Unconfirmed: reading them is harmless. */

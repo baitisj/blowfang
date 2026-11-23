@@ -104,12 +104,27 @@ code; only the SPI flash pins have been checked on the radio, by dumper 2). Seve
 | Other | I2C on PA4/PB6 to a device at 0x60; audio PWM PA11 (TMR1 CH4 with DMA); PB2 probably the audio amplifier enable, PB7 probably the flashlight |
 | SPI flash layout beyond the CPS's 64 KB | voice prompt index 0xCFF80, prompt data from 0xD0000 |
 
+## Bring-up image (first blowfang code on the radio)
+
+Job uv21-bringup-1c, 2026-11-23 16:34:44Z: `radios/uv21/bringup` (commit 036d535e, 6 packages)
+flashed over stock pages 0-5, cable in. Console read at 16:35-16:37Z.
+
+| | | |
+| --- | --- | --- |
+| RF chip | **BK4829**: register 0 reads 0x4829 (the K6 reads 0x4819); all 128 registers read back, none written | M 11-23 |
+| LCD controller | **ST7735S**: RDDID answers 7C 89 F0 on SDA (PB15), so the panel's data line is bidirectional; screen dark because the backlight pin is still unknown | M 11-23 |
+| SPI flash | JEDEC C4 60 15 (2 MB) on CS PA2, after AB | M 11-23 |
+| MCU | DBGMCU IDCODE 0x50020100, flash size register 64 KB; the bootloader leaves the PLL running (CRM_CTRL 0x03008483, CFG 0x0028000A at app entry) | M 11-23 |
+| External crystal | did not start within 50 ms when enabled (HEXT ready never set): run on the internal clock or the bootloader's PLL | M 11-23 |
+| Supply | 3,315 mV (internal 1.2 V reference); ADC ch0 (PA0) 2-13, ch1 (PA1) 2694 | M 11-23 |
+| PTT | one press = one break on USART1 RX, as expected | M 11-23 |
+| Keys | 12 keys decoded on columns PB4, PB9, PB10 (names in `radios/uv21/bringup/board.h`, assuming the presses came in the order asked); the three side keys ground rows PC14 (top), PB14 (middle), PF6 (bottom) on their own; 9 * 0 # and CENTER, VFO/MR, A/B still to map (the first image dropped column PB11: fixed) | M 11-23 |
+
 ## To measure
 
-- The RF chip, for certain: from the dumped firmware (its register writes) or a bring-up image.
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
-- The pins above, on the radio, starting with the keypad map and the backlight.
+- The pins above, on the radio: the backlight, and the rest of the keypad map.
 
 ## Sources
 
