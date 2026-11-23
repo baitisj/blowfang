@@ -31,7 +31,8 @@ a 16-byte ident magic answered by 0x06; then "F" (16-byte reply), "M" (15 or 7 b
 "SEND!" magic (1 byte); then reads of "R" + 16-bit big-endian address + length (0x40), each
 answered by a 4-byte header and the block, XOR-scrambled with a 4-byte key ("CO 7" on the UV-17
 Pro family) except where the key byte is a space or the data byte is 0x00, 0xFF, the key byte or
-its complement. The scramble is its own inverse.
+its complement. The scramble is its own inverse. Blocks from 0xF000 up (the calibration) come
+unscrambled (measured on the UV-21 Pro, 11-23).
 
 Exit status: 0 read done; 2 no radio answered the ident; 3 short or garbled replies; 4 refused
 (something else is talking on the cable). SPDX-License-Identifier: MIT
@@ -77,6 +78,46 @@ def scramble(data, key=KEY):
         if k != 0x20 and b not in (0x00, 0xFF, k, k ^ 0xFF):
             out[i] = b ^ k
     return bytes(out)
+
+
+PLAIN_FROM = 0xF000          # the radio sends its calibration (0xF000 up) unscrambled (UV-21 Pro, 11-23)
+
+
+def unscramble(addr, blk):
+    """one block as stored: the radio scrambles what it sends below PLAIN_FROM only"""
+    return blk if addr >= PLAIN_FROM else scramble(blk)
+
+
+# The calibration block (0xF000-0xF27F), laid out as the UV-5RM open firmware reads it
+# (bf-5rh-firmware-open src/flash_map.rs, src/device/storage.rs): facts only, our own code.
+CAL_PA = (("high", 0xF000), ("mid", 0xF040), ("low", 0xF080))   # + 0 UHF, + 0x10 VHF, + 0x20 220
+CAL_SQL = (("open", 0xF0C0), ("close", 0xF0D0))                  # 10 levels each
+CAL_SQL_OFFSET = (("uhf_400", 0xF0E0), ("vhf_136", 0xF0F0), ("vhf_200", 0xF100), ("uhf_350", 0xF110))
+
+
+def decode_cal(mem):
+    """mem: bytes from 0xF000 (as stored) -> the calibration, by name; None if too short"""
+    if len(mem) < 0x245:
+        return None
+    at = lambda a, n: list(mem[a - 0xF000:a - 0xF000 + n])          # noqa: E731
+    pa = {}
+    for name, base in CAL_PA:
+        pa[name] = {"uhf_400_520_by_10": at(base, 13), "vhf_130_175_by_3": at(base + 0x10, 16),
+                    "b220_200_260_by_5": at(base + 0x20, 13)}
+    band = at(0xF230, 21)
+    bands = []
+    for i in range(0, 20, 5):
+        flag, lo, hi = band[i], band[i + 1:i + 3], band[i + 3:i + 5]
+        bands.append({"enabled": flag, "mhz": [int(bytes(lo).hex()) if bytes(lo).hex().isdigit() else None,
+                                               int(bytes(hi).hex()) if bytes(hi).hex().isdigit() else None]})
+    c = at(0xF210, 11)
+    return {"pa_apc_target": pa,
+            "squelch": {k: at(a, 10) for k, a in CAL_SQL},
+            "squelch_offset": {k: at(a, 13) for k, a in CAL_SQL_OFFSET},
+            "battery": at(0xF200, 6),
+            "audio": {"mic_mod": c[0], "ctcss_mod": c[1], "dcs_mod": c[2], "vol_wide": c[3],
+                      "vol_narrow": c[4], "byte5": c[5], "xtal_adjust": c[6], "rest": c[7:]},
+            "bands": bands}
 
 
 def read_frame(addr, n=BLOCK):
@@ -254,7 +295,7 @@ def cmd_read(a, port=None, log=None):
                     blk = blk.ljust(BLOCK, b"\xff")
                 elif hdr[1:] != read_frame(addr)[1:]:
                     bad.append(f"0x{addr:04x}: header {hdr.hex()}")
-                data += scramble(blk)
+                data += unscramble(addr, blk)
             regions.append((start, bytes(data)))
             log(f"region 0x{start:04x}+0x{size:x}: read" + (f" ({len(bad)} bad blocks so far)" if bad else ""))
             if len(bad) > 4:
@@ -275,8 +316,8 @@ def cmd_read(a, port=None, log=None):
                     silent += 1
                     break
                 extra.append({"addr": f"0x{addr:04x}", "status": "ok" if hdr[1:] == read_frame(addr)[1:]
-                              else f"header {hdr.hex()}", "sha256": hashlib.sha256(scramble(blk)).hexdigest()})
-                run += scramble(blk)
+                              else f"header {hdr.hex()}", "sha256": hashlib.sha256(unscramble(addr, blk)).hexdigest()})
+                run += unscramble(addr, blk)
             if run:
                 regions.append((rng[0], bytes(run)))
             if silent >= 3:
@@ -302,6 +343,8 @@ def cmd_read(a, port=None, log=None):
                                    "sha256": hashlib.sha256(pub).hexdigest(),
                                    "strings": [f"0x{x:04x} {t}" for x, t in strings(pub, start)]})
         dump += [f"# 0x{start:04x} +0x{len(pub):x}"] + hexdump(pub, start)
+        if start <= 0xF000 < start + len(pub):
+            summary["calibration"] = decode_cal(pub[0xF000 - start:])
     json.dump(summary, open(os.path.join(a.out, "summary.json"), "w"), indent=1)
     open(os.path.join(a.out, "hexdump.txt"), "w").write("\n".join(dump) + "\n")
     log(f"codeplug {len(img)} bytes -> {os.path.join(a.private, 'clone.img')} (CHIRP: {a.model});"

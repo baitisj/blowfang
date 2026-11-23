@@ -26,7 +26,7 @@ class FakeBootloader:
     1 KB package whose number * 0x400 must equal the offset, below 0xF000, erasing and writing
     that page only; 05 region 2; 45 end. Replies AA cmd args len16 crc16 EF."""
 
-    def __init__(self, app=None, k6=False, fail_at=None):
+    def __init__(self, app=None, k6=False, fail_at=None, boot_after=None):
         self.app = bytearray(app or hashlib.sha256(b"stock").digest() * (0xF000 // 32))
         self.stock = bytes(self.app)
         self.state, self.region, self.off, self.count = 0, None, 0, 0
@@ -34,6 +34,7 @@ class FakeBootloader:
         if k6:
             self.out += b"K6 CFG build=abc\r\n"
         self.ended = False
+        self.boot_after = boot_after                # command 42s before the "power-on"
 
     def reply(self, cmd, code):
         body = bytes([cmd, code, 0, 0])
@@ -46,6 +47,13 @@ class FakeBootloader:
         data = b[5:5 + n]
         assert struct.unpack(">H", b[5 + n:7 + n])[0] == kdh.crc16_xmodem(b[1:5 + n])
         self.cmds.append(cmd)
+        if cmd == 0x42:
+            if self.boot_after is None or self.boot_after > 0:
+                if self.boot_after:
+                    self.boot_after -= 1
+                return                              # the stock app ignores it
+            self.state = 0
+            return self.reply(cmd, 6)
         if cmd == 0x01:
             self.state = 1
             return self.reply(cmd, 6)
@@ -89,7 +97,7 @@ def app_image(n_bytes, seed=b"blowfang"):
 
 
 def ns(tmp_path, **kw):
-    d = dict(port="fake", out=str(tmp_path / "run"), listen_s=0.0)
+    d = dict(port="fake", out=str(tmp_path / "run"), listen_s=0.0, wait_boot_s=0.0)
     d.update(kw)
     return argparse.Namespace(**d)
 
@@ -176,6 +184,23 @@ def test_probe_with_no_bootloader(tmp_path, monkeypatch):
     assert kdh.cmd_probe(ns(tmp_path), port=r, log=lambda s: None) == 2
     assert len(r.sent) == 5
     assert json.load(open(tmp_path / "run" / "probe.json"))["handshake"] == "command 0x01: no reply"
+
+
+def test_probe_waits_for_a_power_on(tmp_path, monkeypatch):
+    monkeypatch.setattr(kdh, "BOOT_EVERY_S", 0.001)
+    r = FakeBootloader(boot_after=20)
+    assert kdh.cmd_probe(ns(tmp_path, wait_boot_s=5.0), port=r, log=lambda s: None) == 0
+    assert r.cmds.count(0x42) == 21 and r.cmds[-1] == 0x01 and bytes(r.app) == r.stock
+    p = json.load(open(tmp_path / "run" / "probe.json"))
+    assert p["boot"] is True and p["handshake"] == "ack"
+
+
+def test_probe_gives_up_with_no_power_on(tmp_path, monkeypatch):
+    monkeypatch.setattr(kdh, "BOOT_EVERY_S", 0.001)
+    r = FakeBootloader()
+    assert kdh.cmd_probe(ns(tmp_path, wait_boot_s=0.05), port=r, log=lambda s: None) == 2
+    assert set(r.cmds) == {0x42}
+    assert json.load(open(tmp_path / "run" / "probe.json"))["handshake"] == "no power-on seen"
 
 
 # ---- dump: a dumper simulated in Python (tests/test_uv21_dumper.py runs the real one) ----

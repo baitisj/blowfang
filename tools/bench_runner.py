@@ -103,7 +103,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240,
                 "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180,
-                "kdh.probe": 60, "kdh.dump": 3600, "kdh.flash": 300}
+                "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -721,7 +721,7 @@ def check_kplug_args(args, what, problems):
 
 
 KDH_APP_MAX = 0xF000                         # uv21_kdh.APP_MAX: the bootloader's app area
-KDH_OPTS = {"kdh.probe": ("--listen-s",), "kdh.dump": ("--passes", "--timeout-s")}
+KDH_OPTS = {"kdh.probe": ("--listen-s", "--wait-boot-s"), "kdh.dump": ("--passes", "--timeout-s")}
 KDH_DUMP_MAX_S = 3000                        # under the step's 3600 s
 
 
@@ -749,6 +749,8 @@ def check_kdh_args(do, args, what, problems):
             problems.append(f"{what}: --timeout-s {v}: 60..{KDH_DUMP_MAX_S}")
         elif k == "--listen-s" and not (x is not None and 0 <= x <= 10):
             problems.append(f"{what}: --listen-s {v}: 0..10")
+        elif k == "--wait-boot-s" and not (x is not None and 0 <= x <= 200):
+            problems.append(f"{what}: --wait-boot-s {v}: 0..200")
 
 
 def check_uv380_cmd(job, c, what, problems):

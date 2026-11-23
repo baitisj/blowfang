@@ -34,19 +34,41 @@ flash is one way.
 
 ## The CPS address space (64 KB, `R` reads)
 
-The CPS reads a 64 KB configuration space, not the MCU's flash: nothing in it looks like Cortex-M
-code or a vector table. Measured 11-23 (uv21-read-1); blocks not listed read as FF.
+The CPS reads the first 64 KB of the radio's SPI flash, not the MCU's flash: nothing in it looks
+like Cortex-M code. Its layout is the UV-5RM's, block for block, as the UV-5RM open firmware's
+`src/flash_map.rs` gives it, down to the calibration addresses. Measured 11-23 (uv21-read-1);
+blocks not listed read as FF. **Blocks from 0xF000 up come unscrambled**: the radio's XOR applies
+below 0xF000 only (`bench_kplug.py` handles it since PR #251).
 
-| Range | What it looks like |
+| Range | 5RM name | What it holds here |
+| --- | --- | --- |
+| 0x0000-0x7CFF | channels | 1000 x 32-byte channels; kept on hamlet |
+| 0x8000-0x873F | VFO info | wear-levelled 64-byte VFO records, each with a 2-byte CRC |
+| 0x9000-0x9DFF | radio info | wear-levelled settings records (0x60 bytes) |
+| 0xA000-0xA2BF | DTMF | DTMF settings and contacts |
+| 0xC000-0xCFFF | FM | a count (999) then 16-byte records of BCD frequency pairs at band edges (136-174, 400-480) and 400.125 MHz + n x 10 MHz: factory test channels, not the owner's |
+| 0xD000-0xD03F | RMW scratch | |
+| 0xE000-0xE53F | system | wear-levelled 16-byte state records with a CRC (the counter steps down as records are added) |
+| 0xF000-0xF27F | calibration | below |
+
+### Factory calibration (0xF000-0xF27F, measured 11-23)
+
+| | Values |
 | --- | --- |
-| 0x0000-0x7CFF | channel memories (CHIRP's layout); kept on hamlet |
-| 0x8000-0x873F | 0x8000 settings (CHIRP) then 66-byte records, each with a 2-byte checksum; not decoded |
-| 0x9000-0x9DFF | 0x9000 (CHIRP) then 0x60-byte records, each with a 2-byte checksum; not decoded |
-| 0xA000-0xA2BF | CHIRP's 0xA000 region |
-| 0xC000-0xCFFF | a 16-byte-record frequency table: a count (0x03E7 = 999) then pairs of BCD frequencies at band edges (136-174, 400-480) and a 400.125 MHz + n x 10 MHz series; looks like factory test channels, not the owner's |
-| 0xD000-0xD03F | CHIRP's 0xD000 region |
-| 0xE000-0xE53F | a log of 16-byte entries with a counter that steps down and a 2-byte checksum (power-on or event log?) |
-| 0xF000-0xF27F | 13-value rows padded to 16 bytes, repeating per band: the shape of a calibration table (squelch / power / deviation steps); values not decoded |
+| TX power, APC target (FD6818 reg 0x36 high byte): high | UHF 400-520 by 10 MHz: 230 230 230 226 226 230 230 230 230 240 240 240 240; VHF 130-175: 240 flat; 220 band: 200 flat |
+| mid | 190 everywhere |
+| low | UHF 146 (400-450) then 166 (460-520); VHF 153; 220 band 120 at 200 MHz, then 200 |
+| Squelch thresholds, levels 0-9 | open 0, 114..122; close 0, 113..121 |
+| Squelch offsets (13 points per band) | UHF 400: 35-39; VHF 136: 10 falling to 4; 200 MHz: 2 rising to 11; UHF 350: 42 falling to 38 |
+| Battery thresholds | 125 132 138 146 160 185 |
+| Audio (0xF210) | mic modulation 36, CTCSS 60, DCS 50, AF volume wide 38 / narrow 38, xtal adjust index 9 (zero point 8) |
+| Band limits (0xF230; the CPS "F" reply is these without the flags) | on: 136-174, 400-520, 220-260; a fourth entry is off and doesn't parse as MHz |
+
+The flat VHF, 220 and mid-power rows look like defaults, with only UHF high and low trimmed. A
+350-400 MHz squelch table and the 5RM FD6818 layout throughout point to the FD6818 (BK4819 family) and not
+the AT1846S of the UV-21R V2 teardown (**I**, strong; the dumped firmware will settle it). For
+blowfang this means the UV-5RM open firmware's calibration code reads this radio's calibration as
+it is.
 
 ## Bootloader and backup
 
@@ -58,8 +80,7 @@ code or a vector table. Measured 11-23 (uv21-read-1); blocks not listed read as 
 
 ## To measure
 
-- Decode the 0xF000 table (calibration?) against the UV-5RM's FD6818 and BK4819 builds, which
-  would name the RF chip family without opening the case.
+- The RF chip, for certain: from the dumped firmware (its register writes) or a bring-up image.
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
 - Whether the bootloader answers the 5RM's handshake (`kdh.probe`), and, from the dump, whether it

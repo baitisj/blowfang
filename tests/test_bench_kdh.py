@@ -22,12 +22,14 @@ def test_runner_lists_match_the_tool():
 
 def test_probe_and_dump_args(work):
     for step in ({"do": "kdh.probe"}, {"do": "kdh.probe", "args": ["--listen-s", "2"]},
+                 {"do": "kdh.probe", "args": ["--wait-boot-s", "180"]},
                  {"do": "kdh.dump", "args": ["--passes", "3", "--timeout-s=2400"]}):
         assert tb.problems(tb.job("k", step)) == "", step
     for step in ({"do": "kdh.probe", "args": ["--port", "/dev/ttyUSB0"]},
                  {"do": "kdh.probe", "args": ["--image", "x.bin"]},
                  {"do": "kdh.dump", "args": ["--private", "/tmp"]},
                  {"do": "kdh.dump", "args": ["--passes", "9"]},
+                 {"do": "kdh.probe", "args": ["--wait-boot-s", "999"]},
                  {"do": "kdh.dump", "args": ["--timeout-s", "9999"]},
                  {"do": "kdh.dump", "args": ["--passes"]},
                  {"do": "kdh.dump", "background": True}):
