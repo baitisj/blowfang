@@ -319,12 +319,12 @@ class FakeConsole:
     """the bring-up image on the cable: answers i with its report"""
 
     def __init__(self):
-        self.sent, self.pending = b"", b"blowfang uv21 bringup 1\r\n"
+        self.sent, self.pending = b"", b"blowfang uv21 bringup 3\r\n"
 
     def write(self, b):
         self.sent += b
         if b == b"i":
-            self.pending += b"blowfang uv21 bringup 1 build=abc board=uv21\r\nrf id=4819\r\n"
+            self.pending += b"blowfang uv21 bringup 3 build=abc board=uv21\r\nrf id=4819\r\n"
 
     def read(self, n, timeout=None, gap=None):
         out, self.pending = self.pending[:n], self.pending[n:]
@@ -345,7 +345,7 @@ def test_console_sends_only_read_only_commands(tmp_path):
     text = (tmp_path / "console.txt").read_text()
     assert "rf id=4819" in text
     res = json.loads((tmp_path / "console.json").read_text())
-    assert res["banner"] == "blowfang uv21 bringup 1"
+    assert res["banner"] == "blowfang uv21 bringup 3"
     for bad in ("O", "R", "iO"):
         port = FakeConsole()
         a.send = bad

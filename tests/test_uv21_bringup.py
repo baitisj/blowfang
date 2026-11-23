@@ -36,6 +36,7 @@ LCD_CS, LCD_SCK, LCD_DC, LCD_SDA, LCD_RST = (B, 12), (B, 13), (C, 15), (B, 15), 
 KEY_COLS = ((B, 0), (B, 4), (B, 9), (B, 10), (B, 11))
 KEY_ROWS = ((C, 13), (C, 14), (F, 6), (B, 14))
 LATCH, SENSE = (A, 8), (A, 15)
+BL = (F, 7)                                # the backlight, high = on
 WATCH = (RF_SCN, RF_SCK, RF_SDA, NOR_CS, NOR_SCK, NOR_MISO, NOR_MOSI, LCD_CS, LCD_SCK, LCD_DC, LCD_SDA)
 WMASK = {port: sum(1 << b for p, b in WATCH if p == port) for port in (A, B, C, F)}
 CYCLES_PER_READ = 400                     # SysTick counts this much between two reads (50 us)
@@ -320,7 +321,7 @@ class Radio:
 @pytest.fixture(scope="module")
 def radio(image):
     r = Radio(image)
-    r.run(until="O off, R reset\r\n")
+    r.run(until="screen bringup\r\n", limit=200_000_000)            # the first screen drawn
     return r
 
 
@@ -334,6 +335,7 @@ def test_image_fits_the_app_area_and_the_flash_tool_takes_it(image):
     assert len(image) <= 0xF000
     sp, pc = struct.unpack_from("<II", image)
     assert sp == 0x20004000 and 0x08001000 < pc < 0x08001000 + len(image) and pc & 1
+    assert sp & 0x2FFE0000 == 0x20000000                          # the bootloader's whole app check
     kdh.packages(image)
     words = {struct.unpack_from("<I", image, o)[0] for o in range(0, len(image) - 3, 2)}
     assert not words & {0x45670123, 0xCDEF89AB}                   # FLASH_UNLOCK keys
@@ -341,7 +343,7 @@ def test_image_fits_the_app_area_and_the_flash_tool_takes_it(image):
 
 def test_boots_and_reads_every_chip_id(radio):
     text = "\r\n".join(radio.lines())
-    assert radio.lines()[0] == "blowfang uv21 bringup 1"
+    assert radio.lines()[0] == "blowfang uv21 bringup 3"
     assert "board=uv21" in text
     assert "clock sclk=hick_8mhz hext_ok=1" in text
     assert "rf id=4819" in text
@@ -355,8 +357,8 @@ def test_drives_only_the_board_pins(radio):
     outs = {(p, b) for p, b, m in driven(radio) if m == 1}
     afs = {(p, b) for p, b, m in driven(radio) if m == 2}
     assert afs == {(A, 9), (A, 10)}                                # USART1
-    assert outs == {LATCH, RF_SCN, RF_SCK, RF_SDA, NOR_CS, NOR_SCK, NOR_MOSI,
-                    LCD_CS, LCD_SCK, LCD_DC, LCD_SDA, LCD_RST} | set(KEY_COLS)
+    assert outs == {LATCH, BL, RF_SCN, RF_SCK, RF_SDA, NOR_CS, NOR_SCK, NOR_MOSI,
+                         LCD_CS, LCD_SCK, LCD_DC, LCD_SDA, LCD_RST} | set(KEY_COLS)
     assert radio.pins.out(*LATCH) == 1
     for p, b in ((B, 2), (B, 7), (A, 11), (A, 4)):                 # amp, flashlight, audio PWM, I2C SCL
         assert radio.pins.mode(p, b) == 0
@@ -392,11 +394,42 @@ def test_screen_test_pattern(radio):
     assert cmds.index(0x11) < cmds.index(0x3A) < cmds.index(0x29) < cmds.index(0x2C)
 
 
+def rgb(c):
+    return c >> 11, (c >> 5) & 63, c & 31
+
+
+def test_subpixel_screen_after_five_seconds_and_menu_switches(image):
+    r = Radio(image)
+    r.run(until="screen subpixel\r\n", limit=400_000_000)
+    fb = r.fb
+    assert fb[20][0:4] == [0xF800, 0x001F, 0, 0] and fb[20][66:70] == [0x001F, 0xF800, 0, 0]   # A, B
+    assert [fb[y][0] for y in range(46, 50)] == [0xF800, 0x001F, 0, 0]                         # C rows
+    assert [fb[y][66] for y in range(46, 50)] == [0x001F, 0xF800, 0, 0]                        # D rows
+    assert fb[150][64] == 0xFFFF                                                               # white block
+    rgb1, bgr1, grey1 = (fb[y][30:] for y in (64 + 3, 74 + 3, 84 + 3))   # the middle row of each line
+    assert any(px for px in rgb1) and any(rgb(px)[0] != rgb(px)[2] for px in rgb1)   # colour fringes
+    assert [rgb(px) for px in bgr1] == [rgb(px)[::-1] for px in rgb1]                 # BGR mirrors RGB
+    assert any(px for px in grey1) and all(rgb(px)[0] == rgb(px)[2] for px in grey1)
+    r.pressed.add((4, 2))                                          # MENU: back to the bring-up screen
+    out = r.run(until="screen bringup\r\n", limit=200_000_000)
+    assert "name=MENU" in out
+    assert fb[3][3] == 0xF800 and fb[45][35] == 0x07E0
+
+
 def test_keys_ptt_and_pin_census(radio):
-    radio.pressed.add((1, 2))                                      # column PB4, row PF6
-    assert "keys direct=00 matrix=00000400" in radio.run(until="matrix=00000400\r\n")
+    radio.pressed.add((1, 2))                                      # column PB4, row PF6: UP
+    assert "keys matrix=00000040 side=0 direct=00 name=UP" in radio.run(until="name=UP\r\n")
     radio.pressed.clear()
-    assert "keys direct=00 matrix=00000000" in radio.run(until="matrix=00000000\r\n")
+    assert "keys matrix=00000000 side=0" in radio.run(until="matrix=00000000 side=0 direct=00\r\n")
+    radio.pressed.add((4, 3))                                      # the fifth column (PB11): bit 19
+    assert "keys matrix=00080000 side=0" in radio.run(until="matrix=00080000 side=0 direct=00\r\n")
+    radio.pressed.clear()
+    radio.run(until="matrix=00000000 side=0 direct=00\r\n")
+    radio.ext[(C, 14)] = 0                                         # the top side key grounds row PC14
+    out = radio.run(until="name=SIDE TOP\r\n")
+    assert "keys matrix=00000000 side=2 direct=00 name=SIDE TOP" in out
+    del radio.ext[(C, 14)]
+    radio.run(until="matrix=00000000 side=0 direct=00\r\n")
     radio.ext[(A, 12)] = 1                                         # a pin nobody mapped
     out = radio.run(until="pins a=1040 b=4000 c=6000 f=0040\r\n")   # PA6 MISO and the rows pulled up
     assert "pins a=1040 b=4000 c=6000 f=0040" in out
@@ -428,3 +461,12 @@ def test_a_power_sense_that_reads_off_at_boot_is_ignored(image):
     assert "power sense=1 auto_off=0" in out
     r.run(limit=3_000_000)
     assert r.pins.out(*LATCH) == 1 and "power off" not in r.uart.decode("latin-1")
+
+
+def test_backlight_comes_on_after_the_first_screen(image):
+    r = Radio(image)
+    r.run(until="O off, R reset\r\n")
+    assert r.pins.out(*BL) == 0 or r.pins.mode(*BL) != 1          # dark while the screen is set up
+    r.run(limit=20_000_000)
+    assert r.pins.mode(*BL) == 1 and r.pins.out(*BL) == 1
+    assert r.pins.mode(A, 3) == 0 and r.pins.mode(B, 1) == 0      # the old candidates stay undriven

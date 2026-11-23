@@ -97,19 +97,36 @@ code; only the SPI flash pins have been checked on the radio, by dumper 2). Seve
 | PTT | PA10, active low: the serial receive pin, so a held-low line or a break reads as PTT |
 | Power | self-latch PA8 (high = stay on); power switch sense PA15 (high = off) |
 | SPI flash | SPI1 SCK PA5, MISO PA6, MOSI PA7 (AF0), mode 3, CS PA2; stock sends B9 then AB at start |
-| LCD | SPI2 SCK PB13, MOSI PB15 (AF0, write-only, mode 3), CS PB12, D/C PC15 (low = command), reset PB8; ST7735S-like init, 128x160; backlight pin not found yet |
+| LCD | SPI2 SCK PB13, MOSI PB15 (AF0, write-only, mode 3), CS PB12, D/C PC15 (low = command), reset PB8; ST7735S-like init, 128x160; backlight PF7, push-pull, high = on (stock code: set/clear of GPIOF bit 7; on after the boot screen; PB1/TMR14 unused) |
 | Keypad | rows PC13, PC14, PF6, PB14 (pull-ups); columns PB0, PB4, PB9, PB10, PB11 |
 | RF chip | bit-banged 3-wire SCN PB3, SCK PB5, SDA PB6; 8-bit address (bit 7 = read), 16-bit data, BK4819-family framing; stock never reads a chip ID |
 | RF switching | RX path PA14 (VHF, 220) and PA13 (UHF), the SWD pins; TX PA enables through the RF chip's GPIO3 (VHF, 220) and GPIO2 (UHF) |
 | Other | I2C on PA4/PB6 to a device at 0x60; audio PWM PA11 (TMR1 CH4 with DMA); PB2 probably the audio amplifier enable, PB7 probably the flashlight |
 | SPI flash layout beyond the CPS's 64 KB | voice prompt index 0xCFF80, prompt data from 0xD0000 |
 
+## Bring-up image (first blowfang code on the radio)
+
+Job uv21-bringup-1c, 2026-11-23 16:34:44Z: `radios/uv21/bringup` (commit 036d535e, 6 packages)
+flashed over stock pages 0-5, cable in. Console read at 16:35-16:37Z.
+
+| | | |
+| --- | --- | --- |
+| RF chip | **BK4829**: register 0 reads 0x4829 (the K6 reads 0x4819); all 128 registers read back, none written | M 11-23 |
+| LCD controller | **ST7735S**: RDDID answers 7C 89 F0 on SDA (PB15), so the panel's data line is bidirectional; image 1 left the screen dark because the backlight (PF7, found later in the stock code) was never driven | M 11-23 |
+| Screen | Image 2 (11-23 18:42Z) lights it with PF7 high and draws the test pattern as intended: colour order right (RGB565, no BGR swap) and the red marker top left with MADCTL 00 (128x160 portrait, no flip); the 1-pixel frame shows on all four edges, so no column/row offset | M 11-23 |
+| SPI flash | JEDEC C4 60 15 (2 MB) on CS PA2, after AB | M 11-23 |
+| MCU | DBGMCU IDCODE 0x50020100, flash size register 64 KB; the bootloader leaves the PLL running (CRM_CTRL 0x03008483, CFG 0x0028000A at app entry) | M 11-23 |
+| External crystal | did not start within 50 ms when enabled (HEXT ready never set): run on the internal clock or the bootloader's PLL | M 11-23 |
+| Supply | 3,315 mV (internal 1.2 V reference); ADC ch0 (PA0) 2-13, ch1 (PA1) 2694 | M 11-23 |
+| PTT | one press = one break on USART1 RX, as expected | M 11-23 |
+| Subpixels | Vertical stripes, R G B left to right in the portrait mounting (image 3, 11-23 19:12Z: patch B (blue pixel then red) shows tight purple lines, A doesn't; the row patches C/D differ only slightly). Subpixel text rendered for RGB reads well, best at 2 stripes per font column (4 px a 5x7 character, 32 characters across); BGR and grey are worse | M 11-23 |
+| Keys | All 22 mapped (key round 2, 11-23 18:49Z; bit = column x 4 + row, rows PC13 PC14 PF6 PB14): PB0 = VFO/MR, CENTER, -, A/B; PB4 = 1, 4, UP, 7; PB9 = *, 0, EXIT, #; PB10 = 2, 5, DOWN, 8; PB11 = 3, 6, MENU, 9. The three side keys ground rows PC14 (top), PB14 (middle), PF6 (bottom) on their own, with no column driven. The first run's names were guesses from press order and were wrong; this round also reproduces its 12 codes | M 11-23 |
+
 ## To measure
 
-- The RF chip, for certain: from the dumped firmware (its register writes) or a bring-up image.
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
-- The pins above, on the radio, starting with the keypad map and the backlight.
+- The pins above, on the radio: done for the backlight (PF7) and the whole keypad.
 
 ## Sources
 

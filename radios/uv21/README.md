@@ -124,8 +124,9 @@ It reports, on the K-plug serial line (115200 8N1, text) and on the screen:
   reference) and whether the external crystal starts; it runs on the internal 8 MHz clock;
 - the RF chip's ID (register 0) and, on `r`, all 128 registers; the SPI flash's JEDEC ID; the LCD
   controller's ID (a read the stock firmware never does, so it may read all ones);
-- each key press as a matrix bit (column x 8 + row, columns PB0 PB4 PB9 PB10 PB11, rows PC13
-  PC14 PF6 PB14), and a census of every input pin, so a key nobody mapped still shows up;
+- each key press as a matrix bit (column x 4 + row, columns PB0 PB4 PB9 PB10 PB11, rows PC13
+  PC14 PF6 PB14) with its name once board.h knows it, the side keys (which ground a row on their
+  own) as side bits, and a census of every input pin, so a key nobody mapped still shows up;
 - PTT, which is also the serial receive pin: a press reads as a break (`ptt break n=...`);
 - the screen: a one-pixel white frame on the outermost pixels (shows the controller's offsets),
   a red square top left (shows a flip or rotation), labelled R G B W bars (red drawn blue means
@@ -138,6 +139,19 @@ receive-band switch), the audio amplifier or the flashlight. `tests/test_uv21_br
 emulated AT32F421 with models of the RF chip, SPI flash, LCD and keys on board.h's pins and checks
 all of that.
 
+Backlight: PF7, high = on (found in the stock code). Like stock, image 2 leaves it off while the
+screen is set up and turns it on once the test pattern is drawn; `b` on the console toggles it.
+
+Subpixel test (image 3): 5 s after boot the screen switches to a test of the panel's colour
+stripes, and MENU (or `s` on the console) switches back and forth. Patches A/B put a red and a
+blue pixel side by side in both orders: the pair whose lit stripes end up adjacent shows thin
+purple lines, which gives the stripe order (B tight = R G B left to right, A tight = B G R). C/D
+are the same in rows, for stripes that run across. Below them one pangram in a 5x7 font is drawn
+at one source column per stripe (2 pixels a character) and at two (4 pixels), each rendered for
+RGB stripes, for BGR stripes and in plain grey, with a 1-2-3-2-1 filter and gamma 2.2. The line
+that reads sharpest without fringes names the order. The white block at the bottom is for a
+macro photo of the stripes themselves.
+
 Power: it holds the latch (PA8) and drops it when the switch sense (PA15) reads off for 200 ms. If
 the sense reads off at boot, the polarity in board.h is wrong and it never acts on it (it says
 `auto_off=0`), so a wrong guess can't switch the radio off at every boot.
@@ -149,7 +163,14 @@ Console commands, one byte each: `?` help, `i` report, `r` RF registers, `l` red
 Back to flash mode with no hands: the image resets when it hears the bootloader's command 42
 frame (`AA 42 ...`), and `kdh.probe --wait-boot-s` keeps sending that frame, so the bootloader
 catches the next one. That assumes the radio stays powered through a reset with the switch on
-(the latch only matters once the switch is off); if it doesn't, a plain power cycle does the same.
+(the latch only matters once the switch is off); if it doesn't, a full power cycle does the same.
+Until an image of ours that does this is on the radio, a power cycle means: knob off, battery and
+cable out for 20 s (the serial line back-powers the MCU, so a battery pull alone doesn't reset
+it), battery in, cable in, knob on, with `kdh.probe --wait-boot-s 200` running.
+
+The bootloader starts the app when (word at 0x08001000) & 0x2FFE0000 == 0x20000000 (the initial
+stack pointer looks like RAM); there is no checksum. In flash mode it toggles the flashlight
+(PB7) on each frame.
 
 ## Recovery
 

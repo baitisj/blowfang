@@ -29,7 +29,7 @@
 #define UART_RX PIN(PORT_A, 10)             /* also PTT, active low: a press reads as a break */
 #define UART_AF 1
 
-/* RF chip (BK4819 family, inferred), dump: bit-banged 3-wire. SCN low frames a transaction,
+/* RF chip: BK4829 (run: register 0 reads 0x4829, bring-up 11-23), dump: bit-banged 3-wire. SCN low frames a transaction,
  * 8-bit address (bit 7 = read), 16-bit data, MSB first. SDA is shared with an I2C device at 0x60
  * (SCL PA4, left alone here). The transmitter's PA enables are the RF chip's GPIO2/GPIO3, so with
  * reads only, nothing here can key it. */
@@ -43,27 +43,44 @@
 #define NOR_MISO PIN(PORT_A, 6)
 #define NOR_MOSI PIN(PORT_A, 7)
 
-/* LCD, dump: SPI2 pins, write-only in stock (ST7735S-like, inferred); bit-banged here so the ID
- * read can be tried on SDA. Backlight pin not found in the dump (always on, or a timer output). */
+/* LCD, dump: SPI2 pins, write-only in stock; ST7735S (run: RDDID, bring-up 11-23); bit-banged here
+ * so the ID read can be done on SDA. */
 #define LCD_CS PIN(PORT_B, 12)
 #define LCD_RST PIN(PORT_B, 8)
 #define LCD_DC PIN(PORT_C, 15)              /* low = command */
 #define LCD_SCK PIN(PORT_B, 13)
 #define LCD_SDA PIN(PORT_B, 15)
+/* Backlight, dump (stock code + emulator, 11-23): PF7, plain push-pull GPIO, high = on, no PWM.
+ * Stock leaves it low through LCD init and turns it on once the boot screen is drawn. (PB1/TMR14 is
+ * never set up by stock; PA3 is an output stock holds high, purpose unknown, left alone here.) */
+#define LCD_BL PIN(PORT_F, 7)
 #define LCD_W 128                           /* portrait (the 5RM is 160x128 landscape) */
 #define LCD_H 160
 #define LCD_MADCTL 0x00                     /* stock's value */
 
-/* Keys, dump: columns driven low one at a time, rows read with pull-ups. Which key is which
- * needs a press test: this image prints each press as matrix bit (column * 8 + row). */
+/* Keys, dump: columns driven low one at a time, rows read with pull-ups. Each press prints as
+ * matrix bit (column * 4 + row). The three side keys ground a row themselves (they read with no
+ * column driven), so they print as side bit (row). */
 #define KEY_COLS PIN(PORT_B, 0), PIN(PORT_B, 4), PIN(PORT_B, 9), PIN(PORT_B, 10), PIN(PORT_B, 11)
 #define KEY_ROWS PIN(PORT_C, 13), PIN(PORT_C, 14), PIN(PORT_F, 6), PIN(PORT_B, 14)
+/* run (key round 2, job uv21-console-4, 11-23 18:49Z, all 22 keys pressed in a listed order; it
+ * also reproduces the first run's 12 codes): names by matrix bit. A phone keypad on PB4/PB10/PB11
+ * plus * 0 # on PB9; PB0/PF6 has no key. */
+#define KEY_NAMES \
+    "VFO/MR", "CENTER", 0, "A/B",           /* PB0: rows PC13 PC14 PF6 PB14 */ \
+    "1", "4", "UP", "7",                    /* PB4 */ \
+    "*", "0", "EXIT", "#",                  /* PB9 */ \
+    "2", "5", "DOWN", "8",                  /* PB10 */ \
+    "3", "6", "MENU", "9"                   /* PB11 */
+#define KEY_SCREEN 18                       /* MENU (PB11, PF6): switches bring-up / subpixel screen */
+#define SIDE_NAMES 0, "SIDE TOP", "SIDE BOT", "SIDE MID"   /* rows PC13, PC14, PF6, PB14 */
 
 /* ADC channels to report (channel n = PA n for 0-7, PB0 = 8, PB1 = 9): the UV-5RM's VOX and
  * battery channels, which no other function here uses. Unconfirmed: reading them is harmless. */
 #define ADC_CHANNELS 0, 1
 
 /* Not driven by this image: PA13/PA14 (SWD here; stock uses them for the receive-band switch),
- * PA11 (audio PWM), PB2 (audio amplifier, inferred), PB7 (flashlight, inferred), PA4 (I2C SCL). */
+ * PA11 (audio PWM), PB2 (audio amplifier, inferred), PB7 (flashlight: the bootloader toggles it on
+ * each frame in flash mode), PA4 (I2C SCL). */
 
 #endif
