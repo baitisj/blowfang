@@ -72,6 +72,10 @@ that, plus a byte-exact read-back.
 
 ## The steps
 
+Status on 2026-11-23: steps 1-6 done. The MCU flash and all of the SPI flash are backed up
+(dumper 1 for the MCU, dumper 2 for the SPI after dumper 1 read it on the wrong CS pin), and the
+rebuilt page 0 restored stock on the radio, proven by a CPS read that matches the backups.
+
 | # | What | Runner step | Hands-on |
 |---|---|---|---|
 | 1 | CPS clone read: codeplug, model and version replies, probes of the rest of the address space | `kplug.read` | none |
