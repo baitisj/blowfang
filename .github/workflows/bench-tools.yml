@@ -83,6 +83,7 @@ jobs:
         run: |
           python -m pytest -q -n auto --durations=8 \
             tests/test_bench_inbox.py \
+            tests/test_bench_kplug.py \
             tests/test_bench_runner.py \
             tests/test_pluto_bench.py \
             tests/test_pluto_fw.py \

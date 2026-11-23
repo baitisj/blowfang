@@ -26,7 +26,8 @@ docs/bench-runner.md has the job format and the rules.
 A job is a JSON file: who (the thread, one word), a channel to claim, how long, a checkout, and
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
-uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash), turned into one
+uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
+kplug.read), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -36,8 +37,10 @@ and the point is that the runner checks everything before it keys. The checks, i
     every module signed with it (k6_upload gets --key-file from the runner, never from the job)
   - nothing on the never-flash list (acd06ba, a1a86f9, 35e982f), and each staged file's sha256
     matches the job's, checked again right before it is used
-  - the K6 cable only through k6_install / k6_update / a serial-hold logger, the port found by
-    its by-id name (USB numbering moves on reboot); no job argument may name a /dev path
+  - the K6 cable only through k6_install / k6_update / a serial-hold logger / bench_kplug's
+    read-only clone (kplug.read: a stock Baofeng on that cable, ident and "R" reads only, never a
+    write), the port found by its by-id name (USB numbering moves on reboot); no job argument may
+    name a /dev path
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
     channels), each read back; a send only at power 0 (read back first) on 441.850 or 440.850 inside
@@ -97,7 +100,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240,
-                "pluto.fw": 900, "pluto.flash": 900}
+                "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -635,12 +638,70 @@ def check_step(job, i, step, rs, problems):
                             " receive-only c6fmtap.c, c6fmtap_1c.c, c6phyrx.c, ...)")
         elif not os.path.isfile(os.path.join(job_sources(job), *uv380_rx_module(args[0]))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_rx_module(args[0]))}")
+    elif do == "kplug.read":
+        check_kplug_args(args, what, problems)
+        if step.get("background"):
+            problems.append(f"{what}: never in the background")
     elif do == "uv380.flash":
         staged_file(step, "image", rs, what, problems)
         staged_file(step, "radio_tool", rs, what, problems, need_sha=False)
         check_commit(step, what, problems)
         if args:
             problems.append(f"{what}: takes no args")
+
+
+KPLUG_OPTS = ("--ident", "--model", "--extra", "--listen-s")
+# bench_kplug.py's own lists (tests/test_bench_runner.py keeps them equal); copied so the installed
+# runner in $BLOWFANG_WORK/bin needs no new file beside it
+KPLUG_IDENTS = ("color", "f8hppro", "gmrs5rh", "normal")
+KPLUG_MODELS = ("UV-21ProV2", "UV-21ProGPS", "UV-17Pro", "UV-17ProGPS", "5RM", "UV-5RH", "GM-5RH")
+KPLUG_EXTRA_MAX = 512
+
+
+def kplug_extra(s):
+    """bench_kplug's --extra: '0xB000' or '0xB000:0xC000' (END exclusive) -> how many 64-byte blocks"""
+    m = re.fullmatch(r"(0x[0-9a-fA-F]{1,4})(?::(0x[0-9a-fA-F]{1,5}))?", s)
+    if not m:
+        raise ValueError(f"--extra {s}: 0xADDR or 0xSTART:0xEND")
+    a = int(m.group(1), 16)
+    b = int(m.group(2), 16) if m.group(2) else a + 0x40
+    if a % 0x40 or b % 0x40 or not a < b <= 0x10000:
+        raise ValueError(f"--extra {s}: 0x40-aligned, START < END <= 0x10000")
+    return (b - a) // 0x40
+
+
+def check_kplug_args(args, what, problems):
+    """bench_kplug read's own options only, each value one of its known ones"""
+    i, extra = 0, 0
+    while i < len(args):
+        k, _, v = args[i].partition("=")
+        if k not in KPLUG_OPTS:
+            problems.append(f"{what}: '{args[i]}': only {', '.join(KPLUG_OPTS)}")
+            return
+        if not _:
+            if i + 1 >= len(args):
+                problems.append(f"{what}: {k} needs a value")
+                return
+            i, v = i + 1, args[i + 1]
+        i += 1
+        if k == "--ident" and v not in KPLUG_IDENTS:
+            problems.append(f"{what}: --ident {v}: one of {', '.join(KPLUG_IDENTS)}")
+        elif k == "--model" and v not in KPLUG_MODELS:
+            problems.append(f"{what}: --model {v}: one of {', '.join(KPLUG_MODELS)}")
+        elif k == "--listen-s":
+            try:
+                ok = 0 <= float(v) <= 10
+            except ValueError:
+                ok = False
+            if not ok:
+                problems.append(f"{what}: --listen-s {v}: 0..10")
+        elif k == "--extra":
+            try:
+                extra += kplug_extra(v)
+            except ValueError as e:
+                problems.append(f"{what}: {e}")
+    if extra > KPLUG_EXTRA_MAX:
+        problems.append(f"{what}: --extra asks for {extra} blocks; {KPLUG_EXTRA_MAX} at most")
 
 
 def check_uv380_cmd(job, c, what, problems):
@@ -787,6 +848,9 @@ def command(job, step, rd):
                 "--log", log], co, True
     if do == "logger.stop":
         return [py(), bench_bin(), "serial-release", who], co, False
+    if do == "kplug.read":           # the codeplug (channel list) stays on hamlet, out of the run folder
+        return [py(), tool("bench_kplug.py"), "read", "--port", k6_cable(), "--out", rd,
+                "--private", os.path.join(work(), "private", "kplug", job["id"])] + args, co, False
     if do == "uv380.rx":
         return [py(), tool("uv380_i2sprobe.py"), "mod", uv380_port(),
                 os.path.join(job_sources(job), *uv380_rx_module(args[0])), "--key-file", key,
@@ -810,7 +874,7 @@ def uses_ic7100(step):
 
 
 def uses_cable(step):
-    return step["do"] in ("k6.install", "k6.flash", "k6.update")
+    return step["do"] in ("k6.install", "k6.flash", "k6.update", "kplug.read")
 
 
 # ---- running ----
@@ -1653,6 +1717,8 @@ def sample_jobs(tmp, co, key):
         ("Pluto RAM boot of a FIT", J("ok-ramboot", {"do": "pluto.fw", "args": ["ramboot", wav]}), True),
         ("Pluto firmware: a sub-command that isn't one", J("bad-fwsub", {"do": "pluto.fw", "args": ["shell", "reboot"]}), False),
         ("Pluto flash with an extra option", J("bad-fwflash", {"do": "pluto.flash", "args": [wav, os.path.join(tmp, "bk"), "--force"]}), False),
+        ("read-only clone of a Baofeng on the K6 cable, with probe blocks", J("ok-kplug", {"do": "kplug.read", "args": ["--ident", "normal", "--extra", "0xB000:0xB400"]}), True),
+        ("Baofeng clone with an option it doesn't have", J("bad-kplug", {"do": "kplug.read", "args": ["--write"]}), False),
     ]
 
 
