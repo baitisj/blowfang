@@ -97,7 +97,7 @@ code; only the SPI flash pins have been checked on the radio, by dumper 2). Seve
 | PTT | PA10, active low: the serial receive pin, so a held-low line or a break reads as PTT |
 | Power | self-latch PA8 (high = stay on); power switch sense PA15 (high = off) |
 | SPI flash | SPI1 SCK PA5, MISO PA6, MOSI PA7 (AF0), mode 3, CS PA2; stock sends B9 then AB at start |
-| LCD | SPI2 SCK PB13, MOSI PB15 (AF0, write-only, mode 3), CS PB12, D/C PC15 (low = command), reset PB8; ST7735S-like init, 128x160; backlight pin not found yet |
+| LCD | SPI2 SCK PB13, MOSI PB15 (AF0, write-only, mode 3), CS PB12, D/C PC15 (low = command), reset PB8; ST7735S-like init, 128x160; backlight PF7, push-pull, high = on (stock code: set/clear of GPIOF bit 7; on after the boot screen; PB1/TMR14 unused) |
 | Keypad | rows PC13, PC14, PF6, PB14 (pull-ups); columns PB0, PB4, PB9, PB10, PB11 |
 | RF chip | bit-banged 3-wire SCN PB3, SCK PB5, SDA PB6; 8-bit address (bit 7 = read), 16-bit data, BK4819-family framing; stock never reads a chip ID |
 | RF switching | RX path PA14 (VHF, 220) and PA13 (UHF), the SWD pins; TX PA enables through the RF chip's GPIO3 (VHF, 220) and GPIO2 (UHF) |
@@ -112,7 +112,7 @@ flashed over stock pages 0-5, cable in. Console read at 16:35-16:37Z.
 | | | |
 | --- | --- | --- |
 | RF chip | **BK4829**: register 0 reads 0x4829 (the K6 reads 0x4819); all 128 registers read back, none written | M 11-23 |
-| LCD controller | **ST7735S**: RDDID answers 7C 89 F0 on SDA (PB15), so the panel's data line is bidirectional; screen dark because the backlight pin is still unknown | M 11-23 |
+| LCD controller | **ST7735S**: RDDID answers 7C 89 F0 on SDA (PB15), so the panel's data line is bidirectional; image 1 left the screen dark because the backlight (PF7, found later in the stock code) was never driven | M 11-23 |
 | SPI flash | JEDEC C4 60 15 (2 MB) on CS PA2, after AB | M 11-23 |
 | MCU | DBGMCU IDCODE 0x50020100, flash size register 64 KB; the bootloader leaves the PLL running (CRM_CTRL 0x03008483, CFG 0x0028000A at app entry) | M 11-23 |
 | External crystal | did not start within 50 ms when enabled (HEXT ready never set): run on the internal clock or the bootloader's PLL | M 11-23 |
@@ -124,7 +124,7 @@ flashed over stock pages 0-5, cable in. Console read at 16:35-16:37Z.
 
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
-- The pins above, on the radio: the backlight, and the rest of the keypad map.
+- The pins above, on the radio: the backlight on PF7 (image 2), and the rest of the keypad map.
 
 ## Sources
 
