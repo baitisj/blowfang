@@ -195,6 +195,39 @@ def test_probe_waits_for_a_power_on(tmp_path, monkeypatch):
     assert p["boot"] is True and p["handshake"] == "ack"
 
 
+def test_probe_resets_an_app_listening_at_another_speed(tmp_path, monkeypatch):
+    # UV-21 port 2 resets on command 42 but listens at 57,600: the frame must go out at that speed
+    # once, then at 115200 for the bootloader it resets into
+    class HalfSpeedApp(FakeBootloader):
+        def __init__(self):
+            super().__init__(boot_after=10**9)
+            self.baud, self.bauds, self.reset = kdh.BAUD, [], False
+
+        def set_baud(self, b):
+            self.baud = b
+
+        def write(self, b):
+            self.bauds.append(self.baud)
+            if not self.reset:
+                if self.baud == 57600 and b == kdh.kdh_frame(0x42, 0):
+                    self.reset, self.boot_after = True, 0
+                self.sent.append(bytes(b))
+                return
+            if self.baud != kdh.BAUD:                       # the bootloader hears only 115200
+                self.sent.append(bytes(b))
+                return
+            super().write(b)
+
+    monkeypatch.setattr(kdh, "BOOT_EVERY_S", 0.001)
+    r = HalfSpeedApp()
+    assert kdh.cmd_probe(ns(tmp_path, wait_boot_s=0.05), port=r, log=lambda s: None) == 2
+    assert not r.reset                                              # 115200 alone never reaches it
+    r = HalfSpeedApp()
+    assert kdh.cmd_probe(ns(tmp_path, wait_boot_s=5.0, boot_baud=57600), port=r, log=lambda s: None) == 0
+    assert r.reset and r.baud == kdh.BAUD and r.cmds[-1] == 0x01 and bytes(r.app) == r.stock
+    assert json.load(open(tmp_path / "run" / "probe.json"))["handshake"] == "ack"
+
+
 def test_probe_gives_up_with_no_power_on(tmp_path, monkeypatch):
     monkeypatch.setattr(kdh, "BOOT_EVERY_S", 0.001)
     r = FakeBootloader()

@@ -204,3 +204,10 @@ clang, lld and llvm-objcopy, as the K6 modules use. The emulator test needs `pip
 - UV-5RM open firmware (pin map, `tools/flash.py`): https://github.com/sophiel-meow/bf-5rh-firmware-open
 - UV-5RM / 5RH reverse engineering, factory images and the .BF cipher: https://github.com/amoxu/Baofeng-UV-5RM-5RH-RE
 - UV-21R V2 board scans (SWD pads): https://github.com/speters/BF-UV21R-inside
+
+## The firmware port
+
+`fw/` is the UV-5RH open firmware ported to this board (Rust, GPL-3); `fw/README.md` lists what
+port 1 changes. It is receive only until the radio has an antenna, and it resets on the
+bootloader's command-42 frame so every image can go on hands-free. `make port` builds
+`build/port.bin`.

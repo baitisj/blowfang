@@ -3,7 +3,10 @@
 # byte and never touch a flash register, the SPI flash's write commands or the RF chip's pins; the
 # bring-up image must send the RF chip reads only, the SPI flash JEDEC ID only, and drive only the
 # board's pins. And tools/uv21_kdh.py, the bootloader tool they go through, against a model of the
-# bootloader's command loop.
+# bootloader's command loop. And the firmware port in radios/uv21/fw (Rust, GPL-3, from
+# bf-5rh-firmware-open): it must boot on the internal clock, drive only the UV-21's pins, never
+# give the RF chip a transmit setting, never erase the SPI flash, and reset on the bootloader's
+# command-42 frame so it can be reflashed hands-free.
 name: UV-21 Pro
 
 on:
@@ -90,6 +93,16 @@ jobs:
             unicorn
       - name: the dumper (1 KB at most) and the bring-up image (the 60 KB app area at most)
         run: make -C radios/uv21
+      - name: Rust for the port (fw/rust-toolchain.toml names stable and thumbv7em-none-eabi)
+        run: rustup toolchain install stable --profile minimal --target thumbv7em-none-eabi
+      - name: the firmware port (the 60 KB app area at most)
+        run: make -C radios/uv21 port
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uv21-port
+          path: |
+            radios/uv21/build/port.bin
+            radios/uv21/build/port.elf
       - uses: actions/upload-artifact@v4
         with:
           name: uv21-dumper
@@ -107,4 +120,5 @@ jobs:
           python -m pytest -q \
             tests/test_uv21_bringup.py \
             tests/test_uv21_dumper.py \
-            tests/test_uv21_kdh.py
+            tests/test_uv21_kdh.py \
+            tests/test_uv21_port.py

@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """The Baofeng UV-21 Pro's KDH bootloader and the one-page dumper (radios/uv21/dumper).
 
-  uv21_kdh.py probe --port P --out RUN [--wait-boot-s S]
+  uv21_kdh.py probe --port P --out RUN [--wait-boot-s S [--boot-baud 57600]]
       bootloader handshake only (the radio must be in flash mode: both side keys held at power-on,
       or --wait-boot-s: command 42 every 50 ms while someone switches the radio off and on; the
       UV-21 Pro's key is not the 5RM's two side keys, see radios/uv21/README.md).
       Nothing is erased or written; a power cycle without the keys boots the stock firmware.
+      --boot-baud: an app on the radio that resets on command 42 but listens at another speed
+      (UV-21 port 2 ran at 57,600): each command 42 goes out at that speed too, then at 115200
+      for the bootloader it resets into.
 
   uv21_kdh.py flash --port P --out RUN --image IMG --sha256 HEX
       write IMG to the app area (0x08001000 up) through the bootloader: region 1 only, never
@@ -23,7 +26,7 @@
   uv21_kdh.py frames FILE
       decode a raw dumper capture (from dump's DIR/raw-N.bin or the emulator) and summarise it.
 
-  uv21_kdh.py console --port P --out RUN [--send LETTERS] [--seconds S]
+  uv21_kdh.py console --port P --out RUN [--send LETTERS] [--seconds S] [--baud 57600]
       the bring-up image's serial console (radios/uv21/bringup): send its read-only commands
       (? help, i report, r RF registers, l redraw, p pin census), then listen for S seconds, and
       save the text to RUN/console.txt. It prints no unique ID or memory contents, so the text
@@ -54,6 +57,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bench_kplug  # noqa: E402  (Port, and its K6 guard text)
 
 BAUD = 115200
+BAUDS = (57600, 115200)                     # --boot-baud / --baud: an app at half speed, or normal
 PAGE = 0x400
 APP_BASE = 0x08001000
 APP_MAX = 0xF000                           # the bootloader refuses offsets from 0xF000
@@ -147,13 +151,18 @@ def kdh_send(port, cmd, args, data, log, tries=5):
     raise RuntimeError(f"command {cmd:#04x}: {last}")
 
 
-def wait_boot(port, seconds, log):
+def wait_boot(port, seconds, log, boot_baud=None):
     """send command 42 every BOOT_EVERY_S until the bootloader ACKs it (someone switched the radio
-    off and on) or seconds pass: flash mode with no keys held"""
+    off and on, or the app on it reset itself) or seconds pass: flash mode with no keys held.
+    boot_baud: also send each one at that speed first, for an app listening there"""
     frame = kdh_frame(CMD_BOOT, 0)
     log(f"waiting up to {seconds:.0f} s for a power-on: switch the radio off and on now")
     end = time.monotonic() + seconds
     while time.monotonic() < end:
+        if boot_baud and boot_baud != BAUD:
+            port.set_baud(boot_baud)
+            port.write(frame)
+            port.set_baud(BAUD)
         port.write(frame)
         r = read_kdh_reply(port, timeout=BOOT_EVERY_S)
         if r == (CMD_BOOT, ACK):
@@ -177,7 +186,7 @@ def cmd_probe(a, port=None, log=print):
             log("refusing: a K6 is talking on this cable")
             return 4
         if a.wait_boot_s:
-            res["boot"] = wait_boot(port, a.wait_boot_s, log)
+            res["boot"] = wait_boot(port, a.wait_boot_s, log, getattr(a, "boot_baud", None))
             if not res["boot"]:
                 res["handshake"] = "no power-on seen"
                 return 2
@@ -449,6 +458,9 @@ def cmd_console(a, port=None, log=print):
     os.makedirs(a.out, exist_ok=True)
     text = bytearray()
     try:
+        baud = getattr(a, "baud", BAUD)
+        if baud != BAUD:
+            port.set_baud(baud)
         text += port.drain(a.listen_s)
         if b"K6 " in text:
             log("refusing: a K6 is talking on this cable")
@@ -482,6 +494,8 @@ def main(argv=None):
         if name == "probe":
             p.add_argument("--wait-boot-s", type=float, default=0.0, dest="wait_boot_s",
                            help="first send command 42 until the radio is switched on (flash mode, no keys)")
+            p.add_argument("--boot-baud", type=int, default=None, choices=BAUDS, dest="boot_baud",
+                           help="also send each command 42 at this speed, for an app listening there")
         if name == "flash":
             p.add_argument("--image", required=True)
             p.add_argument("--sha256", required=True)
@@ -497,6 +511,7 @@ def main(argv=None):
     p.add_argument("--listen-s", type=float, default=1.0, dest="listen_s")
     p.add_argument("--send", default="i", help=f"commands to send first, from {CONSOLE_SAFE.decode()}")
     p.add_argument("--seconds", type=float, default=10.0)
+    p.add_argument("--baud", type=int, default=BAUD, choices=BAUDS)
     a = ap.parse_args(argv)
     return {"probe": cmd_probe, "flash": cmd_flash, "dump": cmd_dump, "frames": cmd_frames,
             "console": cmd_console}[a.cmd](a)

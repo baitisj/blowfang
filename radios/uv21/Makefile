@@ -1,6 +1,8 @@
 # blowfang on the Baofeng UV-21 Pro (MIT; README.md has the plan).
 #   make -C radios/uv21       build/dumper.bin: the one-page dumper (1 KB at most, checked)
 #                             build/bringup.bin: the bring-up image (the 60 KB app area, checked)
+#   make -C radios/uv21 port  build/port.bin: the firmware port in fw/ (Rust, GPL-3; cargo and the
+#                             thumbv7em-none-eabi target, which fw/rust-toolchain.toml names)
 # clang and lld, as the K6 modules use.
 # SPDX-License-Identifier: MIT
 CC = clang --target=thumbv7em-none-eabi
@@ -36,4 +38,11 @@ build/bringup.bin: build/bringup.elf
 	$(OBJCOPY) -O binary $< $@
 	@n=$$(wc -c < $@); echo "bringup.bin: $$n bytes, build $(BUILD_ID)"; test $$n -le 61440
 
-.PHONY: all
+# cargo decides what to rebuild, so this always asks it
+port: | build
+	cd fw && cargo build --release
+	$(OBJCOPY) -O binary fw/target/thumbv7em-none-eabi/release/bf5rh-fw build/port.bin
+	cp fw/target/thumbv7em-none-eabi/release/bf5rh-fw build/port.elf
+	@n=$$(wc -c < build/port.bin); echo "port.bin: $$n bytes"; test $$n -le 61440
+
+.PHONY: all port
