@@ -219,23 +219,34 @@ INFO = struct.pack("<H", 64) + bytes(18)
 SPI = bytes(range(256)) * 512                      # 128 KB, JEDEC capacity 0x11
 
 
-def one_pass(n, flash=FLASH):
+def taste(chip=True):
+    j = 0x114020 if chip else 0xFFFFFF                 # no chip: MISO floats high
+    d = SPI[:256] if chip else b"\xFF" * 256
+    return frame("T", 3 | j << 8, d) + frame("T", 0 | j << 8, d)
+
+
+def one_pass(n, flash=FLASH, v=2):
     return (chunks("F", 0x08000000, flash) + chunks("F", 0x1FFFE400, bytes(0x1000))
             + frame("F", 0x1FFFF7E0, INFO) + frame("F", 0x1FFFF800, bytes(16))
+            + (taste() if v == 2 else b"")
             + frame("J", 0x114020) + chunks("S", 0, SPI) + frame("E", n))
 
 
 class FakeDumper:
-    """streams the tail of a boot pass, then one pass per 'D'"""
+    """streams the tail of what it sent at boot, then a taste per 'T' (dumper 2) and a pass per
+    'D'"""
 
-    def __init__(self, boot=b"", flaky=None):
+    def __init__(self, boot=b"", flaky=None, v=2, chip=True):
         self.out, self.n, self.flaky, self.writes = bytearray(boot), 2, flaky, []
+        self.v, self.chip = v, chip
 
     def write(self, b):
         self.writes.append(bytes(b))
+        if b == b"T" and self.v == 2:
+            self.out += taste(self.chip) + frame("E", 0)
         if b == b"D":
             self.n += 1
-            p = bytearray(one_pass(self.n, FLASH if self.flaky != self.n else FLASH[:-1] + b"!"))
+            p = bytearray(one_pass(self.n, FLASH if self.flaky != self.n else FLASH[:-1] + b"!", self.v))
             self.out += p
 
     def read(self, n, timeout=None, gap=None):
@@ -254,11 +265,31 @@ def test_dump_asks_for_two_full_passes(tmp_path):
     tail = one_pass(2)[-5000:]                      # joined mid-pass: thrown away
     r = FakeDumper(boot=tail)
     assert kdh.cmd_dump(dump_args(tmp_path), port=r, log=lambda s: None) == 0
-    assert r.writes == [b"D", b"D"]
+    assert r.writes == [b"T", b"D", b"D"]                # taste first, then the full passes
     s = json.load(open(tmp_path / "run" / "summary.json"))
     assert s["complete"] and s["passes"] == 2 and s["partial_passes"] == 1 and s["flash_kb"] == 64
+    assert s["taste"][0] == {"mode": 3, "jedec": "20 40 11", "answered": True, "all_ff": False,
+                             "all_00": False} and s["tastes"] == 3
     assert (tmp_path / "priv" / "flash.bin").read_bytes() == FLASH
     assert (tmp_path / "priv" / "spi.bin").read_bytes() == SPI
+
+
+def test_a_taste_with_no_chip_ends_the_dump(tmp_path):
+    boot = frame("B", 0, b"blowfang uv21 dumper 2") + taste(chip=False) + frame("E", 0)
+    r = FakeDumper(boot=boot, chip=False)
+    assert kdh.cmd_dump(dump_args(tmp_path), port=r, log=lambda s: None) == 4
+    assert r.writes == []                                # the boot taste said it all: no passes
+    s = json.load(open(tmp_path / "run" / "summary.json"))
+    assert s["stopped"] == "no SPI flash answered the taste" and s["passes"] == 0
+    assert [t["answered"] for t in s["taste"]] == [False, False] and s["taste"][1]["all_ff"]
+    assert (tmp_path / "priv" / "taste-mode0.bin").read_bytes() == b"\xFF" * 256
+
+
+def test_dumper_1_still_gets_its_passes(tmp_path):
+    r = FakeDumper(boot=frame("B", 0, b"blowfang uv21 dumper 1"), v=1)
+    assert kdh.cmd_dump(dump_args(tmp_path), port=r, log=lambda s: None) == 0
+    assert r.writes == [b"D", b"D"]
+    assert "taste" not in json.load(open(tmp_path / "run" / "summary.json"))
 
 
 def test_dump_keeps_the_radio_out_of_the_run_folder(tmp_path):

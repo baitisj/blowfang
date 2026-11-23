@@ -74,18 +74,39 @@ it is.
 
 | | | |
 | --- | --- | --- |
-| Bootloader protocol | KDH frames `AA cmd args len16 data crc16 EF`; one 1 KB package per page, each package erasing only its own page; region 2 a separate command. From the UV-5RM's bootloader, not yet seen on this radio | D (5RM disassembly) |
+| Bootloader protocol | KDH frames `AA cmd args len16 data crc16 EF`; one 1 KB package per page, each package erasing only its own page; region 2 a separate command | D (5RM disassembly); M 2026-11-23 (uv21-flash-1: a one-package flash erased only page 0) |
+| Bootloader image | 4 KB, not the 5RM's byte for byte (different SHA-256), same behaviour | M 2026-11-23 (uv21-flash-1) |
+| Flash mode | command 42 (`AA 42 00 00 00 83 F4 EF`) during a plain power cycle; screen stays dark, the top LED may light | M 2026-11-23 14:59Z (uv21-probe-1) |
+| MCU flash size register | 64 KB | M 2026-11-23 (uv21-flash-1) |
 | Flash Access Protection | the app flash can't be read from outside, so the backup is a one-page dumper written over app page 0 (`radios/uv21/README.md`) | D |
 | Bench tools | `tools/uv21_kdh.py` (probe, flash, dump) through the runner's `kdh.probe`, `kdh.dump` and `kdh.flash` (local submit only) steps | (this PR) |
+
+## Pins (from the stock firmware)
+
+Read from the dumped stock firmware on 2026-11-23 (**I** throughout: register setup and use in the
+code, none of it yet checked on the radio). Several pins differ from the UV-5RM's open firmware.
+
+| Function | Pins |
+| --- | --- |
+| K-plug serial | USART1 TX PA9, RX PA10 (AF1) |
+| PTT | PA10, active low: the serial receive pin, so a held-low line or a break reads as PTT |
+| Power | self-latch PA8 (high = stay on); power switch sense PA15 (high = off) |
+| SPI flash | SPI1 SCK PA5, MISO PA6, MOSI PA7 (AF0), mode 3, CS PA2; stock sends B9 then AB at start |
+| LCD | SPI2 SCK PB13, MOSI PB15 (AF0, write-only, mode 3), CS PB12, D/C PC15 (low = command), reset PB8; ST7735S-like init, 128x160; backlight pin not found yet |
+| Keypad | rows PC13, PC14, PF6, PB14 (pull-ups); columns PB0, PB4, PB9, PB10, PB11 |
+| RF chip | bit-banged 3-wire SCN PB3, SCK PB5, SDA PB6; 8-bit address (bit 7 = read), 16-bit data, BK4819-family framing; stock never reads a chip ID |
+| RF switching | RX path PA14 (VHF, 220) and PA13 (UHF), the SWD pins; TX PA enables through the RF chip's GPIO3 (VHF, 220) and GPIO2 (UHF) |
+| Other | I2C on PA4/PB6 to a device at 0x60; audio PWM PA11 (TMR1 CH4 with DMA); PB2 probably the audio amplifier enable, PB7 probably the flashlight |
+| SPI flash layout beyond the CPS's 64 KB | voice prompt index 0xCFF80, prompt data from 0xD0000 |
 
 ## To measure
 
 - The RF chip, for certain: from the dumped firmware (its register writes) or a bring-up image.
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
-- Whether the bootloader answers the 5RM's handshake (`kdh.probe`), and, from the dump, whether it
-  is the 5RM's bootloader byte for byte.
-- The SPI flash's JEDEC ID and size, and the MCU's flash size register (from the dump).
+- The SPI flash's JEDEC ID and size (dumper 1 read all FF with the 5RM's CS pin; dumper 2 tastes
+  with CS PA2).
+- The pins above, on the radio, starting with the keypad map and the backlight.
 
 ## Sources
 
