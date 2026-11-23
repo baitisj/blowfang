@@ -87,26 +87,29 @@ def test_the_map_is_complete():
 
 
 @pytest.mark.parametrize("path, run", [
-    ("radios/uv380/src/main.c", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False, "bench": False}),
-    ("radios/rt950/src/surf2.c", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": True, "bench": False}),
-    ("firmware/uv380-openrtx/mod/c6dmrrx.c", {"k6": False, "uv380": True, "uv380-openrtx": True, "rt950": False, "bench": False}),
-    ("modem/dmrvoice.py", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False, "bench": False}),
-    ("modem/dmrsotto.py", {"k6": True, "uv380": True, "uv380-openrtx": False, "rt950": False, "bench": False}),   # c4dmr
-    ("c/k6/mod/ft8.c", {"k6": True, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": False}),
-    ("c/common/surf_core.inc", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": True, "bench": False}),
-    ("sotto", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": False, "bench": False}),
-    ("docs/uv380-port.md", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": False}),
+    ("radios/uv380/src/main.c", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),
+    ("radios/rt950/src/surf2.c", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": True, "uv21": False, "bench": False}),
+    ("firmware/uv380-openrtx/mod/c6dmrrx.c", {"k6": False, "uv380": True, "uv380-openrtx": True, "rt950": False, "uv21": False, "bench": False}),
+    ("modem/dmrvoice.py", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),
+    ("modem/dmrsotto.py", {"k6": True, "uv380": True, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),   # c4dmr
+    ("c/k6/mod/ft8.c", {"k6": True, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),
+    ("c/common/surf_core.inc", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": True, "uv21": False, "bench": False}),
+    ("sotto", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": False, "uv21": False, "bench": False}),
+    ("docs/uv380-port.md", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),
     # the Pluto and the bench runner run only the bench tools' Python tests, no radio's firmware
-    ("tools/pluto_bench.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),
-    ("tools/pluto_chan/pluto_chan.c", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),
-    ("tools/pluto_chan/flacout.cpp", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),
-    ("tools/pluto_fw.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),
-    ("tools/bench_runner.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),
-    ("tests/test_pluto_bench.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),
-    ("tools/pluto_new_tool.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),   # a new Pluto tool needs no new map line
-    ("tests/test_pluto_new.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "bench": True}),
+    ("tools/pluto_bench.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),
+    ("tools/pluto_chan/pluto_chan.c", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),
+    ("tools/pluto_chan/flacout.cpp", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),
+    ("tools/pluto_fw.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),
+    ("tools/bench_runner.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),
+    ("tests/test_pluto_bench.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),
+    ("tools/pluto_new_tool.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),   # a new Pluto tool needs no new map line
+    ("tests/test_pluto_new.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": True}),
+    # the UV-21's dumper runs only its own job; its bootloader tool runs the bench tools' too
+    ("radios/uv21/dumper/dumper.c", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": True, "bench": False}),
+    ("tools/uv21_kdh.py", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": True, "bench": True}),
     # the K6 Python the bench tests import runs both
-    ("modem/k6.py", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": True, "bench": True}),
+    ("modem/k6.py", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": True, "uv21": False, "bench": True}),
 ])
 def test_the_real_map(path, run):
     """the cases this exists for: work on one radio doesn't rebuild the K6"""

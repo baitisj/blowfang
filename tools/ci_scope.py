@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Which radios' CI a change needs. Each radio's workflow (k6-firmware.yml, uv380.yml,
-uv380-openrtx.yml, rt950.yml) starts with a scope job that runs this; the radio's build and test
+uv380-openrtx.yml, rt950.yml, uv21.yml) starts with a scope job that runs this; the radio's build and test
 jobs run only when it says yes, and show as skipped otherwise (a skipped job counts as passed).
 The [bench] section (the Pluto and hamlet bench runner tools, bench-tools.yml) works the same
 way: this tool treats it as one more radio, whose workflow is a light Python test job.

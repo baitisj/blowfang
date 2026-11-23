@@ -84,8 +84,8 @@ python -m pytest -q -n auto --store-durations --durations-path tests/durations.j
 
 ### CI: only the radios a change touches
 
-Each radio has its own workflow: `k6-firmware.yml`, `uv380.yml`, `uv380-openrtx.yml` and
-`rt950.yml`. On a pull request, each one first asks `tools/ci_scope.py` whether the change
+Each radio has its own workflow: `k6-firmware.yml`, `uv380.yml`, `uv380-openrtx.yml`,
+`rt950.yml` and `uv21.yml`. On a pull request, each one first asks `tools/ci_scope.py` whether the change
 touches that radio, using the map in `.github/ci-radios.txt`. If it doesn't, the radio's jobs
 show as skipped, which counts as passed. Shared code (the sotto submodule, `c/common/`, the
 shared `modem/` files) builds every radio that uses it.
