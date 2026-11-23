@@ -745,6 +745,10 @@ impl<'a> App<'a> {
             / self.settings.battery_cal_raw.max(1) as u32) as u16
     }
 
+    pub fn rssi_raw(&self) -> u8 {
+        self.rssi_raw as u8
+    }
+
     pub fn set_rssi_raw(&mut self, val: u8) {
         self.rssi_raw = val;
     }

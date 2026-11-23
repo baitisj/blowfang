@@ -28,7 +28,8 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
 - Hands-free reflash: the USART1 interrupt watches for the bootloader's command-42 frame
   (`AA 42 00 00 00 83 F4 EF`) and resets, so the next image goes on with no key held.
 - Console lines on the K-plug serial line (`src/hal/con.rs`): a boot banner with the build, the
-  clock and the safety gates, the RF chip ID, and `key id=XX` on each key press.
+  clock and the safety gates, the RF chip ID, `key id=XX` on each key press, and (port 3) an
+  `alive s=... rssi_raw=...` line every 10 s, so a logger that opens late still sees the image.
 - Screen (port 3): the 128x160 panel upright in portrait (MADCTL 00). The 5RH's layouts size
   themselves from the screen, so they fit as they are, and the 32 rows left under the meter hold
   an info panel in 5x5 subpixel text (`src/ui/font55.rs`): each font column is two of the panel's

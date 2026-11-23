@@ -54,6 +54,7 @@ class Port(bu.Radio):
         super().__init__(image)
         self.syms = syms
         self.nor_mem = bytearray(b"\xff" * 0x200000)
+        self.tmr_step = 1
         self.nor_q, self.nor_ops = None, []
         self.spi_dt = {SPI1: 0xFF, SPI2: 0xFF}
         self.tmr = 0
@@ -167,8 +168,8 @@ class Port(bu.Radio):
             put(0x03)
         elif addr in (SPI1 + 0x0C, SPI2 + 0x0C):
             put(self.spi_dt[addr - 0x0C])
-        elif addr == TMR14 + 0x24:                  # CVAL: 100 us ticks, one a read
-            self.tmr = (self.tmr + 1) & 0xFFFF
+        elif addr == TMR14 + 0x24:                  # CVAL: 100 us ticks, tmr_step a read
+            self.tmr = (self.tmr + self.tmr_step) & 0xFFFF
             put(self.tmr)
         else:
             super().mmio(uc, access, addr, size, value, ud)
@@ -303,3 +304,16 @@ def test_the_portrait_screen_is_drawn_with_5x5_subpixel_text(built):
     chans = lambda c: (c >> 11, (c >> 5) & 63, c & 31)  # noqa: E731
     fringes = [c for c in lit if len({v > 0 for v in chans(c)}) > 1 and chans(c) != chans(lit[0])]
     assert fringes, "no subpixel colour fringes in the info panel"
+
+
+def test_it_says_alive_every_10_s(built):
+    # a logger that opens after the boot lines still sees the image running
+    r = Port(*built)
+    r.run(until="boot done", limit=300_000_000)
+    r.tmr_step = 100                                                    # time runs faster
+    out = ""
+    for _ in range(10):
+        out += r.run(limit=50_000_000)
+        if "alive s=000a" in out:
+            break
+    assert "alive s=000a rssi_raw=" in out, out[-200:]

@@ -418,6 +418,9 @@ fn main() -> ! {
     let mut cps_handshake = cps::HandshakeDetector::new();
 
     let mut fast_tick: u32 = 0;
+    // UV-21: a line every 10 s, so a logger that opens late still sees the image running
+    let mut alive_10ms: u32 = 0;
+    let mut alive_s: u32 = 0;
     let mut real_tick10_last = hal::uptime::now();
     let mut overlay_tick_last = real_tick10_last;
     loop {
@@ -448,6 +451,15 @@ fn main() -> ! {
             app.poll_tot(&mut cp.SYST, n10);
             app.poll_clock(n10);
             app.poll_no_channels_notice(n10);
+            alive_10ms += n10 as u32;
+            if alive_10ms >= 1000 {
+                alive_10ms -= 1000;
+                alive_s += 10;
+                hal::con::puts("alive");
+                hal::con::kv_hex("s", alive_s, 4);
+                hal::con::kv_hex("rssi_raw", app.rssi_raw() as u32, 2);
+                hal::con::nl();
+            }
         }
 
         let running_app = matches!(app.mode(), app::Mode::External(_));
