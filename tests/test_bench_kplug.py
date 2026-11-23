@@ -48,7 +48,8 @@ class FakeRadio:
             addr, n = int.from_bytes(b[1:3], "big"), b[3]
             if self.dead_from is not None and self.dead_from <= addr < 0xC000:
                 return
-            self.out += b[:4] + kp.scramble(self.mem.get(addr, b"\xff" * n)[:n])
+            blk = self.mem.get(addr, b"\xff" * n)[:n]
+            self.out += b[:4] + (blk if addr >= 0xF000 else kp.scramble(blk))
 
     def read(self, n, timeout=None, gap=None):
         r, self.out = bytes(self.out[:n]), self.out[n:]
@@ -74,6 +75,15 @@ def memory(channels=((0, 446.0e6), (1, 146.52e6), (2, 446.5e6))):
     mem[0x8000] = b"SETTINGS-BLOCK" + bytes(50)
     mem[0xD000] = b"FW V0.07 UV21PRO" + bytes(48)
     mem[0xB000] = b"CAL" + bytes(range(61))
+    cal = bytearray(0x280)
+    cal[0x000:0x00D] = b"\xe6" * 13                    # high power, UHF 400-520
+    cal[0x040:0x04D] = b"\xbe" * 13                    # mid
+    cal[0x0C0:0x0CA] = bytes(range(0x72, 0x7C))         # squelch open thresholds
+    cal[0x200:0x206] = bytes([0x7D, 0x84, 0x8A, 0x92, 0xA0, 0xB9])
+    cal[0x210:0x21B] = bytes([0x24, 0x3C, 0x32, 0x26, 0x26, 0x27, 0x09, 0x26, 0x26, 0x26, 0x26])
+    cal[0x230:0x245] = bytes.fromhex("010136017401040005200102200260000103500355")
+    for o in range(0, 0x280, 0x40):
+        mem[0xF000 + o] = bytes(cal[o:o + 0x40])
     return mem
 
 
@@ -148,6 +158,20 @@ def test_extra_blocks_skip_a_silent_range(tmp_path):
     assert (tmp_path / "run" / "region_b000.bin").read_bytes()[:3] == b"CAL"
     assert len((tmp_path / "run" / "region_b000.bin").read_bytes()) == 0x80
     assert (tmp_path / "run" / "region_c000.bin").exists()
+
+
+def test_calibration_comes_plain_and_is_decoded(tmp_path):
+    r = FakeRadio(memory())
+    a = args(tmp_path, "extra", "0xF000:0xF280")
+    assert kp.cmd_read(a, port=r, log=lambda s: None) == 0
+    assert (tmp_path / "run" / "region_f000.bin").read_bytes()[:13] == b"\xe6" * 13
+    c = json.load(open(tmp_path / "run" / "summary.json"))["calibration"]
+    assert c["pa_apc_target"]["high"]["uhf_400_520_by_10"] == [0xE6] * 13
+    assert c["pa_apc_target"]["mid"]["uhf_400_520_by_10"] == [0xBE] * 13
+    assert c["squelch"]["open"] == list(range(0x72, 0x7C))
+    assert c["audio"]["mic_mod"] == 0x24 and c["audio"]["xtal_adjust"] == 9
+    assert [b["mhz"] for b in c["bands"][:3]] == [[136, 174], [400, 520], [220, 260]]
+    assert [b["enabled"] for b in c["bands"][:3]] == [1, 1, 1]
 
 
 @pytest.mark.parametrize("bad", ["0xB001", "0xB000:0xB000", "B000", "0x10000", "0xF000:0x10040"])
