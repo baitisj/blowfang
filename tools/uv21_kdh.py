@@ -68,6 +68,7 @@ REPLY_S = 2.0                              # the 5RM tool waits as long for each
 CMD_HANDSHAKE, CMD_REGION1, CMD_PACKAGE, CMD_END = 0x01, 0x04, 0x03, 0x45
 CMD_BOOT = 0x42                            # within ~200 ms of power-on: stay in the bootloader
 BOOT_EVERY_S = 0.05
+BAUD_SWITCH_S = 0.01                        # --boot-baud: let the USB adapter's FIFO empty first
 ERRORS = {0xE1: "frame or command refused", 0xE2: "package number or length wrong",
           0xE3: "flash write failed", 0xE5: "command not expected now"}
 DUMPER_BANNER = b"blowfang uv21 dumper"     # 1 or 2: page 0 is ours either way
@@ -162,9 +163,13 @@ def wait_boot(port, seconds, log, boot_baud=None):
     end = time.monotonic() + seconds
     while time.monotonic() < end:
         if boot_baud and boot_baud != BAUD:
+            # write() returns when the OS has sent the bytes to the adapter, not when they are on
+            # the wire (8 bytes at 57,600 take 1.4 ms): a speed change before then garbles them
             port.set_baud(boot_baud)
             port.write(frame)
+            time.sleep(BAUD_SWITCH_S)
             port.set_baud(BAUD)
+            time.sleep(BAUD_SWITCH_S)
         port.write(frame)
         r = read_kdh_reply(port, timeout=BOOT_EVERY_S)
         if r == (CMD_BOOT, ACK):
