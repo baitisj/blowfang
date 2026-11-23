@@ -36,7 +36,7 @@ LCD_CS, LCD_SCK, LCD_DC, LCD_SDA, LCD_RST = (B, 12), (B, 13), (C, 15), (B, 15), 
 KEY_COLS = ((B, 0), (B, 4), (B, 9), (B, 10), (B, 11))
 KEY_ROWS = ((C, 13), (C, 14), (F, 6), (B, 14))
 LATCH, SENSE = (A, 8), (A, 15)
-BL = {(A, 3), (B, 1)}                     # the backlight candidates, stepped through after boot
+BL = (F, 7)                                # the backlight, high = on
 WATCH = (RF_SCN, RF_SCK, RF_SDA, NOR_CS, NOR_SCK, NOR_MISO, NOR_MOSI, LCD_CS, LCD_SCK, LCD_DC, LCD_SDA)
 WMASK = {port: sum(1 << b for p, b in WATCH if p == port) for port in (A, B, C, F)}
 CYCLES_PER_READ = 400                     # SysTick counts this much between two reads (50 us)
@@ -354,10 +354,11 @@ def test_boots_and_reads_every_chip_id(radio):
 
 
 def test_drives_only_the_board_pins(radio):
+    radio.run(limit=20_000_000)                                    # past the first screen: backlight on
     outs = {(p, b) for p, b, m in driven(radio) if m == 1}
     afs = {(p, b) for p, b, m in driven(radio) if m == 2}
     assert afs == {(A, 9), (A, 10)}                                # USART1
-    assert outs - BL == {LATCH, RF_SCN, RF_SCK, RF_SDA, NOR_CS, NOR_SCK, NOR_MOSI,
+    assert outs == {LATCH, BL, RF_SCN, RF_SCK, RF_SDA, NOR_CS, NOR_SCK, NOR_MOSI,
                          LCD_CS, LCD_SCK, LCD_DC, LCD_SDA, LCD_RST} | set(KEY_COLS)
     assert radio.pins.out(*LATCH) == 1
     for p, b in ((B, 2), (B, 7), (A, 11), (A, 4)):                 # amp, flashlight, audio PWM, I2C SCL
@@ -441,15 +442,10 @@ def test_a_power_sense_that_reads_off_at_boot_is_ignored(image):
     assert r.pins.out(*LATCH) == 1 and "power off" not in r.uart.decode("latin-1")
 
 
-def test_backlight_candidates_step_then_stay_on(image):
+def test_backlight_comes_on_after_the_first_screen(image):
     r = Radio(image)
-    out = r.run(until="backlight step n=0 PA3=1 PB1=0\r\n", limit=200_000_000)
-    assert "backlight step n=0 PA3=1 PB1=0" in out
-    assert r.pins.mode(A, 3) == 1 and r.pins.out(A, 3) == 1 and r.pins.mode(B, 1) == 0
-    out = r.run(until="backlight step n=1 PA3=0 PB1=1\r\n", limit=400_000_000)
-    assert "backlight step n=1" in out
-    assert r.pins.mode(A, 3) == 0 and r.pins.mode(B, 1) == 1 and r.pins.out(B, 1) == 1
-    out = r.run(until="backlight step n=2 PA3=1 PB1=1\r\n", limit=400_000_000)
-    assert "backlight step n=2" in out
-    assert r.pins.out(A, 3) == 1 and r.pins.out(B, 1) == 1
-    assert not r.flash_writes and all(t["addr"] & 0x80 for t in r.rf_log)
+    r.run(until="O off, R reset\r\n")
+    assert r.pins.out(*BL) == 0 or r.pins.mode(*BL) != 1          # dark while the screen is set up
+    r.run(limit=20_000_000)
+    assert r.pins.mode(*BL) == 1 and r.pins.out(*BL) == 1
+    assert r.pins.mode(A, 3) == 0 and r.pins.mode(B, 1) == 0      # the old candidates stay undriven

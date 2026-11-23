@@ -139,10 +139,8 @@ receive-band switch), the audio amplifier or the flashlight. `tests/test_uv21_br
 emulated AT32F421 with models of the RF chip, SPI flash, LCD and keys on board.h's pins and checks
 all of that.
 
-Backlight: no pin for it is known for sure. Image 2 tries board.h's candidates after boot, each at
-the level the stock firmware leaves it: PA3 alone, PB1 alone, then both, 10 s each, then keeps
-both on. The screen's second line names the step, so whoever sees it lit can say which pin it
-was (`backlight step n=...` on the console).
+Backlight: PF7, high = on (found in the stock code). Like stock, image 2 leaves it off while the
+screen is set up and turns it on once the test pattern is drawn; `b` on the console toggles it.
 
 Power: it holds the latch (PA8) and drops it when the switch sense (PA15) reads off for 200 ms. If
 the sense reads off at boot, the polarity in board.h is wrong and it never acts on it (it says

@@ -667,13 +667,14 @@ static void report(void) {
 }
 
 static void help(void) {
-    puts_("keys: ? help, i report, r rf regs, l redraw, p census, O off, R reset");
+    puts_("keys: ? help, i report, r rf regs, l redraw, p census");
 #ifdef LCD_BL
     puts_(", b backlight");
 #endif
 #ifdef FLASHLIGHT
     puts_(", f flashlight");
 #endif
+    puts_(", O off, R reset");
     nl();
 }
 
@@ -722,38 +723,6 @@ static void screen_live(struct keys keys, uint32_t secs) {
     }
     lcd_decat(44, 126, breaks, WHITE);
     lcd_decat(44, 140, secs, WHITE);
-}
-#endif
-
-/* ---- backlight search: board.h's candidates, one at a time, then all ---- */
-
-#ifdef BL_CANDIDATES
-static const uint8_t bl_pins[] = {BL_CANDIDATES};
-static const char *const bl_names[] = {BL_NAMES};
-
-/* step n < count: candidate n alone, driven high; step count: all of them high */
-static void bl_step(uint32_t n) {
-    puts_("backlight step");
-    kv_dec("n", n);
-    for (uint32_t i = 0; i < COUNT(bl_pins); i++) {
-        uint32_t on = n == i || n >= COUNT(bl_pins);
-        if (on) gout(bl_pins[i], 1);
-        else gmode(bl_pins[i], IN);       /* back to how the first image left it: undriven */
-        putch(' ');
-        puts_(bl_names[i]);
-        putch('=');
-        putch(on ? '1' : '0');
-    }
-    nl();
-#ifdef LCD_CS
-    lcd_fill(8, 16, LCD_W - 16, 12, BLACK);
-    lcd_text(8, 16, "BL", GREY);
-    for (uint32_t i = 0, x = 32; i < COUNT(bl_pins); i++)
-        if (n == i || n >= COUNT(bl_pins)) {
-            lcd_text(x, 16, bl_names[i], AMBER);
-            x += 32;
-        }
-#endif
 }
 #endif
 
@@ -808,9 +777,6 @@ void reset(void) {
 #ifdef RF_SCN
     rf_init();
 #endif
-#ifdef LCD_BL
-    gout(LCD_BL, 1);
-#endif
 #ifdef FLASHLIGHT
     gout(FLASHLIGHT, 0);
 #endif
@@ -830,8 +796,8 @@ void reset(void) {
 #ifdef LCD_CS
     screen_static();
 #endif
-#ifdef BL_CANDIDATES
-    bl_step(0);
+#ifdef LCD_BL
+    gout(LCD_BL, 1);                      /* as stock: on once the first screen is drawn */
 #endif
 
     uint32_t last_tick = now(), ticks = 0, prev = 0, seen[4], shown[4], same = 0, off_ms = 0;
@@ -912,9 +878,6 @@ void reset(void) {
         (void)off_ms;
 #endif
         if (++ticks % 50 == 0) {
-#ifdef BL_CANDIDATES
-            if (ticks % 500 == 0 && ticks / 500 <= COUNT(bl_pins)) bl_step(ticks / 500);
-#endif
 #ifdef LCD_CS
             screen_live(keys_shown, ticks / 50);
 #endif

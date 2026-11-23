@@ -43,19 +43,17 @@
 #define NOR_MISO PIN(PORT_A, 6)
 #define NOR_MOSI PIN(PORT_A, 7)
 
-/* LCD, dump: SPI2 pins, write-only in stock (ST7735S-like, inferred); bit-banged here so the ID
- * read can be tried on SDA. Backlight pin not found in the dump (always on, or a timer output). */
+/* LCD, dump: SPI2 pins, write-only in stock; ST7735S (run: RDDID, bring-up 11-23); bit-banged here
+ * so the ID read can be done on SDA. */
 #define LCD_CS PIN(PORT_B, 12)
 #define LCD_RST PIN(PORT_B, 8)
 #define LCD_DC PIN(PORT_C, 15)              /* low = command */
 #define LCD_SCK PIN(PORT_B, 13)
 #define LCD_SDA PIN(PORT_B, 15)
-/* Backlight candidates (dump: stock drives PA3 high at boot and never changes it; PB1 goes to AF0,
- * TMR14_CH1, and reads high as an input). Not found for sure, so the image tries them in steps
- * after boot, each set to the level stock leaves it at: PA3 alone, PB1 alone, then both, 10 s
- * each, and then keeps both on. The screen names the step, so a lit screen says which it was. */
-#define BL_CANDIDATES PIN(PORT_A, 3), PIN(PORT_B, 1)
-#define BL_NAMES "PA3", "PB1"
+/* Backlight, dump (stock code + emulator, 11-23): PF7, plain push-pull GPIO, high = on, no PWM.
+ * Stock leaves it low through LCD init and turns it on once the boot screen is drawn. (PB1/TMR14 is
+ * never set up by stock; PA3 is an output stock holds high, purpose unknown, left alone here.) */
+#define LCD_BL PIN(PORT_F, 7)
 #define LCD_W 128                           /* portrait (the 5RM is 160x128 landscape) */
 #define LCD_H 160
 #define LCD_MADCTL 0x00                     /* stock's value */
