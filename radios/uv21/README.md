@@ -37,7 +37,12 @@ other page, the bootloader itself and region 2 stay as they are.
 - the system area (region 2), the flash size register and unique ID, and the user system data;
 - the SPI flash's JEDEC ID, then all of the SPI flash.
 
-It sends two passes at boot and one more for each `D` it receives. It only reads: no flash
+It sends two passes at boot and one more for each `D` it receives.
+
+This has been done before on the UV-5RM: amoxu flashed a small dumper through the same bootloader
+to read out that bootloader (`reverse_engineering/bf-uv5rm-btldr-dumper` in their repository).
+Theirs uses the same serial port (USART1 on PA9/PA10, AF1), the same 8 MHz internal clock and
+baud divider (69), and the same link address (0x08001000). It only reads: no flash
 register is touched, the SPI flash gets only JEDEC ID (9F) and READ (03), and the RF chip's bus
 pins stay inputs. `tests/test_uv21_dumper.py` runs it in an emulated AT32F421 and checks all of
 that, plus a byte-exact read-back.
@@ -47,9 +52,7 @@ that, plus a byte-exact read-back.
 | # | What | Runner step | Hands-on |
 |---|---|---|---|
 | 1 | CPS clone read: codeplug, model and version replies, probes of the rest of the address space | `kplug.read` | none |
-| 2 | Bootloader handshake, nothing written | `kdh.probe` | power on holding the side key (flash mode), then power-cycle normally |
-| 3 | Flash the dumper (one package) | `kdh.flash` (local, Jeff's go) | flash mode again |
-| 4 | Capture two agreeing passes (about 3.5 minutes each for a 2 MB SPI flash) | `kdh.dump` | none |
+| 2-4 | One local job (Jeff's go): bootloader handshake, flash the dumper (one package), capture two agreeing passes (about 3.5 minutes each for a 2 MB SPI flash). A failed step ends the job, so no answer to the handshake means nothing is written | `kdh.probe`, `kdh.flash`, `kdh.dump` | power on holding the side key (flash mode) first |
 | 5 | Rebuild page 0 (below) | none | none |
 | 6 | Restore stock: flash the rebuilt page 0 alone, then repeat step 1 and compare | `kdh.flash` (local, Jeff's go) | flash mode |
 | 7 | The first blowfang bring-up image | `kdh.flash` (local, Jeff's go) | flash mode |
@@ -58,6 +61,7 @@ The firmware, unique ID and SPI flash (which holds the owner's channels) go to
 `~/blowfang-work/private/uv21/<job id>/` on hamlet, never to the run folder: bench results are
 published on the inbox branch. The run folder gets sizes, hashes and whether the passes agree.
 
+From step 3 until step 6 (or a blowfang image) the radio is not a radio: page 0 is the dumper's.
 While the dumper runs the screen stays dark. To leave it, turn the radio off. If the power latch
 keeps it on, take the battery off.
 
