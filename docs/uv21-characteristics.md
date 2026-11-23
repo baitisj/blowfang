@@ -76,15 +76,20 @@ it is.
 | --- | --- | --- |
 | Bootloader protocol | KDH frames `AA cmd args len16 data crc16 EF`; one 1 KB package per page, each package erasing only its own page; region 2 a separate command | D (5RM disassembly); M 2026-11-23 (uv21-flash-1: a one-package flash erased only page 0) |
 | Bootloader image | 4 KB, not the 5RM's byte for byte (different SHA-256), same behaviour | M 2026-11-23 (uv21-flash-1) |
-| Flash mode | command 42 (`AA 42 00 00 00 83 F4 EF`) during a plain power cycle; screen stays dark, the top LED may light | M 2026-11-23 14:59Z (uv21-probe-1) |
+| Flash mode | command 42 (`AA 42 00 00 00 83 F4 EF`) during a power-on; screen stays dark, and the flashlight (PB7) comes on and toggles with each frame received | M 2026-11-23 14:59Z (uv21-probe-1), 16:04Z |
+| A real power cycle | knob off, battery **and** cable out for about 20 s, battery in, cable in, knob on. A battery pull with the cable in didn't reset the MCU three times running (the serial line back-powers it), and shorter pulls weren't enough either | M 2026-11-23 15:41-16:04Z (uv21-flash-2..2e) |
+| App check at boot | starts the app when (word at 0x08001000) & 0x2FFE0000 == 0x20000000; no checksum. Command 45 replies, then resets the MCU about 20 ms later | I (UV-21 bootloader disassembly, 2026-11-23) |
 | MCU flash size register | 64 KB | M 2026-11-23 (uv21-flash-1) |
+| SPI flash | JEDEC ID c4 60 15: 2 MB. Answers in SPI mode 0 and mode 3 after a wake (AB). The first 64 KB equals the CPS read, except the wear-levelled VFO, settings and system records (the CPS serves the live record) | M 2026-11-23 16:11Z (uv21-flash-2e, two passes agree) |
+| Full backup | MCU flash (bootloader + app pages 1-59), region 2, option bytes and all 2 MB of SPI flash: private on the bench host, not published | M 2026-11-23 (uv21-flash-1, uv21-flash-2e) |
+| Stock restore | rebuilt page 0 flashed alone (one package); stock boots with the owner's saved settings (voltage screen at power-on); a CPS read afterwards matches the morning's read and the SPI dump in channels, calibration, DTMF and FM | M 2026-11-23 16:18Z (uv21-restore-1, uv21-read-2) |
 | Flash Access Protection | the app flash can't be read from outside, so the backup is a one-page dumper written over app page 0 (`radios/uv21/README.md`) | D |
 | Bench tools | `tools/uv21_kdh.py` (probe, flash, dump) through the runner's `kdh.probe`, `kdh.dump` and `kdh.flash` (local submit only) steps | (this PR) |
 
 ## Pins (from the stock firmware)
 
 Read from the dumped stock firmware on 2026-11-23 (**I** throughout: register setup and use in the
-code, none of it yet checked on the radio). Several pins differ from the UV-5RM's open firmware.
+code; only the SPI flash pins have been checked on the radio, by dumper 2). Several pins differ from the UV-5RM's open firmware.
 
 | Function | Pins |
 | --- | --- |
@@ -104,8 +109,6 @@ code, none of it yet checked on the radio). Several pins differ from the UV-5RM'
 - The RF chip, for certain: from the dumped firmware (its register writes) or a bring-up image.
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
-- The SPI flash's JEDEC ID and size (dumper 1 read all FF with the 5RM's CS pin; dumper 2 tastes
-  with CS PA2).
 - The pins above, on the radio, starting with the keypad map and the backlight.
 
 ## Sources
