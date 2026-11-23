@@ -138,12 +138,16 @@ def test_refuses_when_the_k6_is_on_the_cable(tmp_path):
     assert r.writes == []
 
 
-def test_extra_blocks_and_probing_stops_at_silence(tmp_path):
+def test_extra_blocks_skip_a_silent_range(tmp_path):
     r = FakeRadio(memory(), dead_from=0xB080)        # silent 0xB080-0xBFFF
-    assert kp.cmd_read(args(tmp_path, "extra", "0xB000:0xB100"), port=r, log=lambda s: None) == 0
+    a = args(tmp_path, "extra", "0xB000:0xB100", "extra", "0xC000:0xC080")
+    assert kp.cmd_read(a, port=r, log=lambda s: None) == 0
     s = json.load(open(tmp_path / "run" / "summary.json"))
-    assert [e["status"] for e in s["extra"]] == ["ok", "ok", "0 bytes"]     # 0xB000, 0xB040, then none
+    assert [(e["addr"], e["status"]) for e in s["extra"]] == [
+        ("0xb000", "ok"), ("0xb040", "ok"), ("0xb080", "0 bytes"), ("0xc000", "ok"), ("0xc040", "ok")]
     assert (tmp_path / "run" / "region_b000.bin").read_bytes()[:3] == b"CAL"
+    assert len((tmp_path / "run" / "region_b000.bin").read_bytes()) == 0x80
+    assert (tmp_path / "run" / "region_c000.bin").exists()
 
 
 @pytest.mark.parametrize("bad", ["0xB001", "0xB000:0xB000", "B000", "0x10000", "0xF000:0x10040"])

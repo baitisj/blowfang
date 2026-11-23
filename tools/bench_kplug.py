@@ -210,7 +210,8 @@ def hexdump(b, base):
 def cmd_read(a, port=None, log=None):
     log = log or (lambda s: print(s, flush=True))
     try:
-        extras = [x for e in (a.extra or []) for x in parse_extra(e)]
+        ranges = [parse_extra(e) for e in (a.extra or [])]
+        extras = [x for r in ranges for x in r]
     except ValueError as e:
         log(str(e))
         return 3
@@ -258,18 +259,29 @@ def cmd_read(a, port=None, log=None):
             log(f"region 0x{start:04x}+0x{size:x}: read" + (f" ({len(bad)} bad blocks so far)" if bad else ""))
             if len(bad) > 4:
                 break
+        extras_ok = len(bad) <= 4
         extra = []
-        for addr in extras:
-            hdr, blk = read_block(port, addr)
-            raw += hdr + blk
-            if len(blk) != BLOCK:
-                extra.append({"addr": f"0x{addr:04x}", "status": f"{len(hdr) + len(blk)} bytes",
-                              "header": hdr.hex()})
-                log(f"extra 0x{addr:04x}: {len(hdr) + len(blk)} bytes; probing stops here")
+        silent = 0
+        for rng in (ranges if extras_ok else []):
+            run = bytearray()
+            for addr in rng:
+                hdr, blk = read_block(port, addr)
+                raw += hdr + blk
+                if len(blk) != BLOCK:        # no (whole) answer: skip the rest of this range
+                    extra.append({"addr": f"0x{addr:04x}", "status": f"{len(hdr) + len(blk)} bytes",
+                                  "header": hdr.hex()})
+                    log(f"extra 0x{addr:04x}: {len(hdr) + len(blk)} bytes; skipping to the next range")
+                    port.drain(0.3)
+                    silent += 1
+                    break
+                extra.append({"addr": f"0x{addr:04x}", "status": "ok" if hdr[1:] == read_frame(addr)[1:]
+                              else f"header {hdr.hex()}", "sha256": hashlib.sha256(scramble(blk)).hexdigest()})
+                run += scramble(blk)
+            if run:
+                regions.append((rng[0], bytes(run)))
+            if silent >= 3:
+                log("three ranges without an answer: probing stops")
                 break
-            extra.append({"addr": f"0x{addr:04x}", "status": "ok", "header": hdr.hex(),
-                          "sha256": hashlib.sha256(scramble(blk)).hexdigest()})
-            regions.append((addr, scramble(blk)))
     finally:
         if own:
             port.close()
