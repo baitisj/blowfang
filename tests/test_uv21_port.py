@@ -57,7 +57,7 @@ class Port(bu.Radio):
         self.nor_q, self.nor_ops = None, []
         self.spi_dt = {SPI1: 0xFF, SPI2: 0xFF}
         self.tmr = 0
-        self.lfb = [[None] * 160 for _ in range(128)]       # the screen as the firmware draws it
+        self.lfb = [[None] * 160 for _ in range(160)]       # the screen as drawn (landscape or portrait)
         self.lcd.update({"x": (0, 159), "y": (0, 127), "madctl": None})
 
     # the RF chip: register 0 reads 0x4829 here
@@ -140,7 +140,7 @@ class Port(bu.Radio):
                 return
             colour, d["hi"] = d["hi"] << 8 | b, None
             x, y = d["px"]
-            if 0 <= x < 160 and 0 <= y < 128:
+            if 0 <= x < 160 and 0 <= y < 160:
                 self.lfb[y][x] = colour
             x += 1
             if x > d["x"][1]:
@@ -213,7 +213,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 2 build=" in text
+    assert "blowfang uv21 port 3 build=" in text
     assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -231,7 +231,7 @@ def test_drives_only_the_uv21_pins(port):
     assert modes[(A, 13)] == 2 and modes[(A, 14)] == 2                 # SWD
     assert modes[bu.SENSE] == 0 and port.pins.out(*bu.LATCH) == 1
     assert port.pins.out(*bu.BL) == 1                                   # backlight on
-    assert port.lcd["madctl"] == 0x60 and 0x29 in port.lcd["cmds"]
+    assert port.lcd["madctl"] == 0x00 and 0x29 in port.lcd["cmds"]
 
 
 def test_the_rf_chip_never_gets_a_transmit_setting(port):
@@ -288,3 +288,18 @@ def test_command_42_resets_for_a_hands_free_reflash(built):
     assert not r.reset_requested
     r.serial_in(KDH_42)
     assert r.reset_requested
+
+
+def test_the_portrait_screen_is_drawn_with_5x5_subpixel_text(built):
+    port = Port(*built)                                                 # the standby screen, no keys
+    port.run(until="boot done", limit=300_000_000)
+    port.run(limit=30_000_000)
+    # every pixel of the 128x160 portrait panel is painted, and the info panel under the meter
+    # (5x5 text on the subpixels) has the colour fringes that only subpixel text makes
+    assert all(port.lfb[y][x] is not None for y in range(160) for x in range(128))
+    info = [port.lfb[y][x] for y in range(127, 157) for x in range(128)]
+    lit = [c for c in info if c]
+    assert len(lit) > 300, len(lit)
+    chans = lambda c: (c >> 11, (c >> 5) & 63, c & 31)  # noqa: E731
+    fringes = [c for c in lit if len({v > 0 for v in chans(c)}) > 1 and chans(c) != chans(lit[0])]
+    assert fringes, "no subpixel colour fringes in the info panel"

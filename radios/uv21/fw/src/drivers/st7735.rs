@@ -11,8 +11,8 @@ use embedded_graphics::{
     Pixel,
 };
 
-pub const WIDTH: u16 = 160;
-pub const HEIGHT: u16 = 128;
+pub const WIDTH: u16 = 128;
+pub const HEIGHT: u16 = 160;
 
 pub struct St7735<'a> {
     gpiob: &'a pac::Gpiob,
@@ -111,7 +111,7 @@ impl<'a> St7735<'a> {
             ],
         ); // GMCTRN1
         self.command(0xFC, &[0x8C]); // vendor extension, purpose unknown
-        self.command(0x36, &[0x60]); // MADCTL
+        self.command(0x36, &[0x00]); // MADCTL: the UV-21 panel upright, portrait
         self.command(0x3A, &[0x05]); // COLMOD = RGB565
         delay::ms(syst, 10);
         self.command(0x29, &[]); // DISPON

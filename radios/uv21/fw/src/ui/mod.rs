@@ -1,5 +1,6 @@
 pub(crate) mod boot;
 pub(crate) mod cps;
+mod font55;
 mod icons;
 mod launcher;
 mod list;

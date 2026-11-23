@@ -1,4 +1,4 @@
-use super::{icons, TextBuf, SCREEN_H, SCREEN_W};
+use super::{font55, icons, TextBuf, SCREEN_H, SCREEN_W};
 use crate::app::{self, ChannelDisplayMode};
 use crate::device::radio::{Modulation, Power, SubAudio};
 use core::fmt::Write as _;
@@ -36,6 +36,11 @@ const BAND_TOP1: i32 = BAND_TOP0 + BAND_HEIGHT + 1;
 const METER_RULE_Y: i32 = BAND_TOP1 + BAND_HEIGHT;
 const METER_TOP: i32 = METER_RULE_Y + 2;
 const METER_H: i32 = 14;
+/// UV-21: the portrait panel leaves room under the meter for lines of 5x5 subpixel text
+const INFO_RULE_Y: i32 = METER_TOP + METER_H + 1;
+const INFO_TOP: i32 = INFO_RULE_Y + 3;
+const INFO_LINES: i32 = (SCREEN_H - INFO_TOP) / font55::LINE_H;
+const CYAN: Rgb565 = Rgb565::new(14, 54, 31);
 
 const TINY_W: i32 = FONT_5X8.character_size.width as i32;
 const SMALL_W: i32 = FONT_6X10.character_size.width as i32;
@@ -67,6 +72,7 @@ pub(super) struct Cache {
     rx_status: [Option<RxStatusState>; 2],
     tx_elapsed: Option<u32>,
     meter: Option<MeterState>,
+    info_rssi: Option<i32>,
 }
 
 impl Cache {
@@ -77,6 +83,7 @@ impl Cache {
             rx_status: [None, None],
             tx_elapsed: None,
             meter: None,
+            info_rssi: None,
         }
     }
 }
@@ -236,6 +243,7 @@ where
     fill(lcd, 0, BAND_TOP1 - 1, SCREEN_W, 1, HAIR);
     fill(lcd, MARGIN, METER_RULE_Y, SCREEN_W - 2 * MARGIN, 1, HAIR);
 
+    draw_info(lcd);
     draw_flags(lcd, app);
     for i in 0..2 {
         draw_stripe(lcd, snap, i);
@@ -379,6 +387,47 @@ where
         );
     }
     draw_meter(lcd, app, &mut cache.meter, did_full_redraw);
+    draw_info_rssi(lcd, app, &mut cache.info_rssi, did_full_redraw);
+}
+
+fn info_line<D>(lcd: &mut D, line: i32, s: &str, color: Rgb565)
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    if line < INFO_LINES {
+        font55::draw(lcd, MARGIN, INFO_TOP + line * font55::LINE_H, s, color, BG);
+    }
+}
+
+/// UV-21: the static lines of the info panel under the meter
+fn draw_info<D>(lcd: &mut D)
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    if INFO_LINES <= 0 {
+        return;
+    }
+    fill(lcd, MARGIN, INFO_RULE_Y, SCREEN_W - 2 * MARGIN, 1, HAIR);
+    info_line(lcd, 0, "BLOWFANG UV21 PORT 3", AMBER);
+    info_line(lcd, 1, "RX ONLY   SPI FLASH READ ONLY", GREEN);
+    let mut t: TextBuf<32> = TextBuf::new();
+    let _ = write!(t, "BUILD {}", app::FIRMWARE_VERSION);
+    info_line(lcd, 3, t.as_str(), DIM);
+}
+
+/// UV-21: the live signal level, whether or not the squelch is open
+fn draw_info_rssi<D>(lcd: &mut D, app: &app::App, last: &mut Option<i32>, force: bool)
+where
+    D: DrawTarget<Color = Rgb565>,
+{
+    let dbm = app.rssi_dbm();
+    if INFO_LINES <= 2 || (!force && *last == Some(dbm)) {
+        return;
+    }
+    *last = Some(dbm);
+    let mut t: TextBuf<32> = TextBuf::new();
+    let _ = write!(t, "RSSI {:4} DBM {}", dbm, if app.audio_open() { "OPEN  " } else { "      " });
+    info_line(lcd, 2, t.as_str(), CYAN);
 }
 
 fn draw_overlay<D>(lcd: &mut D, label: &str, color: Rgb565)

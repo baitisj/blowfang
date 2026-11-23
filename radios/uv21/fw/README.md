@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 and 2 change
+## What ports 1 to 3 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -29,5 +29,8 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   (`AA 42 00 00 00 83 F4 EF`) and resets, so the next image goes on with no key held.
 - Console lines on the K-plug serial line (`src/hal/con.rs`): a boot banner with the build, the
   clock and the safety gates, the RF chip ID, and `key id=XX` on each key press.
-- The screen is still the 5RH's landscape layout, rotated. A portrait layout for the 128x160
-  panel comes next.
+- Screen (port 3): the 128x160 panel upright in portrait (MADCTL 00). The 5RH's layouts size
+  themselves from the screen, so they fit as they are, and the 32 rows left under the meter hold
+  an info panel in 5x5 subpixel text (`src/ui/font55.rs`): each font column is two of the panel's
+  R, G, B stripes, so a character is four pixels wide and a line is six rows. It shows the build,
+  the safety gates and the live RSSI.
