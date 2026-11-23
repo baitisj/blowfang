@@ -119,6 +119,7 @@ flashed over stock pages 0-5, cable in. Console read at 16:35-16:37Z.
 | External crystal | did not start within 50 ms when enabled (HEXT ready never set): run on the internal clock or the bootloader's PLL | M 11-23 |
 | Supply | 3,315 mV (internal 1.2 V reference); ADC ch0 (PA0) 2-13, ch1 (PA1) 2694 | M 11-23 |
 | PTT | one press = one break on USART1 RX, as expected | M 11-23 |
+| Subpixels | Vertical stripes, R G B left to right in the portrait mounting (image 3, 11-23 19:12Z: patch B (blue pixel then red) shows tight purple lines, A doesn't; the row patches C/D differ only slightly). Subpixel text rendered for RGB reads well, best at 2 stripes per font column (4 px a 5x7 character, 32 characters across); BGR and grey are worse | M 11-23 |
 | Keys | All 22 mapped (key round 2, 11-23 18:49Z; bit = column x 4 + row, rows PC13 PC14 PF6 PB14): PB0 = VFO/MR, CENTER, -, A/B; PB4 = 1, 4, UP, 7; PB9 = *, 0, EXIT, #; PB10 = 2, 5, DOWN, 8; PB11 = 3, 6, MENU, 9. The three side keys ground rows PC14 (top), PB14 (middle), PF6 (bottom) on their own, with no column driven. The first run's names were guesses from press order and were wrong; this round also reproduces its 12 codes | M 11-23 |
 
 ## To measure
