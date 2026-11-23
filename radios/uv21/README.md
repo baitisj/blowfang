@@ -145,7 +145,14 @@ Console commands, one byte each: `?` help, `i` report, `r` RF registers, `l` red
 Back to flash mode with no hands: the image resets when it hears the bootloader's command 42
 frame (`AA 42 ...`), and `kdh.probe --wait-boot-s` keeps sending that frame, so the bootloader
 catches the next one. That assumes the radio stays powered through a reset with the switch on
-(the latch only matters once the switch is off); if it doesn't, a plain power cycle does the same.
+(the latch only matters once the switch is off); if it doesn't, a full power cycle does the same.
+Until an image of ours that does this is on the radio, a power cycle means: knob off, battery and
+cable out for 20 s (the serial line back-powers the MCU, so a battery pull alone doesn't reset
+it), battery in, cable in, knob on, with `kdh.probe --wait-boot-s 200` running.
+
+The bootloader starts the app when (word at 0x08001000) & 0x2FFE0000 == 0x20000000 (the initial
+stack pointer looks like RAM); there is no checksum. In flash mode it toggles the flashlight
+(PB7) on each frame.
 
 ## Recovery
 

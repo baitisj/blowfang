@@ -334,6 +334,7 @@ def test_image_fits_the_app_area_and_the_flash_tool_takes_it(image):
     assert len(image) <= 0xF000
     sp, pc = struct.unpack_from("<II", image)
     assert sp == 0x20004000 and 0x08001000 < pc < 0x08001000 + len(image) and pc & 1
+    assert sp & 0x2FFE0000 == 0x20000000                          # the bootloader's whole app check
     kdh.packages(image)
     words = {struct.unpack_from("<I", image, o)[0] for o in range(0, len(image) - 3, 2)}
     assert not words & {0x45670123, 0xCDEF89AB}                   # FLASH_UNLOCK keys

@@ -64,6 +64,7 @@
 #define ADC_CHANNELS 0, 1
 
 /* Not driven by this image: PA13/PA14 (SWD here; stock uses them for the receive-band switch),
- * PA11 (audio PWM), PB2 (audio amplifier, inferred), PB7 (flashlight, inferred), PA4 (I2C SCL). */
+ * PA11 (audio PWM), PB2 (audio amplifier, inferred), PB7 (flashlight: the bootloader toggles it on
+ * each frame in flash mode), PA4 (I2C SCL). */
 
 #endif
