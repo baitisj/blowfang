@@ -28,7 +28,7 @@
 
 #include "board.h"
 
-#define BANNER "blowfang uv21 bringup 2"
+#define BANNER "blowfang uv21 bringup 3"
 #ifndef BUILD_ID
 #define BUILD_ID "local"
 #endif
@@ -667,7 +667,7 @@ static void report(void) {
 }
 
 static void help(void) {
-    puts_("keys: ? help, i report, r rf regs, l redraw, p census");
+    puts_("keys: ? help, i report, r rf regs, l redraw, s screen, p census");
 #ifdef LCD_BL
     puts_(", b backlight");
 #endif
@@ -691,7 +691,7 @@ static void screen_static(void) {
     lcd_fill(LCD_W - 1, 0, 1, LCD_H, WHITE);
     lcd_fill(1, 1, 6, 6, RED);            /* top left, as drawn: shows a flip or rotation */
     lcd_text(8, 4, "BLOWFANG UV21", AMBER);
-    lcd_text(8, 16, "BRINGUP 2", WHITE);
+    lcd_text(8, 16, "BRINGUP 3", WHITE);
     static const uint16_t bars[4] = {RED, GREEN, BLUE, WHITE};
     static const char names[4] = {'R', 'G', 'B', 'W'};
     for (uint32_t i = 0; i < 4; i++) {    /* labelled colour bars: red shown blue means BGR */
@@ -723,6 +723,145 @@ static void screen_live(struct keys keys, uint32_t secs) {
     }
     lcd_decat(44, 126, breaks, WHITE);
     lcd_decat(44, 140, secs, WHITE);
+}
+#endif
+
+/* ---- subpixel test: which way the panel's colour stripes run, and text drawn on them ----
+
+   Two things a photo of this screen answers. Patches A/B: one red and one blue pixel side by side,
+   then two black. If the stripes run R G B left to right, B's blue-then-red pixels put two lit
+   stripes next to each other (thin purple lines) and A's sit apart (separate red and blue lines);
+   BGR is the other way round. C/D are the same in rows, for stripes that run across. Then one
+   pangram in a 5x7 font at one source column per stripe (2 pixels a character) and two stripes
+   per column (4 pixels), rendered for RGB stripes, for BGR stripes, and in plain grey; whichever
+   reads sharpest without colour fringes is the panel's order. A white block at the bottom is for
+   a close-up photo of the stripes themselves. */
+
+#ifdef LCD_CS
+static const uint8_t font5x7[59][5] = {   /* ' ' .. 'Z', 5 columns, bit 0 the top row */
+    {0x00, 0x00, 0x00, 0x00, 0x00}, {0x00, 0x00, 0x5F, 0x00, 0x00}, {0x00, 0x07, 0x00, 0x07, 0x00},
+    {0x14, 0x7F, 0x14, 0x7F, 0x14}, {0x24, 0x2A, 0x7F, 0x2A, 0x12}, {0x23, 0x13, 0x08, 0x64, 0x62},
+    {0x36, 0x49, 0x55, 0x22, 0x50}, {0x00, 0x05, 0x03, 0x00, 0x00}, {0x00, 0x1C, 0x22, 0x41, 0x00},
+    {0x00, 0x41, 0x22, 0x1C, 0x00}, {0x08, 0x2A, 0x1C, 0x2A, 0x08}, {0x08, 0x08, 0x3E, 0x08, 0x08},
+    {0x00, 0x50, 0x30, 0x00, 0x00}, {0x08, 0x08, 0x08, 0x08, 0x08}, {0x00, 0x60, 0x60, 0x00, 0x00},
+    {0x20, 0x10, 0x08, 0x04, 0x02}, {0x3E, 0x51, 0x49, 0x45, 0x3E}, {0x00, 0x42, 0x7F, 0x40, 0x00},
+    {0x42, 0x61, 0x51, 0x49, 0x46}, {0x21, 0x41, 0x45, 0x4B, 0x31}, {0x18, 0x14, 0x12, 0x7F, 0x10},
+    {0x27, 0x45, 0x45, 0x45, 0x39}, {0x3C, 0x4A, 0x49, 0x49, 0x30}, {0x01, 0x71, 0x09, 0x05, 0x03},
+    {0x36, 0x49, 0x49, 0x49, 0x36}, {0x06, 0x49, 0x49, 0x29, 0x1E}, {0x00, 0x36, 0x36, 0x00, 0x00},
+    {0x00, 0x56, 0x36, 0x00, 0x00}, {0x00, 0x08, 0x14, 0x22, 0x41}, {0x14, 0x14, 0x14, 0x14, 0x14},
+    {0x41, 0x22, 0x14, 0x08, 0x00}, {0x02, 0x01, 0x51, 0x09, 0x06}, {0x32, 0x49, 0x79, 0x41, 0x3E},
+    {0x7E, 0x11, 0x11, 0x11, 0x7E}, {0x7F, 0x49, 0x49, 0x49, 0x36}, {0x3E, 0x41, 0x41, 0x41, 0x22},
+    {0x7F, 0x41, 0x41, 0x22, 0x1C}, {0x7F, 0x49, 0x49, 0x49, 0x41}, {0x7F, 0x09, 0x09, 0x01, 0x01},
+    {0x3E, 0x41, 0x41, 0x51, 0x32}, {0x7F, 0x08, 0x08, 0x08, 0x7F}, {0x00, 0x41, 0x7F, 0x41, 0x00},
+    {0x20, 0x40, 0x41, 0x3F, 0x01}, {0x7F, 0x08, 0x14, 0x22, 0x41}, {0x7F, 0x40, 0x40, 0x40, 0x40},
+    {0x7F, 0x02, 0x04, 0x02, 0x7F}, {0x7F, 0x04, 0x08, 0x10, 0x7F}, {0x3E, 0x41, 0x41, 0x41, 0x3E},
+    {0x7F, 0x09, 0x09, 0x09, 0x06}, {0x3E, 0x41, 0x51, 0x21, 0x5E}, {0x7F, 0x09, 0x19, 0x29, 0x46},
+    {0x46, 0x49, 0x49, 0x49, 0x31}, {0x01, 0x01, 0x7F, 0x01, 0x01}, {0x3F, 0x40, 0x40, 0x40, 0x3F},
+    {0x1F, 0x20, 0x40, 0x20, 0x1F}, {0x7F, 0x20, 0x18, 0x20, 0x7F}, {0x63, 0x14, 0x08, 0x14, 0x63},
+    {0x03, 0x04, 0x78, 0x04, 0x03}, {0x61, 0x51, 0x49, 0x45, 0x43},
+};
+
+/* coverage 0..9 to a display level: gamma 2.2, so a third-lit stripe looks a third as bright */
+static const uint8_t sp_gamma[10] = {0, 94, 129, 155, 176, 195, 212, 228, 242, 255};
+
+enum { SP_RGB, SP_BGR, SP_GREY };
+
+static uint32_t slen(const char *s) {
+    uint32_t n = 0;
+    while (s[n]) n++;
+    return n;
+}
+
+/* source column i of string s (6 a character: 5 of glyph, 1 blank), row r: lit? */
+static uint32_t sp_glyph(const char *s, uint32_t n, uint32_t i, uint32_t r) {
+    uint32_t ch = i / 6, col = i % 6;
+    if (ch >= n || col == 5) return 0;
+    uint32_t c = (uint8_t)s[ch];
+    if (c >= 'a' && c <= 'z') c -= 32;
+    if (c < ' ' || c > 'Z') c = '?';
+    return font5x7[c - ' '][col] >> r & 1;
+}
+
+static uint32_t rgb565(uint32_t r, uint32_t g, uint32_t b) {
+    return (r >> 3) << 11 | (g >> 2) << 5 | (b >> 3);
+}
+
+/* one 7-row line across the screen: label in amber at one pixel a column, then text at `scale`
+   stripes a column, rendered for `mode`. Stripe coverage goes through a 1-2-3-2-1 filter (as
+   ClearType does) so a lone lit stripe spreads into its neighbours instead of fringing. */
+static void sp_line(uint32_t y, const char *label, const char *text, uint32_t scale, uint32_t mode) {
+    static uint8_t cov[LCD_W * 3 + 4];    /* stripe s at cov[s + 2], two blank on each side */
+    uint32_t ln = slen(label), tn = slen(text), lw = ln * 6;
+    lcd_window(0, y, LCD_W, 7);
+    for (uint32_t r = 0; r < 7; r++) {
+        for (uint32_t s = 0; s < LCD_W * 3; s++)
+            cov[s + 2] = s >= lw * 3 ? (uint8_t)sp_glyph(text, tn, (s - lw * 3) / scale, r) : 0;
+        for (uint32_t p = 0; p < LCD_W; p++) {
+            uint32_t c;
+            if (p < lw) {
+                c = sp_glyph(label, ln, p, r) ? AMBER : BLACK;
+            } else {
+                const uint8_t *q = cov + 3 * p + 2;
+                uint32_t f0 = q[-2] + 2 * q[-1] + 3 * q[0] + 2 * q[1] + q[2];
+                uint32_t f1 = q[-1] + 2 * q[0] + 3 * q[1] + 2 * q[2] + q[3];
+                uint32_t f2 = q[0] + 2 * q[1] + 3 * q[2] + 2 * q[3] + q[4];
+                uint32_t v = (q[0] + q[1] + q[2]) * 3;
+                if (mode == SP_GREY) c = rgb565(sp_gamma[v], sp_gamma[v], sp_gamma[v]);
+                else if (mode == SP_RGB) c = rgb565(sp_gamma[f0], sp_gamma[f1], sp_gamma[f2]);
+                else c = rgb565(sp_gamma[f2], sp_gamma[f1], sp_gamma[f0]);
+            }
+            lcd_bits(c >> 8);
+            lcd_bits(c);
+        }
+        kick();
+    }
+    gset(LCD_CS, 1);
+}
+
+/* stripes of c0, c1, black, black: in columns (vertical) or rows */
+static void sp_patch(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t c0, uint32_t c1,
+                     uint32_t vertical) {
+    lcd_window(x, y, w, h);
+    for (uint32_t row = 0; row < h; row++)
+        for (uint32_t col = 0; col < w; col++) {
+            uint32_t k = (vertical ? col : row) & 3;
+            uint32_t c = k == 0 ? c0 : k == 1 ? c1 : BLACK;
+            lcd_bits(c >> 8);
+            lcd_bits(c);
+        }
+    gset(LCD_CS, 1);
+}
+
+static const char sp_text[] = "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 0123456789";
+
+static void screen_subpixel(void) {
+    static const struct { const char *label; uint8_t scale, mode; } lines[] = {
+        {"RGB1 ", 1, SP_RGB}, {"BGR1 ", 1, SP_BGR}, {"GRY1 ", 1, SP_GREY},
+        {"RGB2 ", 2, SP_RGB}, {"BGR2 ", 2, SP_BGR}, {"GRY2 ", 2, SP_GREY},
+    };
+    lcd_fill(0, 0, LCD_W, LCD_H, BLACK);
+    sp_line(1, "SUBPIXEL TEST  MENU", "", 1, SP_GREY);
+    sp_line(11, "A R-B      B B-R", "", 1, SP_GREY);
+    sp_patch(0, 20, 60, 14, RED, BLUE, 1);
+    sp_patch(66, 20, 60, 14, BLUE, RED, 1);
+    sp_line(37, "C R-B      D B-R", "", 1, SP_GREY);
+    sp_patch(0, 46, 60, 14, RED, BLUE, 0);
+    sp_patch(66, 46, 60, 14, BLUE, RED, 0);
+    for (uint32_t i = 0; i < COUNT(lines); i++)
+        sp_line(64 + 10 * i, lines[i].label, sp_text, lines[i].scale, lines[i].mode);
+    sp_line(124, "REF THE QUICK BROWN", "", 1, SP_GREY);
+    lcd_fill(0, 135, LCD_W, LCD_H - 135, WHITE);
+}
+#endif
+
+#ifdef LCD_CS
+static void show_screen(uint32_t *screen, uint32_t which) {
+    *screen = which;
+    if (which) screen_subpixel();
+    else screen_static();
+    puts_("screen");                      /* once it's drawn */
+    puts_(which ? " subpixel" : " bringup");
+    nl();
 }
 #endif
 
@@ -799,8 +938,13 @@ void reset(void) {
 #ifdef LCD_BL
     gout(LCD_BL, 1);                      /* as stock: on once the first screen is drawn */
 #endif
+#ifdef LCD_CS
+    puts_("screen bringup");
+    nl();
+#endif
 
     uint32_t last_tick = now(), ticks = 0, prev = 0, seen[4], shown[4], same = 0, off_ms = 0;
+    uint32_t screen = 0;                  /* 0 the bring-up screen, 1 the subpixel test */
     struct keys keys = keys_scan(), keys_shown = keys;
     census_read(shown);
     for (;;) {
@@ -824,7 +968,12 @@ void reset(void) {
             case 'r': rf_regs(); break;
 #endif
 #ifdef LCD_CS
-            case 'l': lcd_init(); screen_static(); break;
+            case 'l':
+                lcd_init();
+                if (screen) screen_subpixel();
+                else screen_static();
+                break;
+            case 's': show_screen(&screen, !screen); break;
 #endif
 #ifdef LCD_BL
             case 'b': gset(LCD_BL, !((REG(gbase(LCD_BL) + 0x14) >> (LCD_BL & 15)) & 1)); break;
@@ -857,6 +1006,9 @@ void reset(void) {
                 puts_(n);
             }
             nl();
+#if defined(LCD_CS) && defined(KEY_SCREEN)
+            if (k.matrix == 1u << KEY_SCREEN && !k.side && !k.direct) show_screen(&screen, !screen);
+#endif
             keys_shown = k;
         }
         keys = k;
@@ -879,7 +1031,8 @@ void reset(void) {
 #endif
         if (++ticks % 50 == 0) {
 #ifdef LCD_CS
-            screen_live(keys_shown, ticks / 50);
+            if (ticks == 250 && !screen) show_screen(&screen, 1);   /* 5 s after boot */
+            if (!screen) screen_live(keys_shown, ticks / 50);
 #endif
         }
     }

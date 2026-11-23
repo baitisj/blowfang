@@ -72,6 +72,7 @@
     "*", "0", "EXIT", "#",                  /* PB9 */ \
     "2", "5", "DOWN", "8",                  /* PB10 */ \
     "3", "6", "MENU", "9"                   /* PB11 */
+#define KEY_SCREEN 18                       /* MENU (PB11, PF6): switches bring-up / subpixel screen */
 #define SIDE_NAMES 0, "SIDE TOP", "SIDE BOT", "SIDE MID"   /* rows PC13, PC14, PF6, PB14 */
 
 /* ADC channels to report (channel n = PA n for 0-7, PB0 = 8, PB1 = 9): the UV-5RM's VOX and

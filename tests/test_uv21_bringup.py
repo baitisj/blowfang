@@ -321,7 +321,7 @@ class Radio:
 @pytest.fixture(scope="module")
 def radio(image):
     r = Radio(image)
-    r.run(until="O off, R reset\r\n")
+    r.run(until="screen bringup\r\n", limit=200_000_000)            # the first screen drawn
     return r
 
 
@@ -343,7 +343,7 @@ def test_image_fits_the_app_area_and_the_flash_tool_takes_it(image):
 
 def test_boots_and_reads_every_chip_id(radio):
     text = "\r\n".join(radio.lines())
-    assert radio.lines()[0] == "blowfang uv21 bringup 2"
+    assert radio.lines()[0] == "blowfang uv21 bringup 3"
     assert "board=uv21" in text
     assert "clock sclk=hick_8mhz hext_ok=1" in text
     assert "rf id=4819" in text
@@ -354,7 +354,6 @@ def test_boots_and_reads_every_chip_id(radio):
 
 
 def test_drives_only_the_board_pins(radio):
-    radio.run(limit=20_000_000)                                    # past the first screen: backlight on
     outs = {(p, b) for p, b, m in driven(radio) if m == 1}
     afs = {(p, b) for p, b, m in driven(radio) if m == 2}
     assert afs == {(A, 9), (A, 10)}                                # USART1
@@ -393,6 +392,28 @@ def test_screen_test_pattern(radio):
     assert fb[45][5] == 0xF800 and fb[45][35] == 0x07E0 and fb[45][65] == 0x001F    # R G B bars
     cmds = radio.lcd["cmds"]
     assert cmds.index(0x11) < cmds.index(0x3A) < cmds.index(0x29) < cmds.index(0x2C)
+
+
+def rgb(c):
+    return c >> 11, (c >> 5) & 63, c & 31
+
+
+def test_subpixel_screen_after_five_seconds_and_menu_switches(image):
+    r = Radio(image)
+    r.run(until="screen subpixel\r\n", limit=400_000_000)
+    fb = r.fb
+    assert fb[20][0:4] == [0xF800, 0x001F, 0, 0] and fb[20][66:70] == [0x001F, 0xF800, 0, 0]   # A, B
+    assert [fb[y][0] for y in range(46, 50)] == [0xF800, 0x001F, 0, 0]                         # C rows
+    assert [fb[y][66] for y in range(46, 50)] == [0x001F, 0xF800, 0, 0]                        # D rows
+    assert fb[150][64] == 0xFFFF                                                               # white block
+    rgb1, bgr1, grey1 = (fb[y][30:] for y in (64 + 3, 74 + 3, 84 + 3))   # the middle row of each line
+    assert any(px for px in rgb1) and any(rgb(px)[0] != rgb(px)[2] for px in rgb1)   # colour fringes
+    assert [rgb(px) for px in bgr1] == [rgb(px)[::-1] for px in rgb1]                 # BGR mirrors RGB
+    assert any(px for px in grey1) and all(rgb(px)[0] == rgb(px)[2] for px in grey1)
+    r.pressed.add((4, 2))                                          # MENU: back to the bring-up screen
+    out = r.run(until="screen bringup\r\n", limit=200_000_000)
+    assert "name=MENU" in out
+    assert fb[3][3] == 0xF800 and fb[45][35] == 0x07E0
 
 
 def test_keys_ptt_and_pin_census(radio):

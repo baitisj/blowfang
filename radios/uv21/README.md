@@ -142,6 +142,16 @@ all of that.
 Backlight: PF7, high = on (found in the stock code). Like stock, image 2 leaves it off while the
 screen is set up and turns it on once the test pattern is drawn; `b` on the console toggles it.
 
+Subpixel test (image 3): 5 s after boot the screen switches to a test of the panel's colour
+stripes, and MENU (or `s` on the console) switches back and forth. Patches A/B put a red and a
+blue pixel side by side in both orders: the pair whose lit stripes end up adjacent shows thin
+purple lines, which gives the stripe order (B tight = R G B left to right, A tight = B G R). C/D
+are the same in rows, for stripes that run across. Below them one pangram in a 5x7 font is drawn
+at one source column per stripe (2 pixels a character) and at two (4 pixels), each rendered for
+RGB stripes, for BGR stripes and in plain grey, with a 1-2-3-2-1 filter and gamma 2.2. The line
+that reads sharpest without fringes names the order. The white block at the bottom is for a
+macro photo of the stripes themselves.
+
 Power: it holds the latch (PA8) and drops it when the switch sense (PA15) reads off for 200 ms. If
 the sense reads off at boot, the polarity in board.h is wrong and it never acts on it (it says
 `auto_off=0`), so a wrong guess can't switch the radio off at every boot.
