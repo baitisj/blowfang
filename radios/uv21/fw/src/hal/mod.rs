@@ -1,5 +1,6 @@
 pub mod adc;
 pub mod clock;
+pub mod con;
 pub mod debounce;
 pub mod delay;
 pub mod stackprobe;

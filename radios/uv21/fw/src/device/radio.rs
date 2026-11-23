@@ -7,6 +7,9 @@ use crate::hal::{adc, debounce, delay};
 use at32f421_pac as pac;
 use cortex_m::peripheral::SYST;
 
+/// UV-21 Pro: see enter_tx.
+const RX_ONLY: bool = true;
+
 const SEND_TAIL_HOLD_MS: u32 = 300;
 
 /// 1000Hz/60ms
@@ -880,6 +883,11 @@ impl<'a> Radio<'a> {
 
     #[must_use]
     pub fn enter_tx(&mut self, syst: &mut SYST) -> bool {
+        // UV-21 Pro, receive only (no antenna yet, TX path unmapped): PTT never keys. The RF
+        // driver's write_reg masks the transmitter's enables as well, in case anything else asks.
+        if RX_ONLY {
+            return false;
+        }
         if !self.tx_allowed.allows(self.cfg.tx_freq_hz)
             || self.cfg.modulation != Modulation::Fm
         {

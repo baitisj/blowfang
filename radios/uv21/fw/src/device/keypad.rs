@@ -58,13 +58,17 @@ impl KeyId {
     }
 }
 
+/// UV-21 Pro: [phase][row], rows PC13 PC14 PF6 PB14 (board/keypad.rs). Phase 0 drives no
+/// column, so only the side keys, which ground a row themselves, read there: top (PC14) is
+/// Side1, middle (PB14) Side2, bottom (PF6) Band. The navigation ring's CENTER key acts as MENU.
 #[rustfmt::skip]
-const KEY_TABLE: [[Option<KeyId>; 4]; 5] = [
-    [Some(KeyId::Ab),     Some(KeyId::Vm),     Some(KeyId::Band),   Some(KeyId::Side1)],
-    [Some(KeyId::Digit1), Some(KeyId::Digit2), Some(KeyId::Digit3), Some(KeyId::Asterisk)],
-    [Some(KeyId::Digit4), Some(KeyId::Digit5), Some(KeyId::Digit6), Some(KeyId::Digit0)],
-    [Some(KeyId::Digit7), Some(KeyId::Digit8), Some(KeyId::Digit9), Some(KeyId::Pound)],
-    [Some(KeyId::Up),     Some(KeyId::Down),   Some(KeyId::Menu),   Some(KeyId::Exit)],
+const KEY_TABLE: [[Option<KeyId>; 4]; 6] = [
+    [None,                Some(KeyId::Side1),  Some(KeyId::Band),   Some(KeyId::Side2)],   // side keys
+    [Some(KeyId::Vm),     Some(KeyId::Menu),   None,                Some(KeyId::Ab)],      // PB0: VFO/MR, CENTER, -, A/B
+    [Some(KeyId::Digit1), Some(KeyId::Digit4), Some(KeyId::Up),     Some(KeyId::Digit7)],  // PB4
+    [Some(KeyId::Asterisk), Some(KeyId::Digit0), Some(KeyId::Exit), Some(KeyId::Pound)],   // PB9
+    [Some(KeyId::Digit2), Some(KeyId::Digit5), Some(KeyId::Down),   Some(KeyId::Digit8)],  // PB10
+    [Some(KeyId::Digit3), Some(KeyId::Digit6), Some(KeyId::Menu),   Some(KeyId::Digit9)],  // PB11
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -147,7 +151,7 @@ impl<'a> Keypad<'a> {
         if board::read_side_key2(self.gpioa) {
             return Some(KeyId::Side2);
         }
-        for phase in 0..5u8 {
+        for phase in 0..KEY_TABLE.len() as u8 {
             board::set_keypad_row(self.gpiob, phase);
             delay::us(syst, SETTLE_US);
             if let Some(col) = board::read_keypad_column(self.gpiob) {
@@ -214,6 +218,10 @@ impl<'a> Keypad<'a> {
         self.hold_ticks = 0;
         self.long_fired = false;
         if let Some(new) = self.stable {
+            // UV-21 Pro: every key press on the console, as the KeyId number, for the bench
+            crate::hal::con::puts("key");
+            crate::hal::con::kv_hex("id", new as u32, 2);
+            crate::hal::con::nl();
             self.queue.push(KeyEvent {
                 key: new,
                 kind: KeyEventKind::Press,

@@ -169,8 +169,9 @@ sim/k6digi/wsprref.py
 
 [uv21]
 .github/workflows/uv21.yml
-# the Baofeng UV-21 Pro: the one-page dumper (built, run in an emulated AT32F421) and the
-# bootloader tool it goes through (tested against a model of the bootloader)
+# the Baofeng UV-21 Pro: the one-page dumper, the bring-up image and the firmware port in fw/ (built,
+# run in an emulated AT32F421) and the bootloader tool they go through (tested against a model of
+# the bootloader)
 radios/uv21/
 tools/uv21_kdh.py
 tools/bench_kplug.py

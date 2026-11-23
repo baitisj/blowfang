@@ -142,11 +142,13 @@ fn main() -> ! {
 
     unsafe { cp.SCB.vtor.write(0x0800_1000) };
 
-    // GPIOF clock for PF6 (power self-latch)
-    dp.crm.ahben().modify(|_, w| w.gpiofen().set_bit());
+    // UV-21 Pro: GPIOA clock for PA8 (power self-latch); GPIOF for the keypad row and backlight
+    dp.crm
+        .ahben()
+        .modify(|_, w| w.gpioaen().set_bit().gpiofen().set_bit());
     let _ = dp.crm.ahben().read();
 
-    // PF6 = power self-latch, driven high
+    // PA8 = power self-latch, driven high
     board::init_power_latch_pin(&dp.gpiof);
     board::set_power_latch(&dp.gpiof, true);
 
@@ -263,9 +265,15 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let mut serial = Serial { usart1: dp.usart1 };
+    hal::con::puts("blowfang uv21 port 1 build=");
+    hal::con::puts(app::FIRMWARE_VERSION);
+    hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
+    hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
+    hal::con::puts(" rx_only=1");
+    hal::con::nl();
     dbg_println!(
         serial,
-        "sclk={SCLK_HZ}Hz (HEXT+PLL, 16MHz crystal) baud={BAUD} div={div}"
+        "sclk={SCLK_HZ}Hz (HICK/2 PLL) baud={BAUD} div={div}"
     );
 
     let mut display = device::display::Display::new(&dp.gpiob, &dp.spi2);
@@ -277,6 +285,9 @@ fn main() -> ! {
     let mut rfic = Fd6818::new(&dp.gpioa, &dp.gpioc);
     let chip_id = rfic.chip_id(&mut cp.SYST);
     dbg_println!(serial, "fd6818 chip id = {chip_id:#06x} (expect 0x4829)");
+    hal::con::puts("rf");
+    hal::con::kv_hex("id", chip_id as u32, 4);
+    hal::con::nl();
 
     rfic.init(&mut cp.SYST);
     dbg_println!(serial, "fd6818 init done");
@@ -291,6 +302,9 @@ fn main() -> ! {
         rfic.set_audio_calibration(cal[0], cal[1], cal[2], cal[3], cal[4]);
         rfic.set_squelch_cal(storage.read_squelch_cal());
     }
+    hal::con::puts("calibration");
+    hal::con::kv_hex("applied", (flag_byte[0] != 0xFF) as u32, 1);
+    hal::con::nl();
     dbg_println!(
         serial,
         "calibration {}",
@@ -351,7 +365,18 @@ fn main() -> ! {
                 chip_id,
             );
         }
-        2 => draw_boot_logo(&mut display, &mut app),
+        // UV-21 Pro: the logo at BOOT_LOGO_ADDR is the stock firmware's, in its own format, not
+        // the UV-5RH's 160x128 picture: show the message screen instead.
+        2 => {
+            let _ = draw_boot_logo;
+            ui::boot::draw_message(
+                display.as_draw_target(),
+                app.settings(),
+                app.battery_voltage_cv(),
+                app.battery_bars(),
+                chip_id,
+            );
+        }
         // 0 = None: screen is already cleared black from just after
         // `display.init()`, nothing more to draw.
         _ => {}
@@ -380,6 +405,10 @@ fn main() -> ! {
             remaining_ms = remaining_ms.saturating_sub(30);
         }
     }
+
+    hal::con::puts("boot done");
+    hal::con::kv_hex("boot_mode", boot_mode as u32, 1);
+    hal::con::nl();
 
     let mut ui_state = ui::UiState::new();
 

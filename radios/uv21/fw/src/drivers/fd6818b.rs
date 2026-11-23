@@ -1452,7 +1452,23 @@ impl<'a> Fd6818<'a> {
     }
 
     /// write 16bit reg
+    /// UV-21 Pro, receive only: the radio has no antenna on the bench yet and its transmit path
+    /// isn't mapped (the PA enables are the chip's GPIO2/GPIO3 there, not the UV-5RH's GPIO3/4).
+    /// Every register write passes here, so this is the one place that keeps the transmitter off:
+    /// a REG_30 state with the PLL/VCO on loses its TX DSP, mic ADC and PA gain enables (local
+    /// beeps, which run the tone generator with the VCO off, still work); REG_36 (PA bias) is
+    /// always the off value; and GPIO2-4 (the TX switches on both boards) stay low.
+    fn rx_only(addr: u8, value: u16) -> u16 {
+        match addr {
+            REG_STATE if value & 0x00F0 != 0 => value & !0x000E,
+            REG_PA => PA_OFF_VALUE,
+            REG_GPIO => value & !0x001C,
+            _ => value,
+        }
+    }
+
     fn write_reg(&mut self, syst: &mut SYST, addr: u8, value: u16) {
+        let value = Self::rx_only(addr, value);
         board::set_fd6818_scn(self.gpioc, false);
         delay::us(syst, BIT_DELAY_US);
         self.write_bits(syst, addr & 0x7F);

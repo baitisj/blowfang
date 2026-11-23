@@ -3,6 +3,7 @@ mod fm;
 mod keypad;
 mod lcd;
 mod leds;
+mod pin;
 mod power;
 mod rf;
 mod serial;

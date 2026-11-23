@@ -1,15 +1,13 @@
+// UV-21 Pro: the flashlight is PB7 (the bootloader toggles it in flash mode).
+use super::pin::{pin, Pin};
 use at32f421_pac as pac;
 
-const FLASHLIGHT_BIT: u32 = 1 << 7; // PF7
+const FLASHLIGHT: Pin = pin(b'B', 7);
 
-pub fn init_flashlight_pin(gpiof: &pac::Gpiof) {
-    gpiof.cfgr().modify(|_, w| unsafe { w.iomc7().bits(0b01) });
+pub fn init_flashlight_pin(_gpiof: &pac::Gpiof) {
+    FLASHLIGHT.output();
 }
 
-pub fn set_flashlight(gpiof: &pac::Gpiof, on: bool) {
-    if on {
-        gpiof.scr().write(|w| unsafe { w.bits(FLASHLIGHT_BIT) });
-    } else {
-        gpiof.clr().write(|w| unsafe { w.bits(FLASHLIGHT_BIT) });
-    }
+pub fn set_flashlight(_gpiof: &pac::Gpiof, on: bool) {
+    FLASHLIGHT.set(on);
 }
