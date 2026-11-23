@@ -28,28 +28,46 @@ board `5RHNRFB-YP07`), and the UV-5RM open firmware's `tools/flash.py`:
   separate command we never send.
 - the reply echoes the command and puts 06 (ACK) or an error code (E1, E2, E3, E5) in the next
   byte.
-- flash mode: at power-on the bootloader enters update mode when both side keys are held (Side 1
-  on PB6, Side 2 on PA15, active low, checked twice 50 ms apart), or when a frame with command
-  42 (`AA 42 00 00 00 83 F4 EF`) arrives within about 200 ms. Otherwise it starts the app.
+- flash mode: at power-on the bootloader enters update mode when a frame with command 42
+  (`AA 42 00 00 00 83 F4 EF`) arrives within about 200 ms, or when a key is held. On the 5RM
+  that is both side keys (PB6 and PA15); on the UV-21 Pro PA15 is the power switch's sense line,
+  and the stock firmware suggests the key is the one on row PB14 (not yet tried). Otherwise it
+  starts the app. `kdh.probe --wait-boot-s` sends command 42 every 50 ms, so a plain power cycle
+  is enough: proven on the UV-21 Pro on 2026-11-23 (job uv21-probe-1).
+
+Measured on the UV-21 Pro (2026-11-23, job uv21-flash-1): its bootloader is not the 5RM's byte for
+byte (different SHA-256), but it behaves the same way. A one-package update erased only page 0;
+pages 1-59 came back intact in two identical passes.
 
 So a one-package update costs exactly page 0 of the 60 KB app (0x08001000-0x080013FF). Every
 other page, the bootloader itself and region 2 stay as they are.
 
-[dumper/dumper.c](dumper/dumper.c) is that page: 815 bytes of C that sets the clock to the internal
-8 MHz, holds the power latch, and streams frames at 115200 baud on the K-plug's serial pins:
+[dumper/dumper.c](dumper/dumper.c) is that page: under 1 KB of C that sets the clock to the
+internal 8 MHz and streams frames at 115200 baud on the K-plug's serial pins:
 
+- a taste of the SPI flash: wake it (0xAB), its JEDEC ID and its first 256 bytes, in SPI mode 3
+  and mode 0;
 - the whole MCU flash (bootloader, our page, the 59 stock pages);
 - the system area (region 2), the flash size register and unique ID, and the user system data;
 - the SPI flash's JEDEC ID, then all of the SPI flash.
 
-It sends two passes at boot and one more for each `D` it receives.
+At boot it sends only the taste. Each `T` it receives asks for another taste, and each `D` for a
+full pass. `kdh.dump` tastes first and asks for full passes only if a chip answered. Taste bytes
+are compared on hamlet with the first 64 KB that the CPS read already backed up.
+
+Dumper 1 used the 5RM's pins (CS PA8, power latch PF6) and read the SPI flash as all FF with no
+JEDEC ID. The UV-21 Pro's stock firmware puts the SPI flash's CS on PA2 (SPI1 PA5/PA6/PA7, mode
+3), the power latch on PA8 and a keypad row on PF6. It also sends B9 (deep power-down) at start.
+Dumper 2 uses CS PA2, holds PA8 low so the power switch still turns the radio off, and leaves PF6
+alone.
 
 This has been done before on the UV-5RM: amoxu flashed a small dumper through the same bootloader
 to read out that bootloader (`reverse_engineering/bf-uv5rm-btldr-dumper` in their repository).
 Theirs uses the same serial port (USART1 on PA9/PA10, AF1), the same 8 MHz internal clock and
 baud divider (69), and the same link address (0x08001000). It only reads: no flash
-register is touched, the SPI flash gets only JEDEC ID (9F) and READ (03), and the RF chip's bus
-pins stay inputs. `tests/test_uv21_dumper.py` runs it in an emulated AT32F421 and checks all of
+register is touched, the SPI flash gets only RELEASE FROM POWER-DOWN (AB), JEDEC ID (9F) and
+READ (03), and the RF chip's bus pins (PB3/PB5/PB6) and every GPIOB/GPIOC/GPIOF pin stay as reset
+left them. `tests/test_uv21_dumper.py` runs it in an emulated AT32F421 and checks all of
 that, plus a byte-exact read-back.
 
 ## The steps
@@ -57,18 +75,18 @@ that, plus a byte-exact read-back.
 | # | What | Runner step | Hands-on |
 |---|---|---|---|
 | 1 | CPS clone read: codeplug, model and version replies, probes of the rest of the address space | `kplug.read` | none |
-| 2-4 | One local job (Jeff's go): bootloader handshake, flash the dumper (one package), capture two agreeing passes (about 3.5 minutes each for a 2 MB SPI flash). A failed step ends the job, so no answer to the handshake means nothing is written | `kdh.probe`, `kdh.flash`, `kdh.dump` | power on holding both side keys (flash mode) first |
+| 2-4 | One local job (Jeff's go): bootloader handshake, flash the dumper (one package), capture two agreeing passes (about 3.5 minutes each for a 2 MB SPI flash). A failed step ends the job, so no answer to the handshake means nothing is written | `kdh.probe`, `kdh.flash`, `kdh.dump` | one power cycle while `kdh.probe --wait-boot-s 200` listens |
 | 5 | Rebuild page 0 (below) | none | none |
-| 6 | Restore stock: flash the rebuilt page 0 alone, then repeat step 1 and compare | `kdh.flash` (local, Jeff's go) | flash mode |
-| 7 | The first blowfang bring-up image (below), then its console | `kdh.flash` (local, Jeff's go), `kdh.console` | flash mode |
+| 6 | Restore stock: flash the rebuilt page 0 alone, then repeat step 1 and compare | `kdh.flash` (local, Jeff's go) | one power cycle |
+| 7 | The first blowfang bring-up image (below), then its console | `kdh.flash` (local, Jeff's go), `kdh.console` | one power cycle |
 
 The firmware, unique ID and SPI flash (which holds the owner's channels) go to
 `~/blowfang-work/private/uv21/<job id>/` on hamlet, never to the run folder: bench results are
 published on the inbox branch. The run folder gets sizes, hashes and whether the passes agree.
 
 From step 3 until step 6 (or a blowfang image) the radio is not a radio: page 0 is the dumper's.
-While the dumper runs the screen stays dark. To leave it, turn the radio off. If the power latch
-keeps it on, take the battery off.
+While the dumper runs the screen stays dark. To leave it, turn the radio off. Dumper 1 left the
+power latch (PA8) high, so with it the battery has to come off.
 
 ## Rebuilding page 0
 

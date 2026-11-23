@@ -3,7 +3,8 @@
 
   uv21_kdh.py probe --port P --out RUN [--wait-boot-s S]
       bootloader handshake only (the radio must be in flash mode: both side keys held at power-on,
-      or --wait-boot-s: command 42 every 50 ms while someone switches the radio off and on).
+      or --wait-boot-s: command 42 every 50 ms while someone switches the radio off and on; the
+      UV-21 Pro's key is not the 5RM's two side keys, see radios/uv21/README.md).
       Nothing is erased or written; a power cycle without the keys boots the stock firmware.
 
   uv21_kdh.py flash --port P --out RUN --image IMG --sha256 HEX
@@ -12,7 +13,9 @@
       so a 1 KB image costs exactly page 0 of the stock app. IMG's sha256 must match --sha256.
 
   uv21_kdh.py dump --port P --out RUN --private DIR [--passes 2]
-      capture what the dumper sends after it boots: the MCU flash, the system area, the SPI flash.
+      taste the SPI flash first (dumper 2: its JEDEC ID and first 256 bytes in each SPI mode),
+      and only if a chip answered, ask for full passes: the MCU flash, the system area, the SPI
+      flash. No answer: stop after the taste (exit 4), so a wrong guess costs seconds, not passes.
       Everything that came off the radio (firmware, unique ID, SPI flash: Baofeng's code and the
       owner's channels) goes to DIR, never to RUN; RUN gets sizes, hashes and agreement only,
       because bench results are published.
@@ -61,7 +64,7 @@ CMD_BOOT = 0x42                            # within ~200 ms of power-on: stay in
 BOOT_EVERY_S = 0.05
 ERRORS = {0xE1: "frame or command refused", 0xE2: "package number or length wrong",
           0xE3: "flash write failed", 0xE5: "command not expected now"}
-DUMPER_BANNER = b"blowfang uv21 dumper 1"
+DUMPER_BANNER = b"blowfang uv21 dumper"     # 1 or 2: page 0 is ours either way
 
 
 def crc16_xmodem(data, crc=0):
@@ -253,17 +256,19 @@ def parse_frames(raw):
 def assemble(frames):
     """{'banner', 'passes': [complete passes], 'partial': n}: a pass is complete when
     it has every piece at full length (a capture that starts mid-pass leaves a partial one)"""
-    out = {"banner": None, "passes": [], "partial": 0}
+    out = {"banner": None, "passes": [], "partial": 0, "tastes": []}
     cur = None
     for t, addr, data in frames:
         if t == "B":
             out["banner"] = data.decode("latin-1")
             continue
         if cur is None:
-            cur = {"mem": {}, "jedec": None, "spi": bytearray(), "holes": 0}
+            cur = {"mem": {}, "jedec": None, "spi": bytearray(), "holes": 0, "taste": []}
         if t == "F":
             base = next((b for b, m in cur["mem"].items() if b + len(m) == addr), addr)
             cur["mem"][base] = cur["mem"].get(base, b"") + data
+        elif t == "T":
+            cur["taste"].append((addr & 0xFF, addr >> 8, data))
         elif t == "J":
             cur["jedec"] = addr
         elif t == "S":
@@ -274,7 +279,11 @@ def assemble(frames):
         elif t == "E":
             cur["n"] = addr
             cur["spi"] = bytes(cur["spi"])
-            if complete(cur):
+            if cur["taste"]:
+                out["tastes"].append(cur["taste"])
+            if addr == 0 and not cur["mem"] and not cur["spi"]:
+                pass                        # a taste on its own
+            elif complete(cur):
                 out["passes"].append(cur)
             else:
                 out["partial"] += 1
@@ -291,6 +300,17 @@ def flash_kb(info):
 def spi_size(jedec):
     cap = (jedec or 0) >> 16 & 0xFF
     return 1 << (cap if 0x11 <= cap <= 0x18 else 0x15)
+
+
+def chip_answered(jedec):
+    return jedec not in (None, 0, 0xFFFFFF)
+
+
+def taste_summary(taste):
+    """public: mode, JEDEC ID and whether the 256 bytes were all FF or all 00 (no bytes)"""
+    return [{"mode": m, "jedec": f"{j & 0xFF:02x} {j >> 8 & 0xFF:02x} {j >> 16 & 0xFF:02x}",
+             "answered": chip_answered(j), "all_ff": d == b"\xFF" * len(d), "all_00": not any(d)}
+            for m, j, d in taste]
 
 
 def complete(p):
@@ -317,6 +337,9 @@ def summary(dump, bad):
     info = dump["passes"][0]["mem"][0x1FFFF7E0] if dump["passes"] else b""
     s = {"banner": dump["banner"], "flash_kb": flash_kb(info) if info else None, "bad_frames": bad,
          "passes": len(dump["passes"]), "partial_passes": dump["partial"], "pieces": {}}
+    if dump.get("tastes"):
+        s["taste"] = taste_summary(dump["tastes"][-1])
+        s["tastes"] = len(dump["tastes"])
     ps = [regions(p) for p in dump["passes"]]
     for k in ("flash", "sysarea", "usd", "spi"):
         vals = [r[k] for r in ps]
@@ -341,21 +364,27 @@ def summary(dump, bad):
 
 
 def save_private(dump, priv):
-    """the agreed bytes (pass 1 where all passes agree) into priv"""
+    """the agreed bytes (pass 1 where all passes agree) into priv, and the last taste's bytes"""
     os.makedirs(priv, exist_ok=True)
+    for m, _, d in (dump["tastes"][-1] if dump.get("tastes") else []):
+        open(os.path.join(priv, f"taste-mode{m}.bin"), "wb").write(d)
+    if not dump["passes"]:
+        return
     r = regions(dump["passes"][0])
     for k, v in r.items():
         open(os.path.join(priv, k + ".bin"), "wb").write(v)
 
 
 def cmd_dump(a, port=None, log=print):
-    """read until a.passes complete passes agree-able: whatever the dumper is already sending,
-    then one more pass for each 'D' sent after 2 s of quiet"""
+    """read until a.passes complete passes agree-able: whatever the dumper is already sending;
+    at each 2 s of quiet, a 'T' if no taste has come in yet (dumper 2), then, once a taste shows a
+    chip answering, one more pass for each 'D'. A taste where no mode answered ends the dump."""
     port = port or bench_kplug.Port(a.port)
     os.makedirs(a.out, exist_ok=True)
     os.makedirs(a.private, exist_ok=True)
     raw = bytearray()
-    asked = 0
+    asked = tasted = 0
+    stopped = None
     try:
         end = time.monotonic() + a.timeout_s
         while time.monotonic() < end:
@@ -368,6 +397,14 @@ def cmd_dump(a, port=None, log=print):
                 break
             if asked >= a.passes + 2:
                 break
+            if dump["tastes"] or dump["banner"] == "blowfang uv21 dumper 1":
+                if dump["tastes"] and not any(chip_answered(j) for _, j, _ in dump["tastes"][-1]):
+                    stopped = "no SPI flash answered the taste"
+                    break
+            elif tasted < 2:
+                port.write(b"T")
+                tasted += 1
+                continue
             port.write(b"D")
             asked += 1
     finally:
@@ -378,12 +415,15 @@ def cmd_dump(a, port=None, log=print):
     s = summary(dump, bad)
     s["raw_bytes"] = len(raw)
     s["asked"] = asked
+    if stopped:
+        s["stopped"] = stopped
     json.dump(s, open(os.path.join(a.out, "summary.json"), "w"), indent=1)
-    if dump["passes"]:
-        save_private(dump, a.private)
+    save_private(dump, a.private)
     log(json.dumps(s, indent=1))
     if not raw:
         return 2
+    if stopped:
+        return 4
     return 0 if s["complete"] else 3
 
 
