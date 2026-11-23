@@ -40,8 +40,8 @@ code or a vector table. Measured 11-23 (uv21-read-1); blocks not listed read as 
 | Range | What it looks like |
 | --- | --- |
 | 0x0000-0x7CFF | channel memories (CHIRP's layout); kept on hamlet |
-| 0x8000-0x873F | 0x8000 settings (CHIRP) then 64-byte records with a 2-byte checksum each; not decoded |
-| 0x9000-0x9DFF | 0x9000 (CHIRP) then 0x60-byte records, each ending in a 2-byte checksum; not decoded |
+| 0x8000-0x873F | 0x8000 settings (CHIRP) then 66-byte records, each with a 2-byte checksum; not decoded |
+| 0x9000-0x9DFF | 0x9000 (CHIRP) then 0x60-byte records, each with a 2-byte checksum; not decoded |
 | 0xA000-0xA2BF | CHIRP's 0xA000 region |
 | 0xC000-0xCFFF | a 16-byte-record frequency table: a count (0x03E7 = 999) then pairs of BCD frequencies at band edges (136-174, 400-480) and a 400.125 MHz + n x 10 MHz series; looks like factory test channels, not the owner's |
 | 0xD000-0xD03F | CHIRP's 0xD000 region |
