@@ -4,8 +4,8 @@ What the Baofeng UV-21 Pro on the bench can and can't do for this project, with 
 **M** = measured by us (date, run), **I** = inferred, **D** = from documentation or public
 teardowns. Keep this current: a new finding goes here as well as in its own doc.
 
-Status (2026-11-23): on the bench, on stock firmware, on the cable the K6 used. Nothing has been
-written to it. **No flash without Jeff's OK:** no factory image is known for this board, so any
+Status (2026-11-23): on the bench, on stock firmware, on the cable the K6 used. First CPS read done
+(job `uv21-read-1`, 09:14Z). Nothing has been written to it. **No flash without Jeff's OK:** no factory image is known for this board, so any
 flash is one way.
 
 ## The radio
@@ -26,7 +26,27 @@ flash is one way.
 | --- | --- | --- |
 | Cable | the K6's PL2303 K-plug cable on hamlet (found by its by-id name, not by ttyUSB number) | M, 11-23 |
 | Protocol | UV-17 Pro family CPS: 115200 8N1, 16-byte ident magic answered by 0x06, then F / M / SEND, then 64-byte `R` reads with a 4-byte header and an XOR scramble (key "CO 7") | D (CHIRP) |
+| Ident | answers `PROGRAMBFNORMALU` (CHIRP's `UV21ProV2`) with 06 | M, 11-23 uv21-read-1 |
+| F reply (band limits) | `01 0136 0174 0400 0520 0220 0260 0103 5003`: 136-174, 400-520 and 220-260 MHz (UHF to 520, as on the UV-5RM, not the 480 Baofeng lists); the last two words are not understood yet | M, 11-23 uv21-read-1 |
+| M reply (model) | `UV21    +L00000` | M, 11-23 uv21-read-1 |
+| Read speed | the CHIRP regions plus 498 more 64-byte blocks (all of 0x0000-0xFFFF) in 9 s, no bad blocks | M, 11-23 uv21-read-1 |
 | Bench tool | `tools/bench_kplug.py` through the runner's `kplug.read` step: ident and reads only, never a write; the channel list stays on hamlet | (PR #250) |
+
+## The CPS address space (64 KB, `R` reads)
+
+The CPS reads a 64 KB configuration space, not the MCU's flash: nothing in it looks like Cortex-M
+code or a vector table. Measured 11-23 (uv21-read-1); blocks not listed read as FF.
+
+| Range | What it looks like |
+| --- | --- |
+| 0x0000-0x7CFF | channel memories (CHIRP's layout); kept on hamlet |
+| 0x8000-0x873F | 0x8000 settings (CHIRP) then 64-byte records with a 2-byte checksum each; not decoded |
+| 0x9000-0x9DFF | 0x9000 (CHIRP) then 0x60-byte records, each ending in a 2-byte checksum; not decoded |
+| 0xA000-0xA2BF | CHIRP's 0xA000 region |
+| 0xC000-0xCFFF | a 16-byte-record frequency table: a count (0x03E7 = 999) then pairs of BCD frequencies at band edges (136-174, 400-480) and a 400.125 MHz + n x 10 MHz series; looks like factory test channels, not the owner's |
+| 0xD000-0xD03F | CHIRP's 0xD000 region |
+| 0xE000-0xE53F | a log of 16-byte entries with a counter that steps down and a 2-byte checksum (power-on or event log?) |
+| 0xF000-0xF27F | 13-value rows padded to 16 bytes, repeating per band: the shape of a calibration table (squelch / power / deviation steps); values not decoded |
 
 ## Bootloader and backup
 
@@ -38,9 +58,8 @@ flash is one way.
 
 ## To measure
 
-- CPS replies: which ident answers, and the F (band limits on the RT-950) and M (model) replies.
-- The codeplug's settings regions, and probes of the rest of the 64 KB address space for
-  calibration tables (squelch, power, deviation per band), which would name the RF chip family.
+- Decode the 0xF000 table (calibration?) against the UV-5RM's FD6818 and BK4819 builds, which
+  would name the RF chip family without opening the case.
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
 - Whether the bootloader answers the 5RM's handshake (`kdh.probe`), and, from the dump, whether it
