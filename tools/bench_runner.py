@@ -655,8 +655,7 @@ def check_step(job, i, step, rs, problems):
         if p and os.path.isfile(p) and not 0 < os.path.getsize(p) <= KDH_APP_MAX:
             problems.append(f"{what}: image {p}: 1..{KDH_APP_MAX} bytes (the app area)")
         check_commit(step, what, problems)
-        if args:
-            problems.append(f"{what}: takes no args")
+        check_kdh_args(do, args, what, problems)
         if step.get("background"):
             problems.append(f"{what}: never in the background")
     elif do == "uv380.flash":
@@ -724,7 +723,9 @@ def check_kplug_args(args, what, problems):
 KDH_APP_MAX = 0xF000                         # uv21_kdh.APP_MAX: the bootloader's app area
 KDH_OPTS = {"kdh.probe": ("--listen-s", "--wait-boot-s", "--boot-baud"),
             "kdh.dump": ("--passes", "--timeout-s"),
-            "kdh.console": ("--listen-s", "--send", "--seconds", "--baud")}
+            "kdh.console": ("--listen-s", "--send", "--seconds", "--baud"),
+            "kdh.flash": ("--listen-after-s",)}
+KDH_AFTER_MAX_S = 120                        # kdh.flash --listen-after-s: inside the step's 300 s
 KDH_BAUDS = ("57600", "115200")             # uv21_kdh.BAUDS
 KDH_CONSOLE_SAFE = "?irlp"                   # uv21_kdh.CONSOLE_SAFE: the bring-up image's read-only commands
 KDH_CONSOLE_MAX_S = 240                      # under the step's 300 s
@@ -761,6 +762,8 @@ def check_kdh_args(do, args, what, problems):
             problems.append(f"{what}: --send {v}: 1..8 of {KDH_CONSOLE_SAFE}")
         elif k == "--seconds" and not (x is not None and 1 <= x <= KDH_CONSOLE_MAX_S):
             problems.append(f"{what}: --seconds {v}: 1..{KDH_CONSOLE_MAX_S}")
+        elif k == "--listen-after-s" and not (x is not None and 0 <= x <= KDH_AFTER_MAX_S):
+            problems.append(f"{what}: --listen-after-s {v}: 0..{KDH_AFTER_MAX_S}")
         elif k in ("--boot-baud", "--baud") and v not in KDH_BAUDS:
             problems.append(f"{what}: {k} {v}: {' or '.join(KDH_BAUDS)}")
 
@@ -922,7 +925,7 @@ def command(job, step, rd):
     if do == "kdh.flash":
         return [py(), tool("uv21_kdh.py"), "flash", "--port", k6_cable(), "--out", rd,
                 "--image", os.path.realpath(os.path.expanduser(step["image"])),
-                "--sha256", step["sha256"]], co, False
+                "--sha256", step["sha256"]] + args, co, False
     if do == "uv380.rx":
         return [py(), tool("uv380_i2sprobe.py"), "mod", uv380_port(),
                 os.path.join(job_sources(job), *uv380_rx_module(args[0])), "--key-file", key,

@@ -109,6 +109,27 @@ def flash(tmp_path, img, radio, sha=None):
     return kdh.cmd_flash(a, port=radio, log=lambda s: None)
 
 
+def test_flash_keeps_what_the_new_image_prints(tmp_path):
+    # the new image's first lines come out within milliseconds of the end command, before any
+    # logger opened afterwards; --listen-after-s keeps them, without the end command's reply
+    class Booting(FakeBootloader):
+        def reply(self, cmd, code):
+            super().reply(cmd, code)
+            if cmd == 0x45:
+                self.out += b"blowfang uv21 port start\r\nblowfang uv21 port 4 build=x\r\n"
+    img = app_image(0x2000)
+    p = tmp_path / "img.bin"
+    p.write_bytes(img)
+    r = Booting()
+    a = ns(tmp_path, image=str(p), sha256=hashlib.sha256(img).hexdigest(), listen_after_s=0.1)
+    assert kdh.cmd_flash(a, port=r, log=lambda s: None) == 0
+    assert r.cmds.count(0x45) == 1 and r.ended
+    after = (tmp_path / "run" / "after-flash.txt").read_bytes()
+    assert after == b"blowfang uv21 port start\r\nblowfang uv21 port 4 build=x\r\n"
+    res = json.load(open(tmp_path / "run" / "flash.json"))
+    assert res["result"] == "ok" and res["end_ack"] is True and res["after_bytes"] == len(after)
+
+
 def test_crypt_matches_the_published_bf_decoder():
     # a .BF decrypts pages 2 .. n-3 (KDHT for page % 3 == 1, RBGI for 2): ours is the inverse
     img = app_image(0xF000)

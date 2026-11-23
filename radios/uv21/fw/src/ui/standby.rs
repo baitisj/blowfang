@@ -408,7 +408,7 @@ where
         return;
     }
     fill(lcd, MARGIN, INFO_RULE_Y, SCREEN_W - 2 * MARGIN, 1, HAIR);
-    info_line(lcd, 0, "BLOWFANG UV21 PORT 3", AMBER);
+    info_line(lcd, 0, "BLOWFANG UV21 PORT 4", AMBER);
     info_line(lcd, 1, "RX ONLY   SPI FLASH READ ONLY", GREEN);
     let mut t: TextBuf<32> = TextBuf::new();
     let _ = write!(t, "BUILD {}", app::FIRMWARE_VERSION);
