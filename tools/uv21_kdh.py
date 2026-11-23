@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """The Baofeng UV-21 Pro's KDH bootloader and the one-page dumper (radios/uv21/dumper).
 
-  uv21_kdh.py probe --port P --out RUN
-      bootloader handshake only (the radio must be in flash mode: both side keys held at power-on).
+  uv21_kdh.py probe --port P --out RUN [--wait-boot-s S]
+      bootloader handshake only (the radio must be in flash mode: both side keys held at power-on,
+      or --wait-boot-s: command 42 every 50 ms while someone switches the radio off and on).
       Nothing is erased or written; a power cycle without the keys boots the stock firmware.
 
   uv21_kdh.py flash --port P --out RUN --image IMG --sha256 HEX
@@ -50,6 +51,8 @@ APP_MAX = 0xF000                           # the bootloader refuses offsets from
 ACK = 0x06
 REPLY_S = 2.0                              # the 5RM tool waits as long for each reply
 CMD_HANDSHAKE, CMD_REGION1, CMD_PACKAGE, CMD_END = 0x01, 0x04, 0x03, 0x45
+CMD_BOOT = 0x42                            # within ~200 ms of power-on: stay in the bootloader
+BOOT_EVERY_S = 0.05
 ERRORS = {0xE1: "frame or command refused", 0xE2: "package number or length wrong",
           0xE3: "flash write failed", 0xE5: "command not expected now"}
 DUMPER_BANNER = b"blowfang uv21 dumper 1"
@@ -135,6 +138,22 @@ def kdh_send(port, cmd, args, data, log, tries=5):
     raise RuntimeError(f"command {cmd:#04x}: {last}")
 
 
+def wait_boot(port, seconds, log):
+    """send command 42 every BOOT_EVERY_S until the bootloader ACKs it (someone switched the radio
+    off and on) or seconds pass: flash mode with no keys held"""
+    frame = kdh_frame(CMD_BOOT, 0)
+    log(f"waiting up to {seconds:.0f} s for a power-on: switch the radio off and on now")
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        port.write(frame)
+        r = read_kdh_reply(port, timeout=BOOT_EVERY_S)
+        if r == (CMD_BOOT, ACK):
+            port.drain(0.05)
+            log("the bootloader answered command 42: flash mode")
+            return True
+    return False
+
+
 def k6_on_cable(port, seconds):
     heard = port.drain(seconds) if seconds else b""
     return b"K6 " in heard
@@ -148,6 +167,11 @@ def cmd_probe(a, port=None, log=print):
         if k6_on_cable(port, a.listen_s):
             log("refusing: a K6 is talking on this cable")
             return 4
+        if a.wait_boot_s:
+            res["boot"] = wait_boot(port, a.wait_boot_s, log)
+            if not res["boot"]:
+                res["handshake"] = "no power-on seen"
+                return 2
         try:
             kdh_send(port, CMD_HANDSHAKE, 0, b"BOOTLOADER", log)
             res["handshake"] = "ack"
@@ -155,8 +179,8 @@ def cmd_probe(a, port=None, log=print):
             res["handshake"] = str(e)
     finally:
         port.close()
-    json.dump(res, open(os.path.join(a.out, "probe.json"), "w"), indent=1)
-    log(f"handshake: {res['handshake']}")
+        json.dump(res, open(os.path.join(a.out, "probe.json"), "w"), indent=1)
+        log(f"handshake: {res['handshake']}")
     return 0 if res["handshake"] == "ack" else 2
 
 
@@ -373,6 +397,9 @@ def main(argv=None):
         p.add_argument("--port", required=True)
         p.add_argument("--out", required=True)
         p.add_argument("--listen-s", type=float, default=1.0, dest="listen_s")
+        if name == "probe":
+            p.add_argument("--wait-boot-s", type=float, default=0.0, dest="wait_boot_s",
+                           help="first send command 42 until the radio is switched on (flash mode, no keys)")
         if name == "flash":
             p.add_argument("--image", required=True)
             p.add_argument("--sha256", required=True)
