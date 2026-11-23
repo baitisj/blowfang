@@ -19,15 +19,18 @@ APP = b"\x00\x40\x00\x20\x01\x11\x00\x08" + bytes(800)       # sp, reset: an app
 def test_runner_lists_match_the_tool():
     assert br.KDH_APP_MAX == kdh.APP_MAX
     assert br.KDH_CONSOLE_SAFE.encode() == kdh.CONSOLE_SAFE
+    assert tuple(int(b) for b in br.KDH_BAUDS) == kdh.BAUDS
 
 
 def test_console_args(work):
     for step in ({"do": "kdh.console"}, {"do": "kdh.console", "args": ["--send", "ir", "--seconds", "30"]},
-                 {"do": "kdh.console", "args": ["--send=?p", "--listen-s", "3"]}):
+                 {"do": "kdh.console", "args": ["--send=?p", "--listen-s", "3"]},
+                 {"do": "kdh.console", "args": ["--send", "?", "--baud", "57600"]}):
         assert tb.problems(tb.job("k", step)) == "", step
     for step in ({"do": "kdh.console", "args": ["--send", "O"]},       # power off
                  {"do": "kdh.console", "args": ["--send", "iR"]},      # reset
                  {"do": "kdh.console", "args": ["--seconds", "9999"]},
+                 {"do": "kdh.console", "args": ["--baud", "9600"]},
                  {"do": "kdh.console", "args": ["--port", "/dev/ttyUSB0"]},
                  {"do": "kdh.console", "background": True}):
         assert tb.problems(tb.job("k", step)), step
@@ -38,10 +41,12 @@ def test_console_args(work):
 def test_probe_and_dump_args(work):
     for step in ({"do": "kdh.probe"}, {"do": "kdh.probe", "args": ["--listen-s", "2"]},
                  {"do": "kdh.probe", "args": ["--wait-boot-s", "180"]},
+                 {"do": "kdh.probe", "args": ["--wait-boot-s", "200", "--boot-baud", "57600"]},
                  {"do": "kdh.dump", "args": ["--passes", "3", "--timeout-s=2400"]}):
         assert tb.problems(tb.job("k", step)) == "", step
     for step in ({"do": "kdh.probe", "args": ["--port", "/dev/ttyUSB0"]},
                  {"do": "kdh.probe", "args": ["--image", "x.bin"]},
+                 {"do": "kdh.probe", "args": ["--boot-baud", "230400"]},
                  {"do": "kdh.dump", "args": ["--private", "/tmp"]},
                  {"do": "kdh.dump", "args": ["--passes", "9"]},
                  {"do": "kdh.probe", "args": ["--wait-boot-s", "999"]},

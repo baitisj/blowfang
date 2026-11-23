@@ -722,8 +722,10 @@ def check_kplug_args(args, what, problems):
 
 
 KDH_APP_MAX = 0xF000                         # uv21_kdh.APP_MAX: the bootloader's app area
-KDH_OPTS = {"kdh.probe": ("--listen-s", "--wait-boot-s"), "kdh.dump": ("--passes", "--timeout-s"),
-            "kdh.console": ("--listen-s", "--send", "--seconds")}
+KDH_OPTS = {"kdh.probe": ("--listen-s", "--wait-boot-s", "--boot-baud"),
+            "kdh.dump": ("--passes", "--timeout-s"),
+            "kdh.console": ("--listen-s", "--send", "--seconds", "--baud")}
+KDH_BAUDS = ("57600", "115200")             # uv21_kdh.BAUDS
 KDH_CONSOLE_SAFE = "?irlp"                   # uv21_kdh.CONSOLE_SAFE: the bring-up image's read-only commands
 KDH_CONSOLE_MAX_S = 240                      # under the step's 300 s
 KDH_DUMP_MAX_S = 3000                        # under the step's 3600 s
@@ -759,6 +761,8 @@ def check_kdh_args(do, args, what, problems):
             problems.append(f"{what}: --send {v}: 1..8 of {KDH_CONSOLE_SAFE}")
         elif k == "--seconds" and not (x is not None and 1 <= x <= KDH_CONSOLE_MAX_S):
             problems.append(f"{what}: --seconds {v}: 1..{KDH_CONSOLE_MAX_S}")
+        elif k in ("--boot-baud", "--baud") and v not in KDH_BAUDS:
+            problems.append(f"{what}: {k} {v}: {' or '.join(KDH_BAUDS)}")
 
 
 def check_uv380_cmd(job, c, what, problems):

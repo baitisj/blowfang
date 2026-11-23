@@ -166,6 +166,10 @@ class Port:
     def drain(self, seconds):
         return self.read(1 << 16, timeout=seconds)
 
+    def set_baud(self, baud):
+        self.s.flush()
+        self.s.baudrate = baud
+
     def close(self):
         self.s.close()
 
