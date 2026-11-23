@@ -50,6 +50,12 @@
 #define LCD_DC PIN(PORT_C, 15)              /* low = command */
 #define LCD_SCK PIN(PORT_B, 13)
 #define LCD_SDA PIN(PORT_B, 15)
+/* Backlight candidates (dump: stock drives PA3 high at boot and never changes it; PB1 goes to AF0,
+ * TMR14_CH1, and reads high as an input). Not found for sure, so the image tries them in steps
+ * after boot, each set to the level stock leaves it at: PA3 alone, PB1 alone, then both, 10 s
+ * each, and then keeps both on. The screen names the step, so a lit screen says which it was. */
+#define BL_CANDIDATES PIN(PORT_A, 3), PIN(PORT_B, 1)
+#define BL_NAMES "PA3", "PB1"
 #define LCD_W 128                           /* portrait (the 5RM is 160x128 landscape) */
 #define LCD_H 160
 #define LCD_MADCTL 0x00                     /* stock's value */
