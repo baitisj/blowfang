@@ -396,8 +396,8 @@ def test_screen_test_pattern(radio):
 
 
 def test_keys_ptt_and_pin_census(radio):
-    radio.pressed.add((1, 2))                                      # column PB4, row PF6: MENU
-    assert "keys matrix=00000040 side=0 direct=00 name=MENU" in radio.run(until="name=MENU\r\n")
+    radio.pressed.add((1, 2))                                      # column PB4, row PF6: UP
+    assert "keys matrix=00000040 side=0 direct=00 name=UP" in radio.run(until="name=UP\r\n")
     radio.pressed.clear()
     assert "keys matrix=00000000 side=0" in radio.run(until="matrix=00000000 side=0 direct=00\r\n")
     radio.pressed.add((4, 3))                                      # the fifth column (PB11): bit 19

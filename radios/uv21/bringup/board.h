@@ -63,15 +63,15 @@
  * column driven), so they print as side bit (row). */
 #define KEY_COLS PIN(PORT_B, 0), PIN(PORT_B, 4), PIN(PORT_B, 9), PIN(PORT_B, 10), PIN(PORT_B, 11)
 #define KEY_ROWS PIN(PORT_C, 13), PIN(PORT_C, 14), PIN(PORT_F, 6), PIN(PORT_B, 14)
-/* run (bring-up press test, 11-23 16:35Z, assuming the presses came in the order asked): names
- * by matrix bit. PB0's keys from a second capture, 11-23 16:47Z. 0 = not seen yet: PB11, which the
- * first image couldn't print (likely 9 * 0 #), and PB0/PF6. */
+/* run (key round 2, job uv21-console-4, 11-23 18:49Z, all 22 keys pressed in a listed order; it
+ * also reproduces the first run's 12 codes): names by matrix bit. A phone keypad on PB4/PB10/PB11
+ * plus * 0 # on PB9; PB0/PF6 has no key. */
 #define KEY_NAMES \
     "VFO/MR", "CENTER", 0, "A/B",           /* PB0: rows PC13 PC14 PF6 PB14 */ \
-    "EXIT", "2", "MENU", "4",               /* PB4 */ \
-    "6", "7", "DOWN", "8",                  /* PB9 */ \
-    "1", "3", "UP", "5",                    /* PB10 */ \
-    0, 0, 0, 0                              /* PB11 */
+    "1", "4", "UP", "7",                    /* PB4 */ \
+    "*", "0", "EXIT", "#",                  /* PB9 */ \
+    "2", "5", "DOWN", "8",                  /* PB10 */ \
+    "3", "6", "MENU", "9"                   /* PB11 */
 #define SIDE_NAMES 0, "SIDE TOP", "SIDE BOT", "SIDE MID"   /* rows PC13, PC14, PF6, PB14 */
 
 /* ADC channels to report (channel n = PA n for 0-7, PB0 = 8, PB1 = 9): the UV-5RM's VOX and
