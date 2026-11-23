@@ -113,6 +113,7 @@ flashed over stock pages 0-5, cable in. Console read at 16:35-16:37Z.
 | --- | --- | --- |
 | RF chip | **BK4829**: register 0 reads 0x4829 (the K6 reads 0x4819); all 128 registers read back, none written | M 11-23 |
 | LCD controller | **ST7735S**: RDDID answers 7C 89 F0 on SDA (PB15), so the panel's data line is bidirectional; image 1 left the screen dark because the backlight (PF7, found later in the stock code) was never driven | M 11-23 |
+| Screen | Image 2 (11-23 18:42Z) lights it with PF7 high and draws the test pattern as intended: colour order right (RGB565, no BGR swap) and the red marker top left with MADCTL 00 (128x160 portrait, no flip) | M 11-23 |
 | SPI flash | JEDEC C4 60 15 (2 MB) on CS PA2, after AB | M 11-23 |
 | MCU | DBGMCU IDCODE 0x50020100, flash size register 64 KB; the bootloader leaves the PLL running (CRM_CTRL 0x03008483, CFG 0x0028000A at app entry) | M 11-23 |
 | External crystal | did not start within 50 ms when enabled (HEXT ready never set): run on the internal clock or the bootloader's PLL | M 11-23 |
