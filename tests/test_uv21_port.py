@@ -5,7 +5,7 @@ What must hold before an image goes on the radio with nobody at the bench: it bo
 internal clock (the crystal doesn't start) and says so on the serial line; it drives only the
 UV-21's pins (SWD and the power sense stay inputs); the RF chip never gets a transmit state, a PA
 bias or a TX switch, not even with PTT held; the bootloader's command 42 frame resets it, so the
-next image can go on with no hands; the SPI flash is never chip-erased; and the keys come out as
+next image can go on with no hands; the SPI flash is never written; and the keys come out as
 the right key ids."""
 import os
 import struct
@@ -213,8 +213,8 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 1 build=" in text
-    assert "sclk_mhz=3c power_sense_ok=1 rx_only=1" in text           # 60 MHz
+    assert "blowfang uv21 port 2 build=" in text
+    assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
     crm_cfg = [v for a, v in port.writes if a == 0x40021004]
@@ -266,9 +266,16 @@ def test_keys_come_out_as_key_ids(port):
         port.run(limit=3_000_000)
 
 
-def test_the_spi_flash_is_never_chip_erased(port):
-    assert port.nor_ops and (0x9F, None) not in [(c, None) for c, _ in port.nor_ops if c == 0xC7]
-    assert not [op for op in port.nor_ops if op[0] == 0xC7]
+def test_the_spi_flash_is_never_written(port):
+    # the SPI flash still holds the stock firmware's data, and the 5RH code saves its own VFO over
+    # the stock one at 0x8000 on UP or DOWN: port images must send no write enable, program or erase
+    for press in ((1, 2), (3, 2)):                                      # UP, DOWN
+        port.pressed.add(press)
+        port.run(limit=10_000_000)
+        port.pressed.clear()
+        port.run(limit=10_000_000)
+    assert [op for op in port.nor_ops if op[0] == 0x03], "no SPI flash reads at all"
+    assert not [op for op in port.nor_ops if op[0] in (0x06, 0x02, 0x20, 0x52, 0xD8, 0xC7, 0x60)]
 
 
 def test_command_42_resets_for_a_hands_free_reflash(built):

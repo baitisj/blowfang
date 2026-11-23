@@ -11,6 +11,12 @@ const CMD_ERASE_CHIP: u8 = 0xC7;
 
 const STATUS_BUSY_BIT: u8 = 0x01;
 
+/// UV-21: the SPI flash still holds the stock firmware's data, in the stock VFO and settings
+/// formats, and the 5RH code would write its own over it (UP/DOWN saves the VFO at 0x8000). Until
+/// this port owns its storage, every write is dropped here: no write enable, no program, no erase.
+/// The chip ignores program and erase without a write enable, so this is two locks, not one.
+pub const READ_ONLY: bool = true;
+
 pub const PAGE_SIZE: usize = 256;
 pub const SECTOR_SIZE: u32 = 4096;
 
@@ -71,12 +77,18 @@ impl<'a> NorFlash<'a> {
     }
 
     fn write_enable(&mut self) {
+        if READ_ONLY {
+            return;
+        }
         board::set_norflash_cs(self.gpioa, false);
         self.transfer_byte(CMD_WRITE_ENABLE);
         board::set_norflash_cs(self.gpioa, true);
     }
 
     fn write_page(&mut self, addr: u32, data: &[u8]) {
+        if READ_ONLY {
+            return;
+        }
         self.write_enable();
         board::set_norflash_cs(self.gpioa, false);
         self.transfer_byte(CMD_PAGE_PROGRAM);
@@ -102,6 +114,9 @@ impl<'a> NorFlash<'a> {
     }
 
     pub fn erase_sector(&mut self, addr: u32) {
+        if READ_ONLY {
+            return;
+        }
         self.write_enable();
         board::set_norflash_cs(self.gpioa, false);
         self.transfer_byte(CMD_ERASE_SECTOR_4K);
@@ -112,6 +127,9 @@ impl<'a> NorFlash<'a> {
 
     #[allow(dead_code)]
     pub fn erase_chip(&mut self) {
+        if READ_ONLY {
+            return;
+        }
         self.write_enable();
         board::set_norflash_cs(self.gpioa, false);
         self.transfer_byte(CMD_ERASE_CHIP);
