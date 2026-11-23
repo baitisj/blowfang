@@ -27,7 +27,7 @@ A job is a JSON file: who (the thread, one word), a channel to claim, how long, 
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
-kplug.read), turned into one
+kplug.read, kdh.probe, kdh.dump, kdh.flash), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -39,7 +39,9 @@ and the point is that the runner checks everything before it keys. The checks, i
     matches the job's, checked again right before it is used
   - the K6 cable only through k6_install / k6_update / a serial-hold logger / bench_kplug's
     read-only clone (kplug.read: a stock Baofeng on that cable, ident and "R" reads only, never a
-    write), the port found by its by-id name (USB numbering moves on reboot); no job argument may
+    write) / uv21_kdh's bootloader handshake, dumper capture and app-area flash (kdh.probe,
+    kdh.dump, kdh.flash: the UV-21 Pro; the flash takes one staged image whose sha256 the job
+    pins, region 1 only, and is a local submit only), the port found by its by-id name (USB numbering moves on reboot); no job argument may
     name a /dev path
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
@@ -100,7 +102,8 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "logger": 30, "logger.stop": 60, "wait": WAIT_MAX_S + 30, "uv380.flash": 300,
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240,
-                "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180}
+                "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180,
+                "kdh.probe": 60, "kdh.dump": 3600, "kdh.flash": 300}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -642,6 +645,19 @@ def check_step(job, i, step, rs, problems):
         check_kplug_args(args, what, problems)
         if step.get("background"):
             problems.append(f"{what}: never in the background")
+    elif do in ("kdh.probe", "kdh.dump"):
+        check_kdh_args(do, args, what, problems)
+        if step.get("background"):
+            problems.append(f"{what}: never in the background")
+    elif do == "kdh.flash":
+        p = staged_file(step, "image", rs, what, problems)
+        if p and os.path.isfile(p) and not 0 < os.path.getsize(p) <= KDH_APP_MAX:
+            problems.append(f"{what}: image {p}: 1..{KDH_APP_MAX} bytes (the app area)")
+        check_commit(step, what, problems)
+        if args:
+            problems.append(f"{what}: takes no args")
+        if step.get("background"):
+            problems.append(f"{what}: never in the background")
     elif do == "uv380.flash":
         staged_file(step, "image", rs, what, problems)
         staged_file(step, "radio_tool", rs, what, problems, need_sha=False)
@@ -702,6 +718,37 @@ def check_kplug_args(args, what, problems):
                 problems.append(f"{what}: {e}")
     if extra > KPLUG_EXTRA_MAX:
         problems.append(f"{what}: --extra asks for {extra} blocks; {KPLUG_EXTRA_MAX} at most")
+
+
+KDH_APP_MAX = 0xF000                         # uv21_kdh.APP_MAX: the bootloader's app area
+KDH_OPTS = {"kdh.probe": ("--listen-s",), "kdh.dump": ("--passes", "--timeout-s")}
+KDH_DUMP_MAX_S = 3000                        # under the step's 3600 s
+
+
+def check_kdh_args(do, args, what, problems):
+    """uv21_kdh probe / dump: their own options only, in range"""
+    i = 0
+    while i < len(args):
+        k, eq, v = args[i].partition("=")
+        if k not in KDH_OPTS[do]:
+            problems.append(f"{what}: '{args[i]}': only {', '.join(KDH_OPTS[do])}")
+            return
+        if not eq:
+            if i + 1 >= len(args):
+                problems.append(f"{what}: {k} needs a value")
+                return
+            i, v = i + 1, args[i + 1]
+        i += 1
+        try:
+            x = float(v)
+        except ValueError:
+            x = None
+        if k == "--passes" and v not in ("1", "2", "3"):
+            problems.append(f"{what}: --passes {v}: 1, 2 or 3")
+        elif k == "--timeout-s" and not (x is not None and 60 <= x <= KDH_DUMP_MAX_S):
+            problems.append(f"{what}: --timeout-s {v}: 60..{KDH_DUMP_MAX_S}")
+        elif k == "--listen-s" and not (x is not None and 0 <= x <= 10):
+            problems.append(f"{what}: --listen-s {v}: 0..10")
 
 
 def check_uv380_cmd(job, c, what, problems):
@@ -851,6 +898,15 @@ def command(job, step, rd):
     if do == "kplug.read":           # the codeplug (channel list) stays on hamlet, out of the run folder
         return [py(), tool("bench_kplug.py"), "read", "--port", k6_cable(), "--out", rd,
                 "--private", os.path.join(work(), "private", "kplug", job["id"])] + args, co, False
+    if do == "kdh.probe":
+        return [py(), tool("uv21_kdh.py"), "probe", "--port", k6_cable(), "--out", rd] + args, co, False
+    if do == "kdh.dump":             # the radio's firmware, unique ID and SPI flash stay on hamlet
+        return [py(), tool("uv21_kdh.py"), "dump", "--port", k6_cable(), "--out", rd,
+                "--private", os.path.join(work(), "private", "uv21", job["id"])] + args, co, False
+    if do == "kdh.flash":
+        return [py(), tool("uv21_kdh.py"), "flash", "--port", k6_cable(), "--out", rd,
+                "--image", os.path.realpath(os.path.expanduser(step["image"])),
+                "--sha256", step["sha256"]], co, False
     if do == "uv380.rx":
         return [py(), tool("uv380_i2sprobe.py"), "mod", uv380_port(),
                 os.path.join(job_sources(job), *uv380_rx_module(args[0])), "--key-file", key,
@@ -874,7 +930,8 @@ def uses_ic7100(step):
 
 
 def uses_cable(step):
-    return step["do"] in ("k6.install", "k6.flash", "k6.update", "kplug.read")
+    return step["do"] in ("k6.install", "k6.flash", "k6.update", "kplug.read", "kdh.probe", "kdh.dump",
+                          "kdh.flash")
 
 
 # ---- running ----
@@ -1719,6 +1776,8 @@ def sample_jobs(tmp, co, key):
         ("Pluto flash with an extra option", J("bad-fwflash", {"do": "pluto.flash", "args": [wav, os.path.join(tmp, "bk"), "--force"]}), False),
         ("read-only clone of a Baofeng on the K6 cable, with probe blocks", J("ok-kplug", {"do": "kplug.read", "args": ["--ident", "normal", "--extra", "0xB000:0xB400"]}), True),
         ("Baofeng clone with an option it doesn't have", J("bad-kplug", {"do": "kplug.read", "args": ["--write"]}), False),
+        ("UV-21 Pro dumper capture, two passes", J("ok-kdhdump", {"do": "kdh.dump", "args": ["--passes", "2"]}), True),
+        ("UV-21 Pro bootloader probe with a flash option", J("bad-kdhprobe", {"do": "kdh.probe", "args": ["--image", wav]}), False),
     ]
 
 

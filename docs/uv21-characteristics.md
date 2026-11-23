@@ -28,6 +28,14 @@ flash is one way.
 | Protocol | UV-17 Pro family CPS: 115200 8N1, 16-byte ident magic answered by 0x06, then F / M / SEND, then 64-byte `R` reads with a 4-byte header and an XOR scramble (key "CO 7") | D (CHIRP) |
 | Bench tool | `tools/bench_kplug.py` through the runner's `kplug.read` step: ident and reads only, never a write; the channel list stays on hamlet | (PR #250) |
 
+## Bootloader and backup
+
+| | | |
+| --- | --- | --- |
+| Bootloader protocol | KDH frames `AA cmd args len16 data crc16 EF`; one 1 KB package per page, each package erasing only its own page; region 2 a separate command. From the UV-5RM's bootloader, not yet seen on this radio | D (5RM disassembly) |
+| Flash Access Protection | the app flash can't be read from outside, so the backup is a one-page dumper written over app page 0 (`radios/uv21/README.md`) | D |
+| Bench tools | `tools/uv21_kdh.py` (probe, flash, dump) through the runner's `kdh.probe`, `kdh.dump` and `kdh.flash` (local submit only) steps | (this PR) |
+
 ## To measure
 
 - CPS replies: which ident answers, and the F (band limits on the RT-950) and M (model) replies.
@@ -35,6 +43,9 @@ flash is one way.
   calibration tables (squelch, power, deviation per band), which would name the RF chip family.
 - Receive levels and audio path with the Pluto as the far end (70 cm only for anything we send).
 - Whether the FD6818's FSK and AF output reach the MCU the same way as on the K6 and the UV-5RM.
+- Whether the bootloader answers the 5RM's handshake (`kdh.probe`), and, from the dump, whether it
+  is the 5RM's bootloader byte for byte.
+- The SPI flash's JEDEC ID and size, and the MCU's flash size register (from the dump).
 
 ## Sources
 

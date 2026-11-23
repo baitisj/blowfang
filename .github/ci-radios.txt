@@ -167,6 +167,15 @@ sim/k6digi/ft8_wav.py
 sim/k6digi/ft8ref.py
 sim/k6digi/wsprref.py
 
+[uv21]
+.github/workflows/uv21.yml
+# the Baofeng UV-21 Pro: the one-page dumper (built, run in an emulated AT32F421) and the
+# bootloader tool it goes through (tested against a model of the bootloader)
+radios/uv21/
+tools/uv21_kdh.py
+tools/bench_kplug.py
+tests/test_uv21*
+
 [bench]
 .github/workflows/bench-tools.yml
 # The Pluto SDR (tools/pluto_bench.py, the on-Pluto channelizer tools/pluto_chan/, the firmware
@@ -196,3 +205,5 @@ sim/k6if/__init__.py
 sim/k6if/dmr.py
 tools/k6_bench.py
 tools/k6_upload.py
+# the UV-21 Pro's bootloader tool, which the runner's kdh.* steps run
+tools/uv21_kdh.py

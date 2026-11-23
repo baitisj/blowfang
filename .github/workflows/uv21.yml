@@ -1,0 +1,101 @@
+# Baofeng UV-21 Pro (radios/uv21, MIT): the one-page dumper, built with clang and run in an
+# emulated AT32F421 (Unicorn) that checks it reads the radio back byte for byte and never touches a
+# flash register, the SPI flash's write commands or the RF chip's pins; and tools/uv21_kdh.py, the
+# bootloader tool it goes through, against a model of the bootloader's command loop.
+name: UV-21 Pro
+
+on:
+  push:
+    branches: [main]
+    # a release: pushing any tag runs everything (GitHub skips paths: for tag pushes, and
+    # tools/ci_scope.py builds every radio on a push)
+    tags: ['**']
+    # docs only ([ignore] in .github/ci-radios.txt): no run at all. tools/ci_scope.py --paths
+    # prints this list and --check keeps it equal to the map
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!*.md'
+      - '!LICENSE'
+      - '!.gitignore'
+      - '!docs/**'
+      - '!.github/workflows/guard.yml'
+      - '!.github/workflows/k6-compilers.yml'
+      - '!tools/hamlet_prune_worktrees.sh'
+      - 'docs/manual/cards/**'
+      - 'docs/k6-insights/**'
+      - 'docs/k6-modules.md'
+  pull_request:
+    # docs only ([ignore] in .github/ci-radios.txt): no run at all. tools/ci_scope.py --paths
+    # prints this list and --check keeps it equal to the map
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!*.md'
+      - '!LICENSE'
+      - '!.gitignore'
+      - '!docs/**'
+      - '!.github/workflows/guard.yml'
+      - '!.github/workflows/k6-compilers.yml'
+      - '!tools/hamlet_prune_worktrees.sh'
+      - 'docs/manual/cards/**'
+      - 'docs/k6-insights/**'
+      - 'docs/k6-modules.md'
+  # weekly, so a radio nobody touched still builds against today's toolchains
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+jobs:
+  # Whether this change touches the UV-21 at all (.github/ci-radios.txt, tools/ci_scope.py): a pull
+  # request that doesn't skips the job below, and a skipped job counts as passed.
+  scope:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: scope
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/ci_scope.py --github uv21
+
+  uv21:
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: clang and lld
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            clang \
+            lld \
+            llvm
+      - run: |
+          pip install \
+            pytest \
+            unicorn
+      - name: the dumper (1 KB at most)
+        run: make -C radios/uv21
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uv21-dumper
+          path: |
+            radios/uv21/build/dumper.bin
+            radios/uv21/build/dumper.elf
+      - name: tests
+        run: |
+          python -m pytest -q \
+            tests/test_uv21_dumper.py \
+            tests/test_uv21_kdh.py
