@@ -60,8 +60,10 @@ def test_flash_needs_a_pinned_staged_image(work):
     p, h = tb.stage(work, "dumper.bin", APP)
     ok = {"do": "kdh.flash", "image": p, "sha256": h, "commit": "8985332"}
     assert tb.problems(tb.job("k", ok)) == ""
+    assert tb.problems(tb.job("k", dict(ok, args=["--listen-after-s", "60"]))) == ""
     for bad in (dict(ok, sha256="00" * 32), {k: v for k, v in ok.items() if k != "sha256"},
-                dict(ok, args=["--region2"]), dict(ok, image="/etc/passwd"), dict(ok, background=True)):
+                dict(ok, args=["--region2"]), dict(ok, image="/etc/passwd"), dict(ok, background=True),
+                dict(ok, args=["--listen-after-s", "999"]), dict(ok, args=["--port", "/dev/ttyUSB0"])):
         assert tb.problems(tb.job("k", bad)), bad
     big, hb = tb.stage(work, "big.bin", APP + bytes(0xF000))
     assert "app area" in tb.problems(tb.job("k", dict(ok, image=big, sha256=hb)))
@@ -77,6 +79,8 @@ def test_command_lines_keep_the_dump_private(work):
     p, h = tb.stage(work, "dumper.bin", APP)
     argv, _, _ = br.command(j, {"do": "kdh.flash", "image": p, "sha256": h}, rd)
     assert argv[2:4] == ["flash", "--port"] and argv[-4:] == ["--image", os.path.realpath(p), "--sha256", h]
+    argv, _, _ = br.command(j, {"do": "kdh.flash", "image": p, "sha256": h, "args": ["--listen-after-s=30"]}, rd)
+    assert argv[-1] == "--listen-after-s=30"
     for do in ("kdh.probe", "kdh.dump", "kdh.flash", "kdh.console"):
         assert br.uses_cable({"do": do})
 

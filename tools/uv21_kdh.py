@@ -10,10 +10,12 @@
       (UV-21 port 2 ran at 57,600): each command 42 goes out at that speed too, then at 115200
       for the bootloader it resets into.
 
-  uv21_kdh.py flash --port P --out RUN --image IMG --sha256 HEX
+  uv21_kdh.py flash --port P --out RUN --image IMG --sha256 HEX [--listen-after-s S]
       write IMG to the app area (0x08001000 up) through the bootloader: region 1 only, never
       region 2 (0x1FFFE400, Baofeng's own code). The bootloader erases only the pages it is sent,
       so a 1 KB image costs exactly page 0 of the stock app. IMG's sha256 must match --sha256.
+      --listen-after-s: keep the port open that long after the end command and save what the new
+      image prints as it starts to RUN/after-flash.txt (a logger opened later misses it).
 
   uv21_kdh.py dump --port P --out RUN --private DIR [--passes 2]
       taste the SPI flash first (dumper 2: its JEDEC ID and first 256 bytes in each SPI mode),
@@ -223,10 +225,25 @@ def cmd_flash(a, port=None, log=print):
             kdh_send(port, CMD_PACKAGE, i, page, log)
             res["sent"] = i + 1
             log(f"package {i + 1}/{len(pkgs)}")
-        try:
-            kdh_send(port, CMD_END, 0, b"", log, tries=2)
-        except RuntimeError:
-            pass                          # the radio may reset before its reply gets out
+        after_s = getattr(a, "listen_after_s", 0.0)
+        if after_s:
+            # one end command, then everything until after_s: the reply (if the radio sends it
+            # before it resets) and the new image's first lines
+            port.drain(0.02)
+            end = kdh_frame(CMD_END, 0)
+            port.write(end)
+            raw = port.read(1 << 16, timeout=after_s)
+            at = raw.find(b"\xAA" + bytes([CMD_END, ACK, 0, 0]))
+            res["end_ack"] = at >= 0
+            text = raw[:at] + raw[at + 8:] if at >= 0 else raw    # the 8-byte reply frame out
+            open(os.path.join(a.out, "after-flash.txt"), "wb").write(text)
+            res["after_bytes"] = len(text)
+            log(f"after the end command: {len(text)} bytes in {after_s:.0f} s")
+        else:
+            try:
+                kdh_send(port, CMD_END, 0, b"", log, tries=2)
+            except RuntimeError:
+                pass                      # the radio may reset before its reply gets out
         res["result"] = "ok"
     except RuntimeError as e:
         res["result"] = str(e)
@@ -499,6 +516,8 @@ def main(argv=None):
         if name == "flash":
             p.add_argument("--image", required=True)
             p.add_argument("--sha256", required=True)
+            p.add_argument("--listen-after-s", type=float, default=0.0, dest="listen_after_s",
+                           help="save what the new image prints for this long after the end command")
         if name == "dump":
             p.add_argument("--private", required=True)
             p.add_argument("--passes", type=int, default=2, choices=(1, 2, 3))
