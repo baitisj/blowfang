@@ -1,6 +1,6 @@
 """radios/uv21/dumper: the one-page UV-21 Pro dumper, run in an emulated AT32F421 (Unicorn), read
-back by tools/uv21_kdh.py, and checked to read only: no flash register, no SPI command but JEDEC ID
-and READ, no RF-chip pin driven."""
+back by tools/uv21_kdh.py, and checked to read only: no flash register, no SPI command but RELEASE
+FROM POWER-DOWN, JEDEC ID and READ, no RF-chip pin driven, the power latch never raised."""
 import hashlib
 import os
 import struct
@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import uv21_kdh as kdh  # noqa: E402
 
 BIN = os.path.join(ROOT, "radios", "uv21", "build", "dumper.bin")
-GPIOA, GPIOC, GPIOF = 0x48000000, 0x48000800, 0x48001400
+GPIOA, GPIOB, GPIOC, GPIOF = 0x48000000, 0x48000400, 0x48000800, 0x48001400
 
 
 @pytest.fixture(scope="module")
@@ -29,9 +29,10 @@ def image():
 
 class Radio:
     """an AT32F421 with 64 KB of stock-looking flash, the dumper written over app page 0, a 128 KB
-    SPI flash (JEDEC 20 40 11) and a serial line; every peripheral write is recorded"""
+    SPI flash (JEDEC 20 40 11, CS PA2) that sleeps in deep power-down until it gets 0xAB (MISO
+    floats high: all FF), and a serial line; every peripheral write is recorded"""
 
-    def __init__(self, image, rx=b"", stop_after=2):
+    def __init__(self, image, rx=b"", stop_after=2, chip=True):
         self.flash = bytearray(hashlib.sha256(b"stock").digest() * 2048)
         self.flash[0x1000:0x1400] = image + b"\xff" * (0x400 - len(image))
         self.sysarea = bytes((i * 7) & 0xFF for i in range(0x1000))
@@ -40,7 +41,7 @@ class Radio:
         self.spiflash = bytes((i * 13 + 5) & 0xFF for i in range(1 << 17))
         self.rx, self.stop_after = bytearray(rx), stop_after
         self.uart, self.writes, self.spi_cmds = bytearray(), [], []
-        self.cs, self.cmd, self.resp = 1, [], 0
+        self.cs, self.cmd, self.resp, self.awake, self.chip = 1, [], 0, False, chip
         mu = self.mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)
         mu.mem_map(0x08000000, 0x10000)
         mu.mem_write(0x08000000, bytes(self.flash))
@@ -67,9 +68,9 @@ class Radio:
                     self.stop_after -= 1
                     if self.stop_after == 0:
                         uc.emu_stop()
-            elif addr == GPIOA + 0x18 and value & (1 << 8):
+            elif addr == GPIOA + 0x18 and value & (1 << 2):
                 self.cs, self.cmd = 1, []
-            elif addr == GPIOA + 0x28 and value & (1 << 8):
+            elif addr == GPIOA + 0x28 and value & (1 << 2):
                 self.cs = 0
             elif addr == 0x4001300C:
                 assert self.cs == 0, "SPI byte with CS high"
@@ -77,7 +78,10 @@ class Radio:
                 c = self.cmd
                 if len(c) == 1:
                     self.spi_cmds.append(c[0])
-                if c[0] == 0x9F:
+                    self.awake |= c[0] == 0xAB and self.chip
+                if not self.awake:
+                    self.resp = 0xFF
+                elif c[0] == 0x9F:
                     self.resp = (0, 0x20, 0x40, 0x11)[len(c) - 1] if len(c) <= 4 else 0
                 elif c[0] == 0x03:
                     self.resp = 0 if len(c) <= 4 else self.spiflash[(len(c) - 5) % len(self.spiflash)]
@@ -104,7 +108,7 @@ class Radio:
 
 @pytest.fixture(scope="module")
 def two_passes(image):
-    r = Radio(image)
+    r = Radio(image, rx=b"DD", stop_after=3)           # the boot taste, then two passes
     return r, r.run()
 
 
@@ -126,7 +130,7 @@ def test_reads_everything_back_twice(two_passes):
     frames, bad = kdh.parse_frames(raw)
     assert bad == 0
     d = kdh.assemble(frames)
-    assert d["banner"] == "blowfang uv21 dumper 1" and len(d["passes"]) == 2 and not d["partial"]
+    assert d["banner"] == "blowfang uv21 dumper 2" and len(d["passes"]) == 2 and not d["partial"]
     for p in d["passes"]:
         g = kdh.regions(p)
         assert g["flash"] == bytes(r.flash)
@@ -136,18 +140,37 @@ def test_reads_everything_back_twice(two_passes):
     assert s["complete"] and s["page0_is_dumper"] and s["flash_kb"] == 64 and s["spi_jedec"] == "20 40 11"
 
 
+def test_the_boot_taste_wakes_the_chip_and_reads_256_bytes(image):
+    r = Radio(image, stop_after=1)
+    d = kdh.assemble(kdh.parse_frames(r.run())[0])
+    assert not d["passes"] and not d["partial"] and len(d["tastes"]) == 1
+    assert [(m, j) for m, j, _ in d["tastes"][0]] == [(3, 0x114020), (0, 0x114020)]
+    assert all(t == r.spiflash[:256] for _, _, t in d["tastes"][0])
+    assert r.spi_cmds[:2] == [0xAB, 0x9F]               # wake before the ID
+
+
+def test_no_chip_tastes_as_ff_and_a_t_tastes_again(image):
+    r = Radio(image, rx=b"T", stop_after=2, chip=False)
+    d = kdh.assemble(kdh.parse_frames(r.run())[0])
+    assert len(d["tastes"]) == 2
+    s = kdh.summary(d, 0)
+    assert [t["answered"] for t in s["taste"]] == [False, False] and s["taste"][0]["all_ff"]
+
+
 def test_only_reads(two_passes):
     r, _ = two_passes
     assert not [a for a, _ in r.writes if 0x40022000 <= a < 0x40022400], "flash register written"
-    assert set(r.spi_cmds) == {0x9F, 0x03}
+    assert set(r.spi_cmds) == {0xAB, 0x9F, 0x03}
     cfg_a = [v for a, v in r.writes if a == GPIOA]
-    assert cfg_a and all((v >> 4) & 0xF == 0 for v in cfg_a)        # PA2, PA3 (RF bus) inputs
+    assert cfg_a and all((v >> 4) & 0xF == 0x1 for v in cfg_a)      # PA2 out (CS), PA3 input
+    assert all((v >> 16) & 0x3 == 0x1 for v in cfg_a)               # PA8 (power latch) out ...
+    assert not [v for a, v in r.writes if a == GPIOA + 0x18 and v & (1 << 8)]   # ... never raised
     assert all((v >> 26) & 0xF == 0xA for v in cfg_a)               # PA13, PA14 stay SWD
-    assert not [a for a, _ in r.writes if GPIOC <= a < GPIOC + 0x400]   # PC13 (RF bus) untouched
-    assert (GPIOF + 0x18, 1 << 6) in r.writes                        # power latch held on
+    for port in (GPIOB, GPIOC, GPIOF):                              # RF bus, keypad rows untouched
+        assert not [a for a, _ in r.writes if port <= a < port + 0x400]
 
 
 def test_a_d_asks_for_another_pass(image):
-    r = Radio(image, rx=b"D", stop_after=3)
+    r = Radio(image, rx=b"DDD", stop_after=4)
     d = kdh.assemble(kdh.parse_frames(r.run())[0])
     assert [p["n"] for p in d["passes"]] == [1, 2, 3]
