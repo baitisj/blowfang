@@ -1,5 +1,5 @@
-"""the bench runner's UV-21 Pro steps (kdh.probe, kdh.dump, kdh.flash: tools/uv21_kdh.py) and the
-inbox's refusal of the flash."""
+"""the bench runner's UV-21 Pro steps (kdh.probe, kdh.dump, kdh.flash, kdh.console:
+tools/uv21_kdh.py) and the inbox's refusal of the flash."""
 import importlib.util
 import os
 import sys
@@ -18,6 +18,21 @@ APP = b"\x00\x40\x00\x20\x01\x11\x00\x08" + bytes(800)       # sp, reset: an app
 
 def test_runner_lists_match_the_tool():
     assert br.KDH_APP_MAX == kdh.APP_MAX
+    assert br.KDH_CONSOLE_SAFE.encode() == kdh.CONSOLE_SAFE
+
+
+def test_console_args(work):
+    for step in ({"do": "kdh.console"}, {"do": "kdh.console", "args": ["--send", "ir", "--seconds", "30"]},
+                 {"do": "kdh.console", "args": ["--send=?p", "--listen-s", "3"]}):
+        assert tb.problems(tb.job("k", step)) == "", step
+    for step in ({"do": "kdh.console", "args": ["--send", "O"]},       # power off
+                 {"do": "kdh.console", "args": ["--send", "iR"]},      # reset
+                 {"do": "kdh.console", "args": ["--seconds", "9999"]},
+                 {"do": "kdh.console", "args": ["--port", "/dev/ttyUSB0"]},
+                 {"do": "kdh.console", "background": True}):
+        assert tb.problems(tb.job("k", step)), step
+    argv, _, bg = br.command(tb.job("c"), {"do": "kdh.console", "args": ["--send", "i"]}, str(work / "rd"))
+    assert argv[2:5] == ["console", "--port", "/dev/k6cable"] and argv[-2:] == ["--send", "i"] and not bg
 
 
 def test_probe_and_dump_args(work):
@@ -57,7 +72,7 @@ def test_command_lines_keep_the_dump_private(work):
     p, h = tb.stage(work, "dumper.bin", APP)
     argv, _, _ = br.command(j, {"do": "kdh.flash", "image": p, "sha256": h}, rd)
     assert argv[2:4] == ["flash", "--port"] and argv[-4:] == ["--image", os.path.realpath(p), "--sha256", h]
-    for do in ("kdh.probe", "kdh.dump", "kdh.flash"):
+    for do in ("kdh.probe", "kdh.dump", "kdh.flash", "kdh.console"):
         assert br.uses_cable({"do": do})
 
 

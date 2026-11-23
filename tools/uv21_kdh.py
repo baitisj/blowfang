@@ -23,6 +23,12 @@
   uv21_kdh.py frames FILE
       decode a raw dumper capture (from dump's DIR/raw-N.bin or the emulator) and summarise it.
 
+  uv21_kdh.py console --port P --out RUN [--send LETTERS] [--seconds S]
+      the bring-up image's serial console (radios/uv21/bringup): send its read-only commands
+      (? help, i report, r RF registers, l redraw, p pin census), then listen for S seconds, and
+      save the text to RUN/console.txt. It prints no unique ID or memory contents, so the text
+      may be published. Never sends O (power off) or R (reset).
+
 The bootloader protocol (from the UV-5RM's open firmware tools/flash.py and our disassembly of
 the 5RM bootloader, radios/uv21/README.md): frames AA, cmd, args, len (2, big-endian), data,
 CRC-16/XMODEM (2, big-endian) over cmd..data, EF; the reply echoes cmd, then 06 (ACK) or an
@@ -429,6 +435,42 @@ def cmd_frames(a, log=print):
     return 0 if s["complete"] else 3
 
 
+CONSOLE_SAFE = b"?irlp"                     # the bring-up image's commands that change nothing
+BRINGUP_BANNER = "blowfang uv21 bringup"
+
+
+def cmd_console(a, port=None, log=print):
+    send = a.send.encode()
+    bad = sorted(set(send) - set(CONSOLE_SAFE))
+    if bad:
+        log(f"refusing: {bytes(bad).decode(errors='replace')!r}: only {CONSOLE_SAFE.decode()}")
+        return 5
+    port = port or bench_kplug.Port(a.port)
+    os.makedirs(a.out, exist_ok=True)
+    text = bytearray()
+    try:
+        text += port.drain(a.listen_s)
+        if b"K6 " in text:
+            log("refusing: a K6 is talking on this cable")
+            return 4
+        for c in send:
+            port.write(bytes([c]))
+            text += port.read(1 << 16, timeout=2.0, gap=0.5)
+        end = time.monotonic() + a.seconds
+        while time.monotonic() < end:
+            text += port.read(1 << 16, timeout=min(1.0, max(0.01, end - time.monotonic())))
+    finally:
+        port.close()
+    open(os.path.join(a.out, "console.txt"), "wb").write(bytes(text))
+    lines = bytes(text).decode("latin-1").splitlines()
+    banner = next((ln.strip() for ln in lines if ln.startswith(BRINGUP_BANNER)), None)
+    res = {"step": "console", "bytes": len(text), "lines": len(lines), "banner": banner,
+           "sent": send.decode()}
+    json.dump(res, open(os.path.join(a.out, "console.json"), "w"), indent=1)
+    log(json.dumps(res))
+    return 0 if text else 2
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -449,8 +491,15 @@ def main(argv=None):
             p.add_argument("--timeout-s", type=float, default=3000.0, dest="timeout_s")
     p = sub.add_parser("frames")
     p.add_argument("file")
+    p = sub.add_parser("console")
+    p.add_argument("--port", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("--listen-s", type=float, default=1.0, dest="listen_s")
+    p.add_argument("--send", default="i", help=f"commands to send first, from {CONSOLE_SAFE.decode()}")
+    p.add_argument("--seconds", type=float, default=10.0)
     a = ap.parse_args(argv)
-    return {"probe": cmd_probe, "flash": cmd_flash, "dump": cmd_dump, "frames": cmd_frames}[a.cmd](a)
+    return {"probe": cmd_probe, "flash": cmd_flash, "dump": cmd_dump, "frames": cmd_frames,
+            "console": cmd_console}[a.cmd](a)
 
 
 if __name__ == "__main__":

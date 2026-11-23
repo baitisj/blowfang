@@ -5,8 +5,10 @@ Artery's AT32F421 (Baofeng's "SYN2A"). What it is and what we've measured lives 
 [docs/uv21-characteristics.md](../../docs/uv21-characteristics.md). This folder holds what it takes
 to get blowfang onto it without losing the stock firmware for good.
 
-Status (2026-11-23): nothing has been flashed. Every flash below needs Jeff's typed go, and the
-runner only takes `kdh.flash` as a local submit on hamlet.
+Status (2026-11-23): the dumper is on the radio (job uv21-flash-1, two agreeing passes); stock
+page 0 is being rebuilt. The bring-up image is built and emulator-tested, not flashed. Every
+flash below needs Jeff's typed go, and the runner only takes `kdh.flash` as a local submit on
+hamlet.
 
 ## Why a dumper, and what it costs
 
@@ -76,7 +78,7 @@ that, plus a byte-exact read-back.
 | 2-4 | One local job (Jeff's go): bootloader handshake, flash the dumper (one package), capture two agreeing passes (about 3.5 minutes each for a 2 MB SPI flash). A failed step ends the job, so no answer to the handshake means nothing is written | `kdh.probe`, `kdh.flash`, `kdh.dump` | one power cycle while `kdh.probe --wait-boot-s 200` listens |
 | 5 | Rebuild page 0 (below) | none | none |
 | 6 | Restore stock: flash the rebuilt page 0 alone, then repeat step 1 and compare | `kdh.flash` (local, Jeff's go) | one power cycle |
-| 7 | The first blowfang bring-up image | `kdh.flash` (local, Jeff's go) | one power cycle |
+| 7 | The first blowfang bring-up image (below), then its console | `kdh.flash` (local, Jeff's go), `kdh.console` | one power cycle |
 
 The firmware, unique ID and SPI flash (which holds the owner's channels) go to
 `~/blowfang-work/private/uv21/<job id>/` on hamlet, never to the run folder: bench results are
@@ -103,6 +105,48 @@ The rebuild will be checked by booting it in the emulator with the dumped pages 
 `main` runs, before it goes near the radio. Step 6 then proves it on the radio: the stock firmware
 boots, and its CPS clone read matches step 1's.
 
+## The bring-up image
+
+[bringup/](bringup/) is the first blowfang code to run as this radio's app: about 5.5 KB of C
+(six pages) that reports what the board is, before anything bigger goes on it. Its pins are in
+[bringup/board.h](bringup/board.h), from the stock dump: this board is not wired like the
+UV-5RM's despite the name (power latch PA8 not PF6, SPI flash CS PA2, RF chip on PB3/PB5/PB6,
+LCD control on PB12/PC15/PB8, a 5 x 4 key matrix). A subsystem whose pins aren't in board.h is
+compiled out, so an unknown pin is never driven.
+
+It reports, on the K-plug serial line (115200 8N1, text) and on the screen:
+
+- how the bootloader left the clocks, the chip ID, flash size, the supply voltage (internal
+  reference) and whether the external crystal starts; it runs on the internal 8 MHz clock;
+- the RF chip's ID (register 0) and, on `r`, all 128 registers; the SPI flash's JEDEC ID; the LCD
+  controller's ID (a read the stock firmware never does, so it may read all ones);
+- each key press as a matrix bit (column x 8 + row, columns PB0 PB4 PB9 PB10 PB11, rows PC13
+  PC14 PF6 PB14), and a census of every input pin, so a key nobody mapped still shows up;
+- PTT, which is also the serial receive pin: a press reads as a break (`ptt break n=...`);
+- the screen: a one-pixel white frame on the outermost pixels (shows the controller's offsets),
+  a red square top left (shows a flip or rotation), labelled R G B W bars (red drawn blue means
+  BGR), then the IDs, supply, keys, PTT count and seconds since boot.
+
+What it never does: transmit (the RF code has no register write at all, and the transmitter's PA
+enables are the RF chip's own GPIOs), write or erase MCU flash, send the SPI flash anything but
+wake (AB) and JEDEC ID, or touch SWD (PA13/PA14, which the stock firmware takes over for the
+receive-band switch), the audio amplifier or the flashlight. `tests/test_uv21_bringup.py` runs it in an
+emulated AT32F421 with models of the RF chip, SPI flash, LCD and keys on board.h's pins and checks
+all of that.
+
+Power: it holds the latch (PA8) and drops it when the switch sense (PA15) reads off for 200 ms. If
+the sense reads off at boot, the polarity in board.h is wrong and it never acts on it (it says
+`auto_off=0`), so a wrong guess can't switch the radio off at every boot.
+
+Console commands, one byte each: `?` help, `i` report, `r` RF registers, `l` redraw the screen,
+`p` pin census on/off, `O` power off, `R` reset. The runner's `kdh.console` step sends only
+`? i r l p` and saves the text to the run folder (it holds no unique ID or memory contents).
+
+Back to flash mode with no hands: the image resets when it hears the bootloader's command 42
+frame (`AA 42 ...`), and `kdh.probe --wait-boot-s` keeps sending that frame, so the bootloader
+catches the next one. That assumes the radio stays powered through a reset with the switch on
+(the latch only matters once the switch is off); if it doesn't, a plain power cycle does the same.
+
 ## Recovery
 
 - The bootloader is never written (region 1 starts at 0x08001000), so flash mode stays reachable
@@ -125,8 +169,8 @@ controller before anything is written.
 
 ## Building
 
-    make -C radios/uv21          # build/dumper.bin (fails if it grows past 1 KB)
-    python3 -m pytest tests/test_uv21_dumper.py tests/test_uv21_kdh.py
+    make -C radios/uv21          # build/dumper.bin (fails past 1 KB), build/bringup.bin (past 60 KB)
+    python3 -m pytest tests/test_uv21_bringup.py tests/test_uv21_dumper.py tests/test_uv21_kdh.py
 
 clang, lld and llvm-objcopy, as the K6 modules use. The emulator test needs `pip install unicorn`.
 

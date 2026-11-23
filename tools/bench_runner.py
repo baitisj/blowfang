@@ -27,7 +27,7 @@ A job is a JSON file: who (the thread, one word), a channel to claim, how long, 
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
-kplug.read, kdh.probe, kdh.dump, kdh.flash), turned into one
+kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -41,7 +41,8 @@ and the point is that the runner checks everything before it keys. The checks, i
     read-only clone (kplug.read: a stock Baofeng on that cable, ident and "R" reads only, never a
     write) / uv21_kdh's bootloader handshake, dumper capture and app-area flash (kdh.probe,
     kdh.dump, kdh.flash: the UV-21 Pro; the flash takes one staged image whose sha256 the job
-    pins, region 1 only, and is a local submit only), the port found by its by-id name (USB numbering moves on reboot); no job argument may
+    pins, region 1 only, and is a local submit only) / the bring-up image's console (kdh.console:
+    its read-only commands only), the port found by its by-id name (USB numbering moves on reboot); no job argument may
     name a /dev path
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
@@ -103,7 +104,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240,
                 "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180,
-                "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300}
+                "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -645,7 +646,7 @@ def check_step(job, i, step, rs, problems):
         check_kplug_args(args, what, problems)
         if step.get("background"):
             problems.append(f"{what}: never in the background")
-    elif do in ("kdh.probe", "kdh.dump"):
+    elif do in ("kdh.probe", "kdh.dump", "kdh.console"):
         check_kdh_args(do, args, what, problems)
         if step.get("background"):
             problems.append(f"{what}: never in the background")
@@ -721,7 +722,10 @@ def check_kplug_args(args, what, problems):
 
 
 KDH_APP_MAX = 0xF000                         # uv21_kdh.APP_MAX: the bootloader's app area
-KDH_OPTS = {"kdh.probe": ("--listen-s", "--wait-boot-s"), "kdh.dump": ("--passes", "--timeout-s")}
+KDH_OPTS = {"kdh.probe": ("--listen-s", "--wait-boot-s"), "kdh.dump": ("--passes", "--timeout-s"),
+            "kdh.console": ("--listen-s", "--send", "--seconds")}
+KDH_CONSOLE_SAFE = "?irlp"                   # uv21_kdh.CONSOLE_SAFE: the bring-up image's read-only commands
+KDH_CONSOLE_MAX_S = 240                      # under the step's 300 s
 KDH_DUMP_MAX_S = 3000                        # under the step's 3600 s
 
 
@@ -751,6 +755,10 @@ def check_kdh_args(do, args, what, problems):
             problems.append(f"{what}: --listen-s {v}: 0..10")
         elif k == "--wait-boot-s" and not (x is not None and 0 <= x <= 200):
             problems.append(f"{what}: --wait-boot-s {v}: 0..200")
+        elif k == "--send" and not (0 < len(v) <= 8 and set(v) <= set(KDH_CONSOLE_SAFE)):
+            problems.append(f"{what}: --send {v}: 1..8 of {KDH_CONSOLE_SAFE}")
+        elif k == "--seconds" and not (x is not None and 1 <= x <= KDH_CONSOLE_MAX_S):
+            problems.append(f"{what}: --seconds {v}: 1..{KDH_CONSOLE_MAX_S}")
 
 
 def check_uv380_cmd(job, c, what, problems):
@@ -905,6 +913,8 @@ def command(job, step, rd):
     if do == "kdh.dump":             # the radio's firmware, unique ID and SPI flash stay on hamlet
         return [py(), tool("uv21_kdh.py"), "dump", "--port", k6_cable(), "--out", rd,
                 "--private", os.path.join(work(), "private", "uv21", job["id"])] + args, co, False
+    if do == "kdh.console":
+        return [py(), tool("uv21_kdh.py"), "console", "--port", k6_cable(), "--out", rd] + args, co, False
     if do == "kdh.flash":
         return [py(), tool("uv21_kdh.py"), "flash", "--port", k6_cable(), "--out", rd,
                 "--image", os.path.realpath(os.path.expanduser(step["image"])),
@@ -933,7 +943,7 @@ def uses_ic7100(step):
 
 def uses_cable(step):
     return step["do"] in ("k6.install", "k6.flash", "k6.update", "kplug.read", "kdh.probe", "kdh.dump",
-                          "kdh.flash")
+                          "kdh.flash", "kdh.console")
 
 
 # ---- running ----
@@ -1780,6 +1790,8 @@ def sample_jobs(tmp, co, key):
         ("Baofeng clone with an option it doesn't have", J("bad-kplug", {"do": "kplug.read", "args": ["--write"]}), False),
         ("UV-21 Pro dumper capture, two passes", J("ok-kdhdump", {"do": "kdh.dump", "args": ["--passes", "2"]}), True),
         ("UV-21 Pro bootloader probe with a flash option", J("bad-kdhprobe", {"do": "kdh.probe", "args": ["--image", wav]}), False),
+        ("UV-21 Pro bring-up console: report and RF registers", J("ok-kdhcon", {"do": "kdh.console", "args": ["--send", "ir", "--seconds", "20"]}), True),
+        ("UV-21 Pro bring-up console asked to power off", J("bad-kdhcon", {"do": "kdh.console", "args": ["--send", "O"]}), False),
     ]
 
 

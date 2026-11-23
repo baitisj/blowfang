@@ -313,3 +313,40 @@ def test_a_corrupt_frame_spoils_only_its_pass():
     d = kdh.assemble(frames)
     assert bad == 1 and d["partial"] == 1 and [p["n"] for p in d["passes"]] == [2, 3]
     assert kdh.summary(d, bad)["complete"]
+
+
+class FakeConsole:
+    """the bring-up image on the cable: answers i with its report"""
+
+    def __init__(self):
+        self.sent, self.pending = b"", b"blowfang uv21 bringup 1\r\n"
+
+    def write(self, b):
+        self.sent += b
+        if b == b"i":
+            self.pending += b"blowfang uv21 bringup 1 build=abc board=uv21\r\nrf id=4819\r\n"
+
+    def read(self, n, timeout=None, gap=None):
+        out, self.pending = self.pending[:n], self.pending[n:]
+        return out
+
+    def drain(self, seconds):
+        return self.read(1 << 16)
+
+    def close(self):
+        pass
+
+
+def test_console_sends_only_read_only_commands(tmp_path):
+    port = FakeConsole()
+    a = argparse.Namespace(out=str(tmp_path), send="i", seconds=0.1, listen_s=0.1)
+    assert kdh.cmd_console(a, port=port, log=lambda *_: None) == 0
+    assert port.sent == b"i"
+    text = (tmp_path / "console.txt").read_text()
+    assert "rf id=4819" in text
+    res = json.loads((tmp_path / "console.json").read_text())
+    assert res["banner"] == "blowfang uv21 bringup 1"
+    for bad in ("O", "R", "iO"):
+        port = FakeConsole()
+        a.send = bad
+        assert kdh.cmd_console(a, port=port, log=lambda *_: None) == 5 and port.sent == b""

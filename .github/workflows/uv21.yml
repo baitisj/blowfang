@@ -1,7 +1,9 @@
-# Baofeng UV-21 Pro (radios/uv21, MIT): the one-page dumper, built with clang and run in an
-# emulated AT32F421 (Unicorn) that checks it reads the radio back byte for byte and never touches a
-# flash register, the SPI flash's write commands or the RF chip's pins; and tools/uv21_kdh.py, the
-# bootloader tool it goes through, against a model of the bootloader's command loop.
+# Baofeng UV-21 Pro (radios/uv21, MIT): the one-page dumper and the bring-up image, built with
+# clang and run in an emulated AT32F421 (Unicorn). The dumper must read the radio back byte for
+# byte and never touch a flash register, the SPI flash's write commands or the RF chip's pins; the
+# bring-up image must send the RF chip reads only, the SPI flash JEDEC ID only, and drive only the
+# board's pins. And tools/uv21_kdh.py, the bootloader tool they go through, against a model of the
+# bootloader's command loop.
 name: UV-21 Pro
 
 on:
@@ -86,7 +88,7 @@ jobs:
           pip install \
             pytest \
             unicorn
-      - name: the dumper (1 KB at most)
+      - name: the dumper (1 KB at most) and the bring-up image (the 60 KB app area at most)
         run: make -C radios/uv21
       - uses: actions/upload-artifact@v4
         with:
@@ -94,8 +96,15 @@ jobs:
           path: |
             radios/uv21/build/dumper.bin
             radios/uv21/build/dumper.elf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uv21-bringup
+          path: |
+            radios/uv21/build/bringup.bin
+            radios/uv21/build/bringup.elf
       - name: tests
         run: |
           python -m pytest -q \
+            tests/test_uv21_bringup.py \
             tests/test_uv21_dumper.py \
             tests/test_uv21_kdh.py
