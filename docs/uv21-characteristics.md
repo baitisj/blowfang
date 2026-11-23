@@ -65,7 +65,7 @@ below 0xF000 only (`bench_kplug.py` handles it since PR #251).
 | Band limits (0xF230; the CPS "F" reply is these without the flags) | on: 136-174, 400-520, 220-260; a fourth entry is off and doesn't parse as MHz |
 
 The flat VHF, 220 and mid-power rows look like defaults, with only UHF high and low trimmed. A
-350-400 MHz squelch table and the AM-capable layout point to the FD6818 (BK4819 family) and not
+350-400 MHz squelch table and the 5RM FD6818 layout throughout point to the FD6818 (BK4819 family) and not
 the AT1846S of the UV-21R V2 teardown (**I**, strong; the dumped firmware will settle it). For
 blowfang this means the UV-5RM open firmware's calibration code reads this radio's calibration as
 it is.
