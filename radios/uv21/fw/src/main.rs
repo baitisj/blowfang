@@ -92,11 +92,15 @@ fn check_power_off(
     if !board::read_power_key(gpiob) {
         return;
     }
-    delay_ms(50);
-    if !board::read_power_key(gpiob) {
-        return;
+    // UV-21: off for 200 ms straight, as the bring-up image (proven on the radio) does: the sense
+    // line has no pull of its own here, so one stray high must not switch the radio off
+    for _ in 0..10 {
+        delay_ms(20);
+        if !board::read_power_key(gpiob) {
+            return;
+        }
     }
-    dbg_println!(serial, "power key: shutdown detected, dropping PF6 latch");
+    dbg_println!(serial, "power key: shutdown detected, dropping the PA8 latch");
     #[cfg(debug_assertions)]
     serial.flush();
     app.radio_mut().rf_off(syst);
@@ -151,6 +155,16 @@ fn main() -> ! {
     // PA8 = power self-latch, driven high
     board::init_power_latch_pin(&dp.gpiof);
     board::set_power_latch(&dp.gpiof, true);
+
+    // UV-21: one line on the bootloader's own serial setup (115200 at its 48 MHz) before the
+    // clock changes, so an image that never reaches the banner still shows that it started
+    if dp.crm.apb2en().read().usart1en().bit_is_set()
+        && dp.usart1.ctrl1().read().uen().bit_is_set()
+        && dp.usart1.ctrl1().read().ten().bit_is_set()
+    {
+        hal::con::puts("blowfang uv21 port start\r\n");
+        hal::uart::flush();
+    }
 
     clock::configure_system_clock(&dp.crm, &dp.flash);
 
@@ -266,7 +280,7 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let mut serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 3 build=");
+    hal::con::puts("blowfang uv21 port 4 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
