@@ -13,8 +13,8 @@
  *
  * What it never does: transmit (the RF bus code has no register write at all: every transaction's
  * address byte has the read bit set), write or erase MCU flash (no FLASH register is touched), or
- * send the SPI flash anything but JEDEC ID. Pins not confirmed for this board (board.h) are never
- * driven. SWD (PA13/PA14) stays SWD. The speaker amplifier is left as the bootloader left it.
+ * send the SPI flash anything but release-from-power-down (AB) and JEDEC ID (9F). Pins not
+ * confirmed for this board (board.h) are never driven. SWD (PA13/PA14) stays SWD. The speaker amplifier is left as the bootloader left it.
  *
  * Console, one byte each: ? help, i report, r RF registers, l redraw the screen, p pin census
  * on/off, O power off (drop the latch), R reset (and b backlight, f flashlight on a board that
@@ -260,7 +260,11 @@ static uint32_t nor_jedec(void) {
     gmode(NOR_MISO, IN);
     gpull(NOR_MISO, UP);
     gset(NOR_CS, 0);
-    nor_byte(0x9F);                       /* JEDEC ID: the only command this image sends */
+    nor_byte(0xAB);                       /* release from deep power-down (stock sends it at init) */
+    gset(NOR_CS, 1);
+    delay_us(50);
+    gset(NOR_CS, 0);
+    nor_byte(0x9F);                       /* JEDEC ID */
     uint32_t id = nor_byte(0) << 16;
     id |= nor_byte(0) << 8;
     id |= nor_byte(0);

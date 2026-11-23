@@ -129,8 +129,8 @@ It reports, on the K-plug serial line (115200 8N1, text) and on the screen:
 
 What it never does: transmit (the RF code has no register write at all, and the transmitter's PA
 enables are the RF chip's own GPIOs), write or erase MCU flash, send the SPI flash anything but
-JEDEC ID, or touch SWD (PA13/PA14, which the stock firmware takes over for the receive-band
-switch), the audio amplifier or the flashlight. `tests/test_uv21_bringup.py` runs it in an
+wake (AB) and JEDEC ID, or touch SWD (PA13/PA14, which the stock firmware takes over for the
+receive-band switch), the audio amplifier or the flashlight. `tests/test_uv21_bringup.py` runs it in an
 emulated AT32F421 with models of the RF chip, SPI flash, LCD and keys on board.h's pins and checks
 all of that.
 

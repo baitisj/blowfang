@@ -4,7 +4,7 @@ chip on a 3-wire bus, an SPI flash, an ST7735-like LCD, the key matrix, the powe
 and the serial line, whose receive pin is also PTT.
 
 What must hold: the RF chip only ever gets reads (no register write, so no transmit: its PA
-enables are its own GPIOs), the SPI flash only JEDEC ID, no flash register is touched, SWD stays
+enables are its own GPIOs), the SPI flash only wake (AB) and JEDEC ID, no flash register is touched, SWD stays
 SWD, and only the board's listed pins are driven."""
 import os
 import struct
@@ -375,7 +375,7 @@ def test_rf_chip_only_ever_gets_reads(radio):
 
 
 def test_spi_flash_gets_only_jedec_id(radio):
-    assert radio.nor_cmds and set(radio.nor_cmds) == {0x9F}
+    assert radio.nor_cmds[:2] == [0xAB, 0x9F] and set(radio.nor_cmds) == {0xAB, 0x9F}   # wake, JEDEC ID
 
 
 def test_no_flash_register_and_swd_kept(radio):
