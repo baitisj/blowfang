@@ -6,14 +6,18 @@ the browser.
     python3 -m sim.soapyfang --source sigmf:recordings/x.sigmf-meta
     python3 -m sim.soapyfang --source soapy:driver=rtlsdr --gain 30
     python3 -m sim.soapyfang --source soapy:driver=plutosdr,uri=ip:192.168.2.1 --gain 40
+    python3 -m sim.soapyfang --source pluto --gain 50 --minutes 30 --image port.bin --syms port.syms
 
 Receive only: no source opens a transmit stream. On hamlet the Pluto belongs to the bench runner,
-so a Pluto session runs as a runner job, not by hand. Standard library and numpy only.
+so a Pluto session runs as its sim.soapyfang step (docs/bench-runner.md), not by hand. --image and
+--syms take a prebuilt port image and its `llvm-nm` listing (hamlet has no thumbv7em target to
+build one). Standard library and numpy only.
 SPDX-License-Identifier: MIT"""
 from __future__ import annotations
 
 import argparse
 import os
+import threading
 import time
 
 from sim.uv21 import workbench as uv21wb
@@ -24,10 +28,19 @@ from .sources import open_source
 PANEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "panel.html")
 
 
+def load_image(image, syms):
+    """a prebuilt port.bin and its `llvm-nm port.elf` listing -> (image bytes, symbols)"""
+    with open(syms) as f:
+        table = {ln.split()[2]: int(ln.split()[0], 16) for ln in f if len(ln.split()) == 3}
+    with open(image, "rb") as f:
+        return f.read(), table
+
+
 class SoapyWorkbench(uv21wb.Workbench):
-    def __init__(self, source, step=400_000):
+    def __init__(self, source, step=400_000, built=None):
         self.source = source
         self.board = None
+        self.built = built                      # (image, syms), or None to build here
         super().__init__(step=step)
 
     def _boot(self):
@@ -36,7 +49,8 @@ class SoapyWorkbench(uv21wb.Workbench):
             band = old.band if old is not None else None
             if old is not None:
                 old.close(close_source=False)
-            self.board = SoapyUV21Board(band=band, source=self.source)
+            image, syms = self.built or (None, None)
+            self.board = SoapyUV21Board(image, syms, band=band, source=self.source)
             if band is None and hasattr(self.source, "band"):
                 self.source.band = self.board.band          # the page's station edits reach the I/Q
             self.serial = self.board.run(until="boot done", limit=300_000_000)
@@ -100,19 +114,38 @@ def main(argv=None):
     ap.add_argument("--dbm-offset", type=float, help="dBm at full scale (calibration)")
     ap.add_argument("--host", default="127.0.0.1", help="127.0.0.1 (default) or 0.0.0.0 for the LAN")
     ap.add_argument("--port", type=int, default=5058)
+    ap.add_argument("--image", help="a prebuilt radios/uv21/build/port.bin (default: build it)")
+    ap.add_argument("--syms", help="with --image: `llvm-nm port.elf` saved to a file")
+    ap.add_argument("--minutes", type=float, help="stop after this long (the runner's step sets it)")
     a = ap.parse_args(argv)
-    src = open_source(a.source, rate=a.rate, center_hz=a.center, gain=a.gain, dbm_offset=a.dbm_offset)
-    print(f"SoapyFang source: {src.describe()}", flush=True)
-    print("building and booting the UV-21 port image ...", flush=True)
-    wb = SoapyWorkbench(src)
-    srv = uv21wb.ThreadingHTTPServer((a.host, a.port), handler(wb))
-    print("SoapyFang UV-21 workbench on http://%s:%d/ (Ctrl-C stops it)" % (a.host, a.port), flush=True)
     try:
+        import unicorn  # noqa: F401
+    except ImportError:
+        raise SystemExit("SoapyFang needs the unicorn emulator: sudo pacman -S python-unicorn"
+                         " (Arch) or pip install unicorn")
+    if bool(a.image) != bool(a.syms):
+        ap.error("--image and --syms go together")
+    built = load_image(a.image, a.syms) if a.image else None
+    src = open_source(a.source, rate=a.rate, center_hz=a.center, gain=a.gain, dbm_offset=a.dbm_offset)
+    srv = None
+    try:
+        print(f"SoapyFang source: {src.describe()}", flush=True)
+        print("booting the UV-21 port image ..." if built else "building and booting the UV-21 port image ...",
+              flush=True)
+        wb = SoapyWorkbench(src, built=built)
+        srv = uv21wb.ThreadingHTTPServer((a.host, a.port), handler(wb))
+        if a.minutes:
+            threading.Timer(a.minutes * 60, srv.shutdown).start()
+        end = f", until {time.strftime('%H:%M:%SZ', time.gmtime(time.time() + a.minutes * 60))}" if a.minutes else ""
+        print(f"SoapyFang UV-21 workbench on http://{a.host}:{a.port}/{end} (Ctrl-C stops it)", flush=True)
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
-        wb.board.close()
+        if srv:
+            srv.server_close()
+        src.close()
+        print("SoapyFang stopped; the source is closed", flush=True)
 
 
 if __name__ == "__main__":

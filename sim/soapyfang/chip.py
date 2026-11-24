@@ -144,6 +144,9 @@ class ChipModel:
             p = np.fft.fftshift(np.abs(np.fft.fft(blk * self.win)) ** 2) / self.norm
             self.spec = p if self.spec is None else 0.5 * self.spec + 0.5 * p
             buf = buf[n:]
+            if self.src.dbm_offset is None and self.src.auto_floor_dbm is not None:
+                floor = float(np.median(self.spec)) * self.bw / (self.rate / self.fft_n)
+                self.src.dbm_offset = self.src.auto_floor_dbm - 10 * math.log10(floor + 1e-30)
         self.pending = buf.copy()
         if self.tuned_hz:
             self._audio(x)
@@ -197,7 +200,7 @@ class ChipModel:
                 p = float(np.sum(self.spec[np.abs(self.bins - off) <= bw / 2]))
             else:                       # a recording that doesn't reach: its floor
                 p = float(np.median(self.spec)) * bw / binw
-            return 10 * math.log10(p + 1e-30) + self.src.dbm_offset
+            return 10 * math.log10(p + 1e-30) + (self.src.dbm_offset or 0.0)
 
     def rssi_raw(self, hz=None):
         return max(0, min(0x1FF, int(round((self.rssi_dbm(hz) + self.rssi_offset) * 2))))
