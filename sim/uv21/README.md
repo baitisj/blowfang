@@ -5,6 +5,13 @@ page: the radio's screen, a faceplate you can click, the serial console, and a m
 stations you can switch on and off or turn up and down. It is for test-driving SURF and the
 other screens without a radio.
 
+![The workbench: the emulated UV-21 Pro surfing the model band](../../docs/img/surf/uv21-workbench.png)
+
+SURF there since port 18: the bars in heat colours by their level over the floor, and the history
+strip right of them, one column a sweep, the newest at the left (here on MAR/WX):
+
+![SURF on MAR/WX with the history strip](../../docs/img/surf/uv21-history.png)
+
     python3 -m sim.uv21                     # then open http://127.0.0.1:5057/
     python3 -m sim.uv21 --host 0.0.0.0      # reachable from the LAN (there is no login)
 
