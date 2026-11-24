@@ -237,8 +237,13 @@ def test_hold_stops_the_sweeps_and_the_carets(steady):
 def test_monitor_only_opens_the_squelch(steady):
     # MON (Jeff, 2026-11-24): the audio opens on the middle; the sweeps and the caret fall go on
     tap(steady, "*", 0.5)
-    wait(steady, 0.3)
-    assert steady.regs.get(0x47) == AF_FM, hex(steady.regs.get(0x47, 0))   # the audio open
+    # the audio open, but for the short hushes of a refresh sweep or a wake look: sampled, since
+    # one look can land in one of those
+    af, end = [], steady.seconds + 1.5
+    while steady.seconds < end:
+        steady.step(20_000)
+        af.append(steady.regs.get(0x47))
+    assert af.count(AF_FM) > len(af) * 0.6, [hex(v or 0) for v in af]
     before = carets(steady)
     seen = tunes(steady, 7)                                             # (a refresh sweep every 5 s)
     assert len(seen) > 5, sorted(seen)
