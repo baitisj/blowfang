@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 12 change
+## What ports 1 to 13 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -63,7 +63,13 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   (one of them probably lights the top LED faintly below 300 MHz). The polarity isn't known yet,
   so key 6 in SURF steps through four ways (`src/board/rxpath.rs`), and the console says
   `fe rx path ...`: `hi` (the band's pin high, the default), `lo`, `hi+56` (with GPIO5/6 as
-  before) and `swd` (ports 1 to 11).
+  before) and `swd` (ports 1 to 11). The stock image, read later, drives the band's pin high on
+  receive and both low in idle and transmit: `hi` is right, and key 6 stays as a cross-check.
+- Port 13: the RF chip gets the stock firmware's own BK4829 init (`STOCK_INIT_*` in
+  `src/drivers/fd6818b.rs`, in its order) instead of the UV-5RH's, which differed in about 15
+  registers (VCO bias 0x1F, AFC 0x73, 0x1C/0x1D, audio gain 0x48 and others); the UV-5RH's flat
+  AF filter push after it is gone, so the stock filters stand. More register trials go in RAM
+  modules, not new images.
 
 ## SURF (port 6)
 

@@ -214,7 +214,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 12 build=" in text
+    assert "blowfang uv21 port 13 build=" in text
     assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -345,5 +345,37 @@ def test_it_says_it_started_before_changing_the_clock(built):
     r.mu.mem_write(0x40021018, struct.pack("<I", 1 << 14))              # APB2EN: USART1 on
     r.mu.mem_write(0x4001380C, struct.pack("<I", 1 << 13 | 1 << 3))    # USART1 CTRL1: UEN, TEN
     out = r.run(until="boot done", limit=300_000_000)
-    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 12 build=")
+    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 13 build=")
     assert out.count("port start") == 1
+
+
+# The UV-21 stock firmware's BK4829 init (read from the stock image, 2026-11-24): port 13 sends it
+# in this order in place of the UV-5RH's (REG_40 read-modify-written in between, low 12 bits 0x50A)
+STOCK_INIT = [
+    (0x00, 0x8000), (0x00, 0x0000), (0x37, 0x9D1F), (0x10, 0x0318), (0x11, 0x033A),
+    (0x12, 0x03DB), (0x13, 0x03DE), (0x14, 0x0210), (0x49, 0x2A32), (0x7B, 0x73DC),
+    (0x17, 0x7829), (0x1C, 0x0422), (0x1D, 0x2AAB), (0x1E, 0x4C58), (0x1F, 0x1657),
+    (0x3E, 0x94C6), (0x73, 0x6681), (0x77, 0x88EF), (0x28, 0x0B40), (0x29, 0xAA00),
+    (0x2A, 0x6600), (0x2C, 0x0022), (0x2F, 0x9890), (0x53, 0x2028), (0x7E, 0x303E),
+    (0x19, 0x1041), (0x3A, 0x9A7C), (0x46, 0x6050), (0x4D, 0xA015), (0x4E, 0x5C10),
+    (0x4F, 0x2A28), (0x4C, 0xE520), (0x25, 0x6DBA), (0x40, None), (0x7D, 0xE912),
+    (0x48, 0xB3FF),
+] + [(0x09, v) for v in (0x006F, 0x106B, 0x2067, 0x3062, 0x4050, 0x5047, 0x603A, 0x702C,
+                         0x8041, 0x9037, 0xA025, 0xB017, 0xC0E4, 0xD0CB, 0xE0B5, 0xF09F)] + [
+    (0x75, 0xFA02), (0x74, 0xFEF0), (0x44, 0x8D8F), (0x45, 0x3359),
+]
+
+
+def test_the_rf_chip_gets_the_stock_init(port):
+    w = port.rf_writes()
+    i = w.index((0x00, 0x8000))
+    got = w[i:i + len(STOCK_INIT)]
+    for (reg, v), (greg, gv) in zip(STOCK_INIT, got):
+        assert greg == reg, (hex(reg), hex(greg))
+        if v is None:
+            assert gv & 0x0FFF == 0x050A, hex(gv)
+        else:
+            assert gv == v, (hex(reg), hex(gv), hex(v))
+    later = {r: v for r, v in w[i + len(STOCK_INIT):]}
+    for reg in (0x44, 0x45, 0x74, 0x75):                                # the AF filters stand
+        assert reg not in later, (hex(reg), hex(later[reg]))

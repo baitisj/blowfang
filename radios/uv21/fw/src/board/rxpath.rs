@@ -3,8 +3,9 @@
 // pins, so driving them ends SWD, which nothing here uses (the KDH bootloader reflashes). Ports
 // 1 to 11 left them as SWD, with only the internal pulls on them, and receive was weak.
 //
-// The polarity isn't known yet, so port 12 carries four ways to switch, and SURF's 6 key steps
-// through them on the radio:
+// The stock image (read 2026-11-24) drives the band's pin high on receive and both low in idle
+// and transmit, which is mode 1, the default. Port 12 was written before that read, so it carries
+// four ways to switch, and SURF's 6 key still steps through them as a cross-check:
 //
 // | mode | PA13 / PA14                     | RF chip GPIO5 / GPIO6 (the UV-5RH's switch) |
 // |------|---------------------------------|---------------------------------------------|

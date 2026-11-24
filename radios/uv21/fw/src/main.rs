@@ -262,7 +262,7 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let mut serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 12 build=");
+    hal::con::puts("blowfang uv21 port 13 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
@@ -315,11 +315,8 @@ fn main() -> ! {
         }
     );
 
-    // AF response filter coefficients (REG 0x44/45/54/55/74/75): the 5RH's
-    // calibration block has no AF-response entries, so this pushes the
-    // driver's own default/"flat" table entry (db=0) instead of leaving
-    // these at chip power-on-reset state.
-    rfic.apply_af_calibration(&mut cp.SYST, 0, 0, 0, 0);
+    // AF response filters: the UV-21 stock init's own values (REG_44/45/74/75, fd6818b.rs init)
+    // stand; the UV-5RH pushed its flat table entry here, which would undo them.
 
     // UV-21 Pro: the receive front end's band switch on PA13/PA14 (board/rxpath.rs), and the
     // UV-5RH's GPIO5/GPIO6 switch only in the modes that keep it
