@@ -101,9 +101,19 @@ turned inside out. `python3 tools/ci_scope.py --paths` prints that list, and `--
 Forbidden files job) fails if a workflow's copy differs from the map. Only the guard workflow
 runs on a docs-only change.
 
-Everything else still builds on every push to main (the images hamlet flashes come from there),
-on every pushed tag (cutting a release always runs full CI), on the weekly run, from "Run workflow" on any branch, and on a PR with the `ci-full` label (add
-it, then re-run the jobs). A file the map doesn't place builds every radio.
+A push to main (a merge) is scoped the same way, by what the push changed (its before..after),
+so merging simulator work doesn't rebuild the K6, UV-380 and RT-950 firmware. A push whose change
+can't be worked out, a forced push, every pushed tag (cutting a release always runs full CI), the
+weekly run, "Run workflow" on any branch, and a PR with the `ci-full` label (add it, then re-run
+the jobs) build everything. A file the map doesn't place builds every radio.
+
+Since the newest main run may have skipped a radio, the images hamlet flashes come from that
+radio's last main run that built it:
+
+```sh
+python3 tools/ci_artifact.py uv21                 # run, commit, artifacts and gh download commands
+python3 tools/ci_artifact.py k6 --name aura --download /tmp/k6   # fetch with gh
+```
 
 To see what your branch will build, and to check the map after adding files:
 

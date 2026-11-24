@@ -6,9 +6,11 @@ The [bench] section (the Pluto and hamlet bench runner tools, bench-tools.yml) w
 way: this tool treats it as one more radio, whose workflow is a light Python test job.
 
 The map is .github/ci-radios.txt: one section per radio, listing the paths it builds from.
-A pull request runs a radio's jobs when it changes a file in that radio's section. Everything
-runs on a push to main, a pushed tag (a release), the weekly run, "Run workflow" (any branch), and a
-pull request labelled ci-full (add the label, then re-run the jobs or push). A changed file the map doesn't place
+A pull request runs a radio's jobs when it changes a file in that radio's section, and so does a
+push to main (a merge), by what the push changed (its before..after). Everything runs on a pushed
+tag (a release), the weekly run, "Run workflow" (any branch), a pull request labelled ci-full (add
+the label, then re-run the jobs or push), and a push to main whose change can't be worked out.
+tools/ci_artifact.py finds the last main run that built a radio, for the images hamlet flashes. A changed file the map doesn't place
 runs every radio, so a gap in the map costs time, never a missed test.
 
   python3 tools/ci_scope.py                    # what this branch's PR would run (against origin/main)
@@ -36,9 +38,8 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAP = os.path.join(ROOT, ".github", "ci-radios.txt")
 FULL_LABEL = "ci-full"
-# events that always run every radio
+# events that always run every radio (a push to main is scoped by what it changed; a tag isn't)
 FULL_EVENTS = (
-    "push",
     "schedule",
     "workflow_dispatch",
 )
@@ -377,6 +378,21 @@ def pr_changed():
     return [p for p in git("diff", "--name-only", "-z", "HEAD^1", "HEAD").split("\0") if p]
 
 
+ZERO_SHA = "0" * 40
+
+
+def push_changed(before, after):
+    """files a push changes, before..after (the event's own): fetch before if the shallow checkout
+    lacks it; any failure raises, and the caller builds everything"""
+    if not before or set(before) == {"0"}:
+        raise RuntimeError("the push has no before commit (a new branch)")
+    try:
+        git("cat-file", "-e", before + "^{commit}")
+    except Exception:
+        git("fetch", "-q", "--depth=1", "origin", before)
+    return [p for p in git("diff", "--name-only", "-z", before, after).split("\0") if p]
+
+
 def github(radio):
     event_name = os.environ.get("GITHUB_EVENT_NAME", "")
     try:
@@ -388,8 +404,17 @@ def github(radio):
         m = Map()
         if radio not in m.radios:
             raise RuntimeError(f"no [{radio}] section in .github/ci-radios.txt")
+        ref = event.get("ref", "")
         if event_name in FULL_EVENTS:
             full = f"a {event_name} run builds every radio"
+        elif event_name == "push" and ref.startswith("refs/tags/"):
+            full = "a pushed tag (a release) builds every radio"
+        elif event_name == "push" and ref == "refs/heads/main" and event.get("forced"):
+            full = "a forced push to main builds every radio"
+        elif event_name == "push" and ref == "refs/heads/main":
+            why, unmapped = m.scope(push_changed(event.get("before"), event.get("after") or "HEAD"))
+        elif event_name == "push":
+            full = f"a push to {ref or 'an unknown ref'} builds every radio"
         elif event_name.startswith("pull_request") and FULL_LABEL in pr_labels(event):
             full = f"the PR has the {FULL_LABEL} label"
         elif event_name.startswith("pull_request"):
@@ -412,10 +437,14 @@ def github(radio):
             lines.append(f"- and {len(why[radio]) - 50} more")
     else:
         others = sorted(r for r in why if why[r])
-        lines.append("No changed file is this radio's. " + ("Radios this PR builds:" if others else "This PR builds no radio."))
+        what = "push" if event_name == "push" else "PR"
+        lines.append("No changed file is this radio's. " + (f"Radios this {what} builds:" if others else f"This {what} builds no radio."))
         lines += [f"- {r}" for r in others]
         lines.append("")
-        lines.append(f"To build everything anyway, add the {FULL_LABEL} label and re-run the jobs.")
+        if event_name == "push":
+            lines.append(f"The last main build of {radio}: python3 tools/ci_artifact.py {radio}")
+        else:
+            lines.append(f"To build everything anyway, add the {FULL_LABEL} label and re-run the jobs.")
     for p in unmapped:
         print(f"::warning file={p}::{p} is in no section of .github/ci-radios.txt, so every radio builds; add it there")
     text = "\n".join(lines) + "\n"

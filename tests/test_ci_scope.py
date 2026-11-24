@@ -131,7 +131,99 @@ def run_github(tmp_path, radio, event_name, event):
 
 @pytest.mark.parametrize("event_name", ["push", "schedule", "workflow_dispatch"])
 def test_full_runs(tmp_path, event_name):
+    # a push whose ref and before the event doesn't give builds everything
     assert run_github(tmp_path, "k6", event_name, {}) == "run=true"
+
+
+@pytest.mark.parametrize("event", [
+    {"ref": "refs/tags/k6-v1.0", "before": "0" * 40, "after": "a" * 40},
+    {"ref": "refs/heads/main", "before": "b" * 40, "after": "a" * 40, "forced": True},
+    {"ref": "refs/heads/main", "before": "0" * 40, "after": "a" * 40},
+])
+def test_pushes_that_build_everything(tmp_path, monkeypatch, event):
+    """a tag (a release), a forced push, and a main push with no before all build every radio"""
+    ev = tmp_path / "event.json"
+    ev.write_text(json.dumps(event))
+    out = tmp_path / "out.txt"
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "push")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(ev))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    ci_scope.github("k6")
+    assert out.read_text().strip() == "run=true"
+
+
+def test_a_main_push_is_scoped(tmp_path, monkeypatch):
+    """a merge to main that only touches the RT-950 builds the RT-950 and skips the K6"""
+    ev = tmp_path / "event.json"
+    ev.write_text(json.dumps({"ref": "refs/heads/main", "before": "b" * 40, "after": "a" * 40}))
+    seen = []
+    monkeypatch.setattr(ci_scope, "push_changed", lambda b, a: seen.append((b, a)) or ["radios/rt950/src/surf2.c"])
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "push")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(ev))
+    for radio, want in (("k6", "run=false"), ("rt950", "run=true")):
+        out = tmp_path / f"out-{radio}.txt"
+        monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+        ci_scope.github(radio)
+        assert out.read_text().strip() == want
+    assert seen[0] == ("b" * 40, "a" * 40)
+
+
+def test_a_main_push_that_cant_diff_builds(tmp_path, monkeypatch):
+    def broken(before, after):
+        raise RuntimeError("before isn't fetchable")
+    ev = tmp_path / "event.json"
+    ev.write_text(json.dumps({"ref": "refs/heads/main", "before": "b" * 40, "after": "a" * 40}))
+    out = tmp_path / "out.txt"
+    monkeypatch.setattr(ci_scope, "push_changed", broken)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "push")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(ev))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    ci_scope.github("k6")
+    assert out.read_text().strip() == "run=true"
+
+
+def test_push_changed_diffs_the_push():
+    head = ci_scope.git("rev-parse", "HEAD").strip()
+    try:
+        parent = ci_scope.git("rev-parse", "HEAD^").strip()
+    except subprocess.CalledProcessError:
+        pytest.skip("a one-commit checkout")
+    want = [p for p in ci_scope.git("diff", "--name-only", "-z", parent, head).split("\0") if p]
+    assert ci_scope.push_changed(parent, head) == want
+    with pytest.raises(RuntimeError):
+        ci_scope.push_changed("0" * 40, head)
+
+
+def test_the_last_build_skips_runs_that_built_nothing():
+    """tools/ci_artifact.py: a main run whose build was skipped has no artifacts; the newest one
+    that has them (and isn't a PR run, a failure or expired) is the radio's last build"""
+    import ci_artifact
+    runs = [
+        {"id": 6, "head_branch": "main", "event": "push", "conclusion": "success"},          # skipped: none
+        {"id": 5, "head_branch": "x", "event": "pull_request", "conclusion": "success"},
+        {"id": 4, "head_branch": "main", "event": "push", "conclusion": "failure"},
+        {"id": 3, "head_branch": "main", "event": "push", "conclusion": "success"},          # expired
+        {"id": 2, "head_branch": "main", "event": "schedule", "conclusion": "success"},
+        {"id": 1, "head_branch": "main", "event": "push", "conclusion": "success"},
+    ]
+    arts = {
+        3: [{"name": "uv21-port", "expired": True}],
+        2: [{"name": "uv21-port", "expired": False}, {"name": "uv21-dumper", "expired": False}],
+        4: [{"name": "uv21-port", "expired": False}],
+        5: [{"name": "uv21-port", "expired": False}],
+        1: [{"name": "uv21-port", "expired": False}],
+    }
+    run, got = ci_artifact.pick(runs, lambda r: arts.get(r["id"], []))
+    assert run["id"] == 2 and [a["name"] for a in got] == ["uv21-port", "uv21-dumper"]
+    run, got = ci_artifact.pick(runs, lambda r: arts.get(r["id"], []), "dumper")
+    assert run["id"] == 2 and [a["name"] for a in got] == ["uv21-dumper"]
+    assert ci_artifact.pick(runs[:2], lambda r: []) == (None, [])
 
 
 def test_the_full_label(tmp_path):
