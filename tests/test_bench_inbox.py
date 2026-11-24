@@ -110,7 +110,7 @@ def test_remote_rules():
         assert why in " ".join(bi.remote_rules(J("a", step), "a")), step
     for k, v in (("checkout", "/x"), ("sources", "/x"), ("inbox", {}), ("take_serial", True)):
         assert "runner sets it" in " ".join(bi.remote_rules(dict(ok, **{k: v}), "a"))
-    assert "only for the UV-380" in " ".join(bi.remote_rules(dict(ok, sources_commit="abcdef1"), "a"))
+    assert "only for the module steps" in " ".join(bi.remote_rules(dict(ok, sources_commit="abcdef1"), "a"))
     assert "7-40" in " ".join(bi.remote_rules(dict(ok, tools_commit="main"), "a"))
 
 

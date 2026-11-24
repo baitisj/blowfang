@@ -180,6 +180,12 @@ radios/uv21/
 tools/uv21_kdh.py
 tools/bench_kplug.py
 tests/test_uv21*
+# RAM modules over the cable (radios/uv21/mod, built and uploaded by modem/uv21mod.py on the K6's
+# module builder)
+modem/__init__.py
+modem/k6mod.py
+modem/pager.py
+modem/uv21mod.py
 # SURF, the port's main screen, includes the K6's SURF core; the emulated board with a model band
 # and its browser workbench (tests/test_uv21_surf.py runs the board)
 c/common/surf_core.inc
@@ -212,6 +218,7 @@ modem/k6mod.py
 modem/m17.py
 modem/psk31.py
 modem/sdr.py
+modem/uv21mod.py
 modem/uv380mod.py
 modem/ysf.py
 sim/k6if/__init__.py

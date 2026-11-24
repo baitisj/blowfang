@@ -18,8 +18,9 @@
      A/B             how fast the carets fall: 1 min, 5 min, 20 min, 15 s (a held A/B could
                      hand a playing signal to VFO B, as flux_radio's K6 SURF does: not yet)
      VFO/MR          type a custom range (CUSTOM): low MHz, #, high MHz, MENU (16 MHz at most)
-     #               next channel step; held: type one frequency (* for the point), MENU, and
-                     CUSTOM is centred on it, as wide as the band was: the VFO, in SURF
+     #               next channel step; held: TUNE, type one frequency (* the point, # or MENU
+                     ends it: 446# is 446.000), and CUSTOM is centred on it, as wide as the band
+                     was: the VFO, in SURF
      1 / 3           zoom in / out (+-100 kHz to +-25 MHz)
      4               the demodulator: FM, DSB, AM
      5               the band's centre
@@ -118,6 +119,7 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define BAR RGB(0, 200, 90)
 #define MID RGB(255, 200, 0)
 #define LIVE RGB(255, 120, 40)
+#define RED RGB(255, 40, 40)
 #define ALERT RGB(255, 64, 32)
 #define CYAN RGB(110, 220, 255)
 
@@ -291,9 +293,9 @@ static void ed_key(sf_t *s, int k) {
     if (i == n && n && n < ED_LEN) t[n++] = '.';
   } else if (k == 'D') {
     if (n) n--;
-  } else if (k == '#') {
-    if (s->ed != 3) s->ed = (uint8_t)(3 - s->ed);
-  } else if (k == 'M' || k == 'V') {
+  } else if (k == '#' && s->ed != 3) {
+    s->ed = (uint8_t)(3 - s->ed);
+  } else if (k == 'M' || k == 'V' || k == '#') {     /* (# ends a TUNE: 446# is 446.000) */
     if (s->ed == 3) {
       if (n && centre_custom(s, ed_hz(t))) s->ed = 0;
       else note(s, "bad freq");
@@ -304,14 +306,10 @@ static void ed_key(sf_t *s, int k) {
   }
   t[n] = 0;
   s->en[f] = (uint8_t)n;
+  if (!s->ed) s->sdirty = 1;              /* (TUNE drew over the top: everything again) */
 }
 
 static char *ed_line(sf_t *s, char *p) {
-  if (s->ed == 3) {
-    p = put(put(p, "TUNE "), s->eb[0]);
-    *p++ = '_';
-    return p;
-  }
   p = put(p, "SET ");
   p = put(p, s->eb[0]);
   if (s->ed == 1) *p++ = '_';
@@ -634,6 +632,20 @@ static void draw(sf_t *s) {
   char *p, t[34];
   int i, k, r;
   s->t_flush = s->now;
+
+  /* typing a frequency (long #): TUNE in red on the title, the digits large with the cursor
+     (Jeff, 2026-11-24), the level left out until it's done */
+  if (s->ed == 3) {
+    line(s, s->st0, "TUNE", 2, 0, 128, TITLE_H, RED, TBG, 0);
+    p = put(t, s->eb[0]);
+    *p++ = '_';
+    *p = 0;
+    line(s, s->st1, t, 2, FREQ_Y, 128, 21, FG, BG, 2);   /* (10x20, over the top bins) */
+    line(s, s->st2, "* POINT # GO DOWN DEL EXIT QUIT", 2, MSG_Y, 128, 8, DIM, BG, 0);
+    s->sdirty = 0;                              /* (the rest waits: ed_key repaints it all after) */
+    return;
+  }
+  if (s->sdirty) api->fill(0, FREQ_Y, 128, BY - FREQ_Y, BG);   /* (TUNE's digits reach row 30) */
 
   /* the title: the band, its step, MON / HLD, a fixed gain, and the demodulator at the right */
   p = put(t, "SURF ");

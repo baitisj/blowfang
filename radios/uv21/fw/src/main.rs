@@ -9,6 +9,7 @@ mod flash_map;
 mod hal;
 mod surf;
 mod ui;
+mod umod;
 
 use at32f421_pac as pac;
 use core::fmt::Write;

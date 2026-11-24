@@ -11,7 +11,7 @@ use crate::device::keypad::{KeyEventKind, KeyId};
 use crate::hal::{con, delay, uptime};
 use crate::ui::font55;
 use cortex_m::peripheral::SYST;
-use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder};
+use embedded_graphics::mono_font::{ascii::{FONT_10X20, FONT_6X10}, MonoTextStyleBuilder};
 use embedded_graphics::pixelcolor::{raw::RawU16, Rgb565};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
@@ -191,7 +191,7 @@ extern "C" fn text(x: i32, y: i32, s: *const u8, fg: u16, bg: u16, font: i32) ->
         return font55::draw(lcd, x, y, s, rgb(fg), rgb(bg));
     }
     let style = MonoTextStyleBuilder::new()
-        .font(&FONT_6X10)
+        .font(if font == 2 { &FONT_10X20 } else { &FONT_6X10 })
         .text_color(rgb(fg))
         .background_color(rgb(bg))
         .build();
@@ -200,6 +200,19 @@ extern "C" fn text(x: i32, y: i32, s: *const u8, fg: u16, bg: u16, font: i32) ->
         .map(|p| p.x - x)
         .unwrap_or(0)
 }
+
+/// what a RAM module reaches (umod.rs): SURF's own callbacks, so a module runs inside SURF's
+/// housekeeping with its context set
+static UM_API: crate::umod::UmApi = crate::umod::UmApi {
+    abi: crate::umod::ABI as u32,
+    fd_read,
+    fd_write,
+    tune,
+    delay_us,
+    ms,
+    say,
+    front_end,
+};
 
 /// the main loop's housekeeping while SURF runs: the power switch (off for 200 ms straight, as
 /// main.rs's check_power_off), and every 50 ms the battery and the backlight; the alive line
@@ -221,6 +234,7 @@ extern "C" fn poll() -> i32 {
             cortex_m::asm::wfi();
         }
     }
+    crate::umod::service(&UM_API); // a module upload on the serial line (umod.rs)
     let now = ms();
     let c = ctx();
     if now.wrapping_sub(c.t_house) >= 50 {

@@ -27,7 +27,7 @@ A job is a JSON file: who (the thread, one word), a channel to claim, how long, 
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
-kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console), turned into one
+kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console, uv21.mod), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -42,7 +42,9 @@ and the point is that the runner checks everything before it keys. The checks, i
     write) / uv21_kdh's bootloader handshake, dumper capture and app-area flash (kdh.probe,
     kdh.dump, kdh.flash: the UV-21 Pro; the flash takes one staged image whose sha256 the job
     pins, region 1 only, and is a local submit only) / the bring-up image's console (kdh.console:
-    its read-only commands only), the port found by its by-id name (USB numbering moves on reboot); no job argument may
+    its read-only commands only) / modem.uv21mod's RAM module upload to the port running SURF
+    (uv21.mod: one of the checkout's radios/uv21/mod/*.c with checked -D numbers; the image's
+    receive-only filter takes every register write a module makes), the port found by its by-id name (USB numbering moves on reboot); no job argument may
     name a /dev path
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
@@ -105,6 +107,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240,
                 "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180,
                 "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300,
+                "uv21.mod": 300,
                 "sim.soapyfang": 3600}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
@@ -200,6 +203,20 @@ def uv380_sotto_module(args):
 
 def uv380_rx_module(plan):
     return ("firmware", "uv380-openrtx", "mod", UV380_RX_PLANS[plan])
+
+
+# uv21.mod (the operator, 11-24: register trials from RAM modules, automated): a module by its name
+# in the checkout's radios/uv21/mod, then up to UV21_MOD_DEFINES -D settings. The setting's form is
+# modem/uv21mod.py's DEFINE (tests/test_bench_kdh.py keeps them equal): a C name and numbers only,
+# so a job can't reach the compiler's other options or a file
+UV21_MOD_RE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+UV21_MOD_DEFINE = re.compile(r"[A-Z][A-Z0-9_]{0,23}=(0x[0-9A-Fa-f]{1,8}|[0-9]{1,10})(,(0x[0-9A-Fa-f]{1,8}|[0-9]{1,10})){0,31}")
+UV21_MOD_DEFINES = 16
+UV21_MOD_RUN_S = 180               # modem.uv21mod --run-timeout: inside the step's 300 s
+
+
+def uv21_module(name):
+    return ("radios", "uv21", "mod", name + ".c")
 
 UV380_READBACK = {"power": "pwr", "zero": "zero", "trim": "trim", "gain": "gain", "emph": "emph",
                   "freq": "freq"}
@@ -653,6 +670,20 @@ def check_step(job, i, step, rs, problems):
                             " receive-only c6fmtap.c, c6fmtap_1c.c, c6phyrx.c, ...)")
         elif not os.path.isfile(os.path.join(job_sources(job), *uv380_rx_module(args[0]))):
             problems.append(f"{what}: the checkout has no {'/'.join(uv380_rx_module(args[0]))}")
+    elif do == "uv21.mod":
+        if not (args and all(isinstance(a, str) for a in args) and UV21_MOD_RE.match(args[0])):
+            problems.append(f"{what}: args: a module's name in radios/uv21/mod (regsweep for"
+                            " regsweep.c), then NAME=number settings")
+        elif not os.path.isfile(os.path.join(job_sources(job), *uv21_module(args[0]))):
+            problems.append(f"{what}: the checkout has no {'/'.join(uv21_module(args[0]))}")
+        else:
+            if len(args) - 1 > UV21_MOD_DEFINES:
+                problems.append(f"{what}: {UV21_MOD_DEFINES} settings at most")
+            for d in args[1:]:
+                if not UV21_MOD_DEFINE.fullmatch(d):
+                    problems.append(f"{what}: {d!r}: NAME=number or NAME=n1,n2,... (hex or decimal)")
+        if step.get("background"):
+            problems.append(f"{what}: never in the background")
     elif do == "kplug.read":
         check_kplug_args(args, what, problems)
         if step.get("background"):
@@ -848,7 +879,7 @@ def job_checkout(job):
 
 
 def job_sources(job):
-    """where the UV-380 module steps take their module source from: "sources" (a worktree, such as
+    """where the UV-380 and UV-21 module steps take their module source from: "sources" (a worktree, such as
     an inbox job's sources_commit) or the checkout. The tools always run from the checkout"""
     return os.path.realpath(os.path.expanduser(job["sources"])) if job.get("sources") else job_checkout(job)
 
@@ -966,6 +997,10 @@ def command(job, step, rd):
         return [py(), tool("uv21_kdh.py"), "flash", "--port", k6_cable(), "--out", rd,
                 "--image", os.path.realpath(os.path.expanduser(step["image"])),
                 "--sha256", step["sha256"]] + args, co, False
+    if do == "uv21.mod":
+        defs = [x for d in args[1:] for x in ("-D", d)]
+        return [py(), "-m", "modem.uv21mod", "run", k6_cable(), os.path.join(job_sources(job), *uv21_module(args[0]))] \
+            + defs + ["--log", os.path.join(rd, "uv21mod.log"), "--run-timeout", str(UV21_MOD_RUN_S)], co, False
     if do == "sim.soapyfang":       # the page on hamlet only: ssh -L 5058:127.0.0.1:5058 hamlet
         return [py(), "-m", "sim.soapyfang", "--source", "pluto", "--host", "127.0.0.1",
                 "--port", str(SOAPYFANG_PORT)] + args, co, False
@@ -993,7 +1028,7 @@ def uses_ic7100(step):
 
 def uses_cable(step):
     return step["do"] in ("k6.install", "k6.flash", "k6.update", "kplug.read", "kdh.probe", "kdh.dump",
-                          "kdh.flash", "kdh.console")
+                          "kdh.flash", "kdh.console", "uv21.mod")
 
 
 # ---- running ----
@@ -1842,6 +1877,8 @@ def sample_jobs(tmp, co, key):
         ("UV-21 Pro bootloader probe with a flash option", J("bad-kdhprobe", {"do": "kdh.probe", "args": ["--image", wav]}), False),
         ("UV-21 Pro bring-up console: report and RF registers", J("ok-kdhcon", {"do": "kdh.console", "args": ["--send", "ir", "--seconds", "20"]}), True),
         ("UV-21 Pro bring-up console asked to power off", J("bad-kdhcon", {"do": "kdh.console", "args": ["--send", "O"]}), False),
+        ("UV-21 Pro RAM module: REG_1F sweep on 439.500", J("ok-uv21mod", {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_VALS=0x1657,0xC65A", "SW_HZ=439500000"]}, freq_mhz="bench"), True),
+        ("UV-21 Pro RAM module with a compiler option", J("bad-uv21mod", {"do": "uv21.mod", "args": ["regsweep", "-include/etc/passwd"]}, freq_mhz="bench"), False),
         ("SoapyFang: the UV-21 sim on the live Pluto for 30 min", J("ok-soapy", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--gain", "50", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=35), True),
         ("SoapyFang without an image (hamlet can't build one)", J("bad-soapyimg", {"do": "sim.soapyfang", "args": ["--minutes", "30"]}, freq_mhz="bench", minutes=35), False),
         ("SoapyFang for an hour", J("bad-soapylong", {"do": "sim.soapyfang", "args": ["--minutes", "60", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=65), False),
@@ -1857,6 +1894,7 @@ def inbox_samples():
     return [
         ("Pluto send of a pushed WAV", J("in-ok", {"do": "pluto", "args": ["send", "job:x.wav", "--gain", "-60"]}), True),
         ("SoapyFang with a pushed UV-21 image", J("in-soapy", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", "job:port.bin", "--syms", "job:port.syms"]}, freq_mhz="bench", minutes=35), True),
+        ("UV-21 Pro register sweep from a branch's module", J("in-uv21mod", {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_VALS=0x1657,0xC65A"]}, freq_mhz="bench", sources_commit="519e64f"), True),
         ("UV-380 M17 from a branch's module, Pluto capture in the run folder", J("in-m17", {"do": "pluto", "args": ["rx", "run:m.cf32", "--hz", "441900000"], "background": True}, {"do": "uv380.m17", "args": ["bert"]}, freq_mhz=441.850, sources_commit="519e64f"), True),
         ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),
         ("a Pluto flash", J("in-plutoflash", {"do": "pluto.flash", "args": ["job:r.itb", "run:bk"]}), False),

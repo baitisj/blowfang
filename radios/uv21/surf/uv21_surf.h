@@ -22,7 +22,7 @@ typedef struct {
   void (*say)(const char *line);                /* a line on the serial console */
   void (*fill)(int x, int y, int w, int h, uint16_t rgb565);
   /* text at x, top row y: font 0 the 5x5 subpixel caps (4 px a character, 5 rows), 1 the
-     6x10; returns its width in pixels */
+     6x10, 2 the 10x20 (TUNE's digits); returns its width in pixels */
   int (*text)(int x, int y, const char *s, uint16_t fg, uint16_t bg, int font);
   int (*poll)(void);                            /* the firmware's housekeeping; nonzero: leave */
   void (*wake)(uint32_t hz, int dbm, int floor);   /* the CW wake heard */
