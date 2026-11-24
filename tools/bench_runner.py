@@ -104,7 +104,8 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "uv380.cmd": 60, "uv380.send": 120, "uv380.m17": 120, "uv380.ysf": 120,
                 "uv380.voice": 120, "uv380.sotto": 120, "uv380.air": 120, "uv380.rx": 240,
                 "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180,
-                "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300}
+                "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300,
+                "sim.soapyfang": 3600}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -115,6 +116,12 @@ PLUTO_FW_SUBS = ("doctor", "info", "backup", "ramboot", "fpga", "psd", "riq", "r
 CUE_MAX_S = 1700                            # a cue waits for its call this long at most (the step: 1800 s, with the send)
 PARROT_MAX_MIN = 25                         # a parrot holds the bench: 25 min at most (the step's 1800 s)
 IC7100_SUBS = ("send", "id", "stop")
+# sim.soapyfang: the UV-21 port image on the emulated board, its RF chip fed by the Pluto's live I/Q
+# (sim/soapyfang), the workbench page on hamlet's 127.0.0.1 only. Receive only: PlutoIioSource opens
+# no transmit stream (pluto_bench.setup's quiet() powers the TX LO down first)
+SOAPYFANG_PORT = 5058
+SOAPYFANG_MAX_MIN = 55                       # under the step's 3600 s timeout
+SOAPYFANG_OPTS = ("--minutes", "--gain", "--center", "--rate", "--image", "--syms", "--dbm-offset")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 WHO_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 HEX_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -544,6 +551,10 @@ def check_step(job, i, step, rs, problems):
                 if g > PLUTO_GAIN_MAX:
                     problems.append(f"{what}: gain {g:g} dB is above {PLUTO_GAIN_MAX:g} dB")
         check_pluto_checkout(job, what, problems)
+    elif do == "sim.soapyfang":
+        check_soapyfang(args, what, problems)
+        if step.get("background"):
+            problems.append(f"{what}: never in the background (it holds the Pluto for its minutes)")
     elif do == "ic7100":
         if not args or args[0] not in IC7100_SUBS:
             problems.append(f"{what}: args[0] must be one of {', '.join(IC7100_SUBS)}")
@@ -785,6 +796,35 @@ def check_uv380_cmd(job, c, what, problems):
             check_tx_hz(job, int(v) * 1000, what, problems)
 
 
+def check_soapyfang(args, what, problems):
+    """--minutes M (required, up to SOAPYFANG_MAX_MIN), --image and --syms (a prebuilt port.bin and
+    its llvm-nm listing: hamlet has no thumbv7em target), and optionally --gain 0..71 (receive),
+    --center HZ (the first window, 70 MHz-6 GHz), --rate HZ (0.6-4 MS/s), --dbm-offset DB"""
+    if len(args) % 2:
+        problems.append(f"{what}: args are --option value pairs")
+        return
+    got = {}
+    for k, v in zip(args[0::2], args[1::2]):
+        if k not in SOAPYFANG_OPTS:
+            problems.append(f"{what}: '{k}': only {', '.join(SOAPYFANG_OPTS)} (the runner sets the source,"
+                            " host and port)")
+            continue
+        got[k] = v
+    for k in ("--minutes", "--image", "--syms"):
+        if k not in got:
+            problems.append(f"{what}: needs {k}")
+    try:
+        for k, lo, hi in (("--minutes", 0.1, SOAPYFANG_MAX_MIN), ("--gain", 0, 71),
+                          ("--center", 70e6, 6e9), ("--rate", 6e5, 4e6), ("--dbm-offset", -200, 200)):
+            if k in got and not lo <= float(got[k]) <= hi:
+                problems.append(f"{what}: {k} {got[k]} is outside {lo:g}..{hi:g}")
+    except ValueError as e:
+        problems.append(f"{what}: {e}")
+    for k in ("--image", "--syms"):
+        if k in got and not os.path.isfile(os.path.expanduser(got[k])):
+            problems.append(f"{what}: {k} {got[k]} does not exist")
+
+
 def ic7100_limits(job, what, problems, keys=True):
     p = job.get("ic7100_power_max", 0.0)
     if not isinstance(p, (int, float)) or not 0 <= p <= IC7100_POWER_CAP:
@@ -926,6 +966,9 @@ def command(job, step, rd):
         return [py(), tool("uv21_kdh.py"), "flash", "--port", k6_cable(), "--out", rd,
                 "--image", os.path.realpath(os.path.expanduser(step["image"])),
                 "--sha256", step["sha256"]] + args, co, False
+    if do == "sim.soapyfang":       # the page on hamlet only: ssh -L 5058:127.0.0.1:5058 hamlet
+        return [py(), "-m", "sim.soapyfang", "--source", "pluto", "--host", "127.0.0.1",
+                "--port", str(SOAPYFANG_PORT)] + args, co, False
     if do == "uv380.rx":
         return [py(), tool("uv380_i2sprobe.py"), "mod", uv380_port(),
                 os.path.join(job_sources(job), *uv380_rx_module(args[0])), "--key-file", key,
@@ -1799,6 +1842,12 @@ def sample_jobs(tmp, co, key):
         ("UV-21 Pro bootloader probe with a flash option", J("bad-kdhprobe", {"do": "kdh.probe", "args": ["--image", wav]}), False),
         ("UV-21 Pro bring-up console: report and RF registers", J("ok-kdhcon", {"do": "kdh.console", "args": ["--send", "ir", "--seconds", "20"]}), True),
         ("UV-21 Pro bring-up console asked to power off", J("bad-kdhcon", {"do": "kdh.console", "args": ["--send", "O"]}), False),
+        ("SoapyFang: the UV-21 sim on the live Pluto for 30 min", J("ok-soapy", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--gain", "50", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=35), True),
+        ("SoapyFang without an image (hamlet can't build one)", J("bad-soapyimg", {"do": "sim.soapyfang", "args": ["--minutes", "30"]}, freq_mhz="bench", minutes=35), False),
+        ("SoapyFang for an hour", J("bad-soapylong", {"do": "sim.soapyfang", "args": ["--minutes", "60", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=65), False),
+        ("SoapyFang on the LAN", J("bad-soapyhost", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--host", "0.0.0.0"]}, freq_mhz="bench", minutes=35), False),
+        ("SoapyFang from another source", J("bad-soapysrc", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--source", "soapy:driver=plutosdr"]}, freq_mhz="bench", minutes=35), False),
+        ("SoapyFang in the background", J("bad-soapybg", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav], "background": True}, freq_mhz="bench", minutes=35), False),
     ]
 
 
@@ -1807,6 +1856,7 @@ def inbox_samples():
     J = lambda jid, *steps, **kw: dict(dict(id=jid, who="selftest", freq_mhz=440.850, minutes=10), steps=list(steps), **kw)
     return [
         ("Pluto send of a pushed WAV", J("in-ok", {"do": "pluto", "args": ["send", "job:x.wav", "--gain", "-60"]}), True),
+        ("SoapyFang with a pushed UV-21 image", J("in-soapy", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", "job:port.bin", "--syms", "job:port.syms"]}, freq_mhz="bench", minutes=35), True),
         ("UV-380 M17 from a branch's module, Pluto capture in the run folder", J("in-m17", {"do": "pluto", "args": ["rx", "run:m.cf32", "--hz", "441900000"], "background": True}, {"do": "uv380.m17", "args": ["bert"]}, freq_mhz=441.850, sources_commit="519e64f"), True),
         ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),
         ("a Pluto flash", J("in-plutoflash", {"do": "pluto.flash", "args": ["job:r.itb", "run:bk"]}), False),

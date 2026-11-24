@@ -7,8 +7,15 @@ frequency at a fixed rate, and knows how its full scale maps to dBm at the anten
   repo; real off-air captures stay in Git-ignored folders.
 - SoapySource: any SoapySDR device (driver=plutosdr, driver=rtlsdr, a SoapyRemote server, ...).
   Receive only: it never opens a transmit stream.
+- PlutoIioSource: the ADALM-Pluto through libiio's command-line tools and tools/pluto_bench.py's
+  set-up (its stored crystal correction, TX powered down), the way hamlet's bench already talks to
+  it: no SoapySDR needed there. Receive only.
 
-open_source("synthetic" | "sigmf:PATH" | "soapy:ARGS") builds one from a short string.
+open_source("synthetic" | "sigmf:PATH" | "soapy:ARGS" | "pluto[:URI]") builds one from a string.
+
+A live source may leave dbm_offset unset (None) with auto_floor_dbm set: the chip then sets the
+offset from the first spectrum so that the median 25 kHz channel reads auto_floor_dbm. That is a
+floor reference, not a calibration: RSSI is right relative to the band's floor.
 
 Levels: dBm = 10 log10(mean |x|^2) + dbm_offset. For the synthetic band and the SigMF files it
 writes, a full-scale complex tone (power 1.0) is REF_DBM. For an SDR the offset depends on its
@@ -19,6 +26,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import subprocess
 
 import numpy as np
 
@@ -33,6 +41,7 @@ class IqSource:
     rate = 0.0
     center_hz = 0.0
     dbm_offset = REF_DBM
+    auto_floor_dbm = None
     live = False                # True: samples arrive in wall time (an SDR), not on demand
     tunable = False
 
@@ -245,10 +254,72 @@ class SoapySource(IqSource):
                 self.dev.setFrequency(self.soapy.SOAPY_SDR_RX, self.ch, 2.4e9)
 
 
+class PlutoIioSource(IqSource):
+    """the Pluto over libiio (iio_readdev streaming int16 I/Q, iio_attr for the LO), set up by
+    tools/pluto_bench.py: quiet first (TX LO powered down, DDS tones off), its stored crystal
+    correction, manual RX gain, a 2 MHz analog filter. Receive only: nothing here writes the TX
+    side except pluto_bench's quiet(). The LO sits a quarter of the rate above the frequency asked
+    for (never on the channel listened to), and is parked at 2.4 GHz on close."""
+    live = True
+    tunable = True
+    BUF = 1 << 15                       # samples per libiio buffer: ~14 ms at 2.4 MS/s
+
+    def __init__(self, pb, uri=None, rate=2_400_000, center_hz=440_000_000, gain=50, dbm_offset=None,
+                 auto_floor_dbm=-122.0):
+        """pb: tools/pluto_bench.py (sim/soapyfang/pluto.py passes it; the tests pass a stand-in)"""
+        self.pb = pb
+        self.uri = uri or pb.URI
+        if self.uri.startswith("usb:"):
+            raise ValueError("stream over ip: (docs/pluto-bench.md): usb: streams lock the Pluto")
+        self.rate = float(rate)
+        self.gain = int(gain)
+        self.dbm_offset = dbm_offset
+        self.auto_floor_dbm = auto_floor_dbm if dbm_offset is None else None
+        self.center_hz = float(center_hz) + 0.25 * self.rate
+        pb.setup(int(self.rate), rx_hz=int(self.center_hz), rx_gain=self.gain, uri=self.uri,
+                 rx_bw=pb.WIDE_BW)
+        self.proc = subprocess.Popen(["iio_readdev", "-u", self.uri, "-b", str(self.BUF), pb.RX_DEV,
+                                      "voltage0", "voltage1"], stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+
+    def describe(self):
+        return f"Pluto {self.uri} ({self.rate / 1e6:g} MS/s, RX gain {self.gain} dB, receive only)"
+
+    def tune(self, hz):
+        lo = int(round(float(hz) + 0.25 * self.rate))
+        self.pb.put("out", self.pb.PHY, "altvoltage0", "frequency", lo, uri=self.uri)
+        self.center_hz = float(lo)
+        self.discard = int(0.07 * self.rate)       # libiio's queued buffers still hold the old LO's
+        return True
+
+    def read(self, n):
+        n = int(n)
+        while getattr(self, "discard", 0) > 0:
+            k = min(self.discard, 1 << 16)
+            if len(self.proc.stdout.read(4 * k)) < 4 * k:
+                break
+            self.discard -= k
+        raw = self.proc.stdout.read(4 * n)
+        if len(raw) < 4 * n:
+            err = self.proc.stderr.read().decode(errors="replace").strip() if self.proc.poll() is not None else ""
+            raise RuntimeError(f"iio_readdev stopped: {err or self.proc.returncode}")
+        x = np.frombuffer(raw, np.int16).astype(np.float32)
+        return ((x[0::2] + 1j * x[1::2]) / 2048.0).astype(np.complex64)
+
+    def close(self):
+        try:
+            if self.proc.poll() is None:
+                self.proc.kill()
+            self.proc.wait(timeout=5)
+        finally:
+            self.pb.park_rx(self.uri)
+
+
 def open_source(spec="synthetic", band=None, rate=None, center_hz=440_000_000, gain=None,
                 dbm_offset=None):
     """'synthetic', 'sigmf:PATH' or 'soapy:ARGS' (e.g. soapy:driver=rtlsdr,
-    soapy:driver=plutosdr,uri=ip:192.168.2.1)"""
+    soapy:driver=plutosdr,uri=ip:192.168.2.1); 'pluto[:URI]' (libiio, hamlet's way) is
+    sim/soapyfang/pluto.py's open_pluto, which brings in the bench tools"""
     if spec in ("synthetic", "", None):
         return SyntheticSource(band, rate=rate or 1_200_000, center_hz=center_hz)
     if spec.startswith("sigmf:"):
@@ -256,4 +327,4 @@ def open_source(spec="synthetic", band=None, rate=None, center_hz=440_000_000, g
     if spec.startswith("soapy:"):
         return SoapySource(spec[len("soapy:"):], rate=rate or 2_400_000, center_hz=center_hz,
                            gain=gain, dbm_offset=dbm_offset)
-    raise ValueError(f"unknown source {spec!r}: synthetic, sigmf:PATH or soapy:ARGS")
+    raise ValueError(f"unknown source {spec!r}: synthetic, sigmf:PATH, soapy:ARGS or pluto[:URI]")

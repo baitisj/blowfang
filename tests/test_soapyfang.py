@@ -18,7 +18,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sim.soapyfang.chip import ChipModel  # noqa: E402
-from sim.soapyfang.sources import SigmfSource, SoapySource, SyntheticSource, write_sigmf  # noqa: E402
+from sim.soapyfang.sources import (PlutoIioSource, SigmfSource, SoapySource, SyntheticSource,  # noqa: E402
+                                   open_source, write_sigmf)
 from sim.uv21.board import Station  # noqa: E402
 
 F0 = 440_000_000
@@ -147,6 +148,68 @@ def test_soapy_source_receives_only_and_parks_a_pluto():
     assert streams == [("stream", FakeSoapy.SOAPY_SDR_RX, "CF32")]
     assert all(c[1] == FakeSoapy.SOAPY_SDR_RX for c in fake.calls if c[0] in ("freq", "gain"))
     assert fake.calls[-1] == ("freq", FakeSoapy.SOAPY_SDR_RX, 2.4e9)
+
+
+class FakePlutoBench:
+    """the parts of tools/pluto_bench.py PlutoIioSource uses, recording what it is asked"""
+    URI, PHY, RX_DEV, WIDE_BW = "ip:192.168.2.1", "ad9361-phy", "cf-ad9361-lpc", 2_000_000
+
+    def __init__(self):
+        self.calls = []
+
+    def setup(self, rate, tx_hz=None, rx_hz=None, gain=None, rx_gain=None, uri=None, rx_bw=200000):
+        self.calls.append(("setup", rate, tx_hz, rx_hz, gain, rx_gain, rx_bw))
+
+    def put(self, kind, dev, ch, attr, v, uri=None, check=True):
+        self.calls.append(("put", kind, ch, attr, v))
+
+    def park_rx(self, uri=None):
+        self.calls.append(("park",))
+
+
+def fake_readdev(tmp_path, monkeypatch, i=1024, q=-512):
+    """an iio_readdev on PATH that streams one constant int16 I/Q sample until its reader goes"""
+    d = tmp_path / "bin"
+    d.mkdir()
+    exe = d / "iio_readdev"
+    exe.write_text("#!/usr/bin/env python3\nimport struct, sys\n"
+                   f"b = struct.pack('<hh', {i}, {q}) * 4096\n"
+                   "try:\n    while True:\n        sys.stdout.buffer.write(b)\n"
+                   "except (BrokenPipeError, OSError):\n    pass\n")
+    exe.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{d}{os.pathsep}{os.environ['PATH']}")
+
+
+def test_pluto_source_receives_only_and_parks(tmp_path, monkeypatch):
+    fake_readdev(tmp_path, monkeypatch)
+    pb = FakePlutoBench()
+    src = PlutoIioSource(pb, rate=2_400_000, center_hz=440_850_000, gain=40)
+    assert src.center_hz == 440_850_000 + 600_000            # LO a quarter of the rate above
+    setup = pb.calls[0]
+    assert setup[0] == "setup" and setup[2] is None and setup[4] is None     # no TX LO, no TX gain
+    assert setup[3] == 441_450_000 and setup[5] == 40 and setup[6] == pb.WIDE_BW
+    x = src.read(1000)
+    assert len(x) == 1000 and np.allclose(x, 0.5 - 0.25j)
+    assert src.tune(445_000_000) and src.center_hz == 445_600_000
+    assert pb.calls[-1] == ("put", "out", "altvoltage0", "frequency", 445_600_000)   # the RX LO only
+    assert len(src.read(100)) == 100                         # after the stale buffers are dropped
+    src.close()
+    assert pb.calls[-1] == ("park",)
+    assert all(c[2] == "altvoltage0" for c in pb.calls if c[0] == "put")
+    with pytest.raises(ValueError):
+        PlutoIioSource(pb, uri="usb:1.2.5")
+
+
+def test_an_uncalibrated_source_sets_its_level_from_the_floor():
+    """with no calibration (the Pluto's default), the median floor of the window reads auto_floor_dbm"""
+    src = SyntheticSource([Station("a", F0 + 100_000, -80)], rate=1_200_000, center_hz=F0)
+    src.dbm_offset, src.auto_floor_dbm = None, -110.0
+    c = ChipModel(src)
+    c.advance(0.05)
+    assert abs(c.rssi_dbm(F0 + 300_000) - -110) < 2.0
+    assert abs(c.rssi_dbm(F0 + 100_000) - -65) < 2.0         # the carrier 45 dB over the floor
+    with pytest.raises(ValueError):                         # pluto is sim/soapyfang/pluto.py's, not here
+        open_source("pluto")
 
 
 # ---- the real firmware, fed through the chip ----
