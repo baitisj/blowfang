@@ -35,6 +35,13 @@ def until(board, text, seconds, chunk=1_000_000):
     return None, out
 
 
+def wait(board, seconds):
+    """run seconds of virtual time"""
+    end = board.seconds + seconds
+    while board.seconds < end:
+        board.step(1_000_000)
+
+
 def tap(board, key, settle=0.4):
     board.tap(key, 0.15)
     end = board.seconds + 0.15 + settle
@@ -66,7 +73,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 7 build=" in surfing.boot_text
+    assert "blowfang uv21 port 8 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -92,7 +99,7 @@ def test_side_keys_jump_to_the_next_peak_up_and_down(built):
     b = UV21Board(*built, band=[Station("a", 439_700_000, -80), Station("b", 440_100_000, -85),
                                  Station("c", 439_200_000, -90)])
     b.run(until="boot done", limit=300_000_000)
-    until(b, r"$^", 6)
+    wait(b, 6)
     assert sel(b) == 439_500_000
     tap(b, "SIDE1", 1.0)                                                # top: the next peak up
     assert sel(b) == 439_700_000
@@ -104,12 +111,37 @@ def test_side_keys_jump_to_the_next_peak_up_and_down(built):
     assert sel(b) == 439_200_000
 
 
+def test_level_is_drawn_once_it_settles_not_on_every_read(built):
+    # a carrier on the start frequency: SURF parks on it and plays it. Its reads wander (1 dB of
+    # noise), but the level on the screen is taken 0.1 s after the squelch opens and then left
+    # alone (Jeff, 2026-11-24), and the frequency beside it is never redrawn
+    b = UV21Board(*built, band=[Station("a", 439_500_000, -80)])
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 4)
+
+    def strip(x0, x1):
+        return [row[x0:x1] for row in b.screen_rgb()[11:22]]
+    level, freq = strip(58, 128), strip(0, 58)
+    assert any(px != (0, 0, 0) for row in level for px in row), "no level drawn"
+    wait(b, 4)
+    assert strip(58, 128) == level
+    assert strip(0, 58) == freq
+
+
+def test_axis_labels_are_the_top_and_bottom_frequencies(surfing):
+    # absolute MHz at the top and bottom bins (Jeff, 2026-11-24: "show e.g. 463.5 and 461.0"),
+    # drawn in the 5x5 font in the label column: something lit there, at both ends
+    rows = surfing.screen_rgb()
+    for y0 in (22, 146):
+        assert any(px not in ((0, 0, 0), (40, 0, 40)) for row in rows[y0:y0 + 6] for px in row[0:19]), y0
+
+
 def test_exit_goes_to_the_vfo_screen_on_surfs_frequency_and_ab_comes_back(surfing):
     f = sel(surfing)
     surfing.tap("EXIT", 0.15)
     m, out = until(surfing, r"end sw=\d+", 3)
     assert m, out[-300:]
-    until(surfing, r"$^", 1)
+    wait(surfing, 1)
     assert abs(surfing.tuned_hz() - f) < 1000, (surfing.tuned_hz(), f)  # the VFO took it
     surfing.tap("AB", 0.15)
     m, out = until(surfing, r"surf \S+ \d+\.\d+ ", 4)
