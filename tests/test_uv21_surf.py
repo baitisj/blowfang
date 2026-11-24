@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 17 build=" in surfing.boot_text
+    assert "blowfang uv21 port 18 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -335,15 +335,29 @@ def test_hold_does_not_open_the_speaker_on_noise(built):
     assert b.regs.get(0x47) == AF_FM
 
 
-BAR_COLOURS = {(0, 202, 90), (255, 202, 0), (255, 121, 41)}   # (BAR, MID, LIVE as the panel shows them)
+def rgb565(c):
+    """a 565 colour as the panel model shows it (sim/uv21/board.py screen_rgb)"""
+    return (((c >> 11) & 31) * 255 // 31, ((c >> 5) & 63) * 255 // 63, (c & 31) * 255 // 31)
+
+
+# port 18: the bars and the history strip in the heat colours (uv21_surf.c HEAT), none-yet last
+HEAT = [rgb565(c) for c in (0x0065, 0x00E9, 0x016D, 0x0231, 0x036F, 0x04AD, 0x05EB, 0x3E48,
+                            0x8645, 0xCE42, 0xFDE0, 0xFCE2, 0xFBE4, 0xFDB1, 0xFFFF)]
+NONE_YET = rgb565(0x0841)
+BAR_COLOURS = set(HEAT)
+BX, BEND, HX, HN = 25, 74, 76, 52                  # bars x 25-73, divider 74, strip 76-127
+
+
+def bin_y(i):
+    return 24 + 2 * (62 - i)
 
 
 def bad_bar_rows(board):
     """bins whose two rows aren't one bar from the axis, then black with at most one 3 px caret"""
     rows, bad = board.screen_rgb(), []
     for i in range(63):
-        y = 24 + 2 * (62 - i)
-        a, b = rows[y][25:128], rows[y + 1][25:128]
+        y = bin_y(i)
+        a, b = rows[y][BX:BEND], rows[y + 1][BX:BEND]
         n = 0
         while n < len(a) and a[n] in BAR_COLOURS and a[n] == a[0]:
             n += 1
@@ -354,6 +368,23 @@ def bad_bar_rows(board):
         if not ok:
             bad.append(i)
     return bad
+
+
+def bar_lengths(board):
+    rows = board.screen_rgb()
+    out = []
+    for i in range(63):
+        r = rows[bin_y(i)][BX:BEND]
+        n = 0
+        while n < len(r) and r[n] in BAR_COLOURS and r[n] == r[0]:
+            n += 1
+        out.append(n)
+    return out
+
+
+def strip(board, i):
+    """bin i's history, newest first: the strip's colours on its row"""
+    return board.screen_rgb()[bin_y(i)][HX:HX + HN]
 
 
 def test_bars_drawn_in_pieces_leave_nothing_behind(built):
@@ -375,6 +406,49 @@ def test_bars_drawn_in_pieces_leave_nothing_behind(built):
             wait(b, 0.7)
             seen.append(bad_bar_rows(b))
     assert not any(seen), [x for x in seen if x][:5]
+
+
+@pytest.fixture(scope="module")
+def history(built):
+    # one strong carrier off the middle, the rest quiet: 20 s of sweeps
+    b = UV21Board(*built, band=[Station("a", 439_550_000, -70)])
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 20)
+    return b
+
+
+def test_history_strip_beside_the_bars(history):
+    # port 18 (Jeff, 2026-11-24: "Let's go with history in RAM"): a divider at x 74, the strip
+    # right of it, one column a sweep, newest at the left; the carrier's row runs hot, a quiet
+    # row is the floor's colour, and columns older than the run are none yet
+    rows = history.screen_rgb()
+    assert {rows[y][BEND] for y in range(24, 150)} == {(41, 40, 41)}
+    lens = bar_lengths(history)
+    hot = max(range(63), key=lambda i: lens[i])
+    assert lens[hot] > 20, lens
+    row = strip(history, hot)
+    assert row[0] in HEAT[8:], row[:4]                                  # (yellow or hotter)
+    assert rows[bin_y(hot)][BX] == row[0]                               # the bar's own colour
+    quiet = strip(history, 3)
+    assert quiet[0] in HEAT[:3], quiet[:4]
+    filled = sum(1 for c in row if c != NONE_YET)
+    assert 10 <= filled < HN, filled                                    # (~0.8 s a sweep)
+    assert row[-1] == NONE_YET
+
+
+def test_history_follows_the_frequency_when_tuned(history):
+    # the stored columns move with the middle, so the carrier's trail stays on its frequency;
+    # rows tuned into view are none yet
+    lens = bar_lengths(history)
+    before = max(range(63), key=lambda i: lens[i])
+    tap(history, "UP", 0.3)
+    old_cols = slice(5, 12)                                             # (sweeps before the move)
+    lens = bar_lengths(history)
+    after = max(range(63), key=lambda i: lens[i])
+    assert after != before, (before, after)
+    assert all(c in HEAT[8:] for c in strip(history, after)[old_cols]), strip(history, after)[:14]
+    assert not any(c in HEAT[8:] for c in strip(history, before)[old_cols])
+    assert any(c == NONE_YET for i in range(63) for c in strip(history, i)[old_cols])
 
 
 # ---- the receive front end's band switch (port 12) ----

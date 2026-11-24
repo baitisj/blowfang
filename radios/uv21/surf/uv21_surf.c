@@ -6,7 +6,9 @@
    top: 63 bins of 2 rows each, the listening frequency always the middle one (bin C), on the
    same logarithmic "lens" scale as the K6 (the 8th bin each side +-20 kHz, the 31st the span).
    Each bin's bar grows to the right from an axis line, with the log-paper ticks and the span's
-   labels to its left; a caret (a white dash) right of the bar marks a peak heard lately, further
+   labels to its left, coloured by its level over the floor (the heat colours, port 18); right of
+   the bars, past a divider, the history strip carries those colours across, one column a sweep
+   (see "the history strip" below); a caret (a white dash) right of the bar marks a peak heard lately, further
    right the more often it was heard, and falls back toward the axis with time.
 
    Keys (Jeff, 2026-11-24, with more to come; the rest as on the K6):
@@ -59,6 +61,21 @@
 #include "uv21_surf.h"
 
 #define SF_API uv_api_t
+#ifndef UV21_HIST
+#define UV21_HIST 1             /* the history strip right of the bars (port 18); 0 drops it */
+#endif
+#define HN 52                   /* the strip: this many sweeps, one a pixel column */
+#if UV21_HIST
+#define HIST_EXTRA                                                                        \
+  uint8_t hring[(HN * 63 + 1) / 2];  /* the levels, a nibble each: column k, bin i at k*NV+i;   \
+                                    0-14 the bin's level over the floor in 3 dB steps, 15 none */ \
+  uint8_t hhead, hdirty, hsi;   /* the newest column; the strip to draw; the scale it's on */ \
+  const void *hbd;              /* ... its band */                                        \
+  uint32_t hcen;                /* ... its middle */                                      \
+  int hsw;                      /* the sweeps counted when the newest column went in */
+#else
+#define HIST_EXTRA
+#endif
 #define ROWS 1                  /* (the core's K6 bitmap: not used here) */
 #define NK 1                    /* (the explorer's repeater table: not on the UV-21 yet) */
 #define SURF_USER_LO 470000000u
@@ -85,7 +102,8 @@
   int hnf;                      /* ... and the middle's own noise floor, 1/16 dB (HNF_NONE) */ \
   uint32_t dcen, t_dq;          /* the middle as last seen; when the squelch or it moved */ \
   int sdbm;                     /* the level shown */                                     \
-  char st0[34], st1[12], st2[34], st3[14];   /* the text lines as drawn */
+  char st0[34], st1[12], st2[34], st3[14];   /* the text lines as drawn */                \
+  HIST_EXTRA
 #define SF_CUSTOM               /* the core's TUNE and CUSTOM */
 #define SF_RANGE                /* and its typed range (VFO/MR) */
 #define SF_ED_CHANGED(s) if (!(s)->ed) (s)->sdirty = 1   /* (TUNE drew over the top: all again) */
@@ -116,7 +134,14 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define TX0 20                  /* the ticks: x 20-23 (major), 22-23 (minor) */
 #define AXX 24                  /* the axis line */
 #define BX 25                   /* the bars start here */
-#define BW 100                  /* and reach BX + BW at most */
+#if UV21_HIST
+#define BW 48                   /* and reach BX + BW at most */
+#define BEND 74                 /* the bars' area ends before this column: the divider */
+#define HX 76                   /* the history strip: HN columns from here, newest at the left */
+#else
+#define BW 100
+#define BEND 128
+#endif
 #define CW 3                    /* a caret: 3 x 2 */
 #define MSG_Y 152               /* the bottom line, 5x5 */
 #define DBX 60                  /* the level, right of the frequency on its line */
@@ -482,11 +507,106 @@ static void hold_step(sf_t *s) {
   if (s->parked != s->audio) audio(s, s->parked);
 }
 
+#if UV21_HIST
+/* ---- the history strip (port 18; Jeff, 2026-11-24: "Let's go with history in RAM") ----
+   Right of the bars, past a divider: one pixel column a finished sweep, the newest at the left
+   edge and older ones pushed right, HN of them; each bin's 2 rows coloured by its level over the
+   floor (HEAT: dark, blue, the bars' green, yellow, orange, white). The levels live in RAM, a
+   nibble each (hring, 1,638 B), so the strip is redrawn whole from them, in one window, after each
+   sweep. When the middle moves the stored columns are moved with it, each old bin to the new
+   bin its frequency falls in, so a trail stays on its frequency; rows tuned into view show as
+   none yet. A new span or band starts the strip over. Hold stops the sweeps, and so the strip. */
+#define HUNK 15
+static const uint16_t HEAT[16] = {     /* the floor's navy, blue, green, yellow, orange, white */
+  0x0065, 0x00E9, 0x016D, 0x0231, 0x036F, 0x04AD, 0x05EB, 0x3E48,
+  0x8645, 0xCE42, 0xFDE0, 0xFCE2, 0xFBE4, 0xFDB1, 0xFFFF,
+  0x0841,                                 /* (none yet: near black) */
+};
+#define DIV RGB(40, 40, 40)
+
+static int hget(sf_t *s, int n) { return n & 1 ? s->hring[n >> 1] >> 4 : s->hring[n >> 1] & 15; }
+static void hset(sf_t *s, int n, int v) {
+  uint8_t *b = &s->hring[n >> 1];
+  *b = (uint8_t)(n & 1 ? (*b & 0x0F) | (v << 4) : (*b & 0xF0) | v);
+}
+
+/* the stored columns onto the scale on screen now */
+static void hist_sync(sf_t *s) {
+  int8_t map[NV];
+  uint8_t a[NV], t[NV];
+  int i, j, k;
+  if (s->hbd == (const void *)s->bd && s->hsi == s->si && s->hcen == s->cen) return;
+  if (s->hbd != (const void *)s->bd || s->hsi != s->si) {
+    for (k = 0; k < (int)sizeof(s->hring); k++) s->hring[k] = 0xFF;   /* (a new scale: none yet) */
+  } else {
+    for (j = 0; j < NV; j++) {            /* old bin j's frequency, and the bin it's in now */
+      uint32_t o = L_HZ * s->off[dist(j)], f = j < C ? s->hcen - o : s->hcen + o;
+      int ok = j < C ? s->hcen >= o : f >= s->hcen;
+      map[j] = (int8_t)(ok && f >= s->bd->lo && f <= s->bd->hi ? bin_of(s, f) : -1);
+    }
+    for (k = 0; k < HN; k++) {
+      for (i = 0; i < NV; i++) a[i] = (uint8_t)hget(s, k * NV + i), t[i] = HUNK;
+      for (j = 0; j < NV; j++) {
+        i = map[j];
+        if (a[j] != HUNK && i >= 0 && (t[i] == HUNK || a[j] > t[i])) t[i] = a[j];
+      }
+      for (i = 0; i < NV; i++) hset(s, k * NV + i, t[i]);
+    }
+  }
+  s->hbd = (const void *)s->bd;
+  s->hsi = s->si;
+  s->hcen = s->cen;
+  s->hdirty = 1;
+}
+
+/* bin i's level over the floor in 3 dB steps, 0-14 (HUNK none): its bar's colour and its
+   history's (Jeff, 2026-11-24: "If we color the bar graph bars using heat map colors
+   corresponding to signal strength then we can just copy that column across") */
+static int heat_q(sf_t *s, int i) {
+  int v = s->lvl[i], q;
+  if (!bin_hz(s, i) || !v || !s->qfl) return HUNK;
+  q = v > s->qfl ? (v - s->qfl) / 3 : 0;
+  return q > 14 ? 14 : q;
+}
+
+/* a finished sweep: its bars' colours become the newest column */
+static void hist_push(sf_t *s) {
+  int i;
+  s->hsw = s->sweeps;
+  hist_sync(s);
+  s->hhead = (uint8_t)(s->hhead + 1 == HN ? 0 : s->hhead + 1);
+  for (i = 0; i < NV; i++) hset(s, s->hhead * NV + i, heat_q(s, i));
+  s->hdirty = 1;
+}
+
+/* the strip, whole, in one window; the divider with it after a full redraw */
+static void hist_draw(sf_t *s) {
+  const uv_api_t *api = s->api;
+  uint16_t row[HN];
+  int i, c;
+  hist_sync(s);
+  if (s->sdirty) api->fill(BEND, BY, 1, 2 * NV, DIV);
+  if (!s->hdirty && !s->sdirty) return;
+  s->hdirty = 0;
+  api->px_begin(HX, BY, HN, 2 * NV);
+  for (i = NV - 1; i >= 0; i--) {
+    for (c = 0; c < HN; c++) {
+      int k = s->hhead - c;
+      if (k < 0) k += HN;
+      row[c] = HEAT[hget(s, k * NV + i)];
+    }
+    api->px_put(row, HN);
+    api->px_put(row, HN);
+  }
+  api->px_end();
+}
+#endif
+
 /* ---- the screen ---- */
 
 /* bin i's bar length, 1..BW px: 5/4 px per quick dB over the window's floor */
 static int bar_len(sf_t *s, int i) {
-  int v = s->lvl[i], h = s->qfl && v > s->qfl ? ((v - s->qfl) * 5) >> 2 : 0;
+  int v = s->lvl[i], h = s->qfl && v > s->qfl ? ((v - s->qfl) * 5 * BW) / 400 : 0;   /* (100 px: 5/4 a dB) */
   if (h < 1) h = 1;
   if (h > BW) h = BW;
   return h;
@@ -621,7 +741,12 @@ static void draw(sf_t *s) {
      pixels that changed (port 17): the part a bar grew or shrank by, the old caret and the new */
   for (i = 0; i < NV; i++) {
     int y = BINY(i), len = bin_hz(s, i) ? bar_len(s, i) : 0, cx = 0;
+#if UV21_HIST
+    uint8_t col = (uint8_t)(heat_q(s, i) + 1);   /* (the heat colour + 1; HUNK + 1: none) */
+    if (col == HUNK + 1) len = 0;                 /* (not read on this scale yet: no bar) */
+#else
     uint8_t col = !bin_hz(s, i) ? 0 : i == C ? (s->audio ? 3 : 2) : 1;
+#endif
     if (top[i]) {
       cx = 1 + (int)((uint32_t)top[i] * (BW - CW - 2) / HMAX);
       if (cx < len + 2) cx = len + 2;         /* (it rides on its bar, never inside it) */
@@ -629,10 +754,14 @@ static void draw(sf_t *s) {
     }
     if (!s->sdirty && s->sl[i] == len && s->scx[i] == cx && s->scol[i] == col) continue;
     {
+#if UV21_HIST
+      int ol = s->sl[i], ocx = s->scx[i], c = HEAT[(col - 1) & 15];
+#else
       int ol = s->sl[i], ocx = s->scx[i], c = col == 3 ? LIVE : col == 2 ? MID : BAR;
+#endif
       if (s->sdirty) {                      /* all of it */
         if (len) api->fill(BX, y, len, 2, (uint16_t)c);
-        api->fill(BX + len, y, BW + 3 - len, 2, BG);
+        api->fill(BX + len, y, BEND - BX - len, 2, BG);
       } else {
         if (col != s->scol[i]) api->fill(BX, y, len, 2, (uint16_t)c);   /* (0 wide: nothing) */
         else if (len > ol) api->fill(BX + ol, y, len - ol, 2, (uint16_t)c);
@@ -648,6 +777,9 @@ static void draw(sf_t *s) {
     s->scx[i] = (uint8_t)cx;
     s->scol[i] = col;
   }
+#if UV21_HIST
+  hist_draw(s);
+#endif
 
   /* the bottom line: a message, the typing, WAKE HEARD once a wake was heard, else blank */
   p = t;
@@ -725,6 +857,9 @@ uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room) {
     else if (s->check) check_bar(s);
     else if (s->parked) park_step(s);
     else sweep_step(s);
+#if UV21_HIST
+    if (s->sweeps != s->hsw) hist_push(s);
+#endif
     s->now = api->ms();
     if (s->audio != s->saud || s->cen != s->dcen) {   /* the level is due once it settles */
       s->saud = s->audio;
