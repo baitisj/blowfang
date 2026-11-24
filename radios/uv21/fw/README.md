@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 17 change
+## What ports 1 to 18 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -97,6 +97,15 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   text goes out in one window (was a window per pixel row: 6 window setups a line, now 1). And
   SURF's state buffer is trimmed to what it uses: 2,304 B, was 3,840 B (1,536 B of RAM back;
   the start line `surf ram need= room=` shows the margin).
+- Port 18: SURF's history strip (the operator's pick, history kept in RAM). The bars are 48 px
+  wide now and coloured by level over the floor, 3 dB a step (navy, blue, green, yellow,
+  orange, white); right of them, past a divider at x 74, a 52-column strip carries those colours
+  across, one column a finished sweep, newest at the left (about 40 s of history at ~0.8 s a
+  sweep). The levels live in RAM, a nibble a bin (1,638 B), and the strip is sent whole in one
+  window after each sweep (`px_begin`/`px_put`/`px_end` in the SURF API). When the middle moves
+  the stored columns move with it, so a trail stays on its frequency, and rows tuned into view
+  show as none yet; a new span or band starts the strip over. HOLD stops it with the sweeps.
+  Building SURF with `-DUV21_HIST=0` drops it all (100 px bars in the old colours).
 
 ## RAM modules (port 15)
 

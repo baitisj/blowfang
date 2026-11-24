@@ -33,6 +33,9 @@ struct UvApi {
     poll: extern "C" fn() -> i32,
     wake: extern "C" fn(u32, i32, i32),
     front_end: extern "C" fn(i32) -> i32,
+    px_begin: extern "C" fn(i32, i32, i32, i32),
+    px_put: extern "C" fn(*const u16, i32),
+    px_end: extern "C" fn(),
     wake_hz: u32,
     start_hz: u32,
 }
@@ -46,11 +49,11 @@ extern "C" {
 /// moves it, until the radio is switched off
 const WAKE_HZ: u32 = 440_850_000;
 
-/// SURF's state (uv21_surf_state_size(), 1,272 B in port 17) and its remembered peaks
-/// (NPM = 128 x 8 B), 8-aligned, with a word to spare. Port 17 trimmed it from 480 words
-/// (3,840 B; 1,544 B never used); the start line says `surf ram need= room=`, and
-/// tests/test_uv21_surf.py fails if the room no longer holds all 128 peaks.
-const STATE_WORDS: usize = 288;
+/// SURF's state (uv21_surf_state_size(): 2,924 B in port 18, with the history strip's 1,638 B)
+/// and its remembered peaks (NPM = 128 x 8 B), 8-aligned, with a word or two to spare. The
+/// start line says `surf ram need= room=`, and tests/test_uv21_surf.py fails if the room no
+/// longer holds all 128 peaks, or leaves more than 64 B unused.
+const STATE_WORDS: usize = 495;
 const NPM: u32 = 128;
 static mut STATE: [u64; STATE_WORDS] = [0; STATE_WORDS];
 
@@ -188,6 +191,26 @@ extern "C" fn fill(x: i32, y: i32, w: i32, h: i32, c: u16) {
     display().as_draw_target().fill_solid(&r, rgb(c)).ok();
 }
 
+/// a block of pixels in one window (uv21_surf.h): SURF's history strip; SURF keeps it on screen
+extern "C" fn px_begin(x: i32, y: i32, w: i32, h: i32) {
+    if x < 0 || y < 0 || w <= 0 || h <= 0 || x + w > 128 || y + h > 160 {
+        return;
+    }
+    display().as_draw_target().begin(x as u16, y as u16, w as u16, h as u16);
+}
+
+extern "C" fn px_put(px: *const u16, n: i32) {
+    if px.is_null() || n <= 0 {
+        return;
+    }
+    let s = unsafe { core::slice::from_raw_parts(px, n as usize) };
+    display().as_draw_target().stream(s);
+}
+
+extern "C" fn px_end() {
+    display().as_draw_target().end();
+}
+
 extern "C" fn text(x: i32, y: i32, s: *const u8, fg: u16, bg: u16, font: i32) -> i32 {
     let s = cstr(s);
     let lcd = display().as_draw_target();
@@ -294,6 +317,9 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
         poll,
         wake,
         front_end,
+        px_begin,
+        px_put,
+        px_end,
         wake_hz: unsafe { WAKE },
         start_hz,
     };

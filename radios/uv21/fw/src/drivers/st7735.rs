@@ -75,6 +75,27 @@ impl<'a> St7735<'a> {
         self.spi_write_byte(raw as u8);
     }
 
+    /// Opens a w x h window at (x, y) for `stream`: its pixels go left to right, then down,
+    /// until `end` (port 18: SURF's history strip, one window for all of it)
+    pub fn begin(&self, x: u16, y: u16, w: u16, h: u16) {
+        self.set_window(x, y, x + w - 1, y + h - 1);
+        self.write_command(0x2C); // RAMWR
+        board::set_lcd_dc(self.gpiob, true);
+        board::set_lcd_cs(self.gpiob, false);
+    }
+
+    pub fn stream(&self, px: &[u16]) {
+        for &c in px {
+            self.spi_write_byte((c >> 8) as u8);
+            self.spi_write_byte(c as u8);
+        }
+    }
+
+    pub fn end(&self) {
+        self.spi_wait_idle();
+        board::set_lcd_cs(self.gpiob, true);
+    }
+
     pub fn init(&self, syst: &mut SYST) {
         board::set_lcd_reset(self.gpiob, true);
         delay::ms(syst, 10);
