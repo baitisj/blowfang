@@ -37,8 +37,9 @@
    over a floor that rises 1 dB a quiet read, or over -60 dBm). The UV-21 has one receiver, so
    SURF goes to api->wake_hz for one settled read every WAKE_MS (WAKE_PARK_MS while a signal
    plays, which mutes it for ~15 ms), and a wake is 2 hits in the last 4 looks: a CW ID of a few
-   seconds can't slip through its gaps. It says "wake 440.8500 -61 -114", shows WAKE and calls
-   api->wake, then rests WAKE_REST_MS. A long press of # moves it to the middle's frequency.
+   seconds can't slip through its gaps. It says "wake 440.8500 -61 -114" and calls api->wake,
+   shows WAKE HEARD on the bottom line, then rests WAKE_REST_MS. Nothing shows until then (Jeff,
+   2026-11-24: the standing "WAKE 440.850" was confusing; "WAKE HEARD" is fine). A long press of # moves it to the middle's frequency.
 
    Lines (api->say): "surf 70cm 440.850 25k", "sel 441.2000 -71 -127" (MENU), "wake ...",
    "end sw=N". Never transmits; the firmware filters every register write as well.
@@ -61,7 +62,7 @@
   uint32_t t_wake, t_rest;      /* the last wake look; no looks before t_rest */          \
   int wfl;                      /* the wake frequency's floor (999 none yet) */           \
   uint8_t whist;                /* the last looks, 1 a hit, newest in bit 0 */            \
-  uint8_t wseen;                /* a wake was heard: WAKE on the bottom line */           \
+  uint8_t wseen;                /* a wake was heard: WAKE HEARD on the bottom line */     \
   uint8_t sl[NV];               /* the screen: each bin's bar length as drawn (255 never) */ \
   uint8_t scx[NV];              /* its caret's x - BX as drawn (0 none) */                \
   uint8_t scol[NV];             /* its bar's colour as drawn */                           \
@@ -109,8 +110,8 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define BAR RGB(0, 200, 90)
 #define MID RGB(255, 200, 0)
 #define LIVE RGB(255, 120, 40)
-#define CYAN RGB(110, 220, 255)
 #define ALERT RGB(255, 64, 32)
+#define CYAN RGB(110, 220, 255)
 
 /* the bands, as the K6's (BANDS[2] 70 cm is where SURF starts unless start_hz is elsewhere) */
 static const band_t BANDS[] = {
@@ -317,7 +318,6 @@ static void wake_look(sf_t *s) {
     s->whist = 0;
     s->wseen = 1;
     s->t_rest = s->now + WAKE_REST_MS;
-    note(s, "WAKE");
     api->wake(hz, d, s->wfl);
   }
 }
@@ -609,15 +609,11 @@ static void draw(sf_t *s) {
     if (cx) api->fill(BX + cx, y, CW, 2, FG);
   }
 
-  /* the bottom line: a message, the typing, or the wake's frequency */
-  if ((int32_t)(s->t_msg - s->now) > 0) {
-    p = put(t, s->msg);
-  } else if (s->ed) {
-    p = ed_line(s, t);
-  } else {
-    p = put(t, s->wseen ? "WAKE HEARD  " : "WAKE ");
-    p = api->wake_hz ? mhz(p, api->wake_hz, 3) : put(p, "OFF");
-  }
+  /* the bottom line: a message, the typing, WAKE HEARD once a wake was heard, else blank */
+  p = t;
+  if ((int32_t)(s->t_msg - s->now) > 0) p = put(t, s->msg);
+  else if (s->ed) p = ed_line(s, t);
+  else if (s->wseen) p = mhz(put(t, "WAKE HEARD  "), api->wake_hz, 3);
   *p = 0;
   for (p = t; *p; p++)
     if (*p >= 'a' && *p <= 'z') *p = (char)(*p - 32);

@@ -73,7 +73,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 8 build=" in surfing.boot_text
+    assert "blowfang uv21 port 9 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -82,6 +82,19 @@ def test_hears_the_cw_wake_on_440850_while_surfing(surfing):
     level, floor = int(surfing.wake.group(1)), int(surfing.wake.group(2))
     assert level >= floor + 20 or level > -60
     assert "uv21 wake hz=1a46d650" in surfing.wake_text                 # 440,850,000
+    # and WAKE HEARD on the bottom line (cyan), the only wake text SURF shows (Jeff, 2026-11-24)
+    wait(surfing, 3)
+    rows = surfing.screen_rgb()[152:160]
+    assert any(b > 200 and g > 150 and r < 160 for row in rows for r, g, b in row)
+
+
+def test_bottom_line_is_blank_until_a_wake_is_heard(built):
+    # no standing "WAKE 440.850" (Jeff, 2026-11-24: "totally confusing"): a band with no wake beacon
+    b = UV21Board(*built, band=[Station("a", 441_200_000, -80)])
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 6)
+    rows = b.screen_rgb()[152:160]
+    assert all(px == (0, 0, 0) for row in rows for px in row)
 
 
 def test_up_and_down_move_a_channel(surfing):
