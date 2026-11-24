@@ -25,9 +25,12 @@
      4               the demodulator: FM, DSB, AM
      5               the band's centre
      7 / 9 / 8       fixed gain down / up, the receiver's own AGC
-     *               monitor: the squelch open (the chip's too); sweeps and caret fall go on
-     0               hold: no sweeps, the carets stay put; the middle listens with the squelch as
-                     usual, the side keys still jump. Independent of monitor (Jeff, 2026-11-24)
+     *               monitor: the squelch open (the chip's too), a steady listen on the middle:
+                     no sweeps and no wake looks while it's on (port 16, Jeff, 2026-11-24: "I
+                     still hear the occasional pulsing of the scan")
+     0               hold: no retunes at all, the carets stay put; the middle listens with the
+                     squelch as usual, the side keys still jump. Independent of monitor (Jeff,
+                     2026-11-24: "Scanning should stop when hold is active")
      MENU            say the bar's frequency and level on the serial line; held: the CW wake
                      listens on the middle's frequency
      EXIT            leaves a typed range (SURF is the only screen since port 14: no VFO)
@@ -43,7 +46,8 @@
    over a floor that rises 1 dB a quiet read, or over -60 dBm). The UV-21 has one receiver, so
    SURF goes to api->wake_hz for one settled read every WAKE_MS (WAKE_PARK_MS while a signal
    plays, which mutes it for ~15 ms), and a wake is 2 hits in the last 4 looks: a CW ID of a few
-   seconds can't slip through its gaps. It says "wake 440.8500 -61 -114" and calls api->wake,
+   seconds can't slip through its gaps. No looks while hold or monitor keep the receiver on the
+   middle (port 16), unless the middle is the wake frequency: those reads are the looks. It says "wake 440.8500 -61 -114" and calls api->wake,
    shows WAKE HEARD on the bottom line, then rests WAKE_REST_MS. Nothing shows until then (Jeff,
    2026-11-24: the standing "WAKE 440.850" was confusing; "WAKE HEARD" is fine). A long press of MENU moves it to the middle's frequency
    (it was #, until long # became frequency entry).
@@ -76,6 +80,9 @@
   uint32_t scen;                /* the axis drawn for this middle and span */             \
   uint8_t ssi, sdirty;                                                                    \
   uint8_t saud, dpend;          /* the squelch as last seen; a level to show once settled */ \
+  int16_t hr[4];                /* hold: the last 4 reads on the middle */                \
+  uint8_t hi;                   /* ... the next one goes here */                          \
+  int hnf;                      /* ... and the middle's own noise floor, 1/16 dB (HNF_NONE) */ \
   uint32_t dcen, t_dq;          /* the middle as last seen; when the squelch or it moved */ \
   int sdbm;                     /* the level shown */                                     \
   char st0[34], st1[12], st2[34], st3[14];   /* the text lines as drawn */
@@ -92,6 +99,7 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define FLUSH_MS 200
 #define WAKE_MS 500
 #define WAKE_PARK_MS 1500
+#define HNF_NONE 0x7FFF        /* hold: the middle's floor not measured yet */
 #define WAKE_REST_MS 60000
 #define WAKE_DB 20
 #define WAKE_ABS (-60)
@@ -237,6 +245,7 @@ static char *ed_line(sf_t *s, char *p) {
 
 static void moved(sf_t *s) {
   s->tuned = 0;
+  s->hnf = HNF_NONE;
   if (!s->mon) {
     audio(s, 0);
     s->parked = 0;
@@ -251,8 +260,10 @@ static void wake_look(sf_t *s) {
   int d, hit;
   s->t_wake = s->now;
   if (!hz || (int32_t)(s->now - s->t_rest) < 0) return;
-  if (hz == s->cen && s->parked) {
-    d = s->sel_dbm;                      /* (parked on it: the parked reads are the look) */
+  if (hz == s->cen && (s->parked || s->hold) && s->tuned) {
+    d = s->sel_dbm;                      /* (listening on it: those reads are the look) */
+  } else if (s->hold || s->mon) {
+    return;                              /* a steady listen: no retunes (port 16) */
   } else {
     d = read_hz(s, hz, CHECK_US);
     s->tuned = 0;                        /* (the next park or sweep read tunes back) */
@@ -350,6 +361,8 @@ static void on_key(sf_t *s, int k) {
     break;
   case '0':
     s->hold ^= 1;
+    s->hnf = HNF_NONE;
+    if (!s->audio) s->t_open = s->now - HANG_MS - 1;   /* (an old open doesn't reopen it) */
     if (!s->hold) moved(s);           /* (sweeping again: check the middle first) */
     break;
   case '4':
@@ -430,7 +443,7 @@ static void park_step(sf_t *s) {
     s->parked = 0;
     return;
   }
-  if (!s->hold && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (monitor too) */
+  if (!s->hold && !s->mon && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (port 16: not under monitor) */
     int i;
     for (i = 0; i < NV && !s->qk; i++)
       if (bin_hz(s, i)) sweep_bin(s, i);
@@ -440,22 +453,31 @@ static void park_step(sf_t *s) {
   }
 }
 
-/* hold (Jeff, 2026-11-24): no sweeps at all and the carets stay where they are; SURF listens on
-   the middle with the squelch as usual (a signal over the floor opens the audio, HANG_MS after
-   it the audio shuts), or open with monitor too. The side keys still jump between the carets. */
+/* hold (Jeff, 2026-11-24): no sweeps and no wake looks, the carets stay where they are; SURF
+   listens on the middle with the squelch, or open with monitor too. The side keys still jump
+   between the carets. The squelch here is the middle's own: the mean of the last 4 reads (~90 ms)
+   against the middle's noise floor (the reads while shut, averaged), opening SQ_DB over it and
+   shutting HANG_MS after it falls HYST_DB under that. Port 15 opened on any one read SQ_DB over
+   the band's settled floor (its second lowest bin): with a read every ~20 ms, the noise crossed
+   that often enough to open the speaker (Jeff: "Hold turns on the speaker") and keep it open. */
 static void hold_step(sf_t *s) {
-  int d;
+  int d, a, k;
+  if (s->hnf == HNF_NONE) s->hnf = (s->sfl + 3) * 16;   /* (about the noise's middle; then measured) */
   if (!s->tuned) {
     d = read_at(s, C, CHECK_US);
     s->tuned = 1;
     hush(s, 0);
+    for (k = 0; k < 4; k++) s->hr[k] = (int16_t)(s->hnf >> 4);
   } else {
     s->api->delay_us(PARK_US);
     d = dbm(s);
   }
   s->check = 0;
   s->sel_dbm = d;
-  if (d >= s->sfl + SQ_DB - (s->audio ? HYST_DB : 0)) s->t_open = s->now;
+  s->hr[s->hi++ & 3] = (int16_t)d;
+  a = (s->hr[0] + s->hr[1] + s->hr[2] + s->hr[3]) * 4;   /* (the mean, 1/16 dB) */
+  if (a >= s->hnf + (SQ_DB - (s->audio ? HYST_DB : 0)) * 16) s->t_open = s->now;
+  else if (!s->audio) s->hnf += (d * 16 - s->hnf) / 16;
   s->parked = s->mon || s->now - s->t_open <= HANG_MS;
   if (s->parked != s->audio) audio(s, s->parked);
 }
