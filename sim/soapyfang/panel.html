@@ -1,0 +1,63 @@
+<!-- SoapyFang panel: added to the UV-21 workbench page by sim/soapyfang/workbench.py -->
+<style>
+  #sf { position:fixed; right:16px; bottom:16px; width:min(340px, calc(100vw - 32px)); background:var(--panel, #1e2128);
+        color:var(--fg, #e6e6e6); border-radius:12px; padding:12px 14px; box-shadow:0 4px 18px #0008; z-index:10;
+        font:13px/1.45 system-ui, sans-serif; }
+  #sf h2 { margin:0 0 6px; font-size:14px; color:var(--accent, #ffc800); }
+  #sf .k { color:var(--dim, #8a8f99); } #sf .v { font-variant-numeric:tabular-nums; }
+  #sf label { display:inline-flex; gap:6px; align-items:center; margin-right:12px; cursor:pointer; }
+  #sf .open { color:var(--ok, #3ccf7a); }
+</style>
+<div id="sf" aria-live="polite">
+  <h2>SoapyFang</h2>
+  <div><span class="k">source</span> <span class="v" id="sf-src">…</span></div>
+  <div><span class="k">window</span> <span class="v" id="sf-win">…</span></div>
+  <div><span class="k">RSSI</span> <span class="v" id="sf-rssi">…</span>
+       <span class="k">noise</span> <span class="v" id="sf-noise">…</span>
+       <span class="k">glitch</span> <span class="v" id="sf-gl">…</span></div>
+  <div style="margin-top:6px">
+    <label><input type="checkbox" id="sf-listen"> Listen</label>
+    <label title="play the channel even with the noise squelch closed"><input type="checkbox" id="sf-mon"> Monitor</label>
+  </div>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const mhz = hz => (hz / 1e6).toFixed(4);
+  setInterval(async () => {
+    try {
+      const s = await (await fetch('/api/soapyfang', {cache: 'no-store'})).json();
+      $('sf-src').textContent = s.source + (s.live ? ' (live)' : '');
+      $('sf-win').textContent = mhz(s.center_hz) + ' MHz ± ' + (s.rate * 0.45 / 1e3).toFixed(0) + ' kHz, tuned ' + mhz(s.tuned_hz);
+      $('sf-rssi').textContent = s.rssi_dbm === null ? '–' : s.rssi_dbm.toFixed(1) + ' dBm';
+      $('sf-noise').textContent = s.noise;
+      $('sf-noise').className = 'v' + (s.squelch_open ? ' open' : '');
+      $('sf-gl').textContent = s.glitch;
+    } catch (e) {}
+  }, 500);
+  let ctx = null, seq = null, at = 0;
+  async function pull() {
+    if (!$('sf-listen').checked) { seq = null; return; }
+    try {
+      const r = await fetch('/api/audio?after=' + (seq ?? 1e12) + ($('sf-mon').checked ? '&monitor=1' : ''), {cache: 'no-store'});
+      const last = Number(r.headers.get('X-Seq')), rate = Number(r.headers.get('X-Rate'));
+      const pcm = new Int16Array(await r.arrayBuffer());
+      const first = seq === null;
+      seq = last;
+      if (first || !pcm.length) return;
+      ctx = ctx || new AudioContext();
+      const buf = ctx.createBuffer(1, pcm.length, rate);
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+      const node = ctx.createBufferSource();
+      node.buffer = buf;
+      node.connect(ctx.destination);
+      at = Math.max(at, ctx.currentTime + 0.15);
+      node.start(at);
+      at += buf.duration;
+    } catch (e) {}
+  }
+  setInterval(pull, 150);
+  $('sf-listen').addEventListener('change', () => { if ($('sf-listen').checked) { ctx = ctx || new AudioContext(); ctx.resume(); } });
+})();
+</script>

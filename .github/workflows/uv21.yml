@@ -89,6 +89,7 @@ jobs:
             llvm
       - run: |
           pip install \
+            numpy \
             pytest \
             unicorn
       - name: the dumper (1 KB at most) and the bring-up image (the 60 KB app area at most)
@@ -122,4 +123,5 @@ jobs:
             tests/test_uv21_dumper.py \
             tests/test_uv21_kdh.py \
             tests/test_uv21_port.py \
-            tests/test_uv21_surf.py
+            tests/test_uv21_surf.py \
+            tests/test_soapyfang.py

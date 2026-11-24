@@ -43,6 +43,7 @@ c/k6/
 firmware/k6-aura/
 sim/
 !sim/uv21/
+!sim/soapyfang/
 modem/
 !modem/dmrvoice.py
 tools/k6_*
@@ -181,6 +182,10 @@ tests/test_uv21*
 # and its browser workbench (tests/test_uv21_surf.py runs the board)
 c/common/surf_core.inc
 sim/uv21/
+# SoapyFang: I/Q from an SDR, a SigMF file or the synthetic band, through an emulated BK48xx chip,
+# into the port image on that board (tests/test_soapyfang.py; generated signals only)
+sim/soapyfang/
+tests/test_soapyfang.py
 
 [bench]
 .github/workflows/bench-tools.yml

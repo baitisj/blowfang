@@ -7,7 +7,12 @@ of tests/test_uv21_port.py, with what that test model leaves out for an interact
 - the RF chip's registers keep what was written, and REG_67 (RSSI) reads the level of a model
   band at the frequency REG_38/39 tune: stations with a level, a width and a keying pattern
   (carrier, voice overs, a CW ident), over a noise floor, through the wide filter's skirts;
-- keys by name (the faceplate's), held for a real 150 ms or longer.
+- keys by name (the faceplate's), held for a real 150 ms or longer;
+- fast_bus (on by default): the image's RF register read (Fd6818::read_reg) and its microsecond
+  waits (hal::delay::us) are answered at their entry by a code hook, with the time they would take
+  added to the virtual clock, instead of bit by bit through the GPIO model (about 300 Python
+  callbacks a read): SURF runs about 2.5 times faster. Register writes still go bit by bit,
+  through the image's own receive-only gate, so tx_watch sees exactly what the image sends.
 
 Nothing here is a radio measurement: the levels and the filter are a model, made to give SURF
 peaks to find. SPDX-License-Identifier: MIT"""
@@ -26,11 +31,14 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
 import test_uv21_bringup as bu  # noqa: E402
 import test_uv21_port as tp  # noqa: E402
+from unicorn import UC_HOOK_CODE  # noqa: E402
+from unicorn.arm_const import UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_R0  # noqa: E402
 
 UV21 = tp.UV21
 SCLK = 60_000_000
 SYST_CSR, SYST_RVR = 0xE000E010, 0xE000E014
 TMR14_CVAL = 0x40002024
+READ_REG_US = 52                # Fd6818::read_reg: 52 waits of BIT_DELAY_US (1 us), fd6818b.rs
 B, C, F = bu.B, bu.C, bu.F
 
 # the faceplate: matrix keys as (column, row) of tests/test_uv21_bringup.py's KEY_COLS / KEY_ROWS
@@ -118,7 +126,7 @@ def default_band():
 class UV21Board(tp.Port):
     """the port image on the emulated board, with time, the RF chip's registers and the band"""
 
-    def __init__(self, image=None, syms=None, band=None, floor_dbm=-125.0, seed=1):
+    def __init__(self, image=None, syms=None, band=None, floor_dbm=-125.0, seed=1, fast_bus=True):
         if image is None:
             image, syms = build()
         super().__init__(image, syms)
@@ -131,6 +139,15 @@ class UV21Board(tp.Port):
         self.holding = None                     # (key, release at cycles)
         self.tx_watch = []                      # every write to REG_30/33/36 (state, GPIO, PA)
         self.instructions = 0
+        self.fast_bus = False
+        self.fast_reads = 0
+        if fast_bus:
+            rd = _sym(self.syms, "fd6818b", "8read_reg")
+            us = _sym(self.syms, "5delay2us")
+            if rd and us:
+                self.mu.hook_add(UC_HOOK_CODE, self._fast_read, begin=rd, end=rd)
+                self.mu.hook_add(UC_HOOK_CODE, self._fast_us, begin=us, end=us)
+                self.fast_bus = True
 
     # ---- time ----
     @property
@@ -206,6 +223,23 @@ class UV21Board(tp.Port):
         else:
             self.ext[bu.RF_SDA] = self.rf_bits.pop(0) if self.rf_bits else 1
 
+    # ---- the fast bus: called at the first instruction of read_reg / delay::us ----
+    # (read_reg's Fd6818 is zero-sized after inlining: the register number arrives in R0, the
+    # value goes back in R0; the disassembly's first use is `orn r0, r4, #0x7f` on the R0 copy)
+    def _return(self, uc):
+        uc.reg_write(UC_ARM_REG_PC, uc.reg_read(UC_ARM_REG_LR) | 1)
+
+    def _fast_read(self, uc, address, size, ud):
+        a = uc.reg_read(UC_ARM_REG_R0) & 0x7F
+        uc.reg_write(UC_ARM_REG_R0, self.reg_value(a) & 0xFFFF)
+        self.cycles += READ_REG_US * (SCLK // 1_000_000)
+        self.fast_reads += 1
+        self._return(uc)
+
+    def _fast_us(self, uc, address, size, ud):
+        self.cycles += max(1, uc.reg_read(UC_ARM_REG_R0) * (SCLK // 1_000_000))
+        self._return(uc)
+
     # ---- keys ----
     def press(self, key, down=True):
         if key in SIDE:
@@ -265,6 +299,12 @@ class UV21Board(tp.Port):
             return c + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
         return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
                 + chunk(b"IDAT", zlib.compress(bytes(raw), 6)) + chunk(b"IEND", b""))
+
+
+def _sym(syms, *parts):
+    """the address of the one symbol whose (mangled) name holds every part, or None"""
+    hits = [a for n, a in syms.items() if all(p in n for p in parts)]
+    return hits[0] & ~1 if len(hits) == 1 else None
 
 
 def build():
