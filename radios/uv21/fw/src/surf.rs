@@ -49,11 +49,11 @@ extern "C" {
 /// moves it, until the radio is switched off
 const WAKE_HZ: u32 = 440_850_000;
 
-/// SURF's state (uv21_surf_state_size(): 2,924 B in port 18, with the history strip's 1,638 B)
+/// SURF's state (uv21_surf_state_size(): 2,968 B in port 19, with the history strip's 1,638 B)
 /// and its remembered peaks (NPM = 128 x 8 B), 8-aligned, with a word or two to spare. The
 /// start line says `surf ram need= room=`, and tests/test_uv21_surf.py fails if the room no
 /// longer holds all 128 peaks, or leaves more than 64 B unused.
-const STATE_WORDS: usize = 495;
+const STATE_WORDS: usize = 500;
 const NPM: u32 = 128;
 static mut STATE: [u64; STATE_WORDS] = [0; STATE_WORDS];
 

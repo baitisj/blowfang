@@ -65,6 +65,20 @@
 #define UV21_HIST 1             /* the history strip right of the bars (port 18); 0 drops it */
 #endif
 #define HN 52                   /* the strip: this many sweeps, one a pixel column */
+#ifndef UV21_FAST
+#define UV21_FAST 1             /* fast passes over the peaks between full sweeps (port 19) */
+#endif
+#define WMAX 16                 /* the fast passes' bins at most */
+#if UV21_FAST
+#define FAST_EXTRA                                                                        \
+  uint8_t wl[WMAX], wn, wk, fast, wsi; /* the watched bins, how many, the next; fast passes on; \
+                                          the scale they're on (with wbd, wcen) */        \
+  const void *wbd;                                                                        \
+  uint32_t wcen, t_fs, t_fe;    /* the last full sweep's start and end */                 \
+  int fpass;                    /* fast passes done */
+#else
+#define FAST_EXTRA
+#endif
 #if UV21_HIST
 #define HIST_EXTRA                                                                        \
   uint8_t hring[(HN * 63 + 1) / 2];  /* the levels, a nibble each: column k, bin i at k*NV+i;   \
@@ -72,7 +86,8 @@
   uint8_t hhead, hdirty, hsi;   /* the newest column; the strip to draw; the scale it's on */ \
   const void *hbd;              /* ... its band */                                        \
   uint32_t hcen;                /* ... its middle */                                      \
-  int hsw;                      /* the sweeps counted when the newest column went in */
+  int hsw;                      /* the passes counted when the newest column went in */    \
+  uint32_t t_col;               /* ... and when */
 #else
 #define HIST_EXTRA
 #endif
@@ -103,7 +118,8 @@
   uint32_t dcen, t_dq;          /* the middle as last seen; when the squelch or it moved */ \
   int sdbm;                     /* the level shown */                                     \
   char st0[34], st1[12], st2[34], st3[14];   /* the text lines as drawn */                \
-  HIST_EXTRA
+  HIST_EXTRA                                                                              \
+  FAST_EXTRA
 #define SF_CUSTOM               /* the core's TUNE and CUSTOM */
 #define SF_RANGE                /* and its typed range (VFO/MR) */
 #define SF_ED_CHANGED(s) if (!(s)->ed) (s)->sdirty = 1   /* (TUNE drew over the top: all again) */
@@ -117,6 +133,9 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define FLUSH_MS 200
 #define WAKE_MS 500
 #define WAKE_PARK_MS 1500
+#define FULL_MS 5000           /* fast passes: a full sweep starts this often (Jeff, 2026-11-24) */
+#define FAST_MIN_MS 1000       /* ... but fast passes for this long after one, however long it took */
+#define COL_MS 250             /* the history strip: a column this often at most (52: ~13 s) */
 #define HNF_NONE 0x7FFF        /* hold: the middle's floor not measured yet */
 #define WAKE_REST_MS 60000
 #define WAKE_DB 20
@@ -436,7 +455,69 @@ static void check_bar(sf_t *s) {
   }
 }
 
+#if UV21_FAST
+/* fast passes (port 19; Jeff, 2026-11-24: "scanning only certain frequencies intelligently
+   within the range and then doing a more comprehensive scan of the entire band every five
+   seconds"): after a full sweep, the bins worth watching (the peaks it found, the carets' bins
+   and the middle, WMAX at most, loudest first) are swept again and again, each pass a column of
+   the history strip, until FULL_MS after that sweep began (and FAST_MIN_MS after it ended), then
+   the next full sweep. The carets, the floor and the peaks' memory still come from full sweeps
+   only. A move (the middle, the span, the band) ends them: a full sweep first. */
+static void watch(sf_t *s) {
+  uint8_t m[NV];
+  int i, k, n = 0;
+  for (i = 0; i < NV; i++) m[i] = (uint8_t)(bin_hz(s, i) && is_peak(s, i));
+  for (k = 0; k < s->npm; k++) {
+    pm_t *e = &s->pm[k];
+    if (e->h && !e->bad && (i = bin_of(s, e->f)) >= 0) m[i] = 1;
+  }
+  m[C] = (uint8_t)(bin_hz(s, C) != 0);
+  while (n < WMAX) {                       /* the loudest first */
+    int b = -1;
+    for (i = 0; i < NV; i++)
+      if (m[i] && (b < 0 || s->lvl[i] > s->lvl[b])) b = i;
+    if (b < 0) break;
+    m[b] = 0;
+    s->wl[n++] = (uint8_t)b;
+  }
+  s->wn = (uint8_t)n;
+  s->wk = 0;
+  s->fast = n > 0;
+  s->wbd = (const void *)s->bd;
+  s->wsi = s->si;
+  s->wcen = s->cen;
+  s->t_fe = s->now;
+}
+
+/* one bin of a fast pass; 0 when they're over (the caller sweeps instead) */
+static int fast_step(sf_t *s) {
+  int i;
+  if (!s->fast) return 0;
+  if (s->stale || s->wcen != s->cen || s->wsi != s->si || s->wbd != (const void *)s->bd) {
+    s->fast = 0;
+    s->next = 0;
+    return 0;
+  }
+  i = s->wl[s->wk];
+  if (bin_hz(s, i)) {
+    sweep_bin(s, i);
+    s->tuned = 0;
+  }
+  if (++s->wk >= s->wn) {
+    s->wk = 0;
+    s->fpass++;
+    if (s->now - s->t_fs >= FULL_MS && s->now - s->t_fe >= FAST_MIN_MS) s->fast = 0, s->next = 0;
+  }
+  if (s->api->ms() - s->t_chk >= CHK_MS) s->check = 1;
+  return 1;
+}
+#endif
+
 static void sweep_step(sf_t *s) {
+#if UV21_FAST
+  if (fast_step(s)) return;
+  if (!s->next) s->t_fs = s->now;          /* (a full sweep begins) */
+#endif
   if (bin_hz(s, s->next)) {
     sweep_bin(s, s->next);
     s->tuned = 0;
@@ -445,6 +526,9 @@ static void sweep_step(sf_t *s) {
     s->next = 0;
     sweep_done(s);
     if (s->now - s->t_sfl >= SFL_MS) measure_sfl(s);
+#if UV21_FAST
+    watch(s);
+#endif
   }
   if (s->api->ms() - s->t_chk >= CHK_MS) s->check = 1;
 }
@@ -517,6 +601,11 @@ static void hold_step(sf_t *s) {
    bin its frequency falls in, so a trail stays on its frequency; rows tuned into view show as
    none yet. A new span or band starts the strip over. Hold stops the sweeps, and so the strip. */
 #define HUNK 15
+#if UV21_FAST
+#define PASSES(s) ((s)->fpass)
+#else
+#define PASSES(s) 0
+#endif
 static const uint16_t HEAT[16] = {     /* the floor's navy, blue, green, yellow, orange, white */
   0x0065, 0x00E9, 0x016D, 0x0231, 0x036F, 0x04AD, 0x05EB, 0x3E48,
   0x8645, 0xCE42, 0xFDE0, 0xFCE2, 0xFBE4, 0xFDB1, 0xFFFF,
@@ -572,7 +661,8 @@ static int heat_q(sf_t *s, int i) {
 /* a finished sweep: its bars' colours become the newest column */
 static void hist_push(sf_t *s) {
   int i;
-  s->hsw = s->sweeps;
+  s->hsw = s->sweeps + PASSES(s);
+  s->t_col = s->now;
   hist_sync(s);
   s->hhead = (uint8_t)(s->hhead + 1 == HN ? 0 : s->hhead + 1);
   for (i = 0; i < NV; i++) hset(s, s->hhead * NV + i, heat_q(s, i));
@@ -858,7 +948,7 @@ uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room) {
     else if (s->parked) park_step(s);
     else sweep_step(s);
 #if UV21_HIST
-    if (s->sweeps != s->hsw) hist_push(s);
+    if (s->sweeps + PASSES(s) != s->hsw && s->now - s->t_col >= COL_MS) hist_push(s);
 #endif
     s->now = api->ms();
     if (s->audio != s->saud || s->cen != s->dcen) {   /* the level is due once it settles */

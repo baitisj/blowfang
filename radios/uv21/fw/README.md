@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 18 change
+## What ports 1 to 19 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -106,6 +106,15 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   the stored columns move with it, so a trail stays on its frequency, and rows tuned into view
   show as none yet; a new span or band starts the strip over. HOLD stops it with the sweeps.
   Building SURF with `-DUV21_HIST=0` drops it all (100 px bars in the old colours).
+- Port 19: a faster waterfall (the operator: scan the likely frequencies often, the whole band
+  every five seconds). After each full sweep SURF picks the bins worth watching (the peaks it
+  found, the carets' bins and the middle, 16 at most, loudest first) and sweeps only those, pass
+  after pass, until 5 s after the full sweep began (and at least 1 s after it ended); then the
+  next full sweep. Each pass updates those bars, and the strip takes a column every 250 ms
+  (52 columns: about 13 s, was about 40 s at a column a sweep). Carets, the floor and the
+  peaks' memory still come from full sweeps only; a move starts with a full sweep; HOLD stops
+  it all as before. In the emulator a watched carrier is read about 35 times a second, a quiet
+  bin once in 5 s. `-DUV21_FAST=0` drops it.
 
 ## RAM modules (port 15)
 
