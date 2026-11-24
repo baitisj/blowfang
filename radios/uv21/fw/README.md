@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 4 change
+## What ports 1 to 6 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -39,3 +39,43 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   the bootloader's own serial setup before it touches the clock (an image that hangs before the
   banner still shows it ran), and the power switch must read off for 200 ms straight before the
   radio switches itself off, as the bring-up image does (the sense line has no pull here).
+- Port 5: the 5x5 info panel drops its title line.
+- Port 6: SURF is the radio's main screen, and the 5RH's transmit-side and extra features are
+  gone: CPS programming, PTT, VOX, DTMF and ANI, dual watch, the scanner, the app launcher and the
+  overlay loader. The VFO screen stays as a plain receiver: one band, modulation, tone squelch and
+  bandwidth, the meter and the info panel.
+
+## SURF (port 6)
+
+The radio boots into SURF, the band display from `c/common/surf_core.inc` (shared with the K6
+and the RT-950). It is C (MIT), in `../surf/uv21_surf.c`. `build.rs` compiles it with clang, and
+`src/surf.rs` hands it the RF chip, the keys, the screen and the firmware's housekeeping through
+the `uv_api_t` table in `../surf/uv21_surf.h`. The panel is tall, so the band runs top to bottom,
+with the higher frequencies at the top: 63 rows of bars, two pixels each, with the listening
+frequency in the middle and carets on the peaks.
+
+| Key | In SURF |
+| --- | --- |
+| UP / DOWN | the listening frequency up / down one channel step (repeats while held) |
+| top side key | jump to the next peak above |
+| bottom side key | jump to the next peak below |
+| middle side key | next band: 2 m, 1.25 m, 70 cm, GMRS, marine and weather, air, user |
+| 1 / 3 | zoom in / out |
+| # | next channel step; a long press moves the CW wake to the listening frequency |
+| 4 / 5 | FM, DSB, AM / the band's centre |
+| 7 / 9 / 8 | fixed gain down / up / AGC again |
+| * / 0 | monitor / hold |
+| A/B | how fast the carets fall |
+| VFO/MR | type a custom range |
+| MENU | the frequency and level on the serial console |
+| EXIT | leave SURF for the VFO screen on the same frequency; A/B there comes back to SURF |
+
+SURF also listens for the CW wake beacon, on 440.850 MHz for now: it looks there every 500 ms
+while sweeping and every 1.5 s while parked, and two reads 20 dB over the floor in four looks print
+`uv21 wake hz=... dbm=... floor=...` on the console, then it rests 60 s. A long press of # moves
+the wake (in RAM; the SPI flash stays read only). The RSSI scale is the K6's (dBm = raw/2 - 174);
+it hasn't been measured on the UV-21.
+
+`tests/test_uv21_surf.py` drives SURF in the emulated radio, with a made-up band of stations, and
+`sim/uv21/` puts the same emulated radio in a browser page with a clickable faceplate
+(`python3 -m sim.uv21`, see its README).

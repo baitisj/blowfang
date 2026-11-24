@@ -214,7 +214,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 5 build=" in text
+    assert "blowfang uv21 port 6 build=" in text
     assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -300,18 +300,29 @@ def test_command_42_resets_for_a_hands_free_reflash(built):
     assert r.reset_requested
 
 
+def subpixel_fringes(port, rows):
+    lit = [port.lfb[y][x] for y in rows for x in range(128) if port.lfb[y][x]]
+    chans = lambda c: (c >> 11, (c >> 5) & 63, c & 31)  # noqa: E731
+    return lit, [c for c in lit if len({v > 0 for v in chans(c)}) > 1 and chans(c) != chans(lit[0])]
+
+
 def test_the_portrait_screen_is_drawn_with_5x5_subpixel_text(built):
-    port = Port(*built)                                                 # the standby screen, no keys
+    port = Port(*built)                                                 # SURF at boot, no keys
     port.run(until="boot done", limit=300_000_000)
     port.run(limit=30_000_000)
-    # every pixel of the 128x160 portrait panel is painted, and the info panel under the meter
-    # (5x5 text on the subpixels) has the colour fringes that only subpixel text makes
+    # every pixel of the 128x160 portrait panel is painted, and SURF's bottom line (5x5 text on the
+    # subpixels) has the colour fringes that only subpixel text makes
     assert all(port.lfb[y][x] is not None for y in range(160) for x in range(128))
-    info = [port.lfb[y][x] for y in range(127, 157) for x in range(128)]
-    lit = [c for c in info if c]
+    lit, fringes = subpixel_fringes(port, range(152, 160))
+    assert len(lit) > 60, len(lit)
+    assert fringes, "no subpixel colour fringes on SURF's bottom line"
+    # EXIT: the VFO screen, its info panel in 5x5 under the meter
+    port.pressed.add((2, 2))
+    port.run(limit=8_000_000)
+    port.pressed.clear()
+    port.run(limit=40_000_000)
+    lit, fringes = subpixel_fringes(port, range(79, 104))
     assert len(lit) > 300, len(lit)
-    chans = lambda c: (c >> 11, (c >> 5) & 63, c & 31)  # noqa: E731
-    fringes = [c for c in lit if len({v > 0 for v in chans(c)}) > 1 and chans(c) != chans(lit[0])]
     assert fringes, "no subpixel colour fringes in the info panel"
 
 
@@ -323,9 +334,9 @@ def test_it_says_alive_every_10_s(built):
     out = ""
     for _ in range(10):
         out += r.run(limit=50_000_000)
-        if "alive s=000a" in out:
+        if "alive surf s=000a" in out:
             break
-    assert "alive s=000a rssi_raw=" in out, out[-200:]
+    assert "alive surf s=000a" in out, out[-200:]                    # (SURF, the boot screen)
 
 
 def test_it_says_it_started_before_changing_the_clock(built):
@@ -334,5 +345,5 @@ def test_it_says_it_started_before_changing_the_clock(built):
     r.mu.mem_write(0x40021018, struct.pack("<I", 1 << 14))              # APB2EN: USART1 on
     r.mu.mem_write(0x4001380C, struct.pack("<I", 1 << 13 | 1 << 3))    # USART1 CTRL1: UEN, TEN
     out = r.run(until="boot done", limit=300_000_000)
-    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 5 build=")
+    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 6 build=")
     assert out.count("port start") == 1

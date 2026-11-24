@@ -3,11 +3,11 @@
 
 mod app;
 mod board;
-mod cps;
 mod device;
 mod drivers;
 mod flash_map;
 mod hal;
+mod surf;
 mod ui;
 
 use at32f421_pac as pac;
@@ -280,7 +280,7 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let mut serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 5 build=");
+    hal::con::puts("blowfang uv21 port 6 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
@@ -430,8 +430,6 @@ fn main() -> ! {
 
     let mut ui_state = ui::UiState::new();
 
-    let mut cps_handshake = cps::HandshakeDetector::new();
-
     let mut fast_tick: u32 = 0;
     // UV-21: a line every 10 s, so a logger that opens late still sees the image running
     let mut alive_10ms: u32 = 0;
@@ -448,13 +446,16 @@ fn main() -> ! {
         );
         app.poll_keys(&mut cp.SYST);
 
-        if cps_handshake.poll() {
-            cps::run_session(&mut app, &mut cp.SYST, &mut display);
+        // UV-21: SURF is the main screen (at boot, and A/B on the VFO screen goes back to it)
+        if app.take_surf_request() {
+            let start = app.watching_freq_hz();
+            let cen = surf::run(&mut app, &mut cp.SYST, &mut display, start);
+            app.resume_after_surf(&mut cp.SYST, cen);
+            ui_state = ui::UiState::new();
         }
 
-        if let Some(level) = app.radio_mut().poll_ptt() {
-            app.set_ptt(&mut cp.SYST, level);
-        }
+        // UV-21 lean receiver (port 6): no CPS session, and no PTT (PA10 is the serial line's
+        // receive pin as well, and the image never transmits)
 
         let _ = hal::uptime::now32();
 
@@ -463,7 +464,6 @@ fn main() -> ! {
             let n10 = elapsed10 / 100;
             real_tick10_last =
                 real_tick10_last.wrapping_add(n10.wrapping_mul(100));
-            app.poll_tot(&mut cp.SYST, n10);
             app.poll_clock(n10);
             app.poll_no_channels_notice(n10);
             alive_10ms += n10 as u32;
@@ -477,48 +477,31 @@ fn main() -> ! {
             }
         }
 
-        let running_app = matches!(app.mode(), app::Mode::External(_));
-
         if fast_tick % 5 == 0 {
             let rx_active = app.rssi_open() || app.audio_open();
-            if !app.is_transmitting()
-                && (!running_app || app::overlay::app_holds_rx())
-            {
+            if !app.is_transmitting() {
                 app.poll_squelch(&mut cp.SYST, 2);
             }
-            app.poll_dual_standby(&mut cp.SYST, rx_active);
             app.poll_power_save(&mut cp.SYST);
             app.poll_auto_lock(&mut cp.SYST, rx_active);
             app.poll_backlight();
             app.poll_blink();
-            app.poll_scan(&mut cp.SYST);
 
-            if !app.power_save_active() {
-                let mic = app.radio_mut().read_mic_level(&mut cp.SYST);
-                app.set_mic_level(mic);
-                app.poll_vox(&mut cp.SYST, mic, rx_active);
-            }
             app.poll_battery();
 
             let now10 = hal::uptime::now();
             let dt10 = now10.wrapping_sub(overlay_tick_last);
             overlay_tick_last = now10;
-            if matches!(app.mode(), app::Mode::External(_)) {
-                app::overlay::tick(&mut app, &mut cp.SYST, dt10 as u32);
-            }
 
-            board::set_rx_led(&dp.gpioa, rx_active && !app.is_transmitting());
-            board::set_tx_led(&dp.gpioa, app.is_transmitting());
             backlight_set(
                 &dp.gpioa,
-                app.backlight_should_be_on() || app::overlay::backlight_hold(),
+                app.backlight_should_be_on(),
             );
         }
 
         if fast_tick % 15 == 0 {
             if !app.is_transmitting()
                 && !app.power_save_is_asleep()
-                && !running_app
             {
                 let rssi = app.radio_mut().rssi(&mut cp.SYST);
                 app.set_rssi_raw(rssi as u8);

@@ -1479,6 +1479,15 @@ impl<'a> Fd6818<'a> {
         board::set_fd6818_sck(self.gpioa, false);
     }
 
+    /// UV-21 SURF (src/surf.rs): a register by number; writes still go through `rx_only`
+    pub(crate) fn reg_read(&mut self, syst: &mut SYST, addr: u8) -> u16 {
+        self.read_reg(syst, addr)
+    }
+
+    pub(crate) fn reg_write(&mut self, syst: &mut SYST, addr: u8, value: u16) {
+        self.write_reg(syst, addr, value);
+    }
+
     /// read 16bit reg
     fn read_reg(&mut self, syst: &mut SYST, addr: u8) -> u16 {
         board::set_fd6818_scn(self.gpioc, false);

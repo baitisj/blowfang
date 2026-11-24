@@ -1,10 +1,7 @@
 pub(crate) mod boot;
-pub(crate) mod cps;
-mod font55;
+pub(crate) mod font55;
 mod icons;
-mod launcher;
 mod list;
-mod scan;
 mod standby;
 
 pub(crate) use list::{draw_list, Cache, ListSource};
@@ -63,7 +60,6 @@ pub struct UiState {
     last_mode: Option<app::Mode>,
     standby: standby::Cache,
     list: list::Cache,
-    scan: scan::Cache,
 }
 
 impl UiState {
@@ -72,7 +68,6 @@ impl UiState {
             last_mode: None,
             standby: standby::Cache::new(),
             list: list::Cache::new(),
-            scan: scan::Cache::new(),
         }
     }
 }
@@ -113,15 +108,9 @@ pub fn draw(
     if state.last_mode != Some(mode) {
         state.standby = standby::Cache::new();
         state.list = list::Cache::new();
-        state.scan = scan::Cache::new();
     }
     state.last_mode = Some(mode);
     match mode {
-        app::Mode::AppMenu => {
-            launcher::draw_app_menu(lcd, app, &mut state.list)
-        }
-        app::Mode::Scan => scan::draw_scan(lcd, app, &mut state.scan),
-        app::Mode::External(_) => app::overlay::draw(lcd, app, syst),
-        _ => standby::draw_standby(lcd, app, &mut state.standby),
+        app::Mode::Standby => standby::draw_standby(lcd, app, &mut state.standby),
     };
 }
