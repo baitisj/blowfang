@@ -85,6 +85,8 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define WAKE_REST_MS 60000
 #define WAKE_DB 20
 #define WAKE_ABS (-60)
+#define WAKE_FLOOR_MIN (-135)  /* the wake floor never below: a read under it is a glitch (a retune not
+                                   settled), and a floor pinned there makes the next noise a hit */
 #define DBM_SETTLE_MS 100      /* the level is shown this long after the squelch or the middle moves */
 
 /* ---- the screen: 128 x 160 ---- */
@@ -301,11 +303,12 @@ static void wake_look(sf_t *s) {
     d = read_hz(s, hz, CHECK_US);
     s->tuned = 0;                        /* (the next park or sweep read tunes back) */
   }
-  if (s->wfl == 999) s->wfl = d;
+  if (s->wfl == 999) s->wfl = d < WAKE_FLOOR_MIN ? WAKE_FLOOR_MIN : d;
   hit = d >= s->wfl + WAKE_DB || d > WAKE_ABS;
   if (!hit) {
     if (d < s->wfl) s->wfl = d;
     else s->wfl++;
+    if (s->wfl < WAKE_FLOOR_MIN) s->wfl = WAKE_FLOOR_MIN;
   }
   s->whist = (uint8_t)((s->whist << 1) | hit);
   if (((s->whist & 1) + (s->whist >> 1 & 1) + (s->whist >> 2 & 1) + (s->whist >> 3 & 1)) >= 2) {
