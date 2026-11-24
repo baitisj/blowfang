@@ -181,6 +181,46 @@ def test_a_typed_custom_range_is_at_most_16_mhz(surfing):
     assert (m.group(1), m.group(2)) == ("437.000", "453.000")
 
 
+def user_line(board, out):
+    m = re.search(r"user (\d+\.\d+) (\d+\.\d+)", out)
+    if not m:
+        m, more = until(board, r"user (\d+\.\d+) (\d+\.\d+)", 4)
+        out += more
+    assert m, out[-300:]
+    return m.group(1), m.group(2)
+
+
+def test_long_pound_types_a_frequency_that_centres_custom(built):
+    # Jeff, 2026-11-24: "pressing and holding the pound key function as a VFO ... this frequency
+    # becomes the new center of the scan range and jumps to CUSTOM scan mode"
+    b = UV21Board(*built, band=[Station("a", 441_200_000, -80)])
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 2)
+    b.tap("#", 1.3)                                                     # held: frequency entry
+    wait(b, 1.6)
+    out = "".join(tap(b, k, 0.2) for k in ["4", "4", "6", "*", "5", "MENU"])
+    assert user_line(b, out) == ("438.500", "454.500")                 # 70 cm's 20 MHz: 16 kept
+    assert sel(b) == 446_500_000
+
+
+def test_long_middle_side_key_centres_custom_on_the_middle(built):
+    # Jeff, 2026-11-24: "pressing and holding the center side button change the CENTER of the scan
+    # range to whatever is currently tuned in the middle of the display ... jump to CUSTOM"
+    b = UV21Board(*built, band=[Station("a", 441_200_000, -80)])
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 2)
+    tap(b, "UP")
+    tap(b, "UP")                                                        # 439.550
+    b.tap("SIDE2", 1.3)
+    m, out = until(b, r"user (\d+\.\d+) (\d+\.\d+)", 4)
+    assert m, out[-300:]
+    assert (m.group(1), m.group(2)) == ("431.550", "447.550")
+    wait(b, 0.6)                                                        # (let go of it)
+    assert sel(b) == 439_550_000
+    tap(b, "SIDE2", 1.0)                                                # (short: still the next band)
+    assert sel(b) == 146_000_000                                        # (2 m's centre)
+
+
 class _Tunes(dict):
     """the board's RF registers, noting every frequency REG_38/39 are written to"""
     def __setitem__(self, a, v):

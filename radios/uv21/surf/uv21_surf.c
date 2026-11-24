@@ -13,11 +13,13 @@
      UP / DOWN       the listening frequency one channel up / down (held: repeats)
      top side key    jump to the next caret above (a higher frequency)
      bottom side key jump to the next caret below
-     middle side key next band: 2m, 1.25m, 70cm, GMRS, MAR/WX, AIR, USER
+     middle side key next band: 2m, 1.25m, 70cm, GMRS, MAR/WX, AIR, CUSTOM; held: CUSTOM centred
+                     on the middle's frequency, as wide as the band was (16 MHz at most)
      A/B             how fast the carets fall: 1 min, 5 min, 20 min, 15 s (a held A/B could
                      hand a playing signal to VFO B, as flux_radio's K6 SURF does: not yet)
-     VFO/MR          type a custom range (USER): low MHz, #, high MHz, MENU (16 MHz at most)
-     #               next channel step; held: the CW wake listens on the middle's frequency
+     VFO/MR          type a custom range (CUSTOM): low MHz, #, high MHz, MENU (16 MHz at most)
+     #               next channel step; held: type one frequency (* for the point), MENU, and
+                     CUSTOM is centred on it, as wide as the band was: the VFO, in SURF
      1 / 3           zoom in / out (+-100 kHz to +-25 MHz)
      4               the demodulator: FM, DSB, AM
      5               the band's centre
@@ -25,7 +27,8 @@
      *               monitor: the squelch open (the chip's too); sweeps and caret fall go on
      0               hold: no sweeps, the carets stay put; the middle listens with the squelch as
                      usual, the side keys still jump. Independent of monitor (Jeff, 2026-11-24)
-     MENU            say the bar's frequency and level on the serial line
+     MENU            say the bar's frequency and level on the serial line; held: the CW wake
+                     listens on the middle's frequency
      EXIT            leaves a typed range (SURF is the only screen since port 14: no VFO)
 
    The scale, the sweep of a bin, the floor, the carets and the jumps are the K6's own code,
@@ -41,7 +44,8 @@
    plays, which mutes it for ~15 ms), and a wake is 2 hits in the last 4 looks: a CW ID of a few
    seconds can't slip through its gaps. It says "wake 440.8500 -61 -114" and calls api->wake,
    shows WAKE HEARD on the bottom line, then rests WAKE_REST_MS. Nothing shows until then (Jeff,
-   2026-11-24: the standing "WAKE 440.850" was confusing; "WAKE HEARD" is fine). A long press of # moves it to the middle's frequency.
+   2026-11-24: the standing "WAKE 440.850" was confusing; "WAKE HEARD" is fine). A long press of MENU moves it to the middle's frequency
+   (it was #, until long # became frequency entry).
 
    Lines (api->say): "surf 70cm 440.850 25k", "sel 441.2000 -71 -127" (MENU), "wake ...",
    "fe rx path hi" (6, the front end's switch), "end sw=N". Never transmits; the firmware filters every register write as well.
@@ -58,7 +62,7 @@
 #define USER_MAX 630000000u
 #define ED_LEN 7
 #define SF_EXTRA                                                                          \
-  band_t ub;                    /* USER */                                                \
+  band_t ub;                    /* CUSTOM */                                                \
   uint8_t ed, en[2];            /* VFO/MR: the field being typed (1 low, 2 high), lengths */ \
   char eb[2][ED_LEN + 1];                                                                  \
   uint32_t t_wake, t_rest;      /* the last wake look; no looks before t_rest */          \
@@ -199,7 +203,7 @@ static void gain(sf_t *s) {
   s->t_msg = s->now + MSG_MS;
 }
 
-/* ---- the custom range (USER), as the K6's V ---- */
+/* ---- the custom range (CUSTOM; the K6's USER), as the K6's V ---- */
 
 static void user_set(sf_t *s, uint32_t lo, uint32_t hi) {
   band_t *u = &s->ub;
@@ -211,7 +215,7 @@ static void user_set(sf_t *s, uint32_t lo, uint32_t hi) {
   for (i = 0; i < NSPANS - 1 && 2 * U_HZ * SPANS[i] < hi - lo; i++) {}
   u->si = (uint8_t)i;
   u->am = lo >= 108000000u && hi <= 137000000u;
-  put(u->name, "USER")[0] = 0;
+  put(u->name, "CUSTOM")[0] = 0;   /* (the operator's name for it) */
 }
 
 static uint32_t ed_hz(const char *t) {
@@ -253,8 +257,32 @@ static int ed_done(sf_t *s) {
   return 1;
 }
 
+/* CUSTOM centred on hz, as wide as the band on screen (16 MHz at most, 2 at least): long # and a
+   typed frequency, or a long press of the middle side key on the middle (Jeff, 2026-11-24) */
+static int centre_custom(sf_t *s, uint32_t hz) {
+  uint32_t w = s->bd->hi - s->bd->lo, lo, hi;
+  if (hz < USER_MIN || hz > USER_MAX) return 0;
+  if (w > SURF_USER_SPAN) w = SURF_USER_SPAN;
+  if (w < 2000000u) w = 2000000u;
+  lo = hz > USER_MIN + w / 2 ? hz - w / 2 : USER_MIN;
+  hi = lo + w;
+  if (hi > USER_MAX) hi = USER_MAX, lo = hi - w;
+  user_set(s, lo, hi);
+  band(s, &s->ub);
+  recentre(s, hz);
+  moved(s);
+  {
+    char *p = put(s->ln, "user ");
+    p = mhz(p, lo, 3);
+    *p++ = ' ';
+    say_end(s, mhz(p, hi, 3));
+  }
+  return 1;
+}
+
+/* the typing: ed 1 / 2 the low / high end of a range (VFO/MR), 3 one frequency (long #) */
 static void ed_key(sf_t *s, int k) {
-  int f = s->ed - 1, n = s->en[f], i;
+  int f = s->ed == 2, n = s->en[f], i;
   char *t = s->eb[f];
   if (k >= '0' && k <= '9') {
     if (n < ED_LEN) t[n++] = (char)k;
@@ -264,9 +292,12 @@ static void ed_key(sf_t *s, int k) {
   } else if (k == 'D') {
     if (n) n--;
   } else if (k == '#') {
-    s->ed = (uint8_t)(3 - s->ed);
+    if (s->ed != 3) s->ed = (uint8_t)(3 - s->ed);
   } else if (k == 'M' || k == 'V') {
-    if (s->en[0] && ed_done(s)) s->ed = 0;
+    if (s->ed == 3) {
+      if (n && centre_custom(s, ed_hz(t))) s->ed = 0;
+      else note(s, "bad freq");
+    } else if (s->en[0] && ed_done(s)) s->ed = 0;
     else note(s, "bad range");
   } else if (k == 'X') {
     s->ed = 0;
@@ -276,6 +307,11 @@ static void ed_key(sf_t *s, int k) {
 }
 
 static char *ed_line(sf_t *s, char *p) {
+  if (s->ed == 3) {
+    p = put(put(p, "TUNE "), s->eb[0]);
+    *p++ = '_';
+    return p;
+  }
   p = put(p, "SET ");
   p = put(p, s->eb[0]);
   if (s->ed == 1) *p++ = '_';
@@ -362,7 +398,15 @@ static void on_key(sf_t *s, int k) {
     stepn(s->msg + 5, s->ch)[0] = 0;
     s->msg[4] = ' ';
     break;
-  case '#' | UV_LONG:                     /* the wake listens here now */
+  case '#' | UV_LONG:                     /* type a frequency: CUSTOM centred on it */
+    s->ed = 3;
+    s->en[0] = 0;
+    s->eb[0][0] = 0;
+    break;
+  case 'N' | UV_LONG:                     /* the middle side key, long: CUSTOM centred here */
+    centre_custom(s, s->cen);
+    break;
+  case 'M' | UV_LONG:                     /* the wake listens here now */
     ((uv_api_t *)s->api)->wake_hz = s->cen;   /* (the caller's: it outlasts a run) */
     s->wfl = 999;
     s->whist = 0;

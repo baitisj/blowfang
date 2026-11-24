@@ -75,7 +75,11 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   radio, the flashlight and the overlay ABI crate are gone, and so are the SPI flash's VFO,
   channel, contact and FM records (`src/app/mod.rs` keeps the radio, keypad, battery and
   backlight timer). EXIT no longer leaves SURF. Narrow bandwidth uses the stock tune's REG_43
-  (0x4008). The image is about half the size: 22.7 KB, was 45.4 KB.
+  (0x4008). The image is about half the size: 23 KB, was 45.4 KB.
+  In its place, SURF tunes like a VFO: a long # opens frequency entry, and the frequency typed
+  becomes the middle of a CUSTOM range as wide as the band on screen (16 MHz at most); a long
+  press of the middle side key does the same on the frequency in the middle. Moving the CW wake
+  went from long # to long MENU. The custom range shows as CUSTOM (was USER).
 
 ## SURF (port 6)
 
@@ -91,21 +95,21 @@ frequency in the middle and carets on the peaks.
 | UP / DOWN | the listening frequency up / down one channel step (repeats while held) |
 | top side key | jump to the next peak above |
 | bottom side key | jump to the next peak below |
-| middle side key | next band: 2 m, 1.25 m, 70 cm, GMRS, marine and weather, air, user |
+| middle side key | next band: 2 m, 1.25 m, 70 cm, GMRS, marine and weather, air, CUSTOM; held: CUSTOM centred on the middle's frequency |
 | 1 / 3 | zoom in / out |
-| # | next channel step; a long press moves the CW wake to the listening frequency |
+| # | next channel step; held: type a frequency (`*` for the point, DOWN deletes), MENU, and CUSTOM is centred on it (the VFO, in SURF) |
 | 4 / 5 | FM, DSB, AM / the band's centre |
 | 7 / 9 / 8 | fixed gain down / up / AGC again |
 | 6 | the receive band switch's next way (port 12, while its polarity is unknown) |
 | * / 0 | monitor (squelch open) / hold (no sweeps, carets frozen); independent |
 | A/B | how fast the carets fall |
 | VFO/MR | type a custom range |
-| MENU | the frequency and level on the serial console |
+| MENU | the frequency and level on the serial console; held: the CW wake moves to the listening frequency |
 | EXIT | leave a typed range (SURF is the only screen) |
 
 SURF also listens for the CW wake beacon, on 440.850 MHz for now: it looks there every 500 ms
 while sweeping and every 1.5 s while parked, and two reads 20 dB over the floor in four looks print
-`uv21 wake hz=... dbm=... floor=...` on the console and show WAKE HEARD, then it rests 60 s. A long press of # moves
+`uv21 wake hz=... dbm=... floor=...` on the console and show WAKE HEARD, then it rests 60 s. A long press of MENU moves
 the wake (in RAM; the SPI flash stays read only). The RSSI scale is the K6's (dBm = raw/2 - 174);
 it hasn't been measured on the UV-21.
 
