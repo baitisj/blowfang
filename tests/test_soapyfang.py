@@ -167,17 +167,41 @@ class FakePlutoBench:
         self.calls.append(("park",))
 
 
-def fake_readdev(tmp_path, monkeypatch, i=1024, q=-512):
-    """an iio_readdev on PATH that streams one constant int16 I/Q sample until its reader goes"""
+def fake_readdev(tmp_path, monkeypatch, i=1024, q=-512, noise=False):
+    """an iio_readdev on PATH that streams one constant int16 I/Q sample (or, with noise, one
+    4096-sample block of noise) until its reader goes"""
     d = tmp_path / "bin"
     d.mkdir()
     exe = d / "iio_readdev"
-    exe.write_text("#!/usr/bin/env python3\nimport struct, sys\n"
-                   f"b = struct.pack('<hh', {i}, {q}) * 4096\n"
+    block = ("import random\nrandom.seed(5)\n"
+             "b = b''.join(struct.pack('<hh', int(random.gauss(0, 200)), int(random.gauss(0, 200)))"
+             " for _ in range(4096))\n") if noise else f"b = struct.pack('<hh', {i}, {q}) * 4096\n"
+    exe.write_text("#!/usr/bin/env python3\nimport struct, sys\n" + block +
                    "try:\n    while True:\n        sys.stdout.buffer.write(b)\n"
                    "except (BrokenPipeError, OSError):\n    pass\n")
     exe.chmod(0o755)
     monkeypatch.setenv("PATH", f"{d}{os.pathsep}{os.environ['PATH']}")
+
+
+def test_a_live_retune_reads_the_floor_not_a_hole(tmp_path, monkeypatch):
+    """a retune empties the live spectrum; the next RSSI read waits for the reader instead of
+    returning -160 dBm. A -160 look set the CW wake's floor there, so ordinary noise 38 dB above
+    it heard WAKE every minute (the port 8 session, 11-24)"""
+    fake_readdev(tmp_path, monkeypatch, noise=True)
+    src = PlutoIioSource(FakePlutoBench(), rate=2_400_000, center_hz=440_000_000, gain=40)
+    chip = ChipModel(src)
+    chip.start()
+    try:
+        chip.tune(440_100_000)
+        before = chip.rssi_dbm()
+        assert abs(before - (-122.0)) < 6                     # the auto floor
+        for hz in (446_000_000, 440_850_000, 433_000_000, 440_850_000):
+            chip.tune(hz)                                     # out of the window: a retune each
+            got = chip.rssi_dbm()
+            assert abs(got - before) < 6, (hz, got, before)
+        assert chip.retunes >= 4
+    finally:
+        chip.stop()
 
 
 def test_pluto_source_receives_only_and_parks(tmp_path, monkeypatch):

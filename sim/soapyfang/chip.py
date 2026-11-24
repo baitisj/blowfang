@@ -21,6 +21,7 @@ from __future__ import annotations
 import collections
 import math
 import threading
+import time
 
 import numpy as np
 
@@ -42,6 +43,9 @@ class ChipModel:
         self.norm = self.fft_n * float(np.sum(self.win ** 2))
         self.bins = np.fft.fftshift(np.fft.fftfreq(self.fft_n, 1 / self.rate))
         self.lock = threading.RLock()
+        self.fresh = threading.Condition(self.lock)    # live mode: a spectrum arrived
+        self.gen = 0                                   # bumped on each retune
+        self.floor_dbm = None                          # the last spectrum's median, as a channel
         self.t = 0.0                            # source time consumed (virtual mode), s
         self.tuned_hz = None
         self._reset_window()
@@ -81,6 +85,7 @@ class ChipModel:
     def _retune(self, hz):
         if self.src.tune(hz):
             self.retunes += 1
+            self.gen += 1
             self._reset_window()
             self._reset_audio()
 
@@ -122,14 +127,19 @@ class ChipModel:
 
         def loop():
             while self._run:
+                gen = self.gen
                 try:
                     x = self.src.read(self.fft_n * 4)
                 except Exception as e:           # the SDR went away: say so on the page, stop reading
                     if self._run:
                         self.error = str(e) or type(e).__name__
+                    with self.lock:
+                        self.fresh.notify_all()
                     return
                 with self.lock:
-                    self._ingest(x)
+                    if gen == self.gen:          # (a read a retune overtook holds the old LO's)
+                        self._ingest(x)
+                        self.fresh.notify_all()
         self._thread = threading.Thread(target=loop, name="soapyfang-rx", daemon=True)
         self._thread.start()
 
@@ -150,9 +160,10 @@ class ChipModel:
             p = np.fft.fftshift(np.abs(np.fft.fft(blk * self.win)) ** 2) / self.norm
             self.spec = p if self.spec is None else 0.5 * self.spec + 0.5 * p
             buf = buf[n:]
+            floor = float(np.median(self.spec)) * self.bw / (self.rate / self.fft_n)
             if self.src.dbm_offset is None and self.src.auto_floor_dbm is not None:
-                floor = float(np.median(self.spec)) * self.bw / (self.rate / self.fft_n)
                 self.src.dbm_offset = self.src.auto_floor_dbm - 10 * math.log10(floor + 1e-30)
+            self.floor_dbm = 10 * math.log10(floor + 1e-30) + (self.src.dbm_offset or 0.0)
         self.pending = buf.copy()
         if self.tuned_hz:
             self._audio(x)
@@ -182,11 +193,20 @@ class ChipModel:
             pcm = np.clip(a / PCM_FULL_HZ * 32767, -32768, 32767).astype(np.int16)
             self.pcm.append((self.pcm_seq, pcm, self.noise_raw() <= 60))
 
-    def _fresh(self):
-        """a spectrum to read: virtual mode reads one block now if a retune emptied it"""
+    def _fresh(self, wait_s=0.3):
+        """a spectrum to read: virtual mode reads one block now if a retune emptied it; live mode
+        waits for the reader (a retune drops ~70 ms of stale buffers first), as the real chip's
+        RSSI settles after a retune instead of reading nothing"""
         if self.spec is None and not self.src.live:
             self._ingest(self.src.read(self.fft_n))
             self.t += self.fft_n / self.rate
+        elif self.spec is None and self._thread is not None:
+            end = time.monotonic() + wait_s
+            while self.spec is None and self._run and self.error is None:
+                left = end - time.monotonic()
+                if left <= 0:
+                    break
+                self.fresh.wait(left)
 
     # ---- what the registers report ----
     def rssi_dbm(self, hz=None, bw=None):
@@ -198,8 +218,8 @@ class ChipModel:
             if not self.in_window(hz, bw) and self.src.tunable:
                 self._retune(hz)
             self._fresh()
-            if self.spec is None:
-                return -160.0
+            if self.spec is None:   # (live, nothing yet: the floor, never a -160 dB hole)
+                return -160.0 if self.floor_dbm is None else self.floor_dbm
             binw = self.rate / self.fft_n
             if self.in_window(hz, bw):
                 off = hz - self.src.center_hz
