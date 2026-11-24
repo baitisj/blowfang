@@ -119,6 +119,11 @@ def rt_record(slot, rx_hz, call=b"", off=0, tx_tone=0, state=0xFFFC):
                              b"", call, 0, 0, 0, 0, slot + 1, slot + 1, 0)
 
 
+# GPIOA: SURF watches PA15 (POW_DET, high once the power knob opens: km_power_switch_off); it
+# reads low here, the knob on
+GPIOA_POWER_ON = (0x48000000, 0x400, lambda uc, off, size, st: 0, lambda uc, off, size, value, st: None)
+
+
 def go(signals, keys, rx_hz=440_600_000, level=9, regs=None, src=SRC, bumps=(), table=()):
     from modem import k6mod
     code, entry = k6mod.build(src)
@@ -130,7 +135,7 @@ def go(signals, keys, rx_hz=440_600_000, level=9, regs=None, src=SRC, bumps=(), 
     r = {**START, **AURA, 0x67: m.rssi, 0x47: 0x6040, **(regs or {})}
     ret, said, regs, writes = run(r, code=(code, entry), tune=m.tune, level=level, lcd=lcd, keypad=keys,
                                   spare=ARENA - 24 - len(code), count=3_000_000_000, rx_hz=rx_hz,
-                                  flash={"mem": mem}, paint=True)
+                                  flash={"mem": mem}, paint=True, mmio=[GPIOA_POWER_ON])
     lcd["tunes"] = m.tunes
     return ret, said, regs, writes, lcd
 

@@ -63,7 +63,7 @@
 #define NK 1                    /* (sf_t's repeater table: not used here yet) */
 #define SF_API rt_api_t
 /* a bin chip 1 must not read: inside the guard round where chip 0 is tuned */
-#define SF_SKIP(s, i) ((s)->lhz && ((s)->hz[i] > (s)->lhz ? (s)->hz[i] - (s)->lhz : (s)->lhz - (s)->hz[i]) < GUARD_HZ)
+#define SF_SKIP(s, i) ((s)->lhz && (bin_hz(s, i) > (s)->lhz ? bin_hz(s, i) - (s)->lhz : (s)->lhz - bin_hz(s, i)) < GUARD_HZ)
 #define SF_EXTRA                                                                          \
   uint32_t lhz;                 /* where chip 0 is tuned (0: not yet) */                  \
   uint32_t t_ltune;             /* when, ms */                                            \
@@ -132,7 +132,7 @@ static void moved(sf_t *s) {
   int i;
   if (s->refine && !s->ptt) {
     for (i = C - KI; i <= C + KI && !s->qk; i++)
-      if (s->hz[i] && !SF_SKIP(s, i)) sweep_bin(s, i);
+      if (bin_hz(s, i) && !SF_SKIP(s, i)) sweep_bin(s, i);
     if (!s->qk && refine_lens(s)) return;
   }
   s->refine = 0;
@@ -190,9 +190,9 @@ static void measure_loff(sf_t *s) {
   lis_audio(s, 0);
   api->rf_off(RT_CHIP_SWEEP);
   for (j = 3; j < NV; j += 8) {
-    if (!s->hz[j]) continue;
-    api->rf_tune(RT_CHIP_LISTEN, s->hz[j]);
-    s->lhz = s->hz[j];
+    if (!bin_hz(s, j)) continue;
+    api->rf_tune(RT_CHIP_LISTEN, bin_hz(s, j));
+    s->lhz = bin_hz(s, j);
     api->delay_us(CHECK_US);
     d = api->rf_dbm(RT_CHIP_LISTEN);
     if (d < a) b = a, a = d;
@@ -240,13 +240,13 @@ static void guard_fill(sf_t *s) {
   }
   for (i = 0; i < NV; i++) {
     uint32_t d;
-    if (!s->hz[i] || !SF_SKIP(s, i)) continue;
+    if (!bin_hz(s, i) || !SF_SKIP(s, i)) continue;
     s->heard[i >> 5] &= ~(1u << (i & 31));
     s->cf[i] = 0;
-    d = s->hz[i] > s->lhz ? s->hz[i] - s->lhz : s->lhz - s->hz[i];
+    d = bin_hz(s, i) > s->lhz ? bin_hz(s, i) - s->lhz : s->lhz - bin_hz(s, i);
     if (d <= LHALF_HZ && q) {
       s->lvl[i] = (uint8_t)q;
-      s->pk[i] = s->hz[i];
+      s->pk[i] = bin_hz(s, i);
     } else if (!s->lvl[i]) {
       s->lvl[i] = s->qfl;               /* (never read: at the floor, not blank) */
     } else if (s->lvl[i] > s->qfl) {
@@ -257,7 +257,7 @@ static void guard_fill(sf_t *s) {
 
 static void sweep_step(sf_t *s) {
   int i = s->next;
-  if (s->hz[i] && !SF_SKIP(s, i)) sweep_bin(s, i);
+  if (bin_hz(s, i) && !SF_SKIP(s, i)) sweep_bin(s, i);
   if (++s->next >= NV) {
     s->next = 0;
     guard_fill(s);
@@ -360,11 +360,11 @@ static void show(sf_t *s, rt_view_t *v) {
   v->ptt = s->ptt;
   v->floor_q = s->qfl;
   for (i = 0; i < NV; i++) {
-    uint32_t d = s->hz[i] > s->lhz ? s->hz[i] - s->lhz : s->lhz - s->hz[i];
-    v->hz[i] = s->hz[i];
+    uint32_t d = bin_hz(s, i) > s->lhz ? bin_hz(s, i) - s->lhz : s->lhz - bin_hz(s, i);
+    v->hz[i] = bin_hz(s, i);
     v->lvl[i] = s->lvl[i];
     v->caret[i] = 0;
-    v->flags[i] = (uint8_t)(!s->hz[i] || !SF_SKIP(s, i) ? 0 : d <= LHALF_HZ ? SURF2_LISTEN : SURF2_HELD);
+    v->flags[i] = (uint8_t)(!bin_hz(s, i) || !SF_SKIP(s, i) ? 0 : d <= LHALF_HZ ? SURF2_LISTEN : SURF2_HELD);
   }
   for (k = 0; k < s->npm; k++) {
     pm_t *e = &s->pm[k];

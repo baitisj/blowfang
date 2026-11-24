@@ -73,7 +73,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 9 build=" in surfing.boot_text
+    assert "blowfang uv21 port 10 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -170,3 +170,15 @@ def test_never_gives_the_rf_chip_a_transmit_setting(surfing):
             assert v == 0x0022, hex(v)
         elif reg == REG_GPIO:
             assert not v & 0x001C, hex(v)
+
+
+def test_a_typed_custom_range_is_at_most_16_mhz(surfing):
+    # VFO/MR 430 # 460 MENU: 30 MHz asked, the middle 16 MHz kept (Jeff, 2026-11-24: recentre's
+    # offsets reach +-16 MHz, "more than enough bandwidth")
+    out = "".join(tap(surfing, k, 0.2) for k in ["VM", "4", "3", "0", "#", "4", "6", "0", "MENU"])
+    m = re.search(r"user (\d+\.\d+) (\d+\.\d+)", out)
+    if not m:
+        m, more = until(surfing, r"user (\d+\.\d+) (\d+\.\d+)", 4)
+        out += more
+    assert m, out[-300:]
+    assert (m.group(1), m.group(2)) == ("437.000", "453.000")

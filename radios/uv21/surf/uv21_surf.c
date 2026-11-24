@@ -14,8 +14,9 @@
      top side key    jump to the next caret above (a higher frequency)
      bottom side key jump to the next caret below
      middle side key next band: 2m, 1.25m, 70cm, GMRS, MAR/WX, AIR, USER
-     A/B             how fast the carets fall: 1 min, 5 min, 20 min, 15 s
-     VFO/MR          type a custom range (USER): low MHz, #, high MHz, MENU
+     A/B             how fast the carets fall: 1 min, 5 min, 20 min, 15 s (a held A/B could
+                     hand a playing signal to VFO B, as flux_radio's K6 SURF does: not yet)
+     VFO/MR          type a custom range (USER): low MHz, #, high MHz, MENU (16 MHz at most)
      #               next channel step; held: the CW wake listens on the middle's frequency
      1 / 3           zoom in / out (+-100 kHz to +-25 MHz)
      4               the demodulator: FM, DSB, AM
@@ -235,6 +236,10 @@ static int ed_done(sf_t *s) {
     if (hi > USER_MAX) hi = USER_MAX;
   }
   if (lo < USER_MIN || hi > USER_MAX || hi <= lo) return 0;
+  if (hi - lo > SURF_USER_SPAN) {        /* (wider: the middle SURF_USER_SPAN of it) */
+    lo += (hi - lo - SURF_USER_SPAN) / 2;
+    hi = lo + SURF_USER_SPAN;
+  }
   user_set(s, lo, hi);
   band(s, &s->ub);
   if (!s->en[1]) recentre(s, ed_hz(s->eb[0])), moved(s);
@@ -416,7 +421,7 @@ static void check_bar(sf_t *s) {
   if (d < s->sfl) s->sfl = d;
   if (s->stale && (d >= s->sfl + SQ_DB || s->refine)) {
     for (i = C - KI; i <= C + KI && !s->qk; i++)
-      if (s->hz[i]) sweep_bin(s, i);
+      if (bin_hz(s, i)) sweep_bin(s, i);
     if (s->qk) return;
     if (s->refine && refine_lens(s)) return;
     s->tuned = 0;
@@ -432,7 +437,7 @@ static void check_bar(sf_t *s) {
 }
 
 static void sweep_step(sf_t *s) {
-  if (s->hz[s->next]) {
+  if (bin_hz(s, s->next)) {
     sweep_bin(s, s->next);
     s->tuned = 0;
   }
@@ -466,7 +471,7 @@ static void park_step(sf_t *s) {
   if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {
     int i;
     for (i = 0; i < NV && !s->qk; i++)
-      if (s->hz[i]) sweep_bin(s, i);
+      if (bin_hz(s, i)) sweep_bin(s, i);
     if (!s->qk) sweep_done(s);
     s->tuned = 0;
     s->t_full = s->api->ms();
@@ -516,7 +521,7 @@ static void axis(sf_t *s) {
   s->ssi = s->si;
   api->fill(LX, BY - 3, AXX - LX, 2 * NV + 5, BG);
   for (i = 0; i < NV; i++)               /* the axis line beside each bin in the band */
-    api->fill(AXX, BINY(i), 1, 2, s->hz[i] ? DIM : BG);
+    api->fill(AXX, BINY(i), 1, 2, bin_hz(s, i) ? DIM : BG);
   for (i = 0; i < (int)(sizeof TICKS / 2); i++) {
     uint32_t o = 1000u * TICKS[i];
     int e2, big = TICKS[i] == 20 || TICKS[i] == 100 || TICKS[i] == 1000 || TICKS[i] == 10000;
@@ -596,8 +601,8 @@ static void draw(sf_t *s) {
   }
   /* the bars, each redrawn only when its length, colour or caret changed */
   for (i = 0; i < NV; i++) {
-    int y = BINY(i), len = s->hz[i] ? bar_len(s, i) : 0, cx = 0;
-    uint8_t col = !s->hz[i] ? 0 : i == C ? (s->audio ? 3 : 2) : 1;
+    int y = BINY(i), len = bin_hz(s, i) ? bar_len(s, i) : 0, cx = 0;
+    uint8_t col = !bin_hz(s, i) ? 0 : i == C ? (s->audio ? 3 : 2) : 1;
     if (top[i]) {
       cx = 1 + (int)((uint32_t)top[i] * (BW - CW - 2) / HMAX);
       if (cx < len + 2) cx = len + 2;         /* (it rides on its bar, never inside it) */

@@ -48,6 +48,8 @@
 #define KI 8                    /* the lens's edge: bin C+-8 is +-20 kHz from the middle */
 #define U_HZ 2500u              /* the unit of channel steps and spans */
 #define L_HZ 500u               /* the unit of every bin's offset (the inner steps are finer) */
+#define SURF_USER_SPAN 16000000u   /* a typed custom range's widest (Jeff, 2026-11-24): recentre's
+                                     int16 offsets reach +-16 MHz */
 #ifndef ROWS
 #define ROWS 30                 /* bitmap rows (KM_WF_ROWS on the K6) */
 #endif
@@ -251,7 +253,6 @@ typedef struct {
   pm_t *pm;                     /* the remembered peaks (npm of them; none with no room) */
   uint16_t af;                  /* REG_47 with the audio open: FM or AM */
   uint16_t off[C + 1];          /* bin C+-k's offset from the middle, x L_HZ */
-  uint32_t hz[NB];              /* each bin's frequency, 0 outside the band */
   uint32_t pk[NB];              /* where in its range a bin's loudest read was */
   uint32_t r47, odr, r13, r73, r7e, r3d;
   uint16_t sq[4];               /* monitor: the chip's squelch (SQ_REGS) as Aura had it */
@@ -266,8 +267,8 @@ typedef struct {
   uint16_t kslot[NK];
   int nk;
   /* (work space: the state lives in the module store's free RAM, not on the stack) */
-  uint32_t old[NV];             /* recentre: the old scale's loudest reads */
-  uint8_t lv[NV];               /* recentre: its levels */
+  int16_t old[NV];              /* recentre: the old scale's loudest reads, from the new middle in
+                                   L_HZ units (+-16 MHz; OLD_NONE beyond); their levels wait in cf */
   uint8_t tmp[NB];              /* floor_q's sort, draw's carets */
   uint8_t bm[16 * ROWS];        /* the bitmap (KM_WF_ROWS rows) */
   SF_EXTRA
@@ -343,7 +344,8 @@ static void say_end(sf_t *s, char *p) {
   s->api->say(s->ln);
 }
 
-static int read_at(sf_t *s, int i, uint32_t us) { return read_hz(s, s->hz[i], us); }
+static uint32_t bin_hz(sf_t *s, int i);
+static int read_at(sf_t *s, int i, uint32_t us) { return read_hz(s, bin_hz(s, i), us); }
 
 static void note(sf_t *s, const char *t) {
   put(s->msg, t)[0] = 0;
@@ -368,6 +370,20 @@ static void lens(sf_t *s) {
 /* bin i's distance from the middle, in bins */
 static int dist(int i) { return i < C ? C - i : i - C; }
 
+/* bin i's frequency, from the middle, the lens and the band, computed when wanted (no per-bin
+   array: from flux_radio's SURF, tcarwash/flux_radio e34869d, MIT); 0 outside the band */
+static uint32_t bin_hz(sf_t *s, int i) {
+  uint32_t o = L_HZ * s->off[dist(i)], f;
+  if (i < C) {
+    if (s->cen < o) return 0;
+    f = s->cen - o;
+  } else {
+    f = s->cen + o;
+    if (f < s->cen) return 0;
+  }
+  return f >= s->bd->lo && f <= s->bd->hi ? f : 0;
+}
+
 /* the step around bin i, x L_HZ */
 static uint32_t spu(sf_t *s, int i) {
   int a = dist(i);
@@ -386,19 +402,22 @@ static uint32_t sub_hz(uint32_t w) { return w > NSUB * SUB_HZ ? udiv(w, NWIDE) :
 static void cov(sf_t *s, int i, uint32_t *lo, uint32_t *hi) {
   int a = dist(i);
   uint32_t out = sp(s, i) / 2, in = a ? L_HZ * (s->off[a] - s->off[a - 1]) / 2 : out;
-  *lo = s->hz[i] - (i < C ? out : in);
-  *hi = s->hz[i] + (i < C ? in : out);
+  uint32_t hz = bin_hz(s, i);
+  *lo = hz - (i < C ? out : in);
+  *hi = hz + (i < C ? in : out);
 }
 
 /* the bin nearest f, if f is within half its step of it; -1 if none */
 static int bin_of(sf_t *s, uint32_t f) {
   int i, b = -1;
   uint32_t d, bd = ~0u;
-  for (i = 0; i < NV; i++)
-    if (s->hz[i]) {
-      d = s->hz[i] > f ? s->hz[i] - f : f - s->hz[i];
+  for (i = 0; i < NV; i++) {
+    uint32_t hz = bin_hz(s, i);
+    if (hz) {
+      d = hz > f ? hz - f : f - hz;
       if (d < bd) bd = d, b = i;
     }
+  }
   return b >= 0 && 2 * bd <= sp(s, b) ? b : -1;
 }
 
@@ -407,7 +426,7 @@ static void measure_sfl(sf_t *s) {
   int j, a = 999, b = 999;
   for (j = 3; j < NV; j += 8) {
     int d;
-    if (!s->hz[j] || SF_SKIP(s, j)) continue;
+    if (!bin_hz(s, j) || SF_SKIP(s, j)) continue;
     d = read_at(s, j, CHECK_US);
     if (d < a) b = a, a = d;
     else if (d < b) b = d;
@@ -419,31 +438,40 @@ static void measure_sfl(sf_t *s) {
 }
 
 /* the middle on hz (in the band, on its channel raster) and the scale around it; each bin keeps
-   the loudest old bin whose loudest read falls in its range */
+   the loudest old bin whose loudest read falls in its range. The old reads are kept as offsets
+   from the new middle in L_HZ units (int16: +-16 MHz) and their levels in cf, the per-bin scratch
+   the new scale clears anyway (flux_radio, e34869d); a read further out than +-16 MHz is
+   dropped (OLD_NONE), so a band wider than that loses nothing but levels no new bin could hold
+   within reach */
+#define OLD_NONE (-32768)
 static void recentre(sf_t *s, uint32_t hz) {
   const band_t *b = s->bd;
-  uint32_t *old = s->old, lo, hi;
-  uint8_t *lv = s->lv;
+  uint32_t lo, hi;
   int i, j;
   if (hz < b->lo) hz = b->lo;
   if (hz > b->hi) hz = b->hi;
   s->cen = b->lo + udiv(hz - b->lo + s->ch / 2, s->ch) * s->ch;
   if (s->cen > b->hi) s->cen -= s->ch;
   for (i = 0; i < NV; i++) {
-    uint32_t o = L_HZ * s->off[dist(i)], f = i < C ? s->cen - o : s->cen + o;
-    s->cf[i] = 0;                       /* (the old scale's reads are not these bins') */
-    old[i] = s->pk[i];
-    lv[i] = s->lvl[i];
-    s->hz[i] = s->pk[i] = f >= b->lo && f <= b->hi ? f : 0;
+    uint32_t o = L_HZ * s->off[dist(i)], f = i < C ? s->cen - o : s->cen + o, d;
+    int up = s->pk[i] >= s->cen;
+    d = up ? s->pk[i] - s->cen : s->cen - s->pk[i];
+    d = udiv(d + L_HZ / 2, L_HZ);
+    s->old[i] = (int16_t)(!s->pk[i] || d > 32767u ? OLD_NONE : up ? (int32_t)d : -(int32_t)d);
+    s->cf[i] = s->old[i] == OLD_NONE ? 0 : s->lvl[i];   /* (the old levels, until the remap ends) */
+    s->pk[i] = f >= b->lo && f <= b->hi ? f : 0;
     s->lvl[i] = 0;
   }
   s->stale = 1;
   for (i = 0; i < NV; i++) {
-    if (!s->hz[i]) continue;
+    if (!bin_hz(s, i)) continue;
     cov(s, i, &lo, &hi);
-    for (j = 0; j < NV; j++)
-      if (lv[j] > s->lvl[i] && old[j] >= lo && old[j] < hi) s->lvl[i] = lv[j], s->pk[i] = old[j];
+    for (j = 0; j < NV; j++) {
+      uint32_t f = s->cen + (uint32_t)((int32_t)L_HZ * s->old[j]);
+      if (s->cf[j] > s->lvl[i] && f >= lo && f < hi) s->lvl[i] = s->cf[j], s->pk[i] = f;
+    }
   }
+  for (i = 0; i < NV; i++) s->cf[i] = 0;   /* (the old scale's reads are not these bins') */
 }
 
 /* a fresh scale on hz at the span SPANS[si] */
@@ -689,7 +717,7 @@ static int conf_now(sf_t *s, int r, int o, uint32_t f) {
 /* bin i's quick level: the loudest of reads SUB_HZ apart across its range (the wide filter's
    width: a coarse bin far out would miss a carrier between two bins), and where it was */
 static void sweep_bin(sf_t *s, int i) {
-  uint32_t lo, hi, f, at = s->hz[i], sh;
+  uint32_t lo, hi, f, at = bin_hz(s, i), sh;
   int r, o = s->lvl[i], v;
   cov(s, i, &lo, &hi);
   sh = sub_hz(hi - lo);
@@ -749,7 +777,7 @@ static int refine_lens(sf_t *s) {
   uint32_t f;
   s->refine = 0;
   for (i = C - KI; i <= C + KI; i++)
-    if (s->hz[i] && (uint32_t)L_HZ * s->off[dist(i)] <= s->rw && s->lvl[i] > s->lvl[b]) b = i;
+    if (bin_hz(s, i) && (uint32_t)L_HZ * s->off[dist(i)] <= s->rw && s->lvl[i] > s->lvl[b]) b = i;
   if (b == C || s->lvl[b] <= s->lvl[C] + 1) return 0;
   /* a carrier fills the lens's bins inside the wide filter: its flat top's middle */
   for (a = b; a > C - KI && s->lvl[a - 1] + 2 >= s->lvl[b]; a--) {}
