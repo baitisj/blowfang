@@ -51,6 +51,12 @@ on:
     - cron: "17 9 * * 1"
   workflow_dispatch:
 
+# a new push to a pull request cancels that PR's run still going; pushes to main (hamlet flashes
+# their artifacts), tags and the weekly run each finish
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Whether this change touches the UV-21 at all (.github/ci-radios.txt, tools/ci_scope.py): a pull
   # request that doesn't skips the job below, and a skipped job counts as passed.
@@ -91,6 +97,7 @@ jobs:
           pip install \
             numpy \
             pytest \
+            pytest-xdist \
             unicorn
       - name: the dumper (1 KB at most) and the bring-up image (the 60 KB app area at most)
         run: make -C radios/uv21
@@ -118,7 +125,10 @@ jobs:
             radios/uv21/build/bringup.elf
       - name: tests
         run: |
-          python -m pytest -q \
+          # one file per worker (each file boots its own emulated board in a module fixture): the
+          # runner's cores in parallel, 4 min -> 2 min; the port image is built above, so the
+          # tests' own `make port` finds it up to date
+          python -m pytest -q -n auto --dist loadfile --durations=8 \
             tests/test_uv21_bringup.py \
             tests/test_uv21_dumper.py \
             tests/test_uv21_kdh.py \
