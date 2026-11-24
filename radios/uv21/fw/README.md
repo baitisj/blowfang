@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 19 change
+## What ports 1 to 20 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -115,6 +115,14 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   peaks' memory still come from full sweeps only; a move starts with a full sweep; HOLD stops
   it all as before. In the emulator a watched carrier is read about 35 times a second, a quiet
   bin once in 5 s. `-DUV21_FAST=0` drops it.
+- Port 20: `*` steps through four modes, shown in the title (the operator's spec): SQL-W, the
+  squelch as usual and the waterfall waiting while it is open (a refresh sweep every 5 s, as
+  before); SQL+W, the waterfall going on while the squelch is open; MON-W, the squelch held open
+  (the chip's too), the waterfall waiting; MON+W, held open with the waterfall going. With +W and
+  the squelch open SURF scans one bin at a time between 40 ms listens on the middle; each skip's
+  retune mutes the speaker and the listen opens it again. Fast passes run 3 s after each full
+  sweep there, so the waterfall moves while full sweeps crawl, and the strip takes a column
+  every 250 ms once any bin was read (was once a pass). HOLD stops the waterfall in every mode.
 
 ## RAM modules (port 15)
 

@@ -27,9 +27,13 @@
      4               the demodulator: FM, DSB, AM
      5               the band's centre
      7 / 9 / 8       fixed gain down / up, the receiver's own AGC
-     *               monitor: the squelch open (the chip's too); the sweeps and the carets'
-                     fall go on as usual (Jeff, 2026-11-24), so the audio hushes for each
-                     refresh sweep and wake look: one receiver
+     *               the squelch and the waterfall, in turn (port 20, Jeff, 2026-11-24):
+                     SQL-W the squelch as usual, the waterfall waits while it's open (a refresh
+                     sweep every 5 s, as before); SQL+W the waterfall keeps going while it's
+                     open, short listens on the middle between bins, the speaker muted while
+                     it skips; MON-W the squelch held open (the chip's too), the waterfall
+                     waiting; MON+W held open, the waterfall going. HOLD stops the waterfall
+                     in every one
      0               hold: no retunes at all, the carets stay put; the middle listens with the
                      squelch as usual, the side keys still jump. Independent of monitor (Jeff,
                      2026-11-24: "Scanning should stop when hold is active")
@@ -86,7 +90,7 @@
   uint8_t hhead, hdirty, hsi;   /* the newest column; the strip to draw; the scale it's on */ \
   const void *hbd;              /* ... its band */                                        \
   uint32_t hcen;                /* ... its middle */                                      \
-  int hsw;                      /* the passes counted when the newest column went in */    \
+  int hsw;                      /* nbins when the newest column went in */    \
   uint32_t t_col;               /* ... and when */
 #else
 #define HIST_EXTRA
@@ -114,6 +118,9 @@
   uint8_t saud, dpend;          /* the squelch as last seen; a level to show once settled */ \
   int16_t hr[4];                /* hold: the last 4 reads on the middle */                \
   uint8_t hi;                   /* ... the next one goes here */                          \
+  uint8_t wf;                   /* +W: the waterfall goes on while the squelch is open */ \
+  int nbins;                    /* bins swept, all told (a history column when it moves) */ \
+  uint32_t t_lis;               /* +W: this listen on the middle began */                 \
   int hnf;                      /* ... and the middle's own noise floor, 1/16 dB (HNF_NONE) */ \
   uint32_t dcen, t_dq;          /* the middle as last seen; when the squelch or it moved */ \
   int sdbm;                     /* the level shown */                                     \
@@ -133,8 +140,10 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define FLUSH_MS 200
 #define WAKE_MS 500
 #define WAKE_PARK_MS 1500
+#define WF_LISTEN_MS 40        /* +W: a listen on the middle this long between two bins of the scan */
 #define FULL_MS 5000           /* fast passes: a full sweep starts this often (Jeff, 2026-11-24) */
 #define FAST_MIN_MS 1000       /* ... but fast passes for this long after one, however long it took */
+#define FAST_WF_MS 3000        /* ... this long with +W and the squelch open (its full sweeps are slow) */
 #define COL_MS 250             /* the history strip: a column this often at most (52: ~13 s) */
 #define HNF_NONE 0x7FFF        /* hold: the middle's floor not measured yet */
 #define WAKE_REST_MS 60000
@@ -396,13 +405,22 @@ static void on_key(sf_t *s, int k) {
     lens(s);
     recentre(s, s->cen);
     break;
-  case '*':
-    s->mon ^= 1;
-    squelch(s, s->mon);
-    s->tuned = 0;
-    s->parked = s->mon;
-    if (!s->mon) moved(s);
+  case '*': {                             /* SQL-W, SQL+W, MON-W, MON+W, in turn */
+    static const char *const MODE[] = {"SQL-W", "SQL+W", "MON-W", "MON+W"};
+    int m = (s->mon * 2 + s->wf + 1) & 3;
+    s->wf = (uint8_t)(m & 1);
+    if ((m >> 1) != s->mon) {
+      s->mon = (uint8_t)(m >> 1);
+      squelch(s, s->mon);
+      s->tuned = 0;
+      s->parked = s->mon;
+      if (!s->mon) moved(s);
+    }
+    note(s, MODE[m]);
+    put(put(s->ln, "mode "), MODE[m])[0] = 0;
+    s->api->say(s->ln);
     break;
+  }
   case '0':
     s->hold ^= 1;
     s->hnf = HNF_NONE;
@@ -502,11 +520,13 @@ static int fast_step(sf_t *s) {
   if (bin_hz(s, i)) {
     sweep_bin(s, i);
     s->tuned = 0;
+    s->nbins++;
   }
   if (++s->wk >= s->wn) {
     s->wk = 0;
     s->fpass++;
-    if (s->now - s->t_fs >= FULL_MS && s->now - s->t_fe >= FAST_MIN_MS) s->fast = 0, s->next = 0;
+    if (s->now - s->t_fs >= FULL_MS && s->now - s->t_fe >= (s->wf && s->parked ? FAST_WF_MS : FAST_MIN_MS))
+      s->fast = 0, s->next = 0;
   }
   if (s->api->ms() - s->t_chk >= CHK_MS) s->check = 1;
   return 1;
@@ -521,6 +541,7 @@ static void sweep_step(sf_t *s) {
   if (bin_hz(s, s->next)) {
     sweep_bin(s, s->next);
     s->tuned = 0;
+    s->nbins++;
   }
   if (++s->next >= NV) {
     s->next = 0;
@@ -552,7 +573,7 @@ static void park_step(sf_t *s) {
     s->parked = 0;
     return;
   }
-  if (!s->hold && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (monitor too) */
+  if (!s->hold && !s->wf && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (-W, monitor too) */
     int i;
     for (i = 0; i < NV && !s->qk; i++)
       if (bin_hz(s, i)) sweep_bin(s, i);
@@ -601,11 +622,6 @@ static void hold_step(sf_t *s) {
    bin its frequency falls in, so a trail stays on its frequency; rows tuned into view show as
    none yet. A new span or band starts the strip over. Hold stops the sweeps, and so the strip. */
 #define HUNK 15
-#if UV21_FAST
-#define PASSES(s) ((s)->fpass)
-#else
-#define PASSES(s) 0
-#endif
 static const uint16_t HEAT[16] = {     /* the floor's navy, blue, green, yellow, orange, white */
   0x0065, 0x00E9, 0x016D, 0x0231, 0x036F, 0x04AD, 0x05EB, 0x3E48,
   0x8645, 0xCE42, 0xFDE0, 0xFCE2, 0xFBE4, 0xFDB1, 0xFFFF,
@@ -658,10 +674,10 @@ static int heat_q(sf_t *s, int i) {
   return q > 14 ? 14 : q;
 }
 
-/* a finished sweep: its bars' colours become the newest column */
+/* the bars' colours become the newest column (port 20: once any bin was read since the last) */
 static void hist_push(sf_t *s) {
   int i;
-  s->hsw = s->sweeps + PASSES(s);
+  s->hsw = s->nbins;
   s->t_col = s->now;
   hist_sync(s);
   s->hhead = (uint8_t)(s->hhead + 1 == HN ? 0 : s->hhead + 1);
@@ -790,10 +806,11 @@ static void draw(sf_t *s) {
   p = put(p, s->bd->name);
   *p++ = ' ';
   p = stepn(p, s->ch);
-  if (s->mon) p = put(p, " MON");
+  if (s->mon || s->wf) p = put(p, s->mon ? (s->wf ? " MON+W" : " MON-W") : " SQL+W");
   if (s->hold) p = put(p, " HLD");
   if (s->gx) p = put(sint(put(p, " G"), GAIN_DB[s->gx - 1]), "");
   for (r = 0; MD_NAME[s->md][r]; r++) {}
+  if (p > t + 30 - r) p = t + 30 - r;   /* (a long band name with every tag: the right end goes) */
   while (p < t + 31 - r) *p++ = ' ';
   p = put(p, MD_NAME[s->md]);
   *p = 0;
@@ -945,10 +962,20 @@ uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room) {
     }
     if (s->hold) hold_step(s);
     else if (s->check) check_bar(s);
-    else if (s->parked) park_step(s);
+    else if (s->parked) {
+      /* +W: the scan goes on, a bin at a time, between WF_LISTEN_MS listens on the middle;
+         every bin's retune hushes the speaker (read_hz), the listen opens it again */
+      if (s->wf && !s->tuned) s->t_lis = s->now;
+      if (s->wf && s->tuned && s->now - s->t_lis >= WF_LISTEN_MS) {
+        sweep_step(s);
+        s->check = 0;                       /* (back to the middle next: park_step retunes it) */
+      } else {
+        park_step(s);
+      }
+    }
     else sweep_step(s);
 #if UV21_HIST
-    if (s->sweeps + PASSES(s) != s->hsw && s->now - s->t_col >= COL_MS) hist_push(s);
+    if (s->nbins != s->hsw && s->now - s->t_col >= COL_MS) hist_push(s);   /* (port 20: any bin read) */
 #endif
     s->now = api->ms();
     if (s->audio != s->saud || s->cen != s->dcen) {   /* the level is due once it settles */
