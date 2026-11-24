@@ -897,11 +897,11 @@ def test_monitor_opens_the_audio_whenever_it_is_pressed_during_a_sweep():
 @need_clang
 @pytest.mark.parametrize("key", ["0", "*"])
 def test_carets_stop_falling_while_the_scan_is_paused(key):
-    # Jeff 2026-11-13: when the band scan is paused, the carets stop falling too. Hold (0) on a
-    # station that plays, or monitor (*), stops the sweeps; the carets wait where they were and
-    # fall on from there once the scan goes on (no catch-up). 441.200 keys up early; its bar is
-    # down by 8 s while its caret (fall 20 min) is still high; the fall goes to 15 s at 9.2 s,
-    # 440.600 plays from 9 s, and the pause runs 9.5-15.5 s
+    # Jeff 2026-11-13: when the band scan is paused, the carets stop falling too, and fall on from
+    # there once the scan goes on (no catch-up). Hold (0) pauses it (Jeff 2026-11-24: no sweeps at
+    # all); monitor (*) only opens the squelch now, so under it the carets fall as ever.
+    # 441.200 keys up early; its bar is down by 8 s while its caret (fall 20 min) is still high;
+    # the fall goes to 15 s at 9.2 s, 440.600 plays from 9 s, and the key is on 9.5-15.5 s
     sig = [(441_200_000, -90, 300_000, 1_000_000), (440_600_000, -80, 9_000_000, FOREVER)]
     keys = taps("WW", 1_200_000, gap=300_000) + taps("W", 9_200_000) + taps(key, 9_500_000) \
         + taps(key, 15_500_000) + [(21_000_000, 21_300_000, "X")]
@@ -910,6 +910,9 @@ def test_carets_stop_falling_while_the_scan_is_paused(key):
     b12 = bin_for(441_200_000, 440_600_000)
     assert height(at(fr, 9_000_000), b12) <= 2                # (the bar is down: the caret shows its own height)
     h = [carets(at(fr, t)).get(b12, 0) for t in (9_900_000, 12_500_000, 15_400_000, 20_000_000)]
+    if key == "*":                                            # monitor: falling all along
+        assert h[0] > h[1] > h[2] > h[3], h
+        return
     assert h[0] >= 12, h
     assert h[0] == h[1] == h[2], h                            # paused: no fall
     assert 3 <= h[2] - h[3] <= 8, h                           # then on at 15 s for the whole height

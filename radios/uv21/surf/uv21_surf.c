@@ -22,8 +22,9 @@
      4               the demodulator: FM, DSB, AM
      5               the band's centre
      7 / 9 / 8       fixed gain down / up, the receiver's own AGC
-     *               monitor (audio open, the chip's squelch open)
-     0               hold (no refresh sweeps while a signal plays)
+     *               monitor: the squelch open (the chip's too); sweeps and caret fall go on
+     0               hold: no sweeps, the carets stay put; the middle listens with the squelch as
+                     usual, the side keys still jump. Independent of monitor (Jeff, 2026-11-24)
      MENU            say the bar's frequency and level on the serial line
      EXIT            leave SURF (to the firmware's VFO screen)
 
@@ -399,7 +400,10 @@ static void on_key(sf_t *s, int k) {
     s->parked = s->mon;
     if (!s->mon) moved(s);
     break;
-  case '0': s->hold ^= 1; break;
+  case '0':
+    s->hold ^= 1;
+    if (!s->hold) moved(s);           /* (sweeping again: check the middle first) */
+    break;
   case '4':
     s->md = (uint8_t)(s->md + 1 == NMD ? 0 : s->md + 1);
     demod(s);
@@ -468,7 +472,7 @@ static void park_step(sf_t *s) {
     s->parked = 0;
     return;
   }
-  if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {
+  if (!s->hold && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (monitor too) */
     int i;
     for (i = 0; i < NV && !s->qk; i++)
       if (bin_hz(s, i)) sweep_bin(s, i);
@@ -476,6 +480,26 @@ static void park_step(sf_t *s) {
     s->tuned = 0;
     s->t_full = s->api->ms();
   }
+}
+
+/* hold (Jeff, 2026-11-24): no sweeps at all and the carets stay where they are; SURF listens on
+   the middle with the squelch as usual (a signal over the floor opens the audio, HANG_MS after
+   it the audio shuts), or open with monitor too. The side keys still jump between the carets. */
+static void hold_step(sf_t *s) {
+  int d;
+  if (!s->tuned) {
+    d = read_at(s, C, CHECK_US);
+    s->tuned = 1;
+    hush(s, 0);
+  } else {
+    s->api->delay_us(PARK_US);
+    d = dbm(s);
+  }
+  s->check = 0;
+  s->sel_dbm = d;
+  if (d >= s->sfl + SQ_DB - (s->audio ? HYST_DB : 0)) s->t_open = s->now;
+  s->parked = s->mon || s->now - s->t_open <= HANG_MS;
+  if (s->parked != s->audio) audio(s, s->parked);
 }
 
 /* ---- the screen ---- */
@@ -563,7 +587,7 @@ static void draw(sf_t *s) {
   *p++ = ' ';
   p = stepn(p, s->ch);
   if (s->mon) p = put(p, " MON");
-  else if (s->hold) p = put(p, " HLD");
+  if (s->hold) p = put(p, " HLD");
   if (s->gx) p = put(sint(put(p, " G"), GAIN_DB[s->gx - 1]), "");
   for (r = 0; MD_NAME[s->md][r]; r++) {}
   while (p < t + 31 - r) *p++ = ' ';
@@ -690,7 +714,8 @@ uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room) {
       s->now = api->ms();
       draw(s);
     }
-    if (s->check) check_bar(s);
+    if (s->hold) hold_step(s);
+    else if (s->check) check_bar(s);
     else if (s->parked) park_step(s);
     else sweep_step(s);
     s->now = api->ms();
@@ -700,7 +725,7 @@ uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room) {
       s->dpend = 1;
       s->t_dq = s->now;
     }
-    if (s->now - s->t_wake >= (s->parked ? WAKE_PARK_MS : WAKE_MS)) wake_look(s);
+    if (s->now - s->t_wake >= (s->parked || s->hold ? WAKE_PARK_MS : WAKE_MS)) wake_look(s);
     if (s->now - s->t_flush >= FLUSH_MS || (s->dpend && s->now - s->t_dq >= DBM_SETTLE_MS)) draw(s);
   }
   api->fd_write(0x47, (uint16_t)s->r47);

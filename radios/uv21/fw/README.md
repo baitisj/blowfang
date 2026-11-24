@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 10 change
+## What ports 1 to 11 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -54,6 +54,9 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
 - Port 10: SURF's shared core takes flux_radio's SURF changes (tcarwash/flux_radio, MIT): bin
   frequencies are computed when needed, recentre keeps its old reads as 500 Hz offsets (+-16 MHz),
   and a typed custom range is at most 16 MHz wide. About 440 B less SURF state.
+- Port 11: MON and HOLD are independent. MON only opens the squelch (sweeps and the carets' fall
+  go on); HOLD stops every sweep and freezes the carets, while the middle listens with the squelch
+  as usual and the side keys still jump. The title shows MON and HLD each when on.
 
 ## SURF (port 6)
 
@@ -74,7 +77,7 @@ frequency in the middle and carets on the peaks.
 | # | next channel step; a long press moves the CW wake to the listening frequency |
 | 4 / 5 | FM, DSB, AM / the band's centre |
 | 7 / 9 / 8 | fixed gain down / up / AGC again |
-| * / 0 | monitor / hold |
+| * / 0 | monitor (squelch open) / hold (no sweeps, carets frozen); independent |
 | A/B | how fast the carets fall |
 | VFO/MR | type a custom range |
 | MENU | the frequency and level on the serial console |

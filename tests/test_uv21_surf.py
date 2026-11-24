@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sim.uv21.board import Station, UV21Board, build  # noqa: E402
 
 REG_STATE, REG_GPIO, REG_PA = 0x30, 0x33, 0x36
+AF_FM = 0x6140                  # REG_47 with the audio open on FM (AF_MUTE 0x6040: shut)
 
 
 @pytest.fixture(scope="module")
@@ -73,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 10 build=" in surfing.boot_text
+    assert "blowfang uv21 port 11 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -182,3 +183,76 @@ def test_a_typed_custom_range_is_at_most_16_mhz(surfing):
         out += more
     assert m, out[-300:]
     assert (m.group(1), m.group(2)) == ("437.000", "453.000")
+
+
+class _Tunes(dict):
+    """the board's RF registers, noting every frequency REG_38/39 are written to"""
+    def __setitem__(self, a, v):
+        super().__setitem__(a, v)
+        if a == 0x39:                                   # (the driver writes REG_38, then 39)
+            self.seen.add(((self.get(0x39, 0) << 16) | self.get(0x38, 0)) * 10)
+
+
+def tunes(board, seconds):
+    """every frequency the RF chip was tuned to through seconds of virtual time"""
+    if not isinstance(board.regs, _Tunes):
+        board.regs = _Tunes(board.regs)
+    board.regs.seen = set()
+    wait(board, seconds)
+    return board.regs.seen
+
+
+def carets(board):
+    """the white caret pixels right of the bars, as (x, y)"""
+    rows = board.screen_rgb()
+    return {(x, y) for y in range(24, 150) for x in range(30, 128) if rows[y][x] == (255, 255, 255)}
+
+
+@pytest.fixture(scope="module")
+def steady(built):
+    # carriers to give carets, the middle (439.500) quiet: SURF sweeps
+    b = UV21Board(*built, band=[Station("a", 439_700_000, -80), Station("b", 440_100_000, -85)])
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 6)
+    tap(b, "AB", 0.2)
+    tap(b, "AB", 0.2)
+    tap(b, "AB", 0.2)                                                   # the fastest fall: 15 s
+    return b
+
+
+def test_hold_stops_the_sweeps_and_the_carets(steady):
+    # HOLD (Jeff, 2026-11-24): no sweeping, the carets don't fall; it listens on the middle only
+    # (and the CW wake's frequency, a look every 1.5 s)
+    mid = sel(steady)
+    tap(steady, "0", 0.5)
+    before = carets(steady)
+    assert before, "no carets to watch"
+    seen = tunes(steady, 5)
+    assert seen <= {mid, 440_850_000}, sorted(seen)
+    assert carets(steady) == before
+    tap(steady, "0", 0.5)                                               # off again: sweeping
+    assert len(tunes(steady, 2)) > 5
+
+
+def test_monitor_only_opens_the_squelch(steady):
+    # MON (Jeff, 2026-11-24): the audio opens on the middle; the sweeps and the caret fall go on
+    tap(steady, "*", 0.5)
+    wait(steady, 0.3)
+    assert steady.regs.get(0x47) == AF_FM, hex(steady.regs.get(0x47, 0))   # the audio open
+    before = carets(steady)
+    seen = tunes(steady, 7)                                             # (a refresh sweep every 5 s)
+    assert len(seen) > 5, sorted(seen)
+    assert carets(steady) != before                                     # (they fell)
+    tap(steady, "*", 0.5)
+
+
+def test_hold_and_monitor_together(steady):
+    mid = sel(steady)
+    tap(steady, "*", 0.3)
+    tap(steady, "0", 0.5)
+    seen = tunes(steady, 4)
+    assert seen <= {mid, 440_850_000}, sorted(seen)
+    tap(steady, "SIDE1", 1.0)                                           # a jump still works
+    assert sel(steady) != mid
+    tap(steady, "0", 0.3)
+    tap(steady, "*", 0.3)
