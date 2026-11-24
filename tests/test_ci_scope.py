@@ -93,7 +93,7 @@ def test_the_map_is_complete():
     ("modem/dmrvoice.py", {"k6": False, "uv380": True, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),
     ("modem/dmrsotto.py", {"k6": True, "uv380": True, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),   # c4dmr
     ("c/k6/mod/ft8.c", {"k6": True, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),
-    ("c/common/surf_core.inc", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": True, "uv21": False, "bench": False}),
+    ("c/common/surf_core.inc", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": True, "uv21": True, "bench": False}),
     ("sotto", {"k6": True, "uv380": True, "uv380-openrtx": True, "rt950": False, "uv21": False, "bench": False}),
     ("docs/uv380-port.md", {"k6": False, "uv380": False, "uv380-openrtx": False, "rt950": False, "uv21": False, "bench": False}),
     # the Pluto and the bench runner run only the bench tools' Python tests, no radio's firmware
