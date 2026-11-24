@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 13 change
+## What ports 1 to 14 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -70,6 +70,12 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   registers (VCO bias 0x1F, AFC 0x73, 0x1C/0x1D, audio gain 0x48 and others); the UV-5RH's flat
   AF filter push after it is gone, so the stock filters stand. More register trials go in RAM
   modules, not new images.
+- Port 14: no VFO. SURF is the only screen (the operator asked for the VFO code to go): the
+  VFO and channel screens, the two sides, the menus and lists, key dispatch, the FM broadcast
+  radio, the flashlight and the overlay ABI crate are gone, and so are the SPI flash's VFO,
+  channel, contact and FM records (`src/app/mod.rs` keeps the radio, keypad, battery and
+  backlight timer). EXIT no longer leaves SURF. Narrow bandwidth uses the stock tune's REG_43
+  (0x4008). The image is about half the size: 22.7 KB, was 45.4 KB.
 
 ## SURF (port 6)
 
@@ -95,7 +101,7 @@ frequency in the middle and carets on the peaks.
 | A/B | how fast the carets fall |
 | VFO/MR | type a custom range |
 | MENU | the frequency and level on the serial console |
-| EXIT | leave SURF for the VFO screen on the same frequency; A/B there comes back to SURF |
+| EXIT | leave a typed range (SURF is the only screen) |
 
 SURF also listens for the CW wake beacon, on 440.850 MHz for now: it looks there every 500 ms
 while sweeping and every 1.5 s while parked, and two reads 20 dB over the floor in four looks print

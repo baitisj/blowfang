@@ -28,14 +28,11 @@ const STATE_RX_ON: u16 = 0xBFF1; // 1 0 1111 1 11111 0001
 const STATE_TX_ON: u16 = 0xC1FE; // 1 1 0000 0 11111 1110
 
 const BANDWIDTH_WIDE: u16 = 0x3028;
-const BANDWIDTH_NARROW: u16 = 0x4048;
+const BANDWIDTH_NARROW: u16 = 0x4008; // the UV-21 stock tune's (the UV-5RH: 0x4048)
 
 const REG_SOFT_RESET: u8 = 0x00;
 const REG_POWER: u8 = 0x37;
 const REG_RXAGC_1: u8 = 0x13;
-const REG_RXAGC_2: u8 = 0x12;
-const REG_RXAGC_3: u8 = 0x11;
-const REG_RXAGC_4: u8 = 0x10;
 const REG_RXAGC_5: u8 = 0x14;
 const REG_RXAGC_6: u8 = 0x49;
 
@@ -45,24 +42,15 @@ const RXAGC_5_FM: u16 = 0x0210;
 const RXAGC_6_FM: u16 = 0x2A32; // the UV-21 stock init's (the UV-5RH: 0x2AB2)
 const RXAGC_5_AM: u16 = RXAGC_5_FM;
 const RXAGC_6_AM: u16 = RXAGC_6_FM;
-const REG_RSSI_TABLE_LO: u8 = 0x7B;
-/// PA bias output voltage: [3:0] pabias_out, 0000=1.3V .. 1111=2.8V.
-const REG_PA_BIAS: u8 = 0x19;
 const REG_DEVIATION: u8 = 0x40;
 const REG_MIC_SENS: u8 = 0x7D;
 const REG_VOLUME: u8 = 0x48;
-const REG_PLL_VCO_BIAS: u8 = 0x1F;
-const REG_FIXED_3E: u8 = 0x3E;
-const REG_ANTI_SPUR: u8 = 0x77;
-const REG_OOB_NOISE: u8 = 0x4F;
-const REG_DISTORTION: u8 = 0x26;
 const REG_RSSI: u8 = 0x67;
 
 // FIXME: REG_64 not work? will produce ~20dbm gap between Wide & Narrow
 const RSSI_SETTLE_US_WIDE: u32 = 3000;
 const RSSI_SETTLE_US_NARROW: u32 = 12000;
 
-const REG_2A: u8 = 0x2A;
 const REG_SCRAMBLE: u8 = 0x31;
 const REG_CTCSS: u8 = 0x51;
 /// "CTCSS0" tone bank (the one actually transmitted/decoded); [13]=1

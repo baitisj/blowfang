@@ -33,7 +33,8 @@ typedef struct {
   uint32_t start_hz;                            /* where SURF starts */
 } uv_api_t;
 
-/* SURF until EXIT (or poll asks); returns where the middle (the listening frequency) was */
+/* SURF until poll asks (the UV-21's only screen); returns where the middle (the listening
+   frequency) was */
 uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room);
 
 /* the state uv21_surf needs in `state` (the caller's RAM, 8-aligned) */

@@ -1,7 +1,7 @@
 //! UV-21 SURF, the port's main screen (Jeff, 2026-11-24): radios/uv21/surf/uv21_surf.c (MIT C,
 //! built by build.rs) runs its own loop and reaches the radio through `UvApi`, filled here. The
-//! main loop calls `run` at boot and whenever A/B asks for it on the VFO screen; EXIT comes back
-//! with SURF's last listening frequency, which the VFO takes.
+//! main loop calls `run` at boot, and again if it ever returns: SURF is the only screen (port 14,
+//! no VFO).
 
 use crate::app::App;
 use crate::board;
@@ -249,7 +249,8 @@ extern "C" fn wake(hz: u32, dbm: i32, floor: i32) {
     con::nl();
 }
 
-/// SURF until EXIT; returns its last listening frequency (0 if it couldn't run)
+/// SURF until its housekeeping asks to leave; returns its last listening frequency (0 if it
+/// couldn't run)
 pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_hz: u32) -> u32 {
     let now = ms();
     unsafe {

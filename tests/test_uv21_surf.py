@@ -4,8 +4,8 @@ a model band (made-up stations and a CW wake beacon on 440.850).
 
 What must hold (Jeff, 2026-11-24): the radio boots into SURF; UP / DOWN move the listening
 frequency a channel; the top side key jumps to a higher peak and the bottom one to a lower; SURF
-hears the CW wake on 440.850 while it surfs; EXIT goes to the VFO screen (on SURF's frequency) and
-A/B comes back; and nothing in it ever gives the RF chip a transmit setting."""
+hears the CW wake on 440.850 while it surfs; SURF is the only screen (port 14: no VFO), so EXIT
+leaves it in SURF; and nothing in it ever gives the RF chip a transmit setting."""
 import os
 import re
 import sys
@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 13 build=" in surfing.boot_text
+    assert "blowfang uv21 port 14 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -150,16 +150,12 @@ def test_axis_labels_are_the_top_and_bottom_frequencies(surfing):
         assert any(px not in ((0, 0, 0), (40, 0, 40)) for row in rows[y0:y0 + 6] for px in row[0:19]), y0
 
 
-def test_exit_goes_to_the_vfo_screen_on_surfs_frequency_and_ab_comes_back(surfing):
+def test_exit_stays_in_surf(surfing):
+    # no VFO screen since port 14 (Jeff, 2026-11-24: "Take out the VFO code from the UV-21 port")
     f = sel(surfing)
-    surfing.tap("EXIT", 0.15)
-    m, out = until(surfing, r"end sw=\d+", 3)
-    assert m, out[-300:]
-    wait(surfing, 1)
-    assert abs(surfing.tuned_hz() - f) < 1000, (surfing.tuned_hz(), f)  # the VFO took it
-    surfing.tap("AB", 0.15)
-    m, out = until(surfing, r"surf \S+ \d+\.\d+ ", 4)
-    assert m, out[-300:]
+    out = tap(surfing, "EXIT", 1.0)
+    assert "end sw=" not in out, out[-300:]
+    assert sel(surfing) == f
 
 
 def test_never_gives_the_rf_chip_a_transmit_setting(surfing):

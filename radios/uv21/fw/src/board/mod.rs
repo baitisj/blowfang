@@ -1,5 +1,3 @@
-mod flashlight;
-mod fm;
 mod keypad;
 mod lcd;
 mod leds;
@@ -10,8 +8,6 @@ mod rxpath;
 mod serial;
 mod storage;
 
-pub use flashlight::*;
-pub use fm::*;
 pub use keypad::*;
 pub use lcd::*;
 pub use leds::*;

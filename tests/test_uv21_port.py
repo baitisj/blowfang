@@ -214,7 +214,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 13 build=" in text
+    assert "blowfang uv21 port 14 build=" in text
     assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -277,8 +277,8 @@ def test_keys_come_out_as_key_ids(port):
 
 
 def test_the_spi_flash_is_never_written(port):
-    # the SPI flash still holds the stock firmware's data, and the 5RH code saves its own VFO over
-    # the stock one at 0x8000 on UP or DOWN: port images must send no write enable, program or erase
+    # the SPI flash still holds the stock firmware's data (the 5RH code saved its own VFO over the
+    # stock one at 0x8000 on UP or DOWN): port images must send no write enable, program or erase
     for press in ((1, 2), (3, 2)):                                      # UP, DOWN
         port.pressed.add(press)
         port.run(limit=10_000_000)
@@ -316,14 +316,6 @@ def test_the_portrait_screen_is_drawn_with_5x5_subpixel_text(built):
     lit, fringes = subpixel_fringes(port, list(range(22, 28)) + list(range(146, 152)), range(0, 20))
     assert len(lit) > 60, len(lit)
     assert fringes, "no subpixel colour fringes in SURF's axis labels"
-    # EXIT: the VFO screen, its info panel in 5x5 under the meter
-    port.pressed.add((2, 2))
-    port.run(limit=8_000_000)
-    port.pressed.clear()
-    port.run(limit=40_000_000)
-    lit, fringes = subpixel_fringes(port, range(79, 104))
-    assert len(lit) > 300, len(lit)
-    assert fringes, "no subpixel colour fringes in the info panel"
 
 
 def test_it_says_alive_every_10_s(built):
@@ -345,7 +337,7 @@ def test_it_says_it_started_before_changing_the_clock(built):
     r.mu.mem_write(0x40021018, struct.pack("<I", 1 << 14))              # APB2EN: USART1 on
     r.mu.mem_write(0x4001380C, struct.pack("<I", 1 << 13 | 1 << 3))    # USART1 CTRL1: UEN, TEN
     out = r.run(until="boot done", limit=300_000_000)
-    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 13 build=")
+    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 14 build=")
     assert out.count("port start") == 1
 
 

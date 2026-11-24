@@ -26,7 +26,7 @@
      0               hold: no sweeps, the carets stay put; the middle listens with the squelch as
                      usual, the side keys still jump. Independent of monitor (Jeff, 2026-11-24)
      MENU            say the bar's frequency and level on the serial line
-     EXIT            leave SURF (to the firmware's VFO screen)
+     EXIT            leaves a typed range (SURF is the only screen since port 14: no VFO)
 
    The scale, the sweep of a bin, the floor, the carets and the jumps are the K6's own code,
    shared through c/common/surf_core.inc; the one-receiver state machine (listen first, sweep
@@ -363,7 +363,7 @@ static void on_key(sf_t *s, int k) {
     s->msg[4] = ' ';
     break;
   case '#' | UV_LONG:                     /* the wake listens here now */
-    ((uv_api_t *)s->api)->wake_hz = s->cen;   /* (the caller's, so it lasts past EXIT) */
+    ((uv_api_t *)s->api)->wake_hz = s->cen;   /* (the caller's: it outlasts a run) */
     s->wfl = 999;
     s->whist = 0;
     s->t_rest = s->now;
@@ -718,7 +718,6 @@ uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room) {
     pm_fall(s);
     k = s->qk ? s->qk : api->key();
     s->qk = 0;
-    if (k == 'X' && !s->ed) break;
     if (k) {
       on_key(s, k);
       s->now = api->ms();
