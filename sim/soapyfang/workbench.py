@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import signal
 import threading
 import time
 
@@ -113,6 +114,11 @@ def handler(wb):
     return H
 
 
+def _stop_on_term(signum, frame):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)       # once: a second one mustn't cut the clean-up
+    raise KeyboardInterrupt
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--source", default="synthetic", help="synthetic | sigmf:PATH | soapy:ARGS | pluto[:URI]")
@@ -139,7 +145,7 @@ def main(argv=None):
         src = open_pluto(a.source, rate=a.rate, center_hz=a.center, gain=a.gain, dbm_offset=a.dbm_offset)
     else:
         src = open_source(a.source, rate=a.rate, center_hz=a.center, gain=a.gain, dbm_offset=a.dbm_offset)
-    srv = wb = None
+    srv = wb = timer = None
     try:
         print(f"SoapyFang source: {src.describe()}", flush=True)
         print("booting the UV-21 port image ..." if built else "building and booting the UV-21 port image ...",
@@ -147,13 +153,20 @@ def main(argv=None):
         wb = SoapyWorkbench(src, built=built)
         srv = uv21wb.ThreadingHTTPServer((a.host, a.port), handler(wb))
         if a.minutes:
-            threading.Timer(a.minutes * 60, srv.shutdown).start()
+            timer = threading.Timer(a.minutes * 60, srv.shutdown)
+            timer.daemon = True                         # an early stop mustn't wait for it
+            timer.start()
         end = f", until {time.strftime('%H:%M:%SZ', time.gmtime(time.time() + a.minutes * 60))}" if a.minutes else ""
         print(f"SoapyFang UV-21 workbench on http://{a.host}:{a.port}/{end} (Ctrl-C stops it)", flush=True)
+        # the bench runner stops a step with SIGTERM (a cancel, or its time limit): end as Ctrl-C
+        # does, so the finally below still closes the source and parks the Pluto's LO
+        signal.signal(signal.SIGTERM, _stop_on_term)
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        if timer:
+            timer.cancel()
         if srv:
             srv.server_close()
         if wb:
