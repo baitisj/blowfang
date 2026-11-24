@@ -47,11 +47,20 @@ explorer saved, so the bottom line shows its call, offset and tone; TUNE, typing
 ![K6 SURF: the band, a saved repeater playing, TUNE](docs/img/surf/k6.png)
 
 **UV-21 Pro** (its main screen, `radios/uv21/surf/uv21_surf.c`). The tall screen turns SURF on its
-side, higher frequencies at the top. Left to right: +-5 MHz with the carets of five stations;
-the top side key's jump to a repeater playing (RX); TUNE, typing 446. WAKE HEARD on the bottom
-line is the CW wake on 440.850 MHz, heard while it surfed.
+side, higher frequencies at the top. Since port 18 the bars are coloured by their level over the
+floor, 3 dB a step (navy, blue, green, yellow, orange, white), and right of them a history strip
+carries those colours across: one pixel column a finished sweep, the newest at the left, about
+40 s of history kept in RAM. When the middle moves, the trails move with it and stay on their
+frequencies. Left to right: +-5 MHz with the carets of five stations; the top side key's jump to
+a repeater playing (RX); TUNE, typing 446. WAKE HEARD on the bottom line is the CW wake on
+440.850 MHz, heard while it surfed.
 
 ![UV-21 Pro SURF: the band, a repeater playing, TUNE](docs/img/surf/uv21.png)
+
+The same screen on MAR/WX (marine and NOAA weather), from the port 18 workbench: the strip shows which
+channels came and went over the last sweeps.
+
+![UV-21 Pro SURF on MAR/WX, with the history strip](docs/img/surf/uv21-history.png)
 
 **RT-950 Pro** (`radios/rt950/src/surf2.c`). Chip 1 sweeps all the time and chip 0 listens, so
 the audio never stops for a sweep; chip 0's own level fills the cyan bins round the middle. These
