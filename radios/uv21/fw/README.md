@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 6 change
+## What ports 1 to 7 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -44,6 +44,8 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   gone: CPS programming, PTT, VOX, DTMF and ANI, dual watch, the scanner, the app launcher and the
   overlay loader. The VFO screen stays as a plain receiver: one band, modulation, tone squelch and
   bandwidth, the meter and the info panel.
+- Port 7: no boot splash. The 5RH's header (model and firmware name), welcome lines, battery
+  screen, logo, boot tune and one-second wait are gone; the radio goes straight into SURF.
 
 ## SURF (port 6)
 
