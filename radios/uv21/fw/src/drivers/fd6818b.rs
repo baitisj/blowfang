@@ -519,6 +519,8 @@ pub struct Fd6818<'a> {
     tone_active: bool,
     current_wide: bool,
     band_uhf: bool,
+    /// drive GPIO5/GPIO6 as the UV-5RH's receive band switch (board::rx_path_rf_gpio56)
+    rf_gpio56: bool,
     squelch_cal: SquelchCal,
 }
 
@@ -540,6 +542,7 @@ impl<'a> Fd6818<'a> {
             tone_active: false,
             current_wide: true,
             band_uhf: true,
+            rf_gpio56: true,
         }
     }
 
@@ -569,7 +572,22 @@ impl<'a> Fd6818<'a> {
         self.write_reg(syst, REG_GPIO, val);
     }
 
+    /// UV-21 Pro: whether GPIO5/GPIO6 follow the band (the UV-5RH's receive switch); off, they
+    /// are driven low once and then left alone
+    pub fn set_rf_gpio56(&mut self, syst: &mut SYST, on: bool) {
+        self.rf_gpio56 = on;
+        if on {
+            self.select_band(syst);
+        } else {
+            self.set_gpio_bit(syst, GPIO5, false);
+            self.set_gpio_bit(syst, GPIO6, false);
+        }
+    }
+
     fn select_band(&mut self, syst: &mut SYST) {
+        if !self.rf_gpio56 {
+            return;
+        }
         let uhf = self.band_uhf;
         self.set_gpio_bit(syst, GPIO5, !uhf);
         self.set_gpio_bit(syst, GPIO6, uhf);

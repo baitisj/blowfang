@@ -439,6 +439,7 @@ impl<'a> Radio<'a> {
     }
 
     fn assert_band(&mut self, syst: &mut SYST, band: Band) {
+        board::set_rx_path(band == Band::Uhf);
         match band {
             Band::Uhf => self.fd6818.set_band_uhf(syst),
             Band::Vhf => self.fd6818.set_band_vhf(syst),

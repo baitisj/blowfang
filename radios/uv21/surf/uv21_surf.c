@@ -44,7 +44,7 @@
    2026-11-24: the standing "WAKE 440.850" was confusing; "WAKE HEARD" is fine). A long press of # moves it to the middle's frequency.
 
    Lines (api->say): "surf 70cm 440.850 25k", "sel 441.2000 -71 -127" (MENU), "wake ...",
-   "end sw=N". Never transmits; the firmware filters every register write as well.
+   "fe rx path hi" (6, the front end's switch), "end sw=N". Never transmits; the firmware filters every register write as well.
    SPDX-License-Identifier: MIT */
 #include <stdint.h>
 #include "uv21_surf.h"
@@ -413,6 +413,16 @@ static void on_key(sf_t *s, int k) {
     moved(s);
     break;
   case 'M': say_sel(s); break;
+  case '6': {                             /* the front end's next way to switch (see the .h) */
+    static const char *const FE[] = {"rx path swd", "rx path hi", "rx path lo", "rx path hi+56"};
+    note(s, FE[s->api->front_end(1) & 3]);
+    put(put(s->ln, "fe "), s->msg)[0] = 0;
+    s->api->say(s->ln);
+    measure_sfl(s);
+    s->stale = 1;
+    moved(s);
+    break;
+  }
   }
 }
 

@@ -3,10 +3,10 @@ test_uv21_bringup.py, with its SPI peripherals, PLL, timer and SysTick modelled 
 
 What must hold before an image goes on the radio with nobody at the bench: it boots on the
 internal clock (the crystal doesn't start) and says so on the serial line; it drives only the
-UV-21's pins (SWD and the power sense stay inputs); the RF chip never gets a transmit state, a PA
-bias or a TX switch, not even with PTT held; the bootloader's command 42 frame resets it, so the
-next image can go on with no hands; the SPI flash is never written; and the keys come out as
-the right key ids."""
+UV-21's pins (the power sense stays an input; PA13/PA14, the SWD pins, are the receive band
+switch since port 12); the RF chip never gets a transmit state, a PA bias or a TX switch, not
+even with PTT held; the bootloader's command 42 frame resets it, so the next image can go on
+with no hands; the SPI flash is never written; and the keys come out as the right key ids."""
 import os
 import struct
 import subprocess
@@ -32,7 +32,7 @@ KDH_42 = bytes([0xAA, 0x42, 0x00, 0x00, 0x00, 0x83, 0xF4, 0xEF])
 RETURN = 0x0800FFF0                         # an address no code uses: where a called ISR returns
 # the UV-21's pins (radios/uv21/fw/src/board)
 OUTPUTS = {bu.LATCH, bu.RF_SCN, bu.RF_SCK, bu.RF_SDA, bu.NOR_CS, bu.LCD_CS, bu.LCD_RST, bu.LCD_DC,
-           bu.BL, (B, 2), (B, 7), (A, 4)} | set(bu.KEY_COLS)
+           bu.BL, (B, 2), (B, 7), (A, 4), (A, 13), (A, 14)} | set(bu.KEY_COLS)
 ALTERNATE = {(A, 9), (A, 10), (A, 5), (A, 6), (A, 7), (B, 13), (B, 15)}
 # KeyId numbers (src/device/keypad.rs)
 KEY_ID = {"1": 1, "0": 0, "*": 10, "#": 11, "MENU": 12, "EXIT": 13, "UP": 14, "DOWN": 15, "VM": 16,
@@ -214,7 +214,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 11 build=" in text
+    assert "blowfang uv21 port 12 build=" in text
     assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -235,10 +235,10 @@ def test_the_serial_port_runs_at_115200_on_the_60_mhz_clock(port):
 def test_drives_only_the_uv21_pins(port):
     modes = {(p, b): port.pins.mode(p, b) for p in (A, B, C, F) for b in range(16)}
     outs = {k for k, m in modes.items() if m == 1}
-    afs = {k for k, m in modes.items() if m == 2} - {(A, 13), (A, 14)}
+    afs = {k for k, m in modes.items() if m == 2}
     assert outs <= OUTPUTS, outs - OUTPUTS
     assert afs == ALTERNATE
-    assert modes[(A, 13)] == 2 and modes[(A, 14)] == 2                 # SWD
+    assert modes[(A, 13)] == 1 and modes[(A, 14)] == 1                 # the receive band switch
     assert modes[bu.SENSE] == 0 and port.pins.out(*bu.LATCH) == 1
     assert port.pins.out(*bu.BL) == 1                                   # backlight on
     assert port.lcd["madctl"] == 0x00 and 0x29 in port.lcd["cmds"]
@@ -345,5 +345,5 @@ def test_it_says_it_started_before_changing_the_clock(built):
     r.mu.mem_write(0x40021018, struct.pack("<I", 1 << 14))              # APB2EN: USART1 on
     r.mu.mem_write(0x4001380C, struct.pack("<I", 1 << 13 | 1 << 3))    # USART1 CTRL1: UEN, TEN
     out = r.run(until="boot done", limit=300_000_000)
-    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 11 build=")
+    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 12 build=")
     assert out.count("port start") == 1

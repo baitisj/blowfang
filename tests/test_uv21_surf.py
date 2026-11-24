@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 11 build=" in surfing.boot_text
+    assert "blowfang uv21 port 12 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -256,3 +256,65 @@ def test_hold_and_monitor_together(steady):
     assert sel(steady) != mid
     tap(steady, "0", 0.3)
     tap(steady, "*", 0.3)
+
+
+# ---- the receive front end's band switch (port 12) ----
+# The stock firmware switches the receive path with PA14 (VHF, 220) and PA13 (UHF), the SWD pins;
+# ports 1 to 11 never drove them (Jeff, 2026-11-24: "signals are extremely weak on this radio"),
+# and drove the UV-5RH's switch on the RF chip's GPIO5/GPIO6 instead, which on the UV-21 probably
+# lights the top LED (Jeff: "turns on faintly on certain bands"). Key 6 steps through the ways to
+# switch while the polarity is unknown.
+PA = 0                          # (tests/test_uv21_bringup.py's port A)
+GPIO56 = 0x0060
+
+
+def front_end(board, seconds=2.0):
+    """how often each (PA13, PA14) level pair was seen, sampled through seconds of virtual time"""
+    seen, end = {}, board.seconds + seconds
+    while board.seconds < end:
+        board.step(200_000)
+        k = (board.pins.out(PA, 13), board.pins.out(PA, 14))
+        seen[k] = seen.get(k, 0) + 1
+    return seen
+
+
+def most(seen):
+    return max(seen, key=seen.get)
+
+
+def test_the_receive_band_switch_follows_the_band(built):
+    b = UV21Board(*built, band=[Station("a", 441_200_000, -80)])
+    out = b.run(until="boot done", limit=300_000_000)
+    wait(b, 2)
+    assert b.pins.mode(PA, 13) == 1 and b.pins.mode(PA, 14) == 1, out[-300:]   # outputs, not SWD
+    seen = front_end(b)
+    assert set(seen) == {(1, 0)}, seen                                  # 70 cm: the UHF pin high
+    gpio = [v for r, v in b.tx_watch if r == REG_GPIO]
+    assert gpio and not any(v & GPIO56 for v in gpio), [hex(v) for v in gpio]   # no GPIO5/6
+    tap(b, "SIDE2", 1.0)                                                # GMRS
+    tap(b, "SIDE2", 1.0)                                                # MAR/WX
+    seen = front_end(b)
+    assert most(seen) == (0, 1) and set(seen) <= {(0, 1), (1, 0)}, seen    # VHF (UHF: wake looks)
+
+
+def test_key_6_steps_through_the_ways_to_switch(built):
+    b = UV21Board(*built, band=[Station("a", 162_400_000, -80)])
+    b.run(until="boot done", limit=300_000_000)
+    tap(b, "SIDE2", 1.0)
+    tap(b, "SIDE2", 1.0)                                                # MAR/WX: VHF
+    out = tap(b, "6", 1.0)
+    assert "fe rx path lo" in out, out[-300:]
+    assert most(front_end(b)) == (1, 0)                                 # the VHF pin low
+    out = tap(b, "6", 1.0)
+    assert "fe rx path hi+56" in out, out[-300:]
+    n = len(b.tx_watch)
+    assert most(front_end(b)) == (0, 1)
+    assert any(r == REG_GPIO and v & 0x20 for r, v in b.tx_watch[n:])  # GPIO5: VHF, the 5RH way
+    out = tap(b, "6", 1.0)
+    assert "fe rx path swd" in out, out[-300:]
+    assert b.pins.mode(PA, 13) == 2 and b.pins.mode(PA, 14) == 2        # back to SWD
+    out = tap(b, "6", 1.0)
+    assert "fe rx path hi" in out, out[-300:]
+    n = len(b.tx_watch)
+    assert most(front_end(b)) == (0, 1)
+    assert not any(r == REG_GPIO and v & GPIO56 for r, v in b.tx_watch[n:])

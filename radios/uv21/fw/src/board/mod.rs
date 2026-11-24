@@ -6,6 +6,7 @@ mod leds;
 mod pin;
 mod power;
 mod rf;
+mod rxpath;
 mod serial;
 mod storage;
 
@@ -16,5 +17,6 @@ pub use lcd::*;
 pub use leds::*;
 pub use power::*;
 pub use rf::*;
+pub use rxpath::*;
 pub use serial::*;
 pub use storage::*;

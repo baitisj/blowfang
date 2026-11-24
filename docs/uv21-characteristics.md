@@ -100,7 +100,7 @@ code; only the SPI flash pins have been checked on the radio, by dumper 2). Seve
 | LCD | SPI2 SCK PB13, MOSI PB15 (AF0, write-only, mode 3), CS PB12, D/C PC15 (low = command), reset PB8; ST7735S-like init, 128x160; backlight PF7, push-pull, high = on (stock code: set/clear of GPIOF bit 7; on after the boot screen; PB1/TMR14 unused) |
 | Keypad | rows PC13, PC14, PF6, PB14 (pull-ups); columns PB0, PB4, PB9, PB10, PB11 |
 | RF chip | bit-banged 3-wire SCN PB3, SCK PB5, SDA PB6; 8-bit address (bit 7 = read), 16-bit data, BK4819-family framing; stock never reads a chip ID |
-| RF switching | RX path PA14 (VHF, 220) and PA13 (UHF), the SWD pins; TX PA enables through the RF chip's GPIO3 (VHF, 220) and GPIO2 (UHF) |
+| RF switching | RX path PA14 (VHF, 220) and PA13 (UHF), the SWD pins (polarity not read yet; port 12 tries both, key 6 in SURF); TX PA enables through the RF chip's GPIO3 (VHF, 220) and GPIO2 (UHF). Ports 1 to 11 left PA13/PA14 as SWD and drove the UV-5RH's RX switch on RF GPIO5/GPIO6 instead: receive was very weak, and the top LED glowed faintly on some bands (operator, 2026-11-24) |
 | Other | I2C on PA4/PB6 to a device at 0x60; audio PWM PA11 (TMR1 CH4 with DMA); PB2 probably the audio amplifier enable, PB7 probably the flashlight |
 | SPI flash layout beyond the CPS's 64 KB | voice prompt index 0xCFF80, prompt data from 0xD0000 |
 

@@ -26,6 +26,9 @@ typedef struct {
   int (*text)(int x, int y, const char *s, uint16_t fg, uint16_t bg, int font);
   int (*poll)(void);                            /* the firmware's housekeeping; nonzero: leave */
   void (*wake)(uint32_t hz, int dbm, int floor);   /* the CW wake heard */
+  /* the receive front end's way of switching bands (port 12, while its polarity is unknown):
+     steps it by `step` (0 asks) and returns the one in use, 0 to 3 (fw board/rxpath.rs) */
+  int (*front_end)(int step);
   uint32_t wake_hz;                             /* where the wake beacon is (0: no wake check) */
   uint32_t start_hz;                            /* where SURF starts */
 } uv_api_t;

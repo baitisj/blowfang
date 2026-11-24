@@ -188,7 +188,7 @@ fn main() -> ! {
     // PA10 = PTT, input with pull-up.
     board::init_ptt_rxd_pin(&dp.gpioa);
 
-    // PA13/PA14 = TX/RX indicator LEDs
+    // (the UV-5RH's TX/RX LEDs on PA13/PA14; the UV-21 has none: board/rxpath.rs takes them)
     board::init_tx_rx_led_pins(&dp.gpioa);
     board::set_tx_led(&dp.gpioa, false);
     board::set_rx_led(&dp.gpioa, false);
@@ -262,7 +262,7 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let mut serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 11 build=");
+    hal::con::puts("blowfang uv21 port 12 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
@@ -320,6 +320,11 @@ fn main() -> ! {
     // driver's own default/"flat" table entry (db=0) instead of leaving
     // these at chip power-on-reset state.
     rfic.apply_af_calibration(&mut cp.SYST, 0, 0, 0, 0);
+
+    // UV-21 Pro: the receive front end's band switch on PA13/PA14 (board/rxpath.rs), and the
+    // UV-5RH's GPIO5/GPIO6 switch only in the modes that keep it
+    board::set_rx_path_mode(board::RX_PATH_DEFAULT);
+    rfic.set_rf_gpio56(&mut cp.SYST, board::rx_path_rf_gpio56(board::RX_PATH_DEFAULT));
 
     let cfg = ChannelConfig {
         freq_hz: TEST_FREQ_HZ,

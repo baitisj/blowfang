@@ -9,11 +9,11 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 11 change
+## What ports 1 to 12 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
-  PB3/PB5/PB6, amplifier PB2, flashlight PB7, FM chip clock PA4. No LEDs. PA13/PA14 stay SWD.
+  PB3/PB5/PB6, amplifier PB2, flashlight PB7, FM chip clock PA4. No LEDs. PA13/PA14 (SWD) are the receive band switch from port 12.
 - Keypad: columns PB0, PB4, PB9, PB10, PB11 and rows PC13, PC14, PF6, PB14, with the UV-21's key
   map (`src/device/keypad.rs`). The side keys ground a row with no column driven.
 - Clock: the UV-21's crystal doesn't start, so the PLL runs from the internal 8 MHz clock, halved,
@@ -57,6 +57,13 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
 - Port 11: MON and HOLD are independent. MON only opens the squelch (sweeps and the carets' fall
   go on); HOLD stops every sweep and freezes the carets, while the middle listens with the squelch
   as usual and the side keys still jump. The title shows MON and HLD each when on.
+- Port 12: the receive front end. The stock firmware switches the receive path with PA14 (VHF,
+  220) and PA13 (UHF), the SWD pins; ports 1 to 11 never drove them, and receive was weak. They
+  also drove the UV-5RH's band switch on the RF chip's GPIO5/GPIO6, which isn't the switch here
+  (one of them probably lights the top LED faintly below 300 MHz). The polarity isn't known yet,
+  so key 6 in SURF steps through four ways (`src/board/rxpath.rs`), and the console says
+  `fe rx path ...`: `hi` (the band's pin high, the default), `lo`, `hi+56` (with GPIO5/6 as
+  before) and `swd` (ports 1 to 11).
 
 ## SURF (port 6)
 
@@ -77,6 +84,7 @@ frequency in the middle and carets on the peaks.
 | # | next channel step; a long press moves the CW wake to the listening frequency |
 | 4 / 5 | FM, DSB, AM / the band's centre |
 | 7 / 9 / 8 | fixed gain down / up / AGC again |
+| 6 | the receive band switch's next way (port 12, while its polarity is unknown) |
 | * / 0 | monitor (squelch open) / hold (no sweeps, carets frozen); independent |
 | A/B | how fast the carets fall |
 | VFO/MR | type a custom range |
