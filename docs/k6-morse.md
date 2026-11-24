@@ -10,7 +10,7 @@ and a modelled operator on the paddles (`tests/test_k6_morse.py`, in CI). Not on
 It is 5.4 KB of code, so it needs the shared RAM block of PR #142 (modules up to 9,736 bytes);
 on the 4 KB images it doesn't load.
 
-![The emulated screen: K7ABC calls CQ, the operator answers on the paddles](k6-morse-screen.png)
+![The emulated screen: K7ABC calls CQ, the operator answers on the paddles](img/k6-morse-screen.png)
 
 ## The screen
 
