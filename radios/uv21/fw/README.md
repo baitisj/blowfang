@@ -9,11 +9,11 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 10 change
+## What ports 1 to 14 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
-  PB3/PB5/PB6, amplifier PB2, flashlight PB7, FM chip clock PA4. No LEDs. PA13/PA14 stay SWD.
+  PB3/PB5/PB6, amplifier PB2, flashlight PB7, FM chip clock PA4. No LEDs. PA13/PA14 (SWD) are the receive band switch from port 12.
 - Keypad: columns PB0, PB4, PB9, PB10, PB11 and rows PC13, PC14, PF6, PB14, with the UV-21's key
   map (`src/device/keypad.rs`). The side keys ground a row with no column driven.
 - Clock: the UV-21's crystal doesn't start, so the PLL runs from the internal 8 MHz clock, halved,
@@ -54,6 +54,32 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
 - Port 10: SURF's shared core takes flux_radio's SURF changes (tcarwash/flux_radio, MIT): bin
   frequencies are computed when needed, recentre keeps its old reads as 500 Hz offsets (+-16 MHz),
   and a typed custom range is at most 16 MHz wide. About 440 B less SURF state.
+- Port 11: MON and HOLD are independent. MON only opens the squelch (sweeps and the carets' fall
+  go on); HOLD stops every sweep and freezes the carets, while the middle listens with the squelch
+  as usual and the side keys still jump. The title shows MON and HLD each when on.
+- Port 12: the receive front end. The stock firmware switches the receive path with PA14 (VHF,
+  220) and PA13 (UHF), the SWD pins; ports 1 to 11 never drove them, and receive was weak. They
+  also drove the UV-5RH's band switch on the RF chip's GPIO5/GPIO6, which isn't the switch here
+  (one of them probably lights the top LED faintly below 300 MHz). The polarity isn't known yet,
+  so key 6 in SURF steps through four ways (`src/board/rxpath.rs`), and the console says
+  `fe rx path ...`: `hi` (the band's pin high, the default), `lo`, `hi+56` (with GPIO5/6 as
+  before) and `swd` (ports 1 to 11). The stock image, read later, drives the band's pin high on
+  receive and both low in idle and transmit: `hi` is right, and key 6 stays as a cross-check.
+- Port 13: the RF chip gets the stock firmware's own BK4829 init (`STOCK_INIT_*` in
+  `src/drivers/fd6818b.rs`, in its order) instead of the UV-5RH's, which differed in about 15
+  registers (VCO bias 0x1F, AFC 0x73, 0x1C/0x1D, audio gain 0x48 and others); the UV-5RH's flat
+  AF filter push after it is gone, so the stock filters stand. More register trials go in RAM
+  modules, not new images.
+- Port 14: no VFO. SURF is the only screen (the operator asked for the VFO code to go): the
+  VFO and channel screens, the two sides, the menus and lists, key dispatch, the FM broadcast
+  radio, the flashlight and the overlay ABI crate are gone, and so are the SPI flash's VFO,
+  channel, contact and FM records (`src/app/mod.rs` keeps the radio, keypad, battery and
+  backlight timer). EXIT no longer leaves SURF. Narrow bandwidth uses the stock tune's REG_43
+  (0x4008). The image is about half the size: 23 KB, was 45.4 KB.
+  In its place, SURF tunes like a VFO: a long # opens frequency entry, and the frequency typed
+  becomes the middle of a CUSTOM range as wide as the band on screen (16 MHz at most); a long
+  press of the middle side key does the same on the frequency in the middle. Moving the CW wake
+  went from long # to long MENU. The custom range shows as CUSTOM (was USER).
 
 ## SURF (port 6)
 
@@ -69,20 +95,21 @@ frequency in the middle and carets on the peaks.
 | UP / DOWN | the listening frequency up / down one channel step (repeats while held) |
 | top side key | jump to the next peak above |
 | bottom side key | jump to the next peak below |
-| middle side key | next band: 2 m, 1.25 m, 70 cm, GMRS, marine and weather, air, user |
+| middle side key | next band: 2 m, 1.25 m, 70 cm, GMRS, marine and weather, air, CUSTOM; held: CUSTOM centred on the middle's frequency |
 | 1 / 3 | zoom in / out |
-| # | next channel step; a long press moves the CW wake to the listening frequency |
+| # | next channel step; held: type a frequency (`*` for the point, DOWN deletes), MENU, and CUSTOM is centred on it (the VFO, in SURF) |
 | 4 / 5 | FM, DSB, AM / the band's centre |
 | 7 / 9 / 8 | fixed gain down / up / AGC again |
-| * / 0 | monitor / hold |
+| 6 | the receive band switch's next way (port 12, while its polarity is unknown) |
+| * / 0 | monitor (squelch open) / hold (no sweeps, carets frozen); independent |
 | A/B | how fast the carets fall |
 | VFO/MR | type a custom range |
-| MENU | the frequency and level on the serial console |
-| EXIT | leave SURF for the VFO screen on the same frequency; A/B there comes back to SURF |
+| MENU | the frequency and level on the serial console; held: the CW wake moves to the listening frequency |
+| EXIT | leave a typed range (SURF is the only screen) |
 
 SURF also listens for the CW wake beacon, on 440.850 MHz for now: it looks there every 500 ms
 while sweeping and every 1.5 s while parked, and two reads 20 dB over the floor in four looks print
-`uv21 wake hz=... dbm=... floor=...` on the console and show WAKE HEARD, then it rests 60 s. A long press of # moves
+`uv21 wake hz=... dbm=... floor=...` on the console and show WAKE HEARD, then it rests 60 s. A long press of MENU moves
 the wake (in RAM; the SPI flash stays read only). The RSSI scale is the K6's (dBm = raw/2 - 174);
 it hasn't been measured on the UV-21.
 

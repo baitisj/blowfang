@@ -62,10 +62,12 @@
      8               the receiver's own AGC again (the gain leaves the title)
      1 / 3           zoom in / out: the span +-100 kHz, 250 kHz, 500 kHz, 1 MHz, 2.5 MHz, 5 MHz,
                      10 MHz, 25 MHz (the last two: outer bins read 24 times, not every 20 kHz)
-     *               monitor: audio open on the bar all the time, no sweeping; the chip's own
-                     squelch open all the way too (put back on leaving MON and at EXIT)
-     0               hold: no refresh sweeps while a signal plays (default: one every 5 s);
-                     the carets stop falling while the scan is paused (hold or monitor)
+     *               monitor: audio open on the bar all the time and the chip's own squelch open
+                     all the way (put back on leaving MON and at EXIT); the refresh sweeps (one
+                     every 5 s) and the carets' fall go on as ever (Jeff, 2026-11-24)
+     0               hold: no sweeps at all and the carets stop falling; the bar listens with the
+                     squelch as usual (open too with monitor) and the side keys still jump between
+                     the carets. Monitor and hold are independent (Jeff, 2026-11-24)
      MENU            say the bar's frequency and level on the serial port
      EXIT            leave (the module waits for the key's release, so the pager doesn't see it)
 
@@ -501,6 +503,7 @@ static void on_key(sf_t *s, int k) {
     break;
   case '0':
     s->hold ^= 1;
+    if (!s->hold) moved(s);           /* (sweeping again: check the middle first) */
     break;
   case '4':                           /* the demodulator: FM, DSB, AM, FM (a new band resets it) */
     s->md = (uint8_t)(s->md + 1 == NMD ? 0 : s->md + 1);
@@ -579,7 +582,8 @@ static void park_step(sf_t *s) {
     s->parked = 0;
     return;
   }
-  if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {   /* (stale: a zoom) */
+  if (!s->hold && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (stale: a zoom; monitor
+                                                                      too: Jeff, 2026-11-24) */
     int i;
     for (i = 0; i < NV && !s->qk; i++)   /* (read_hz hushes the speaker; the next read unhushes it) */
       if (bin_hz(s, i)) sweep_bin(s, i);
@@ -587,6 +591,26 @@ static void park_step(sf_t *s) {
     s->tuned = 0;
     s->t_full = s->api->ms();
   }
+}
+
+/* hold (Jeff, 2026-11-24): no sweeps at all and the carets stay where they are; SURF listens on
+   the middle with the squelch as usual (a signal over the floor opens the audio, HANG_MS after
+   it the audio shuts), or open with monitor too. The side keys still jump between the carets. */
+static void hold_step(sf_t *s) {
+  int d;
+  if (!s->tuned) {
+    d = read_at(s, C, CHECK_US);
+    s->tuned = 1;
+    hush(s, 0);
+  } else {
+    s->api->delay_us(PARK_US);
+    d = dbm(s);
+  }
+  s->check = 0;
+  s->sel_dbm = d;
+  if (d >= s->sfl + SQ_DB - (s->audio ? HYST_DB : 0)) s->t_open = s->now;
+  s->parked = s->mon || s->now - s->t_open <= HANG_MS;
+  if (s->parked != s->audio) audio(s, s->parked);
 }
 
 /* ---- the screen ---- */
@@ -712,10 +736,9 @@ static void draw(sf_t *s) {
   p = put(p, s->bd->name);
   *p++ = ' ';
   p = stepn(p, s->ch);
-  if (s->mon || s->hold) {
-    *p++ = ' ';
-    *p++ = s->mon ? (x ? (char)0x81 : '*') : (x ? (char)0x82 : '=');
-  }
+  if (s->mon || s->hold) *p++ = ' ';
+  if (s->mon) *p++ = x ? (char)0x81 : '*';
+  if (s->hold) *p++ = x ? (char)0x82 : '=';
   if (s->gx) {
     char t[5], *e = sint(t, GAIN_DB[s->gx - 1]);
     int n = e - t, room = 21 - 4 - (p - s->ln);       /* 4: a space and the longest mode */
@@ -852,7 +875,8 @@ int k6_main(const k6_api_t *api) {
       s->now = api->ms();
       draw(s);                        /* (at once: the press shows before the next read) */
     }
-    if (s->check) check_bar(s);
+    if (s->hold) hold_step(s);
+    else if (s->check) check_bar(s);
     else if (s->parked) park_step(s);
     else sweep_step(s);
     s->now = api->ms();

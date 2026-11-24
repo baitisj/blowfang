@@ -24,14 +24,10 @@ use hal::clock::{self, SCLK_HZ};
 
 #[cfg_attr(not(debug_assertions), allow(dead_code))]
 const BAUD: u32 = 115_200;
-const CYCLES_PER_MS: u32 = SCLK_HZ / 1_000;
 
 const TEST_FREQ_HZ: u32 = 439_500_000;
 const WIDE_BAND: bool = true;
 
-fn delay_ms(ms: u32) {
-    cortex_m::asm::delay(ms.saturating_mul(CYCLES_PER_MS));
-}
 
 /// Serial diagnostics only ever run in a debug (`cargo build`, no
 /// `--release`) image -- this board's 60K flash budget (`memory.x`) has no
@@ -79,35 +75,6 @@ impl Serial {
     #[cfg_attr(not(debug_assertions), allow(dead_code))]
     fn flush(&mut self) {
         while self.usart1.sts().read().tdc().bit_is_clear() {}
-    }
-}
-
-fn check_power_off(
-    gpiob: &pac::Gpiob,
-    gpiof: &pac::Gpiof,
-    serial: &mut Serial,
-    app: &mut app::App<'_>,
-    syst: &mut cortex_m::peripheral::SYST,
-) {
-    if !board::read_power_key(gpiob) {
-        return;
-    }
-    // UV-21: off for 200 ms straight, as the bring-up image (proven on the radio) does: the sense
-    // line has no pull of its own here, so one stray high must not switch the radio off
-    for _ in 0..10 {
-        delay_ms(20);
-        if !board::read_power_key(gpiob) {
-            return;
-        }
-    }
-    dbg_println!(serial, "power key: shutdown detected, dropping the PA8 latch");
-    #[cfg(debug_assertions)]
-    serial.flush();
-    app.radio_mut().rf_off(syst);
-    app.save_channel_state();
-    board::set_power_latch(gpiof, false);
-    loop {
-        cortex_m::asm::wfi();
     }
 }
 
@@ -188,7 +155,7 @@ fn main() -> ! {
     // PA10 = PTT, input with pull-up.
     board::init_ptt_rxd_pin(&dp.gpioa);
 
-    // PA13/PA14 = TX/RX indicator LEDs
+    // (the UV-5RH's TX/RX LEDs on PA13/PA14; the UV-21 has none: board/rxpath.rs takes them)
     board::init_tx_rx_led_pins(&dp.gpioa);
     board::set_tx_led(&dp.gpioa, false);
     board::set_rx_led(&dp.gpioa, false);
@@ -261,8 +228,8 @@ fn main() -> ! {
     unsafe { cortex_m::peripheral::NVIC::unmask(pac::Interrupt::USART1) };
     unsafe { cortex_m::interrupt::enable() };
 
-    let mut serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 10 build=");
+    let serial = Serial { usart1: dp.usart1 };
+    hal::con::puts("blowfang uv21 port 14 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
@@ -315,11 +282,13 @@ fn main() -> ! {
         }
     );
 
-    // AF response filter coefficients (REG 0x44/45/54/55/74/75): the 5RH's
-    // calibration block has no AF-response entries, so this pushes the
-    // driver's own default/"flat" table entry (db=0) instead of leaving
-    // these at chip power-on-reset state.
-    rfic.apply_af_calibration(&mut cp.SYST, 0, 0, 0, 0);
+    // AF response filters: the UV-21 stock init's own values (REG_44/45/74/75, fd6818b.rs init)
+    // stand; the UV-5RH pushed its flat table entry here, which would undo them.
+
+    // UV-21 Pro: the receive front end's band switch on PA13/PA14 (board/rxpath.rs), and the
+    // UV-5RH's GPIO5/GPIO6 switch only in the modes that keep it
+    board::set_rx_path_mode(board::RX_PATH_DEFAULT);
+    rfic.set_rf_gpio56(&mut cp.SYST, board::rx_path_rf_gpio56(board::RX_PATH_DEFAULT));
 
     let cfg = ChannelConfig {
         freq_hz: TEST_FREQ_HZ,
@@ -335,117 +304,24 @@ fn main() -> ! {
     let ani = AniConfig::from_raw([0, 0, 0], 0);
     let radio = Radio::new(rfic, &dp.gpioa, &dp.gpiob, &dp.adc, cfg, ani);
 
-    board::init_rda5807_scl_pin(&dp.gpioc);
-    let fm_radio = device::fm_radio::FmRadio::new(&dp.gpioa, &dp.gpioc);
-
-    let flashlight = device::flashlight::Flashlight::new(&dp.gpiof);
     let keypad = device::keypad::Keypad::new(&dp.gpioa, &dp.gpiob);
-    dbg_println!(serial, "app: starting");
+    let mut app = app::App::new(radio, keypad, &mut storage);
+    app.poll_battery();
 
-    let mut app = app::App::new(
-        radio,
-        chip_id,
-        keypad,
-        storage,
-        flashlight,
-        fm_radio,
-        cfg,
-        &mut cp.SYST,
-    );
-    app.init_battery_samples();
-
-    // UV-21: no splash, boot tune or wait (the operator asked for none): straight to SURF.
+    // UV-21: no splash, boot tune or wait (the operator asked for none): straight to SURF, the
+    // only screen (port 14: no VFO). SURF returns only if its housekeeping asks; it starts again
+    // where it was.
     backlight.on();
 
     hal::con::puts("boot done");
     hal::con::nl();
 
-    let mut ui_state = ui::UiState::new();
-
-    let mut fast_tick: u32 = 0;
-    // UV-21: a line every 10 s, so a logger that opens late still sees the image running
-    let mut alive_10ms: u32 = 0;
-    let mut alive_s: u32 = 0;
-    let mut real_tick10_last = hal::uptime::now();
-    let mut overlay_tick_last = real_tick10_last;
+    let mut start = TEST_FREQ_HZ;
     loop {
-        check_power_off(
-            &dp.gpiob,
-            &dp.gpiof,
-            &mut serial,
-            &mut app,
-            &mut cp.SYST,
-        );
-        app.poll_keys(&mut cp.SYST);
-
-        // UV-21: SURF is the main screen (at boot, and A/B on the VFO screen goes back to it)
-        if app.take_surf_request() {
-            let start = app.watching_freq_hz();
-            let cen = surf::run(&mut app, &mut cp.SYST, &mut display, start);
-            app.resume_after_surf(&mut cp.SYST, cen);
-            ui_state = ui::UiState::new();
+        let cen = surf::run(&mut app, &mut cp.SYST, &mut display, start);
+        if cen != 0 {
+            start = cen;
         }
-
-        // UV-21 lean receiver (port 6): no CPS session, and no PTT (PA10 is the serial line's
-        // receive pin as well, and the image never transmits)
-
-        let _ = hal::uptime::now32();
-
-        let elapsed10 = hal::uptime::now().wrapping_sub(real_tick10_last);
-        if elapsed10 >= 100 {
-            let n10 = elapsed10 / 100;
-            real_tick10_last =
-                real_tick10_last.wrapping_add(n10.wrapping_mul(100));
-            app.poll_clock(n10);
-            app.poll_no_channels_notice(n10);
-            alive_10ms += n10 as u32;
-            if alive_10ms >= 1000 {
-                alive_10ms -= 1000;
-                alive_s += 10;
-                hal::con::puts("alive");
-                hal::con::kv_hex("s", alive_s, 4);
-                hal::con::kv_hex("rssi_raw", app.rssi_raw() as u32, 2);
-                hal::con::nl();
-            }
-        }
-
-        if fast_tick % 5 == 0 {
-            let rx_active = app.rssi_open() || app.audio_open();
-            if !app.is_transmitting() {
-                app.poll_squelch(&mut cp.SYST, 2);
-            }
-            app.poll_power_save(&mut cp.SYST);
-            app.poll_auto_lock(&mut cp.SYST, rx_active);
-            app.poll_backlight();
-            app.poll_blink();
-
-            app.poll_battery();
-
-            let now10 = hal::uptime::now();
-            let dt10 = now10.wrapping_sub(overlay_tick_last);
-            overlay_tick_last = now10;
-
-            backlight_set(
-                &dp.gpioa,
-                app.backlight_should_be_on(),
-            );
-        }
-
-        if fast_tick % 15 == 0 {
-            if !app.is_transmitting()
-                && !app.power_save_is_asleep()
-            {
-                let rssi = app.radio_mut().rssi(&mut cp.SYST);
-                app.set_rssi_raw(rssi as u8);
-            }
-            ui::draw(&mut display, &mut app, &mut ui_state, &mut cp.SYST);
-        }
-
-        fast_tick = fast_tick.wrapping_add(1);
-        delay_ms(2);
     }
 }
 
-fn backlight_set(gpioa: &pac::Gpioa, on: bool) {
-    board::set_lcd_backlight(gpioa, on);
-}

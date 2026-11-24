@@ -1,5 +1,5 @@
 [workspace]
-members = ["abi"]
+members = []
 
 [package]
 name = "bf5rh-fw"
@@ -20,7 +20,6 @@ cortex-m-rt = { version = "0.7", features = ["device"] }
 panic-halt = "0.2"
 at32f421-pac = { git = "https://github.com/sophiel-meow/bf-5rh-firmware-open", rev = "e52b2360af7b3152df72f1255682503a0555bb98", features = ["rt"] }
 embedded-graphics = "0.8"
-bf5rh-abi = { path = "abi" }
 
 [profile.release]
 opt-level = "z"

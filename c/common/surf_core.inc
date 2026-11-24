@@ -632,12 +632,12 @@ static int pm_good(sf_t *s, uint32_t f) {
 }
 
 /* the carets fall one 1/8 px every FALL_MS (time, not sweeps: a sweep takes 0.1 to 2.5 s); not
-   while the scan is paused (hold on a station that plays, or monitor: no sweeps), and on from
-   where they were after it (Jeff, 2026-11-13) */
+   while hold is on (no sweeps then), and on from where they were after it (Jeff, 2026-11-13);
+   monitor doesn't stop them (Jeff, 2026-11-24: monitor only opens the squelch) */
 static void pm_fall(sf_t *s) {
   uint32_t n = udiv(s->now - s->t_fall, FALL_MS[s->fall]);
   int k;
-  if (s->parked && (s->hold || s->mon)) n = 0, s->t_fall = s->now;
+  if (s->hold) n = 0, s->t_fall = s->now;
   if (!n) return;
   s->t_fall += n * FALL_MS[s->fall];
   if (n > 255) n = 255;

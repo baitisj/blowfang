@@ -28,41 +28,29 @@ const STATE_RX_ON: u16 = 0xBFF1; // 1 0 1111 1 11111 0001
 const STATE_TX_ON: u16 = 0xC1FE; // 1 1 0000 0 11111 1110
 
 const BANDWIDTH_WIDE: u16 = 0x3028;
-const BANDWIDTH_NARROW: u16 = 0x4048;
+const BANDWIDTH_NARROW: u16 = 0x4008; // the UV-21 stock tune's (the UV-5RH: 0x4048)
 
 const REG_SOFT_RESET: u8 = 0x00;
 const REG_POWER: u8 = 0x37;
 const REG_RXAGC_1: u8 = 0x13;
-const REG_RXAGC_2: u8 = 0x12;
-const REG_RXAGC_3: u8 = 0x11;
-const REG_RXAGC_4: u8 = 0x10;
 const REG_RXAGC_5: u8 = 0x14;
 const REG_RXAGC_6: u8 = 0x49;
 
 const REG_AGC_MODE: u8 = 0x7E;
 const AGC_INDEX_BY_RANK: [u16; 8] = [3, 2, 1, 0, 7, 6, 5, 4];
 const RXAGC_5_FM: u16 = 0x0210;
-const RXAGC_6_FM: u16 = 0x2AB2;
+const RXAGC_6_FM: u16 = 0x2A32; // the UV-21 stock init's (the UV-5RH: 0x2AB2)
 const RXAGC_5_AM: u16 = RXAGC_5_FM;
 const RXAGC_6_AM: u16 = RXAGC_6_FM;
-const REG_RSSI_TABLE_LO: u8 = 0x7B;
-/// PA bias output voltage: [3:0] pabias_out, 0000=1.3V .. 1111=2.8V.
-const REG_PA_BIAS: u8 = 0x19;
 const REG_DEVIATION: u8 = 0x40;
 const REG_MIC_SENS: u8 = 0x7D;
 const REG_VOLUME: u8 = 0x48;
-const REG_PLL_VCO_BIAS: u8 = 0x1F;
-const REG_FIXED_3E: u8 = 0x3E;
-const REG_ANTI_SPUR: u8 = 0x77;
-const REG_OOB_NOISE: u8 = 0x4F;
-const REG_DISTORTION: u8 = 0x26;
 const REG_RSSI: u8 = 0x67;
 
 // FIXME: REG_64 not work? will produce ~20dbm gap between Wide & Narrow
 const RSSI_SETTLE_US_WIDE: u32 = 3000;
 const RSSI_SETTLE_US_NARROW: u32 = 12000;
 
-const REG_2A: u8 = 0x2A;
 const REG_SCRAMBLE: u8 = 0x31;
 const REG_CTCSS: u8 = 0x51;
 /// "CTCSS0" tone bank (the one actually transmitted/decoded); [13]=1
@@ -253,6 +241,56 @@ const REG_DTMF_COEF: u8 = 0x09;
 const DTMF_COEF_TABLE: [u16; 16] = [
     0x006F, 0x106B, 0x2067, 0x3062, 0x4050, 0x5047, 0x603A, 0x702C, 0x8041,
     0x9037, 0xA025, 0xB017, 0xC0E4, 0xD0CB, 0xE0B5, 0xF09F,
+];
+
+/// The UV-21 Pro stock firmware's BK4829 init (port 13), up to REG_40, which it read-modify-writes
+const STOCK_INIT_A: [(u8, u16); 33] = [
+    (0x00, 0x8000),
+    (0x00, 0x0000),
+    (0x37, 0x9D1F),
+    (0x10, 0x0318),
+    (0x11, 0x033A),
+    (0x12, 0x03DB),
+    (0x13, 0x03DE),
+    (0x14, 0x0210),
+    (0x49, 0x2A32),
+    (0x7B, 0x73DC),
+    (0x17, 0x7829),
+    (0x1C, 0x0422),
+    (0x1D, 0x2AAB),
+    (0x1E, 0x4C58),
+    (0x1F, 0x1657),
+    (0x3E, 0x94C6),
+    (0x73, 0x6681),
+    (0x77, 0x88EF),
+    (0x28, 0x0B40),
+    (0x29, 0xAA00),
+    (0x2A, 0x6600),
+    (0x2C, 0x0022),
+    (0x2F, 0x9890),
+    (0x53, 0x2028),
+    (0x7E, 0x303E),
+    (0x19, 0x1041),
+    (0x3A, 0x9A7C),
+    (0x46, 0x6050),
+    (0x4D, 0xA015),
+    (0x4E, 0x5C10),
+    (0x4F, 0x2A28),
+    (0x4C, 0xE520),
+    (0x25, 0x6DBA),
+];
+
+/// then, after REG_40: these two, the DTMF table (DTMF_COEF_TABLE, the same 16 words), and the rest
+const STOCK_INIT_B: [(u8, u16); 2] = [
+    (0x7D, 0xE912),
+    (0x48, 0xB3FF),
+];
+
+const STOCK_INIT_C: [(u8, u16); 4] = [
+    (0x75, 0xFA02),
+    (0x74, 0xFEF0),
+    (0x44, 0x8D8F),
+    (0x45, 0x3359),
 ];
 
 /// REG 0x72: FSK baud-rate select while in FSK work mode, or the DTMF
@@ -519,6 +557,8 @@ pub struct Fd6818<'a> {
     tone_active: bool,
     current_wide: bool,
     band_uhf: bool,
+    /// drive GPIO5/GPIO6 as the UV-5RH's receive band switch (board::rx_path_rf_gpio56)
+    rf_gpio56: bool,
     squelch_cal: SquelchCal,
 }
 
@@ -540,6 +580,7 @@ impl<'a> Fd6818<'a> {
             tone_active: false,
             current_wide: true,
             band_uhf: true,
+            rf_gpio56: true,
         }
     }
 
@@ -569,7 +610,22 @@ impl<'a> Fd6818<'a> {
         self.write_reg(syst, REG_GPIO, val);
     }
 
+    /// UV-21 Pro: whether GPIO5/GPIO6 follow the band (the UV-5RH's receive switch); off, they
+    /// are driven low once and then left alone
+    pub fn set_rf_gpio56(&mut self, syst: &mut SYST, on: bool) {
+        self.rf_gpio56 = on;
+        if on {
+            self.select_band(syst);
+        } else {
+            self.set_gpio_bit(syst, GPIO5, false);
+            self.set_gpio_bit(syst, GPIO6, false);
+        }
+    }
+
     fn select_band(&mut self, syst: &mut SYST) {
+        if !self.rf_gpio56 {
+            return;
+        }
         let uhf = self.band_uhf;
         self.set_gpio_bit(syst, GPIO5, !uhf);
         self.set_gpio_bit(syst, GPIO6, uhf);
@@ -1659,71 +1715,38 @@ impl<'a> Fd6818<'a> {
         self.read_reg(syst, REG_SOFT_RESET)
     }
 
+    /// UV-21 Pro, port 13: the stock firmware's own BK4829 setup (read from the stock image on
+    /// 2026-11-24, docs/uv21-characteristics.md), in its order, in place of the UV-5RH's. Further
+    /// trims belong in RAM modules (the operator, 2026-11-24), not here. After it: the PA held off,
+    /// the FSK and scrambler defaults the UV-5RH code expects, and REG_33 with every GPIO low.
     pub fn init(&mut self, syst: &mut SYST) {
-        // soft reset
-        self.write_reg(syst, REG_SOFT_RESET, 0x8000);
-        self.write_reg(syst, REG_SOFT_RESET, 0x0000);
-
-        // power up
-        self.write_reg(syst, REG_POWER, POWER_UP_VALUE);
-
-        // PA held off at boot
-        self.write_reg(syst, REG_PA, PA_OFF_VALUE);
-
-        // RX AGC
-        self.write_reg(syst, REG_RXAGC_1, 0x03DF);
-        self.write_reg(syst, REG_RXAGC_2, 0x03DB);
-        self.write_reg(syst, REG_RXAGC_3, 0x033A);
-        self.write_reg(syst, REG_RXAGC_4, 0x0318);
-        self.write_reg(syst, REG_RXAGC_5, RXAGC_5_FM);
-        self.write_reg(syst, REG_RXAGC_6, RXAGC_6_FM);
-        self.write_reg(syst, REG_RSSI_TABLE_LO, 0x73DC);
-
-        // PA bias output: low nibble 0x1 ~= 1.4V
-        self.write_reg(syst, REG_PA_BIAS, 0x1041);
-
-        self.write_reg(syst, REG_2A, 0x6600);
-
-        // DTMF Goertzel coefficient table (decoder itself not implemented yet)
+        for &(reg, value) in STOCK_INIT_A.iter() {
+            self.write_reg(syst, reg, value);
+        }
+        // the stock code keeps REG_40's top nibble
+        let dev = (self.read_reg(syst, REG_DEVIATION) & 0xF000) | 0x050A;
+        self.write_reg(syst, REG_DEVIATION, dev);
+        for &(reg, value) in STOCK_INIT_B.iter() {
+            self.write_reg(syst, reg, value);
+        }
         for &value in DTMF_COEF_TABLE.iter() {
             self.write_reg(syst, REG_DTMF_COEF, value);
         }
+        for &(reg, value) in STOCK_INIT_C.iter() {
+            self.write_reg(syst, reg, value);
+        }
+
+        // PA held off at boot (the stock init leaves it alone; rx_only forces it anyway)
+        self.write_reg(syst, REG_PA, PA_OFF_VALUE);
 
         self.write_reg(syst, REG_FSK_BAUD, FSK_BAUD_1200);
         self.write_reg(syst, REG_FSK_5C, FSK_5C_VALUE);
         self.write_reg(syst, REG_FSK_5D, FSK_5D_VALUE);
-
-        self.write_reg(syst, REG_DEVIATION, DEVIATION_VALUE);
-
         let scramble = self.read_reg(syst, REG_SCRAMBLE) & !0x0002;
         self.write_reg(syst, REG_SCRAMBLE, scramble);
-
-        self.write_reg(syst, REG_MIC_SENS, MIC_SENS_VALUE);
-        self.write_reg(syst, REG_VOLUME, 0x33A8);
-
-        self.write_reg(syst, REG_PLL_VCO_BIAS, 0xC65A);
-        self.write_reg(syst, REG_FIXED_3E, 0x94C6);
-        self.write_reg(syst, REG_ANTI_SPUR, 0x88EF);
-        self.write_reg(syst, REG_OOB_NOISE, 0x2F2E); // unverified for BK4829
-        self.write_reg(syst, REG_DISTORTION, 0x13A0); // unverified for BK4829
-
-        self.write_reg(syst, REG_AFC_DISABLE, 0x4691);
-
-        self.write_reg(syst, 0x1C, 0x07C0);
-        self.write_reg(syst, 0x1D, 0xE555);
-        self.write_reg(syst, 0x1E, 0x4C58);
-        self.write_reg(syst, 0x28, 0x0B40);
-        self.write_reg(syst, 0x29, 0xAA00);
-        self.write_reg(syst, 0x2C, 0x1822);
-        self.write_reg(syst, 0x2F, 0x9890);
-        self.write_reg(syst, 0x53, 0x2028);
-        self.write_reg(syst, 0x7E, 0x303E);
-        self.write_reg(syst, 0x46, 0x600A);
-        self.write_reg(syst, 0x4A, 0x5430);
-
         self.write_reg(syst, REG_SUBAUDIO_FREQ, 0x61CE);
 
-        // GPIO initial state
+        // GPIO initial state: all low (the stock code only ever read-modify-writes REG_33)
         self.write_reg(syst, REG_GPIO, 0x9000);
         self.write_reg(syst, REG_WORK_MODE, 0x0000);
     }

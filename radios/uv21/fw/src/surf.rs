@@ -1,7 +1,7 @@
 //! UV-21 SURF, the port's main screen (Jeff, 2026-11-24): radios/uv21/surf/uv21_surf.c (MIT C,
 //! built by build.rs) runs its own loop and reaches the radio through `UvApi`, filled here. The
-//! main loop calls `run` at boot and whenever A/B asks for it on the VFO screen; EXIT comes back
-//! with SURF's last listening frequency, which the VFO takes.
+//! main loop calls `run` at boot, and again if it ever returns: SURF is the only screen (port 14,
+//! no VFO).
 
 use crate::app::App;
 use crate::board;
@@ -32,6 +32,7 @@ struct UvApi {
     text: extern "C" fn(i32, i32, *const u8, u16, u16, i32) -> i32,
     poll: extern "C" fn() -> i32,
     wake: extern "C" fn(u32, i32, i32),
+    front_end: extern "C" fn(i32) -> i32,
     wake_hz: u32,
     start_hz: u32,
 }
@@ -87,6 +88,19 @@ extern "C" fn fd_write(reg: u8, v: u16) {
 extern "C" fn tune(hz: u32, wide: i32) {
     let s = syst();
     app().radio_mut().retune_rx(s, hz, wide != 0);
+}
+
+/// board/rxpath.rs: the receive band switch's mode, stepped by `step`; the next tune applies it
+extern "C" fn front_end(step: i32) -> i32 {
+    let m = board::rx_path_mode();
+    if step != 0 {
+        let n = ((m as i32 + step).rem_euclid(board::RX_PATH_MODES as i32)) as u8;
+        board::set_rx_path_mode(n);
+        let s = syst();
+        app().radio_mut().fd6818.set_rf_gpio56(s, board::rx_path_rf_gpio56(n));
+        return n as i32;
+    }
+    m as i32
 }
 
 extern "C" fn delay_us(us: u32) {
@@ -235,7 +249,8 @@ extern "C" fn wake(hz: u32, dbm: i32, floor: i32) {
     con::nl();
 }
 
-/// SURF until EXIT; returns its last listening frequency (0 if it couldn't run)
+/// SURF until its housekeeping asks to leave; returns its last listening frequency (0 if it
+/// couldn't run)
 pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_hz: u32) -> u32 {
     let now = ms();
     unsafe {
@@ -260,6 +275,7 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
         text,
         poll,
         wake,
+        front_end,
         wake_hz: unsafe { WAKE },
         start_hz,
     };

@@ -100,7 +100,8 @@ code; only the SPI flash pins have been checked on the radio, by dumper 2). Seve
 | LCD | SPI2 SCK PB13, MOSI PB15 (AF0, write-only, mode 3), CS PB12, D/C PC15 (low = command), reset PB8; ST7735S-like init, 128x160; backlight PF7, push-pull, high = on (stock code: set/clear of GPIOF bit 7; on after the boot screen; PB1/TMR14 unused) |
 | Keypad | rows PC13, PC14, PF6, PB14 (pull-ups); columns PB0, PB4, PB9, PB10, PB11 |
 | RF chip | bit-banged 3-wire SCN PB3, SCK PB5, SDA PB6; 8-bit address (bit 7 = read), 16-bit data, BK4819-family framing; stock never reads a chip ID |
-| RF switching | RX path PA14 (VHF, 220) and PA13 (UHF), the SWD pins; TX PA enables through the RF chip's GPIO3 (VHF, 220) and GPIO2 (UHF) |
+| RF switching | RX path PA14 (VHF, 220) and PA13 (UHF), the SWD pins: plain outputs, the band's pin high on receive, both low in idle and transmit (stock image, read 2026-11-24); TX PA enables through the RF chip's GPIO3 (VHF, 220) and GPIO2 (UHF), on only in transmit; GPIO5 probably the red TX LED (on in transmit) and GPIO4 the receive LED (I). Ports 1 to 11 left PA13/PA14 as SWD and drove the UV-5RH's RX switch on RF GPIO5/GPIO6 instead: receive was very weak, and the top LED glowed faintly on some bands (operator, 2026-11-24) |
+| RF chip setup | the stock image's 56 init writes (port 13 copies them: `STOCK_INIT_*` in `radios/uv21/fw/src/drivers/fd6818b.rs`); REG_37 0x9D1F at init and transmit, 0x9F1F back in idle; REG_43 after each tune 0x4008 or 0x3028 (I: wide or narrow); no per-band writes to the gain registers (0x10-0x14, 0x73, 0x7E); 0x3B never written |
 | Other | I2C on PA4/PB6 to a device at 0x60; audio PWM PA11 (TMR1 CH4 with DMA); PB2 probably the audio amplifier enable, PB7 probably the flashlight |
 | SPI flash layout beyond the CPS's 64 KB | voice prompt index 0xCFF80, prompt data from 0xD0000 |
 
