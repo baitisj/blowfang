@@ -42,6 +42,7 @@ tests/test_ci_scope.py
 c/k6/
 firmware/k6-aura/
 sim/
+!sim/uv21/
 modem/
 !modem/dmrvoice.py
 tools/k6_*
@@ -176,6 +177,10 @@ radios/uv21/
 tools/uv21_kdh.py
 tools/bench_kplug.py
 tests/test_uv21*
+# SURF, the port's main screen, includes the K6's SURF core; the emulated board with a model band
+# and its browser workbench (tests/test_uv21_surf.py runs the board)
+c/common/surf_core.inc
+sim/uv21/
 
 [bench]
 .github/workflows/bench-tools.yml

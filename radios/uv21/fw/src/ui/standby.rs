@@ -1,6 +1,6 @@
 use super::{font55, icons, TextBuf, SCREEN_H, SCREEN_W};
 use crate::app::{self, ChannelDisplayMode};
-use crate::device::radio::{Modulation, Power, SubAudio};
+use crate::device::radio::{Modulation, SubAudio};
 use core::fmt::Write as _;
 use embedded_graphics::mono_font::{
     ascii::{FONT_5X8, FONT_6X10, FONT_9X18},
@@ -32,8 +32,8 @@ const ROW2_H: i32 = 22;
 const ROW3_H: i32 = 12;
 const BAND_HEIGHT: i32 = ROW1_H + ROW2_H + ROW3_H;
 const BAND_TOP0: i32 = STATUS_HEIGHT + 1;
-const BAND_TOP1: i32 = BAND_TOP0 + BAND_HEIGHT + 1;
-const METER_RULE_Y: i32 = BAND_TOP1 + BAND_HEIGHT;
+// UV-21 lean receiver (port 6): one band, the one the radio listens on; no second VFO
+const METER_RULE_Y: i32 = BAND_TOP0 + BAND_HEIGHT;
 const METER_TOP: i32 = METER_RULE_Y + 2;
 const METER_H: i32 = 14;
 /// UV-21: the portrait panel leaves room under the meter for lines of 5x5 subpixel text
@@ -51,14 +51,9 @@ const LABEL_X: i32 = MARGIN + 22;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct Snapshot {
-    is_transmitting: bool,
     power_save: bool,
-    dual_standby: bool,
-    vox: bool,
     key_locked: bool,
     master_index: usize,
-    dtmf_dial_active: bool,
-    dtmf_dial_len: usize,
     channel_input_len: usize,
     freq_input_len: usize,
     tx_prohibited: bool,
@@ -69,8 +64,7 @@ pub(super) struct Snapshot {
 pub(super) struct Cache {
     structural: Option<Snapshot>,
     battery: Option<(u8, u16)>,
-    rx_status: [Option<RxStatusState>; 2],
-    tx_elapsed: Option<u32>,
+    rx_status: Option<RxStatusState>,
     meter: Option<MeterState>,
     info_rssi: Option<i32>,
 }
@@ -80,8 +74,7 @@ impl Cache {
         Cache {
             structural: None,
             battery: None,
-            rx_status: [None, None],
-            tx_elapsed: None,
+            rx_status: None,
             meter: None,
             info_rssi: None,
         }
@@ -92,7 +85,6 @@ impl Cache {
 enum RxStatusText {
     None,
     Rx,
-    Tx,
     LastSignal,
 }
 
@@ -103,13 +95,11 @@ struct RxStatusState {
 
 #[derive(Clone, Copy, PartialEq)]
 struct MeterState {
-    tx: bool,
     level: u8,
     live: bool,
     dbm: Option<i32>,
     s_number: u8,
     over_s9: i32,
-    side: Option<u8>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -118,13 +108,8 @@ struct SideSnapshot {
     is_channel_mode: bool,
     channel_num: u16,
     modulation: Modulation,
-    power: Power,
-    subaudio_tx: SubAudio,
     subaudio_rx: SubAudio,
-    offset_hz: u32,
-    freq_dir: u8,
     wide_band: bool,
-    reversed: bool,
 }
 
 impl Snapshot {
@@ -132,49 +117,26 @@ impl Snapshot {
         self.tx_prohibited || self.no_channels_notice
     }
 
-    fn flags(&self) -> (bool, bool, bool, bool, bool) {
-        (
-            self.is_transmitting,
-            self.power_save,
-            self.dual_standby,
-            self.vox,
-            self.key_locked,
-        )
+    fn flags(&self) -> (bool, bool) {
+        (self.power_save, self.key_locked)
     }
 
     fn capture(app: &app::App) -> Self {
-        let is_transmitting = app.is_transmitting();
         let master_index = app.master_index();
         let side = |i: usize| -> SideSnapshot {
-            let transmitting_here = is_transmitting && i == master_index;
-            let freq_hz = if transmitting_here {
-                app.side_tx_freq_hz(i)
-            } else {
-                app.side_freq_hz(i)
-            };
             SideSnapshot {
-                freq_hz,
+                freq_hz: app.side_freq_hz(i),
                 is_channel_mode: app.side_is_channel_mode(i),
                 channel_num: app.side_channel_num(i),
                 modulation: app.side_modulation(i),
-                power: app.side_power(i),
-                subaudio_tx: app.side_subaudio_tx(i),
                 subaudio_rx: app.side_subaudio_rx(i),
-                offset_hz: app.side_offset_hz(i),
-                freq_dir: app.side_freq_dir(i),
                 wide_band: app.side_wide_band(i),
-                reversed: app.side_reversed(i),
             }
         };
         Snapshot {
-            is_transmitting,
             power_save: app.power_save_active(),
-            dual_standby: app.dual_standby_enabled(),
-            vox: app.vox_enabled(),
             key_locked: app.is_key_locked(),
             master_index,
-            dtmf_dial_active: app.dtmf_dial_active(),
-            dtmf_dial_len: app.dtmf_dial_len(),
             channel_input_len: app.channel_input_len(),
             freq_input_len: app.freq_input_len(),
             tx_prohibited: app.tx_prohibited(),
@@ -225,13 +187,6 @@ fn text_right<D>(
     text(lcd, s, font, SCREEN_W - RIGHT_MARGIN - w, baseline, color);
 }
 
-fn band_top(i: usize) -> i32 {
-    if i == 0 {
-        BAND_TOP0
-    } else {
-        BAND_TOP1
-    }
-}
 
 fn full_redraw<D>(lcd: &mut D, app: &app::App, snap: &Snapshot)
 where
@@ -240,17 +195,15 @@ where
     fill(lcd, 0, 0, SCREEN_W, SCREEN_H, BG);
     fill(lcd, 0, 0, SCREEN_W, STATUS_HEIGHT, STATUS_BG);
     fill(lcd, 0, STATUS_HEIGHT, SCREEN_W, 1, ACCENT);
-    fill(lcd, 0, BAND_TOP1 - 1, SCREEN_W, 1, HAIR);
     fill(lcd, MARGIN, METER_RULE_Y, SCREEN_W - 2 * MARGIN, 1, HAIR);
 
     draw_info(lcd);
     draw_flags(lcd, app);
-    for i in 0..2 {
-        draw_stripe(lcd, snap, i);
-        draw_row1(lcd, app, i, band_top(i));
-        draw_row2(lcd, app, i, band_top(i));
-        draw_row3(lcd, app, i, band_top(i));
-    }
+    let i = snap.master_index;
+    draw_stripe(lcd);
+    draw_row1(lcd, app, i, BAND_TOP0);
+    draw_row2(lcd, app, i, BAND_TOP0);
+    draw_row3(lcd, app, i, BAND_TOP0);
 
     if app.tx_prohibited() {
         draw_overlay(lcd, "TX PROHIBITED", ALERT);
@@ -288,86 +241,37 @@ where
     } else if !overlay_active {
         let prev = cache.structural.as_ref().unwrap(); // Some, since !first_frame here
 
-        let tx_state_changed = prev.is_transmitting != snap.is_transmitting;
         let master_changed = prev.master_index != snap.master_index;
 
         if prev.flags() != snap.flags() {
             draw_flags(lcd, app);
         }
-        if snap.is_transmitting {
-            draw_tx_timer(lcd, app, &mut cache.tx_elapsed, tx_state_changed);
-        } else if tx_state_changed {
-            cache.tx_elapsed = None;
+
+        let i = snap.master_index;
+        let top = BAND_TOP0;
+        let p = &prev.sides[i];
+        let s = &snap.sides[i];
+
+        if master_changed
+            || prev.channel_input_len != snap.channel_input_len
+            || (p.is_channel_mode, p.channel_num)
+                != (s.is_channel_mode, s.channel_num)
+        {
+            draw_row1(lcd, app, i, top);
         }
-
-        for i in 0..2usize {
-            let top = band_top(i);
-            let p = &prev.sides[i];
-            let s = &snap.sides[i];
-            let is_master = i == snap.master_index;
-            let p_tx_here = prev.is_transmitting && i == prev.master_index;
-            let s_tx_here = snap.is_transmitting && i == snap.master_index;
-
-            if master_changed || p_tx_here != s_tx_here {
-                draw_stripe(lcd, &snap, i);
-            }
-
-            let row1_input_changed = if is_master {
-                prev.channel_input_len != snap.channel_input_len
-            } else {
-                prev.dtmf_dial_active != snap.dtmf_dial_active
-            };
-            if master_changed
-                || row1_input_changed
-                || (p.is_channel_mode, p.channel_num)
-                    != (s.is_channel_mode, s.channel_num)
-            {
-                draw_row1(lcd, app, i, top);
-            }
-
-            let row2_input_changed = if is_master {
-                prev.freq_input_len != snap.freq_input_len
-            } else {
-                prev.dtmf_dial_active != snap.dtmf_dial_active
-                    || (snap.dtmf_dial_active
-                        && prev.dtmf_dial_len != snap.dtmf_dial_len)
-            };
-            if master_changed
-                || row2_input_changed
-                || p.freq_hz != s.freq_hz
-                || (p.is_channel_mode, p.channel_num)
-                    != (s.is_channel_mode, s.channel_num)
-            {
-                draw_row2(lcd, app, i, top);
-            }
-
-            let row3_input_changed =
-                !is_master && prev.dtmf_dial_active != snap.dtmf_dial_active;
-            if master_changed
-                || row3_input_changed
-                || p_tx_here != s_tx_here
-                || (
-                    p.modulation,
-                    p.power,
-                    p.subaudio_tx,
-                    p.subaudio_rx,
-                    p.offset_hz,
-                    p.freq_dir,
-                    p.wide_band,
-                    p.reversed,
-                ) != (
-                    s.modulation,
-                    s.power,
-                    s.subaudio_tx,
-                    s.subaudio_rx,
-                    s.offset_hz,
-                    s.freq_dir,
-                    s.wide_band,
-                    s.reversed,
-                )
-            {
-                draw_row3(lcd, app, i, top);
-            }
+        if master_changed
+            || prev.freq_input_len != snap.freq_input_len
+            || p.freq_hz != s.freq_hz
+            || (p.is_channel_mode, p.channel_num)
+                != (s.is_channel_mode, s.channel_num)
+        {
+            draw_row2(lcd, app, i, top);
+        }
+        if master_changed
+            || (p.modulation, p.subaudio_rx, p.wide_band)
+                != (s.modulation, s.subaudio_rx, s.wide_band)
+        {
+            draw_row3(lcd, app, i, top);
         }
     }
     // else: overlay_active and unchanged from last tick -- already fully
@@ -376,16 +280,14 @@ where
     cache.structural = Some(snap);
 
     draw_battery(lcd, app, &mut cache.battery, did_full_redraw);
-    for i in 0..2usize {
-        draw_rx_status(
-            lcd,
-            app,
-            i,
-            band_top(i),
-            &mut cache.rx_status[i],
-            did_full_redraw,
-        );
-    }
+    draw_rx_status(
+        lcd,
+        app,
+        app.master_index(),
+        BAND_TOP0,
+        &mut cache.rx_status,
+        did_full_redraw,
+    );
     draw_meter(lcd, app, &mut cache.meter, did_full_redraw);
     draw_info_rssi(lcd, app, &mut cache.info_rssi, did_full_redraw);
 }
@@ -408,11 +310,11 @@ where
         return;
     }
     fill(lcd, MARGIN, INFO_RULE_Y, SCREEN_W - 2 * MARGIN, 1, HAIR);
-    info_line(lcd, 0, "BLOWFANG UV21 PORT 4", AMBER);
-    info_line(lcd, 1, "RX ONLY   SPI FLASH READ ONLY", GREEN);
+    info_line(lcd, 0, "RX ONLY   SPI FLASH READ ONLY", GREEN);
     let mut t: TextBuf<32> = TextBuf::new();
     let _ = write!(t, "BUILD {}", app::FIRMWARE_VERSION);
-    info_line(lcd, 3, t.as_str(), DIM);
+    info_line(lcd, 2, t.as_str(), DIM);
+    info_line(lcd, 3, "A/B  BACK TO SURF", AMBER);
 }
 
 /// UV-21: the live signal level, whether or not the squelch is open
@@ -421,13 +323,13 @@ where
     D: DrawTarget<Color = Rgb565>,
 {
     let dbm = app.rssi_dbm();
-    if INFO_LINES <= 2 || (!force && *last == Some(dbm)) {
+    if INFO_LINES <= 1 || (!force && *last == Some(dbm)) {
         return;
     }
     *last = Some(dbm);
     let mut t: TextBuf<32> = TextBuf::new();
     let _ = write!(t, "RSSI {:4} DBM {}", dbm, if app.audio_open() { "OPEN  " } else { "      " });
-    info_line(lcd, 2, t.as_str(), CYAN);
+    info_line(lcd, 1, t.as_str(), CYAN);
 }
 
 fn draw_overlay<D>(lcd: &mut D, label: &str, color: Rgb565)
@@ -465,61 +367,13 @@ where
     fill(lcd, 0, 0, FLAGS_W, STATUS_HEIGHT, STATUS_BG);
     let baseline = FONT_5X8.baseline as i32 + 2;
     let mut x = 4;
-
-    if app.is_transmitting() {
-        render_tx_timer(lcd, app);
-        x += 5 * SMALL_W + 5;
-    } else {
-        for (on, label, color) in [
-            (app.power_save_active(), "PS", DIM),
-            (app.dual_standby_enabled(), "DWR", ACCENT),
-        ] {
-            if on {
-                text(lcd, label, &FONT_5X8, x, baseline, color);
-                x += (label.len() as i32 + 1) * TINY_W;
-            }
-        }
-    }
-    if app.vox_enabled() {
-        text(lcd, "VOX", &FONT_5X8, x, baseline, AMBER);
-        x += 4 * TINY_W;
+    if app.power_save_active() {
+        text(lcd, "PS", &FONT_5X8, x, baseline, DIM);
+        x += 3 * TINY_W;
     }
     if app.is_key_locked() {
         icons::draw_padlock(lcd, x, 2, AMBER);
     }
-}
-
-fn render_tx_timer<D>(lcd: &mut D, app: &app::App)
-where
-    D: DrawTarget<Color = Rgb565>,
-{
-    let secs = app.tx_elapsed_seconds();
-    let mut buf: TextBuf<8> = TextBuf::new();
-    write!(buf, "{:02}:{:02}", secs / 60, secs % 60).ok();
-    text(
-        lcd,
-        buf.as_str(),
-        &FONT_6X10,
-        4,
-        FONT_6X10.baseline as i32 + 2,
-        ALERT,
-    );
-}
-
-fn draw_tx_timer<D>(
-    lcd: &mut D,
-    app: &app::App,
-    last: &mut Option<u32>,
-    force: bool,
-) where
-    D: DrawTarget<Color = Rgb565>,
-{
-    let secs = app.tx_elapsed_seconds();
-    if !force && *last == Some(secs) {
-        return;
-    }
-    *last = Some(secs);
-    draw_flags(lcd, app);
 }
 
 fn draw_battery<D>(
@@ -568,19 +422,11 @@ fn draw_battery<D>(
 
 // bands
 
-fn draw_stripe<D>(lcd: &mut D, snap: &Snapshot, i: usize)
+fn draw_stripe<D>(lcd: &mut D)
 where
     D: DrawTarget<Color = Rgb565>,
 {
-    let master = i == snap.master_index;
-    let color = if snap.is_transmitting && master {
-        ALERT
-    } else if master {
-        ACCENT
-    } else {
-        HAIR
-    };
-    fill(lcd, 0, band_top(i), STRIPE_W, BAND_HEIGHT, color);
+    fill(lcd, 0, BAND_TOP0, STRIPE_W, BAND_HEIGHT, ACCENT);
 }
 
 fn draw_rx_status<D>(
@@ -593,13 +439,9 @@ fn draw_rx_status<D>(
 ) where
     D: DrawTarget<Color = Rgb565>,
 {
-    let is_master = i == app.master_index();
     let is_watching = i == app.watching_index();
-    let transmitting_here = app.is_transmitting() && is_master;
 
-    let text_kind = if transmitting_here {
-        RxStatusText::Tx
-    } else if is_watching && (app.is_monitor() || app.rssi_open()) {
+    let text_kind = if is_watching && (app.is_monitor() || app.rssi_open()) {
         if app.rx_blink_on() {
             RxStatusText::Rx
         } else {
@@ -619,7 +461,6 @@ fn draw_rx_status<D>(
 
     fill(lcd, CONTENT_X, top, LABEL_X - CONTENT_X, ROW1_H, BG);
     let (label, color) = match text_kind {
-        RxStatusText::Tx => ("TX", ALERT),
         RxStatusText::Rx => ("RX", GREEN),
         RxStatusText::LastSignal => (">>", AMBER),
         RxStatusText::None => return,
@@ -642,9 +483,6 @@ where
     let is_master = i == app.master_index();
     let baseline = top + FONT_6X10.baseline as i32 + 2;
 
-    if !is_master && app.dtmf_dial_active() {
-        return;
-    }
     if is_master && app.channel_input_len() > 0 {
         draw_channel_number_input(lcd, app, baseline);
         return;
@@ -687,23 +525,16 @@ where
     let y = top + ROW1_H;
     fill(lcd, CONTENT_X, y, SCREEN_W - CONTENT_X, ROW2_H, BG);
     let is_master = i == app.master_index();
-    let transmitting_here = app.is_transmitting() && is_master;
     let baseline = y + FONT_9X18.baseline as i32 + 3;
     let channel_mode = app.side_is_channel_mode(i);
     let name = app.side_name_str(i);
     let has_name = channel_mode && !name.is_empty();
     let fg = if is_master { FG } else { SLAVE };
 
-    let freq_hz = if transmitting_here {
-        app.side_tx_freq_hz(i)
-    } else {
-        app.side_freq_hz(i)
-    };
+    let freq_hz = app.side_freq_hz(i);
 
     if is_master && app.freq_input_len() > 0 {
         draw_freq_input(lcd, app, baseline);
-    } else if !is_master && app.dtmf_dial_active() {
-        draw_dtmf_dial_input(lcd, app, y + FONT_6X10.baseline as i32 + 5);
     } else {
         match app.channel_display_mode() {
             ChannelDisplayMode::NameFreq if has_name => {
@@ -741,9 +572,7 @@ where
 {
     let y = top + ROW1_H + ROW2_H;
     fill(lcd, CONTENT_X, y, SCREEN_W - CONTENT_X, ROW3_H, BG);
-    if i == app.master_index() || !app.dtmf_dial_active() {
-        draw_mode_line(lcd, app, i, y + FONT_5X8.baseline as i32 + 2);
-    }
+    draw_mode_line(lcd, app, i, y + FONT_5X8.baseline as i32 + 2);
 }
 
 pub(crate) fn draw_frequency<D>(
@@ -822,42 +651,13 @@ where
     text(lcd, buf.as_str(), &FONT_6X10, LABEL_X, baseline_y, AMBER);
 }
 
-fn draw_dtmf_dial_input<D>(lcd: &mut D, app: &app::App, baseline_y: i32)
-where
-    D: DrawTarget<Color = Rgb565>,
-{
-    let len = app.dtmf_dial_len();
-    let cap = app.dtmf_dial_capacity();
-    let mut buf: TextBuf<17> = TextBuf::new();
-    write!(buf, ">").ok();
-    for pos in 0..cap {
-        if pos < len {
-            write!(buf, "{}", dtmf_char(app.dtmf_dial_digit(pos))).ok();
-        } else {
-            write!(buf, "-").ok();
-        }
-    }
-    text(lcd, buf.as_str(), &FONT_6X10, MARGIN, baseline_y, AMBER);
-}
-
-fn tone_mode_label(tx: SubAudio, rx: SubAudio) -> &'static str {
-    match (tx, rx) {
-        (SubAudio::None, SubAudio::None) => "",
-        (SubAudio::Ctcss(_), SubAudio::None) => "Tone",
-        (SubAudio::Ctcss(t), SubAudio::Ctcss(r)) if t == r => "TSQL",
-        (
-            SubAudio::Dcs {
-                code: tc,
-                inverted: ti,
-            },
-            SubAudio::Dcs {
-                code: rc,
-                inverted: ri,
-            },
-        ) if tc == rc && ti == ri => "DTCS",
-        (SubAudio::None, SubAudio::Dcs { .. }) => "DTCS-R",
-        (SubAudio::None, SubAudio::Ctcss(_)) => "TSQL-R",
-        _ => "Cross",
+/// The squelch tone the receiver waits for, if any (the 5RH's TX tone modes are gone: the UV-21
+/// image never transmits)
+fn rx_tone_label(rx: SubAudio) -> &'static str {
+    match rx {
+        SubAudio::None => "",
+        SubAudio::Ctcss(_) => "TSQL",
+        SubAudio::Dcs { .. } => "DCS",
     }
 }
 
@@ -874,31 +674,10 @@ where
         Modulation::Cw => "CW",
         Modulation::Cwf => "CWF",
     };
-    let power = match app.side_power(i) {
-        Power::Low => "LOW",
-        Power::Mid => "MID",
-        Power::High => "HIGH",
-    };
-    let dir = if app.side_offset_hz(i) == 0 {
-        ""
-    } else {
-        match app.side_freq_dir(i) {
-            1 => "+",
-            2 => "-",
-            _ => "",
-        }
-    };
-
     let fields = [
         (modulation, DIM),
-        (power, FG),
-        (
-            tone_mode_label(app.side_subaudio_tx(i), app.side_subaudio_rx(i)),
-            ACCENT,
-        ),
-        (dir, DIM),
+        (rx_tone_label(app.side_subaudio_rx(i)), ACCENT),
         (if app.side_wide_band(i) { "WIDE" } else { "NAR" }, DIM),
-        (if app.side_reversed(i) { "R" } else { "" }, ALERT),
     ];
 
     let mut x = MARGIN;
@@ -908,16 +687,6 @@ where
         }
         text(lcd, field, &FONT_5X8, x, baseline_y, color);
         x += (field.len() as i32 + 1) * TINY_W;
-    }
-}
-
-fn dtmf_char(v: u8) -> char {
-    match v {
-        0..=9 => (b'0' + v) as char,
-        10..=13 => (b'A' + (v - 10)) as char,
-        14 => '*',
-        15 => '#',
-        _ => '?',
     }
 }
 
@@ -982,51 +751,30 @@ fn draw_bar<D>(
 }
 
 fn meter_state(app: &app::App) -> MeterState {
-    if app.is_transmitting() {
-        let level = ((app.mic_level() as u16 * MIC_BAR_SEGS as u16 + 127) / 255)
-            .min(MIC_BAR_SEGS as u16) as u8;
-        return MeterState {
-            tx: true,
-            level,
-            live: true,
-            dbm: None,
-            s_number: 0,
-            over_s9: 0,
-            side: None,
-        };
-    }
-
-    let dual = app.dual_standby_enabled();
     if app.audio_open() {
         let dbm = app.rssi_dbm();
         MeterState {
-            tx: false,
             level: app.s_meter_level(),
             live: true,
             dbm: Some(dbm),
             s_number: app.s_meter_s_number(),
             over_s9: app.s_meter_over_s9_dbm(),
-            side: dual.then(|| app.watching_index() as u8),
         }
     } else {
         match app.last_signal_peak() {
-            Some((side, dbm)) => MeterState {
-                tx: false,
-                level: app::s_meter_level_of(dbm),
+            Some((_, dbm)) => MeterState {
+                    level: app::s_meter_level_of(dbm),
                 live: false,
                 dbm: Some(dbm),
                 s_number: 0,
                 over_s9: 0,
-                side: dual.then_some(side as u8),
             },
             None => MeterState {
-                tx: false,
-                level: 0,
+                    level: 0,
                 live: false,
                 dbm: None,
                 s_number: 0,
                 over_s9: 0,
-                side: None,
             },
         }
     }
@@ -1047,17 +795,11 @@ fn draw_meter<D>(
     }
     *last = Some(state);
 
-    let mode_changed = force || prev.map_or(true, |p| p.tx != state.tx);
+    let mode_changed = force || prev.is_none();
     let text_changed = mode_changed
         || prev.map_or(true, |p| {
-            (p.dbm, p.s_number, p.over_s9, p.live, p.side)
-                != (
-                    state.dbm,
-                    state.s_number,
-                    state.over_s9,
-                    state.live,
-                    state.side,
-                )
+            (p.dbm, p.s_number, p.over_s9, p.live)
+                != (state.dbm, state.s_number, state.over_s9, state.live)
         });
     let level_changed = mode_changed
         || prev
@@ -1069,32 +811,11 @@ fn draw_meter<D>(
     let base_y = METER_TOP + METER_H - 2;
     let baseline = METER_TOP + FONT_5X8.baseline as i32 + 3;
 
-    if state.tx {
-        if text_changed {
-            fill(lcd, 0, METER_TOP, MIC_BAR_X - 2, METER_H, BG);
-            text(lcd, "MIC", &FONT_5X8, MARGIN, baseline, ALERT);
-        }
-        if level_changed {
-            draw_bar(
-                lcd,
-                MIC_BAR_X,
-                base_y,
-                state.level,
-                MIC_BAR_SEGS,
-                Some(ALERT),
-            );
-        }
-        return;
-    }
-
     if text_changed {
         fill(lcd, 0, METER_TOP, S_METER_BAR_X - 3, METER_H, BG);
         let mut line: TextBuf<20> = TextBuf::new();
         if !state.live {
             line.write_str("LAST ").ok();
-        }
-        if let Some(side) = state.side {
-            line.write_str(if side == 0 { "A " } else { "B " }).ok();
         }
         match state.dbm {
             None => {

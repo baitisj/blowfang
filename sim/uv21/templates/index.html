@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UV-21 workbench</title>
+<style>
+  :root { --bg:#14161a; --panel:#1e2128; --key:#2b2f38; --keyhi:#3b4150; --fg:#e6e6e6; --dim:#8a8f99;
+          --accent:#ffc800; --side:#d9822b; --ok:#3ccf7a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui, sans-serif; }
+  main { display:flex; flex-wrap:wrap; gap:16px; padding:16px; align-items:flex-start; }
+  .radio { background:#0c0d10; border-radius:22px; padding:18px 18px 22px 52px; position:relative;
+           box-shadow: 0 0 0 2px #262a33 inset; }
+  .sides { position:absolute; left:8px; top:40px; display:flex; flex-direction:column; gap:10px; }
+  .sides button { width:34px; height:58px; background:var(--side); color:#111; border-radius:8px; font-size:11px; }
+  #screen { width:384px; height:480px; image-rendering:pixelated; display:block; border-radius:4px;
+            background:#280028; max-width:calc(100vw - 110px); height:auto; aspect-ratio:128/160; }
+  .pad { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; }
+  .nav { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:14px; }
+  button { background:var(--key); color:var(--fg); border:0; border-radius:10px; padding:10px 0;
+           font:600 14px system-ui, sans-serif; cursor:pointer; user-select:none; touch-action:manipulation; }
+  button:hover { background:var(--keyhi); }
+  button.held { outline:2px solid var(--accent); }
+  .ring { background:#343a47; }
+  .side-col { flex:1 1 320px; max-width:560px; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border-radius:12px; padding:14px; }
+  h1 { font-size:16px; margin:0 0 6px; } h2 { font-size:14px; margin:0 0 8px; color:var(--dim); font-weight:600; }
+  table { width:100%; border-collapse:collapse; } td { padding:4px 4px; vertical-align:middle; }
+  td.f { font-variant-numeric:tabular-nums; } .on { color:var(--ok); } .off { color:var(--dim); }
+  input[type=range] { width:110px; }
+  pre { background:#0b0c0e; color:#b8f5c8; margin:0; padding:10px; border-radius:8px; height:220px;
+        overflow:auto; font:12px/1.35 ui-monospace, monospace; white-space:pre-wrap; }
+  .meta { color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums; }
+  .help td { padding:2px 6px; color:var(--dim); } .help td:first-child { color:var(--fg); white-space:nowrap; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .row button { padding:6px 12px; }
+  @media (max-width:520px) { main { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="radio">
+    <div class="sides">
+      <button data-key="SIDE1" title="top side key: next peak up (PageUp)">▲ peak</button>
+      <button data-key="SIDE2" title="middle side key: next band (B)">band</button>
+      <button data-key="BAND" title="bottom side key: next peak down (PageDown)">▼ peak</button>
+    </div>
+    <img id="screen" alt="UV-21 screen" src="/api/screen.png">
+    <div class="nav">
+      <button data-key="VM" title="VFO/MR: type a custom range (V)">VFO/MR</button>
+      <button data-key="UP" class="ring" title="up a channel (↑)">▲</button>
+      <button data-key="AB" title="A/B: caret fall speed (A); on the VFO screen, back to SURF">A/B</button>
+      <button data-key="EXIT" title="EXIT (Esc)">EXIT</button>
+      <button data-key="MENU" class="ring" style="grid-column:2" title="MENU / centre (Enter)">MENU</button>
+      <button data-key="DOWN" class="ring" style="grid-column:2" title="down a channel (↓)">▼</button>
+    </div>
+    <div class="pad">
+      <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+      <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+      <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+      <button data-key="*">*</button><button data-key="0">0</button><button data-key="#">#</button>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <h1>UV-21 Pro port, emulated</h1>
+      <div class="meta" id="meta">booting…</div>
+      <div class="row" style="margin-top:8px">
+        <button id="pause">Pause</button><button id="reboot">Reboot</button>
+        <span class="meta">Click a key to tap it; shift-click (or hold it) for a long press.</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Model band (made-up signals, not measurements)</h2>
+      <table id="band"></table>
+    </div>
+    <div class="card">
+      <h2>Serial console</h2>
+      <pre id="serial"></pre>
+    </div>
+    <div class="card">
+      <h2>SURF keys</h2>
+      <table class="help">
+        <tr><td>▲ / ▼</td><td>listening frequency up / down a channel (held: repeats)</td></tr>
+        <tr><td>top / bottom side</td><td>jump to the next caret above / below</td></tr>
+        <tr><td>middle side</td><td>next band: 2m, 1.25m, 70cm, GMRS, MAR/WX, AIR, USER</td></tr>
+        <tr><td>1 / 3</td><td>zoom in / out (±100 kHz to ±25 MHz)</td></tr>
+        <tr><td>#</td><td>next channel step; long press: the CW wake listens here</td></tr>
+        <tr><td>4 · 5</td><td>FM / DSB / AM · the band's centre</td></tr>
+        <tr><td>7 / 9 · 8</td><td>fixed gain down / up · AGC again</td></tr>
+        <tr><td>* · 0</td><td>monitor · hold</td></tr>
+        <tr><td>A/B · VFO/MR</td><td>caret fall speed · type a custom range</td></tr>
+        <tr><td>MENU · EXIT</td><td>frequency and level on serial · leave SURF (A/B returns)</td></tr>
+      </table>
+    </div>
+  </div>
+</main>
+<script>
+const post = (url, body) => fetch(url, {method:"POST", headers:{"Content-Type":"application/json"},
+                                        body:JSON.stringify(body)}).then(r => r.json());
+const key = (k, action) => post("/api/key", {key:k, action});
+
+// keys: a click taps; shift-click is a long press; a press held past 400 ms holds the key
+document.querySelectorAll("button[data-key]").forEach(b => {
+  let t = null, held = false;
+  b.addEventListener("pointerdown", e => {
+    if (e.shiftKey) { key(b.dataset.key, "long"); return; }
+    held = false;
+    t = setTimeout(() => { held = true; b.classList.add("held"); key(b.dataset.key, "down"); }, 400);
+  });
+  const end = e => {
+    if (t === null) return;
+    clearTimeout(t); t = null;
+    if (held) { b.classList.remove("held"); key(b.dataset.key, "up"); }
+    else key(b.dataset.key, "tap");
+  };
+  b.addEventListener("pointerup", end);
+  b.addEventListener("pointerleave", end);
+});
+const KB = {"ArrowUp":"UP", "ArrowDown":"DOWN", "Enter":"MENU", "Escape":"EXIT", "PageUp":"SIDE1",
+            "PageDown":"BAND", "b":"SIDE2", "v":"VM", "a":"AB", "*":"*", "#":"#"};
+for (let i = 0; i < 10; i++) KB[String(i)] = String(i);
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.repeat) return;
+  const k = KB[e.key];
+  if (k) { e.preventDefault(); key(k, e.shiftKey && e.key.length > 1 ? "long" : "tap"); }
+});
+
+document.getElementById("pause").onclick = async e => {
+  const run = e.target.textContent !== "Pause";
+  await post("/api/run", {running: run});
+  e.target.textContent = run ? "Pause" : "Run";
+};
+document.getElementById("reboot").onclick = () => post("/api/reboot", {});
+
+const mhz = hz => (hz / 1e6).toFixed(4);
+let built = false;
+function band(stations) {
+  const t = document.getElementById("band");
+  if (!built || t.rows.length !== stations.length) {
+    t.innerHTML = "";
+    for (const s of stations) {
+      const r = t.insertRow();
+      r.innerHTML = `<td><input type="checkbox" ${s.enabled ? "checked" : ""}></td>
+        <td>${s.name}</td><td class="f">${mhz(s.hz)}</td>
+        <td><input type="range" min="-125" max="-40" value="${s.dbm}"></td>
+        <td class="f lvl">${s.dbm} dBm</td><td class="k"></td>`;
+      r.querySelector("input[type=checkbox]").onchange = e => post("/api/station", {i:s.i, enabled:e.target.checked});
+      const sl = r.querySelector("input[type=range]");
+      sl.oninput = () => r.querySelector(".lvl").textContent = sl.value + " dBm";
+      sl.onchange = () => post("/api/station", {i:s.i, dbm:Number(sl.value)});
+    }
+    built = true;
+  }
+  stations.forEach((s, i) => {
+    const c = t.rows[i].querySelector(".k");
+    c.textContent = !s.enabled ? "off" : s.keyed ? "on air" : s.kind;
+    c.className = "k " + (s.enabled && s.keyed ? "on" : "off");
+  });
+}
+
+const img = document.getElementById("screen");
+let loading = false;
+img.onload = img.onerror = () => { loading = false; };
+setInterval(() => {
+  if (loading) return;
+  loading = true;
+  img.src = "/api/screen.png?t=" + Date.now();
+}, 250);
+
+async function poll() {
+  try {
+    const s = await (await fetch("/api/state")).json();
+    document.getElementById("meta").textContent =
+      `virtual ${s.seconds.toFixed(1)} s · ${(s.speed * 100).toFixed(0)}% of real time · RF chip on ${mhz(s.tuned_hz)} MHz`
+      + (s.holding ? ` · holding ${s.holding}` : "") + (s.error ? ` · stopped: ${s.error}` : "");
+    const pre = document.getElementById("serial");
+    const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 4;
+    pre.textContent = s.serial.replace(/\r/g, "");
+    if (atEnd) pre.scrollTop = pre.scrollHeight;
+    band(s.stations);
+  } catch (e) {}
+  setTimeout(poll, 500);
+}
+poll();
+</script>
+</body>
+</html>

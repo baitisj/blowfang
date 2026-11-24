@@ -2,9 +2,6 @@ mod convert;
 mod input;
 mod keyfn;
 mod keys;
-mod launcher;
-pub(crate) mod overlay;
-mod scan;
 mod settings;
 mod side;
 mod side_ops;
@@ -89,10 +86,6 @@ const RTONE_HZ_DIV_10: [u16; 4] = [100, 145, 175, 210];
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Standby,
-    AppMenu,
-    Scan,
-    /// running external app from spi flash
-    External(u8),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -117,7 +110,8 @@ pub struct App<'a> {
     mode: Mode,
     sides: [side::Side; 2],
     settings: flash_map::Settings,
-    launcher_index: usize,
+    /// UV-21: SURF (radios/uv21/surf) runs next, from the main loop
+    want_surf: bool,
 
     master: usize,
     watching: usize,
@@ -170,8 +164,6 @@ pub struct App<'a> {
     ps_cycle_ticks: u16,
 
     bl_idle_ticks: u16,
-
-    scan: scan::ScanState,
 
     /// fm radio chip drvier
     /// keep for overlay::api_fm_*
@@ -298,7 +290,7 @@ impl<'a> App<'a> {
             mode: Mode::Standby,
             sides,
             settings,
-            launcher_index: 0,
+            want_surf: true,
             master: 0,
             watching: 0,
             last_signal_side: None,
@@ -337,7 +329,6 @@ impl<'a> App<'a> {
             ps_cycle_ticks: 0,
             bl_idle_ticks: settings.backlight_time as u16
                 * BACKLIGHT_STEP_TICKS,
-            scan: scan::ScanState::new(),
             fm_radio,
             utc_secs: bf5rh_abi::UTC_NOT_SET,
             utc_frac: 0,
@@ -404,7 +395,6 @@ impl<'a> App<'a> {
         }
         if signal_present
             && !self.radio.is_monitor()
-            && !matches!(self.mode, Mode::External(_))
         {
             let peak = match self.last_signal_peak {
                 Some((_, peak)) if self.signal_held => peak.max(self.rssi_raw),
@@ -806,26 +796,6 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn launcher_index(&self) -> usize {
-        self.launcher_index
-    }
-
-    pub fn launcher_item_count(&self) -> usize {
-        launcher::total_item_count()
-    }
-
-    pub fn launcher_label_at(
-        &mut self,
-        index: usize,
-        w: &mut dyn core::fmt::Write,
-    ) {
-        launcher::label_at(self, index, w);
-    }
-
-    pub fn launcher_available_at(&mut self, index: usize) -> bool {
-        launcher::is_available_at(self, index)
-    }
-
     pub fn chip_id(&self) -> u16 {
         self.chip_id
     }
@@ -935,11 +905,35 @@ impl<'a> App<'a> {
         self.radio.poll_squelch(syst, db);
     }
 
-    pub fn poll_scan(&mut self, syst: &mut SYST) {
-        scan::poll(self, syst);
+    /// SURF's keys: the keypad's next event (after a poll), and the backlight kept on
+    pub fn surf_key_event(
+        &mut self,
+        syst: &mut SYST,
+    ) -> Option<crate::device::keypad::KeyEvent> {
+        self.keypad.poll(syst);
+        let ev = self.keypad.pop_event();
+        if ev.is_some() {
+            self.note_backlight_activity();
+            self.note_power_save_activity(syst);
+        }
+        ev
     }
-    pub fn scan_direction_up(&self) -> bool {
-        scan::direction_up(self)
+
+    /// back from SURF: the VFO on SURF's last listening frequency (in RAM: the SPI flash stays
+    /// read only), and the radio set up for the side again
+    pub fn resume_after_surf(&mut self, syst: &mut SYST, hz: u32) {
+        let m = self.master;
+        if hz != 0 && self.sides[m].vfo_chan == ChVfoMode::Vfo {
+            self.sides[m].rx_freq_hz = hz;
+            self.sides[m].refresh_cfg_freqs();
+        }
+        self.mode = Mode::Standby;
+        self.sync_watching_to_master(syst);
+    }
+
+    /// SURF is due (boot, or A/B on the VFO screen); clears the request
+    pub fn take_surf_request(&mut self) -> bool {
+        core::mem::replace(&mut self.want_surf, false)
     }
     pub fn rssi_open(&self) -> bool {
         self.radio.rssi_open()

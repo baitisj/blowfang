@@ -208,6 +208,7 @@ clang, lld and llvm-objcopy, as the K6 modules use. The emulator test needs `pip
 ## The firmware port
 
 `fw/` is the UV-5RH open firmware ported to this board (Rust, GPL-3); `fw/README.md` lists what
-port 1 changes. It is receive only until the radio has an antenna, and it resets on the
+each port changes. It is receive only until the radio has an antenna, and it resets on the
 bootloader's command-42 frame so every image can go on hands-free. `make port` builds
-`build/port.bin`.
+`build/port.bin`. Since port 6 it boots into SURF (`surf/`, MIT), with the higher frequencies at
+the top of the screen; `sim/uv21/` runs it in a browser workbench.

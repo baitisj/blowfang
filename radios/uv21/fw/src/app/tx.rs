@@ -25,15 +25,7 @@ pub(super) fn set_ptt(app: &mut App, syst: &mut SYST, pressed: bool) {
     app.note_power_save_activity(syst);
     app.note_backlight_activity();
     if pressed && !app.transmitting {
-        // An overlay app owns the radio config while it runs, so reloading
-        // the VFO side config here would undo it.
-        let external = matches!(app.mode, Mode::External(_));
-        if app.mode != Mode::Standby && !external {
-            return;
-        }
-        // An overlay app has to opt in before the PTT key can key the
-        // transmitter, and a satellite tracker on an RX-only bird never does.
-        if external && !super::overlay::tx_enabled() {
+        if app.mode != Mode::Standby {
             return;
         }
         if app.settings.tx_forbid {
@@ -43,9 +35,7 @@ pub(super) fn set_ptt(app: &mut App, syst: &mut SYST, pressed: bool) {
             return;
         }
 
-        let (tx_freq_hz, power) = if external {
-            (app.radio.tx_freq_hz(), app.radio.power())
-        } else {
+        let (tx_freq_hz, power) = {
             app.watching = app.master;
             let s = &app.sides[app.master];
             let tx_freq_hz = s.cfg.tx_freq_hz;
@@ -72,7 +62,7 @@ pub(super) fn set_ptt(app: &mut App, syst: &mut SYST, pressed: bool) {
                 } else if dial.len > 0 {
                     app.radio.send_dtmf_digits(syst, digits);
                 }
-            } else if app.settings.ani_tx && !external {
+            } else if app.settings.ani_tx {
                 if let Some(target) = resolve_ani_target(app) {
                     app.radio.send_ani(syst, target);
                 }
