@@ -27,7 +27,7 @@
   setInterval(async () => {
     try {
       const s = await (await fetch('/api/soapyfang', {cache: 'no-store'})).json();
-      $('sf-src').textContent = s.source + (s.live ? ' (live)' : '');
+      $('sf-src').textContent = s.source + (s.live ? ' (live)' : '') + (s.error ? ' STOPPED: ' + s.error : '');
       $('sf-win').textContent = mhz(s.center_hz) + ' MHz ± ' + (s.rate * 0.45 / 1e3).toFixed(0) + ' kHz, tuned ' + mhz(s.tuned_hz);
       $('sf-rssi').textContent = s.rssi_dbm === null ? '–' : s.rssi_dbm.toFixed(1) + ' dBm';
       $('sf-noise').textContent = s.noise;

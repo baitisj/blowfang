@@ -70,7 +70,7 @@ class SoapyWorkbench(uv21wb.Workbench):
                     "rssi_dbm": round(c.rssi_dbm(tuned), 1) if tuned else None,
                     "noise": c.noise_raw(), "glitch": c.glitch_raw(),
                     "squelch_open": c.noise_raw() <= 60, "retunes": c.retunes,
-                    "fast_bus": b.fast_bus}
+                    "fast_bus": b.fast_bus, "error": c.error}
 
     def audio(self, after, gated):
         seq, pcm = self.board.chip.pcm_after(after, gated)

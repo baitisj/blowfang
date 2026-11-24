@@ -59,6 +59,7 @@ class ChipModel:
         self.retunes = 0
         self._thread = None
         self._run = False
+        self.error = None                        # live mode: why the reader stopped
 
     # ---- windows and retuning ----
     def _reset_window(self):
@@ -121,7 +122,12 @@ class ChipModel:
 
         def loop():
             while self._run:
-                x = self.src.read(self.fft_n * 4)
+                try:
+                    x = self.src.read(self.fft_n * 4)
+                except Exception as e:           # the SDR went away: say so on the page, stop reading
+                    if self._run:
+                        self.error = str(e) or type(e).__name__
+                    return
                 with self.lock:
                     self._ingest(x)
         self._thread = threading.Thread(target=loop, name="soapyfang-rx", daemon=True)
