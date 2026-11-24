@@ -1,7 +1,29 @@
-try:
-    import unicorn  # noqa: F401
-except ImportError:
-    raise SystemExit("SoapyFang needs the unicorn emulator: sudo pacman -S python-unicorn (Arch) or pip install unicorn")
+"""python3 -m sim.soapyfang: first, everything the session needs that the machine might lack, all
+named at once with one Arch install line (hamlet), before the Pluto is touched"""
+import importlib.util
+import shutil
+import sys
+
+
+def missing(argv):
+    need = [("unicorn", "python-unicorn", "unicorn"), ("numpy", "python-numpy", "numpy")]
+    out = [(pkg, pip) for mod, pkg, pip in need if importlib.util.find_spec(mod) is None]
+    src = next((argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "--source"),
+               next((a.split("=", 1)[1] for a in argv if a.startswith("--source=")), "synthetic"))
+    if src.startswith("pluto") and not all(shutil.which(t) for t in ("iio_readdev", "iio_attr")):
+        out.append(("libiio", None))                  # its command-line tools
+    if src.startswith("soapy:") and importlib.util.find_spec("SoapySDR") is None:
+        out.append(("soapysdr", None))
+    return out
+
+
+gone = missing(sys.argv[1:])
+if gone:
+    names = ", ".join(p for p, _ in gone)
+    pip = " ".join(q for _, q in gone if q)
+    raise SystemExit(f"SoapyFang can't start: missing {names}.\n  Arch: sudo pacman -S --needed "
+                     + " ".join(p for p, _ in gone) + (f"\n  elsewhere: pip install {pip}" if pip else ""))
+
 from .workbench import main  # noqa: E402
 
 main()
