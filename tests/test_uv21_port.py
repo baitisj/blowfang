@@ -214,7 +214,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 7 build=" in text
+    assert "blowfang uv21 port 8 build=" in text
     assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -345,5 +345,5 @@ def test_it_says_it_started_before_changing_the_clock(built):
     r.mu.mem_write(0x40021018, struct.pack("<I", 1 << 14))              # APB2EN: USART1 on
     r.mu.mem_write(0x4001380C, struct.pack("<I", 1 << 13 | 1 << 3))    # USART1 CTRL1: UEN, TEN
     out = r.run(until="boot done", limit=300_000_000)
-    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 7 build=")
+    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 8 build=")
     assert out.count("port start") == 1

@@ -67,8 +67,13 @@
   uint8_t scol[NV];             /* its bar's colour as drawn */                           \
   uint32_t scen;                /* the axis drawn for this middle and span */             \
   uint8_t ssi, sdirty;                                                                    \
-  char st0[34], st1[22], st2[34];   /* the text lines as drawn */
+  uint8_t saud, dpend;          /* the squelch as last seen; a level to show once settled */ \
+  uint32_t dcen, t_dq;          /* the middle as last seen; when the squelch or it moved */ \
+  int sdbm;                     /* the level shown */                                     \
+  char st0[34], st1[12], st2[34], st3[14];   /* the text lines as drawn */
 #include "../../../c/common/surf_core.inc"
+/* (the core's span name: the K6 labels with it; the UV-21's labels are absolute) */
+static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spanx;
 
 #define CHK_MS 70
 #define PARK_US 20000
@@ -79,6 +84,7 @@
 #define WAKE_REST_MS 60000
 #define WAKE_DB 20
 #define WAKE_ABS (-60)
+#define DBM_SETTLE_MS 100      /* the level is shown this long after the squelch or the middle moves */
 
 /* ---- the screen: 128 x 160 ---- */
 #define TITLE_H 9               /* the title bar: one line of 5x5 */
@@ -92,6 +98,7 @@
 #define BW 100                  /* and reach BX + BW at most */
 #define CW 3                    /* a caret: 3 x 2 */
 #define MSG_Y 152               /* the bottom line, 5x5 */
+#define DBX 60                  /* the level, right of the frequency on its line */
 
 #define RGB(r, g, b) ((uint16_t)((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3)))
 #define BG RGB(0, 0, 0)
@@ -479,18 +486,28 @@ static int streq(const char *a, const char *b) {
 }
 
 /* a text line, drawn only when it changed: clear its strip, then the text */
-static void line(sf_t *s, char *drawn, const char *t, int x, int y, int h, uint16_t fg, uint16_t bg, int font) {
+static void line(sf_t *s, char *drawn, const char *t, int x, int y, int w, int h, uint16_t fg, uint16_t bg,
+                 int font) {
   if (!s->sdirty && streq(drawn, t)) return;
   put(drawn, t)[0] = 0;
-  s->api->fill(0, y, 128, h, bg);
+  s->api->fill(x - 2, y, w, h, bg);
   s->api->text(x, y + (font ? 0 : 1), t, fg, bg, font);
 }
 
-/* the axis, its ticks and the span's labels: when the middle or the span moved */
+/* an edge label: hz in MHz, rounded, to 0.1 MHz on spans of +-2.5 MHz and up, else 0.01 (a
+   trailing 0 dropped): 5 characters in the label column, 6 reaching into the tick column */
+static void edge_mhz(char *t, uint32_t hz, uint32_t span) {
+  uint32_t d = span >= 2500000u ? 100000u : 10000u;
+  char *e = fix(t, udiv(hz + d / 2, d), d == 100000u ? 1 : 2);
+  if (d == 10000u && e[-1] == '0') e--;       /* 440.50 -> 440.5 */
+  *e = 0;
+}
+
+/* the axis, its ticks and the labels: when the middle or the span moved */
 static void axis(sf_t *s) {
   const uv_api_t *api = s->api;
-  char t[8], *e;
-  int i, j, n;
+  char t[12];
+  int i, j;
   if (!s->sdirty && s->scen == s->cen && s->ssi == s->si) return;
   s->scen = s->cen;
   s->ssi = s->si;
@@ -510,17 +527,16 @@ static void axis(sf_t *s) {
   /* the middle: a pointer in the tick column */
   api->fill(TX0, BINY(C) - 1, 1, 4, MID);
   api->fill(TX0 + 1, BINY(C), 2, 2, MID);
-  /* labels: the span at the top and bottom, the lens's edges by their ticks */
-  e = spanx(t, U_HZ * SPANS[s->si]);
-  *e = 0;
-  for (n = 0; t[n]; n++) {}
+  /* labels: the top and bottom bins' frequencies in MHz (Jeff, 2026-11-24: "show e.g. 463.5
+     and 461.0"), the lens's edges by their ticks */
   {
-    char l[9];
-    l[0] = '+';
-    put(l + 1, t)[0] = 0;
-    api->text(LX, BINY(NV - 1) - 2, l, DIM, BG, 0);
-    l[0] = '-';
-    api->text(LX, BINY(0) - 2, l, DIM, BG, 0);
+    uint32_t sp = U_HZ * SPANS[s->si];
+    edge_mhz(t, s->cen + sp, sp);
+    api->text(LX, BINY(NV - 1) - 2, t, DIM, BG, 0);
+    if (s->cen > sp) {
+      edge_mhz(t, s->cen - sp, sp);
+      api->text(LX, BINY(0) - 2, t, DIM, BG, 0);
+    }
   }
   api->text(LX, BINY(C + KI) - 2, "+20K", DIM, BG, 0);
   api->text(LX, BINY(C - KI) - 2, "-20K", DIM, BG, 0);
@@ -545,16 +561,25 @@ static void draw(sf_t *s) {
   while (p < t + 31 - r) *p++ = ' ';
   p = put(p, MD_NAME[s->md]);
   *p = 0;
-  line(s, s->st0, t, 2, 0, TITLE_H, FG, TBG, 0);
+  line(s, s->st0, t, 2, 0, 128, TITLE_H, FG, TBG, 0);
 
-  /* the listening frequency and its level */
+  /* the listening frequency: redrawn only when it changes (Jeff, 2026-11-24) */
   p = mhz(t, s->cen, cdec(s));
-  *p++ = ' ';
-  p = sint(p, s->sel_dbm);
-  p = put(p, "dBm");
-  if (s->audio) p = put(p, " RX");
   *p = 0;
-  line(s, s->st1, t, 2, FREQ_Y, 11, s->audio ? LIVE : FG, BG, 1);
+  line(s, s->st1, t, 2, FREQ_Y, DBX - 2, 11, FG, BG, 1);
+
+  /* its level: taken DBM_SETTLE_MS after the squelch opens or closes, or the middle moves, and
+     left alone in between (Jeff, 2026-11-24: "draw this about 0.1 second after the squelch
+     breaks, and again about 0.1 sec after it closes to allow settling") */
+  if (s->dpend && s->now - s->t_dq >= DBM_SETTLE_MS) {
+    s->dpend = 0;
+    s->sdbm = s->sel_dbm;
+  }
+  p = sint(t, s->sdbm);
+  p = put(p, "dBm");
+  if (s->saud) p = put(p, " RX");
+  *p = 0;
+  line(s, s->st3, t, DBX, FREQ_Y, 128 - DBX + 2, 11, s->saud ? LIVE : FG, BG, 1);
 
   axis(s);
 
@@ -596,7 +621,7 @@ static void draw(sf_t *s) {
   *p = 0;
   for (p = t; *p; p++)
     if (*p >= 'a' && *p <= 'z') *p = (char)(*p - 32);
-  line(s, s->st2, t, 2, MSG_Y, 8, s->wseen ? CYAN : DIM, BG, 0);
+  line(s, s->st2, t, 2, MSG_Y, 128, 8, s->wseen ? CYAN : DIM, BG, 0);
   s->sdirty = 0;
 }
 
@@ -665,8 +690,14 @@ uint32_t uv21_surf(uv_api_t *api, void *state, uint32_t room) {
     else if (s->parked) park_step(s);
     else sweep_step(s);
     s->now = api->ms();
+    if (s->audio != s->saud || s->cen != s->dcen) {   /* the level is due once it settles */
+      s->saud = s->audio;
+      s->dcen = s->cen;
+      s->dpend = 1;
+      s->t_dq = s->now;
+    }
     if (s->now - s->t_wake >= (s->parked ? WAKE_PARK_MS : WAKE_MS)) wake_look(s);
-    if (s->now - s->t_flush >= FLUSH_MS) draw(s);
+    if (s->now - s->t_flush >= FLUSH_MS || (s->dpend && s->now - s->t_dq >= DBM_SETTLE_MS)) draw(s);
   }
   api->fd_write(0x47, (uint16_t)s->r47);
   api->fd_write(0x13, (uint16_t)s->r13);

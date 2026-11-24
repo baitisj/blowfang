@@ -216,7 +216,7 @@ def test_an_uncalibrated_source_sets_its_level_from_the_floor():
 unicorn = pytest.importorskip("unicorn")
 from sim.soapyfang.board import SoapyUV21Board  # noqa: E402
 from sim.uv21.board import build  # noqa: E402
-from test_uv21_surf import REG_GPIO, REG_PA, REG_STATE, sel, tap, until  # noqa: E402
+from test_uv21_surf import REG_GPIO, REG_PA, REG_STATE, sel, tap, until, wait  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -264,7 +264,7 @@ def test_surf_finds_the_peaks_in_a_recording(built, tmp_path):
     write_sigmf(base, src.read(int(0.5 * src.rate)), src.rate, 439_650_000)
     b = SoapyUV21Board(*built, source=SigmfSource(base + ".sigmf-meta"))
     b.run(until="boot done", limit=300_000_000)
-    until(b, r"$^", 6)
+    wait(b, 6)
     assert sel(b) == 439_500_000
     tap(b, "SIDE1", 1.0)
     assert sel(b) == 439_700_000
