@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 19 build=" in surfing.boot_text
+    assert "blowfang uv21 port 20 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -286,10 +286,19 @@ def test_hold_stops_the_sweeps_and_the_carets(steady):
     assert len(tunes(steady, 2)) > 5
 
 
+def mode(board, name):
+    """* until SURF says it's in mode name (port 20: SQL-W, SQL+W, MON-W, MON+W in turn)"""
+    for _ in range(4):
+        if re.search(r"mode " + re.escape(name), tap(board, "*", 0.3)):
+            return
+    raise AssertionError("no mode " + name)
+
+
 def test_monitor_only_opens_the_squelch(steady):
     # MON (Jeff, 2026-11-24): "Toggling MON should toggle opening the squelch. No changes should
     # happen to the scanning routines and the carets should continue to fall as normal"
-    tap(steady, "*", 0.5)
+    # (port 20: that's MON-W)
+    mode(steady, "MON-W")
     # the audio open, but for the short hushes of a refresh sweep or a wake look: sampled, since
     # one look can land in one of those
     af, end = [], steady.seconds + 1.5
@@ -301,19 +310,19 @@ def test_monitor_only_opens_the_squelch(steady):
     seen = tunes(steady, 7)                                             # (a refresh sweep every 5 s)
     assert len(seen) > 5, sorted(seen)
     assert carets(steady) != before                                     # (they fell)
-    tap(steady, "*", 0.5)
+    mode(steady, "SQL-W")
 
 
 def test_hold_and_monitor_together(steady):
     mid = sel(steady)
-    tap(steady, "*", 0.3)
+    mode(steady, "MON-W")
     tap(steady, "0", 0.5)
     seen = tunes(steady, 4)
     assert seen <= {mid}, sorted(seen)
     tap(steady, "SIDE1", 1.0)                                           # a jump still works
     assert sel(steady) != mid
     tap(steady, "0", 0.3)
-    tap(steady, "*", 0.3)
+    mode(steady, "SQL-W")
 
 
 def test_hold_does_not_open_the_speaker_on_noise(built):
@@ -404,6 +413,8 @@ def test_bars_drawn_in_pieces_leave_nothing_behind(built):
             tap(b, k, 0.3)
         for _ in range(3):
             wait(b, 0.7)
+            if bad_bar_rows(b):                                         # (caught mid-draw?)
+                wait(b, 0.03)
             seen.append(bad_bar_rows(b))
     assert not any(seen), [x for x in seen if x][:5]
 
@@ -443,9 +454,9 @@ def test_history_follows_the_frequency_when_tuned(history):
     tap(history, "UP", 0.3)
     old_cols = slice(5, 12)                                             # (sweeps before the move)
     lens = bar_lengths(history)
-    after = max(range(63), key=lambda i: lens[i])
-    assert after != before, (before, after)
-    assert all(c in HEAT[8:] for c in strip(history, after)[old_cols]), strip(history, after)[:14]
+    hot = [i for i in range(63) if lens[i] >= max(lens) - 2]            # (it can span a few rows)
+    trail = [i for i in hot if all(c in HEAT[8:] for c in strip(history, i)[old_cols])]
+    assert trail and before not in trail, (before, hot, trail)
     assert not any(c in HEAT[8:] for c in strip(history, before)[old_cols])
     assert any(c == NONE_YET for i in range(63) for c in strip(history, i)[old_cols])
 
@@ -480,6 +491,58 @@ def test_hold_stops_the_fast_passes_too(history):
     seen = tunes(history, 4)
     assert seen <= {mid}, sorted(seen)
     tap(history, "0", 0.5)
+
+
+def af_samples(board, seconds):
+    """REG_47 every ~0.3 ms of virtual time: open (AF_FM) or shut"""
+    af, end = [], board.seconds + seconds
+    while board.seconds < end:
+        board.step(20_000)
+        af.append(board.regs.get(0x47))
+    return af
+
+
+def reads_near(board, hz, seconds):
+    """how often the RF chip was tuned within 12.5 kHz of hz through seconds of virtual time"""
+    n = [0]
+
+    class Count(dict):
+        def __setitem__(self, a, v):
+            dict.__setitem__(self, a, v)
+            if a == 0x39 and abs(((self.get(0x39, 0) << 16) | self.get(0x38, 0)) * 10 - hz) <= 12_500:
+                n[0] += 1
+    board.regs = Count(board.regs)
+    wait(board, seconds)
+    board.regs = dict(board.regs)
+    return n[0]
+
+
+def test_star_cycles_the_squelch_and_waterfall_modes(built):
+    # port 20 (Jeff, 2026-11-24): * steps SQL-W, SQL+W, MON-W, MON+W. -W: with the squelch open
+    # the waterfall waits (a refresh sweep every 5 s); +W: it keeps going, the speaker muted
+    # while the tuner skips and open on the middle between; HOLD: no waterfall in any of them.
+    # Watched here: the carrier off the middle, which the scan's fast passes revisit
+    on = Station("on", 439_500_000, -70)                                # a carrier on the middle
+    b = UV21Board(*built, band=[on, Station("b", 439_700_000, -80)])
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 4)
+    mid = sel(b)
+    assert reads_near(b, 439_700_000, 10) <= 6                          # SQL-W: refreshes only
+    mode(b, "SQL+W")
+    assert reads_near(b, 439_700_000, 10) > 10                          # the scan goes on
+    af = af_samples(b, 2)
+    assert 0.3 < af.count(AF_FM) / len(af) < 0.95, af.count(AF_FM) / len(af)   # listens between
+    tap(b, "0", 0.5)                                                    # HOLD: nothing moves
+    assert tunes(b, 3) <= {mid}
+    tap(b, "0", 0.5)
+    mode(b, "MON-W")
+    assert reads_near(b, 439_700_000, 10) <= 6
+    mode(b, "MON+W")
+    assert reads_near(b, 439_700_000, 10) > 10
+    on.keyed = lambda t: False                                          # quiet: MON still plays
+    af = af_samples(b, 2)
+    assert af.count(AF_FM) > len(af) * 0.3
+    mode(b, "SQL-W")
 
 
 # ---- the receive front end's band switch (port 12) ----
