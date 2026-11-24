@@ -36,6 +36,12 @@
 #ifndef K6_MOD_H
 #define K6_MOD_H
 #include <stdint.h>
+
+/* the power knob: PA15 (POW_DET) reads high once its switch opens (flux_radio, tcarwash/flux_radio
+   c556d5c, MIT); a module loop that sees it leaves, so Aura can power down */
+static inline int km_power_switch_off(void) {
+  return (*(volatile const uint32_t *)(uintptr_t)0x48000010u & (1u << 15)) != 0;
+}
 #ifdef __cplusplus
 extern "C" {
 #endif

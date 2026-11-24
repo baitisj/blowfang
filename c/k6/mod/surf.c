@@ -310,6 +310,10 @@ static int ed_done(sf_t *s) {
     if (hi > USER_MAX) hi = USER_MAX;
   }
   if (lo < USER_MIN || hi > USER_MAX || hi <= lo) return 0;
+  if (hi - lo > SURF_USER_SPAN) {        /* (wider: the middle SURF_USER_SPAN of it) */
+    lo += (hi - lo - SURF_USER_SPAN) / 2;
+    hi = lo + SURF_USER_SPAN;
+  }
   user_set(s, lo, hi);
   band(s, &s->ub);
   if (!s->en[1]) recentre(s, ed_hz(s->eb[0])), moved(s);   /* (one frequency: there, on 25 kHz) */
@@ -447,6 +451,10 @@ static void on_key(sf_t *s, int k) {
   case 'A': jump(s, 1); break;
   case 'B': jump(s, -1); break;
   case 'W':                           /* A/B: how fast the carets fall */
+    /* Not adopted yet (Jeff, 2026-11-24): flux_radio's SURF (tcarwash/flux_radio e34869d, MIT)
+       makes a held A/B (600 ms, SURF_AB_HOLD_MS) on a signal that plays tune VFO B to the middle
+       (api->vfo_b_tune(cen, mode)) and leave SURF with B active; a short press stays fall speed.
+       It needs a vfo_b_tune entry in the module table, which this firmware doesn't have. */
     s->fall = (uint8_t)(s->fall + 1 == NFALL ? 0 : s->fall + 1);
     put(put(s->msg, "fall "), FALL[s->fall])[0] = 0;
     s->t_msg = s->now + MSG_MS;
@@ -520,7 +528,7 @@ static void check_bar(sf_t *s) {
      audio and the keys 1-2 s: Jeff, 2026-11-11); sweeping, the next sweep replaces them all */
   if (s->stale && (d >= s->sfl + SQ_DB || s->refine)) {
     for (i = C - KI; i <= C + KI && !s->qk; i++)
-      if (s->hz[i]) sweep_bin(s, i);
+      if (bin_hz(s, i)) sweep_bin(s, i);
     if (s->qk) return;                  /* a key came: it goes first */
     if (s->refine && refine_lens(s)) return;   /* the middle moved again: check there */
     s->tuned = 0;
@@ -538,7 +546,7 @@ static void check_bar(sf_t *s) {
 }
 
 static void sweep_step(sf_t *s) {
-  if (s->hz[s->next]) {
+  if (bin_hz(s, s->next)) {
     sweep_bin(s, s->next);
     s->tuned = 0;
   }
@@ -574,7 +582,7 @@ static void park_step(sf_t *s) {
   if (!s->hold && (s->stale || (!s->mon && s->now - s->t_full >= REFRESH_MS))) {   /* (stale: a zoom) */
     int i;
     for (i = 0; i < NV && !s->qk; i++)   /* (read_hz hushes the speaker; the next read unhushes it) */
-      if (s->hz[i]) sweep_bin(s, i);
+      if (bin_hz(s, i)) sweep_bin(s, i);
     if (!s->qk) sweep_done(s);          /* (a key cut it short: it goes first) */
     s->tuned = 0;
     s->t_full = s->api->ms();
@@ -646,7 +654,7 @@ static void draw(sf_t *s) {
   s->t_flush = s->now;
   for (i = 0; i < 16 * ROWS; i++) b[i] = 0;
   for (i = 0; i < NV; i++) {
-    if (!s->hz[i]) continue;
+    if (!bin_hz(s, i)) continue;
     for (r = AX - bar_h(s, i); r < AX; r++) pair(b, i, r);
     pair(b, i, AX);                       /* the axis line */
   }
@@ -802,7 +810,7 @@ int k6_main(const k6_api_t *api) {
     say_end(s, stepn(p, s->ch));
   }
   s->t_flush = api->ms() - FLUSH_MS;
-  for (;;) {
+  while (!km_power_switch_off()) {   /* (the knob turned off: leave, so Aura powers down; flux_radio c556d5c) */
     s->now = api->ms();
     pm_fall(s);
     k = kp_event(s);
@@ -858,7 +866,7 @@ int k6_main(const k6_api_t *api) {
   if (s->zif) api->fd_write(0x3D, (uint16_t)s->r3d);
   if (s->mon) squelch(s, 0);
   wr(GPIOB + (s->odr ? BSRR : BRR), SPK);
-  for (i = 0, n = 0; i < 300 && n < 5; i++) {
+  for (i = 0, n = 0; i < 300 && n < 5 && !km_power_switch_off(); i++) {
     n = kp_scan(s) ? 0 : n + 1;
     api->delay_us(10000);
   }
@@ -872,7 +880,7 @@ int k6_main(const k6_api_t *api) {
   p = stepn(p, U_HZ * SPANS[s->si]);
   say_end(s, put(p, " lens"));
   for (p = s->ln, k = 0; k < NV;) {
-    *p++ = s->hz[k] ? (char)('a' - 1 + bar_h(s, k)) : '-';
+    *p++ = bin_hz(s, k) ? (char)('a' - 1 + bar_h(s, k)) : '-';
     if (!(++k & 31) || k == NV) say_end(s, p), p = s->ln;
   }
 #endif
