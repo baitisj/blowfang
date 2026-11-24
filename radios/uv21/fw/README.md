@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 14 change
+## What ports 1 to 15 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -76,15 +76,16 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   channel, contact and FM records (`src/app/mod.rs` keeps the radio, keypad, battery and
   backlight timer). EXIT no longer leaves SURF. Narrow bandwidth uses the stock tune's REG_43
   (0x4008). The image is about half the size: 23 KB, was 45.4 KB.
-  In its place, SURF tunes like a VFO: a long # opens TUNE (a red title, the frequency in large
-  digits with a `_` where the next one goes), `*` is the decimal point and # finishes, so
-  `446#` is 446.000 MHz. The frequency typed becomes the middle of a CUSTOM range as wide as the
-  band on screen (16 MHz at most); a long press of the middle side key does the same on the
-  frequency in the middle. Moving the CW wake went from long # to long MENU. The custom range
+  In its place, SURF tunes like a VFO: a long # opens frequency entry, and the frequency typed
+  becomes the middle of a CUSTOM range as wide as the band on screen (16 MHz at most); a long
+  press of the middle side key does the same on the frequency in the middle. Moving the CW wake went from long # to long MENU. The custom range
   shows as CUSTOM (was USER).
-  And RAM modules over the cable (below), for register trials without a new image.
+- Port 15: TUNE and RAM modules. The long # entry is TUNE: a red title, the frequency in large
+  digits with a `_` where the next one goes; `*` is the decimal point and # finishes, so `446#`
+  is 446.000 MHz. And RAM modules over the cable (below), for register trials without a new
+  image.
 
-## RAM modules (port 14)
+## RAM modules (port 15)
 
 A module is a small position-independent C program (`../mod/`, MIT) that runs once in a 4 KB
 block of RAM while SURF runs, prints lines on the cable's console and returns. It reaches the

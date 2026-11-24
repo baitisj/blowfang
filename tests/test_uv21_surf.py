@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 14 build=" in surfing.boot_text
+    assert "blowfang uv21 port 15 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
