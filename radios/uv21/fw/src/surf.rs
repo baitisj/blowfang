@@ -46,8 +46,12 @@ extern "C" {
 /// moves it, until the radio is switched off
 const WAKE_HZ: u32 = 440_850_000;
 
-/// SURF's state and its remembered peaks (128 x 8 B), 8-aligned
-const STATE_WORDS: usize = 480;
+/// SURF's state (uv21_surf_state_size(), 1,272 B in port 17) and its remembered peaks
+/// (NPM = 128 x 8 B), 8-aligned, with a word to spare. Port 17 trimmed it from 480 words
+/// (3,840 B; 1,544 B never used); the start line says `surf ram need= room=`, and
+/// tests/test_uv21_surf.py fails if the room no longer holds all 128 peaks.
+const STATE_WORDS: usize = 288;
+const NPM: u32 = 128;
 static mut STATE: [u64; STATE_WORDS] = [0; STATE_WORDS];
 
 /// What the callbacks reach while SURF runs: set by `run`, cleared after
@@ -295,6 +299,10 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
     };
     let room = (STATE_WORDS * 8) as u32;
     let need = unsafe { uv21_surf_state_size() };
+    con::puts("surf ram");
+    con::kv_hex("need", need + 8 * NPM, 4);
+    con::kv_hex("room", room, 4);
+    con::nl();
     let cen = if need + 8 * 16 > room {
         con::puts("surf no room");
         con::kv_hex("need", need, 4);

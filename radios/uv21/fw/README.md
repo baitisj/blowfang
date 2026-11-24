@@ -93,7 +93,10 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
 - Port 17: a faster screen. The LCD's SPI runs at 15 MHz (PCLK / 4, the ST7735S's rated write
   speed; ports 1 to 16 ran 7.5 MHz), and a changed SURF bar repaints only what changed: the part
   it grew or shrank by, the old caret and the new one (was its whole 103-pixel row pair). In the
-  emulator SURF now sends about 1 KB a second to the screen, was about 23 KB.
+  emulator SURF now sends about 1 KB a second to the screen, was about 23 KB. Each line of 5x5
+  text goes out in one window (was a window per pixel row: 6 window setups a line, now 1). And
+  SURF's state buffer is trimmed to what it uses: 2,304 B, was 3,840 B (1,536 B of RAM back;
+  the start line `surf ram need= room=` shows the margin).
 
 ## RAM modules (port 15)
 

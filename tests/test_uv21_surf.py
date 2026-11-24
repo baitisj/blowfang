@@ -98,6 +98,15 @@ def test_bottom_line_is_blank_until_a_wake_is_heard(built):
     assert all(px == (0, 0, 0) for row in rows for px in row)
 
 
+def test_surf_has_room_for_all_its_peaks(surfing):
+    # port 17 trimmed SURF's state buffer to what it uses: it must still hold the state and all
+    # 128 remembered peaks (else SURF keeps fewer peaks, quietly)
+    m = re.search(r"surf ram need=([0-9a-fA-F]+) room=([0-9a-fA-F]+)", surfing.boot_text)
+    assert m, surfing.boot_text[-400:]
+    need, room = int(m.group(1), 16), int(m.group(2), 16)
+    assert need <= room <= need + 64, (need, room)
+
+
 def test_up_and_down_move_a_channel(surfing):
     f0 = sel(surfing)
     tap(surfing, "UP")
