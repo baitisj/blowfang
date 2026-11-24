@@ -25,9 +25,9 @@
      4               the demodulator: FM, DSB, AM
      5               the band's centre
      7 / 9 / 8       fixed gain down / up, the receiver's own AGC
-     *               monitor: the squelch open (the chip's too), a steady listen on the middle:
-                     no sweeps and no wake looks while it's on (port 16, Jeff, 2026-11-24: "I
-                     still hear the occasional pulsing of the scan")
+     *               monitor: the squelch open (the chip's too); the sweeps and the carets'
+                     fall go on as usual (Jeff, 2026-11-24), so the audio hushes for each
+                     refresh sweep and wake look: one receiver
      0               hold: no retunes at all, the carets stay put; the middle listens with the
                      squelch as usual, the side keys still jump. Independent of monitor (Jeff,
                      2026-11-24: "Scanning should stop when hold is active")
@@ -46,8 +46,8 @@
    over a floor that rises 1 dB a quiet read, or over -60 dBm). The UV-21 has one receiver, so
    SURF goes to api->wake_hz for one settled read every WAKE_MS (WAKE_PARK_MS while a signal
    plays, which mutes it for ~15 ms), and a wake is 2 hits in the last 4 looks: a CW ID of a few
-   seconds can't slip through its gaps. No looks while hold or monitor keep the receiver on the
-   middle (port 16), unless the middle is the wake frequency: those reads are the looks. It says "wake 440.8500 -61 -114" and calls api->wake,
+   seconds can't slip through its gaps. No looks while hold keeps the receiver on the middle
+   (port 16), unless the middle is the wake frequency: those reads are the looks. It says "wake 440.8500 -61 -114" and calls api->wake,
    shows WAKE HEARD on the bottom line, then rests WAKE_REST_MS. Nothing shows until then (Jeff,
    2026-11-24: the standing "WAKE 440.850" was confusing; "WAKE HEARD" is fine). A long press of MENU moves it to the middle's frequency
    (it was #, until long # became frequency entry).
@@ -262,8 +262,8 @@ static void wake_look(sf_t *s) {
   if (!hz || (int32_t)(s->now - s->t_rest) < 0) return;
   if (hz == s->cen && (s->parked || s->hold) && s->tuned) {
     d = s->sel_dbm;                      /* (listening on it: those reads are the look) */
-  } else if (s->hold || s->mon) {
-    return;                              /* a steady listen: no retunes (port 16) */
+  } else if (s->hold) {
+    return;                              /* hold: no retunes at all (port 16) */
   } else {
     d = read_hz(s, hz, CHECK_US);
     s->tuned = 0;                        /* (the next park or sweep read tunes back) */
@@ -443,7 +443,7 @@ static void park_step(sf_t *s) {
     s->parked = 0;
     return;
   }
-  if (!s->hold && !s->mon && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (port 16: not under monitor) */
+  if (!s->hold && (s->stale || s->now - s->t_full >= REFRESH_MS)) {   /* (monitor too) */
     int i;
     for (i = 0; i < NV && !s->qk; i++)
       if (bin_hz(s, i)) sweep_bin(s, i);

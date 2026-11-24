@@ -277,23 +277,22 @@ def test_hold_stops_the_sweeps_and_the_carets(steady):
     assert len(tunes(steady, 2)) > 5
 
 
-def test_monitor_is_a_steady_listen(steady):
-    # MON: the audio opens on the middle. Port 16 (Jeff, 2026-11-24: "I still hear the occasional
-    # pulsing of the scan", "Mon does not sometimes"): no refresh sweeps and no wake looks while
-    # it's on, so the audio never drops
-    mid = sel(steady)
+def test_monitor_only_opens_the_squelch(steady):
+    # MON (Jeff, 2026-11-24): "Toggling MON should toggle opening the squelch. No changes should
+    # happen to the scanning routines and the carets should continue to fall as normal"
     tap(steady, "*", 0.5)
-    af, end = [], steady.seconds + 7                                     # (a refresh was every 5 s)
-    if not isinstance(steady.regs, _Tunes):
-        steady.regs = _Tunes(steady.regs)
-    steady.regs.seen = set()
+    # the audio open, but for the short hushes of a refresh sweep or a wake look: sampled, since
+    # one look can land in one of those
+    af, end = [], steady.seconds + 1.5
     while steady.seconds < end:
         steady.step(20_000)
         af.append(steady.regs.get(0x47))
-    assert all(v == AF_FM for v in af), [hex(v or 0) for v in af if v != AF_FM][:10]
-    assert steady.regs.seen <= {mid}, sorted(steady.regs.seen)
+    assert af.count(AF_FM) > len(af) * 0.6, [hex(v or 0) for v in af]
+    before = carets(steady)
+    seen = tunes(steady, 7)                                             # (a refresh sweep every 5 s)
+    assert len(seen) > 5, sorted(seen)
+    assert carets(steady) != before                                     # (they fell)
     tap(steady, "*", 0.5)
-    assert len(tunes(steady, 2)) > 5                                    # off again: sweeping
 
 
 def test_hold_and_monitor_together(steady):
