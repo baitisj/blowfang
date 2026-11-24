@@ -74,3 +74,6 @@ firmware/uv380-openrtx/out/
 *.btf
 rt950-backup-*/
 c/common/ysf_echo_host
+# I/Q recordings (SigMF): off-air captures never go in Git; tests write theirs to a temp folder
+*.sigmf-data
+*.sigmf-meta
