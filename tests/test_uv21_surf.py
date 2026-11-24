@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 18 build=" in surfing.boot_text
+    assert "blowfang uv21 port 19 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -419,8 +419,8 @@ def history(built):
 
 def test_history_strip_beside_the_bars(history):
     # port 18 (Jeff, 2026-11-24: "Let's go with history in RAM"): a divider at x 74, the strip
-    # right of it, one column a sweep, newest at the left; the carrier's row runs hot, a quiet
-    # row is the floor's colour, and columns older than the run are none yet
+    # right of it, one column a pass, newest at the left; the carrier's row runs hot and a quiet
+    # row is the floor's colour
     rows = history.screen_rgb()
     assert {rows[y][BEND] for y in range(24, 150)} == {(41, 40, 41)}
     lens = bar_lengths(history)
@@ -432,8 +432,7 @@ def test_history_strip_beside_the_bars(history):
     quiet = strip(history, 3)
     assert quiet[0] in HEAT[:3], quiet[:4]
     filled = sum(1 for c in row if c != NONE_YET)
-    assert 10 <= filled < HN, filled                                    # (~0.8 s a sweep)
-    assert row[-1] == NONE_YET
+    assert filled == HN, filled                         # (port 19: a column each 250 ms, ~13 s)
 
 
 def test_history_follows_the_frequency_when_tuned(history):
@@ -449,6 +448,38 @@ def test_history_follows_the_frequency_when_tuned(history):
     assert all(c in HEAT[8:] for c in strip(history, after)[old_cols]), strip(history, after)[:14]
     assert not any(c in HEAT[8:] for c in strip(history, before)[old_cols])
     assert any(c == NONE_YET for i in range(63) for c in strip(history, i)[old_cols])
+
+
+def test_fast_passes_watch_the_peaks_and_sweep_all_every_5_s(history):
+    # port 19 (Jeff, 2026-11-24: "scanning only certain frequencies intelligently within the
+    # range and then doing a more comprehensive scan of the entire band every five seconds"):
+    # the carrier's bin is read many times a second, a quiet far bin about once in 5 s
+    seen = []
+    if not isinstance(history.regs, _Tunes):
+        history.regs = _Tunes(history.regs)
+
+    class Count(_Tunes):
+        def __setitem__(self, a, v):
+            dict.__setitem__(self, a, v)
+            if a == 0x39:
+                f = ((self.get(0x39, 0) << 16) | self.get(0x38, 0)) * 10
+                seen.append(f)
+    history.regs = Count(history.regs)
+    history.regs.seen = set()
+    wait(history, 15)
+    near = sum(1 for f in seen if abs(f - 439_550_000) <= 12_500)
+    far = {f: seen.count(f) for f in set(seen) if 600_000 < abs(f - 439_500_000) and f != 440_850_000}
+    assert near > 150, near                                             # (10 a second and more)
+    n = sorted(far.values())
+    assert n and n[len(n) // 2] in (2, 3, 4) and n[-1] <= 4, n          # (a sub-read can miss one)
+
+
+def test_hold_stops_the_fast_passes_too(history):
+    mid = sel(history)
+    tap(history, "0", 0.5)
+    seen = tunes(history, 4)
+    assert seen <= {mid}, sorted(seen)
+    tap(history, "0", 0.5)
 
 
 # ---- the receive front end's band switch (port 12) ----
