@@ -29,6 +29,15 @@ from dataclasses import dataclass, field
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
+try:                                    # the helpers below live in test modules that import pytest
+    import pytest  # noqa: F401
+except ImportError:                     # a machine without it (hamlet): just the two names they use
+    import importlib
+    import types
+    _pt = types.ModuleType("pytest")
+    _pt.importorskip = importlib.import_module
+    _pt.fixture = lambda f=None, **kw: f if callable(f) else (lambda g: g)
+    sys.modules["pytest"] = _pt
 import test_uv21_bringup as bu  # noqa: E402
 import test_uv21_port as tp  # noqa: E402
 from unicorn import UC_HOOK_CODE  # noqa: E402
