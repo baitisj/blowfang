@@ -408,11 +408,10 @@ where
         return;
     }
     fill(lcd, MARGIN, INFO_RULE_Y, SCREEN_W - 2 * MARGIN, 1, HAIR);
-    info_line(lcd, 0, "BLOWFANG UV21 PORT 4", AMBER);
-    info_line(lcd, 1, "RX ONLY   SPI FLASH READ ONLY", GREEN);
+    info_line(lcd, 0, "RX ONLY   SPI FLASH READ ONLY", GREEN);
     let mut t: TextBuf<32> = TextBuf::new();
     let _ = write!(t, "BUILD {}", app::FIRMWARE_VERSION);
-    info_line(lcd, 3, t.as_str(), DIM);
+    info_line(lcd, 2, t.as_str(), DIM);
 }
 
 /// UV-21: the live signal level, whether or not the squelch is open
@@ -421,13 +420,13 @@ where
     D: DrawTarget<Color = Rgb565>,
 {
     let dbm = app.rssi_dbm();
-    if INFO_LINES <= 2 || (!force && *last == Some(dbm)) {
+    if INFO_LINES <= 1 || (!force && *last == Some(dbm)) {
         return;
     }
     *last = Some(dbm);
     let mut t: TextBuf<32> = TextBuf::new();
     let _ = write!(t, "RSSI {:4} DBM {}", dbm, if app.audio_open() { "OPEN  " } else { "      " });
-    info_line(lcd, 2, t.as_str(), CYAN);
+    info_line(lcd, 1, t.as_str(), CYAN);
 }
 
 fn draw_overlay<D>(lcd: &mut D, label: &str, color: Rgb565)
