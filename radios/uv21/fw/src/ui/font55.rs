@@ -101,8 +101,41 @@ pub fn width(s: &str) -> i32 {
     s.len() as i32 * CHAR_W + 1
 }
 
+/// One pixel row `r` (0-5) of `s`, `wp` pixels wide, into `row`.
+fn render_row(s: &str, r: usize, wp: usize, fg: Rgb565, bg: Rgb565, row: &mut [Rgb565; MAX_PX]) {
+    // stripe coverage, two stripes of margin on the left for the filter
+    let mut cov = [0u8; MAX_PX * 3 + 4];
+    if r < 5 {
+        for (k, &c) in s.as_bytes().iter().enumerate() {
+            let bits = glyph(c)[r];
+            for col in 0..5 {
+                if bits & (0x10 >> col) != 0 {
+                    let st = (k * 6 + col) * 2 + 2;
+                    if st + 1 < cov.len() {
+                        cov[st] = 1;
+                        cov[st + 1] = 1;
+                    }
+                }
+            }
+        }
+    }
+    for (p, px) in row.iter_mut().enumerate().take(wp) {
+        let mut f = [0u8; 3];
+        for (k, fk) in f.iter_mut().enumerate() {
+            let i = 3 * p + 2 + k;
+            *fk = cov[i - 2] + 2 * cov[i - 1] + 3 * cov[i] + 2 * cov[i + 1] + cov[i + 2];
+        }
+        *px = Rgb565::new(
+            mix(bg.r(), fg.r(), GAMMA[f[0] as usize]),
+            mix(bg.g(), fg.g(), GAMMA[f[1] as usize]),
+            mix(bg.b(), fg.b(), GAMMA[f[2] as usize]),
+        );
+    }
+}
+
 /// Draws `s` with its top-left corner at (x, y), all six rows of the line (so it overwrites what
-/// was there), clipped at the right edge of the screen. Returns the width drawn.
+/// was there), clipped at the right edge of the screen. Returns the width drawn. One window for
+/// the whole line, each row worked out as the panel takes it (port 17; was a window a row).
 pub fn draw<D>(lcd: &mut D, x: i32, y: i32, s: &str, fg: Rgb565, bg: Rgb565) -> i32
 where
     D: DrawTarget<Color = Rgb565>,
@@ -113,37 +146,20 @@ where
     }
     let wp = w as usize;
     let mut row = [bg; MAX_PX];
-    for r in 0..LINE_H as usize {
-        // stripe coverage, two stripes of margin on the left for the filter
-        let mut cov = [0u8; MAX_PX * 3 + 4];
-        if r < 5 {
-            for (k, &c) in s.as_bytes().iter().enumerate() {
-                let bits = glyph(c)[r];
-                for col in 0..5 {
-                    if bits & (0x10 >> col) != 0 {
-                        let st = (k * 6 + col) * 2 + 2;
-                        if st + 1 < cov.len() {
-                            cov[st] = 1;
-                            cov[st + 1] = 1;
-                        }
-                    }
-                }
+    let (mut r, mut p) = (0usize, wp);
+    let pixels = core::iter::from_fn(|| {
+        if p == wp {
+            if r == LINE_H as usize {
+                return None;
             }
+            render_row(s, r, wp, fg, bg, &mut row);
+            r += 1;
+            p = 0;
         }
-        for (p, px) in row.iter_mut().enumerate().take(wp) {
-            let mut f = [0u8; 3];
-            for (k, fk) in f.iter_mut().enumerate() {
-                let i = 3 * p + 2 + k;
-                *fk = cov[i - 2] + 2 * cov[i - 1] + 3 * cov[i] + 2 * cov[i + 1] + cov[i + 2];
-            }
-            *px = Rgb565::new(
-                mix(bg.r(), fg.r(), GAMMA[f[0] as usize]),
-                mix(bg.g(), fg.g(), GAMMA[f[1] as usize]),
-                mix(bg.b(), fg.b(), GAMMA[f[2] as usize]),
-            );
-        }
-        let area = Rectangle::new(Point::new(x, y + r as i32), Size::new(w as u32, 1));
-        lcd.fill_contiguous(&area, row[..wp].iter().copied()).ok();
-    }
+        p += 1;
+        Some(row[p - 1])
+    });
+    let area = Rectangle::new(Point::new(x, y), Size::new(w as u32, LINE_H as u32));
+    lcd.fill_contiguous(&area, pixels).ok();
     w
 }

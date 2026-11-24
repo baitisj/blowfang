@@ -617,7 +617,8 @@ static void draw(sf_t *s) {
     if (!e->h || e->bad || (j = bin_of(s, e->f)) < 0) continue;
     if (e->h > top[j]) top[j] = e->h;
   }
-  /* the bars, each redrawn only when its length, colour or caret changed */
+  /* the bars, each redrawn only when its length, colour or caret changed, and then only the
+     pixels that changed (port 17): the part a bar grew or shrank by, the old caret and the new */
   for (i = 0; i < NV; i++) {
     int y = BINY(i), len = bin_hz(s, i) ? bar_len(s, i) : 0, cx = 0;
     uint8_t col = !bin_hz(s, i) ? 0 : i == C ? (s->audio ? 3 : 2) : 1;
@@ -627,12 +628,25 @@ static void draw(sf_t *s) {
       if (cx > BW - CW) cx = BW - CW;
     }
     if (!s->sdirty && s->sl[i] == len && s->scx[i] == cx && s->scol[i] == col) continue;
+    {
+      int ol = s->sl[i], ocx = s->scx[i], c = col == 3 ? LIVE : col == 2 ? MID : BAR;
+      if (s->sdirty) {                      /* all of it */
+        if (len) api->fill(BX, y, len, 2, (uint16_t)c);
+        api->fill(BX + len, y, BW + 3 - len, 2, BG);
+      } else {
+        if (col != s->scol[i]) api->fill(BX, y, len, 2, (uint16_t)c);   /* (0 wide: nothing) */
+        else if (len > ol) api->fill(BX + ol, y, len - ol, 2, (uint16_t)c);
+        if (len < ol) api->fill(BX + len, y, ol - len, 2, BG);
+        if (ocx && ocx != cx) {             /* the old caret, where the bar doesn't cover it */
+          int x0 = ocx > len ? ocx : len;
+          api->fill(BX + x0, y, ocx + CW - x0, 2, BG);
+        }
+      }
+      if (cx) api->fill(BX + cx, y, CW, 2, FG);   /* (a caret never sits on its bar: always drawn) */
+    }
     s->sl[i] = (uint8_t)len;
     s->scx[i] = (uint8_t)cx;
     s->scol[i] = col;
-    if (len) api->fill(BX, y, len, 2, col == 3 ? LIVE : col == 2 ? MID : BAR);
-    api->fill(BX + len, y, BW + 3 - len, 2, BG);
-    if (cx) api->fill(BX + cx, y, CW, 2, FG);
   }
 
   /* the bottom line: a message, the typing, WAKE HEARD once a wake was heard, else blank */

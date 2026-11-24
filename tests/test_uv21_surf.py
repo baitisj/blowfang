@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 16 build=" in surfing.boot_text
+    assert "blowfang uv21 port 17 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -96,6 +96,15 @@ def test_bottom_line_is_blank_until_a_wake_is_heard(built):
     wait(b, 6)
     rows = b.screen_rgb()[152:160]
     assert all(px == (0, 0, 0) for row in rows for px in row)
+
+
+def test_surf_has_room_for_all_its_peaks(surfing):
+    # port 17 trimmed SURF's state buffer to what it uses: it must still hold the state and all
+    # 128 remembered peaks (else SURF keeps fewer peaks, quietly)
+    m = re.search(r"surf ram need=([0-9a-fA-F]+) room=([0-9a-fA-F]+)", surfing.boot_text)
+    assert m, surfing.boot_text[-400:]
+    need, room = int(m.group(1), 16), int(m.group(2), 16)
+    assert need <= room <= need + 64, (need, room)
 
 
 def test_up_and_down_move_a_channel(surfing):
@@ -324,6 +333,48 @@ def test_hold_does_not_open_the_speaker_on_noise(built):
     quiet.keyed = lambda t: True                                        # a carrier on the middle
     wait(b, 0.6)
     assert b.regs.get(0x47) == AF_FM
+
+
+BAR_COLOURS = {(0, 202, 90), (255, 202, 0), (255, 121, 41)}   # (BAR, MID, LIVE as the panel shows them)
+
+
+def bad_bar_rows(board):
+    """bins whose two rows aren't one bar from the axis, then black with at most one 3 px caret"""
+    rows, bad = board.screen_rgb(), []
+    for i in range(63):
+        y = 24 + 2 * (62 - i)
+        a, b = rows[y][25:128], rows[y + 1][25:128]
+        n = 0
+        while n < len(a) and a[n] in BAR_COLOURS and a[n] == a[0]:
+            n += 1
+        rest = a[n:]
+        white = [x for x, c in enumerate(rest) if c == (255, 255, 255)]
+        ok = a == b and all(c in ((0, 0, 0), (255, 255, 255)) for c in rest)
+        ok = ok and (not white or (len(white) == 3 and white[-1] - white[0] == 2 and white[0] > 0))
+        if not ok:
+            bad.append(i)
+    return bad
+
+
+def test_bars_drawn_in_pieces_leave_nothing_behind(built):
+    # port 17: a changed bar repaints only what changed (the part it grew or shrank by, the old
+    # caret, the new one). Through sweeps, jumps, zooms and band changes, every bin's rows stay
+    # one clean bar and at most one caret
+    b = UV21Board(*built)
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 3)
+    tap(b, "AB", 0.2)
+    tap(b, "AB", 0.2)
+    tap(b, "AB", 0.2)                                                   # (the fastest fall)
+    seen = []
+    for k in ["", "SIDE1", "", "BAND", "UP", "1", "", "3", "3", "", "SIDE2", "", "SIDE2", "SIDE2",
+              "SIDE2", "SIDE2", "SIDE2", "SIDE2", "", "DOWN", "5"]:
+        if k:
+            tap(b, k, 0.3)
+        for _ in range(3):
+            wait(b, 0.7)
+            seen.append(bad_bar_rows(b))
+    assert not any(seen), [x for x in seen if x][:5]
 
 
 # ---- the receive front end's band switch (port 12) ----

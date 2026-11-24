@@ -195,11 +195,13 @@ fn main() -> ! {
 
     board::init_lcd_control_pins(&dp.gpiob);
     board::init_lcd_backlight_pin(&dp.gpioa);
+    // LCD: SPI2 at PCLK / 4 = 15 MHz (port 17; ports 1-16 ran /8, 7.5 MHz). The ST7735S's
+    // serial write cycle is 66 ns at least, so 15 MHz is its rated top speed.
     dp.spi2.ctrl1().write(|w| unsafe {
         w.msten()
             .set_bit()
             .mdiv2_0()
-            .bits(2)
+            .bits(1)
             .swcsen()
             .set_bit()
             .swcsil()
@@ -230,7 +232,7 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 16 build=");
+    hal::con::puts("blowfang uv21 port 17 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
