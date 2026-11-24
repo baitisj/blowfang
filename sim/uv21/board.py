@@ -8,11 +8,14 @@ of tests/test_uv21_port.py, with what that test model leaves out for an interact
   band at the frequency REG_38/39 tune: stations with a level, a width and a keying pattern
   (carrier, voice overs, a CW ident), over a noise floor, through the wide filter's skirts;
 - keys by name (the faceplate's), held for a real 150 ms or longer;
-- fast_bus (on by default): the image's RF register read (Fd6818::read_reg) and its microsecond
-  waits (hal::delay::us) are answered at their entry by a code hook, with the time they would take
-  added to the virtual clock, instead of bit by bit through the GPIO model (about 300 Python
-  callbacks a read): SURF runs about 2.5 times faster. Register writes still go bit by bit,
-  through the image's own receive-only gate, so tx_watch sees exactly what the image sends.
+- fast_bus (on by default): the image's RF register read (Fd6818::read_reg), the byte shifter
+  under its register write (Fd6818::write_bits) and its microsecond waits (hal::delay::us) are
+  answered at their entry by a code hook, with the time they would take added to the virtual
+  clock, instead of bit by bit through the GPIO model (about 300 Python callbacks a read, 200 a
+  write): SURF runs about 2.7 times faster than with reads alone (1.3x real time on one 2.1 GHz
+  core). A write still runs write_reg itself, so the image's own receive-only gate (rx_only) and
+  the chip-select edges are the image's: the three bytes it shifts land in the same transaction
+  the bit-level model builds, and tx_watch sees exactly what the image sends.
 
 Nothing here is a radio measurement: the levels and the filter are a model, made to give SURF
 peaks to find. SPDX-License-Identifier: MIT"""
@@ -48,6 +51,7 @@ SCLK = 60_000_000
 SYST_CSR, SYST_RVR = 0xE000E010, 0xE000E014
 TMR14_CVAL = 0x40002024
 READ_REG_US = 52                # Fd6818::read_reg: 52 waits of BIT_DELAY_US (1 us), fd6818b.rs
+WRITE_BITS_US = 16              # Fd6818::write_bits: 8 bits of two 1 us waits
 B, C, F = bu.B, bu.C, bu.F
 
 # the faceplate: matrix keys as (column, row) of tests/test_uv21_bringup.py's KEY_COLS / KEY_ROWS
@@ -150,11 +154,14 @@ class UV21Board(tp.Port):
         self.instructions = 0
         self.fast_bus = False
         self.fast_reads = 0
+        self.fast_writes = 0
         if fast_bus:
             rd = _sym(self.syms, "fd6818b", "8read_reg")
+            wb = _sym(self.syms, "fd6818b", "10write_bits")
             us = _sym(self.syms, "5delay2us")
-            if rd and us:
+            if rd and wb and us:
                 self.mu.hook_add(UC_HOOK_CODE, self._fast_read, begin=rd, end=rd)
+                self.mu.hook_add(UC_HOOK_CODE, self._fast_bits, begin=wb, end=wb)
                 self.mu.hook_add(UC_HOOK_CODE, self._fast_us, begin=us, end=us)
                 self.fast_bus = True
 
@@ -243,6 +250,19 @@ class UV21Board(tp.Port):
         uc.reg_write(UC_ARM_REG_R0, self.reg_value(a) & 0xFFFF)
         self.cycles += READ_REG_US * (SCLK // 1_000_000)
         self.fast_reads += 1
+        self._return(uc)
+
+    def _fast_bits(self, uc, address, size, ud):
+        """write_bits(byte in R0): its 8 bits into the open transaction, MSB first, as rf() would
+        have taken them off SDA at each SCK rise (outside a transaction they go nowhere, as there)"""
+        byte = uc.reg_read(UC_ARM_REG_R0) & 0xFF
+        t = self.rf_txn
+        if t is not None:
+            t["out"].extend((byte >> (7 - i)) & 1 for i in range(8))
+            if len(t["out"]) == 8:
+                t["addr"] = byte
+        self.cycles += WRITE_BITS_US * (SCLK // 1_000_000)
+        self.fast_writes += 1
         self._return(uc)
 
     def _fast_us(self, uc, address, size, ud):

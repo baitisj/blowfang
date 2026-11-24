@@ -231,7 +231,7 @@ def test_surf_hears_the_cw_wake_from_iq(built):
     assert m, out[-400:]
     level, floor = int(m.group(1)), int(m.group(2))
     assert abs(level - -78) <= 3 and abs(floor - -125) <= 4, m.group(0)
-    assert b.fast_bus and b.fast_reads > 100
+    assert b.fast_bus and b.fast_reads > 100 and b.fast_writes > 100
     for reg, v in b.tx_watch:                               # writes still go through the image's gate
         if reg == REG_STATE:
             assert not (v & 0x00F0 and v & 0x000E), hex(v)
@@ -239,6 +239,21 @@ def test_surf_hears_the_cw_wake_from_iq(built):
             assert v == 0x0022, hex(v)
         elif reg == REG_GPIO:
             assert not v & 0x001C, hex(v)
+
+
+def test_the_fast_bus_writes_what_the_bit_level_bus_writes(built):
+    """booted with and without fast_bus, the chip holds the same registers and the TX watch the
+    same writes (fast_bus hooks write_bits under the image's own write_reg and rx_only)"""
+    from sim.uv21.board import UV21Board
+    boards = []
+    for fast in (False, True):
+        b = UV21Board(*built, fast_bus=fast)
+        b.run(until="boot done", limit=300_000_000)
+        boards.append(b)
+    slow, fast = boards
+    assert fast.fast_writes > 50 and not slow.fast_bus
+    assert slow.regs == fast.regs and slow.tx_watch == fast.tx_watch
+    assert len(slow.regs) > 20
 
 
 def test_surf_finds_the_peaks_in_a_recording(built, tmp_path):
