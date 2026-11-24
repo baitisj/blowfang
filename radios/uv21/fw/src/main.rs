@@ -111,24 +111,6 @@ fn check_power_off(
     }
 }
 
-#[inline(never)]
-fn draw_boot_logo(
-    display: &mut device::display::Display<'_>,
-    app: &mut app::App<'_>,
-) {
-    let width = flash_map::BOOT_LOGO_WIDTH as u32;
-    let rows = flash_map::BOOT_LOGO_HEIGHT / ui::boot::LOGO_CHUNK_ROWS;
-    for band in 0..rows {
-        let y0 = band * ui::boot::LOGO_CHUNK_ROWS;
-        let mut chunk = [0u8; ui::boot::LOGO_CHUNK_BYTES];
-        app.storage_mut().read_raw(
-            flash_map::addr::BOOT_LOGO_ADDR + y0 as u32 * width * 2,
-            &mut chunk,
-        );
-        ui::boot::draw_logo_chunk(display.as_draw_target(), y0, &chunk);
-    }
-}
-
 #[entry]
 fn main() -> ! {
     let dp = unsafe { pac::Peripherals::steal() };
@@ -280,7 +262,7 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let mut serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 6 build=");
+    hal::con::puts("blowfang uv21 port 7 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);
@@ -372,60 +354,10 @@ fn main() -> ! {
     );
     app.init_battery_samples();
 
-    let boot_mode = app.settings().boot_display_mode;
-    match boot_mode {
-        1 => {
-            ui::boot::draw_message(
-                display.as_draw_target(),
-                app.settings(),
-                app.battery_voltage_cv(),
-                app.battery_bars(),
-                chip_id,
-            );
-        }
-        // UV-21 Pro: the logo at BOOT_LOGO_ADDR is the stock firmware's, in its own format, not
-        // the UV-5RH's 160x128 picture: show the message screen instead.
-        2 => {
-            let _ = draw_boot_logo;
-            ui::boot::draw_message(
-                display.as_draw_target(),
-                app.settings(),
-                app.battery_voltage_cv(),
-                app.battery_bars(),
-                chip_id,
-            );
-        }
-        // 0 = None: screen is already cleared black from just after
-        // `display.init()`, nothing more to draw.
-        _ => {}
-    }
-
+    // UV-21: no splash, boot tune or wait (the operator asked for none): straight to SURF.
     backlight.on();
 
-    if boot_mode != 0 {
-        if app.settings().boot_sound_enabled {
-            let tune = app.settings().boot_tune;
-            app.radio_mut().play_boot_tune(&mut cp.SYST, &tune, |_| {
-                board::read_power_key(&dp.gpiob)
-            });
-        }
-
-        let mut remaining_ms: u32 = 1000;
-        while remaining_ms > 0 {
-            check_power_off(
-                &dp.gpiob,
-                &dp.gpiof,
-                &mut serial,
-                &mut app,
-                &mut cp.SYST,
-            );
-            delay_ms(30);
-            remaining_ms = remaining_ms.saturating_sub(30);
-        }
-    }
-
     hal::con::puts("boot done");
-    hal::con::kv_hex("boot_mode", boot_mode as u32, 1);
     hal::con::nl();
 
     let mut ui_state = ui::UiState::new();
