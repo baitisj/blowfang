@@ -27,7 +27,6 @@ import json
 import math
 import os
 import subprocess
-import sys
 
 import numpy as np
 
@@ -265,12 +264,9 @@ class PlutoIioSource(IqSource):
     tunable = True
     BUF = 1 << 15                       # samples per libiio buffer: ~14 ms at 2.4 MS/s
 
-    def __init__(self, uri=None, rate=2_400_000, center_hz=440_000_000, gain=50, dbm_offset=None,
-                 auto_floor_dbm=-122.0, pb=None):
-        if pb is None:
-            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__)))), "tools"))
-            import pluto_bench as pb
+    def __init__(self, pb, uri=None, rate=2_400_000, center_hz=440_000_000, gain=50, dbm_offset=None,
+                 auto_floor_dbm=-122.0):
+        """pb: tools/pluto_bench.py (sim/soapyfang/pluto.py passes it; the tests pass a stand-in)"""
         self.pb = pb
         self.uri = uri or pb.URI
         if self.uri.startswith("usb:"):
@@ -321,11 +317,9 @@ class PlutoIioSource(IqSource):
 
 def open_source(spec="synthetic", band=None, rate=None, center_hz=440_000_000, gain=None,
                 dbm_offset=None):
-    """'synthetic', 'sigmf:PATH', 'soapy:ARGS' (e.g. soapy:driver=rtlsdr,
-    soapy:driver=plutosdr,uri=ip:192.168.2.1) or 'pluto[:URI]' (libiio, hamlet's way)"""
-    if spec == "pluto" or spec.startswith("pluto:"):
-        return PlutoIioSource(spec[len("pluto:"):] or None, rate=rate or 2_400_000, center_hz=center_hz,
-                              gain=50 if gain is None else gain, dbm_offset=dbm_offset)
+    """'synthetic', 'sigmf:PATH' or 'soapy:ARGS' (e.g. soapy:driver=rtlsdr,
+    soapy:driver=plutosdr,uri=ip:192.168.2.1); 'pluto[:URI]' (libiio, hamlet's way) is
+    sim/soapyfang/pluto.py's open_pluto, which brings in the bench tools"""
     if spec in ("synthetic", "", None):
         return SyntheticSource(band, rate=rate or 1_200_000, center_hz=center_hz)
     if spec.startswith("sigmf:"):
@@ -333,4 +327,4 @@ def open_source(spec="synthetic", band=None, rate=None, center_hz=440_000_000, g
     if spec.startswith("soapy:"):
         return SoapySource(spec[len("soapy:"):], rate=rate or 2_400_000, center_hz=center_hz,
                            gain=gain, dbm_offset=dbm_offset)
-    raise ValueError(f"unknown source {spec!r}: synthetic, sigmf:PATH or soapy:ARGS")
+    raise ValueError(f"unknown source {spec!r}: synthetic, sigmf:PATH, soapy:ARGS or pluto[:URI]")

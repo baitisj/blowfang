@@ -18,7 +18,7 @@ squelch).
 
 | File | What it does |
 | --- | --- |
-| `sources.py` | `IqSource`: `SyntheticSource` (the Station list as FM I/Q over a noise floor), `SigmfSource` (cf32_le, ci16_le, ci8), `SoapySource` (any SoapySDR receiver), `PlutoIioSource` (the Pluto through tools/pluto_bench.py and `iio_readdev`, hamlet's way), `open_source()` |
+| `sources.py` | `IqSource`: `SyntheticSource` (the Station list as FM I/Q over a noise floor), `SigmfSource` (cf32_le, ci16_le, ci8), `SoapySource` (any SoapySDR receiver), `PlutoIioSource` (the Pluto through `iio_readdev`, set up by tools/pluto_bench.py, which `pluto.py`'s `open_pluto` brings in: hamlet's way), `open_source()` |
 | `chip.py` | `ChipModel`: REG_67 RSSI from FFT bins in the channel, REG_65 noise, REG_63 glitch, REG_0C squelch bit, 8 kHz speaker audio |
 | `board.py` | `SoapyUV21Board`: `UV21Board` with those registers from the chip, and a fast register-read path |
 | `workbench.py`, `panel.html` | the UV-21 workbench with the SoapyFang panel and audio |

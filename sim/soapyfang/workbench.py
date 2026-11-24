@@ -61,6 +61,14 @@ class SoapyWorkbench(uv21wb.Workbench):
             self._boot()
             self.error, self.running = None, True
 
+    def stop(self):
+        """end the session: no more board steps (the next one would run in unicorn while Python shuts
+        down: a segfault at exit), the chip's reader thread joined; the caller closes the source"""
+        with self.lock:
+            self.running = False
+            if self.board is not None:
+                self.board.close(close_source=False)
+
     def soapyfang(self):
         with self.lock:
             b, c = self.board, self.board.chip
@@ -107,7 +115,7 @@ def handler(wb):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--source", default="synthetic", help="synthetic | sigmf:PATH | soapy:ARGS")
+    ap.add_argument("--source", default="synthetic", help="synthetic | sigmf:PATH | soapy:ARGS | pluto[:URI]")
     ap.add_argument("--rate", type=float, help="sample rate (synthetic 1.2e6, SoapySDR 2.4e6)")
     ap.add_argument("--center", type=float, default=440e6, help="first window centre, Hz")
     ap.add_argument("--gain", type=float, help="SDR receive gain, dB")
@@ -126,8 +134,12 @@ def main(argv=None):
     if bool(a.image) != bool(a.syms):
         ap.error("--image and --syms go together")
     built = load_image(a.image, a.syms) if a.image else None
-    src = open_source(a.source, rate=a.rate, center_hz=a.center, gain=a.gain, dbm_offset=a.dbm_offset)
-    srv = None
+    if a.source == "pluto" or a.source.startswith("pluto:"):
+        from .pluto import open_pluto
+        src = open_pluto(a.source, rate=a.rate, center_hz=a.center, gain=a.gain, dbm_offset=a.dbm_offset)
+    else:
+        src = open_source(a.source, rate=a.rate, center_hz=a.center, gain=a.gain, dbm_offset=a.dbm_offset)
+    srv = wb = None
     try:
         print(f"SoapyFang source: {src.describe()}", flush=True)
         print("booting the UV-21 port image ..." if built else "building and booting the UV-21 port image ...",
@@ -144,6 +156,8 @@ def main(argv=None):
     finally:
         if srv:
             srv.server_close()
+        if wb:
+            wb.stop()
         src.close()
         print("SoapyFang stopped; the source is closed", flush=True)
 

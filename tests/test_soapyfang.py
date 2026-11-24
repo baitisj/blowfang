@@ -183,7 +183,7 @@ def fake_readdev(tmp_path, monkeypatch, i=1024, q=-512):
 def test_pluto_source_receives_only_and_parks(tmp_path, monkeypatch):
     fake_readdev(tmp_path, monkeypatch)
     pb = FakePlutoBench()
-    src = PlutoIioSource(rate=2_400_000, center_hz=440_850_000, gain=40, pb=pb)
+    src = PlutoIioSource(pb, rate=2_400_000, center_hz=440_850_000, gain=40)
     assert src.center_hz == 440_850_000 + 600_000            # LO a quarter of the rate above
     setup = pb.calls[0]
     assert setup[0] == "setup" and setup[2] is None and setup[4] is None     # no TX LO, no TX gain
@@ -197,7 +197,7 @@ def test_pluto_source_receives_only_and_parks(tmp_path, monkeypatch):
     assert pb.calls[-1] == ("park",)
     assert all(c[2] == "altvoltage0" for c in pb.calls if c[0] == "put")
     with pytest.raises(ValueError):
-        PlutoIioSource(uri="usb:1.2.5", pb=pb)
+        PlutoIioSource(pb, uri="usb:1.2.5")
 
 
 def test_an_uncalibrated_source_sets_its_level_from_the_floor():
@@ -208,8 +208,8 @@ def test_an_uncalibrated_source_sets_its_level_from_the_floor():
     c.advance(0.05)
     assert abs(c.rssi_dbm(F0 + 300_000) - -110) < 2.0
     assert abs(c.rssi_dbm(F0 + 100_000) - -65) < 2.0         # the carrier 45 dB over the floor
-    with pytest.raises(ValueError):                         # the real pluto_bench, refused before set-up
-        open_source("pluto:usb:1.2.5")
+    with pytest.raises(ValueError):                         # pluto is sim/soapyfang/pluto.py's, not here
+        open_source("pluto")
 
 
 # ---- the real firmware, fed through the chip ----
