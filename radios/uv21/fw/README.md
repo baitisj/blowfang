@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 8 change
+## What ports 1 to 9 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -49,6 +49,8 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
 - Port 8: SURF labels the top and bottom of its axis with their frequencies in MHz (440.5 and
   438.5, not +1M and -1M), redraws the frequency only when it changes, and takes the level 0.1 s
   after the squelch opens or closes (or the frequency moves) instead of on every read.
+- Port 9: no standing "WAKE 440.850" on SURF's bottom line; it stays blank until a wake is heard,
+  then shows WAKE HEARD.
 
 ## SURF (port 6)
 
@@ -77,7 +79,7 @@ frequency in the middle and carets on the peaks.
 
 SURF also listens for the CW wake beacon, on 440.850 MHz for now: it looks there every 500 ms
 while sweeping and every 1.5 s while parked, and two reads 20 dB over the floor in four looks print
-`uv21 wake hz=... dbm=... floor=...` on the console, then it rests 60 s. A long press of # moves
+`uv21 wake hz=... dbm=... floor=...` on the console and show WAKE HEARD, then it rests 60 s. A long press of # moves
 the wake (in RAM; the SPI flash stays read only). The RSSI scale is the K6's (dBm = raw/2 - 174);
 it hasn't been measured on the UV-21.
 

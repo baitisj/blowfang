@@ -214,7 +214,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 8 build=" in text
+    assert "blowfang uv21 port 9 build=" in text
     assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -300,8 +300,8 @@ def test_command_42_resets_for_a_hands_free_reflash(built):
     assert r.reset_requested
 
 
-def subpixel_fringes(port, rows):
-    lit = [port.lfb[y][x] for y in rows for x in range(128) if port.lfb[y][x]]
+def subpixel_fringes(port, rows, cols=range(128)):
+    lit = [port.lfb[y][x] for y in rows for x in cols if port.lfb[y][x]]
     chans = lambda c: (c >> 11, (c >> 5) & 63, c & 31)  # noqa: E731
     return lit, [c for c in lit if len({v > 0 for v in chans(c)}) > 1 and chans(c) != chans(lit[0])]
 
@@ -310,12 +310,12 @@ def test_the_portrait_screen_is_drawn_with_5x5_subpixel_text(built):
     port = Port(*built)                                                 # SURF at boot, no keys
     port.run(until="boot done", limit=300_000_000)
     port.run(limit=30_000_000)
-    # every pixel of the 128x160 portrait panel is painted, and SURF's bottom line (5x5 text on the
-    # subpixels) has the colour fringes that only subpixel text makes
+    # every pixel of the 128x160 portrait panel is painted, and SURF's axis labels (5x5 text on the
+    # subpixels, grey on black, left of the axis) have the colour fringes only subpixel text makes
     assert all(port.lfb[y][x] is not None for y in range(160) for x in range(128))
-    lit, fringes = subpixel_fringes(port, range(152, 160))
+    lit, fringes = subpixel_fringes(port, list(range(22, 28)) + list(range(146, 152)), range(0, 20))
     assert len(lit) > 60, len(lit)
-    assert fringes, "no subpixel colour fringes on SURF's bottom line"
+    assert fringes, "no subpixel colour fringes in SURF's axis labels"
     # EXIT: the VFO screen, its info panel in 5x5 under the meter
     port.pressed.add((2, 2))
     port.run(limit=8_000_000)
@@ -345,5 +345,5 @@ def test_it_says_it_started_before_changing_the_clock(built):
     r.mu.mem_write(0x40021018, struct.pack("<I", 1 << 14))              # APB2EN: USART1 on
     r.mu.mem_write(0x4001380C, struct.pack("<I", 1 << 13 | 1 << 3))    # USART1 CTRL1: UEN, TEN
     out = r.run(until="boot done", limit=300_000_000)
-    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 8 build=")
+    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 9 build=")
     assert out.count("port start") == 1
