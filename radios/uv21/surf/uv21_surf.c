@@ -18,8 +18,9 @@
      A/B             how fast the carets fall: 1 min, 5 min, 20 min, 15 s (a held A/B could
                      hand a playing signal to VFO B, as flux_radio's K6 SURF does: not yet)
      VFO/MR          type a custom range (CUSTOM): low MHz, #, high MHz, MENU (16 MHz at most)
-     #               next channel step; held: type one frequency (* for the point), MENU, and
-                     CUSTOM is centred on it, as wide as the band was: the VFO, in SURF
+     #               next channel step; held: TUNE, type one frequency (* the point, # or MENU
+                     ends it: 446# is 446.000), and CUSTOM is centred on it, as wide as the band
+                     was: the VFO, in SURF
      1 / 3           zoom in / out (+-100 kHz to +-25 MHz)
      4               the demodulator: FM, DSB, AM
      5               the band's centre
@@ -78,6 +79,8 @@
   uint32_t dcen, t_dq;          /* the middle as last seen; when the squelch or it moved */ \
   int sdbm;                     /* the level shown */                                     \
   char st0[34], st1[12], st2[34], st3[14];   /* the text lines as drawn */
+#define SF_CUSTOM               /* the core's TUNE, typed range and CUSTOM */
+#define SF_ED_CHANGED(s) if (!(s)->ed) (s)->sdirty = 1   /* (TUNE drew over the top: all again) */
 #include "../../../c/common/surf_core.inc"
 /* (the core's span name: the K6 labels with it; the UV-21's labels are absolute) */
 static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spanx;
@@ -118,6 +121,7 @@ static char *(*const keep_spanx)(char *, uint32_t) __attribute__((unused)) = spa
 #define BAR RGB(0, 200, 90)
 #define MID RGB(255, 200, 0)
 #define LIVE RGB(255, 120, 40)
+#define RED RGB(255, 40, 40)
 #define ALERT RGB(255, 64, 32)
 #define CYAN RGB(110, 220, 255)
 
@@ -218,100 +222,7 @@ static void user_set(sf_t *s, uint32_t lo, uint32_t hi) {
   put(u->name, "CUSTOM")[0] = 0;   /* (the operator's name for it) */
 }
 
-static uint32_t ed_hz(const char *t) {
-  uint32_t v = 0;
-  int fr = -1;
-  for (; *t; t++) {
-    if (*t == '.') {
-      fr = 0;
-    } else if (fr < 6) {
-      v = 10 * v + (uint32_t)(*t - '0');
-      if (fr >= 0) fr++;
-    }
-  }
-  for (fr = fr < 0 ? 0 : fr; fr < 6; fr++) v *= 10;
-  return v;
-}
-
-static int ed_done(sf_t *s) {
-  uint32_t lo = ed_hz(s->eb[0]), hi = ed_hz(s->eb[1]);
-  if (!s->en[1]) {
-    hi = lo + 1000000u;
-    lo = lo > USER_MIN + 1000000u ? lo - 1000000u : USER_MIN;
-    if (hi > USER_MAX) hi = USER_MAX;
-  }
-  if (lo < USER_MIN || hi > USER_MAX || hi <= lo) return 0;
-  if (hi - lo > SURF_USER_SPAN) {        /* (wider: the middle SURF_USER_SPAN of it) */
-    lo += (hi - lo - SURF_USER_SPAN) / 2;
-    hi = lo + SURF_USER_SPAN;
-  }
-  user_set(s, lo, hi);
-  band(s, &s->ub);
-  if (!s->en[1]) recentre(s, ed_hz(s->eb[0])), moved(s);
-  {
-    char *p = put(s->ln, "user ");
-    p = mhz(p, lo, 3);
-    *p++ = ' ';
-    say_end(s, mhz(p, hi, 3));
-  }
-  return 1;
-}
-
-/* CUSTOM centred on hz, as wide as the band on screen (16 MHz at most, 2 at least): long # and a
-   typed frequency, or a long press of the middle side key on the middle (Jeff, 2026-11-24) */
-static int centre_custom(sf_t *s, uint32_t hz) {
-  uint32_t w = s->bd->hi - s->bd->lo, lo, hi;
-  if (hz < USER_MIN || hz > USER_MAX) return 0;
-  if (w > SURF_USER_SPAN) w = SURF_USER_SPAN;
-  if (w < 2000000u) w = 2000000u;
-  lo = hz > USER_MIN + w / 2 ? hz - w / 2 : USER_MIN;
-  hi = lo + w;
-  if (hi > USER_MAX) hi = USER_MAX, lo = hi - w;
-  user_set(s, lo, hi);
-  band(s, &s->ub);
-  recentre(s, hz);
-  moved(s);
-  {
-    char *p = put(s->ln, "user ");
-    p = mhz(p, lo, 3);
-    *p++ = ' ';
-    say_end(s, mhz(p, hi, 3));
-  }
-  return 1;
-}
-
-/* the typing: ed 1 / 2 the low / high end of a range (VFO/MR), 3 one frequency (long #) */
-static void ed_key(sf_t *s, int k) {
-  int f = s->ed == 2, n = s->en[f], i;
-  char *t = s->eb[f];
-  if (k >= '0' && k <= '9') {
-    if (n < ED_LEN) t[n++] = (char)k;
-  } else if (k == '*') {
-    for (i = 0; i < n && t[i] != '.'; i++) {}
-    if (i == n && n && n < ED_LEN) t[n++] = '.';
-  } else if (k == 'D') {
-    if (n) n--;
-  } else if (k == '#') {
-    if (s->ed != 3) s->ed = (uint8_t)(3 - s->ed);
-  } else if (k == 'M' || k == 'V') {
-    if (s->ed == 3) {
-      if (n && centre_custom(s, ed_hz(t))) s->ed = 0;
-      else note(s, "bad freq");
-    } else if (s->en[0] && ed_done(s)) s->ed = 0;
-    else note(s, "bad range");
-  } else if (k == 'X') {
-    s->ed = 0;
-  }
-  t[n] = 0;
-  s->en[f] = (uint8_t)n;
-}
-
 static char *ed_line(sf_t *s, char *p) {
-  if (s->ed == 3) {
-    p = put(put(p, "TUNE "), s->eb[0]);
-    *p++ = '_';
-    return p;
-  }
   p = put(p, "SET ");
   p = put(p, s->eb[0]);
   if (s->ed == 1) *p++ = '_';
@@ -373,11 +284,7 @@ static void on_key(sf_t *s, int k) {
     return;
   }
   switch (k) {
-  case 'V':
-    s->ed = 1;
-    s->en[0] = s->en[1] = 0;
-    s->eb[0][0] = s->eb[1][0] = 0;
-    break;
+  case 'V': ed_start(s, 1); break;     /* type a range */
   case 'U': go_to(s, s->cen + s->ch); break;
   case 'D': go_to(s, s->cen - s->ch); break;
   case '5': go_to(s, s->bd->home); break;
@@ -398,11 +305,7 @@ static void on_key(sf_t *s, int k) {
     stepn(s->msg + 5, s->ch)[0] = 0;
     s->msg[4] = ' ';
     break;
-  case '#' | UV_LONG:                     /* type a frequency: CUSTOM centred on it */
-    s->ed = 3;
-    s->en[0] = 0;
-    s->eb[0][0] = 0;
-    break;
+  case '#' | UV_LONG: ed_start(s, 3); break;   /* TUNE: CUSTOM centred on what's typed */
   case 'N' | UV_LONG:                     /* the middle side key, long: CUSTOM centred here */
     centre_custom(s, s->cen);
     break;
@@ -634,6 +537,20 @@ static void draw(sf_t *s) {
   char *p, t[34];
   int i, k, r;
   s->t_flush = s->now;
+
+  /* typing a frequency (long #): TUNE in red on the title, the digits large with the cursor
+     (Jeff, 2026-11-24), the level left out until it's done */
+  if (s->ed == 3) {
+    line(s, s->st0, "TUNE", 2, 0, 128, TITLE_H, RED, TBG, 0);
+    p = put(t, s->eb[0]);
+    *p++ = '_';
+    *p = 0;
+    line(s, s->st1, t, 2, FREQ_Y, 128, 21, FG, BG, 2);   /* (10x20, over the top bins) */
+    line(s, s->st2, "*-POINT #-ENTER DN-DEL EXIT-QUIT", 0, MSG_Y, 128, 8, DIM, BG, 0);
+    s->sdirty = 0;                              /* (the rest waits: ed_key repaints it all after) */
+    return;
+  }
+  if (s->sdirty) api->fill(0, FREQ_Y, 128, BY - FREQ_Y, BG);   /* (TUNE's digits reach row 30) */
 
   /* the title: the band, its step, MON / HLD, a fixed gain, and the demodulator at the right */
   p = put(t, "SURF ");

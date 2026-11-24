@@ -91,3 +91,44 @@ def test_inbox_refuses_the_flash():
     spec.loader.exec_module(bi)
     assert "kdh.flash" in bi.REMOTE_NO_STEPS
     assert "kdh.dump" not in bi.REMOTE_NO_STEPS and "kdh.probe" not in bi.REMOTE_NO_STEPS
+
+
+def test_uv21_module_setting_matches_the_tool():
+    """the runner copies modem/uv21mod.py's -D form (it runs from $BLOWFANG_WORK/bin, alone)"""
+    sys.path.insert(0, os.path.join(TOOLS, ".."))
+    from modem import uv21mod
+    assert br.UV21_MOD_DEFINE.pattern == uv21mod.DEFINE.pattern
+
+
+def test_uv21_module_args(work):
+    for step in ({"do": "uv21.mod", "args": ["hello"]},
+                 {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_VALS=0x1657,0xC65A",
+                                              "SW_HZ=439500000", "SW_N=32"]}):
+        assert tb.problems(tb.job("m", step)) == "", step
+    for step in ({"do": "uv21.mod"},
+                 {"do": "uv21.mod", "args": ["../mod/hello"]},
+                 {"do": "uv21.mod", "args": ["hello.c"]},
+                 {"do": "uv21.mod", "args": ["nosuchmodule"]},
+                 {"do": "uv21.mod", "args": ["regsweep", "-include/etc/passwd"]},
+                 {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F -O0"]},
+                 {"do": "uv21.mod", "args": ["regsweep", "sw_reg=1"]},
+                 {"do": "uv21.mod", "args": ["regsweep", "SW_REG=/dev/ttyUSB0"]},
+                 {"do": "uv21.mod", "args": ["regsweep"] + [f"A{i}=1" for i in range(17)]},
+                 {"do": "uv21.mod", "args": ["hello"], "background": True}):
+        assert tb.problems(tb.job("m", step)), step
+    rd = str(work / "rd")
+    argv, cwd, bg = br.command(tb.job("m"), {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_N=8"]}, rd)
+    assert argv[1:5] == ["-m", "modem.uv21mod", "run", "/dev/k6cable"]
+    assert argv[5] == os.path.join(os.path.realpath(tb.REPO), "radios", "uv21", "mod", "regsweep.c")
+    assert argv[6:10] == ["-D", "SW_REG=0x1F", "-D", "SW_N=8"]
+    assert argv[10:12] == ["--log", os.path.join(rd, "uv21mod.log")] and not bg
+    assert cwd == os.path.realpath(tb.REPO) and br.uses_cable({"do": "uv21.mod"})
+
+
+def test_inbox_takes_a_uv21_module_from_a_branch():
+    spec = importlib.util.spec_from_file_location("bench_inbox", os.path.join(TOOLS, "bench_inbox.py"))
+    bi = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bi)
+    assert "uv21.mod" in bi.SOURCES_STEPS and "uv21.mod" not in bi.REMOTE_NO_STEPS
+    assert bi.module_rel(br, {"do": "uv21.mod", "args": ["regsweep"]}) == ("radios", "uv21", "mod", "regsweep.c")
+    assert bi.module_rel(br, {"do": "uv21.mod", "args": ["../x"]}) is None

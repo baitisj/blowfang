@@ -24,6 +24,10 @@
                      listener); default 0, so the K6 reads every bin
      SF_EXTRA        more fields at the end of sf_t (the RT-950's second chip)
      SETTLE_US CHECK_US NPM NK ROWS: as below
+     SF_CUSTOM       the typed frequency and the custom range (the end of this file): sf_t then
+                     has ub, ed, en[2] and eb[2][ED_LEN + 1] in SF_EXTRA, the file defines
+                     USER_MIN, USER_MAX and ED_LEN and user_set, and may define SF_ED_CHANGED(s)
+                     (called after each key the typing takes)
    and then defines these, which the code here calls:
      static int read_hz(sf_t *s, uint32_t hz, uint32_t us);  the sweep's receiver on hz, us after
                      its tune, in dBm (a look at the keys too, so a long sweep doesn't lose a press)
@@ -798,3 +802,115 @@ static void sweep_done(sf_t *s) {
   s->ncf = NCONF;
   if (s->refine) refine_lens(s);
 }
+
+#ifdef SF_CUSTOM
+/* ---- typing a frequency, and the custom range (CUSTOM) ----
+
+   BAND's last stop is a band the keypad sets. Two ways to type one, the same on every radio:
+   TUNE (a long #, Jeff 2026-11-24): one frequency, '*' the point, # (or MENU) finishes, so
+   "446#" is 446.000 MHz, and CUSTOM is centred on it as wide as the band on screen (2 to 16 MHz).
+   And a range (the K6's V, the UV-21's VFO/MR): low, # to the other end, high, MENU. DOWN is a
+   backspace and EXIT drops the typing. s->ed: 1 / 2 the range's low / high end, 3 TUNE. */
+
+#ifndef SF_ED_CHANGED
+#define SF_ED_CHANGED(s)
+#endif
+
+static void user_set(sf_t *s, uint32_t lo, uint32_t hi);
+
+/* typed MHz ("470.309", "608") in Hz; 0 for none */
+static uint32_t ed_hz(const char *t) {
+  uint32_t v = 0;
+  int fr = -1;
+  for (; *t; t++) {
+    if (*t == '.') {
+      fr = 0;
+    } else if (fr < 6) {
+      v = 10 * v + (uint32_t)(*t - '0');
+      if (fr >= 0) fr++;
+    }
+  }
+  for (fr = fr < 0 ? 0 : fr; fr < 6; fr++) v *= 10;
+  return v;
+}
+
+/* CUSTOM on lo .. hi, the middle on mid; "user 470.000 608.000" for the bench's log */
+static void custom_on(sf_t *s, uint32_t lo, uint32_t hi, uint32_t mid) {
+  char *p;
+  user_set(s, lo, hi);
+  band(s, &s->ub);
+  if (mid) recentre(s, mid), moved(s);
+  p = put(s->ln, "user ");
+  p = mhz(p, lo, 3);
+  *p++ = ' ';
+  say_end(s, mhz(p, hi, 3));
+}
+
+/* a typed range done: low and high, or only low: +-1 MHz round it; 0 if it is no range the radio
+   receives */
+static int ed_done(sf_t *s) {
+  uint32_t lo = ed_hz(s->eb[0]), hi = ed_hz(s->eb[1]);
+  if (!s->en[1]) {
+    hi = lo + 1000000u;
+    lo = lo > USER_MIN + 1000000u ? lo - 1000000u : USER_MIN;
+    if (hi > USER_MAX) hi = USER_MAX;
+  }
+  if (lo < USER_MIN || hi > USER_MAX || hi <= lo) return 0;
+  if (hi - lo > SURF_USER_SPAN) {        /* (wider: the middle SURF_USER_SPAN of it) */
+    lo += (hi - lo - SURF_USER_SPAN) / 2;
+    hi = lo + SURF_USER_SPAN;
+  }
+  custom_on(s, lo, hi, s->en[1] ? 0 : ed_hz(s->eb[0]));   /* (one frequency: there) */
+  return 1;
+}
+
+/* CUSTOM centred on hz, as wide as the band on screen (16 MHz at most, 2 at least): TUNE, or the
+   UV-21's long middle side key on the middle (Jeff, 2026-11-24); 0 if the radio can't hear hz */
+static int centre_custom(sf_t *s, uint32_t hz) {
+  uint32_t w = s->bd->hi - s->bd->lo, lo, hi;
+  if (hz < USER_MIN || hz > USER_MAX) return 0;
+  if (w > SURF_USER_SPAN) w = SURF_USER_SPAN;
+  if (w < 2000000u) w = 2000000u;
+  lo = hz > USER_MIN + w / 2 ? hz - w / 2 : USER_MIN;
+  hi = lo + w;
+  if (hi > USER_MAX) hi = USER_MAX, lo = hi - w;
+  custom_on(s, lo, hi, hz);
+  return 1;
+}
+
+/* start typing: TUNE (3) or a range (1) */
+static void ed_start(sf_t *s, int ed) {
+  s->ed = (uint8_t)ed;
+  s->en[0] = s->en[1] = 0;
+  s->eb[0][0] = s->eb[1][0] = 0;
+}
+
+/* a key while typing: digits, '*' the point, DOWN a backspace, # the range's other end or TUNE's
+   finish, MENU (or V) finishes, EXIT drops it */
+static void ed_key(sf_t *s, int k) {
+  int f = s->ed == 2, n = s->en[f], i;
+  char *t = s->eb[f];
+  if (k >= '0' && k <= '9') {
+    if (n < ED_LEN) t[n++] = (char)k;
+  } else if (k == '*') {
+    for (i = 0; i < n && t[i] != '.'; i++) {}
+    if (i == n && n && n < ED_LEN) t[n++] = '.';
+  } else if (k == 'D') {
+    if (n) n--;
+  } else if (k == '#' && s->ed != 3) {
+    s->ed = (uint8_t)(3 - s->ed);
+  } else if (k == 'M' || k == 'V' || k == '#') {     /* (# ends a TUNE: 446# is 446.000) */
+    t[n] = 0;
+    if (s->ed == 3) {
+      if (n && centre_custom(s, ed_hz(t))) s->ed = 0;
+      else note(s, "bad freq");
+    } else if (s->en[0] && ed_done(s)) s->ed = 0;
+    else note(s, "bad range");
+  } else if (k == 'X') {
+    s->ed = 0;
+  }
+  t[n] = 0;
+  s->en[f] = (uint8_t)n;
+  SF_ED_CHANGED(s);
+}
+#endif

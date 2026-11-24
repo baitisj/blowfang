@@ -68,7 +68,7 @@ LOG_MAX = 512 << 10
 KEEP_WORKTREES = 6                 # inbox-* / src-* worktrees kept beside the ones in use
 FINAL = ("done", "failed", "refused", "cancelled")
 REMOTE_NO_STEPS = ("k6.install", "k6.flash", "k6.update", "uv380.flash", "pluto.flash", "kdh.flash")
-SOURCES_STEPS = ("uv380.send", "uv380.m17", "uv380.ysf", "uv380.voice", "uv380.sotto", "uv380.rx")
+SOURCES_STEPS = ("uv380.send", "uv380.m17", "uv380.ysf", "uv380.voice", "uv380.sotto", "uv380.rx", "uv21.mod")
 PATH_FIELDS = ("bundle", "image", "module", "radio_tool")
 RUNNER_FILES = ("bench_runner.py", "bench_inbox.py", "k6_bench.py", "k6-reset-trigger.sh")
 IDENT = ["-c", "user.name=hamlet bench runner", "-c", "user.email=bench-runner@hamlet.invalid"]
@@ -157,7 +157,7 @@ def remote_rules(job, jid=None):
         return p + ["steps: a list"]
     dos = [s.get("do") for s in steps if isinstance(s, dict)]
     if "sources_commit" in job and not any(d in SOURCES_STEPS for d in dos):
-        p.append(f"sources_commit: only for the UV-380 module steps ({', '.join(SOURCES_STEPS)})")
+        p.append(f"sources_commit: only for the module steps ({', '.join(SOURCES_STEPS)})")
     for i, s in enumerate(steps):
         if not isinstance(s, dict):
             continue
@@ -797,7 +797,7 @@ def cancel_folders(jid, job):
 
 
 def module_rel(br, step):
-    """the checkout-relative module a UV-380 module step builds, or None"""
+    """the checkout-relative module a UV-380 or UV-21 module step builds, or None"""
     do, args = step.get("do"), step.get("args") or []
     if do == "uv380.send":
         return br.UV380_SEND_MODULE
@@ -812,6 +812,9 @@ def module_rel(br, step):
         return br.uv380_sotto_module(args)
     if do == "uv380.rx" and len(args) == 1 and args[0] in getattr(br, "UV380_RX_PLANS", {}):
         return br.uv380_rx_module(args[0])
+    if do == "uv21.mod" and args and isinstance(args[0], str) and getattr(br, "UV21_MOD_RE", None) \
+            and br.UV21_MOD_RE.match(args[0]):
+        return br.uv21_module(args[0])
     return None
 
 

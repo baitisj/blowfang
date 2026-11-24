@@ -132,6 +132,7 @@ jobs:
             tests/test_uv21_bringup.py \
             tests/test_uv21_dumper.py \
             tests/test_uv21_kdh.py \
+            tests/test_uv21_mod.py \
             tests/test_uv21_port.py \
             tests/test_uv21_surf.py \
             tests/test_soapyfang.py

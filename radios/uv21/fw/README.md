@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 14 change
+## What ports 1 to 15 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -78,8 +78,35 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   (0x4008). The image is about half the size: 23 KB, was 45.4 KB.
   In its place, SURF tunes like a VFO: a long # opens frequency entry, and the frequency typed
   becomes the middle of a CUSTOM range as wide as the band on screen (16 MHz at most); a long
-  press of the middle side key does the same on the frequency in the middle. Moving the CW wake
-  went from long # to long MENU. The custom range shows as CUSTOM (was USER).
+  press of the middle side key does the same on the frequency in the middle. Moving the CW wake went from long # to long MENU. The custom range
+  shows as CUSTOM (was USER).
+- Port 15: TUNE and RAM modules. The long # entry is TUNE: a red title, the frequency in large
+  digits with a `_` where the next one goes; `*` is the decimal point and # finishes, so `446#`
+  is 446.000 MHz. And RAM modules over the cable (below), for register trials without a new
+  image.
+
+## RAM modules (port 15)
+
+A module is a small position-independent C program (`../mod/`, MIT) that runs once in a 4 KB
+block of RAM while SURF runs, prints lines on the cable's console and returns. It reaches the
+radio only through `um_api_t` in `../mod/uv21_mod.h`: RF chip register reads and writes, tune,
+the receive front end, a delay, the time and console lines. Its register writes go through the
+same receive-only filter as the image's own, so a module can't key the radio. Nothing is kept: the
+next upload replaces it, and a power cycle clears it. `src/umod.rs` takes the upload as text
+lines on the K-plug serial line (`um b`, `um w` with a CRC-16 per line, `um r` with the CRC-32 of
+the whole image) and answers each one.
+
+    python -m modem.uv21mod run /dev/serial/by-id/<the cable> radios/uv21/mod/hello.c
+    python -m modem.uv21mod run <port> radios/uv21/mod/regsweep.c -D SW_REG=0x1F \
+        -D SW_VALS=0x1657,0xC65A -D SW_HZ=439500000
+
+`regsweep.c` writes each value to one register in turn, measures the signal on SW_HZ and the
+noise 100 kHz beside it (REG_67, half-dB steps), prints a line per value and puts the register
+back. On hamlet the bench runner's `uv21.mod` step runs one: the module's name, then its
+`NAME=number` settings, and from the inbox a module can come from a pushed branch
+(`sources_commit`):
+
+    {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_VALS=0x1657,0xC65A"]}
 
 ## SURF (port 6)
 
@@ -97,7 +124,7 @@ frequency in the middle and carets on the peaks.
 | bottom side key | jump to the next peak below |
 | middle side key | next band: 2 m, 1.25 m, 70 cm, GMRS, marine and weather, air, CUSTOM; held: CUSTOM centred on the middle's frequency |
 | 1 / 3 | zoom in / out |
-| # | next channel step; held: type a frequency (`*` for the point, DOWN deletes), MENU, and CUSTOM is centred on it (the VFO, in SURF) |
+| # | next channel step; held: TUNE, type a frequency (`*` for the point, DOWN deletes, # or MENU finishes, EXIT leaves), and CUSTOM is centred on it (the VFO, in SURF) |
 | 4 / 5 | FM, DSB, AM / the band's centre |
 | 7 / 9 / 8 | fixed gain down / up / AGC again |
 | 6 | the receive band switch's next way (port 12, while its polarity is unknown) |

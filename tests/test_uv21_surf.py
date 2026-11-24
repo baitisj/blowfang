@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 14 build=" in surfing.boot_text
+    assert "blowfang uv21 port 15 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -201,6 +201,13 @@ def test_long_pound_types_a_frequency_that_centres_custom(built):
     out = "".join(tap(b, k, 0.2) for k in ["4", "4", "6", "*", "5", "MENU"])
     assert user_line(b, out) == ("438.500", "454.500")                 # 70 cm's 20 MHz: 16 kept
     assert sel(b) == 446_500_000
+    # (Jeff, 2026-11-24: "In TUNE, make * enter a decimal and # complete the entry ... so 446#
+    # goes to 446.000 MHz")
+    b.tap("#", 1.3)
+    wait(b, 1.6)
+    out = "".join(tap(b, k, 0.2) for k in ["4", "4", "6", "#"])
+    assert user_line(b, out) == ("438.000", "454.000")
+    assert sel(b) == 446_000_000
 
 
 def test_long_middle_side_key_centres_custom_on_the_middle(built):
