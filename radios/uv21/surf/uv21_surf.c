@@ -79,7 +79,8 @@
   uint32_t dcen, t_dq;          /* the middle as last seen; when the squelch or it moved */ \
   int sdbm;                     /* the level shown */                                     \
   char st0[34], st1[12], st2[34], st3[14];   /* the text lines as drawn */
-#define SF_CUSTOM               /* the core's TUNE, typed range and CUSTOM */
+#define SF_CUSTOM               /* the core's TUNE and CUSTOM */
+#define SF_RANGE                /* and its typed range (VFO/MR) */
 #define SF_ED_CHANGED(s) if (!(s)->ed) (s)->sdirty = 1   /* (TUNE drew over the top: all again) */
 #include "../../../c/common/surf_core.inc"
 /* (the core's span name: the K6 labels with it; the UV-21's labels are absolute) */

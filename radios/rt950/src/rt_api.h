@@ -16,7 +16,11 @@
 
    Keys come as the characters the K6's SURF already uses, so the shared code reads the same on
    both radios: 'U' 'D' up and down, 'A' 'B' the side keys, 'W' the caret fall, 'N' band, 'M'
-   say, 'X' exit, and the digits, '*' and '#'. The glue maps the RT-950's keypad onto them.
+   say, 'X' exit, and the digits, '*' and '#'. The glue maps the RT-950's keypad onto them. A
+   key held down comes once more with RT_LONG added once the keypad says it is held ('#' |
+   RT_LONG: TUNE, the UV-21's long #); its press came first, as for any key. */
+#define RT_LONG 0x80
+/*
    SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef RT_API_H
 #define RT_API_H

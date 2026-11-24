@@ -40,8 +40,13 @@
    hear at once through the shared front end (the band relay and LNA follow chip 0, so chip 1
    only sweeps chip 0's side of 300 MHz; SURF's bands are each on one side).
 
+   TUNE and CUSTOM are the core's (SF_CUSTOM, the UV-21's rules, Jeff 2026-11-24): # held (the
+   glue's '#' | RT_LONG) types a frequency, '*' the point, # enters it, DOWN deletes, EXIT quits;
+   CUSTOM (BAND's last stop, the UHF TV band until then) is centred on it as wide as the band on
+   screen. The view's tune is the typing for the glue to draw ("446.5_").
+
    Lines (api->say): "surf2 70cm 440.850 25k", "sel 441.2000 -71 -127" (MENU: the middle, chip 0's
-   dBm, its floor), "loff 3" (the chips' measured offset, dB), "end sw=N".
+   dBm, its floor), "loff 3" (the chips' measured offset, dB), "user 438.000 454.000" (TUNE entered), "end sw=N".
    SPDX-License-Identifier: GPL-3.0-or-later */
 #include <stdint.h>
 #include "rt_api.h"
@@ -64,6 +69,15 @@
 #define SF_API rt_api_t
 /* a bin chip 1 must not read: inside the guard round where chip 0 is tuned */
 #define SF_SKIP(s, i) ((s)->lhz && (bin_hz(s, i) > (s)->lhz ? bin_hz(s, i) - (s)->lhz : (s)->lhz - bin_hz(s, i)) < GUARD_HZ)
+#ifndef SURF_USER_LO
+#define SURF_USER_LO 470000000u /* CUSTOM until TUNE sets one: the UHF TV band, as the K6's */
+#endif
+#ifndef SURF_USER_HI
+#define SURF_USER_HI 608000000u
+#endif
+#define USER_MIN 18000000u      /* the BK4829's receive range, as the K6's FD6818 */
+#define USER_MAX 630000000u
+#define ED_LEN 7
 #define SF_EXTRA                                                                          \
   uint32_t lhz;                 /* where chip 0 is tuned (0: not yet) */                  \
   uint32_t t_ltune;             /* when, ms */                                            \
@@ -73,7 +87,12 @@
   uint32_t r13b, r7eb;          /* chip 1's gain registers as the firmware had them */    \
   uint8_t lok;                  /* chip 0 has settled since its tune */                   \
   uint8_t gq;                   /* the last sweep read was inside the guard: not a read */ \
-  uint8_t ptt;
+  uint8_t ptt;                                                                          \
+  band_t ub;                    /* CUSTOM */                                              \
+  uint8_t ed, en[2];            /* TUNE (3) while typing; the typed lengths */            \
+  char eb[2][ED_LEN + 1];       /* the typing */                                          \
+  char tb[ED_LEN + 2];          /* it with the cursor, for the view */
+#define SF_CUSTOM               /* the core's TUNE and CUSTOM (the UV-21's rules, Jeff 2026-11-24) */
 #include "../../../c/common/surf_core.inc"
 
 /* the bands: the K6's, which each sit on one side of the front end's 300 MHz split */
@@ -277,7 +296,27 @@ static void ptt(sf_t *s, int on) {
   }
 }
 
+/* CUSTOM on lo .. hi: the middle on its centre, the smallest span that shows it all, 25 kHz
+   steps, AM if it is all airband (the K6's) */
+static void user_set(sf_t *s, uint32_t lo, uint32_t hi) {
+  band_t *u = &s->ub;
+  int i;
+  u->lo = lo;
+  u->hi = hi;
+  u->home = lo + ((hi - lo) >> 1);
+  u->st = ST_25K;
+  for (i = 0; i < NSPANS - 1 && 2 * U_HZ * SPANS[i] < hi - lo; i++) {}
+  u->si = (uint8_t)i;
+  u->am = lo >= 108000000u && hi <= 137000000u;
+  put(u->name, "CUSTOM")[0] = 0;
+}
+
 static void on_key(sf_t *s, int k) {
+  if (s->ed) {                          /* TUNE: '*' the point, # enters, DOWN deletes, EXIT quits */
+    ed_key(s, k);
+    if (!s->ed) measure_loff(s);        /* (CUSTOM may be a new band) */
+    return;
+  }
   switch (k) {
   case 'U': go_to(s, s->cen + s->ch); break;
   case 'D': go_to(s, s->cen - s->ch); break;
@@ -289,9 +328,14 @@ static void on_key(sf_t *s, int k) {
     put(put(s->msg, "fall "), FALL[s->fall])[0] = 0;
     s->t_msg = s->now + MSG_MS;
     break;
-  case 'N':
-    band(s, s->bd + 1 == BANDS + NBANDS ? BANDS : s->bd + 1);
+  case 'N':                             /* the next band; CUSTOM after the last, then the first */
+    band(s, s->bd == &s->ub ? BANDS : s->bd + 1 == BANDS + NBANDS ? &s->ub : s->bd + 1);
     measure_loff(s);
+    break;
+  case '#' | RT_LONG:                   /* TUNE; the press before it stepped: step back */
+    s->st = (uint8_t)(s->st ? s->st - 1 : NSTEPS - 1);
+    s->ch = STEPS[s->st];
+    ed_start(s, 3);
     break;
   case '#':
     s->st = (uint8_t)(s->st + 1 == NSTEPS ? 0 : s->st + 1);
@@ -345,6 +389,11 @@ static void show(sf_t *s, rt_view_t *v) {
   v->band = s->bd->name;
   v->mode = MD_NAME[s->md];
   v->msg = (int32_t)(s->t_msg - s->now) > 0 ? s->msg : 0;
+  v->tune = 0;
+  if (s->ed) {
+    put(put(s->tb, s->eb[0]), "_")[0] = 0;
+    v->tune = s->tb;
+  }
   v->step = s->ch;
   v->cen = s->cen;
   v->span = U_HZ * SPANS[s->si];
@@ -403,6 +452,7 @@ int surf2_run(const rt_api_t *api, void *ram, uint32_t room, uint32_t hz) {
   s->af = AF_FM;
   s->audio = 1;
   lis_audio(s, 0);
+  user_set(s, SURF_USER_LO, SURF_USER_HI);
   s->bd = &BANDS[2];
   for (i = 0; i < NBANDS; i++)
     if (hz >= BANDS[i].lo && hz <= BANDS[i].hi) s->bd = &BANDS[i];
@@ -427,7 +477,7 @@ int surf2_run(const rt_api_t *api, void *ram, uint32_t room, uint32_t hz) {
     pm_fall(s);
     if (s->qk) k = s->qk, s->qk = 0;
     else k = api->key();
-    if (k == 'X') break;
+    if (k == 'X' && !s->ed) break;     /* (typing, EXIT drops the typing) */
     if (k) {
       on_key(s, k);
       s->now = api->ms();

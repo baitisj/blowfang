@@ -194,3 +194,24 @@ def test_builds_for_the_at32f403a():
     out = subprocess.run(["make", "-s", "-C", RT, "target"], check=True, capture_output=True, text=True).stdout
     text = int(out.strip().splitlines()[-1].split()[0])   # size's text column
     assert text < 16384, out
+
+
+def test_long_pound_is_tune_and_pound_enters():
+    # the UV-21's TUNE on the RT-950 too (Jeff, 2026-11-24: "Those rules should apply to other
+    # firmware variants"): the glue sends # on the press and # | RT_LONG once it repeats; TUNE
+    # takes the step back, '*' is the point and # enters, so 446# centres CUSTOM on 446.000 as
+    # wide as the band on screen (70 cm's 20 MHz: 16 kept)
+    keys = ["1000:#", "1600:L#", "2000:4", "2100:4", "2200:6", "2300:#"]
+    lines, s, fr = sim("--end", 6000, *[a for k in keys for a in ("--key", k)], "--dump", 2150, "--dump", 4000)
+    typing, done = fr[0][0], fr[1][0]
+    assert typing["tune"] == "446_" and typing["band"] == "70cm"
+    assert "user 438.000 454.000" in said(lines)
+    assert done["tune"] == "-" and done["band"] == "CUSTOM" and done["cen"] == "446000000"
+    assert int(done["span"]) <= 10_000_000 and s["c0hz"] == str(START)   # (back where it began)
+
+
+def test_band_reaches_custom_after_airband():
+    # 70cm, then GMRS, MAR/WX, AIR and CUSTOM (the UHF TV band until TUNE sets one)
+    lines, s, fr = sim("--end", 8000, *[a for t in range(4) for a in ("--key", f"{1000 + 300 * t}:N")],
+                       "--dump", 5000)
+    assert fr[0][0]["band"] == "CUSTOM" and fr[0][0]["cen"] == "539000000"

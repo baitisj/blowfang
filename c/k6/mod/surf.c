@@ -44,15 +44,16 @@
      A/B             how fast the carets fall: 1 min (the start), 5 min, 20 min, 15 s for the
                      whole height (line 5: "fall 5m")
      BAND            next band: 2m, 1.25m, 70cm, GMRS, marine + NOAA WX, airband (AM, 118-137
-                     MHz, receive only), USER (the custom range: V); each starts at its centre
+                     MHz, receive only), CUSTOM (the custom range: V or TUNE); each starts at its centre
                      (MAR/WX: on NOAA weather's 162.475, with the marine coast channels below)
                      with its default step and span
-     V               type a custom range, USER (Jeff, 2026-11-17: to find carriers to calibrate
-                     the crystal against): low MHz, #, high MHz, MENU ('*' the point, DOWN a
-                     backspace, # back and forth, EXIT drops it); a low edge alone is +-1 MHz
-                     round it. Until then USER is SURF_USER_LO..HI, the UHF TV band
-     #               next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz (the middle
-                     stays; UP / DOWN then move onto the new raster; BAND resets the step)
+     V               TUNE (the UV-21's rules, Jeff 2026-11-24; a range until then): type a
+                     frequency, shown large ('*' the point, DOWN deletes, # or MENU enters, EXIT
+                     quits); CUSTOM is centred on it as wide as the band on screen (2-16 MHz).
+                     Until then CUSTOM is SURF_USER_LO..HI, the UHF TV band
+     #               next channel step: 1, 5, 6.25, 8.33, 10, 12.5, 20, 25, 50, 100 kHz, on release
+                     (the middle stays; UP / DOWN then move onto the new raster; BAND resets the
+                     step); held LONG_MS: TUNE, as V
      5               the band's centre (MAR/WX: 162.475)
      4               the demodulator: FM, DSB, AM, FM (DSB = the chip's "USB", both sidebands at
                      the zero IF; at the zero IF a steady carrier reads low, so DSB is for
@@ -129,6 +130,10 @@ K6_MODULE_NAME(K6_NAME);
 #define PARK_US 20000           /* a parked read every ~20 ms */
 #define REFRESH_MS 5000
 #define FLUSH_MS 200            /* the screen (each flush ~20-40 ms) */
+#define LONG_MS 600             /* a long press of # (TUNE) */
+#if !defined SURF_AUTO_S && !defined SURF_NO_TUNE
+#define SURF_TUNE               /* (the unattended bench build, surfauto.c, has no TUNE: no room) */
+#endif
 #define RT_BASE 0x0F0000u       /* c/k6/rt.h: 1024 slots of 64 B */
 #define RT_SLOTS 1024
 #define GPIOB 0x48000400u
@@ -144,7 +149,7 @@ K6_MODULE_NAME(K6_NAME);
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
 
-/* the custom range (Jeff, 2026-11-17): BAND's last stop, USER, is a band the keypad sets (V);
+/* the custom range (Jeff, 2026-11-17): BAND's last stop, CUSTOM (USER until 2026-11-24), is a band the keypad sets (V);
    until then it is SURF_USER_LO .. SURF_USER_HI, the UHF TV band, whose pilots the drift
    calibration wants (docs/k6-surf.md "Custom range") */
 #ifndef SURF_USER_LO
@@ -157,9 +162,12 @@ static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
 #define USER_MAX 630000000u
 #define ED_LEN 7                /* a typed frequency: "470.309" */
 #define SF_EXTRA                                                                                   \
-  band_t ub;                    /* USER */                                                         \
-  uint8_t ed, en[2];            /* V: the field being typed (1 low, 2 high, 0 none), lengths */    \
-  char eb[2][ED_LEN + 1];       /* the typed text */
+  band_t ub;                    /* CUSTOM */                                                       \
+  uint8_t ed, en[2];            /* typing: 1 / 2 V's low / high end, 3 TUNE, 0 none; lengths */    \
+  char eb[2][ED_LEN + 1];       /* the typed text */                                             \
+  uint32_t t_hash;              /* when # went down (a long press: TUNE) */                        \
+  uint8_t hpend;                /* # is down: a step on release, TUNE if held LONG_MS */
+#define SF_CUSTOM               /* the core's TUNE, typed range and custom range */
 
 #include "../../common/surf_core.inc"   /* the scale, the sweep of a bin, the floor, the carets */
 
@@ -269,9 +277,9 @@ static void gain(sf_t *s) {
   s->t_msg = s->now + MSG_MS;
 }
 
-/* ---- the custom range (USER) ---- */
+/* ---- the custom range (CUSTOM) ---- */
 
-/* USER on lo .. hi: the middle on its centre, the smallest span that shows it all (or the
+/* CUSTOM on lo .. hi: the middle on its centre, the smallest span that shows it all (or the
    widest), 25 kHz steps (# changes it), AM if it is all airband */
 static void user_set(sf_t *s, uint32_t lo, uint32_t hi) {
   band_t *u = &s->ub;
@@ -283,85 +291,7 @@ static void user_set(sf_t *s, uint32_t lo, uint32_t hi) {
   for (i = 0; i < NSPANS - 1 && 2 * U_HZ * SPANS[i] < hi - lo; i++) {}
   u->si = (uint8_t)i;
   u->am = lo >= 108000000u && hi <= 137000000u;
-  put(u->name, "USER")[0] = 0;
-}
-
-/* typed MHz ("470.309", "608") in Hz; 0 for none */
-static uint32_t ed_hz(const char *t) {
-  uint32_t v = 0;
-  int fr = -1;
-  for (; *t; t++) {
-    if (*t == '.') {
-      fr = 0;
-    } else if (fr < 6) {
-      v = 10 * v + (uint32_t)(*t - '0');
-      if (fr >= 0) fr++;
-    }
-  }
-  for (fr = fr < 0 ? 0 : fr; fr < 6; fr++) v *= 10;
-  return v;
-}
-
-/* V typed range done: low and high, or only low: +-1 MHz round it ("a frequency, MENU" is a
-   VFO); 0 if it is no range the K6 receives */
-static int ed_done(sf_t *s) {
-  uint32_t lo = ed_hz(s->eb[0]), hi = ed_hz(s->eb[1]);
-  if (!s->en[1]) {
-    hi = lo + 1000000u;
-    lo = lo > USER_MIN + 1000000u ? lo - 1000000u : USER_MIN;
-    if (hi > USER_MAX) hi = USER_MAX;
-  }
-  if (lo < USER_MIN || hi > USER_MAX || hi <= lo) return 0;
-  if (hi - lo > SURF_USER_SPAN) {        /* (wider: the middle SURF_USER_SPAN of it) */
-    lo += (hi - lo - SURF_USER_SPAN) / 2;
-    hi = lo + SURF_USER_SPAN;
-  }
-  user_set(s, lo, hi);
-  band(s, &s->ub);
-  if (!s->en[1]) recentre(s, ed_hz(s->eb[0])), moved(s);   /* (one frequency: there, on 25 kHz) */
-  /* "user 470.000 608.000" for the bench's log */
-  {
-    char *p = put(s->ln, "user ");
-    p = mhz(p, lo, 3);
-    *p++ = ' ';
-    say_end(s, mhz(p, hi, 3));
-  }
-  return 1;
-}
-
-/* a key while V is typing a range: digits, * the point, # the other field, DOWN a backspace,
-   MENU or V take it, EXIT drops it (and stays in SURF) */
-static void ed_key(sf_t *s, int k) {
-  int f = s->ed - 1, n = s->en[f], i;
-  char *t = s->eb[f];
-  if (k >= '0' && k <= '9') {
-    if (n < ED_LEN) t[n++] = (char)k;
-  } else if (k == '*') {
-    for (i = 0; i < n && t[i] != '.'; i++) {}
-    if (i == n && n && n < ED_LEN) t[n++] = '.';
-  } else if (k == 'D') {
-    if (n) n--;
-  } else if (k == '#') {
-    s->ed = (uint8_t)(3 - s->ed);
-  } else if (k == 'M' || k == 'V') {
-    if (s->en[0] && ed_done(s)) s->ed = 0;
-    else note(s, "bad range");
-  } else if (k == 'X') {
-    s->ed = 0;
-  }
-  t[n] = 0;
-  s->en[f] = (uint8_t)n;
-}
-
-/* line 5 while typing: "set 470.3_-608", the cursor after the field being typed */
-static char *ed_line(sf_t *s) {
-  char *p = put(s->ln, "set ");
-  p = put(p, s->eb[0]);
-  if (s->ed == 1) *p++ = '_';
-  *p++ = '-';
-  p = put(p, s->eb[1]);
-  if (s->ed == 2) *p++ = '_';
-  return p;
+  put(u->name, "CUSTOM")[0] = 0;
 }
 
 /* ---- the keypad ---- */
@@ -440,10 +370,11 @@ static void on_key(sf_t *s, int k) {
     return;
   }
   switch (k) {
-  case 'V':                           /* type a custom range (USER): low # high MENU */
-    s->ed = 1;
-    s->en[0] = s->en[1] = 0;
-    s->eb[0][0] = s->eb[1][0] = 0;
+  case 'V':                          /* TUNE (the UV-21's rules, Jeff 2026-11-24) */
+#ifdef SURF_TUNE
+  case 'T':                          /* (a long #, as on the UV-21) */
+#endif
+    ed_start(s, 3);
     break;
   case 'U': go_to(s, s->cen + s->ch); break;
   case 'D': go_to(s, s->cen - s->ch); break;
@@ -461,7 +392,7 @@ static void on_key(sf_t *s, int k) {
     put(put(s->msg, "fall "), FALL[s->fall])[0] = 0;
     s->t_msg = s->now + MSG_MS;
     break;
-  case 'N':                           /* the next band; USER after the last, then the first */
+  case 'N':                           /* the next band; CUSTOM after the last, then the first */
     band(s, s->bd == &s->ub ? BANDS : s->bd + 1 == BANDS + NBANDS ? &s->ub : s->bd + 1);
     break;
   case '#':                           /* the next channel step (a new band resets it) */
@@ -623,6 +554,28 @@ static void xpx(uint8_t *b, int x, int r) {
   if ((unsigned)x < 128) b[16 * r + (x >> 3)] ^= (uint8_t)(0x80 >> (x & 7));
 }
 
+/* TUNE's typing in large digits (the UV-21's 10x20 on this screen, Jeff 2026-11-24): a 5x7 font
+   at twice its size, 10x14 px on a 12 px pitch, rows TUNE_R.. of the bitmap; "0"-"9", "." and "_"
+   (the cursor), a row a byte, bit 4 leftmost */
+#define TUNE_R 8
+static const uint8_t BIG[12][7] = {
+    {0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E}, {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E},
+    {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F}, {0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E},
+    {0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02}, {0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E},
+    {0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E}, {0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08},
+    {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E}, {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C},
+    {0, 0, 0, 0, 0, 0x0C, 0x0C},                {0, 0, 0, 0, 0, 0, 0x1F}};
+
+static void big(uint8_t *b, const char *t) {
+  int x = 4, r, c;
+  for (; *t; t++, x += 12) {
+    const uint8_t *g = BIG[*t == '.' ? 10 : *t == '_' ? 11 : *t - '0'];
+    for (r = 0; r < 14; r++)
+      for (c = 0; c < 10; c++)
+        if (g[r >> 1] & (0x10 >> (c >> 1))) px(b, x + c, TUNE_R + r);
+  }
+}
+
 /* bin i's two pixels in row r */
 static void pair(uint8_t *b, int i, int r) { b[16 * r + (i >> 2)] |= (uint8_t)(0xC0 >> (2 * (i & 3))); }
 
@@ -677,6 +630,17 @@ static void draw(sf_t *s) {
   char *p;
   s->t_flush = s->now;
   for (i = 0; i < 16 * ROWS; i++) b[i] = 0;
+  if (s->ed) {                            /* TUNE: the title, the typing large, the keys' hint */
+    p = put(s->ln, s->eb[0]);
+    put(p, "_")[0] = 0;
+    big(b, s->ln);
+    api->lcd_text(0, "TUNE");
+    api->lcd_text(1, "*-POINT  #-ENTER");
+    api->lcd_text(5, (int32_t)(s->t_msg - s->now) > 0 ? s->msg : "DN-DEL  EXIT-QUIT");
+    api->lcd_wf(b, ROWS, 0);
+    api->lcd_flush();
+    return;
+  }
   for (i = 0; i < NV; i++) {
     if (!bin_hz(s, i)) continue;
     for (r = AX - bar_h(s, i); r < AX; r++) pair(b, i, r);
@@ -759,9 +723,7 @@ static void draw(sf_t *s) {
   if (s->audio) p = put(p, " RX");
   *p = 0;
   api->lcd_text(1, s->ln);
-  if (s->ed) {
-    p = ed_line(s);
-  } else if (k >= 0) {
+  if (k >= 0) {
     p = rt_info(s, k);
   } else {
     /* the axis's labels: the span at each end, the lens's edges under their ticks
@@ -869,7 +831,28 @@ int k6_main(const k6_api_t *api) {
       k = SC[s->sc++];
     }
 #endif
-    if (k == 'X' && !s->ed) break;   /* (typing a range, EXIT drops the typing) */
+#ifdef SURF_TUNE
+    /* # waits for its release: a short press is the next step, one held LONG_MS is TUNE (the
+       UV-21's long #, Jeff 2026-11-24). Typing, # is the typing's own at once */
+    if (s->hpend) {
+      if (s->key != '#') {
+        s->hpend = 0;
+        if (k) s->qk = (uint8_t)k;       /* (a key pressed as # came up: next time round) */
+        on_key(s, '#');
+        s->now = api->ms();
+        draw(s);
+        k = 0;
+      } else if (s->now - s->t_hash >= LONG_MS) {
+        s->hpend = 0;
+        k = 'T';
+      }
+    } else if (k == '#' && !s->ed) {
+      s->hpend = 1;
+      s->t_hash = s->now;
+      k = 0;
+    }
+#endif
+    if (k == 'X' && !s->ed) break;   /* (typing, EXIT drops the typing) */
     if (k) {
       on_key(s, k);
       s->now = api->ms();
