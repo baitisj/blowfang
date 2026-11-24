@@ -230,7 +230,7 @@ fn main() -> ! {
     unsafe { cortex_m::interrupt::enable() };
 
     let serial = Serial { usart1: dp.usart1 };
-    hal::con::puts("blowfang uv21 port 15 build=");
+    hal::con::puts("blowfang uv21 port 16 build=");
     hal::con::puts(app::FIRMWARE_VERSION);
     hal::con::kv_hex("sclk_mhz", SCLK_HZ / 1_000_000, 2);
     hal::con::kv_hex("power_sense_ok", board::power_sense_ok() as u32, 1);

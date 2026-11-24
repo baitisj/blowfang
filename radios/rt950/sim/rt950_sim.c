@@ -35,8 +35,8 @@
    or:    rt950_sim --digi ft8|wspr --tones DIGITS [--dial HZ] [--writes N] [--outside] [--key MS:K]
    which sends one frame with src/digi_tx.c and logs the transmitter: "txon US HZ P", "txw US HZ"
    (each PLL write), "txp US P" (the CW ident's keying), "txoff US", then "digi RET".
-   Keys are the app's characters ('A' side key, 'U' up, 'X' exit, 'P' / 'p' PTT ...). At --end the
-   sim sends X. --dump prints the next frame after MS ("view ..." then a line a bin).
+   Keys are the app's characters ('A' side key, 'U' up, 'X' exit, 'P' / 'p' PTT ...; "L#" is # held,
+   '#' | RT_LONG). From --end the sim sends X. --dump prints the next frame after MS ("view ..." then a line a bin).
    SPDX-License-Identifier: GPL-3.0-or-later */
 #include <math.h>
 #include <stdio.h>
@@ -180,7 +180,7 @@ static void speaker(int on) {
 
 static int key(void) {
   uint32_t t = ms();
-  if (!ended && t >= end_ms) {
+  if (t >= end_ms) {                    /* (again until SURF leaves: a first X may only end TUNE) */
     ended = 1;
     return 'X';
   }
@@ -191,7 +191,7 @@ static int key(void) {
       ptt_down = 0;
       printf("ptt t=%u c1hz=%u spk=%d\n", t, ch[1].hz, spk);
     }
-    printf("key t=%u %c\n", t, k);
+    printf("key t=%u %s%c\n", t, k & RT_LONG ? "L" : "", k & ~RT_LONG);
     return k;
   }
   return 0;
@@ -202,9 +202,9 @@ static void show(const rt_view_t *v) {
   if (di >= ndump || ms() < dumps[di]) return;
   di++;
   printf("view t=%u cen=%u span=%u band=%s mode=%s dbm=%d floor=%d audio=%d mon=%d hold=%d ptt=%d "
-         "sweeps=%u fq=%u msg=%s\n",
+         "sweeps=%u fq=%u tune=%s msg=%s\n",
          ms(), v->cen, v->span, v->band, v->mode, v->dbm, v->floor_dbm, v->audio, v->mon, v->hold, v->ptt,
-         v->sweeps, v->floor_q, v->msg ? v->msg : "-");
+         v->sweeps, v->floor_q, v->tune ? v->tune : "-", v->msg ? v->msg : "-");
   for (i = 0; i < SURF2_NV; i++)
     printf("bin %d %u %u %u %u\n", i, v->hz[i], v->lvl[i], v->caret[i], v->flags[i]);
 }
@@ -294,7 +294,7 @@ int main(int argc, char **argv) {
     } else if (!strcmp(a, "--key") && nkey < NKEY) {
       char *e;
       keys[nkey].t = (uint32_t)strtoul(v, &e, 10);
-      keys[nkey++].k = e[1];
+      keys[nkey++].k = e[1] == 'L' && e[2] ? e[2] | RT_LONG : e[1];   /* "L#": # held */
       i++;
     } else {
       fprintf(stderr, "rt950_sim: what is %s?\n", a);

@@ -139,7 +139,8 @@ def default_band():
 class UV21Board(tp.Port):
     """the port image on the emulated board, with time, the RF chip's registers and the band"""
 
-    def __init__(self, image=None, syms=None, band=None, floor_dbm=-125.0, seed=1, fast_bus=True):
+    def __init__(self, image=None, syms=None, band=None, floor_dbm=-125.0, seed=1, fast_bus=True,
+                 noise_db=1.0):
         if image is None:
             image, syms = build()
         super().__init__(image, syms)
@@ -148,6 +149,7 @@ class UV21Board(tp.Port):
         self.regs = {}
         self.band = default_band() if band is None else band
         self.floor = floor_dbm
+        self.noise_db = noise_db            # the RSSI's spread on the floor, dB (1 sigma)
         self.rng = random.Random(seed)
         self.holding = None                     # (key, release at cycles)
         self.tx_watch = []                      # every write to REG_30/33/36 (state, GPIO, PA)
@@ -202,7 +204,7 @@ class UV21Board(tp.Port):
             # the wide filter (+-12.5 kHz): flat inside the signal's own width, then its skirt
             att = 0.0 if d <= s.width_hz else min(90.0, (d - s.width_hz) / 1000.0 * 6.0)
             p += 10 ** ((s.dbm - att) / 10)
-        return 10 * math.log10(p) + self.rng.gauss(0, 1.0)
+        return 10 * math.log10(p) + self.rng.gauss(0, self.noise_db)
 
     def reg_value(self, a):
         if a == 0:

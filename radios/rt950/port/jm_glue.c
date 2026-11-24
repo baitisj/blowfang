@@ -55,6 +55,7 @@ extern uint32_t get_tick(void);
 #define C_LISTEN 0x07FFu        /* cyan: bins chip 0 fills */
 #define C_HELD 0x4208u          /* grey: the guard's unread bins */
 #define C_CARET 0xFFE0u         /* yellow */
+#define C_RED 0xF945u           /* TUNE's title (the UV-21's) */
 
 static void say(const char *line) {
   (void)line;                   /* (dbg_puts compiles to nothing without DEBUG=1) */
@@ -135,9 +136,18 @@ static int key(void) {
       'A',                      /* KEY_SIDE1 */
       'B',                      /* KEY_SIDE4 */
   };
+  static uint8_t held;           /* # held: its long press sent */
   key_event_t e;
   IWDG_FEED();
   if (!keypad_get_event(&e)) return 0;
+  if (e.type == KEY_EVT_PRESS) held = 0;
+  /* # held until the keypad repeats it: TUNE (# | RT_LONG), once a press (unverified on the
+     radio: that a held # repeats as the arrows do) */
+  if (e.type == KEY_EVT_REPEAT && e.key == KEY_HASH) {
+    if (held) return 0;
+    held = 1;
+    return '#' | RT_LONG;
+  }
   if (e.type != KEY_EVT_PRESS && !(e.type == KEY_EVT_REPEAT && (e.key == KEY_C4R0 || e.key == KEY_C4R1)))
     return 0;
   return e.key < KEY_COUNT ? MAP[e.key] : 0;
@@ -163,9 +173,24 @@ static char *dec(char *p, uint32_t v, int dot) {
 }
 
 static void show(const rt_view_t *v) {
+  static uint8_t tuning;
   char ln[32], *p;
   int i;
   uint16_t x0 = (uint16_t)((240 - BAR_W * SURF2_NV) / 2);
+  if (!v->tune != !tuning) {            /* TUNE came or went: the text area afresh */
+    tuning = v->tune != 0;
+    lcd_fill_rect(0, 0, 240, BAR_Y, C_BG);
+  }
+  if (v->tune) {                        /* TUNE: the red title, the typing large, the keys' hint */
+    lcd_draw_string(4, 4, "TUNE", C_RED, C_BG);
+    p = put(ln, v->tune);
+    while (p < ln + 10) *p++ = ' ';
+    *p = 0;
+    lcd_draw_string_2x(4, 20, ln, C_FG, C_BG);
+    lcd_draw_string(4, 44, v->msg ? v->msg : "*-POINT #-ENTER         ", C_FG, C_BG);
+    lcd_draw_string(4, 56, "DN-DEL EXIT-QUIT", C_FG, C_BG);
+    return;
+  }
   p = put(ln, v->band);
   *p++ = ' ';
   p = put(p, v->mode);

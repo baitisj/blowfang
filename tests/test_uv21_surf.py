@@ -74,7 +74,7 @@ def surfing(built):
 
 
 def test_boots_into_surf(surfing):
-    assert "blowfang uv21 port 15 build=" in surfing.boot_text
+    assert "blowfang uv21 port 16 build=" in surfing.boot_text
     assert "surf 70cm 439.500 25k" in surfing.boot_text
 
 
@@ -264,21 +264,22 @@ def steady(built):
 
 
 def test_hold_stops_the_sweeps_and_the_carets(steady):
-    # HOLD (Jeff, 2026-11-24): no sweeping, the carets don't fall; it listens on the middle only
-    # (and the CW wake's frequency, a look every 1.5 s)
+    # HOLD (Jeff, 2026-11-24): no sweeping, the carets don't fall; it listens on the middle only.
+    # Port 16 ("Scanning should stop when hold is active"): no wake looks either, no retunes at all
     mid = sel(steady)
     tap(steady, "0", 0.5)
     before = carets(steady)
     assert before, "no carets to watch"
     seen = tunes(steady, 5)
-    assert seen <= {mid, 440_850_000}, sorted(seen)
+    assert seen <= {mid}, sorted(seen)
     assert carets(steady) == before
     tap(steady, "0", 0.5)                                               # off again: sweeping
     assert len(tunes(steady, 2)) > 5
 
 
 def test_monitor_only_opens_the_squelch(steady):
-    # MON (Jeff, 2026-11-24): the audio opens on the middle; the sweeps and the caret fall go on
+    # MON (Jeff, 2026-11-24): "Toggling MON should toggle opening the squelch. No changes should
+    # happen to the scanning routines and the carets should continue to fall as normal"
     tap(steady, "*", 0.5)
     # the audio open, but for the short hushes of a refresh sweep or a wake look: sampled, since
     # one look can land in one of those
@@ -299,11 +300,30 @@ def test_hold_and_monitor_together(steady):
     tap(steady, "*", 0.3)
     tap(steady, "0", 0.5)
     seen = tunes(steady, 4)
-    assert seen <= {mid, 440_850_000}, sorted(seen)
+    assert seen <= {mid}, sorted(seen)
     tap(steady, "SIDE1", 1.0)                                           # a jump still works
     assert sel(steady) != mid
     tap(steady, "0", 0.3)
     tap(steady, "*", 0.3)
+
+
+def test_hold_does_not_open_the_speaker_on_noise(built):
+    # Jeff, 2026-11-24, on port 15: "Hold turns on the speaker". A quiet middle with the RSSI
+    # spread a real chip shows on noise: HOLD keeps the audio shut, then opens on a carrier
+    quiet = Station("q", 439_500_000, -90)
+    quiet.keyed = lambda t: t >= 1e9
+    b = UV21Board(*built, band=[Station("a", 440_300_000, -80), quiet], noise_db=3.0)
+    b.run(until="boot done", limit=300_000_000)
+    wait(b, 4)
+    tap(b, "0", 0.3)
+    af, end = [], b.seconds + 20
+    while b.seconds < end:
+        b.step(20_000)
+        af.append(b.regs.get(0x47))
+    assert AF_FM not in af, f"opened {af.count(AF_FM)} of {len(af)} looks"
+    quiet.keyed = lambda t: True                                        # a carrier on the middle
+    wait(b, 0.6)
+    assert b.regs.get(0x47) == AF_FM
 
 
 # ---- the receive front end's band switch (port 12) ----

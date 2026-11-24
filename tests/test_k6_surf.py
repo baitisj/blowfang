@@ -424,7 +424,7 @@ def test_band_and_zoom_keys():
     assert at(fr, 4_000_000)["text"][5] == labels(400)      # 1: +-1 MHz
     assert at(fr, 4_000_000)["text"][1].startswith("465.1375 ")           # the middle stays
     assert at(fr, 6_000_000)["text"][5] == labels(1000)
-    # six more: marine/WX, airband, USER, 2m, 1.25m, 70cm
+    # six more: marine/WX, airband, CUSTOM, 2m, 1.25m, 70cm
     assert at(fr, 8_500_000)["text"][0] == title(S + "70cm 25k")
     assert at(fr, 8_500_000)["text"][1].startswith("440.0000 ")
 
@@ -448,8 +448,8 @@ def test_airband_listens_in_am_and_other_bands_in_fm():
     assert 0x6740 in writes_of(writes, 0x47)
     assert 0x10 in writes_of(writes, 0x73)
     assert not {0x14, 0x49} & {r for r, _ in writes}
-    user = at(fr, 6_500_000)                 # BAND after airband: USER, the custom range (FM)
-    assert user["text"][0] == title(S + "USER 25k") and user["text"][1].startswith("539.0000 ")
+    user = at(fr, 6_500_000)                 # BAND after airband: CUSTOM, the custom range (FM)
+    assert user["text"][0] == title(S + "CUSTOM 25k") and user["text"][1].startswith("539.0000 ")
     assert regs[0x73] == 0 and regs[0x14] == 0x0019 and regs[0x49] == 0x2A38
     i = max(j for j, (r, v) in enumerate(writes) if v == 0x6740)
     assert writes_of(writes[i:], 0x73)[0] == 0                   # back to FM after airband
@@ -862,7 +862,7 @@ if __name__ == "__main__":
 
 @need_clang
 def test_bench_build_presses_the_new_keys_and_says_each_result():
-    # surfkeys.c: 9, 7 x 7, 8, BAND x 3 (airband), #, 5, BAND x 4 (USER on the way), one every 3 s,
+    # surfkeys.c: 9, 7 x 7, 8, BAND x 3 (airband), #, 5, BAND x 4 (CUSTOM on the way), one every 3 s,
     # then it ends
     ret, said, regs, writes, lcd = go([(440_850_000, -70, 0, FOREVER)], [], rx_hz=440_850_000, src=KEYS)
     ks = [ln.split() for ln in said if ln.startswith("k")]
@@ -871,7 +871,7 @@ def test_bench_build_presses_the_new_keys_and_says_each_result():
     assert ks[0][1] == "440.8500" and int(ks[0][2]) > -75       # parked on the carrier
     assert ks[10][5:] == ["MAR/WX", "25k"] and ks[11][5:] == ["AIR", "25k"]
     assert ks[12][5:] == ["AIR", "50k"] and ks[13][1] == "127.5000"
-    assert ks[14][5:] == ["USER", "25k"] and ks[14][1] == "539.0000"        # the UHF TV band
+    assert ks[14][5:] == ["CUSTOM", "25k"] and ks[14][1] == "539.0000"        # the UHF TV band
     assert ks[-1][5:] == ["70cm", "25k"]
     assert said[-1].startswith("end sw=")
     assert all(regs[r] == v for r, v in AURA.items()) and regs[0x47] == 0x6040
@@ -918,7 +918,7 @@ def test_carets_stop_falling_while_the_scan_is_paused(key):
     assert 3 <= h[2] - h[3] <= 8, h                           # then on at 15 s for the whole height
 
 
-# ---- the custom range (Jeff, 2026-11-17): USER, set from the keypad with V ----
+# ---- the custom range (Jeff, 2026-11-17): CUSTOM (USER until 11-24), set from the keypad ----
 
 def test_wide_spans_sample_their_outer_bins_at_most_24_times():
     # +-10 and +-25 MHz (for a range as wide as the UHF TV band): bins wider than 64 reads of
@@ -939,10 +939,10 @@ def test_band_reaches_user_the_uhf_tv_band_by_default():
     pilot = 530_309_440
     tv = [(pilot, -85, 0, FOREVER)] + [(pilot + 10_000 + 20_000 * k, -100, 0, FOREVER) for k in range(269)]
     keys = taps("NNNN", 1_000_000, gap=400_000) + [(9_000_000, 9_300_000, "X")]
-    ret, said, regs, writes, lcd = go(tv, keys)   # 70cm, then GMRS MAR AIR USER
+    ret, said, regs, writes, lcd = go(tv, keys)   # 70cm, then GMRS MAR AIR CUSTOM
     fr = lcd["frames"]
     user = at(fr, 3_500_000)
-    assert user["text"][0] == title(S + "USER 25k")
+    assert user["text"][0] == title(S + "CUSTOM 25k")
     assert user["text"][1].startswith("539.0000 ")          # the range's middle
     assert user["text"][5] == labels(10000) == "-25M  -20k +20k  +25M"   # the widest (138 MHz is wider)
     assert all(lcd["tunes"][-1])                            # (tuned up there)
@@ -954,49 +954,71 @@ def test_band_reaches_user_the_uhf_tv_band_by_default():
 
 
 @need_clang
-def test_v_types_a_range_and_the_scale_fits_it():
-    keys = taps("V460#470M", 1_000_000) + [(8_000_000, 8_300_000, "X")]
-    sig = [(467_000_000, -80, 0, FOREVER)]
+def test_v_is_tune_and_the_scale_fits_custom():
+    # V is TUNE since 2026-11-24 (the UV-21's rules on every SURF): "V467#" centres CUSTOM on
+    # 467.000, as wide as the band on screen (70 cm's 20 MHz: 16 kept), +-10 MHz showing it all
+    keys = taps("V467#", 1_000_000) + [(8_000_000, 8_300_000, "X")]
+    sig = [(470_000_000, -80, 0, FOREVER)]
     ret, said, regs, writes, lcd = go(sig, keys)
     fr = lcd["frames"]
-    typing = at(fr, 2_000_000)                             # after "V460#4"
-    assert typing["text"][5].startswith("set 460-4_")
-    assert "user 460.000 470.000" in said
+    typing = [f for f in fr if 1_100_000 <= f["us"] < 1_800_000][-1]   # "V467", before #
+    assert typing["text"][0] == "TUNE" and typing["text"][5] == "DN-DEL  EXIT-QUIT"
+    assert "user 459.000 475.000" in said
     done = at(fr, 3_500_000)
-    assert done["text"][0] == title(S + "USER 25k") and done["text"][1].startswith("465.0000 ")
-    assert done["text"][5] == labels(2000)                 # 10 MHz: +-5 MHz shows it all
-    b = bin_for(467_000_000, 465_000_000, 2000, (460_000_000, 470_000_000))
+    assert done["text"][0] == title(S + "CUSTOM 25k") and done["text"][1].startswith("467.0000 ")
+    assert done["text"][5] == labels(4000)
+    b = bin_for(470_000_000, 467_000_000, 4000, (459_000_000, 475_000_000))
     assert height(fr[-2], b) > 5
-    # outside 460-470 no bin reads
     late = [hz for us, hz in lcd["tunes"] if us > 4_000_000]
-    assert late and all(460_000_000 - 30_000 <= f <= 470_000_000 + 30_000 for f in late)
+    assert late and all(459_000_000 - 30_000 <= f <= 475_000_000 + 30_000 for f in late)
 
 
 @need_clang
-def test_v_one_frequency_is_a_vfo():
-    # "V 162*55 MENU": USER is 161.55-163.55, the middle on 162.550, +-1 MHz; a weather station
-    # there opens the audio
+def test_v_one_frequency_with_menu_is_a_vfo():
+    # "V 162*55 MENU": MENU enters it as # does; a weather station there opens the audio
     keys = taps("V162*55M", 1_000_000) + [(7_000_000, 7_300_000, "X")]
     ret, said, regs, writes, lcd = go([(162_550_000, -75, 0, FOREVER)], keys)
-    assert "user 161.550 163.550" in said
+    assert "user 154.550 170.550" in said
     fr = lcd["frames"]
     on = at(fr, 5_000_000)
-    assert on["text"][0] == title(S + "USER 25k")
+    assert on["text"][0] == title(S + "CUSTOM 25k")
     assert on["text"][1] == "162.5500 -75dBm RX"
-    assert on["text"][5] == labels(400)
 
 
 @need_clang
-def test_v_backspace_bad_range_and_exit_drops_the_typing():
-    # DOWN takes the last character back; a range the K6 can't receive says "bad range" and
+def test_long_pound_is_tune_and_pound_finishes():
+    # the UV-21's TUNE on the K6 too (Jeff, 2026-11-24: "In TUNE, make * enter a decimal and #
+    # complete the entry ... so 446# goes to 446.000 MHz"; "Those rules should apply to other
+    # firmware variants"): # held 1 s opens it, the typing large in the bitmap; # finishes, and
+    # CUSTOM is centred there as wide as the band on screen (70 cm's 20 MHz: 16 kept)
+    keys = [(1_000_000, 2_000_000, "#")] + taps("446", 2_500_000) + taps("#", 3_300_000) \
+        + taps("#", 5_000_000) + [(7_000_000, 7_300_000, "X")]
+    ret, said, regs, writes, lcd = go([(446_000_000, -75, 0, FOREVER)], keys)
+    fr = lcd["frames"]
+    typing = [f for f in fr if 2_500_000 <= f["us"] < 3_300_000][-1]   # "446", before #
+    assert typing["text"][0] == "TUNE" and typing["text"][1] == "*-POINT  #-ENTER"
+    assert typing["text"][5] == "DN-DEL  EXIT-QUIT"
+    big = {(x, r) for r in range(ROWS) for x in range(128) if lit(typing, r, x)}
+    assert big and min(r for x, r in big) == 8 and max(r for x, r in big) == 21
+    assert max(x for x, r in big) == 4 + 3 * 12 + 9                    # "446_": the cursor 4th
+    assert "user 438.000 454.000" in said
+    on = at(fr, 4_500_000)
+    assert on["text"][0] == title(S + "CUSTOM 25k") and on["text"][1].startswith("446.0000 ")
+    # a short # afterwards is the next channel step again, on release
+    assert at(fr, 6_000_000)["text"][0] == title(S + "CUSTOM 50k")
+
+
+@need_clang
+def test_v_backspace_bad_freq_and_exit_drops_the_typing():
+    # DOWN takes the last character back; a frequency the K6 can't receive says "bad freq" and
     # stays typing; EXIT then drops the typing (not SURF); a second EXIT leaves
     keys = taps("V7001D", 1_000_000) + taps("M", 3_000_000) + taps("X", 5_000_000) \
         + [(7_000_000, 7_300_000, "X")]
     ret, said, regs, writes, lcd = go([], keys)
     fr = lcd["frames"]
-    assert at(fr, 2_500_000)["text"][5].startswith("set 700_-")
-    assert at(fr, 3_500_000)["text"][5].startswith("bad range")
-    assert at(fr, 4_800_000)["text"][5].startswith("set 700_-")
+    assert at(fr, 2_500_000)["text"][0] == "TUNE"
+    assert at(fr, 3_500_000)["text"][5].startswith("bad freq")
+    assert at(fr, 4_800_000)["text"][5] == "DN-DEL  EXIT-QUIT"
     after = at(fr, 6_000_000)
     assert after["text"][5] == labels(400) and after["text"][0] == title(S + "70cm 25k")
     assert lcd["st"]["us"] >= 7_000_000 and said[-1].startswith("end sw=")

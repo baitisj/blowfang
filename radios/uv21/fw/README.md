@@ -9,7 +9,7 @@ K-plug bootloader, so the port is mostly the board layer. Everything in this dir
 Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi target, which
 `rust-toolchain.toml` names). `tests/test_uv21_port.py` runs it in the emulated AT32F421.
 
-## What ports 1 to 15 change
+## What ports 1 to 16 change
 
 - Pins (`src/board/`, with a small `Pin` helper in `src/board/pin.rs`): power latch PA8 and
   sense PA15, LCD on SPI2 (CS PB12, RST PB8, DC PC15, backlight PF7), SPI flash CS PA2, RF chip
@@ -84,6 +84,12 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   digits with a `_` where the next one goes; `*` is the decimal point and # finishes, so `446#`
   is 446.000 MHz. And RAM modules over the cable (below), for register trials without a new
   image.
+- Port 16: HOLD is a steady listen (the operator, on the road with port 15: HOLD turned the
+  speaker on, and the scan still pulsed). HOLD makes no retunes at all, not even the CW wake's
+  looks, and its squelch is the middle's own: the mean of the last 4 reads against the middle's
+  noise floor, where port 15 opened on any one read over the band's floor, which the noise
+  crossed every few seconds. The wake still listens through HOLD when the middle is its
+  frequency. MON is unchanged: the squelch open, the sweeps and the carets' fall as usual.
 
 ## RAM modules (port 15)
 
@@ -128,7 +134,7 @@ frequency in the middle and carets on the peaks.
 | 4 / 5 | FM, DSB, AM / the band's centre |
 | 7 / 9 / 8 | fixed gain down / up / AGC again |
 | 6 | the receive band switch's next way (port 12, while its polarity is unknown) |
-| * / 0 | monitor (squelch open) / hold (no sweeps, carets frozen); independent |
+| * / 0 | monitor (squelch open) / hold (no retunes, carets frozen); independent |
 | A/B | how fast the carets fall |
 | VFO/MR | type a custom range |
 | MENU | the frequency and level on the serial console; held: the CW wake moves to the listening frequency |

@@ -27,7 +27,8 @@
      SF_CUSTOM       the typed frequency and the custom range (the end of this file): sf_t then
                      has ub, ed, en[2] and eb[2][ED_LEN + 1] in SF_EXTRA, the file defines
                      USER_MIN, USER_MAX and ED_LEN and user_set, and may define SF_ED_CHANGED(s)
-                     (called after each key the typing takes)
+                     (called after each key the typing takes) and SF_RANGE (a typed range too,
+                     not only TUNE's one frequency)
    and then defines these, which the code here calls:
      static int read_hz(sf_t *s, uint32_t hz, uint32_t us);  the sweep's receiver on hz, us after
                      its tune, in dBm (a look at the keys too, so a long sweep doesn't lose a press)
@@ -809,7 +810,7 @@ static void sweep_done(sf_t *s) {
    BAND's last stop is a band the keypad sets. Two ways to type one, the same on every radio:
    TUNE (a long #, Jeff 2026-11-24): one frequency, '*' the point, # (or MENU) finishes, so
    "446#" is 446.000 MHz, and CUSTOM is centred on it as wide as the band on screen (2 to 16 MHz).
-   And a range (the K6's V, the UV-21's VFO/MR): low, # to the other end, high, MENU. DOWN is a
+   And with SF_RANGE a range (the UV-21's VFO/MR): low, # to the other end, high, MENU. DOWN is a
    backspace and EXIT drops the typing. s->ed: 1 / 2 the range's low / high end, 3 TUNE. */
 
 #ifndef SF_ED_CHANGED
@@ -846,6 +847,7 @@ static void custom_on(sf_t *s, uint32_t lo, uint32_t hi, uint32_t mid) {
   say_end(s, mhz(p, hi, 3));
 }
 
+#ifdef SF_RANGE
 /* a typed range done: low and high, or only low: +-1 MHz round it; 0 if it is no range the radio
    receives */
 static int ed_done(sf_t *s) {
@@ -863,6 +865,7 @@ static int ed_done(sf_t *s) {
   custom_on(s, lo, hi, s->en[1] ? 0 : ed_hz(s->eb[0]));   /* (one frequency: there) */
   return 1;
 }
+#endif
 
 /* CUSTOM centred on hz, as wide as the band on screen (16 MHz at most, 2 at least): TUNE, or the
    UV-21's long middle side key on the middle (Jeff, 2026-11-24); 0 if the radio can't hear hz */
@@ -897,15 +900,17 @@ static void ed_key(sf_t *s, int k) {
     if (i == n && n && n < ED_LEN) t[n++] = '.';
   } else if (k == 'D') {
     if (n) n--;
+#ifdef SF_RANGE
   } else if (k == '#' && s->ed != 3) {
     s->ed = (uint8_t)(3 - s->ed);
+  } else if ((k == 'M' || k == 'V') && s->ed != 3) {
+    if (s->en[0] && ed_done(s)) s->ed = 0;
+    else note(s, "bad range");
+#endif
   } else if (k == 'M' || k == 'V' || k == '#') {     /* (# ends a TUNE: 446# is 446.000) */
     t[n] = 0;
-    if (s->ed == 3) {
-      if (n && centre_custom(s, ed_hz(t))) s->ed = 0;
-      else note(s, "bad freq");
-    } else if (s->en[0] && ed_done(s)) s->ed = 0;
-    else note(s, "bad range");
+    if (n && centre_custom(s, ed_hz(t))) s->ed = 0;
+    else note(s, "bad freq");
   } else if (k == 'X') {
     s->ed = 0;
   }

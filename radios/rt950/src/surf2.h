@@ -17,6 +17,7 @@ struct rt_view {
   const char *band;             /* "70cm" */
   const char *mode;             /* "FM", "DSB", "AM" */
   const char *msg;              /* a key's note ("no peak", "gain -12 dB"), or 0 */
+  const char *tune;             /* TUNE's typing with its cursor ("446.5_"), or 0 when not typing */
   uint32_t step;                /* channel step, Hz */
   uint32_t cen;                 /* the listening frequency (chip 0), Hz */
   uint32_t span;                /* the last bin's distance from the middle, Hz */
