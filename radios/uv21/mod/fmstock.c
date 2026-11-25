@@ -19,7 +19,9 @@
    the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). FT_PLAY_S n: after
    the tune, unmute at volume FT_VOL (3 of 15) with the amplifier (PB2) on for n seconds, so a
    person at the radio can hear whether the chip receives at all even if reads fail; "play on" /
-   "play off" mark it, and PB2 goes back to what it was. Returns 0x0B after the tune.
+   "play off" mark it, and PB2 goes back to what it was. FT_KEY_S n: before playing, turn the
+   backlight on (PF7) and wait up to n seconds for the top side key (it grounds row PC14),
+   saying "key wait" and then "key" or "key timeout" (no play); the backlight goes back after. Returns 0x0B after the tune.
    At the end the chip is powered down (02H = 0x8060, the stock power-down) and both pins put
    back as they were. SPDX-License-Identifier: MIT */
 #include "uv21_mod.h"
@@ -35,6 +37,9 @@
 #endif
 #ifndef FT_PLAY_S
 #define FT_PLAY_S 0
+#endif
+#ifndef FT_KEY_S
+#define FT_KEY_S 0
 #endif
 #ifndef FT_VOL
 #define FT_VOL 3
@@ -270,6 +275,21 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
 #if FT_PLAY_S
   {
     uint32_t pb2 = rd(GPIOB + G_ODT) & 4u, cf2 = rd(GPIOB + G_CFGR) & (3u << 4);
+#if FT_KEY_S
+    uint32_t bl = rd(0x48001400u + G_ODT) & 0x80u, t0 = api->ms(), held = 0, go = 0;
+    wr(0x48001400u + G_SCR, 0x80u); /* backlight on */
+    api->say("key wait");
+    while (!go && api->ms() - t0 < FT_KEY_S * 1000u) {
+      us(api, 10000);
+      held = rd(0x48000800u + G_IDT) & (1u << 14) ? 0 : held + 1;
+      go = held >= 5;
+    }
+    api->say(go ? "key" : "key timeout");
+    if (!go) {
+      wr(0x48001400u + (bl ? G_SCR : G_CLR), 0x80u);
+      goto done;
+    }
+#endif
     w16(api, 0x05, 0x00E0 | FT_VOL);
     w16(api, 0x02, 0xC061); /* stock: unmuted */
     wr(GPIOB + G_SCR, 4u);
@@ -281,7 +301,13 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     wr(GPIOB + (pb2 ? G_SCR : G_CLR), 4u);
     wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 4)) | cf2);
     api->say("play off");
+#if FT_KEY_S
+    wr(0x48001400u + (bl ? G_SCR : G_CLR), 0x80u);
+#endif
   }
+#endif
+#if FT_PLAY_S && FT_KEY_S
+done:
 #endif
   w16(api, 0x02, 0x8060); /* the stock power-down */
 
