@@ -392,7 +392,10 @@ hears US base station 003669705 at 12 dB or more over the floor on the big anten
 
 Jeff asked whether FM broadcast's RDS clock (group 4A, once a minute on the 57 kHz subcarrier)
 could serve. It needs the chip to pass the broadcast swing (±75 kHz, with the 19 kHz pilot and
-RDS as sidebands at ±19, 38 and 57 kHz), and the K6 has no broadcast FM chip of its own.
+RDS as sidebands at ±19, 38 and 57 kHz). This section said the K6 has no broadcast FM chip of its
+own; that was wrong. The K6 carries an RDA5807M on PA4 / PA12 (Aura's `src/board/fm.rs`), which
+decodes RDS itself: see [k6-fm-chip.md](k6-fm-chip.md) (2026-11-25). What follows is about the
+FD6818's IF tap only.
 
 Run 3 took 12 IF captures on 104.3 MHz (`aiscap_fm`, the pager's AGC on; the 12 captures all went
 to the first station, so 99.3 got none). FM-demodulated and averaged on the host, they show no 19
@@ -406,8 +409,8 @@ filter, but the GP0 tap the capture modules read is taken before it and passes s
 one real bit stream at a 16.9 kHz low IF, so anything more than 16.9 kHz below the station's
 centre folds back on top of what's above it. A broadcast station swings ±75 kHz, so its FM can't
 be undone from the counts, at any count rate. Tuning far enough off to put the whole station on
-one side of zero would need a tap passing ~150 kHz, and it's in the floor by 80. So no RDS on the
-K6, and the 104.3 MHz captures' flat spectrum is the station folded over itself.
+one side of zero would need a tap passing ~150 kHz, and it's in the floor by 80. So no RDS through
+the FD6818, and the 104.3 MHz captures' flat spectrum is the station folded over itself.
 
 ## ACARS (asked 2026-11-09)
 
