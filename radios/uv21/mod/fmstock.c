@@ -17,7 +17,9 @@
    Settings: FT_INIT 0 skips the setup; FT_KHZ, FT_WAIT_MS (300); FT_PA3 1 first drives PA3 high
    the way the stock firmware holds it (purpose unknown: the port leaves it alone; perhaps the
    chip's supply or clock), says "p cfgr=.. idt=..", waits FT_PA3_MS (100), and puts it back at
-   the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). FT_PLAY_S n: after
+   the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). FT_PA3_OFF_MS n
+   first holds PA3 low for n ms with both bus pins driven low, a clean power cycle if PA3 is the
+   chip's supply ("p off done"). FT_PLAY_S n: after
    the tune, unmute at volume FT_VOL (3 of 15) with the amplifier (PB2) on for n seconds,
    the BK4829's audio muted (REG_47 = 0x6042, as the stock FM app expects; FT_BK 0 leaves it, FT_BK 2
    also turns the BK4829 off, REG_30 = 0, for the second half, cyan "PLAY 2"; both go back after), so a
@@ -67,6 +69,9 @@
 #endif
 #ifndef FT_PA3_KEEP
 #define FT_PA3_KEEP 0
+#endif
+#ifndef FT_PA3_OFF_MS
+#define FT_PA3_OFF_MS 0
 #endif
 #ifndef FT_PA3_MS
 #define FT_PA3_MS 100
@@ -316,6 +321,20 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     *p++ = (char)('0' + ((rd(GPIOA + G_IDT) >> 3) & 1u));
     *p = 0;
     api->say(line);
+#endif
+#if FT_PA3_OFF_MS
+    /* a clean power cycle, if PA3 feeds the chip: both bus pins driven low first (no supply
+       through their protection diodes), PA3 low FT_PA3_OFF_MS, then high again */
+    scl(0);
+    sda(0);
+    wr(GPIOA + G_OMODE, oma & ~(SCL | (1u << 3)));
+    wr(GPIOB + G_OMODE, omb & ~SDA);
+    wr(GPIOA + G_CFGR, (cfa & ~(MSCL | (3u << 6))) | (1u << 8));
+    sda_out();
+    wr(GPIOA + G_CLR, 1u << 3);
+    wr(GPIOA + G_CFGR, (rd(GPIOA + G_CFGR) & ~(3u << 6)) | (1u << 6));
+    us(api, FT_PA3_OFF_MS * 1000u);
+    api->say("p off done");
 #endif
     wr(GPIOA + G_SCR, 1u << 3);
     wr(GPIOA + G_OMODE, (oma & ~(1u << 3)));
