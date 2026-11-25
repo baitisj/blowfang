@@ -85,6 +85,14 @@ port already open, keeps the backup in `~/blowfang-work/private/rt950/ID` and re
 manifest (hashes, including each calibration region's). The dump-image upload is a flash, so it
 is not a runner step: it needs Jeff's go.
 
+What the cable showed on 2026-11-25: read the stock firmware with `--block 32`, as over
+Bluetooth. A 128-byte read returned different bytes in the VFO, system and second extended
+configs, while a 32-byte read matched Stage A there. The calibration regions at 0xF000 and 0xF200
+differ between every session, while each session's two passes agree. That points to the radio
+sending them without the session XOR, so each read leaves them scrambled by its own key. The
+manifest now records the session's key index, and `rt950.compare --keys` names the key pair that
+makes two reads agree.
+
 At 115200 baud a 128-byte read is about 12 ms, so the 4 MB pass takes about 6.5 minutes and
 two take about 13. Stage A's 64 KB takes a few seconds a pass.
 

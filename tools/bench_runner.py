@@ -52,8 +52,9 @@ and the point is that the runner checks everything before it keys. The checks, i
     the job names among the /dev/serial/by-id ports, never the K6 cable (PL2303), the IC-7100, a
     ttyACM port (Pluto, UV-380) or a port another process has open; the backup itself stays in
     ~/blowfang-work/private/rt950, the run folder gets its manifest (hashes) only
-  - rt950.compare opens no port: an earlier rt950.read's 64 KB against Stage A's Bluetooth read,
-    region by region (counts and offsets only, into the run folder)
+  - rt950.compare opens no port: an earlier rt950.read's 64 KB against Stage A's Bluetooth read
+    (or another rt950.read, "against"), region by region (counts and offsets only, and with
+    --keys the session-key indexes that make a region agree, into the run folder)
   - serial.list opens no port: it lists the by-id ports' USB ids and names, serial numbers masked
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
@@ -700,8 +701,10 @@ def check_step(job, i, step, rs, problems):
     elif do == "rt950.compare":
         if not ID_RE.match(str(step.get("backup", ""))):
             problems.append(f"{what}: backup: the id of an earlier rt950.read job")
-        if args or step.get("background"):
-            problems.append(f"{what}: takes no args, never in the background")
+        if "against" in step and not ID_RE.match(str(step["against"])):
+            problems.append(f"{what}: against: another rt950.read job's id (left out: Stage A)")
+        if args not in ([], ["--keys"]) or step.get("background"):
+            problems.append(f"{what}: only --keys, never in the background")
     elif do in ("rt950.info", "rt950.read"):
         if not USB_IDS_RE.fullmatch(str(step.get("cable", ""))):
             problems.append(f"{what}: cable: the programming cable's USB ids, such as 1a86:7523 (serial.list shows them)")
@@ -1152,9 +1155,10 @@ def command(job, step, rd):
         return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "info",
                 rt950_cable(step["cable"])] + args, co, False
     if do == "rt950.compare":        # counts and offsets only into the run folder
+        old = os.path.join(rt950_private(step["against"]), "cps64k.bin") if step.get("against") else rt950_stage_a()
         return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "compare",
-                rt950_stage_a(), os.path.join(rt950_private(step["backup"]), "cps64k.bin"),
-                "--json", os.path.join(rd, "compare.json")], co, False
+                old, os.path.join(rt950_private(step["backup"]), "cps64k.bin"),
+                "--json", os.path.join(rd, "compare.json")] + args, co, False
     if do == "rt950.read":           # the bytes stay on hamlet; the run folder gets the manifest
         return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "read",
                 rt950_cable(step["cable"]), rt950_private(job["id"]), "--summary", rd, "-v"] + args, co, False
