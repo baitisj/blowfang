@@ -795,3 +795,75 @@ def test_uv380_scan_never_sets_the_tx_bit():
     for m in re.finditer(r"R30_(TX|RXTX)\b", src):
         before = src[max(0, m.start() - 8):m.start()]
         assert before.endswith(("& ", "~", "#define ")), src[m.start() - 40:m.end() + 10]
+
+
+# ---- the RT-950 Pro's programming cable and serial.list ----
+
+PORTS = [
+    {"by_id": "usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0", "dev": "/dev/ttyUSB2",
+     "ids": "067b:2303", "manufacturer": "Prolific Technology Inc.", "product": "USB-Serial Controller", "serial": None},
+    {"by_id": "usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_IC-7100_12345678_A-if00-port0", "dev": "/dev/ttyUSB3",
+     "ids": "10c4:ea60", "manufacturer": "Silicon Labs", "product": "CP2102 USB to UART Bridge Controller",
+     "serial": "IC-7100 12345678 A"},
+    {"by_id": "usb-1a86_USB_Serial-if00-port0", "dev": "/dev/ttyUSB1", "ids": "1a86:7523",
+     "manufacturer": "1a86", "product": "USB Serial", "serial": None},
+    {"by_id": "usb-Analog_Devices_Inc._PlutoSDR_0000dead-if02", "dev": "/dev/ttyACM0", "ids": "0456:b673",
+     "manufacturer": "Analog Devices Inc.", "product": "PlutoSDR", "serial": "0000dead"},
+]
+
+
+@pytest.fixture
+def ports(monkeypatch):
+    monkeypatch.setattr(br, "serial_ports", lambda: [dict(p) for p in PORTS])
+    monkeypatch.setattr(br, "port_users", lambda dev: [])
+    monkeypatch.delenv("RT950_CABLE", raising=False)
+    return PORTS
+
+
+def test_rt950_steps_checked(work):
+    ok = job("r", {"do": "serial.list"}, {"do": "rt950.info", "cable": "1a86:7523"},
+             {"do": "rt950.read", "cable": "1a86:7523", "args": ["--addr", "2", "--passes", "3", "--cps-regions"]},
+             freq_mhz="bench")
+    assert br.check_job(ok) == []
+    for bad in ({"do": "rt950.read", "cable": "/dev/ttyUSB1"}, {"do": "rt950.read"},
+                {"do": "rt950.read", "cable": "1a86:7523", "args": ["--write"]},
+                {"do": "rt950.read", "cable": "1a86:7523", "args": ["--addr", "4"]},
+                {"do": "rt950.info", "cable": "1a86:7523", "args": ["--cps-regions"]},
+                {"do": "rt950.read", "cable": "1a86:7523", "background": True},
+                {"do": "serial.list", "args": ["x"]}):
+        assert problems(job("r", bad, freq_mhz="bench")), bad
+
+
+def test_rt950_cable_found_by_ids_never_the_k6_icom_or_pluto(work, ports, monkeypatch):
+    assert br.rt950_cable("1a86:7523") == "/dev/ttyUSB1"
+    for ids in ("067b:2303", "10c4:ea60", "0456:b673", "0403:6001"):
+        with pytest.raises(br.Refused):
+            br.rt950_cable(ids)
+    monkeypatch.setattr(br, "port_users", lambda dev: [4242])
+    with pytest.raises(br.Refused, match="open"):
+        br.rt950_cable("1a86:7523")
+
+
+def test_rt950_two_cables_with_the_same_ids_refused(work, ports, monkeypatch):
+    two = PORTS + [dict(PORTS[2], by_id="usb-1a86_USB_Serial-if00-port1", dev="/dev/ttyUSB0")]
+    monkeypatch.setattr(br, "serial_ports", lambda: [dict(p) for p in two])
+    with pytest.raises(br.Refused, match="2 by-id ports"):
+        br.rt950_cable("1a86:7523")
+
+
+def test_rt950_read_keeps_the_bytes_private(work, ports):
+    rd = str(work / "rd")
+    argv, _, bg = br.command(job("r9", freq_mhz="bench"), {"do": "rt950.read", "cable": "1a86:7523"}, rd)
+    assert argv[1].endswith(os.path.join("radios", "rt950", "tools", "rt950_backup.py")) and not bg
+    assert argv[2:5] == ["read", "/dev/ttyUSB1", os.path.join(str(work), "private", "rt950", "r9")]
+    assert argv[5:7] == ["--summary", rd]
+
+
+def test_serial_list_masks_serial_numbers(work, ports):
+    rd = work / "rd"
+    ctx = br.Ctx(job("s", freq_mhz="bench"), str(rd), rig=lambda *a: "0")
+    assert br.serial_list_step(ctx) == (0, None)
+    text = (rd / "ports.json").read_text()
+    assert "12345678" not in text and "0000dead" not in text and "<serial>" in text
+    got = json.loads(text)
+    assert [p["ids"] for p in got] == [p["ids"] for p in PORTS]

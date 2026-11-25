@@ -131,3 +131,21 @@ def test_the_bluetooth_bridge_speaks_at_the_stock_rate():
     assert bb.SELECTORS == tuple(range(9))
     assert bb.pace_s(5) >= 20 * 10 / 9600            # never faster than the module's 9600 baud UART
     assert bb.pace_s(2) < bb.pace_s(5)
+
+
+def test_summary_gets_hashes_only_and_the_calibration_regions(radio, tmp_path):
+    r = radio("stock")
+    out, summ = tmp_path / "private", tmp_path / "run"
+    assert rb.main(["read", r.path, str(out), "--addr", "2", "--summary", str(summ)]) == 0
+    assert sorted(os.listdir(summ)) == ["SHA256SUMS", "manifest.json"]
+    man = json.loads(read(summ / "manifest.json"))
+    regions = man["ranges"][0]["regions"]
+    assert regions["cal_f000"] == rb.sha(r.spi[0xF000:0xF080])
+    assert set(regions) == {n for n, _, _ in rb.STOCK_REGIONS}
+
+
+def test_stock_read_refuses_another_model(radio, tmp_path, monkeypatch):
+    r = radio("stock")
+    monkeypatch.setattr(rb, "STOCK_MODEL", "UV-K6")
+    assert rb.main(["read", r.path, str(tmp_path), "--addr", "2"]) == 2
+    assert not (tmp_path / "cps64k.bin").exists() and r.writes == 0

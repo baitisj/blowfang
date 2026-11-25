@@ -22,6 +22,8 @@ radio identity, and when.
   rt950_backup.py read /dev/serial/by-id/... runs/rt950-backup-20261117/stageA --addr 2
   rt950_backup.py read /dev/serial/by-id/... runs/rt950-backup-20261117/stageB --addr 3
   rt950_backup.py info /dev/serial/by-id/...
+  rt950_backup.py read PORT ~/blowfang-work/private/rt950/ID --summary RUNDIR   (the bench runner's
+                         rt950.read: the bytes stay private, RUNDIR gets manifest.json and SHA256SUMS)
   rt950_backup.py read ~/blowfang-work/rt950/ble-pty OUT --addr 2 --block 32 --timeout 4
                          (over Bluetooth, through rt950_ble_bridge.py)
 
@@ -48,6 +50,7 @@ NEVER_SEND = (
 BLOCK = 128
 BAUD = 115200
 BACKUP_IDENTITY = b"RT950-BACKUPONLY"
+STOCK_MODEL = "RT-950"         # what the stock firmware answers to M (Jeff's RT-950 Pro, 2026-11-16)
 
 # the OEM's 20 session keys (from its CPS, via cps_flash.py)
 XOR_KEYS = [
@@ -247,13 +250,17 @@ def backup(radio, outdir, ranges, min_passes=2, max_passes=4, progress=None, ter
                 f.write(data)
         else:
             ok = False
-        man["ranges"].append({
+        entry = {
             "name": name,
             "cps_addr": f"0x{start:06X}",
             "length": length,
             "passes": hashes,
             "agreed_sha256": agreed,
-        })
+        }
+        if agreed:                      # each CPS region inside it (calibration at 0xE000/0xF000/0xF200)
+            entry["regions"] = {r: sha(data[a - start:a - start + n]) for r, a, n in STOCK_REGIONS
+                                if start <= a and a + n <= start + length}
+        man["ranges"].append(entry)
     man["finished_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     man["ok"] = ok
     radio.close(terminate)
@@ -268,6 +275,14 @@ def backup(radio, outdir, ranges, min_passes=2, max_passes=4, progress=None, ter
     with open(os.path.join(outdir, "SHA256SUMS"), "w") as f:
         f.write("\n".join(sums) + "\n")
     return man
+
+
+def write_summary(man, outdir, summary):
+    """manifest.json and SHA256SUMS (hashes only, no radio bytes) copied to summary"""
+    os.makedirs(summary, exist_ok=True)
+    for fn in ("manifest.json", "SHA256SUMS"):
+        with open(os.path.join(outdir, fn), "rb") as f, open(os.path.join(summary, fn), "wb") as g:
+            g.write(f.read())
 
 
 def bar(done, total):
@@ -296,6 +311,9 @@ def main(argv=None):
                        help="bytes per read (smaller over Bluetooth if 128 stalls)")
         p.add_argument("--timeout", type=float, default=2.0, help="seconds to wait for each reply")
         p.add_argument("-v", "--verbose", action="store_true")
+        if name == "read":
+            p.add_argument("--summary", metavar="DIR",
+                           help="also copy manifest.json and SHA256SUMS (hashes only) into DIR")
     a = ap.parse_args(argv)
 
     log = (lambda m: print(m, file=sys.stderr)) if a.verbose or a.cmd == "info" else None
@@ -308,6 +326,11 @@ def main(argv=None):
         return 0
 
     if a.addr == 2:
+        _, model = radio.handshake()
+        if model != STOCK_MODEL:
+            radio.close(False)
+            print(f"refused: the radio says model {model!r}, not {STOCK_MODEL!r}", file=sys.stderr)
+            return 2
         ranges = STOCK_REGIONS if a.cps_regions else STOCK_RANGES
     else:
         identity, _ = radio.handshake()
@@ -321,6 +344,8 @@ def main(argv=None):
             ("bootloader", MCU_WINDOW, a.bootloader_len),
         ]
     man = backup(radio, a.outdir, ranges, min_passes=a.passes, progress=bar, terminate=a.addr == 3)
+    if a.summary:
+        write_summary(man, a.outdir, a.summary)
     for r in man["ranges"]:
         print(f"{r['name']:12s} {r['length']:8d} B  {'agreed ' + r['agreed_sha256'] if r['agreed_sha256'] else 'NO TWO PASSES AGREE'}")
     return 0 if man["ok"] else 1

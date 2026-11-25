@@ -78,6 +78,13 @@ python3 jm/tools/firmware_upload.py upload "$PORT" ~/blowfang-work/rt950/stock/<
 python3 rt950_backup.py info "$PORT"
 ```
 
+Through the bench runner (inbox jobs, `"freq_mhz": "bench"`): `serial.list` first, to learn
+the cable's USB ids, then `rt950.info` and `rt950.read` with `"cable": "VID:PID"`. The runner
+finds the one by-id port with those ids, refuses the K6 cable, the IC-7100, ttyACM ports and any
+port already open, keeps the backup in `~/blowfang-work/private/rt950/ID` and returns only the
+manifest (hashes, including each calibration region's). The dump-image upload is a flash, so it
+is not a runner step: it needs Jeff's go.
+
 At 115200 baud a 128-byte read is about 12 ms, so the 4 MB pass takes about 6.5 minutes and
 two take about 13. Stage A's 64 KB takes a few seconds a pass.
 
