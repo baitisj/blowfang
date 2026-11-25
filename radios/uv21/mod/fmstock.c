@@ -16,7 +16,7 @@
    Settings: FT_INIT 0 skips the setup; FT_KHZ, FT_WAIT_MS (300); FT_PA3 1 first drives PA3 high
    the way the stock firmware holds it (purpose unknown: the port leaves it alone; perhaps the
    chip's supply or clock), says "p cfgr=.. idt=..", waits FT_PA3_MS (100), and puts it back at
-   the end. Returns 0x0B after the tune.
+   the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). Returns 0x0B after the tune.
    At the end the chip is powered down (02H = 0x8060, the stock power-down) and both pins put
    back as they were. SPDX-License-Identifier: MIT */
 #include "uv21_mod.h"
@@ -29,6 +29,9 @@
 #endif
 #ifndef FT_PA3
 #define FT_PA3 0
+#endif
+#ifndef FT_PA3_KEEP
+#define FT_PA3_KEEP 0
 #endif
 #ifndef FT_PA3_MS
 #define FT_PA3_MS 100
@@ -255,7 +258,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   w16(api, 0x02, 0x8060); /* the stock power-down */
 
   /* the pins back as they were */
-#if FT_PA3
+#if FT_PA3 && !FT_PA3_KEEP
   wr(GPIOA + G_CFGR, (rd(GPIOA + G_CFGR) & ~(MSCL | (3u << 6))) | (cfa & (MSCL | (3u << 6))));
   wr(GPIOA + G_OMODE, (rd(GPIOA + G_OMODE) & ~(1u << 3)) | (oma & (1u << 3)));
   wr(GPIOA + ((oda >> 3) & 1u ? G_SCR : G_CLR), 1u << 3);
