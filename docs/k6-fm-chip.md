@@ -80,6 +80,20 @@ mode, RDS and the clock group). The settings are `-D` numbers (the module's head
 `tools/k6_fmprobe.py report` reads its log too, and `tests/test_uv21_fmprobe.py` runs both
 parts on an emulated M4 against the chip model on the UV-21's two ports, dead until set up.
 
+What else we tried on our UV-21 (2026-11-25, runs ufmp6-15), all with every read still 0xFF:
+`radios/uv21/mod/fmstock.c` drives the bus exactly as the stock firmware does (push-pull SCL,
+SDA an input with its pull-up for the acknowledge and the data, its timing, the stock status
+read and setup), with PA3 held high for over an hour (stock drives it high at boot and never
+again), and with PA3 dropped for 3 s with both bus pins low, then raised, before the setup.
+Listen tests by the operator at the radio (`FT_KEY_S`: the screen says PRESS TOP KEY, PLAY 1,
+PLAY 2 and DONE, with the flashlight blinking while it waits) tuned a strong station and unmuted
+at volume 15 with PB2 on: with the BK4829's audio left on only its hiss came through; with it
+muted (REG_47 = 0x6042, which the stock FM app needs and is the only thing it relies on besides
+PB2) and then with the BK4829 off (REG_30 = 0), silence, with a pop at the switch-off that shows
+the amplifier path was live. So the chip acknowledges its addresses but neither answers nor
+plays. Stock never reads it except in seek, so nothing yet shows the chip works on this unit
+under stock firmware either; that check (stock FM mode on this radio) is the open one.
+
 ## Measured on our K6 (2026-11-25, bench run fmp1b, image d583fb8)
 
 The module came over the Pluto upload on 440.850 and ran 177 s, receive only. Station
