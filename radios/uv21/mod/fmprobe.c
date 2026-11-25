@@ -41,6 +41,7 @@
      FP_EX_LO, FP_EX_HI           expert sweep, MHz (50, 115)
      FP_RDS1_S     RDS listen on the strongest station (60; a clock group comes once a minute)
      FP_RDS_S, FP_NRDS            listen on the next FP_NRDS - 1 stations (20, 1)
+     FP_HIDDEN     0 skips the stock writes to the unlisted registers 12H-43H (1)
      FP_PART       what runs besides the sweep and its peaks, a sum of: 1 the address scan, the
                    raw reads and the register dumps; 2 LNA ports, settling and the 50 kHz shape;
                    4 the expert rows; 8 verbose mode and RDS. 4 KB holds 7 or 8, not both: run
@@ -93,6 +94,9 @@
 #endif
 #ifndef FP_PART
 #define FP_PART 7
+#endif
+#ifndef FP_HIDDEN /* 0 leaves out the stock writes to registers 12H-43H the public sheet doesn't list */
+#define FP_HIDDEN 1
 #endif
 #ifndef FP_ADDR
 #define FP_ADDR 0x30
@@ -498,11 +502,16 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     api->delay_us(10000);
     wreg(c, 5, R05);
     wreg(c, 7, R07);
+#if FP_HIDDEN
     rwr(c, 0x12, 0x8660);
     rwr(c, 0x16, 0x4400);
     rwr(c, 0x1B, 0x8ADE);
     api->delay_us(200000);
     for (i = 0; i < sizeof late; i += 3) rwr(c, late[i], (uint32_t)late[i + 1] << 8 | late[i + 2]);
+#else
+    (void)late;
+    api->delay_us(200000);
+#endif
   }
   id = rreg(c, 0);
   {
