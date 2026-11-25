@@ -94,6 +94,16 @@ the amplifier path was live. So the chip acknowledges its addresses but neither 
 plays. Stock never reads it except in seek, so nothing yet shows the chip works on this unit
 under stock firmware either; that check (stock FM mode on this radio) is the open one.
 
+Later the same night: the operator confirmed this radio played broadcast FM on stock firmware
+before our work. A trace of the stock image from reset to the FM setup found no clock, power or
+pin step our port lacks; the differences are on the BK4829 (the port drives its GPIO0, 1 and 6
+low, REG_33 = 0x9000, where stock leaves REG_33 at its reset value 0xFF00, and runs REG_37 at
+0x9D1F where stock receives at 0x9F1F). Runs ufmp16-21 set those, then reset the BK4829 and
+loaded the whole stock setup before the FM chip's (`FT_BKSTOCK`): reads stayed 0xFF and the
+listen tests stayed silent. (Earlier waits over 279 ms in these modules wrapped short, since
+`delay_us` loads SysTick's 24-bit reload once; `um_wait_us` in `uv21_mod.h` fixes that, and
+ufmp18-21 ran with real waits.) Next: watch the chip under stock firmware on this radio.
+
 ## Measured on our K6 (2026-11-25, bench run fmp1b, image d583fb8)
 
 The module came over the Pluto upload on 440.850 and ran 177 s, receive only. Station
