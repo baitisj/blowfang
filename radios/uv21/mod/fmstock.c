@@ -1,0 +1,237 @@
+/* fmstock: talk to the UV-21 Pro's FM chip exactly the way its stock firmware does (hamlet's
+   static read of the stock image, 2026-11-25; docs/k6-fm-chip.md), to see whether the way the
+   bus is driven is why every read so far came back 0xFF. Receive only, audio muted.
+
+   The stock bus: SCL PA4 push-pull, never released; SDA PB6 push-pull while the MCU sends, and
+   an input with its pull-up for the acknowledge bit and for reads; 10 us a phase; a read waits
+   about 70 us after SDA turns input before its first clock and samples at the end of SCL high.
+   Address bytes 0x60 / 0x61. Between transactions both lines rest low (SDA is shared with the
+   BK4829, whose SCN on PB3 stays high and is never touched here).
+
+     s 0a=ffff 0b=ffff                     the stock status read before the setup (register 0AH, stop,
+                                           0x61 and 4 bytes, one more byte with no acknowledge)
+     r00 ffff ffff ...                     REG 00H-1FH one at a time, 8 a line, before (r) and after (R)
+     S 0a=4000 0b=1800                     the status read after the stock setup (muted)
+     T 100.100 0a=.... 0b=....             after a tune to FT_KHZ (default 100.1 MHz), FT_WAIT_MS later
+   Settings: FT_INIT 0 skips the setup; FT_KHZ, FT_WAIT_MS (300). Returns 0x0B after the tune.
+   At the end the chip is powered down (02H = 0x8060, the stock power-down) and both pins put
+   back as they were. SPDX-License-Identifier: MIT */
+#include "uv21_mod.h"
+
+#ifndef FT_INIT
+#define FT_INIT 1
+#endif
+#ifndef FT_KHZ
+#define FT_KHZ 100100
+#endif
+#ifndef FT_WAIT_MS
+#define FT_WAIT_MS 300
+#endif
+#if FT_KHZ < 76000 || FT_KHZ > 108000
+#error "FT_KHZ: 76000-108000"
+#endif
+
+#define GPIOA 0x48000000u
+#define GPIOB 0x48000400u
+#define G_CFGR 0x00u
+#define G_OMODE 0x04u
+#define G_PULL 0x0Cu
+#define G_IDT 0x10u
+#define G_ODT 0x14u
+#define G_SCR 0x18u
+#define G_CLR 0x28u
+#define SCL (1u << 4)
+#define SDA (1u << 6)
+#define MSCL (3u << 8)
+#define MSDA (3u << 12)
+
+static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
+static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
+
+static void us(const um_api_t *a, uint32_t n) { a->delay_us(n); }
+static void scl(int h) { wr(GPIOA + (h ? G_SCR : G_CLR), SCL); }
+static void sda(int h) { wr(GPIOB + (h ? G_SCR : G_CLR), SDA); }
+static void sda_out(void) { wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~MSDA) | (1u << 12)); }
+static void sda_inp(void) { wr(GPIOB + G_CFGR, rd(GPIOB + G_CFGR) & ~MSDA); }
+static int sda_in(void) { return (rd(GPIOB + G_IDT) & SDA) != 0; }
+
+static void start(const um_api_t *a) {
+  sda_out();
+  sda(1);
+  us(a, 10);
+  scl(1);
+  us(a, 10);
+  sda(0);
+  us(a, 10);
+  scl(0);
+  us(a, 10);
+}
+static void stop(const um_api_t *a) {
+  sda_out();
+  sda(0);
+  us(a, 10);
+  scl(1);
+  us(a, 10);
+  sda(1);
+  us(a, 10);
+  scl(0); /* the stock bus rests low */
+  sda(0);
+  us(a, 10);
+}
+static int wb(const um_api_t *a, uint32_t b) {
+  int i, ack = 0;
+  sda_out();
+  for (i = 7; i >= 0; i--) {
+    sda((b >> i) & 1);
+    us(a, 10);
+    scl(1);
+    us(a, 10);
+    scl(0);
+    us(a, 10);
+  }
+  sda_inp();
+  us(a, 30);
+  scl(1);
+  us(a, 10);
+  for (i = 0; i < 40; i++) ack |= sda_in();
+  scl(0);
+  us(a, 10);
+  return !ack;
+}
+static uint32_t rb(const um_api_t *a, int ack) {
+  uint32_t v = 0;
+  int i;
+  sda_inp();
+  us(a, 70);
+  for (i = 0; i < 8; i++) {
+    scl(1);
+    us(a, 10);
+    v = v << 1 | (uint32_t)sda_in();
+    scl(0);
+    us(a, 10);
+  }
+  sda_out();
+  sda(!ack);
+  us(a, 10);
+  scl(1);
+  us(a, 10);
+  scl(0);
+  us(a, 10);
+  return v;
+}
+static void w16(const um_api_t *a, uint32_t r, uint32_t v) {
+  start(a);
+  wb(a, 0x60);
+  wb(a, r);
+  wb(a, v >> 8);
+  wb(a, v & 0xFF);
+  stop(a);
+}
+/* register r and the n - 1 after it, the stock way: number, stop, 0x61, run-on read, one more */
+static int rn(const um_api_t *a, uint32_t r, uint16_t *w, int n) {
+  int i, ok;
+  start(a);
+  ok = wb(a, 0x60) && wb(a, r);
+  stop(a);
+  start(a);
+  ok = wb(a, 0x61) && ok;
+  for (i = 0; i < n; i++) {
+    uint32_t hi = rb(a, 1);
+    w[i] = (uint16_t)(hi << 8 | rb(a, 1));
+  }
+  rb(a, 0);
+  stop(a);
+  return ok;
+}
+
+static void status(const um_api_t *a, const char *tag) {
+  uint16_t w[2];
+  char line[48], *p;
+  int ok = rn(a, 0x0A, w, 2);
+  p = um_put(line, tag);
+  p = um_hex(um_put(p, " 0a="), w[0], 4);
+  p = um_hex(um_put(p, " 0b="), w[1], 4);
+  if (!ok) um_put(p, " nack");
+  a->say(line);
+}
+static void regs(const um_api_t *a, char t) {
+  char line[64], *p;
+  uint32_t r, k;
+  for (r = 0; r < 0x20; r += 8) {
+    p = line;
+    *p++ = t;
+    p = um_hex(p, r, 2);
+    for (k = r; k < r + 8; k++) {
+      uint16_t w;
+      rn(a, k, &w, 1);
+      p = um_hex(um_put(p, " "), w, 4);
+    }
+    a->say(line);
+  }
+}
+
+int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
+  uint32_t cfa = rd(GPIOA + G_CFGR), oma = rd(GPIOA + G_OMODE), pua = rd(GPIOA + G_PULL);
+  uint32_t cfb = rd(GPIOB + G_CFGR), omb = rd(GPIOB + G_OMODE), pub = rd(GPIOB + G_PULL);
+  uint32_t oda = rd(GPIOA + G_ODT), odb = rd(GPIOB + G_ODT), i;
+  uint16_t w[2];
+  char line[48], *p;
+  (void)ram;
+  (void)ram_len;
+  /* the stock pin setup: both push-pull outputs, low; SDA's pull-up for its input phases */
+  scl(0);
+  sda(0);
+  wr(GPIOA + G_OMODE, oma & ~SCL);
+  wr(GPIOB + G_OMODE, omb & ~SDA);
+  wr(GPIOB + G_PULL, (pub & ~MSDA) | (1u << 12));
+  wr(GPIOA + G_CFGR, (cfa & ~MSCL) | (1u << 8));
+  sda_out();
+  us(api, 100);
+
+  status(api, "s");
+  regs(api, 'r');
+#if FT_INIT
+  {
+    static const uint8_t late[] = {0x05, 0x00, 0xE0, 0x07, 0x02, 0x02, 0x12, 0x86, 0x60, 0x16, 0x44, 0x00,
+                                   0x1B, 0x8A, 0xDE, 0xFF, 0, 0, /* (the 200 ms wait) */
+                                   0x36, 0x71, 0x14, 0x39, 0x1A, 0x16, 0x3B, 0x27, 0x3C, 0x3C, 0x3C, 0x41,
+                                   0x3D, 0x04, 0x46, 0x3E, 0x1E, 0x12, 0x3F, 0x14, 0x28, 0x43, 0x02, 0x02};
+    w16(api, 0x02, 0x0002);
+    us(api, 10000);
+    w16(api, 0x02, 0x8061); /* stock 0xC061 with DMUTE 0: muted */
+    us(api, 10000);
+    for (i = 0; i < sizeof late; i += 3) {
+      if (late[i] == 0xFF) {
+        us(api, 200000);
+        continue;
+      }
+      w16(api, late[i], (uint32_t)late[i + 1] << 8 | late[i + 2]); /* 05H: volume 0 (stock 15) */
+    }
+  }
+#endif
+  status(api, "S");
+  regs(api, 'R');
+  /* the stock tune: 76-108 band, channel above 76 MHz, TUNE */
+  w16(api, 0x02, 0x8061);
+  w16(api, 0x03, (uint32_t)((FT_KHZ - 76000) / 100) << 6 | 0x18u);
+  w16(api, 0x05, 0x00E0);
+  us(api, FT_WAIT_MS * 1000u);
+  rn(api, 0x0A, w, 2);
+  p = um_put(line, "T ");
+  p = um_int(p, FT_KHZ);
+  p = um_hex(um_put(p, " 0a="), w[0], 4);
+  um_hex(um_put(p, " 0b="), w[1], 4);
+  api->say(line);
+  w16(api, 0x02, 0x8060); /* the stock power-down */
+
+  /* the pins back as they were */
+  wr(GPIOA + G_CFGR, (rd(GPIOA + G_CFGR) & ~MSCL) | (cfa & MSCL));
+  wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~MSDA) | (cfb & MSDA));
+  wr(GPIOA + G_OMODE, (rd(GPIOA + G_OMODE) & ~SCL) | (oma & SCL));
+  wr(GPIOB + G_OMODE, (rd(GPIOB + G_OMODE) & ~SDA) | (omb & SDA));
+  wr(GPIOA + G_PULL, (rd(GPIOA + G_PULL) & ~MSCL) | (pua & MSCL));
+  wr(GPIOB + G_PULL, (rd(GPIOB + G_PULL) & ~MSDA) | (pub & MSDA));
+  scl(oda & SCL);
+  sda(odb & SDA);
+  return (int)w[1];
+}
