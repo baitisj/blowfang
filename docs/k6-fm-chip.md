@@ -119,6 +119,15 @@ default, as on the K6). REG 56H holds no verbose switch either (it reads 0x308d 
 doesn't change that). It is most likely an RDA variant without RDS, so the RDS module below
 targets the K6; the decoder it uses is shared, should a way in turn up.
 
+Runs ufmp27-32 ruled out our side. The stock REG 05H leaves INT_MODE 0, where RDSR is a 5 ms
+pulse a poll can miss, so `FP_INTMODE=1` (now the default) holds it as the K6 does, and the probe
+now counts the decoder's sync flag (RDSS) on every poll, group or not (`pl` polls, `sy` with RDSS).
+RDSS never came on in over 25,000 polls: with and without the hidden registers, with REG 04H as
+the K6 runs it (`FP_R04=0x0400`), through 0x11 as well as 0x30, and on the two stations the K6
+decodes (`FP_RDS_CH`), which the UV-21 hears at the same strength (RSSI 56 and 60; the K6
+decoded the one at 62 with 227 groups in 65 s). The decoder never synchronises, so this chip
+has no working RDS.
+
 ## The RDS module
 
 `c/k6/mod/fmrds.c` (MENU name FM RDS) is what the probe found, made into something to run:
