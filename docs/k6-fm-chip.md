@@ -102,7 +102,63 @@ low, REG_33 = 0x9000, where stock leaves REG_33 at its reset value 0xFF00, and r
 loaded the whole stock setup before the FM chip's (`FT_BKSTOCK`): reads stayed 0xFF and the
 listen tests stayed silent. (Earlier waits over 279 ms in these modules wrapped short, since
 `delay_us` loads SysTick's 24-bit reload once; `um_wait_us` in `uv21_mod.h` fixes that, and
-ufmp18-21 ran with real waits.) Next: watch the chip under stock firmware on this radio.
+ufmp18-21 ran with real waits.)
+
+Solved (2026-11-25): stock firmware, flashed back for the check, played a broadcast station
+cleanly on this radio and its seek worked. Port 21 then made three changes from the stock trace,
+all at boot: the BK4829's REG_33 left at its reset value 0xFF00 (no longer 0x9000, which drove
+GPIO0, 1 and 6 low), GPIO6 never driven low by `set_rf_gpio56(false)`, and PA4 (the FM chip's
+SCL) driven low push-pull with PA3 driven high from reset, as stock does. With it the chip
+answers: ID 0x5804, and the probe tunes a station with STC, stereo, FM_TRUE and RSSI 55. Which
+of the three mattered isn't known yet (one boot change at a time would say).
+
+RDS on this chip never synchronises (runs ufmp24-26): `FP_PART=8` found eight stations at RSSI
+57-63 and heard no group on any of them, with the stock hidden registers (`FP_HIDDEN=1`, the
+default), without them (`FP_HIDDEN=0`), and with NEW_METHOD set in REG 02H (`FP_NEWM=1`, now the
+default, as on the K6). REG 56H holds no verbose switch either (it reads 0x308d and OPEN_MODE
+doesn't change that). It is most likely an RDA variant without RDS, so the RDS module below
+targets the K6; the decoder it uses is shared, should a way in turn up.
+
+Runs ufmp27-32 ruled out our side. The stock REG 05H leaves INT_MODE 0, where RDSR is a 5 ms
+pulse a poll can miss, so `FP_INTMODE=1` (now the default) holds it as the K6 does, and the probe
+now counts the decoder's sync flag (RDSS) on every poll, group or not (`pl` polls, `sy` with RDSS).
+RDSS never came on in over 25,000 polls: with and without the hidden registers, with REG 04H as
+the K6 runs it (`FP_R04=0x0400`), through 0x11 as well as 0x30, and on the two stations the K6
+decodes (`FP_RDS_CH`), which the UV-21 hears at the same strength (RSSI 56 and 60; the K6
+decoded the one at 62 with 227 groups in 65 s). The decoder never synchronises, so this chip
+has no working RDS.
+
+## The RDS module
+
+`c/k6/mod/fmrds.c` (MENU name FM RDS) is what the probe found, made into something to run:
+receive only, a screen at API level 6, the radio's clock at level 8. It sweeps the band, hears
+each FM_TRUE station for a few seconds (PI, programme type, TP / TA / music flags, the name),
+then hears the stations that gave the most clean groups until their clock group (4A) arrives,
+catching their radio text meanwhile. The decoding is `c/common/rds.h`, a group decoder with no
+division or library calls, so the UV-21's modules can share it: text is taken only when the same
+characters arrive twice for a position, and with verbose mode's error levels a block must also
+be clean.
+
+The clock: a station sends 4A once a minute, the group starting within 0.1 s of the minute edge
+(IEC 62106), so a clock group says UTC at the moment it arrives (the minute plus the group's own
+87.6 ms). The probe saw why one station isn't enough: one clean clock group ran 2 minutes fast,
+and two errored ones read hour 26. So a clock group must be clean in blocks B-D and pass range
+checks (hour, minute, offset, a date from 2023 on), each becomes an offset (UTC less the
+module's ms), and stations agreeing within 1.5 s vote, a PI counting once (a translator repeats
+its parent). Two or more set the radio's clock, with a bound of half their spread plus 0.5 s;
+one alone only reports (flags 2 lets one clean station set it). Once a clock group has given the
+minute's phase, `lead_s` can tune each next station just before the next minute instead of
+hearing it the whole minute.
+
+`tools/k6_fmrds.py patch` sets the numbers (`FMRDS001`: the waits, the sweep, the listens, the
+stations for the clock, the agreement and bound, the flags), and `report` reads the log back: the
+stations with their programme types by name (RBDS names where the extended country code says
+North America), the text, every clock group against the vote and the log's own time, and the
+vote. What the stations send is site-specific: keep reports out of the repository.
+`tests/test_k6_fmrds.py` runs the module on the emulated M0 against the probe's chip model,
+here with stations that send names, programme types, text, the country code and minute-edge
+clocks: a station 2 minutes fast is outvoted, an errored clock group that reads hour 26 is
+refused, one station alone doesn't set the clock, and a key stops it cleanly.
 
 ## Measured on our K6 (2026-11-25, bench run fmp1b, image d583fb8)
 

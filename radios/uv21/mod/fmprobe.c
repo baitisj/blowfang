@@ -41,6 +41,11 @@
      FP_EX_LO, FP_EX_HI           expert sweep, MHz (50, 115)
      FP_RDS1_S     RDS listen on the strongest station (60; a clock group comes once a minute)
      FP_RDS_S, FP_NRDS            listen on the next FP_NRDS - 1 stations (20, 1)
+     FP_NEWM       REG 02H NEW_METHOD, as on the K6 (1; the stock firmware leaves it 0)
+     FP_INTMODE    REG 05H INT_MODE (1; stock 0, where RDSR is a 5 ms pulse the RDS poll misses)
+     FP_RDS_CH     RDS on these 100 kHz channels above 76 MHz (305 = 106.5 MHz) instead of the peaks
+     FP_R04        a value for REG 04H (unset: not written, as stock)
+     FP_HIDDEN     0 skips the stock writes to the unlisted registers 12H-43H (1)
      FP_PART       what runs besides the sweep and its peaks, a sum of: 1 the address scan, the
                    raw reads and the register dumps; 2 LNA ports, settling and the 50 kHz shape;
                    4 the expert rows; 8 verbose mode and RDS. 4 KB holds 7 or 8, not both: run
@@ -94,6 +99,16 @@
 #ifndef FP_PART
 #define FP_PART 7
 #endif
+#ifndef FP_NEWM /* REG 02H NEW_METHOD (bit 2), as the K6's probe (and Aura) set it; stock doesn't */
+#define FP_NEWM 1
+#endif
+#ifndef FP_HIDDEN /* 0 leaves out the stock writes to registers 12H-43H the public sheet doesn't list */
+#define FP_HIDDEN 1
+#endif
+#ifndef FP_INTMODE /* REG 05H INT_MODE (bit 15): 1 holds RDSR until the blocks are read, as the K6 runs it;
+                      stock leaves it 0, where RDSR is a 5 ms pulse a poll mostly misses */
+#define FP_INTMODE 1
+#endif
 #ifndef FP_ADDR
 #define FP_ADDR 0x30
 #endif
@@ -131,9 +146,9 @@
 
 /* the stock firmware's setup (hamlet's read of the stock image, 2026-11-25), muted: 02 has DMUTE
    0 instead of 1 and RDS_EN added, 05 has volume 0 instead of 15 */
-#define R02_ON (0x8009u | (FP_CLK << 4)) /* DHIZ, DMUTE 0 (muted), CLK_MODE, RDS_EN, ENABLE */
+#define R02_ON (0x8009u | (FP_CLK << 4) | (FP_NEWM ? 4u : 0)) /* DHIZ, DMUTE 0 (muted), CLK_MODE, RDS_EN, NEW_METHOD, ENABLE */
 #define R02_RDS 0x0008u
-#define R05 0x00E0u   /* SEEKTH 0, LNA_PORT_SEL 11 (both, stock), LNA current 10, volume 0 */
+#define R05 (0x00E0u | (FP_INTMODE ? 0x8000u : 0)) /* stock (SEEKTH 0, both LNA inputs, LNA current 10) at volume 0, + INT_MODE */
 #define R07 0x0202u   /* stock */
 #define BAND_W 2u
 #define BAND_S 3u
@@ -334,7 +349,7 @@ static void dump(ctx_t *c, char t) {
 static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
   uint16_t w[6], ps[4], cand[4], last[3] = {0, 0, 0};
   uint8_t gt[32], conf = 0;
-  uint32_t g = 0, ok = 0, ab = 0, ss = 0, t0, i, prev = 0, pi = 0, r;
+  uint32_t g = 0, ok = 0, pl = 0, sy = 0, t0, i, prev = 0, pi = 0, r;
   char line[64], *p;
   for (i = 0; i < 32; i++) gt[i] = 0;
   for (i = 0; i < 4; i++) ps[i] = cand[i] = 0x2020;
@@ -347,6 +362,8 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
     uint32_t e, rdy, ty;
     c->a->delay_us(5000);
     seqrd(c, w, 6);
+    pl++;
+    if (w[0] & 0x1000u) sy++; /* RDSS on any poll: the decoder in sync, groups seen or not */
     rdy = w[0] >> 15;
     if (!rdy || prev) {
       prev = rdy;
@@ -354,13 +371,12 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
     }
     prev = 1;
     g++;
-    if (w[0] & 0x1000u) ss++;
     e = (uint32_t)(w[1] & 15u) << 4;
     if (verbose) {
       int32_t v = rreg(c, 0x10);
       if (v >= 0) e |= ((uint32_t)v >> 12) & 15u;
     }
-    if (!(e >> 4)) ab++, pi = w[2];
+    if (!(e >> 4)) pi = w[2];
     if (!e) ok++;
     ty = w[3] >> 11;
     if (gt[ty] < 255) gt[ty]++;
@@ -392,8 +408,8 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
   p = dec(put(p, " q"), (int32_t)r);
   p = dec(put(p, " g"), (int32_t)g);
   p = dec(put(p, " ok"), (int32_t)ok);
-  p = dec(put(p, " ab"), (int32_t)ab);
-  say0(c, line, dec(put(p, " ss"), (int32_t)ss));
+  p = dec(put(p, " pl"), (int32_t)pl);
+  say0(c, line, dec(put(p, " sy"), (int32_t)sy));
   p = put(line, "g");
   for (i = 0; i < 32 && p < line + 52; i++)
     if (gt[i]) {
@@ -498,11 +514,19 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     api->delay_us(10000);
     wreg(c, 5, R05);
     wreg(c, 7, R07);
+#ifdef FP_R04
+    wreg(c, 4, FP_R04); /* REG 04H, which stock leaves at reset (the K6 runs 0x0400) */
+#endif
+#if FP_HIDDEN
     rwr(c, 0x12, 0x8660);
     rwr(c, 0x16, 0x4400);
     rwr(c, 0x1B, 0x8ADE);
     api->delay_us(200000);
     for (i = 0; i < sizeof late; i += 3) rwr(c, late[i], (uint32_t)late[i + 1] << 8 | late[i + 2]);
+#else
+    (void)late;
+    api->delay_us(200000);
+#endif
   }
   id = rreg(c, 0);
   {
@@ -649,8 +673,15 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     p = um_hex(p, (uint32_t)b & 0xFFFF, 4);
     say0(c, line, put(p, verbose ? " ok" : " no"));
   }
+#ifdef FP_RDS_CH
+  {
+    static const uint16_t rch[] = {FP_RDS_CH}; /* the stations to hear, not the sweep's peaks */
+    for (n = 0; n < sizeof rch / sizeof rch[0]; n++) rds(c, rch[n], n ? FP_RDS_S : FP_RDS1_S, verbose);
+  }
+#else
   for (n = 0; n < FP_NRDS && s->top[n] != 0xFF; n++)
     rds(c, FP_SW_LO + s->top[n] * FP_SW_STEP, n ? FP_RDS_S : FP_RDS1_S, verbose);
+#endif
 #endif
   ret = (int)heard;
 

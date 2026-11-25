@@ -181,7 +181,7 @@ def test_part_7_identifies_the_chip_and_sizes_the_lens():
     assert said[3] == "b10 " + "f" * 32                                 # off: nothing but 0xFF
     assert any(x.startswith("i 5804 ") for x in said)
     assert r["dump"]["d"][0] == 0xFFFF and r["dump"]["D"][0] == 0x5804
-    assert r["dump"]["D"][2] == 0x8069                                  # 26 MHz, muted, RDS, on
+    assert r["dump"]["D"][2] == 0x806D                                  # 26 MHz, muted, RDS, NEW_METHOD, on
     # the stock setup, muted: soft reset, 02 without DMUTE, volume 0, and its hidden registers
     regs = [w[0] for w in rda.writes]
     assert rda.writes[0][:2] == (2, 0x0002) and regs[:9] == [2, 2, 5, 7, 0x12, 0x16, 0x1B, 0x36, 0x39]

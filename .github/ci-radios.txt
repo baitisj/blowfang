@@ -76,6 +76,7 @@ c/common/m17_rx.h
 c/common/pager_tx.*
 c/common/range_rx*
 c/common/range_tx*
+c/common/rds.h
 c/common/sotto_rx.*
 c/common/surf_core.inc
 c/common/ysf_rx.h
