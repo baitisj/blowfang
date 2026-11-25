@@ -348,7 +348,7 @@ static void dump(ctx_t *c, char t) {
 static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
   uint16_t w[6], ps[4], cand[4], last[3] = {0, 0, 0};
   uint8_t gt[32], conf = 0;
-  uint32_t g = 0, ok = 0, ab = 0, pl = 0, sy = 0, t0, i, prev = 0, pi = 0, r;
+  uint32_t g = 0, ok = 0, pl = 0, sy = 0, t0, i, prev = 0, pi = 0, r;
   char line[64], *p;
   for (i = 0; i < 32; i++) gt[i] = 0;
   for (i = 0; i < 4; i++) ps[i] = cand[i] = 0x2020;
@@ -375,7 +375,7 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
       int32_t v = rreg(c, 0x10);
       if (v >= 0) e |= ((uint32_t)v >> 12) & 15u;
     }
-    if (!(e >> 4)) ab++, pi = w[2];
+    if (!(e >> 4)) pi = w[2];
     if (!e) ok++;
     ty = w[3] >> 11;
     if (gt[ty] < 255) gt[ty]++;
@@ -407,7 +407,6 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
   p = dec(put(p, " q"), (int32_t)r);
   p = dec(put(p, " g"), (int32_t)g);
   p = dec(put(p, " ok"), (int32_t)ok);
-  p = dec(put(p, " ab"), (int32_t)ab);
   p = dec(put(p, " pl"), (int32_t)pl);
   say0(c, line, dec(put(p, " sy"), (int32_t)sy));
   p = put(line, "g");
