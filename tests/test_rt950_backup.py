@@ -149,3 +149,20 @@ def test_stock_read_refuses_another_model(radio, tmp_path, monkeypatch):
     monkeypatch.setattr(rb, "STOCK_MODEL", "UV-K6")
     assert rb.main(["read", r.path, str(tmp_path), "--addr", "2"]) == 2
     assert not (tmp_path / "cps64k.bin").exists() and r.writes == 0
+
+
+def test_compare_names_regions_and_pages_never_bytes(tmp_path, capsys):
+    a = bytes(range(256)) * 256
+    b = bytearray(a)
+    b[0xF010] ^= 0xFF          # inside cal_f000
+    b[0x9001] ^= 0x55          # inside system_config
+    pa, pb, pj = tmp_path / "a.bin", tmp_path / "b.bin", tmp_path / "c.json"
+    pa.write_bytes(a)
+    pb.write_bytes(bytes(b))
+    assert rb.main(["compare", str(pa), str(pb), "--json", str(pj)]) == 0
+    res = json.loads(pj.read_text())
+    assert res["differ"] == 2 and not res["same"]
+    assert res["regions"]["cal_f000"] == {"differ": 1, "first": "0xF010", "last": "0xF010"}
+    assert res["regions"]["cal_e000"] == {"differ": 0}
+    assert res["pages_4k"] == {"0x9000": 1, "0xF000": 1}
+    assert "cal_e000         same" in capsys.readouterr().out

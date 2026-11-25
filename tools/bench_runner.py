@@ -28,7 +28,7 @@ steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upl
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
 kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console, uv21.mod, serial.list, rt950.info,
-rt950.read), turned into one
+rt950.read, rt950.compare), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -52,6 +52,8 @@ and the point is that the runner checks everything before it keys. The checks, i
     the job names among the /dev/serial/by-id ports, never the K6 cable (PL2303), the IC-7100, a
     ttyACM port (Pluto, UV-380) or a port another process has open; the backup itself stays in
     ~/blowfang-work/private/rt950, the run folder gets its manifest (hashes) only
+  - rt950.compare opens no port: an earlier rt950.read's 64 KB against Stage A's Bluetooth read,
+    region by region (counts and offsets only, into the run folder)
   - serial.list opens no port: it lists the by-id ports' USB ids and names, serial numbers masked
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
@@ -116,7 +118,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300,
                 "uv21.mod": 300,
                 "sim.soapyfang": 3600,
-                "serial.list": 30, "rt950.info": 60, "rt950.read": 1800}
+                "serial.list": 30, "rt950.info": 60, "rt950.read": 1800, "rt950.compare": 60}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -695,6 +697,11 @@ def check_step(job, i, step, rs, problems):
     elif do == "serial.list":
         if args or step.get("background"):
             problems.append(f"{what}: takes no args, never in the background")
+    elif do == "rt950.compare":
+        if not ID_RE.match(str(step.get("backup", ""))):
+            problems.append(f"{what}: backup: the id of an earlier rt950.read job")
+        if args or step.get("background"):
+            problems.append(f"{what}: takes no args, never in the background")
     elif do in ("rt950.info", "rt950.read"):
         if not USB_IDS_RE.fullmatch(str(step.get("cable", ""))):
             problems.append(f"{what}: cable: the programming cable's USB ids, such as 1a86:7523 (serial.list shows them)")
@@ -841,6 +848,11 @@ def rt950_cable(ids):
     if users:
         raise Refused(f"the RT-950 cable: {x['dev']} is open (pid {', '.join(map(str, users))}): not a free cable")
     return x["dev"]
+
+
+def rt950_stage_a():
+    """Stage A's 64 KB, read over Bluetooth on 2026-11-16 (docs/rt950-backup.md)"""
+    return os.path.join(work(), "rt950", "runs", "rt950-backup-20261117", "stageA", "cps64k.bin")
 
 
 def rt950_private(job_id):
@@ -1139,6 +1151,10 @@ def command(job, step, rd):
     if do == "rt950.info":
         return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "info",
                 rt950_cable(step["cable"])] + args, co, False
+    if do == "rt950.compare":        # counts and offsets only into the run folder
+        return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "compare",
+                rt950_stage_a(), os.path.join(rt950_private(step["backup"]), "cps64k.bin"),
+                "--json", os.path.join(rd, "compare.json")], co, False
     if do == "rt950.read":           # the bytes stay on hamlet; the run folder gets the manifest
         return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "read",
                 rt950_cable(step["cable"]), rt950_private(job["id"]), "--summary", rd, "-v"] + args, co, False
@@ -2044,6 +2060,8 @@ def sample_jobs(tmp, co, key):
         ("SoapyFang from another source", J("bad-soapysrc", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--source", "soapy:driver=plutosdr"]}, freq_mhz="bench", minutes=35), False),
         ("list the serial ports", J("ok-ports", {"do": "serial.list"}, freq_mhz="bench"), True),
         ("RT-950 stock read over its cable", J("ok-rt950", {"do": "rt950.info", "cable": "1a86:7523"}, {"do": "rt950.read", "cable": "1a86:7523", "args": ["--addr", "2", "--passes", "2"]}, freq_mhz="bench"), True),
+        ("RT-950 cable read against Stage A", J("ok-rt950cmp", {"do": "rt950.compare", "backup": "rt950-read-1125b"}, freq_mhz="bench"), True),
+        ("RT-950 compare against a path", J("bad-rt950cmp", {"do": "rt950.compare", "backup": "../../etc"}, freq_mhz="bench"), False),
         ("RT-950 read with a /dev path for the cable", J("bad-rt950dev", {"do": "rt950.read", "cable": "/dev/ttyUSB1"}, freq_mhz="bench"), False),
         ("RT-950 with an option the reader doesn't have", J("bad-rt950opt", {"do": "rt950.read", "cable": "1a86:7523", "args": ["--write"]}, freq_mhz="bench"), False),
         ("SoapyFang in the background", J("bad-soapybg", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav], "background": True}, freq_mhz="bench", minutes=35), False),

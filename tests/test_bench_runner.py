@@ -867,3 +867,15 @@ def test_serial_list_masks_serial_numbers(work, ports):
     assert "12345678" not in text and "0000dead" not in text and "<serial>" in text
     got = json.loads(text)
     assert [p["ids"] for p in got] == [p["ids"] for p in PORTS]
+
+
+def test_rt950_compare_against_stage_a(work):
+    assert br.check_job(job("c", {"do": "rt950.compare", "backup": "rt950-read-1125b"}, freq_mhz="bench")) == []
+    for bad in ({"do": "rt950.compare"}, {"do": "rt950.compare", "backup": "../x"},
+                {"do": "rt950.compare", "backup": "r", "args": ["x"]}):
+        assert problems(job("c", bad, freq_mhz="bench")), bad
+    rd = str(work / "rd")
+    argv, _, _ = br.command(job("c", freq_mhz="bench"), {"do": "rt950.compare", "backup": "r1"}, rd)
+    assert argv[2:] == ["compare", os.path.join(str(work), "rt950", "runs", "rt950-backup-20261117", "stageA", "cps64k.bin"),
+                        os.path.join(str(work), "private", "rt950", "r1", "cps64k.bin"),
+                        "--json", os.path.join(rd, "compare.json")]
