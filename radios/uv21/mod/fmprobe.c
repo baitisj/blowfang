@@ -43,6 +43,7 @@
      FP_RDS_S, FP_NRDS            listen on the next FP_NRDS - 1 stations (20, 1)
      FP_NEWM       REG 02H NEW_METHOD, as on the K6 (1; the stock firmware leaves it 0)
      FP_INTMODE    REG 05H INT_MODE (1; stock 0, where RDSR is a 5 ms pulse the RDS poll misses)
+     FP_RDS_CH     RDS on these 100 kHz channels above 76 MHz (305 = 106.5 MHz) instead of the peaks
      FP_R04        a value for REG 04H (unset: not written, as stock)
      FP_HIDDEN     0 skips the stock writes to the unlisted registers 12H-43H (1)
      FP_PART       what runs besides the sweep and its peaks, a sum of: 1 the address scan, the
@@ -672,8 +673,15 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     p = um_hex(p, (uint32_t)b & 0xFFFF, 4);
     say0(c, line, put(p, verbose ? " ok" : " no"));
   }
+#ifdef FP_RDS_CH
+  {
+    static const uint16_t rch[] = {FP_RDS_CH}; /* the stations to hear, not the sweep's peaks */
+    for (n = 0; n < sizeof rch / sizeof rch[0]; n++) rds(c, rch[n], n ? FP_RDS_S : FP_RDS1_S, verbose);
+  }
+#else
   for (n = 0; n < FP_NRDS && s->top[n] != 0xFF; n++)
     rds(c, FP_SW_LO + s->top[n] * FP_SW_STEP, n ? FP_RDS_S : FP_RDS1_S, verbose);
+#endif
 #endif
   ret = (int)heard;
 
