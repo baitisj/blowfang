@@ -22,6 +22,8 @@ radio identity, and when.
   rt950_backup.py read /dev/serial/by-id/... runs/rt950-backup-20261117/stageA --addr 2
   rt950_backup.py read /dev/serial/by-id/... runs/rt950-backup-20261117/stageB --addr 3
   rt950_backup.py info /dev/serial/by-id/...
+  rt950_backup.py compare OLD/cps64k.bin NEW/cps64k.bin --json OUT.json   (which CPS regions and
+                         4 KB pages differ, and how many bytes: offsets and counts only, no bytes)
   rt950_backup.py read PORT ~/blowfang-work/private/rt950/ID --summary RUNDIR   (the bench runner's
                          rt950.read: the bytes stay private, RUNDIR gets manifest.json and SHA256SUMS)
   rt950_backup.py read ~/blowfang-work/rt950/ble-pty OUT --addr 2 --block 32 --timeout 4
@@ -285,6 +287,25 @@ def write_summary(man, outdir, summary):
             g.write(f.read())
 
 
+def compare(a, b):
+    """two reads of the same CPS window -> which regions and 4 KB pages differ (counts and
+    offsets only: the result may leave hamlet, the bytes may not)"""
+    out = {"a_sha256": sha(a), "b_sha256": sha(b), "a_len": len(a), "b_len": len(b), "same": a == b}
+    n = min(len(a), len(b))
+    diff = [i for i in range(n) if a[i] != b[i]]
+    def span(lo, hi):
+        d = [i for i in diff if lo <= i < hi]
+        r = {"differ": len(d)}
+        if d:
+            r.update(first=f"0x{d[0]:04X}", last=f"0x{d[-1]:04X}")
+        return r
+    out["regions"] = {name: span(addr, addr + ln) for name, addr, ln in STOCK_REGIONS}
+    out["pages_4k"] = {f"0x{p:04X}": span(p, p + 0x1000)["differ"] for p in range(0, n, 0x1000)
+                       if span(p, p + 0x1000)["differ"]}
+    out["differ"] = len(diff)
+    return out
+
+
 def bar(done, total):
     if done == total or done % 0x1000 == 0:
         print(f"\r  {done * 100 // total:3d}%  {done}/{total}", end="" if done < total else "\n",
@@ -314,7 +335,22 @@ def main(argv=None):
         if name == "read":
             p.add_argument("--summary", metavar="DIR",
                            help="also copy manifest.json and SHA256SUMS (hashes only) into DIR")
+    p = sub.add_parser("compare", help="which regions of two 64 KB reads differ (no bytes shown)")
+    p.add_argument("old")
+    p.add_argument("new")
+    p.add_argument("--json", metavar="OUT", help="also write the result here")
     a = ap.parse_args(argv)
+    if a.cmd == "compare":
+        with open(a.old, "rb") as f, open(a.new, "rb") as g:
+            res = compare(f.read(), g.read())
+        if a.json:
+            with open(a.json, "w") as f:
+                json.dump(res, f, indent=2)
+                f.write("\n")
+        for name, r in res["regions"].items():
+            print(f"{name:16s} {'same' if not r['differ'] else str(r['differ']) + ' bytes differ, ' + r['first'] + '..' + r['last']}")
+        print(f"{'all 64 KB':16s} {'same' if res['same'] else str(res['differ']) + ' bytes differ'}")
+        return 0
 
     log = (lambda m: print(m, file=sys.stderr)) if a.verbose or a.cmd == "info" else None
     radio = Radio(a.port, a.addr, a.baud, timeout=a.timeout, log=log, block=a.block)
