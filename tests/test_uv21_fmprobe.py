@@ -3,7 +3,8 @@ emulated Cortex-M4 against the K6 test's RDA5807M model moved to the UV-21's pin
 SDA PB6, the pin the BK4829's 3-wire bus shares. What must hold: both images fit the 4 KB block
 with room for their RAM; the address scan finds the chip (and a TEA5767-mode 0x60); no other pin
 is touched (the BK4829's SCN on PB3 stays high), nothing is driven high against the chip and both
-pins end exactly as they were; part 7 gives the dumps, sweep, peaks, LNA, settling and shapes;
+pins end exactly as they were (and i2cpeek, which reads the chip both the I2C way and the Beken
+BK1080 way, reads each model right); part 7 gives the dumps, sweep, peaks, LNA, settling and shapes;
 part 8 gives verbose mode, RDS, the station name and the clock group; and tools/k6_fmprobe.py
 report reads both. SPDX-License-Identifier: MIT"""
 import datetime
@@ -97,7 +98,10 @@ class Rda21(Rda):
 
 def go(rda, part, extra=()):
     from modem import uv21mod
-    img = uv21mod.image(*uv21mod.build(SRC, FAST + [f"FP_PART={part}", *extra]))
+    return go_img(rda, uv21mod.image(*uv21mod.build(SRC, FAST + [f"FP_PART={part}", *extra])))
+
+
+def go_img(rda, img):
     mu = unicorn.Uc(unicorn.UC_ARCH_ARM, unicorn.UC_MODE_THUMB | unicorn.UC_MODE_MCLASS)
     ram = 0x20000000
     mu.mem_map(ram, 1 << 16)
@@ -204,3 +208,52 @@ def test_another_chip_is_reported_and_left_alone():
     ret, said, _ = go(rda, 7)
     assert ret == -5 and "i 1080" in said and not any(s.startswith("d00") for s in said)
     assert not rda.writes and (rda.pa, rda.pb) == rda.start
+
+
+class Beken(Rda21):
+    """A BK1080-style 2-wire chip at device byte 0x80: the direction is the next byte's low bit,
+    (reg << 1) | 1, and a read sends that register's 16 bits (REG 01H = 0x1080)."""
+
+    REGS = {0x00: 0x0006, 0x01: 0x1080}
+
+    def take(self, b):
+        if self.addr is None:
+            if b & 0xFE != 0x80:
+                self.active = False
+                return False
+            self.addr = 0x80
+            return True
+        self.wbytes.append(b)
+        if len(self.wbytes) == 1 and b & 1:
+            self.addr, self.rq, self.rpos = 0x81, [b >> 1] * 64, 0
+            self.mack = True
+        return True
+
+    def reg(self, r):
+        return self.REGS.get(r, 0)
+
+
+def peek(rda):
+    from modem import uv21mod
+    src = os.path.join(ROOT, "radios", "uv21", "mod", "i2cpeek.c")
+    return go_img(rda, uv21mod.image(*uv21mod.build(src, ["IP_REGS=8"])))
+
+
+@need_clang
+def test_peek_reads_an_rda5807_with_a_repeated_start():
+    rda = Rda21(STATIONS)
+    ret, said, _ = peek(rda)
+    assert ret == 3 and said[0] == "A 10 11 60"
+    assert "q22 00 5804 0000 0000 0000 0000 0000 0000 0000" in said
+    assert not any(x.startswith("k") for x in said)                  # 0x40 never answered
+    assert not rda.writes and (rda.pa, rda.pb) == rda.start and rda.contention == 0
+
+
+@need_clang
+def test_peek_reads_a_beken_chip_its_own_way():
+    bk = Beken(STATIONS, tea=False)
+    ret, said, _ = peek(bk)
+    assert ret == 1 and said[0] == "A 40"
+    assert said[1].startswith("q80 00 ") and "1080" not in said[1]
+    assert said[2] == "k80 00 0006 1080 0000 0000 0000 0000 0000 0000"
+    assert (bk.pa, bk.pb) == bk.start and bk.contention == 0
