@@ -10,7 +10,8 @@
 
      s 0a=ffff 0b=ffff                     the stock status read before the setup (register 0AH, stop,
                                            0x61 and 4 bytes, one more byte with no acknowledge)
-     r00 ffff ffff ...                     REG 00H-1FH one at a time, 8 a line, before (r) and after (R)
+     r00 ffff ffff ...                     REG 00H-1FH one at a time, 8 a line, before (r) and after (R);
+                                           FT_REGS 0 leaves them out (the default with FT_KEY_S)
      S 0a=4000 0b=1800                     the status read after the stock setup (muted)
      T 100.100 0a=.... 0b=....             after a tune to FT_KHZ (default 100.1 MHz), FT_WAIT_MS later
    Settings: FT_INIT 0 skips the setup; FT_KHZ, FT_WAIT_MS (300); FT_PA3 1 first drives PA3 high
@@ -21,7 +22,13 @@
    person at the radio can hear whether the chip receives at all even if reads fail; "play on" /
    "play off" mark it, and PB2 goes back to what it was. FT_KEY_S n: before playing, turn the
    backlight on (PF7) and wait up to n seconds for the top side key (it grounds row PC14),
-   saying "key wait" and then "key" or "key timeout" (no play); the backlight goes back after. Returns 0x0B after the tune.
+   saying "key wait" and then "key" or "key timeout" (no play). The person at the radio sees
+   where it is (the operator, 11-25: "more visual confirmation"): the screen turns yellow, "PRESS
+   TOP KEY" over the seconds left, with the flashlight (PB7) blinking; green "PLAYING" and the
+   station over the seconds left, flashlight steady; then blue "DONE" (red "NO KEY" on a timeout)
+   for FT_DONE_S (5) seconds. The backlight stays on (SURF's own timer takes it from there) and
+   the flashlight goes back to what it was. The screen is drawn straight on SPI2 (ST7735S: CS
+   PB12, D/C PC15, as the port's drivers/st7735.rs), with a 3 x 5 font. Returns 0x0B after the tune.
    At the end the chip is powered down (02H = 0x8060, the stock power-down) and both pins put
    back as they were. SPDX-License-Identifier: MIT */
 #include "uv21_mod.h"
@@ -40,6 +47,12 @@
 #endif
 #ifndef FT_KEY_S
 #define FT_KEY_S 0
+#endif
+#ifndef FT_REGS /* the r / R register dumps; off with the screen, for room */
+#define FT_REGS !(FT_PLAY_S && FT_KEY_S)
+#endif
+#ifndef FT_DONE_S
+#define FT_DONE_S 5
 #endif
 #ifndef FT_VOL
 #define FT_VOL 3
@@ -183,6 +196,7 @@ static void status(const um_api_t *a, const char *tag) {
   if (!ok) um_put(p, " nack");
   a->say(line);
 }
+#if FT_REGS
 static void regs(const um_api_t *a, char t) {
   char line[64], *p;
   uint32_t r, k;
@@ -198,6 +212,79 @@ static void regs(const um_api_t *a, char t) {
     a->say(line);
   }
 }
+#endif
+
+#if FT_PLAY_S && FT_KEY_S
+#define GPIOC 0x48000800u
+#define GPIOF 0x48001400u
+#define SPI2 0x40003800u
+#define LCS (1u << 12) /* PB12 */
+#define LDC (1u << 15) /* PC15, low = command */
+#define LIGHT (1u << 7) /* PB7, the flashlight */
+#define BLUE 0x001Fu
+#define RED 0xF800u
+#define GREEN 0x07E0u
+#define YELLOW 0xFFE0u
+#define BLACK 0x0000u
+#define WHITE 0xFFFFu
+
+static void lb(uint32_t b) {
+  while (!(rd(SPI2 + 0x08) & 2u)) {} /* TDBE */
+  wr(SPI2 + 0x0C, b);
+}
+static void lidle(void) {
+  while (!(rd(SPI2 + 0x08) & 2u)) {}
+  while (rd(SPI2 + 0x08) & 0x80u) {} /* BF */
+}
+static void lc(uint32_t c) {
+  lidle();
+  wr(GPIOC + G_CLR, LDC);
+  lb(c);
+  lidle();
+  wr(GPIOC + G_SCR, LDC);
+}
+/* a w x h box at (x, y) in one RGB565 colour */
+static void box(int x, int y, int w, int h, uint32_t c) {
+  int n = w * h;
+  wr(GPIOB + G_CLR, LCS);
+  lc(0x2A); /* CASET */
+  lb(0), lb((uint32_t)x), lb(0), lb((uint32_t)(x + w - 1));
+  lc(0x2B); /* RASET */
+  lb(0), lb((uint32_t)y), lb(0), lb((uint32_t)(y + h - 1));
+  lc(0x2C); /* RAMWR */
+  while (n--) lb(c >> 8), lb(c & 0xFF);
+  lidle();
+  wr(GPIOB + G_SCR, LCS);
+}
+/* text at scale z (a glyph is 3z x 5z, 4z apart); characters without a glyph are spaces */
+static void text(int x, int y, const char *s, int z, uint32_t c) {
+  static const char cs[] = "ADEFGIKLMNOPRSTY0123456789.";
+  static const uint16_t gl[] = {
+      0x2BED, 0x6B6E, 0x79A7, 0x79A4, 0x396B, 0x7497, 0x5BAD, 0x4927, 0x5FED, 0x6B6D, 0x7B6F, 0x6BA4,
+      0x6BAD, 0x388E, 0x7492, 0x5A92, 0x7B6F, 0x2C97, 0x62A7, 0x628E, 0x5BC9, 0x798E, 0x39EF, 0x7292,
+      0x7BEF, 0x7BCE, 0x0002};
+  for (; *s; s++, x += 4 * z) {
+    int g = -1, k;
+    for (k = 0; cs[k]; k++)
+      if (cs[k] == *s) g = k;
+    if (g >= 0)
+      for (k = 0; k < 15; k++)
+        if (gl[g] >> (14 - k) & 1) box(x + k % 3 * z, y + k / 3 * z, z, z, c);
+  }
+}
+static void screen(uint32_t bg, uint32_t fg, const char *l1, const char *l2) {
+  box(0, 0, 128, 160, bg);
+  text(4, 16, l1, 4, fg);
+  text(4, 48, l2, 4, fg);
+}
+static void count(uint32_t bg, uint32_t fg, uint32_t n) {
+  char t[12];
+  um_int(t, (int32_t)n);
+  box(0, 90, 128, 48, bg);
+  text(16, 94, t, 8, fg);
+}
+static void light(int on) { wr(GPIOB + (on ? G_SCR : G_CLR), LIGHT); }
+#endif
 
 int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   uint32_t cfa = rd(GPIOA + G_CFGR), oma = rd(GPIOA + G_OMODE), pua = rd(GPIOA + G_PULL);
@@ -239,7 +326,9 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   us(api, 100);
 
   status(api, "s");
+#if FT_REGS
   regs(api, 'r');
+#endif
 #if FT_INIT
   {
     static const uint8_t late[] = {0x05, 0x00, 0xE0, 0x07, 0x02, 0x02, 0x12, 0x86, 0x60, 0x16, 0x44, 0x00,
@@ -260,7 +349,9 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   }
 #endif
   status(api, "S");
+#if FT_REGS
   regs(api, 'R');
+#endif
   /* the stock tune: 76-108 band, channel above 76 MHz, TUNE */
   w16(api, 0x02, 0x8061);
   w16(api, 0x03, (uint32_t)((FT_KHZ - 76000) / 100) << 6 | 0x18u);
@@ -276,38 +367,63 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   {
     uint32_t pb2 = rd(GPIOB + G_ODT) & 4u, cf2 = rd(GPIOB + G_CFGR) & (3u << 4);
 #if FT_KEY_S
-    uint32_t bl = rd(0x48001400u + G_ODT) & 0x80u, t0 = api->ms(), held = 0, go = 0;
-    wr(0x48001400u + G_SCR, 0x80u); /* backlight on */
+    uint32_t cf7 = rd(GPIOB + G_CFGR) & (3u << 14), om7 = rd(GPIOB + G_OMODE) & LIGHT;
+    uint32_t od7 = rd(GPIOB + G_ODT) & LIGHT, t0, now, left = ~0u, held = 0, go = 0;
+    char st[12];
+    wr(GPIOF + G_SCR, 0x80u); /* backlight on, and left on */
+    light(0);
+    wr(GPIOB + G_OMODE, rd(GPIOB + G_OMODE) & ~LIGHT);
+    wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 14)) | (1u << 14));
+    screen(YELLOW, BLACK, "PRESS", "TOP KEY");
     api->say("key wait");
-    while (!go && api->ms() - t0 < FT_KEY_S * 1000u) {
+    t0 = api->ms();
+    while (!go && (now = api->ms() - t0) < FT_KEY_S * 1000u) {
+      if (FT_KEY_S - now / 1000u != left) count(YELLOW, BLACK, left = FT_KEY_S - now / 1000u);
+      light(now / 250u & 1);
       us(api, 10000);
-      held = rd(0x48000800u + G_IDT) & (1u << 14) ? 0 : held + 1;
+      held = rd(GPIOC + G_IDT) & (1u << 14) ? 0 : held + 1;
       go = held >= 5;
     }
     api->say(go ? "key" : "key timeout");
     if (!go) {
-      wr(0x48001400u + (bl ? G_SCR : G_CLR), 0x80u);
-      goto done;
+      light(0);
+      screen(RED, WHITE, "NO KEY", "");
+      goto shown;
     }
+    p = um_put(st, "FM ");
+    p = um_int(p, FT_KHZ / 1000);
+    *p++ = '.';
+    *p++ = (char)('0' + FT_KHZ / 100 % 10);
+    *p = 0;
+    screen(GREEN, BLACK, "PLAYING", st);
+    light(1);
 #endif
     w16(api, 0x05, 0x00E0 | FT_VOL);
     w16(api, 0x02, 0xC061); /* stock: unmuted */
     wr(GPIOB + G_SCR, 4u);
     wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 4)) | (1u << 4));
     api->say("play on");
-    for (i = 0; i < FT_PLAY_S; i++) us(api, 1000000);
+    for (i = 0; i < FT_PLAY_S; i++) {
+#if FT_KEY_S
+      count(GREEN, BLACK, FT_PLAY_S - i);
+#endif
+      us(api, 1000000);
+    }
     w16(api, 0x05, 0x00E0);
     w16(api, 0x02, 0x8061);
     wr(GPIOB + (pb2 ? G_SCR : G_CLR), 4u);
     wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 4)) | cf2);
     api->say("play off");
 #if FT_KEY_S
-    wr(0x48001400u + (bl ? G_SCR : G_CLR), 0x80u);
+    light(0);
+    screen(BLUE, WHITE, "DONE", "");
+  shown:
+    for (i = 0; i < FT_DONE_S; i++) us(api, 1000000);
+    wr(GPIOB + (od7 ? G_SCR : G_CLR), LIGHT);
+    wr(GPIOB + G_OMODE, (rd(GPIOB + G_OMODE) & ~LIGHT) | om7);
+    wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 14)) | cf7);
 #endif
   }
-#endif
-#if FT_PLAY_S && FT_KEY_S
-done:
 #endif
   w16(api, 0x02, 0x8060); /* the stock power-down */
 
