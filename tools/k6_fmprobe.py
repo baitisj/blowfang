@@ -10,6 +10,8 @@ port that works, the RSSI's settling time (to 90 % of the last reading), the sta
 the expert shape (points within 3 and 10 RSSI units of its peak, so the SURF lens can be sized),
 where the expert sweep puts the broadcast band (a check of OE3HBW's 50 MHz base), verbose mode,
 RDS per station and each clock group against the log's own time stamp.
+The UV-21 Pro's cable module (radios/uv21/mod/fmprobe.c) says the same lines, plus its settings
+(P), every address that answers (A), raw reads (b..) and the chip ID (i); report reads them too.
 
 hamlet has no clang: patch the CI-built mod-fmprobe.bin. Never uses ttyUSB2.
 SPDX-License-Identifier: MIT
@@ -29,6 +31,7 @@ FIELDS = ["half_us", "quick_ms", "settle_ms", "rds1_s", "rds_s", "sw_lo", "sw_hi
           "shape_khz", "shape_n", "ex_lo", "ex_hi", "flags"]
 DEFAULTS = dict(half_us=10, quick_ms=150, settle_ms=600, rds1_s=65, rds_s=20, sw_lo=119, sw_hi=319,
                 sw_step=2, n_rds=3, shape_khz=5, shape_n=40, ex_lo=50, ex_hi=115, flags=0)
+PFIELDS = ["sw_lo", "sw_hi", "sw_step", "shape_khz", "shape_n", "ex_lo", "ex_hi", "clk", "part"]
 SAY = re.compile(r"K6 MOD say (.*)$")
 
 
@@ -76,7 +79,17 @@ def decode(text, par=None):
     r = {"rows": {}, "dump": {"d": {}, "D": {}}, "peaks": [], "rds": {}, "ps": {}, "ct": [], "groups": {}}
     for t, s in says(text):
         tag, _, rest = s.partition(" ")
-        if tag == "a":
+        if tag == "P":                       # the UV-21 module's settings line
+            v = [int(x) for x in rest.split()]
+            r["par"] = dict(zip(PFIELDS, v))
+            par.update({k: x for k, x in r["par"].items() if k in DEFAULTS})
+        elif tag == "A":
+            r["answer"] = rest.split()
+        elif tag[:1] == "b" and len(tag) == 3:
+            r.setdefault("raw", {})[tag[1:]] = rest
+        elif tag == "i":
+            r["id"] = rest
+        elif tag == "a":
             r["ack"] = {k: v == "1" for k, v in (x.split("=") for x in rest.split())}
         elif tag[:1] in "dD" and len(tag) == 3 and re.fullmatch(r"[0-9a-f]{2}", tag[1:]):
             base = int(tag[1:], 16)
@@ -137,8 +150,11 @@ def width(row, step_khz, floor_drop):
 
 
 def report(r, par=None):
-    par = {**DEFAULTS, **(par or {})}
+    par = {**DEFAULTS, **{k: v for k, v in r.get("par", {}).items() if k in DEFAULTS}, **(par or {})}
     out = []
+    if "answer" in r:
+        out.append(f"I2C addresses that answer: {' '.join(r['answer']) or 'none'}"
+                   + (f", chip id {r['id']}" if "id" in r else ""))
     if "ack" in r:
         out.append(f"bus: {r['ack']}  chip id {r['dump']['d'].get(0, 'n/a') if r['dump']['d'] else 'n/a'}"
                    .replace("n/a", "?"))

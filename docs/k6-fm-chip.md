@@ -56,6 +56,23 @@ bus, bit by bit: the protocol, the pins put back, no contention, the rows, LNA c
 mode with and without OPEN_MODE, the name confirmed twice when blocks C and D carry no flags,
 the clock group, and a key press stopping it cleanly.
 
+## The UV-21 Pro's chip
+
+The UV-21 Pro's stock firmware talks to an I2C device "0x60" on SCL PA4, with SDA on PB6, the pin
+the BK4829's 3-wire bus also uses (docs/uv21-characteristics.md). 0x60 is the address an RDA5807
+answers in TEA5767-compatible mode, so it is probably the same chip, but nobody has read its ID.
+`radios/uv21/mod/fmprobe.c` is the probe cut down for the UV-21's 4 KB cable modules, run with
+the bench's `uv21.mod` step while SURF runs (no hands, no flash). It scans every address, reads
+16 bytes from each that answers and the ID (REG 00H over 0x11), and only goes on if that is
+0x58xx. The bus is open-drain on the pull-ups as on the K6, the BK4829's SCN (PB3) is never
+touched and stays high, so the BK4829 ignores the traffic on its SDA, and both pins end as they
+were. 4 KB holds half the probe, so it runs twice: `FP_PART=7` (scan, dumps, sweep, peaks, LNA,
+settling, the 50 kHz and expert shapes and the expert sweep, about 50 s), then `FP_PART=8`
+(sweep, verbose mode, RDS and the clock group). The settings are `-D` numbers (the module's
+header lists them); `FP_CLK` picks the chip's reference if 26 MHz turns out wrong.
+`tools/k6_fmprobe.py report` reads its log too, and `tests/test_uv21_fmprobe.py` runs both
+parts on an emulated M4 against the same chip model on the UV-21's two ports.
+
 ## For SURF
 
 Broadcast stations are 200 kHz wide (+-75 kHz deviation plus the subcarriers), so the FD6818

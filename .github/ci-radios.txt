@@ -186,6 +186,10 @@ modem/__init__.py
 modem/k6mod.py
 modem/pager.py
 modem/uv21mod.py
+# the FM chip probe's test runs the K6 probe's chip model and report tool (tests/test_uv21_fmprobe.py)
+tests/test_k6_fmprobe.py
+tests/test_k6_i2s.py
+tools/k6_fmprobe.py
 # SURF, the port's main screen, includes the K6's SURF core; the emulated board with a model band
 # and its browser workbench (tests/test_uv21_surf.py runs the board)
 c/common/surf_core.inc
