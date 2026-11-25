@@ -275,7 +275,7 @@ no-op: cbi had 96 B of flash to spare and the LED took 184 (CI, 07bb380). Gated 
 
 Added 2026-11-09 (Jeff OK'd it for BLOWFANG's time sync). `clock_set(utc_ms, date, w_ms)` and
 `clock_get(&utc_ms, &date, &w_ms)`: one UTC clock in the core, kept between module runs until a
-reboot, fed by aisclk or aprsclk and read by any module. The fix with the smaller bound wins;
+reboot, fed by aisclk, aprsclk or fmrds (broadcast RDS clocks, docs/k6-fm-chip.md) and read by any module. The fix with the smaller bound wins;
 the core widens a fix's bound by 250 ppm as it ages. Units, rules and costs are in
 `docs/k6-aprs-clock.md` ("Making it the radio's clock"). A module reads `api->level` and calls
 them only on 8 or more; `clkget` (level 8) says the clock. The emulator
