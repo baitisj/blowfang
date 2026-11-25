@@ -58,20 +58,27 @@ the clock group, and a key press stopping it cleanly.
 
 ## The UV-21 Pro's chip
 
-The UV-21 Pro's stock firmware talks to an I2C device "0x60" on SCL PA4, with SDA on PB6, the pin
-the BK4829's 3-wire bus also uses (docs/uv21-characteristics.md). 0x60 is the address an RDA5807
-answers in TEA5767-compatible mode, so it is probably the same chip, but nobody has read its ID.
-`radios/uv21/mod/fmprobe.c` is the probe cut down for the UV-21's 4 KB cable modules, run with
-the bench's `uv21.mod` step while SURF runs (no hands, no flash). It scans every address, reads
-16 bytes from each that answers and the ID (REG 00H over 0x11), and only goes on if that is
-0x58xx. The bus is open-drain on the pull-ups as on the K6, the BK4829's SCN (PB3) is never
-touched and stays high, so the BK4829 ignores the traffic on its SDA, and both pins end as they
-were. 4 KB holds half the probe, so it runs twice: `FP_PART=7` (scan, dumps, sweep, peaks, LNA,
-settling, the 50 kHz and expert shapes and the expert sweep, about 50 s), then `FP_PART=8`
-(sweep, verbose mode, RDS and the clock group). The settings are `-D` numbers (the module's
-header lists them); `FP_CLK` picks the chip's reference if 26 MHz turns out wrong.
+The UV-21 Pro has its own chip on SCL PA4, with SDA on PB6, the pin the BK4829's 3-wire bus also
+uses. A static read of the stock image (2026-11-25, facts only; the image stays private) found an
+RDA5807-family register map at 7-bit address 0x30 (bytes 0x60 / 0x61): writes are a register
+number and 16 bits, reads are a register number, a stop, then a read that runs on (the stock
+status read takes 0AH and 0BH). The setup is a soft reset, REG 02H = 0xC061 (CLK_MODE 26 MHz,
+fed from the BK4829's reference), then 05H, 07H and registers 12H, 16H, 1BH and 36H-43H, which
+the public RDA5807M sheet doesn't list, so it is probably a variant or clone. No power, reset or
+clock pin; PB2 (the amplifier) comes on after the tune. The stock code never reads a chip ID.
+
+On our radio (runs ufmp1 and ufmp5) the chip acknowledges 0x10, 0x11, 0x30 and 0x40, but every
+register reads 0xFF before that setup, both the I2C way and the Beken BK1080 way
+(`radios/uv21/mod/i2cpeek.c`). `radios/uv21/mod/fmprobe.c` is the probe cut down for the
+UV-21's 4 KB cable modules, run with the bench's `uv21.mod` step while SURF runs (no hands, no
+flash). It scans the bus, sends the stock setup with the audio muted (DMUTE 0, volume 0, PB2
+untouched), then reads the ID and status. The bus is open-drain on the pull-ups as on the K6,
+the BK4829's SCN (PB3) is never touched and stays high, and both pins end as they were. 4 KB holds
+half the probe, so it runs twice: `FP_PART=7` (scan, dumps, sweep, peaks, LNA, settling, the
+50 kHz and expert shapes and the expert sweep, about 50 s), then `FP_PART=8` (sweep, verbose
+mode, RDS and the clock group). The settings are `-D` numbers (the module's header lists them).
 `tools/k6_fmprobe.py report` reads its log too, and `tests/test_uv21_fmprobe.py` runs both
-parts on an emulated M4 against the same chip model on the UV-21's two ports.
+parts on an emulated M4 against the chip model on the UV-21's two ports, dead until set up.
 
 ## Measured on our K6 (2026-11-25, bench run fmp1b, image d583fb8)
 

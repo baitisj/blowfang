@@ -8,22 +8,32 @@
    bus runs open-drain on the MCU's pull-ups, so the MCU never drives a line high against the
    chip; both pins' mode, output type, pull and output bits are put back at the end.
 
-   An RDA5807 answers 0x10 (sequential: writes from REG 02H, reads from 0AH), 0x11 (any one
-   register; REG 00H = 0x58xx) and 0x60 (TEA5767-compatible). Its audio stays muted (DMUTE 0,
-   volume 0), the amplifier pin (PB2) is never touched, and the chip is powered down at the end.
+   The chip (hamlet's read of the stock image, 2026-11-25): an RDA5807-family register map at
+   7-bit address 0x30 (bytes 0x60 / 0x61), reached one register at a time: a write is the
+   register number and 16 bits; a read is the register number, a stop, then a read that runs on
+   through the following registers. It also acknowledges 0x10, 0x11 and 0x40, but every register
+   reads 0xFF until it is set up: the stock setup is a soft reset, REG 02H on, then 05H, 07H and
+   hidden registers 12H-43H (copied below). This module sends that setup with the audio muted
+   (DMUTE 0, volume 0), never touches the amplifier pin (PB2), and powers the chip down at the
+   end. It feeds on the BK4829's 26 MHz reference (CLK_MODE 110, as stock).
 
    Lines (the K6 module's tags, so tools/k6_fmprobe.py report reads both):
-     P 119 319 2 5 30 50 115 6        the settings: sweep lo hi step, shape kHz n, expert lo hi, clock
-     A 10 11 60                       every 7-bit address 0x08-0x77 that acknowledges
-     a 10=1 11=1 60=1                 the three an RDA5807 answers
-     b60 <32 hex>                     16 bytes read from each address that answered (up to 6)
-     i 5804 / d00.. D00..             chip ID; REG 00H-5FH before and after power-up (RDA only)
+     P 119 319 2 5 30 50 115 6 7      the settings: sweep lo hi step, shape kHz n, expert lo hi,
+                                      clock, part
+     A 10 11 30 40                    every 7-bit address 0x08-0x77 that acknowledges
+     a 10=1 11=1 60=0                 the three a plain RDA5807 answers
+     b30 <32 hex>                     16 bytes read from each address that answered (up to 6)
+     d00..                            REG 00H-5FH before the setup (all ffff on our radio)
+     i 5804 4000 1800                 after the setup: REG 00H, 0AH and 0BH
+     D00..                            REG 00H-5FH after the setup and the first tune
      w0/w1 f0/f1 s l c k h0/h1 x0/x1 v r g p t   as on the K6 (see c/k6/mod/fmprobe.c)
      E n=9 ms=123456                  the end
-   Returns the sweep's FM_TRUE count, or -4 nothing answered, -5 not an RDA5807, -6 too little RAM.
+   Returns the sweep's FM_TRUE count, or -4 nothing answered, -5 every read 0xFF even after the
+   setup, -6 too little RAM.
 
    Settings (-D, modem/uv21mod.py; the bench's uv21.mod step):
-     FP_CLK        CLK_MODE, REG 02H bits 6:4 (6 = 26 MHz, the K6's and Aura's; 0 = 32.768 kHz,
+     FP_ADDR       the chip's 7-bit address (0x30, the stock firmware's)
+     FP_CLK        CLK_MODE, REG 02H bits 6:4 (6 = 26 MHz, stock, the K6's and Aura's; 0 = 32.768 kHz,
                    1 = 12, 2 = 13, 3 = 19.2, 5 = 24, 7 = 38.4 MHz)
      FP_QUICK_MS / FP_SETTLE_MS   waits before a quick / settled read (150 / 600)
      FP_SW_LO, FP_SW_HI, FP_SW_STEP   sweep in 100 kHz channels above 76 MHz (119, 319, 2)
@@ -84,6 +94,9 @@
 #ifndef FP_PART
 #define FP_PART 7
 #endif
+#ifndef FP_ADDR
+#define FP_ADDR 0x30
+#endif
 
 #define NSW ((FP_SW_HI - FP_SW_LO) / FP_SW_STEP + 1)
 #define NSH (2 * FP_SHAPE_N + 1)
@@ -114,14 +127,14 @@
 #define MSCL (3u << 8)
 #define MSDA (3u << 12)
 
-#define A_SEQ 0x20u
-#define A_RND 0x22u
+#define A_RND (FP_ADDR << 1)
 
-#define R02_ON (0x800Du | (FP_CLK << 4)) /* DHIZ, DMUTE 0 (muted), CLK_MODE, RDS_EN, NEW_METHOD, ENABLE */
+/* the stock firmware's setup (hamlet's read of the stock image, 2026-11-25), muted: 02 has DMUTE
+   0 instead of 1 and RDS_EN added, 05 has volume 0 instead of 15 */
+#define R02_ON (0x8009u | (FP_CLK << 4)) /* DHIZ, DMUTE 0 (muted), CLK_MODE, RDS_EN, ENABLE */
 #define R02_RDS 0x0008u
-#define R04 0x0400u
-#define R05 0x8880u   /* INT_MODE, SEEKTH 8, LNA_PORT_SEL 10 (LNAP), volume 0 */
-#define R07 0x4202u
+#define R05 0x00E0u   /* SEEKTH 0, LNA_PORT_SEL 11 (both, stock), LNA current 10, volume 0 */
+#define R07 0x0202u   /* stock */
 #define BAND_W 2u
 #define BAND_S 3u
 #define SP_100 0u
@@ -141,7 +154,6 @@ typedef struct {
 typedef struct {
   const um_api_t *a;
   sc_t *s;
-  int ra;
 } ctx_t;
 
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
@@ -231,22 +243,16 @@ static void rwr(ctx_t *c, uint32_t reg, uint32_t v) {
   i2c_stop(c);
 }
 static void wreg(ctx_t *c, uint32_t reg, uint32_t v) {
-  uint32_t i;
-  c->s->sh5[reg - 2] = (uint16_t)v;
-  if (c->ra) {
-    rwr(c, reg, v);
-    return;
-  }
-  begin(c, A_SEQ);
-  for (i = 2; i <= reg; i++) {
-    i2c_wb(c, c->s->sh5[i - 2] >> 8);
-    i2c_wb(c, c->s->sh5[i - 2] & 0xFF);
-  }
-  i2c_stop(c);
+  if (reg - 2u < 7u) c->s->sh5[reg - 2] = (uint16_t)v;
+  rwr(c, reg, v);
 }
+/* REG 0AH on: the register number, a stop, then a read that runs on (the stock status read) */
 static void seqrd(ctx_t *c, uint16_t *w, int n) {
   int i;
-  begin(c, A_SEQ | 1);
+  begin(c, A_RND);
+  i2c_wb(c, 0x0A);
+  i2c_stop(c);
+  begin(c, A_RND | 1);
   for (i = 0; i < n; i++) {
     uint32_t hi = i2c_rb(c, 1);
     w[i] = (uint16_t)(hi << 8 | i2c_rb(c, i < n - 1));
@@ -418,7 +424,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   int ret = 0;
   char line[64], *p;
   if (ram_len < sizeof(sc_t)) return -6;
-  c->a = api, c->s = s, c->ra = 0;
+  c->a = api, c->s = s;
   t0 = api->ms();
   p = put(line, "P");
   {
@@ -477,28 +483,43 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     ret = -4;
     goto out_pins;
   }
-  id = a11 ? rreg(c, 0) : -1;
-#else
-  id = rreg(c, 0);
-#endif
-  if (id >= 0) say0(c, line, um_hex(put(line, "i "), (uint32_t)id, 4));
-  c->ra = id >= 0 && (id & 0xFF00) == 0x5800;
-  if (!c->ra) {
-    ret = id < 0 ? -4 : -5;
-    goto out_pins;
-  }
-#if FP_PART & 1
+  (void)a10, (void)a11, (void)a60;
   dump(c, 'd');
 #endif
 
-  /* power up muted, then the first channel */
+  /* power up the stock way, muted (the chip reads 0xFF until it is on), then the first channel */
   for (i = 0; i < 7; i++) s->sh5[i] = 0;
-  wreg(c, 2, R02_ON | 2u);
-  wreg(c, 2, R02_ON);
-  wreg(c, 4, R04);
-  wreg(c, 5, R05);
-  wreg(c, 7, R07);
-  api->delay_us(FP_SETTLE_MS * 1000u);
+  {
+    static const uint8_t late[] = {0x36, 0x71, 0x14, 0x39, 0x1A, 0x16, 0x3B, 0x27, 0x3C, 0x3C, 0x3C, 0x41,
+                                   0x3D, 0x04, 0x46, 0x3E, 0x1E, 0x12, 0x3F, 0x14, 0x28, 0x43, 0x02, 0x02};
+    wreg(c, 2, 2u);
+    api->delay_us(10000);
+    wreg(c, 2, R02_ON);
+    api->delay_us(10000);
+    wreg(c, 5, R05);
+    wreg(c, 7, R07);
+    rwr(c, 0x12, 0x8660);
+    rwr(c, 0x16, 0x4400);
+    rwr(c, 0x1B, 0x8ADE);
+    api->delay_us(200000);
+    for (i = 0; i < sizeof late; i += 3) rwr(c, late[i], (uint32_t)late[i + 1] << 8 | late[i + 2]);
+  }
+  id = rreg(c, 0);
+  {
+    uint16_t w[2];
+    seqrd(c, w, 2);
+    p = um_hex(put(line, "i "), (uint32_t)id & 0xFFFF, 4);
+    p = um_hex(put(p, " "), w[0], 4);
+    say0(c, line, um_hex(put(p, " "), w[1], 4));
+    if (id < 0) {
+      ret = -4;
+      goto out_pins;
+    }
+    if (id == 0xFFFF && w[0] == 0xFFFF && w[1] == 0xFFFF) {
+      ret = -5;
+      goto out;
+    }
+  }
   tune_ch(c, SP_100, FP_SW_LO);
   look(c, FP_QUICK_MS);
 #if FP_PART & 1
@@ -550,7 +571,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
 #if FP_PART & 2
   {
     uint32_t lr[4], k;
-    int lna = 2;
+    int lna = 3;
     p = put(line, "l");
     for (k = 0; k < 4; k++) {
       wreg(c, 5, (R05 & ~0xC0u) | k << 6);
@@ -560,7 +581,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     }
     say0(c, line, p);
     for (k = 0; k < 4; k++)
-      if (lr[k] >= lr[lna] + 6) lna = (int)k;
+      if (lr[k] >= lr[lna] + 6) lna = (int)k; /* (3, both, is the stock choice) */
     wreg(c, 5, (R05 & ~0xC0u) | (uint32_t)lna << 6);
   }
 
