@@ -27,7 +27,8 @@ A job is a JSON file: who (the thread, one word), a channel to claim, how long, 
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
-kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console, uv21.mod), turned into one
+kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console, uv21.mod, serial.list, rt950.info,
+rt950.read), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -46,6 +47,12 @@ and the point is that the runner checks everything before it keys. The checks, i
     (uv21.mod: one of the checkout's radios/uv21/mod/*.c with checked -D numbers; the image's
     receive-only filter takes every register write a module makes), the port found by its by-id name (USB numbering moves on reboot); no job argument may
     name a /dev path
+  - the RT-950 Pro's programming cable only through rt950_backup.py's info and read (rt950.info,
+    rt950.read: the CPS handshake and reads, never a write opcode), its port found by the USB ids
+    the job names among the /dev/serial/by-id ports, never the K6 cable (PL2303), the IC-7100, a
+    ttyACM port (Pluto, UV-380) or a port another process has open; the backup itself stays in
+    ~/blowfang-work/private/rt950, the run folder gets its manifest (hashes) only
+  - serial.list opens no port: it lists the by-id ports' USB ids and names, serial numbers masked
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
     channels), each read back; a send only at power 0 (read back first) on 441.850 or 440.850 inside
@@ -108,7 +115,8 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "pluto.fw": 900, "pluto.flash": 900, "kplug.read": 180,
                 "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300,
                 "uv21.mod": 300,
-                "sim.soapyfang": 3600}
+                "sim.soapyfang": 3600,
+                "serial.list": 30, "rt950.info": 60, "rt950.read": 1800}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -684,6 +692,15 @@ def check_step(job, i, step, rs, problems):
                     problems.append(f"{what}: {d!r}: NAME=number or NAME=n1,n2,... (hex or decimal)")
         if step.get("background"):
             problems.append(f"{what}: never in the background")
+    elif do == "serial.list":
+        if args or step.get("background"):
+            problems.append(f"{what}: takes no args, never in the background")
+    elif do in ("rt950.info", "rt950.read"):
+        if not USB_IDS_RE.fullmatch(str(step.get("cable", ""))):
+            problems.append(f"{what}: cable: the programming cable's USB ids, such as 1a86:7523 (serial.list shows them)")
+        check_rt950_args(do, args, what, problems)
+        if step.get("background"):
+            problems.append(f"{what}: never in the background")
     elif do == "kplug.read":
         check_kplug_args(args, what, problems)
         if step.get("background"):
@@ -706,6 +723,139 @@ def check_step(job, i, step, rs, problems):
         check_commit(step, what, problems)
         if args:
             problems.append(f"{what}: takes no args")
+
+
+USB_IDS_RE = re.compile(r"[0-9a-f]{4}:[0-9a-f]{4}")
+RT950_OPTS = {"rt950.info": ("--addr", "--timeout"),
+              "rt950.read": ("--addr", "--timeout", "--block", "--passes", "--cps-regions")}
+RT950_VALUES = {"--addr": ("2", "3"), "--block": ("16", "32", "64", "128"), "--passes": ("2", "3", "4")}
+RT950_NOT = ("067b:",)                       # the K6 / UV-21 cable's PL2303: never the CPS handshake
+
+
+def check_rt950_args(do, args, what, problems):
+    """rt950_backup.py info / read: its own read options only (--addr 3 reads the dump-only image,
+    which the tool refuses unless the radio answers RT950-BACKUPONLY)"""
+    i = 0
+    while i < len(args):
+        k, eq, v = args[i].partition("=")
+        if k not in RT950_OPTS[do]:
+            problems.append(f"{what}: '{args[i]}': only {', '.join(RT950_OPTS[do])}")
+            return
+        if k == "--cps-regions":
+            if eq:
+                problems.append(f"{what}: --cps-regions takes no value")
+            i += 1
+            continue
+        if not eq:
+            if i + 1 >= len(args):
+                problems.append(f"{what}: {k} needs a value")
+                return
+            i, v = i + 1, args[i + 1]
+        i += 1
+        if k in RT950_VALUES and v not in RT950_VALUES[k]:
+            problems.append(f"{what}: {k} {v}: one of {', '.join(RT950_VALUES[k])}")
+        elif k == "--timeout":
+            try:
+                ok = 0.5 <= float(v) <= 10
+            except ValueError:
+                ok = False
+            if not ok:
+                problems.append(f"{what}: --timeout {v}: 0.5..10 s")
+
+
+def usb_info(by_id):
+    """what sysfs says about a /dev/serial/by-id port: its tty, USB ids, maker, product, serial"""
+    dev = os.path.realpath(by_id)
+    usb = os.path.realpath(f"/sys/class/tty/{os.path.basename(dev)}/device")
+    info = {"by_id": os.path.basename(by_id), "dev": dev, "ids": None}
+    for _ in range(4):                  # interface -> device: the first folder with idVendor
+        if os.path.exists(os.path.join(usb, "idVendor")):
+            break
+        usb = os.path.dirname(usb)
+    def rd(n):
+        try:
+            return open(os.path.join(usb, n)).read().strip()
+        except OSError:
+            return None
+    v, p = rd("idVendor"), rd("idProduct")
+    if v and p:
+        info["ids"] = f"{v}:{p}"
+    info.update(manufacturer=rd("manufacturer"), product=rd("product"), serial=rd("serial"))
+    return info
+
+
+def masked(info):
+    """a port's info with its serial number masked (results go to the inbox branch, which is public)"""
+    out = dict(info)
+    ser = out.pop("serial", None)
+    if ser and len(ser) >= 3:
+        for form in (ser, ser.replace(" ", "_")):     # udev's by-id name has _ for spaces
+            out["by_id"] = out["by_id"].replace(form, "<serial>")
+            for k in ("manufacturer", "product"):
+                if out.get(k):
+                    out[k] = out[k].replace(form, "<serial>")
+    out["has_serial"] = bool(ser)
+    return out
+
+
+def serial_ports():
+    return [usb_info(p) for p in sorted(glob.glob("/dev/serial/by-id/*"))]
+
+
+def port_users(dev):
+    """pids that have the tty open (the ones /proc lets us see)"""
+    pids = []
+    for fd_dir in glob.glob("/proc/[0-9]*/fd"):
+        try:
+            for fd in os.listdir(fd_dir):
+                if os.path.realpath(os.path.join(fd_dir, fd)) == dev:
+                    pids.append(int(fd_dir.split("/")[2]))
+                    break
+        except OSError:
+            continue
+    return pids
+
+
+def rt950_cable(ids):
+    """the RT-950 Pro's programming cable: the one by-id port with the USB ids the job names (or
+    $RT950_CABLE), never the K6 cable, the IC-7100, a ttyACM port, or a port someone has open"""
+    if os.environ.get("RT950_CABLE"):
+        hits = [usb_info(os.environ["RT950_CABLE"])]
+    else:
+        hits = [x for x in serial_ports() if x["ids"] == ids]
+    if len({x["dev"] for x in hits}) != 1:
+        raise Refused(f"the RT-950 cable: {len(hits)} by-id ports with USB ids {ids} (want one; serial.list"
+                      " shows them, RT950_CABLE in the unit overrides)")
+    x = hits[0]
+    name = " ".join(str(x.get(k) or "") for k in ("by_id", "manufacturer", "product", "serial")).lower()
+    if os.path.basename(x["dev"]).startswith("ttyACM"):
+        raise Refused(f"the RT-950 cable: {x['dev']} is a ttyACM port (the Pluto, the UV-380), not a cable")
+    if (x["ids"] or "").startswith(RT950_NOT) or "prolific" in name or "pl2303" in name:
+        raise Refused("the RT-950 cable: that is the K6 cable (PL2303); the CPS handshake never goes there")
+    with contextlib.suppress(Refused):
+        if os.path.realpath(k6_cable()) == x["dev"]:
+            raise Refused("the RT-950 cable: that is the K6 cable")
+    if "ic-7100" in name or "icom" in name:
+        raise Refused("the RT-950 cable: that is the IC-7100's port")
+    users = port_users(x["dev"])
+    if users:
+        raise Refused(f"the RT-950 cable: {x['dev']} is open (pid {', '.join(map(str, users))}): not a free cable")
+    return x["dev"]
+
+
+def rt950_private(job_id):
+    """where an RT-950 backup's bytes stay (Radtel's data and the radio's calibration: never git)"""
+    return os.path.join(work(), "private", "rt950", job_id)
+
+
+def serial_list_step(ctx):
+    ports = [masked(x) for x in serial_ports()]
+    put_json(os.path.join(ctx.rd, "ports.json"), ports)
+    for x in ports:
+        ctx.say(f"port {x['by_id']} -> {x['dev']} ids {x['ids']} {x.get('manufacturer') or ''} / {x.get('product') or ''}")
+    if not ports:
+        ctx.say("no /dev/serial/by-id ports")
+    return 0, None
 
 
 KPLUG_OPTS = ("--ident", "--model", "--extra", "--listen-s")
@@ -986,6 +1136,12 @@ def command(job, step, rd):
     if do == "kplug.read":           # the codeplug (channel list) stays on hamlet, out of the run folder
         return [py(), tool("bench_kplug.py"), "read", "--port", k6_cable(), "--out", rd,
                 "--private", os.path.join(work(), "private", "kplug", job["id"])] + args, co, False
+    if do == "rt950.info":
+        return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "info",
+                rt950_cable(step["cable"])] + args, co, False
+    if do == "rt950.read":           # the bytes stay on hamlet; the run folder gets the manifest
+        return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "read",
+                rt950_cable(step["cable"]), rt950_private(job["id"]), "--summary", rd, "-v"] + args, co, False
     if do == "kdh.probe":
         return [py(), tool("uv21_kdh.py"), "probe", "--port", k6_cable(), "--out", rd] + args, co, False
     if do == "kdh.dump":             # the radio's firmware, unique ID and SPI flash stay on hamlet
@@ -1354,6 +1510,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 rc, why = uv380_air_step(ctx, step, env, timeout)
             elif step["do"] == "ic7100.af":
                 rc, why = ic7100_af(ctx, step["level"])
+            elif step["do"] == "serial.list":
+                rc, why = serial_list_step(ctx)
             elif step["do"] == "ic7100.power0":
                 ctx.rig("L", "RFPOWER", "0")
                 p = rig_power(ctx.rig)
@@ -1884,6 +2042,10 @@ def sample_jobs(tmp, co, key):
         ("SoapyFang for an hour", J("bad-soapylong", {"do": "sim.soapyfang", "args": ["--minutes", "60", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=65), False),
         ("SoapyFang on the LAN", J("bad-soapyhost", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--host", "0.0.0.0"]}, freq_mhz="bench", minutes=35), False),
         ("SoapyFang from another source", J("bad-soapysrc", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--source", "soapy:driver=plutosdr"]}, freq_mhz="bench", minutes=35), False),
+        ("list the serial ports", J("ok-ports", {"do": "serial.list"}, freq_mhz="bench"), True),
+        ("RT-950 stock read over its cable", J("ok-rt950", {"do": "rt950.info", "cable": "1a86:7523"}, {"do": "rt950.read", "cable": "1a86:7523", "args": ["--addr", "2", "--passes", "2"]}, freq_mhz="bench"), True),
+        ("RT-950 read with a /dev path for the cable", J("bad-rt950dev", {"do": "rt950.read", "cable": "/dev/ttyUSB1"}, freq_mhz="bench"), False),
+        ("RT-950 with an option the reader doesn't have", J("bad-rt950opt", {"do": "rt950.read", "cable": "1a86:7523", "args": ["--write"]}, freq_mhz="bench"), False),
         ("SoapyFang in the background", J("bad-soapybg", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav], "background": True}, freq_mhz="bench", minutes=35), False),
     ]
 
@@ -1898,6 +2060,7 @@ def inbox_samples():
         ("UV-380 M17 from a branch's module, Pluto capture in the run folder", J("in-m17", {"do": "pluto", "args": ["rx", "run:m.cf32", "--hz", "441900000"], "background": True}, {"do": "uv380.m17", "args": ["bert"]}, freq_mhz=441.850, sources_commit="519e64f"), True),
         ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),
         ("a Pluto flash", J("in-plutoflash", {"do": "pluto.flash", "args": ["job:r.itb", "run:bk"]}), False),
+        ("an RT-950 stock backup read", J("in-rt950", {"do": "serial.list"}, {"do": "rt950.read", "cable": "1a86:7523"}, freq_mhz="bench"), True),
         ("a Pluto RAM boot of a pushed FIT", J("in-ramboot", {"do": "pluto.fw", "args": ["ramboot", "job:r.itb"]}), True),
         ("a K6 module as C source", J("in-c", {"do": "k6.upload", "module": "job:m.c"}), False),
         ("a hamlet path", J("in-path", {"do": "pluto", "args": ["send", "/home/baitisj/blowfang-work/x.wav"]}), False),
