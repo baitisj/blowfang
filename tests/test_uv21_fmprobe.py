@@ -182,7 +182,7 @@ def test_part_7_identifies_the_chip_and_sizes_the_lens():
     assert ret == len(STATIONS) and said[-1].startswith(f"E n={ret} ")
     assert not rda.g[2] & 1 and rda.contention == 0 and (rda.pa, rda.pb) == rda.start
     rep = fp.report(r)
-    assert "expert shape: peak at +0 kHz" in rep and "120 kHz within 10" in rep
+    assert "expert shape: centre +0 kHz" in rep and "120 kHz within 10" in rep
 
 
 @need_clang

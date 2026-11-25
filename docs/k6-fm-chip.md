@@ -73,7 +73,35 @@ header lists them); `FP_CLK` picks the chip's reference if 26 MHz turns out wron
 `tools/k6_fmprobe.py report` reads its log too, and `tests/test_uv21_fmprobe.py` runs both
 parts on an emulated M4 against the same chip model on the UV-21's two ports.
 
-## For SURF
+## Measured on our K6 (2026-11-25, bench run fmp1b, image d583fb8)
+
+The module came over the Pluto upload on 440.850 and ran 177 s, receive only. Station
+frequencies and names are left out here (they place the bench).
+
+| What | Result |
+|---|---|
+| Bus | 0x10, 0x11 and 0x60 all answer; REG 00H = 0x5804 (RDA5807M). Random access through 0x11 works, so the K6 doesn't need the sequential-write shadow |
+| Band sweep | 101 channels (87.9-107.9, 200 kHz) at 150 ms a channel, 15 s; FM_TRUE on 11; the 8 peaks settle at RSSI 57-68 over a floor near 40 |
+| Antenna input | settled RSSI on LNA_PORT_SEL 0/1/2/3: 2 / 35 / 68 / 67. LNAP (Aura's) is right; LNAN is 33 units down; both is no better |
+| Settling | STC in 13 ms; RSSI at 90 % after 220 ms and final after about 360 ms (OE3HBW's 600 ms is safe but slow). A 150 ms quick read gives about 80 % of the settled value, enough to rank channels |
+| Station shape, expert tuning (5 kHz steps, +-200 kHz) | flat to within 3 RSSI units over 185 kHz, centred at +2.5 kHz; 310 kHz wide 10 units down. The 50 MHz expert base is exact (a wrong base would move it by MHz) |
+| Station shape, channel tuning (50 kHz steps) | 40 40 48 52 52 50 48 42 40: the same flat top |
+| Expert sweep 50-115 MHz, 1 MHz steps | tunes the whole range; 50-76 MHz sits at the floor (26-34), the whole MHz points next to broadcast stations come up 10+ |
+| Verbose mode | REG 56H 0xAEC0 doesn't take 0xAEFF until OPEN_MODE (REG 06H = 0x6000) is set, then it does: BLERC/D in REG 10H work |
+| RDS, strongest station (65 s) | 742 groups (11.4 a second, the full rate), every one clean in all four blocks; PI and the name; one 4A clock group |
+| RDS, others | a station at RSSI 62: 227 groups, 134 fully clean; its two 4A groups were garbage (hour 26, dates decades off) and both carried BLER 1-2 in C or D, so verbose mode is what rejects them. Two stations at 57 and 65 gave no RDS (likely none sent) |
+| The clock | the clean 4A said 03:09 UTC, offset -8 h, while the serial log stamped it about 2 minutes earlier (log time is good to about 30 s here): this station's RDS clock runs about 2 min fast. A clock module must take CT only with BLER 0 and should compare stations |
+
+### What it means for SURF
+
+The chip's RSSI is flat across about +-90 kHz of a station and falls off over the next 60 kHz,
+so it can't resolve anything inside a station: a lens bin finer than about 50 kHz reads the same
+number as its neighbour. A broadcast lens of +-100 kHz (the operator's suggestion) with 50 kHz bins shows a
+station's top and both edges; outer bins every 100 or 200 kHz are the band. Reads every 150 ms
+(quick) and 250 ms (about 94 %) put a full 101-channel band at 15-25 s; the K6's FD6818 stays on
+its own frequency meanwhile.
+
+## For SURF (before the measurement)
 
 Broadcast stations are 200 kHz wide (+-75 kHz deviation plus the subcarriers), so the FD6818
 SURF's +-20 kHz lens would sit inside one station. A broadcast lens of about +-100 kHz with outer

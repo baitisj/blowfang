@@ -173,14 +173,16 @@ def report(r, par=None):
     if r.get("h"):
         w3 = width(r["h"], par["shape_khz"], 3)
         w10 = width(r["h"], par["shape_khz"], 10)
-        centre = (w3[1] - par["shape_n"]) * par["shape_khz"]
-        out.append(f"expert shape: peak at {centre:+d} kHz, {w3[0]} kHz within 3, {w10[0]} kHz within 10")
+        top = [i for i, v in enumerate(r["h"]) if v >= max(r["h"]) - 3]
+        centre = ((top[0] + top[-1]) / 2 - par["shape_n"]) * par["shape_khz"]
+        out.append(f"expert shape: centre {centre:+g} kHz, {w3[0]} kHz within 3, {w10[0]} kHz within 10")
     if r.get("k"):
         out.append(f"channel shape (50 kHz steps, -200..+200): {r['k']}")
     if r.get("x"):
         x = r["x"]
-        band = [par["ex_lo"] + i for i, v in enumerate(x) if v >= max(x) - 20]
-        out.append(f"expert sweep {par['ex_lo']}-{par['ex_hi']} MHz: loud at {band} MHz")
+        floor = sorted(x)[len(x) // 4]
+        band = [par["ex_lo"] + i for i, v in enumerate(x) if v >= floor + 10]
+        out.append(f"expert sweep {par['ex_lo']}-{par['ex_hi']} MHz: floor {floor}, 10 over it at {band} MHz")
     if "verbose" in r:
         out.append(f"verbose (REG 0x56): {r['verbose']}")
     for f, d in r["rds"].items():
@@ -189,6 +191,10 @@ def report(r, par=None):
     for g in r["groups"].values():
         out.append(f"  groups {g}")
     for ct in r["ct"]:
+        if ct["hh"] > 23 or ct["mm"] > 59 or ct["e"] != "0000":
+            out.append(f"clock {ct['khz'] / 1000:.1f}: mjd {ct['mjd']} {ct['hh']}:{ct['mm']:02d} BLER {ct['e']}"
+                       " (errored or impossible: not a time)")
+            continue
         d = mjd_date(ct["mjd"])
         utc = datetime.datetime(d.year, d.month, d.day, ct["hh"], ct["mm"], tzinfo=datetime.timezone.utc)
         line = f"clock {ct['khz'] / 1000:.1f}: {utc:%Y-%m-%d %H:%M} UTC, offset {ct['off'] / 2:+g} h, BLER {ct['e']}"
