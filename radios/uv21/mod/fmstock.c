@@ -21,7 +21,7 @@
    first holds PA3 low for n ms with both bus pins driven low, a clean power cycle if PA3 is the
    chip's supply ("p off done"). FT_BK33_HIZ m ORs m into the BK4829's REG_33 first (bit 8 + n
    turns GPIOn's output off; the port writes 0x9000, driving GPIO0, 1 and 6 low, while stock never
-   sets them), FT_BK37 v sets REG_37 (stock RX: 0x9F1F); "b" / "B" show REG_33-35 and 37 before
+   sets them; FT_BK33_CLR m clears m first, so outputs can be turned on and driven), FT_BK37 v sets REG_37 (stock RX: 0x9F1F); "b" / "B" show REG_33-35 and 37 before
    and after, and both go back at the end unless FT_BK_KEEP 1. FT_PLAY_S n: after
    the tune, unmute at volume FT_VOL (3 of 15) with the amplifier (PB2) on for n seconds,
    the BK4829's audio muted (REG_47 = 0x6042, as the stock FM app expects; FT_BK 0 leaves it, FT_BK 2
@@ -75,6 +75,9 @@
 #endif
 #ifndef FT_BK33_HIZ /* REG_33 bits ORed in first: GPIOn's output off (bit 8 + n) */
 #define FT_BK33_HIZ 0
+#endif
+#ifndef FT_BK33_CLR /* REG_33 bits cleared first, before FT_BK33_HIZ is ORed in */
+#define FT_BK33_CLR 0
 #endif
 #ifndef FT_BK37 /* a REG_37 value to set first (0: none); stock RX and FM keep 0x9F1F */
 #define FT_BK37 0
@@ -208,7 +211,7 @@ static int rn(const um_api_t *a, uint32_t r, uint16_t *w, int n) {
   return ok;
 }
 
-#if FT_BK33_HIZ || FT_BK37
+#if FT_BK33_HIZ || FT_BK33_CLR || FT_BK37
 /* "b 33=.... 34=.... 35=.... 37=....": the BK4829's GPIO and power registers */
 static void bkregs(const um_api_t *a, char t) {
   static const uint8_t rs[] = {0x33, 0x34, 0x35, 0x37};
@@ -331,11 +334,15 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   char line[48], *p;
   (void)ram;
   (void)ram_len;
-#if FT_BK33_HIZ || FT_BK37
+#if FT_BK33_HIZ || FT_BK33_CLR || FT_BK37
   uint32_t b33 = api->fd_read(0x33), b37 = api->fd_read(0x37);
   bkregs(api, 'b');
-  if (FT_BK33_HIZ) api->fd_write(0x33, b33 | FT_BK33_HIZ);
-  if (FT_BK37) api->fd_write(0x37, FT_BK37);
+#if FT_BK33_HIZ || FT_BK33_CLR
+  api->fd_write(0x33, (b33 & ~(uint32_t)FT_BK33_CLR) | FT_BK33_HIZ);
+#endif
+#if FT_BK37
+  api->fd_write(0x37, FT_BK37);
+#endif
   us(api, 200000);
   bkregs(api, 'B');
 #endif
@@ -505,7 +512,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   }
 #endif
   w16(api, 0x02, 0x8060); /* the stock power-down */
-#if (FT_BK33_HIZ || FT_BK37) && !FT_BK_KEEP
+#if (FT_BK33_HIZ || FT_BK33_CLR || FT_BK37) && !FT_BK_KEEP
   api->fd_write(0x33, b33);
   api->fd_write(0x37, b37);
 #endif
