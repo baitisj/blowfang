@@ -41,6 +41,7 @@
      FP_EX_LO, FP_EX_HI           expert sweep, MHz (50, 115)
      FP_RDS1_S     RDS listen on the strongest station (60; a clock group comes once a minute)
      FP_RDS_S, FP_NRDS            listen on the next FP_NRDS - 1 stations (20, 1)
+     FP_NEWM       REG 02H NEW_METHOD, as on the K6 (1; the stock firmware leaves it 0)
      FP_HIDDEN     0 skips the stock writes to the unlisted registers 12H-43H (1)
      FP_PART       what runs besides the sweep and its peaks, a sum of: 1 the address scan, the
                    raw reads and the register dumps; 2 LNA ports, settling and the 50 kHz shape;
@@ -95,6 +96,9 @@
 #ifndef FP_PART
 #define FP_PART 7
 #endif
+#ifndef FP_NEWM /* REG 02H NEW_METHOD (bit 2), as the K6's probe (and Aura) set it; stock doesn't */
+#define FP_NEWM 1
+#endif
 #ifndef FP_HIDDEN /* 0 leaves out the stock writes to registers 12H-43H the public sheet doesn't list */
 #define FP_HIDDEN 1
 #endif
@@ -135,7 +139,7 @@
 
 /* the stock firmware's setup (hamlet's read of the stock image, 2026-11-25), muted: 02 has DMUTE
    0 instead of 1 and RDS_EN added, 05 has volume 0 instead of 15 */
-#define R02_ON (0x8009u | (FP_CLK << 4)) /* DHIZ, DMUTE 0 (muted), CLK_MODE, RDS_EN, ENABLE */
+#define R02_ON (0x8009u | (FP_CLK << 4) | (FP_NEWM ? 4u : 0)) /* DHIZ, DMUTE 0 (muted), CLK_MODE, RDS_EN, NEW_METHOD, ENABLE */
 #define R02_RDS 0x0008u
 #define R05 0x00E0u   /* SEEKTH 0, LNA_PORT_SEL 11 (both, stock), LNA current 10, volume 0 */
 #define R07 0x0202u   /* stock */
