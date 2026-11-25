@@ -18,13 +18,15 @@
    the way the stock firmware holds it (purpose unknown: the port leaves it alone; perhaps the
    chip's supply or clock), says "p cfgr=.. idt=..", waits FT_PA3_MS (100), and puts it back at
    the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). FT_PLAY_S n: after
-   the tune, unmute at volume FT_VOL (3 of 15) with the amplifier (PB2) on for n seconds, so a
+   the tune, unmute at volume FT_VOL (3 of 15) with the amplifier (PB2) on for n seconds,
+   the BK4829's audio muted (REG_47 = 0x6042, as the stock FM app expects; FT_BK 0 leaves it, FT_BK 2
+   also turns the BK4829 off, REG_30 = 0, for the second half, cyan "PLAY 2"; both go back after), so a
    person at the radio can hear whether the chip receives at all even if reads fail; "play on" /
    "play off" mark it, and PB2 goes back to what it was. FT_KEY_S n: before playing, turn the
    backlight on (PF7) and wait up to n seconds for the top side key (it grounds row PC14),
    saying "key wait" and then "key" or "key timeout" (no play). The person at the radio sees
    where it is (the operator, 11-25: "more visual confirmation"): the screen turns yellow, "PRESS
-   TOP KEY" over the seconds left, with the flashlight (PB7) blinking; green "PLAYING" and the
+   TOP KEY" over the seconds left, with the flashlight (PB7) blinking; green "PLAY 1" and the
    station over the seconds left, flashlight steady; then blue "DONE" (red "NO KEY" on a timeout)
    for FT_DONE_S (5) seconds. The backlight stays on (SURF's own timer takes it from there) and
    the flashlight goes back to what it was. The screen is drawn straight on SPI2 (ST7735S: CS
@@ -57,8 +59,11 @@
 #ifndef FT_VOL
 #define FT_VOL 3
 #endif
-#if FT_VOL > 8
-#error "FT_VOL: 0-8 (of 15)"
+#if FT_VOL > 15
+#error "FT_VOL: 0-15"
+#endif
+#ifndef FT_BK
+#define FT_BK 1 /* 1: BK4829 audio muted while playing; 2: also the BK4829 off for the second half */
 #endif
 #ifndef FT_PA3_KEEP
 #define FT_PA3_KEEP 0
@@ -225,6 +230,7 @@ static void regs(const um_api_t *a, char t) {
 #define RED 0xF800u
 #define GREEN 0x07E0u
 #define YELLOW 0xFFE0u
+#define CYAN 0x07FFu
 #define BLACK 0x0000u
 #define WHITE 0xFFFFu
 
@@ -296,6 +302,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   (void)ram_len;
 #if FT_PA3
   {
+#if !FT_KEY_S
     uint32_t c3 = (cfa >> 6) & 3u, o3 = (oma >> 3) & 1u, p3 = (pua >> 6) & 3u, d3 = (oda >> 3) & 1u;
     p = um_put(line, "p mode=");
     *p++ = (char)('0' + c3);
@@ -309,6 +316,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     *p++ = (char)('0' + ((rd(GPIOA + G_IDT) >> 3) & 1u));
     *p = 0;
     api->say(line);
+#endif
     wr(GPIOA + G_SCR, 1u << 3);
     wr(GPIOA + G_OMODE, (oma & ~(1u << 3)));
     wr(GPIOA + G_CFGR, (cfa & ~(3u << 6)) | (1u << 6));
@@ -395,8 +403,13 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     *p++ = '.';
     *p++ = (char)('0' + FT_KHZ / 100 % 10);
     *p = 0;
-    screen(GREEN, BLACK, "PLAYING", st);
+    screen(GREEN, BLACK, "PLAY 1", st);
     light(1);
+#endif
+#if FT_BK
+    {
+      uint32_t r47 = api->fd_read(0x47), r30 = api->fd_read(0x30);
+      api->fd_write(0x47, 0x6042); /* the BK4829's audio muted, as the stock FM app expects */
 #endif
     w16(api, 0x05, 0x00E0 | FT_VOL);
     w16(api, 0x02, 0xC061); /* stock: unmuted */
@@ -404,8 +417,16 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 4)) | (1u << 4));
     api->say("play on");
     for (i = 0; i < FT_PLAY_S; i++) {
+#if FT_BK == 2
+      if (i == FT_PLAY_S / 2) {
+        api->fd_write(0x30, 0); /* the BK4829 off */
 #if FT_KEY_S
-      count(GREEN, BLACK, FT_PLAY_S - i);
+        screen(CYAN, BLACK, "PLAY 2", st);
+#endif
+      }
+#endif
+#if FT_KEY_S
+      count(FT_BK == 2 && i >= FT_PLAY_S / 2 ? CYAN : GREEN, BLACK, FT_PLAY_S - i);
 #endif
       us(api, 1000000);
     }
@@ -413,6 +434,11 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     w16(api, 0x02, 0x8061);
     wr(GPIOB + (pb2 ? G_SCR : G_CLR), 4u);
     wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 4)) | cf2);
+#if FT_BK
+      api->fd_write(0x30, r30);
+      api->fd_write(0x47, r47);
+    }
+#endif
     api->say("play off");
 #if FT_KEY_S
     light(0);
