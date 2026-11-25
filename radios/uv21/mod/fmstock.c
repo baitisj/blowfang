@@ -16,7 +16,10 @@
    Settings: FT_INIT 0 skips the setup; FT_KHZ, FT_WAIT_MS (300); FT_PA3 1 first drives PA3 high
    the way the stock firmware holds it (purpose unknown: the port leaves it alone; perhaps the
    chip's supply or clock), says "p cfgr=.. idt=..", waits FT_PA3_MS (100), and puts it back at
-   the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). Returns 0x0B after the tune.
+   the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). FT_PLAY_S n: after
+   the tune, unmute at volume FT_VOL (3 of 15) with the amplifier (PB2) on for n seconds, so a
+   person at the radio can hear whether the chip receives at all even if reads fail; "play on" /
+   "play off" mark it, and PB2 goes back to what it was. Returns 0x0B after the tune.
    At the end the chip is powered down (02H = 0x8060, the stock power-down) and both pins put
    back as they were. SPDX-License-Identifier: MIT */
 #include "uv21_mod.h"
@@ -29,6 +32,15 @@
 #endif
 #ifndef FT_PA3
 #define FT_PA3 0
+#endif
+#ifndef FT_PLAY_S
+#define FT_PLAY_S 0
+#endif
+#ifndef FT_VOL
+#define FT_VOL 3
+#endif
+#if FT_VOL > 8
+#error "FT_VOL: 0-8 (of 15)"
 #endif
 #ifndef FT_PA3_KEEP
 #define FT_PA3_KEEP 0
@@ -255,6 +267,22 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   p = um_hex(um_put(p, " 0a="), w[0], 4);
   um_hex(um_put(p, " 0b="), w[1], 4);
   api->say(line);
+#if FT_PLAY_S
+  {
+    uint32_t pb2 = rd(GPIOB + G_ODT) & 4u, cf2 = rd(GPIOB + G_CFGR) & (3u << 4);
+    w16(api, 0x05, 0x00E0 | FT_VOL);
+    w16(api, 0x02, 0xC061); /* stock: unmuted */
+    wr(GPIOB + G_SCR, 4u);
+    wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 4)) | (1u << 4));
+    api->say("play on");
+    for (i = 0; i < FT_PLAY_S; i++) us(api, 1000000);
+    w16(api, 0x05, 0x00E0);
+    w16(api, 0x02, 0x8061);
+    wr(GPIOB + (pb2 ? G_SCR : G_CLR), 4u);
+    wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~(3u << 4)) | cf2);
+    api->say("play off");
+  }
+#endif
   w16(api, 0x02, 0x8060); /* the stock power-down */
 
   /* the pins back as they were */
