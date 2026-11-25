@@ -13,7 +13,10 @@
      r00 ffff ffff ...                     REG 00H-1FH one at a time, 8 a line, before (r) and after (R)
      S 0a=4000 0b=1800                     the status read after the stock setup (muted)
      T 100.100 0a=.... 0b=....             after a tune to FT_KHZ (default 100.1 MHz), FT_WAIT_MS later
-   Settings: FT_INIT 0 skips the setup; FT_KHZ, FT_WAIT_MS (300). Returns 0x0B after the tune.
+   Settings: FT_INIT 0 skips the setup; FT_KHZ, FT_WAIT_MS (300); FT_PA3 1 first drives PA3 high
+   the way the stock firmware holds it (purpose unknown: the port leaves it alone; perhaps the
+   chip's supply or clock), says "p cfgr=.. idt=..", waits FT_PA3_MS (100), and puts it back at
+   the end. Returns 0x0B after the tune.
    At the end the chip is powered down (02H = 0x8060, the stock power-down) and both pins put
    back as they were. SPDX-License-Identifier: MIT */
 #include "uv21_mod.h"
@@ -23,6 +26,12 @@
 #endif
 #ifndef FT_KHZ
 #define FT_KHZ 100100
+#endif
+#ifndef FT_PA3
+#define FT_PA3 0
+#endif
+#ifndef FT_PA3_MS
+#define FT_PA3_MS 100
 #endif
 #ifndef FT_WAIT_MS
 #define FT_WAIT_MS 300
@@ -178,6 +187,27 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   char line[48], *p;
   (void)ram;
   (void)ram_len;
+#if FT_PA3
+  {
+    uint32_t c3 = (cfa >> 6) & 3u, o3 = (oma >> 3) & 1u, p3 = (pua >> 6) & 3u, d3 = (oda >> 3) & 1u;
+    p = um_put(line, "p mode=");
+    *p++ = (char)('0' + c3);
+    p = um_put(p, " od=");
+    *p++ = (char)('0' + o3);
+    p = um_put(p, " pull=");
+    *p++ = (char)('0' + p3);
+    p = um_put(p, " out=");
+    *p++ = (char)('0' + d3);
+    p = um_put(p, " in=");
+    *p++ = (char)('0' + ((rd(GPIOA + G_IDT) >> 3) & 1u));
+    *p = 0;
+    api->say(line);
+    wr(GPIOA + G_SCR, 1u << 3);
+    wr(GPIOA + G_OMODE, (oma & ~(1u << 3)));
+    wr(GPIOA + G_CFGR, (cfa & ~(3u << 6)) | (1u << 6));
+    us(api, FT_PA3_MS * 1000u);
+  }
+#endif
   /* the stock pin setup: both push-pull outputs, low; SDA's pull-up for its input phases */
   scl(0);
   sda(0);
@@ -225,7 +255,13 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   w16(api, 0x02, 0x8060); /* the stock power-down */
 
   /* the pins back as they were */
+#if FT_PA3
+  wr(GPIOA + G_CFGR, (rd(GPIOA + G_CFGR) & ~(MSCL | (3u << 6))) | (cfa & (MSCL | (3u << 6))));
+  wr(GPIOA + G_OMODE, (rd(GPIOA + G_OMODE) & ~(1u << 3)) | (oma & (1u << 3)));
+  wr(GPIOA + ((oda >> 3) & 1u ? G_SCR : G_CLR), 1u << 3);
+#else
   wr(GPIOA + G_CFGR, (rd(GPIOA + G_CFGR) & ~MSCL) | (cfa & MSCL));
+#endif
   wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~MSDA) | (cfb & MSDA));
   wr(GPIOA + G_OMODE, (rd(GPIOA + G_OMODE) & ~SCL) | (oma & SCL));
   wr(GPIOB + G_OMODE, (rd(GPIOB + G_OMODE) & ~SDA) | (omb & SDA));
