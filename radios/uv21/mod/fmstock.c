@@ -19,7 +19,10 @@
    chip's supply or clock), says "p cfgr=.. idt=..", waits FT_PA3_MS (100), and puts it back at
    the end (FT_PA3_KEEP 1 leaves it high, the stock state, for the next run). FT_PA3_OFF_MS n
    first holds PA3 low for n ms with both bus pins driven low, a clean power cycle if PA3 is the
-   chip's supply ("p off done"). FT_PLAY_S n: after
+   chip's supply ("p off done"). FT_BK33_HIZ m ORs m into the BK4829's REG_33 first (bit 8 + n
+   turns GPIOn's output off; the port writes 0x9000, driving GPIO0, 1 and 6 low, while stock never
+   sets them), FT_BK37 v sets REG_37 (stock RX: 0x9F1F); "b" / "B" show REG_33-35 and 37 before
+   and after, and both go back at the end unless FT_BK_KEEP 1. FT_PLAY_S n: after
    the tune, unmute at volume FT_VOL (3 of 15) with the amplifier (PB2) on for n seconds,
    the BK4829's audio muted (REG_47 = 0x6042, as the stock FM app expects; FT_BK 0 leaves it, FT_BK 2
    also turns the BK4829 off, REG_30 = 0, for the second half, cyan "PLAY 2"; both go back after), so a
@@ -69,6 +72,15 @@
 #endif
 #ifndef FT_PA3_KEEP
 #define FT_PA3_KEEP 0
+#endif
+#ifndef FT_BK33_HIZ /* REG_33 bits ORed in first: GPIOn's output off (bit 8 + n) */
+#define FT_BK33_HIZ 0
+#endif
+#ifndef FT_BK37 /* a REG_37 value to set first (0: none); stock RX and FM keep 0x9F1F */
+#define FT_BK37 0
+#endif
+#ifndef FT_BK_KEEP /* 1 leaves them so after the run */
+#define FT_BK_KEEP 0
 #endif
 #ifndef FT_PA3_OFF_MS
 #define FT_PA3_OFF_MS 0
@@ -196,6 +208,20 @@ static int rn(const um_api_t *a, uint32_t r, uint16_t *w, int n) {
   return ok;
 }
 
+#if FT_BK33_HIZ || FT_BK37
+/* "b 33=.... 34=.... 35=.... 37=....": the BK4829's GPIO and power registers */
+static void bkregs(const um_api_t *a, char t) {
+  static const uint8_t rs[] = {0x33, 0x34, 0x35, 0x37};
+  char line[48], *p = line;
+  uint32_t k;
+  *p++ = t;
+  for (k = 0; k < sizeof rs; k++) {
+    p = um_hex(um_put(p, " "), rs[k], 2);
+    p = um_hex(um_put(p, "="), a->fd_read(rs[k]), 4);
+  }
+  a->say(line);
+}
+#endif
 static void status(const um_api_t *a, const char *tag) {
   uint16_t w[2];
   char line[48], *p;
@@ -305,6 +331,14 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   char line[48], *p;
   (void)ram;
   (void)ram_len;
+#if FT_BK33_HIZ || FT_BK37
+  uint32_t b33 = api->fd_read(0x33), b37 = api->fd_read(0x37);
+  bkregs(api, 'b');
+  if (FT_BK33_HIZ) api->fd_write(0x33, b33 | FT_BK33_HIZ);
+  if (FT_BK37) api->fd_write(0x37, FT_BK37);
+  us(api, 200000);
+  bkregs(api, 'B');
+#endif
 #if FT_PA3
   {
 #if !FT_KEY_S
@@ -471,6 +505,10 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   }
 #endif
   w16(api, 0x02, 0x8060); /* the stock power-down */
+#if (FT_BK33_HIZ || FT_BK37) && !FT_BK_KEEP
+  api->fd_write(0x33, b33);
+  api->fd_write(0x37, b37);
+#endif
 
   /* the pins back as they were */
 #if FT_PA3 && !FT_PA3_KEEP
