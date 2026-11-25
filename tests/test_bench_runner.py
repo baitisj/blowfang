@@ -885,3 +885,75 @@ def test_rt950_compare_against_stage_a(work):
     assert argv[3] == os.path.join(str(work), "private", "rt950", "r0", "cps64k.bin") and argv[-1] == "--keys"
     assert br.check_job(job("c", {"do": "rt950.compare", "backup": "r1", "against": "r0", "args": ["--keys"]},
                             freq_mhz="bench")) == []
+
+
+# ---- the RT-950 Pro's .BTF files and the upload ----
+
+@pytest.fixture
+def rt950_tree(work, monkeypatch):
+    jm = work / "rt950" / "jm" / "tools"
+    jm.mkdir(parents=True)
+    (jm / "firmware_upload.py").write_text("")
+    for d in ("stock", "ci-image"):
+        (work / "rt950" / d).mkdir()
+    calls = []
+
+    def fake_run(ctx, argv, cwd, timeout, env):
+        calls.append(argv[2:])
+        if argv[2] == "verify":
+            return (0 if "GOOD" in argv[3] else 1), None
+        return 0, None
+    monkeypatch.setattr(br, "run_proc", fake_run)
+    return work / "rt950", calls
+
+
+def test_rt950_flash_checked_and_local_only(work):
+    ok = {"do": "rt950.flash", "image": "ci-image/rt950-backup-only.BTF", "sha256": "a" * 64, "cable": "1a86:7523"}
+    assert br.check_job(job("f", ok, freq_mhz="bench")) == []
+    assert br.check_job(job("f", dict(ok, args=["--ptt"]), freq_mhz="bench")) == []
+    for bad in (dict(ok, image="../../x.BTF"), dict(ok, image="stock/x.bin"), dict(ok, sha256="abc"),
+                dict(ok, cable="/dev/ttyUSB3"), dict(ok, args=["--force"]), dict(ok, background=True)):
+        assert problems(job("f", bad, freq_mhz="bench")), bad
+    bi = pytest.importorskip("bench_inbox")
+    assert any("local submit" in p for p in bi.remote_rules(job("f", ok, freq_mhz="bench")))
+
+
+def test_rt950_dump_image_needs_a_way_back(work, rt950_tree, ports):
+    root, calls = rt950_tree
+    img = root / "ci-image" / "rt950-backup-only.BTF"
+    img.write_bytes(b"dump")
+    step = {"do": "rt950.flash", "image": "ci-image/rt950-backup-only.BTF", "sha256": br.sha256(str(img)),
+            "cable": "1a86:7523", "args": ["--ptt"]}
+    ctx = br.Ctx(job("f", freq_mhz="bench"), str(work / "rd"), rig=lambda *a: "0")
+    with pytest.raises(br.Refused, match="no way back"):
+        br.rt950_flash_step(ctx, step, {}, 60)
+    (root / "stock" / "RT_950Pro_BAD.BTF").write_bytes(b"x")
+    with pytest.raises(br.Refused, match="no way back"):
+        br.rt950_flash_step(ctx, step, {}, 60)
+    (root / "stock" / "RT_950Pro_GOOD.BTF").write_bytes(b"y")
+    assert br.rt950_flash_step(ctx, step, {}, 60) == (0, None)
+    assert calls[-1] == ["upload", "/dev/ttyUSB1", str(img), "--ptt"]
+    with pytest.raises(br.Refused, match="sha256"):
+        br.rt950_flash_step(ctx, dict(step, sha256="b" * 64), {}, 60)
+
+
+def test_rt950_stock_image_must_verify(work, rt950_tree, ports):
+    root, calls = rt950_tree
+    bad = root / "stock" / "RT_950Pro_BAD.BTF"
+    bad.write_bytes(b"x")
+    ctx = br.Ctx(job("f", freq_mhz="bench"), str(work / "rd"), rig=lambda *a: "0")
+    step = {"do": "rt950.flash", "image": "stock/RT_950Pro_BAD.BTF", "sha256": br.sha256(str(bad)), "cable": "1a86:7523"}
+    with pytest.raises(br.Refused, match="verify"):
+        br.rt950_flash_step(ctx, step, {}, 60)
+    assert not any(c[0] == "upload" for c in calls)
+
+
+def test_rt950_files_lists_hashes_and_verifies_stock(work, rt950_tree):
+    root, calls = rt950_tree
+    (root / "stock" / "RT_950Pro_GOOD.BTF").write_bytes(b"y")
+    (root / "ci-image" / "rt950-backup-only.BTF").write_bytes(b"dump")
+    ctx = br.Ctx(job("l", freq_mhz="bench"), str(work / "rd"), rig=lambda *a: "0")
+    assert br.rt950_files_step(ctx, {}) == (0, None)
+    got = json.loads((work / "rd" / "rt950-files.json").read_text())
+    assert [g["file"] for g in got] == ["stock/RT_950Pro_GOOD.BTF", "ci-image/rt950-backup-only.BTF"]
+    assert got[0]["verify_rc"] == 0 and "verify_rc" not in got[1]

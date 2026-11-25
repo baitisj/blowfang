@@ -67,7 +67,8 @@ RETURN_JOB_MAX = 40 << 20
 LOG_MAX = 512 << 10
 KEEP_WORKTREES = 6                 # inbox-* / src-* worktrees kept beside the ones in use
 FINAL = ("done", "failed", "refused", "cancelled")
-REMOTE_NO_STEPS = ("k6.install", "k6.flash", "k6.update", "uv380.flash", "pluto.flash", "kdh.flash")
+REMOTE_NO_STEPS = ("k6.install", "k6.flash", "k6.update", "uv380.flash", "pluto.flash", "kdh.flash",
+                   "rt950.flash")
 SOURCES_STEPS = ("uv380.send", "uv380.m17", "uv380.ysf", "uv380.voice", "uv380.sotto", "uv380.rx", "uv21.mod")
 PATH_FIELDS = ("bundle", "image", "module", "radio_tool")
 RUNNER_FILES = ("bench_runner.py", "bench_inbox.py", "k6_bench.py", "k6-reset-trigger.sh")
