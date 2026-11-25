@@ -43,6 +43,7 @@
      FP_RDS_S, FP_NRDS            listen on the next FP_NRDS - 1 stations (20, 1)
      FP_NEWM       REG 02H NEW_METHOD, as on the K6 (1; the stock firmware leaves it 0)
      FP_INTMODE    REG 05H INT_MODE (1; stock 0, where RDSR is a 5 ms pulse the RDS poll misses)
+     FP_R04        a value for REG 04H (unset: not written, as stock)
      FP_HIDDEN     0 skips the stock writes to the unlisted registers 12H-43H (1)
      FP_PART       what runs besides the sweep and its peaks, a sum of: 1 the address scan, the
                    raw reads and the register dumps; 2 LNA ports, settling and the 50 kHz shape;
@@ -513,6 +514,9 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     api->delay_us(10000);
     wreg(c, 5, R05);
     wreg(c, 7, R07);
+#ifdef FP_R04
+    wreg(c, 4, FP_R04); /* REG 04H, which stock leaves at reset (the K6 runs 0x0400) */
+#endif
 #if FP_HIDDEN
     rwr(c, 0x12, 0x8660);
     rwr(c, 0x16, 0x4400);
