@@ -42,6 +42,7 @@
      FP_RDS1_S     RDS listen on the strongest station (60; a clock group comes once a minute)
      FP_RDS_S, FP_NRDS            listen on the next FP_NRDS - 1 stations (20, 1)
      FP_NEWM       REG 02H NEW_METHOD, as on the K6 (1; the stock firmware leaves it 0)
+     FP_INTMODE    REG 05H INT_MODE (1; stock 0, where RDSR is a 5 ms pulse the RDS poll misses)
      FP_HIDDEN     0 skips the stock writes to the unlisted registers 12H-43H (1)
      FP_PART       what runs besides the sweep and its peaks, a sum of: 1 the address scan, the
                    raw reads and the register dumps; 2 LNA ports, settling and the 50 kHz shape;
@@ -102,6 +103,10 @@
 #ifndef FP_HIDDEN /* 0 leaves out the stock writes to registers 12H-43H the public sheet doesn't list */
 #define FP_HIDDEN 1
 #endif
+#ifndef FP_INTMODE /* REG 05H INT_MODE (bit 15): 1 holds RDSR until the blocks are read, as the K6 runs it;
+                      stock leaves it 0, where RDSR is a 5 ms pulse a poll mostly misses */
+#define FP_INTMODE 1
+#endif
 #ifndef FP_ADDR
 #define FP_ADDR 0x30
 #endif
@@ -141,7 +146,7 @@
    0 instead of 1 and RDS_EN added, 05 has volume 0 instead of 15 */
 #define R02_ON (0x8009u | (FP_CLK << 4) | (FP_NEWM ? 4u : 0)) /* DHIZ, DMUTE 0 (muted), CLK_MODE, RDS_EN, NEW_METHOD, ENABLE */
 #define R02_RDS 0x0008u
-#define R05 0x00E0u   /* SEEKTH 0, LNA_PORT_SEL 11 (both, stock), LNA current 10, volume 0 */
+#define R05 (0x00E0u | (FP_INTMODE ? 0x8000u : 0)) /* stock (SEEKTH 0, both LNA inputs, LNA current 10) at volume 0, + INT_MODE */
 #define R07 0x0202u   /* stock */
 #define BAND_W 2u
 #define BAND_S 3u
@@ -342,7 +347,7 @@ static void dump(ctx_t *c, char t) {
 static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
   uint16_t w[6], ps[4], cand[4], last[3] = {0, 0, 0};
   uint8_t gt[32], conf = 0;
-  uint32_t g = 0, ok = 0, ab = 0, ss = 0, t0, i, prev = 0, pi = 0, r;
+  uint32_t g = 0, ok = 0, ab = 0, pl = 0, sy = 0, t0, i, prev = 0, pi = 0, r;
   char line[64], *p;
   for (i = 0; i < 32; i++) gt[i] = 0;
   for (i = 0; i < 4; i++) ps[i] = cand[i] = 0x2020;
@@ -355,6 +360,8 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
     uint32_t e, rdy, ty;
     c->a->delay_us(5000);
     seqrd(c, w, 6);
+    pl++;
+    if (w[0] & 0x1000u) sy++; /* RDSS on any poll: the decoder in sync, groups seen or not */
     rdy = w[0] >> 15;
     if (!rdy || prev) {
       prev = rdy;
@@ -362,7 +369,6 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
     }
     prev = 1;
     g++;
-    if (w[0] & 0x1000u) ss++;
     e = (uint32_t)(w[1] & 15u) << 4;
     if (verbose) {
       int32_t v = rreg(c, 0x10);
@@ -401,7 +407,8 @@ static void rds(ctx_t *c, uint32_t ch, uint32_t secs, int verbose) {
   p = dec(put(p, " g"), (int32_t)g);
   p = dec(put(p, " ok"), (int32_t)ok);
   p = dec(put(p, " ab"), (int32_t)ab);
-  say0(c, line, dec(put(p, " ss"), (int32_t)ss));
+  p = dec(put(p, " pl"), (int32_t)pl);
+  say0(c, line, dec(put(p, " sy"), (int32_t)sy));
   p = put(line, "g");
   for (i = 0; i < 32 && p < line + 52; i++)
     if (gt[i]) {
