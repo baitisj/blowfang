@@ -115,7 +115,7 @@
 static uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
 
-static void us(const um_api_t *a, uint32_t n) { a->delay_us(n); }
+static void us(const um_api_t *a, uint32_t n) { um_wait_us(a, n); }
 static void scl(int h) { wr(GPIOA + (h ? G_SCR : G_CLR), SCL); }
 static void sda(int h) { wr(GPIOB + (h ? G_SCR : G_CLR), SDA); }
 static void sda_out(void) { wr(GPIOB + G_CFGR, (rd(GPIOB + G_CFGR) & ~MSDA) | (1u << 12)); }

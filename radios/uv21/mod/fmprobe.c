@@ -306,7 +306,7 @@ static __attribute__((unused)) void tune_ex(ctx_t *c, uint32_t k) {
 /* wait ms, then RSSI (bits 6..0) with FM_TRUE in bit 7 and stereo in bit 8 */
 static uint32_t look(ctx_t *c, uint32_t ms) {
   uint16_t w[2];
-  c->a->delay_us(ms * 1000u);
+  um_wait_us(c->a, ms * 1000u);
   seqrd(c, w, 2);
   return (uint32_t)(w[1] >> 9) | (w[1] & 0x100u ? 0x80u : 0) | (w[0] & 0x400u ? 0x100u : 0);
 }
