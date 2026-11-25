@@ -21,6 +21,7 @@ one of them changes.
 | PHY R (range) | 189 of 189 with no channel errors at every ladder setting, -20 down to -126 dBm meter readings (gain ladder, not the edge) | M, k6-range.md |
 | AIS | works on air (upload aisships with --telemetry 0) | M, k6-ais.md |
 | Front-end switch | turning the RF path off is a 48-52 dB attenuator | M, k6-fesw.md |
+| Broadcast FM chip | an RDA5807M on its own I2C (PA4/PA12), a second receiver 50-115 MHz: RSSI 0-127 settles in about 360 ms (90 % at 220 ms), flat over +-90 kHz of a station (no finer resolution), LNAP input; RDS at the full group rate with verbose block errors (REG 56H after OPEN_MODE) and the 4A clock | M, k6-fm-chip.md |
 
 ## Transmitter (module API level 3)
 

@@ -28,6 +28,14 @@ static inline int um_rssi2(const um_api_t *api) {
   return (int)(api->fd_read(0x67) & 0x1FF) - 348;
 }
 
+/* api->delay_us loads SysTick's 24-bit reload once, so at 60 MHz a single call waits at most
+   2^24 cycles (about 279 ms) and a longer one wraps to a short wait; this one waits in 100 ms
+   pieces (found 2026-11-25: 1 s waits in fmstock ran 161 ms) */
+static inline void um_wait_us(const um_api_t *api, uint32_t us) {
+  for (; us > 100000u; us -= 100000u) api->delay_us(100000u);
+  api->delay_us(us);
+}
+
 /* text without a libc */
 static inline char *um_put(char *p, const char *s) {
   while (*s) *p++ = *s++;

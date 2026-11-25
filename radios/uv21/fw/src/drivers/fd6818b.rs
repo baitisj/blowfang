@@ -611,14 +611,13 @@ impl<'a> Fd6818<'a> {
     }
 
     /// UV-21 Pro: whether GPIO5/GPIO6 follow the band (the UV-5RH's receive switch); off, they
-    /// are driven low once and then left alone
+    /// are left as stock has them (GPIO5 driven low once, GPIO6 off)
     pub fn set_rf_gpio56(&mut self, syst: &mut SYST, on: bool) {
         self.rf_gpio56 = on;
         if on {
             self.select_band(syst);
         } else {
-            self.set_gpio_bit(syst, GPIO5, false);
-            self.set_gpio_bit(syst, GPIO6, false);
+            self.set_gpio_bit(syst, GPIO5, false); // (GPIO6 stays off, as stock leaves it)
         }
     }
 
@@ -1746,8 +1745,10 @@ impl<'a> Fd6818<'a> {
         self.write_reg(syst, REG_SCRAMBLE, scramble);
         self.write_reg(syst, REG_SUBAUDIO_FREQ, 0x61CE);
 
-        // GPIO initial state: all low (the stock code only ever read-modify-writes REG_33)
-        self.write_reg(syst, REG_GPIO, 0x9000);
+        // GPIO initial state: every output off, REG_33's reset value; the stock code never writes
+        // REG_33 whole, only read-modify-writes GPIO2-5 (port 21: 0x9000 drove GPIO0, 1 and 6
+        // low, and the FM chip never answered or played)
+        self.write_reg(syst, REG_GPIO, 0xFF00);
         self.write_reg(syst, REG_WORK_MODE, 0x0000);
     }
 }

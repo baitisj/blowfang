@@ -8,8 +8,17 @@ const SCK: Pin = pin(b'B', 5);
 const SDA: Pin = pin(b'B', 6);
 /// Audio amplifier enable, active high: PB2 (inferred from the stock firmware, not yet measured).
 const AMP: Pin = pin(b'B', 2);
+/// The FM chip's bus clock PA4 and PA3: the stock firmware drives PA4 low (push-pull) and PA3 high
+/// from boot and keeps them so between FM transactions (2026-11-25 stock trace; PA3's job is not
+/// known). Left floating, as ports 1-20 did, the FM chip never answered or played.
+const FM_SCL: Pin = pin(b'A', 4);
+const FM_PA3: Pin = pin(b'A', 3);
 
 pub fn init_fd6818_pins(_gpioa: &pac::Gpioa, _gpioc: &pac::Gpioc) {
+    FM_SCL.set(false);
+    FM_SCL.output();
+    FM_PA3.set(true);
+    FM_PA3.output();
     SCN.set(true);
     SCN.output();
     SCK.output();

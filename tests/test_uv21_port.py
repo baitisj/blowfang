@@ -32,7 +32,7 @@ KDH_42 = bytes([0xAA, 0x42, 0x00, 0x00, 0x00, 0x83, 0xF4, 0xEF])
 RETURN = 0x0800FFF0                         # an address no code uses: where a called ISR returns
 # the UV-21's pins (radios/uv21/fw/src/board)
 OUTPUTS = {bu.LATCH, bu.RF_SCN, bu.RF_SCK, bu.RF_SDA, bu.NOR_CS, bu.LCD_CS, bu.LCD_RST, bu.LCD_DC,
-           bu.BL, (B, 2), (B, 7), (A, 4), (A, 13), (A, 14)} | set(bu.KEY_COLS)
+           bu.BL, (B, 2), (B, 7), (A, 3), (A, 4), (A, 13), (A, 14)} | set(bu.KEY_COLS)  # A3: stock FM boot pin
 ALTERNATE = {(A, 9), (A, 10), (A, 5), (A, 6), (A, 7), (B, 13), (B, 15)}
 # KeyId numbers (src/device/keypad.rs)
 KEY_ID = {"1": 1, "0": 0, "*": 10, "#": 11, "MENU": 12, "EXIT": 13, "UP": 14, "DOWN": 15, "VM": 16,

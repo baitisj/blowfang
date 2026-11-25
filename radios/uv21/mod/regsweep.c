@@ -36,7 +36,7 @@
 static int level2(const um_api_t *api, uint32_t hz) {
   int i, sum = 0;
   api->tune(hz, 1);
-  api->delay_us(SW_SETTLE_MS * 1000u);
+  um_wait_us(api, SW_SETTLE_MS * 1000u);
   for (i = 0; i < SW_N; i++) {
     sum += um_rssi2(api);
     api->delay_us(SW_GAP_US);

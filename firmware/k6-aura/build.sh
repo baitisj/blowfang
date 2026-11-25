@@ -373,6 +373,7 @@ fdtime         # level 2, how long the module API's calls take (xdmr's gap betwe
 fdtick         # level 2, SysTick's interrupt off until reboot, then fdirq
 fesw           # level 2, the receive front end's band switch as an attenuator: how much the wrong path loses (receive only, docs/k6-fesw.md)
 fesw_vhf       # level 2, fesw on fifteen frequencies of the VHF path, 136 to 174 MHz: is the 2 m floor the same everywhere (receive only, docs/k6-fesw.md)
+fmprobe        # level 2, the broadcast FM chip (RDA5807M on PA4/PA12): sweep, station shape, settling, LNA ports, expert tuning, verbose RDS and its clock; patched by tools/k6_fmprobe.py, docs/k6-fm-chip.md
 fmsotto        # level 13, FM SOTTO: what the K6 hears on FM, demodulated from the IF in DMA interrupts and coded live as sotto 1200, said as hex (receive only; needs out/fmsotto-cells.bin in a library slot, docs/k6-fm-sotto.md)
 fusoslot       # level 13, FUSOTTO SLOT: fusotx with PC-made frames from library slot 15, for a K6 before level 15 (docs/k6-fm-sotto.md)
 fusotx         # level 15, FUSOTTO TX: sends what FM SOTTO recorded in the outbox as one FuSotto call (C4FM), AG7EW + CW ID (docs/k6-fm-sotto.md)
