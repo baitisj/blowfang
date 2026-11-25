@@ -28,7 +28,7 @@ steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upl
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
 kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console, uv21.mod, serial.list, rt950.info,
-rt950.read, rt950.compare), turned into one
+rt950.read, rt950.compare, rt950.files, rt950.flash), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
 
@@ -55,6 +55,12 @@ and the point is that the runner checks everything before it keys. The checks, i
   - rt950.compare opens no port: an earlier rt950.read's 64 KB against Stage A's Bluetooth read
     (or another rt950.read, "against"), region by region (counts and offsets only, and with
     --keys the session-key indexes that make a region agree, into the run folder)
+  - rt950.files opens no port: the .BTF files in ~/blowfang-work/rt950/stock and ci-image, their
+    sha256, and jm's firmware_upload.py verify on each stock one
+  - rt950.flash (a local submit only, never the inbox): jm's firmware_upload.py upload of one
+    .BTF from ~/blowfang-work/rt950/stock or ci-image whose sha256 the job pins, on the RT-950
+    cable as above; a stock image must pass verify first, and the dump-only image (ci-image) only
+    goes up while a stock .BTF that passes verify sits in stock/ (the way back)
   - serial.list opens no port: it lists the by-id ports' USB ids and names, serial numbers masked
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
@@ -119,7 +125,8 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300,
                 "uv21.mod": 300,
                 "sim.soapyfang": 3600,
-                "serial.list": 30, "rt950.info": 60, "rt950.read": 1800, "rt950.compare": 60}
+                "serial.list": 30, "rt950.info": 60, "rt950.read": 1800, "rt950.compare": 60,
+                "rt950.files": 300, "rt950.flash": 900}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
 PLUTO_TX = ("send", "steps", "fsk24", "parrot", "cue")
@@ -698,6 +705,18 @@ def check_step(job, i, step, rs, problems):
     elif do == "serial.list":
         if args or step.get("background"):
             problems.append(f"{what}: takes no args, never in the background")
+    elif do == "rt950.files":
+        if args or step.get("background"):
+            problems.append(f"{what}: takes no args, never in the background")
+    elif do == "rt950.flash":
+        if not RT950_IMAGE_RE.fullmatch(str(step.get("image", ""))):
+            problems.append(f"{what}: image: stock/NAME.BTF or ci-image/NAME.BTF (under ~/blowfang-work/rt950)")
+        if not HEX_RE.match(str(step.get("sha256", ""))):
+            problems.append(f"{what}: sha256: the image's, 64 lower-case hex")
+        if not USB_IDS_RE.fullmatch(str(step.get("cable", ""))):
+            problems.append(f"{what}: cable: the programming cable's USB ids, such as 1a86:7523")
+        if args not in ([], ["--ptt"]) or step.get("background"):
+            problems.append(f"{what}: only --ptt, never in the background")
     elif do == "rt950.compare":
         if not ID_RE.match(str(step.get("backup", ""))):
             problems.append(f"{what}: backup: the id of an earlier rt950.read job")
@@ -851,6 +870,62 @@ def rt950_cable(ids):
     if users:
         raise Refused(f"the RT-950 cable: {x['dev']} is open (pid {', '.join(map(str, users))}): not a free cable")
     return x["dev"]
+
+
+RT950_IMAGE_RE = re.compile(r"(stock|ci-image)/[A-Za-z0-9][A-Za-z0-9._-]{0,100}\.BTF")
+
+
+def rt950_dir(*p):
+    """~/blowfang-work/rt950: jm's checkout (jm/), Radtel's .BTF (stock/), the dump-only image (ci-image/)"""
+    return os.path.join(work(), "rt950", *p)
+
+
+def rt950_btfs(sub):
+    return sorted(glob.glob(rt950_dir(sub, "*.BTF")))
+
+
+def rt950_verify(ctx, path, env):
+    """jm's firmware_upload.py verify on one .BTF -> rc"""
+    tool = rt950_dir("jm", "tools", "firmware_upload.py")
+    if not os.path.isfile(tool):
+        raise Refused(f"no {tool}: jm's checkout is missing")
+    rc, why = run_proc(ctx, [py(), tool, "verify", path], rt950_dir("jm"), 60, env)
+    return 1 if why else rc
+
+
+def rt950_files_step(ctx, env):
+    files = []
+    for sub in ("stock", "ci-image"):
+        for f in rt950_btfs(sub):
+            e = {"file": f"{sub}/{os.path.basename(f)}", "bytes": os.path.getsize(f), "sha256": sha256(f)}
+            if sub == "stock":
+                e["verify_rc"] = rt950_verify(ctx, f, env)
+            ctx.say(f"{e['file']} {e['bytes']} B sha256 {e['sha256']}" +
+                    (f" verify rc={e['verify_rc']}" if "verify_rc" in e else ""))
+            files.append(e)
+    put_json(os.path.join(ctx.rd, "rt950-files.json"), files)
+    if not files:
+        ctx.say("no .BTF in stock/ or ci-image/")
+    return 0, None
+
+
+def rt950_flash_step(ctx, step, env, timeout):
+    path = rt950_dir(step["image"])
+    if not os.path.isfile(path):
+        raise Refused(f"no {path}")
+    if sha256(path) != step["sha256"]:
+        raise Refused(f"{step['image']}: sha256 {sha256(path)}, not the job's {step['sha256']}")
+    if step["image"].startswith("stock/"):
+        if rt950_verify(ctx, path, env):
+            raise Refused(f"{step['image']} fails firmware_upload.py verify")
+    else:                               # the dump-only image: only with a way back to stock
+        back = [f for f in rt950_btfs("stock") if rt950_verify(ctx, f, env) == 0]
+        if not back:
+            raise Refused("no stock .BTF in ~/blowfang-work/rt950/stock passes verify: no way back to stock")
+        ctx.say(f"the way back: {os.path.basename(back[0])}")
+    argv = [py(), rt950_dir("jm", "tools", "firmware_upload.py"), "upload", rt950_cable(step["cable"]), path] \
+        + list(step.get("args", []))
+    return run_proc(ctx, argv, rt950_dir("jm"), timeout, env)
 
 
 def rt950_stage_a():
@@ -1532,6 +1607,10 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 rc, why = ic7100_af(ctx, step["level"])
             elif step["do"] == "serial.list":
                 rc, why = serial_list_step(ctx)
+            elif step["do"] == "rt950.files":
+                rc, why = rt950_files_step(ctx, env)
+            elif step["do"] == "rt950.flash":
+                rc, why = rt950_flash_step(ctx, step, env, timeout)
             elif step["do"] == "ic7100.power0":
                 ctx.rig("L", "RFPOWER", "0")
                 p = rig_power(ctx.rig)
@@ -2065,6 +2144,9 @@ def sample_jobs(tmp, co, key):
         ("list the serial ports", J("ok-ports", {"do": "serial.list"}, freq_mhz="bench"), True),
         ("RT-950 stock read over its cable", J("ok-rt950", {"do": "rt950.info", "cable": "1a86:7523"}, {"do": "rt950.read", "cable": "1a86:7523", "args": ["--addr", "2", "--passes", "2"]}, freq_mhz="bench"), True),
         ("RT-950 cable read against Stage A", J("ok-rt950cmp", {"do": "rt950.compare", "backup": "rt950-read-1125b"}, freq_mhz="bench"), True),
+        ("RT-950 stock and dump images listed", J("ok-rt950files", {"do": "rt950.files"}, freq_mhz="bench"), True),
+        ("RT-950 dump-only image upload, pinned", J("ok-rt950flash", {"do": "rt950.flash", "image": "ci-image/rt950-backup-only.BTF", "sha256": "0" * 64, "cable": "1a86:7523"}, freq_mhz="bench"), True),
+        ("RT-950 upload of a file outside rt950/", J("bad-rt950flash", {"do": "rt950.flash", "image": "../x.BTF", "sha256": "0" * 64, "cable": "1a86:7523"}, freq_mhz="bench"), False),
         ("RT-950 compare against a path", J("bad-rt950cmp", {"do": "rt950.compare", "backup": "../../etc"}, freq_mhz="bench"), False),
         ("RT-950 read with a /dev path for the cable", J("bad-rt950dev", {"do": "rt950.read", "cable": "/dev/ttyUSB1"}, freq_mhz="bench"), False),
         ("RT-950 with an option the reader doesn't have", J("bad-rt950opt", {"do": "rt950.read", "cable": "1a86:7523", "args": ["--write"]}, freq_mhz="bench"), False),
@@ -2083,6 +2165,7 @@ def inbox_samples():
         ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),
         ("a Pluto flash", J("in-plutoflash", {"do": "pluto.flash", "args": ["job:r.itb", "run:bk"]}), False),
         ("an RT-950 stock backup read", J("in-rt950", {"do": "serial.list"}, {"do": "rt950.read", "cable": "1a86:7523"}, freq_mhz="bench"), True),
+        ("an RT-950 upload", J("in-rt950flash", {"do": "rt950.flash", "image": "ci-image/x.BTF", "sha256": "0" * 64, "cable": "1a86:7523"}, freq_mhz="bench"), False),
         ("a Pluto RAM boot of a pushed FIT", J("in-ramboot", {"do": "pluto.fw", "args": ["ramboot", "job:r.itb"]}), True),
         ("a K6 module as C source", J("in-c", {"do": "k6.upload", "module": "job:m.c"}), False),
         ("a hamlet path", J("in-path", {"do": "pluto", "args": ["send", "/home/baitisj/blowfang-work/x.wav"]}), False),
