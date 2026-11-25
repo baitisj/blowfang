@@ -162,6 +162,7 @@ class Radio:
         if self.take(1, "key ACK")[0] != ACK:
             raise RuntimeError("no ACK to the session key")
         self.key = key
+        self.key_index = XOR_KEYS.index(key)
         self.log(f"session: identity {self.identity!r} model {self.model!r}")
         return self.identity, self.model
 
@@ -227,6 +228,7 @@ def backup(radio, outdir, ranges, min_passes=2, max_passes=4, progress=None, ter
         "identity_hex": identity.hex(),
         "identity": identity.decode("ascii", "replace"),
         "model": model,
+        "key_index": getattr(radio, "key_index", None),   # the session's XOR key (compare --keys)
         "ranges": [],
     }
     ok = True
@@ -287,7 +289,17 @@ def write_summary(man, outdir, summary):
             g.write(f.read())
 
 
-def compare(a, b):
+def key_pairs(a, b):
+    """the (i, j) with xor(a, XOR_KEYS[i]) == xor(b, XOR_KEYS[j]); -1 is no XOR. A region the radio
+    sends without the session XOR comes out of a read scrambled by that session's key, so two
+    sessions disagree there until each read's own key is put back"""
+    ks = [None] + XOR_KEYS
+    un_a = [a if k is None else xor(a, k) for k in ks]
+    un_b = [b if k is None else xor(b, k) for k in ks]
+    return [(i - 1, j - 1) for i, x in enumerate(un_a) for j, y in enumerate(un_b) if x == y]
+
+
+def compare(a, b, keys=False):
     """two reads of the same CPS window -> which regions and 4 KB pages differ (counts and
     offsets only: the result may leave hamlet, the bytes may not)"""
     out = {"a_sha256": sha(a), "b_sha256": sha(b), "a_len": len(a), "b_len": len(b), "same": a == b}
@@ -303,6 +315,12 @@ def compare(a, b):
     out["pages_4k"] = {f"0x{p:04X}": span(p, p + 0x1000)["differ"] for p in range(0, n, 0x1000)
                        if span(p, p + 0x1000)["differ"]}
     out["differ"] = len(diff)
+    if keys:                            # which session keys would make each differing region agree
+        out["key_pairs"] = {}
+        for name, addr, ln in STOCK_REGIONS:
+            if out["regions"][name]["differ"]:
+                pairs = key_pairs(a[addr:addr + ln], b[addr:addr + ln])
+                out["key_pairs"][name] = [list(x) for x in pairs[:40]]
     return out
 
 
@@ -339,10 +357,12 @@ def main(argv=None):
     p.add_argument("old")
     p.add_argument("new")
     p.add_argument("--json", metavar="OUT", help="also write the result here")
+    p.add_argument("--keys", action="store_true",
+                   help="for each differing region, the session-key pairs (indexes) that make it agree")
     a = ap.parse_args(argv)
     if a.cmd == "compare":
         with open(a.old, "rb") as f, open(a.new, "rb") as g:
-            res = compare(f.read(), g.read())
+            res = compare(f.read(), g.read(), keys=a.keys)
         if a.json:
             with open(a.json, "w") as f:
                 json.dump(res, f, indent=2)
@@ -350,6 +370,9 @@ def main(argv=None):
         for name, r in res["regions"].items():
             print(f"{name:16s} {'same' if not r['differ'] else str(r['differ']) + ' bytes differ, ' + r['first'] + '..' + r['last']}")
         print(f"{'all 64 KB':16s} {'same' if res['same'] else str(res['differ']) + ' bytes differ'}")
+        for name, pairs in res.get("key_pairs", {}).items():
+            print(f"{name:16s} agrees with session keys (old, new; -1 none): "
+                  + (", ".join(f"({i},{j})" for i, j in pairs) if pairs else "no pair"))
         return 0
 
     log = (lambda m: print(m, file=sys.stderr)) if a.verbose or a.cmd == "info" else None

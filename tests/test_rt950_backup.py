@@ -166,3 +166,22 @@ def test_compare_names_regions_and_pages_never_bytes(tmp_path, capsys):
     assert res["regions"]["cal_e000"] == {"differ": 0}
     assert res["pages_4k"] == {"0x9000": 1, "0xF000": 1}
     assert "cal_e000         same" in capsys.readouterr().out
+
+
+def test_compare_keys_finds_a_region_scrambled_by_each_sessions_key(tmp_path):
+    raw = bytes((i * 37 + 11) % 251 + 1 for i in range(0x10000))
+    a, b = bytearray(raw), bytearray(raw)
+    f0 = slice(0xF000, 0xF080)          # sent raw by the radio, "decoded" with each session's key
+    a[f0] = rb.xor(raw[f0], rb.XOR_KEYS[3])
+    b[f0] = rb.xor(raw[f0], rb.XOR_KEYS[11])
+    res = rb.compare(bytes(a), bytes(b), keys=True)
+    assert res["regions"]["cal_f000"]["differ"] and not res["regions"]["cal_e000"]["differ"]
+    assert [3, 11] in res["key_pairs"]["cal_f000"]
+    assert set(res["key_pairs"]) == {"cal_f000"}
+
+
+def test_manifest_records_the_session_key(radio, tmp_path):
+    r = radio("stock")
+    assert rb.main(["read", r.path, str(tmp_path), "--addr", "2"]) == 0
+    man = json.loads(read(tmp_path / "manifest.json"))
+    assert 0 <= man["key_index"] < len(rb.XOR_KEYS)
