@@ -42,7 +42,7 @@ index 785c441..65b82b3 100644
  opt-level = "z"
  lto = true
 diff --git a/build.rs b/build.rs
-index 34078b1..d5473d4 100644
+index 34078b1..d17bcfd 100644
 --- a/build.rs
 +++ b/build.rs
 @@ -42,14 +42,71 @@ fn watch_git_dir() {
@@ -51,11 +51,11 @@ index 34078b1..d5473d4 100644
      let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
 +    let feat = |f: &str| env::var_os(format!("CARGO_FEATURE_{f}")).is_some();
 +    // hal::ram0 also takes sotto's C statics (libsotto_k6.a's .bss, 444 B: the hiss image's stack
-+    // was the arena's limit) in the images with no EXPLORE: EXPLORE's state fills the voice +
-+    // EXPLORE image's RAM0 instead (2026-11-19). Not lean: its library keeps the decoder's
++    // was the arena's limit, 2026-11-19), in the voice + EXPLORE image too since the leaner
++    // pager-only App left room there (level 16). Not lean: its library keeps the decoder's
 +    // memory in a static of its own, too big for RAM0, and it has the stack to spare
 +    let mut mem = include_str!("memory.x.in").to_string();
-+    if !feat("EXPLORE") && !feat("LEAN") {
++    if !feat("LEAN") {
 +        mem = mem.replace("/* @SOTTO_BSS@", "*libsotto_k6.a:*(.bss .bss.* COMMON);\n    /*");
 +    }
      File::create(out.join("memory.x"))
@@ -261,18 +261,56 @@ index 55f04b6..b5a34d0 100644
      }
  }
 diff --git a/src/app/mod.rs b/src/app/mod.rs
-index 5f006e4..371e81e 100644
+index 5f006e4..8ef58f2 100644
 --- a/src/app/mod.rs
 +++ b/src/app/mod.rs
-@@ -9,6 +9,7 @@ mod input;
+@@ -1,26 +1,45 @@
++#[cfg(not(feature = "pager-only"))]
+ mod aprs_ops;
++#[cfg(not(feature = "pager-only"))]
+ mod ax25;
++#[cfg(not(feature = "pager-only"))]
+ mod chanmgr;
++#[cfg(not(feature = "pager-only"))]
+ mod contacts;
+ mod convert;
++#[cfg(not(feature = "pager-only"))]
+ pub mod doppler;
++#[cfg(not(feature = "pager-only"))]
+ mod fm;
+ mod input;
++#[cfg(not(feature = "pager-only"))]
  mod keyfn;
++#[cfg(not(feature = "pager-only"))]
  mod keys;
++#[cfg(not(feature = "pager-only"))]
  mod launcher;
 +pub mod pager;
  pub(crate) mod name_edit;
++#[cfg(not(feature = "pager-only"))]
  pub mod satellite;
++#[cfg(not(feature = "pager-only"))]
  mod scan;
-@@ -115,6 +116,8 @@ pub enum Mode {
++#[cfg(not(feature = "pager-only"))]
+ mod scanqt;
++#[cfg(not(feature = "pager-only"))]
+ mod search;
+ mod settings;
++#[cfg(not(feature = "pager-only"))]
+ pub mod sstv;
++#[cfg(not(feature = "pager-only"))]
+ pub use settings::CTCSS_TABLE; // re-exported for UI tone display
++#[cfg(not(feature = "pager-only"))]
+ mod settings_ops;
+ mod side;
+ mod side_ops;
++#[cfg(not(feature = "pager-only"))]
+ mod spectrum;
++#[cfg(not(feature = "pager-only"))]
+ mod tx;
+ 
+ use convert::*;
+@@ -115,6 +134,8 @@ pub enum Mode {
      Satellite,
      SatelliteTracking,
      Sstv,
@@ -281,16 +319,145 @@ index 5f006e4..371e81e 100644
  }
  
  #[derive(Clone, Copy, PartialEq, Eq)]
-@@ -243,6 +246,8 @@ pub struct App {
+@@ -148,8 +169,11 @@ pub struct App {
+     mode: Mode,
+     sides: [side::Side; 2],
+     settings: flash_map::Settings,
++    #[cfg(not(feature = "pager-only"))]
+     settings_ui: settings::SettingsUi,
++    #[cfg(not(feature = "pager-only"))]
+     chanmgr: chanmgr::ChanMgrUi,
++    #[cfg(not(feature = "pager-only"))]
+     contacts: contacts::ContactsUi,
+     launcher_index: usize,
+ 
+@@ -200,6 +224,7 @@ pub struct App {
+     ani_target_override: Option<[u8; 3]>,
+     /// `Some` while the standby DTMF dial input box (`*` key) is open;
+     /// `None` the rest of the time (normal standby display).
++    #[cfg(not(feature = "pager-only"))]
+     dtmf_dial: Option<DigitInput<DTMF_DIAL_MAX_DIGITS>>,
+ 
+     battery_cal: [u8; 7],
+@@ -219,14 +244,21 @@ pub struct App {
+ 
+     bl_idle_ticks: u16,
+ 
++    #[cfg(not(feature = "pager-only"))]
+     scan: scan::ScanState,
++    #[cfg(not(feature = "pager-only"))]
+     search: search::SearchState,
++    #[cfg(not(feature = "pager-only"))]
+     scanqt: scanqt::ScanQtState,
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fm: fm::FmState,
++    #[cfg(not(feature = "pager-only"))]
+     fm_radio: FmRadio<'static>,
++    #[cfg(not(feature = "pager-only"))]
+     fm_channels: [u16; flash_map::FM_CHANNEL_COUNT],
+ 
++    #[cfg(not(feature = "pager-only"))]
+     spectrum: spectrum::SpectrumState,
+ 
+     /// Software wall clock: seconds since midnight. volatile
+@@ -236,13 +268,19 @@ pub struct App {
+     /// Tick counter for 1-second wall-clock increment (TICKS_PER_SECOND = 100).
+     wall_tick: u16,
+     /// Satellite app UI state.
++    #[cfg(not(feature = "pager-only"))]
+     satellite: satellite::SatelliteUi,
+     /// Satellite records loaded from SPI flash.
++    #[cfg(not(feature = "pager-only"))]
+     sats: [Option<flash_map::SatRecord>; MAX_SATELLITES],
+     /// Active Doppler tracking state. `None` when not tracking.
++    #[cfg(not(feature = "pager-only"))]
      pub(crate) doppler: Option<doppler::DopplerState>,
      /// SSTV app UI state.
++    #[cfg(not(feature = "pager-only"))]
      pub sstv: sstv::SstvUi,
 +    /// Voice pager state (the message itself lives in `pager::STORE`).
 +    pager: pager::PagerState,
  }
  
  impl App {
-@@ -429,6 +434,7 @@ impl App {
+@@ -253,7 +291,7 @@ impl App {
+         keypad: Keypad,
+         mut storage: Storage,
+         flashlight: Flashlight,
+-        fm_radio: FmRadio<'static>,
++        _fm_radio: FmRadio<'static>,
+         default_cfg: ChannelConfig,
+         syst: &mut SYST,
+     ) -> Self {
+@@ -262,6 +300,7 @@ impl App {
+             .load_settings()
+             .unwrap_or(flash_map::Settings::DEFAULT);
+         let battery_cal = storage.read_battery_calibration();
++        #[cfg(not(feature = "pager-only"))]
+         let fm_channels = storage
+             .load_fm_channels()
+             .unwrap_or([flash_map::FM_CHANNEL_EMPTY; flash_map::FM_CHANNEL_COUNT]);
+@@ -358,7 +397,9 @@ impl App {
+         radio.set_rit_offset(settings.rit_offset as i32 * 10);
+         radio.set_tx_allowed(BandLock::from_u8(settings.band_lock).tx_ranges());
+ 
++        #[cfg(not(feature = "pager-only"))]
+         let sats = storage.load_satellites();
++        #[cfg(not(feature = "pager-only"))]
+         let has_sstv_image = storage.has_sstv_image();
+ 
+         App {
+@@ -369,8 +410,11 @@ impl App {
+             mode: Mode::Standby,
+             sides,
+             settings,
++            #[cfg(not(feature = "pager-only"))]
+             settings_ui: settings::SettingsUi::new(),
++            #[cfg(not(feature = "pager-only"))]
+             chanmgr: chanmgr::ChanMgrUi::new(),
++            #[cfg(not(feature = "pager-only"))]
+             contacts: contacts::ContactsUi::new(),
+             launcher_index: 0,
+             master: 0,
+@@ -399,6 +443,7 @@ impl App {
+             no_channels_ticks: 0,
+             blink_phase: 0,
+             ani_target_override: None,
++            #[cfg(not(feature = "pager-only"))]
+             dtmf_dial: None,
+             battery_cal,
+             battery_bars: 4,
+@@ -412,27 +457,40 @@ impl App {
+             ps_idle_ticks: POWER_SAVE_IDLE_TICKS,
+             ps_cycle_ticks: 0,
+             bl_idle_ticks: settings.backlight_time as u16 * BACKLIGHT_STEP_TICKS,
++            #[cfg(not(feature = "pager-only"))]
+             scan: scan::ScanState::new(),
++            #[cfg(not(feature = "pager-only"))]
+             search: search::SearchState::new(),
++            #[cfg(not(feature = "pager-only"))]
+             scanqt: scanqt::ScanQtState::new(),
++            #[cfg(not(feature = "pager-only"))]
+             fm: fm::FmState::new(),
+-            fm_radio,
++            #[cfg(not(feature = "pager-only"))]
++            fm_radio: _fm_radio,
++            #[cfg(not(feature = "pager-only"))]
+             fm_channels,
++            #[cfg(not(feature = "pager-only"))]
+             spectrum: spectrum::SpectrumState::new(default_cfg.freq_hz),
+             wall_secs: 0,
+             time_set: false,
+             wall_tick: 0,
++            #[cfg(not(feature = "pager-only"))]
+             satellite: satellite::SatelliteUi::new(),
++            #[cfg(not(feature = "pager-only"))]
+             sats,
++            #[cfg(not(feature = "pager-only"))]
+             doppler: None,
++            #[cfg(not(feature = "pager-only"))]
+             sstv: sstv::SstvUi {
                  has_image: has_sstv_image,
                  ..sstv::SstvUi::new()
              },
@@ -298,7 +465,791 @@ index 5f006e4..371e81e 100644
          }
      }
  
-@@ -1436,6 +1442,89 @@ impl App {
+     // dual standby
++    #[cfg(not(feature = "pager-only"))]
+     pub fn set_dual_standby(&mut self, syst: &mut SYST, enabled: bool) {
+         self.dual_standby = enabled;
+         self.dual_hold_ticks = DUAL_STANDBY_HOLD_TICKS;
+@@ -444,6 +502,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_dual_standby(&mut self, syst: &mut SYST, signal_present: bool) {
+         if signal_present {
+             self.last_signal_side = Some(self.watching);
+@@ -475,6 +534,7 @@ impl App {
+         self.apply_watching_to_radio(syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn note_power_save_activity(&mut self, syst: &mut SYST) {
+         if self.ps_asleep {
+             self.radio.enter_rx(syst);
+@@ -485,14 +545,17 @@ impl App {
+         self.ps_cycle_ticks = 0;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn reset_power_save(&mut self, syst: &mut SYST) {
+         self.note_power_save_activity(syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn power_save_is_asleep(&self) -> bool {
+         self.ps_asleep
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_power_save(&mut self, syst: &mut SYST) {
+         if self.settings.save_level == 0 || self.mode != Mode::Standby || self.transmitting {
+             if self.ps_idle_ticks != POWER_SAVE_IDLE_TICKS || self.ps_asleep {
+@@ -540,10 +603,12 @@ impl App {
+     }
+ 
+     // backlight
++    #[cfg(not(feature = "pager-only"))]
+     fn note_backlight_activity(&mut self) {
+         self.bl_idle_ticks = self.settings.backlight_time as u16 * BACKLIGHT_STEP_TICKS;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_backlight(&mut self, elapsed_10ms: u16) {
+         if self.radio.audio_is_open() {
+             self.note_backlight_activity();
+@@ -553,6 +618,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn backlight_should_be_on(&self) -> bool {
+         self.transmitting
+             || self.settings.backlight_time == 0
+@@ -561,7 +627,7 @@ impl App {
+     }
+ 
+     // persistence
+-    fn save_vfo(&mut self) {
++        fn save_vfo(&mut self) {
+         let mut buf = [0u8; 64];
+         for (half, s) in self.sides.iter().enumerate() {
+             buf[half * 32..(half + 1) * 32].copy_from_slice(&s.to_vfo_bytes());
+@@ -573,10 +639,12 @@ impl App {
+         self.storage.save_settings(&self.settings);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn save_satellites(&mut self) {
+         self.storage.save_satellites(&self.sats);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn save_channel_state(&mut self) {
+         let mut buf = [0u8; 8];
+         for (half, s) in self.sides.iter().enumerate() {
+@@ -589,10 +657,12 @@ impl App {
+         self.storage.save_channel_state(&buf);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub(super) fn refresh_channel_display(&mut self, num: u16) {
+         side_ops::refresh_channel_display(self, num);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn load_channel_num(&mut self, num: u16) {
+         side_ops::load_channel_num(self, num);
+     }
+@@ -611,38 +681,47 @@ impl App {
+     }
+ 
+     // frequency / channel stepping
++    #[cfg(not(feature = "pager-only"))]
+     fn step(&mut self, syst: &mut SYST, up: bool) {
+         side_ops::step(self, syst, up);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn commit_input(&mut self, syst: &mut SYST) {
+         side_ops::commit_input(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn toggle_vfo_channel(&mut self, syst: &mut SYST) {
+         side_ops::toggle_vfo_channel(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn switch_side(&mut self, syst: &mut SYST) {
+         side_ops::switch_side(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn toggle_reverse(&mut self, syst: &mut SYST) {
+         side_ops::toggle_reverse(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn toggle_power(&mut self, syst: &mut SYST) {
+         side_ops::toggle_power(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn toggle_wide_narrow(&mut self, syst: &mut SYST) {
+         side_ops::toggle_wide_narrow(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn toggle_modulation(&mut self, syst: &mut SYST) {
+         side_ops::toggle_modulation(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn commit_side_change(&mut self, syst: &mut SYST) {
+         side_ops::commit_side_change(self, syst);
+     }
+@@ -652,6 +731,7 @@ impl App {
+         self.key_idle_ticks = self.settings.key_auto_lock as u16 * 500;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_auto_lock(&mut self, syst: &mut SYST, rx_active: bool, elapsed_10ms: u16) {
+         if self.settings.key_auto_lock == 0
+             || self.key_lock
+@@ -671,6 +751,7 @@ impl App {
+     }
+ 
+     // VOX
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_vox(&mut self, syst: &mut SYST, mic_level: u8, rx_active: bool) {
+         if self.vox_det_dly > 0 {
+             self.vox_det_dly -= 1;
+@@ -775,14 +856,17 @@ impl App {
+         &self.settings
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn set_rssi_raw(&mut self, val: u8) {
+         self.rssi_raw = val;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn rssi_dbm(&self) -> i32 {
+         rssi_raw_to_dbm(self.rssi_raw as u16)
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn s_meter_level(&self) -> u8 {
+         let pos = (-self.rssi_dbm()).clamp(53, 141);
+ 
+@@ -794,6 +878,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn s_meter_s_number(&self) -> u8 {
+         let pos = (-self.rssi_dbm()).clamp(53, 141);
+         map(pos, 141, 93, 1, 9).clamp(1, 9) as u8
+@@ -807,20 +892,24 @@ impl App {
+     /// (K6 -57dBm vs. a real BK4819 radio at -59dBm) show wildly
+     /// different labels (S9+30 vs. S9+35) even though the underlying
+     /// measurements agreed closely.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn s_meter_over_s9_dbm(&self) -> i32 {
+         let pos = (-self.rssi_dbm()).clamp(53, 141);
+         (93 - pos).max(0)
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn mic_level(&self) -> u8 {
+         self.mic_level
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn set_mic_level(&mut self, level: u8) {
+         self.mic_level = level;
+     }
+ 
+     // DTMF
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_dtmf(&mut self, syst: &mut SYST) {
+         if let Some(caller) = self.radio.poll_dtmf(syst) {
+             self.ani_caller = Some(caller);
+@@ -833,27 +922,33 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn ani_caller_id(&self) -> Option<[u8; 3]> {
+         self.ani_caller
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_no_channels_notice(&mut self, ticks: u16) {
+         self.no_channels_ticks = self.no_channels_ticks.saturating_sub(ticks);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn no_channels_notice(&self) -> bool {
+         self.no_channels_ticks > 0
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_blink(&mut self) {
+         self.blink_phase = self.blink_phase.wrapping_add(1);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn rx_blink_on(&self) -> bool {
+         (self.blink_phase / RX_BLINK_HALF_PERIOD).is_multiple_of(2)
+     }
+ 
+     // key dispatch
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_keys(&mut self, syst: &mut SYST) {
+         self.keypad.poll(syst);
+         while let Some(ev) = self.keypad.pop_event() {
+@@ -861,18 +956,22 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn launcher_index(&self) -> usize {
+         self.launcher_index
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn launcher_item_count(&self) -> usize {
+         launcher::LAUNCHER_ITEMS.len()
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn launcher_label_at(&self, index: usize) -> &'static str {
+         launcher::LAUNCHER_ITEMS[index].label()
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn launcher_available_at(&self, index: usize) -> bool {
+         launcher::LAUNCHER_ITEMS[index].is_available()
+     }
+@@ -883,10 +982,12 @@ impl App {
+     /// text-entry mode
+     /// Returns the currently selected setting item.
+     /// Panics if at the top-level group selection screen.
++    #[cfg(not(feature = "pager-only"))]
+     pub(super) fn current_setting_item(&self) -> settings::SettingItem {
+         self.settings_ui.group.expect("not at top level").items()[self.settings_ui.index]
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_title(&self) -> &'static str {
+         match self.settings_ui.group {
+             Some(g) => g.label(),
+@@ -894,6 +995,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_show_arrows(&self) -> bool {
+         if self.settings_ui.group.is_none() {
+             return false;
+@@ -912,6 +1014,7 @@ impl App {
+             )
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_index(&self) -> usize {
+         self.settings_ui.index
+     }
+@@ -920,6 +1023,7 @@ impl App {
+         self.chip_id
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_item_count(&self) -> usize {
+         match self.settings_ui.group {
+             Some(g) => g.items().len(),
+@@ -927,6 +1031,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_label_at(&self, index: usize) -> &'static str {
+         match self.settings_ui.group {
+             Some(g) => g.items()[index].label(),
+@@ -934,6 +1039,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_suppress_label(&self, index: usize) -> bool {
+         self.settings_ui.group.is_some()
+             && self.settings_ui.is_editing(index)
+@@ -943,6 +1049,7 @@ impl App {
+             )
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_value_at(&self, index: usize, w: &mut dyn core::fmt::Write) -> bool {
+         match self.settings_ui.group {
+             Some(g) => {
+@@ -953,6 +1060,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn settings_cursor(&self, index: usize) -> Option<usize> {
+         if !self.settings_ui.is_editing(index) {
+             return None;
+@@ -966,47 +1074,60 @@ impl App {
+     }
+ 
+     // channel manager UI
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_is_detail(&self) -> bool {
+         chanmgr::is_detail(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_list_row_count(&self) -> usize {
+         chanmgr::list_row_count(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_list_selected_index(&self) -> usize {
+         chanmgr::list_selected_index(self)
+     }
+     /// Reads flash for the currently-visible rows' channel names, so this
+     /// needs `&mut self`.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_list_label(&mut self, index: usize, w: &mut dyn core::fmt::Write) {
+         chanmgr::list_label(self, index, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_field_count(&self) -> usize {
+         chanmgr::detail_field_count(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_field_index(&self) -> usize {
+         chanmgr::detail_field_index(self)
+     }
+     /// Whether to draw the up/down arrow chrome: true only for a field that
+     /// actually cycles via `Up`/`Down`, false for the text-entry fields
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_show_arrows(&self) -> bool {
+         chanmgr::detail_show_arrows(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_field_label(&self, index: usize, w: &mut dyn core::fmt::Write) {
+         chanmgr::detail_label(self, index, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_field_value(&self, index: usize, w: &mut dyn core::fmt::Write) -> bool {
+         chanmgr::detail_value(self, index, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_field_cursor(&self, index: usize) -> Option<usize> {
+         chanmgr::detail_cursor(self, index)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn chanmgr_detail_title(&self, w: &mut dyn core::fmt::Write) {
+         chanmgr::detail_title(self, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_chanmgr_name_timeout(&mut self) {
+         chanmgr::poll_name_timeout(self);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_aprs_call_timeout(&mut self) {
+         if self.mode == Mode::Settings
+             && self.settings_ui.editing
+@@ -1017,6 +1138,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_aprs_dev_name_timeout(&mut self) {
+         if self.mode == Mode::Settings
+             && self.settings_ui.editing
+@@ -1027,6 +1149,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_aprs_comment_timeout(&mut self) {
+         if self.mode == Mode::Settings
+             && self.settings_ui.editing
+@@ -1038,64 +1161,81 @@ impl App {
+     }
+ 
+     // contacts app UI
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_is_detail(&self) -> bool {
+         contacts::is_detail(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_list_row_count(&self) -> usize {
+         contacts::list_row_count()
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_list_selected_index(&self) -> usize {
+         contacts::list_selected_index(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_list_label(&mut self, index: usize, w: &mut dyn core::fmt::Write) {
+         contacts::list_label(self, index, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_field_count(&self) -> usize {
+         contacts::detail_field_count(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_field_index(&self) -> usize {
+         contacts::detail_field_index(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_field_label(&self, index: usize, w: &mut dyn core::fmt::Write) {
+         contacts::detail_label(self, index, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_field_value(&self, index: usize, w: &mut dyn core::fmt::Write) -> bool {
+         contacts::detail_value(self, index, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_field_cursor(&self, index: usize) -> Option<usize> {
+         contacts::detail_cursor(self, index)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contacts_detail_title(&self, w: &mut dyn core::fmt::Write) {
+         contacts::detail_title(self, w)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_contacts_name_timeout(&mut self) {
+         contacts::poll_name_timeout(self);
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_satellite_name_timeout(&mut self) {
+         if self.mode == Mode::Satellite {
+             satellite::poll_name_timeout(&mut self.satellite);
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     fn set_ani_target_override(&mut self, id: [u8; 3]) {
+         tx::set_ani_target_override(self, id);
+     }
+ 
+     // PTT
++    #[cfg(not(feature = "pager-only"))]
+     pub fn set_ptt(&mut self, syst: &mut SYST, pressed: bool) {
+         tx::set_ptt(self, syst, pressed);
+     }
+ 
+     // --- CW / TOT poll delegates ------------------------------------------
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_cw_key(&mut self, syst: &mut SYST) {
+         tx::poll_cw_key(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_cw_hang(&mut self, syst: &mut SYST) {
+         tx::poll_cw_hang(self, syst);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_tot(&mut self, syst: &mut SYST, ticks: u16) {
+         tx::poll_tot(self, syst, ticks);
+     }
+@@ -1105,28 +1245,34 @@ impl App {
+         self.mode
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn wall_secs(&self) -> u32 {
+         self.wall_secs
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn time_set(&self) -> bool {
+         self.time_set
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn sats(&self) -> &[Option<flash_map::SatRecord>; MAX_SATELLITES] {
+         &self.sats
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn satellite_ui(&self) -> &satellite::SatelliteUi {
+         &self.satellite
+     }
+ 
+     /// Set transmitting flag for tracking mode (bypasses normal PTT guards).
++    #[cfg(not(feature = "pager-only"))]
+     pub fn set_transmitting_for_tracking(&mut self) {
+         self.transmitting = true;
+     }
+ 
+     /// Clear transmitting flag for tracking mode.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn clear_transmitting_for_tracking(&mut self) {
+         self.transmitting = false;
+     }
+@@ -1134,6 +1280,7 @@ impl App {
+     /// Increment wall clock tick. Call every 100ms (10 scheduler ticks).
+     /// Returns `true` when a full second has elapsed and Doppler update
+     /// should be performed.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_wall_clock(&mut self) -> bool {
+         self.wall_tick += 1;
+         if self.wall_tick >= 10 {
+@@ -1147,6 +1294,7 @@ impl App {
+ 
+     /// Perform per-second Doppler update during tracking mode.
+     /// Skips frequency retune while transmitting to avoid interrupting TX.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_doppler_update(&mut self, syst: &mut SYST) {
+         if self.mode != Mode::SatelliteTracking {
+             return;
+@@ -1181,18 +1329,22 @@ impl App {
+     pub fn is_transmitting(&self) -> bool {
+         self.transmitting || self.cw_tx_active
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn tx_prohibited(&self) -> bool {
+         self.tx_prohibited
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn aprs_beacon_active(&self) -> bool {
+         self.aprs_beacon_pending
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub(super) fn request_aprs_beacon(&mut self) {
+         self.aprs_beacon_pending = true;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn transmit_pending_aprs_beacon(&mut self, syst: &mut SYST) {
+         use crate::device::radio::Power;
+ 
+@@ -1220,10 +1372,12 @@ impl App {
+         self.aprs_beacon_pending = false;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn sstv_tx_pending(&self) -> bool {
+         self.sstv.tx_pending
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn handle_sstv_ptt(&mut self, syst: &mut SYST) {
+         if self.mode != Mode::Sstv {
+             return;
+@@ -1236,6 +1390,7 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn transmit_pending_sstv(&mut self, syst: &mut SYST, power: &PowerSwitch) {
+         let call = sstv::SstvUi::aprs_call_str(&self.settings);
+         let white = self.sstv.white_text;
+@@ -1283,18 +1438,22 @@ impl App {
+         self.sstv.field_index = 0;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_sstv_name_timeout(&mut self) {
+         if self.mode == Mode::Sstv {
+             sstv::poll_name_timeout(&mut self.sstv);
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn is_key_locked(&self) -> bool {
+         self.key_lock
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn contrast(&self) -> u8 {
+         self.settings.contrast
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn vox_enabled(&self) -> bool {
+         self.settings.vox_switch
+     }
+@@ -1304,59 +1463,77 @@ impl App {
+     pub fn master_freq_hz(&self) -> u32 {
+         self.sides[self.master].cfg.freq_hz
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn watching_freq_hz(&self) -> u32 {
+         self.sides[self.watching].cfg.freq_hz
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn watching_channel_num(&self) -> u16 {
+         self.sides[self.watching].channel_num
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn watching_is_channel_mode(&self) -> bool {
+         self.sides[self.watching].vfo_chan == ChVfoMode::Channel
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_freq_hz(&self, index: usize) -> u32 {
+         self.sides[index].cfg.freq_hz
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_tx_freq_hz(&self, index: usize) -> u32 {
+         self.sides[index].cfg.tx_freq_hz
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_is_channel_mode(&self, index: usize) -> bool {
+         self.sides[index].vfo_chan == ChVfoMode::Channel
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_channel_num(&self, index: usize) -> u16 {
+         self.sides[index].channel_num
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_subaudio_rx(&self, index: usize) -> SubAudio {
+         self.sides[index].cfg.subaudio_rx
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_subaudio_tx(&self, index: usize) -> SubAudio {
+         self.sides[index].cfg.subaudio_tx
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_power(&self, index: usize) -> Power {
+         self.sides[index].cfg.power
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_modulation(&self, index: usize) -> Modulation {
+         self.sides[index].cfg.modulation
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_wide_band(&self, index: usize) -> bool {
+         self.sides[index].cfg.wide_band
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_reversed(&self, index: usize) -> bool {
+         self.sides[index].reversed
+     }
+     /// Repeater shift direction: 0 = off/simplex, 1 = `+`, 2 = `-`.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_freq_dir(&self, index: usize) -> u8 {
+         self.sides[index].shift_dir_offset().0
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_offset_hz(&self, index: usize) -> u32 {
+         self.sides[index].shift_dir_offset().1
+     }
+     /// Trimmed channel name, `""` in VFO mode or for an unnamed channel.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn side_name_str(&self, index: usize) -> &str {
+         channel_name_str(&self.sides[index].name)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn watching_index(&self) -> usize {
+         self.watching
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn last_signal_side(&self) -> Option<usize> {
+         self.last_signal_side
+     }
+@@ -1366,152 +1543,283 @@ impl App {
+     pub fn storage_mut(&mut self) -> &mut Storage {
+         &mut self.storage
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_squelch(&mut self, syst: &mut SYST, db: u8) {
+         self.radio.poll_squelch(syst, db);
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_scan(&mut self, syst: &mut SYST) {
+         scan::poll(self, syst);
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_search(&mut self, syst: &mut SYST) {
+         search::poll(self, syst);
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_scanqt(&mut self, syst: &mut SYST) {
+         scanqt::poll(self, syst);
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn scan_direction_up(&self) -> bool {
+         scan::direction_up(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn search_band_label(&self) -> &'static str {
+         search::band_label(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn search_status(&self) -> SearchStatus {
+         search::status(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn search_candidate_freq_hz(&self) -> u32 {
+         search::candidate_freq_hz(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn search_tone(&self) -> Option<SubAudio> {
+         search::tone(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn scanqt_is_found(&self) -> bool {
+         scanqt::is_found(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn scanqt_is_listening(&self) -> bool {
+         scanqt::is_listening(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn scanqt_tone(&self) -> Option<SubAudio> {
+         scanqt::tone(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn poll_fm(&mut self, syst: &mut SYST) {
+         fm::poll(self, syst);
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_deci_mhz(&self) -> u16 {
+         fm::deci_mhz(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_is_channel_mode(&self) -> bool {
+         fm::is_channel_mode(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_channel_index(&self) -> u8 {
+         fm::channel_index(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_is_seeking(&self) -> bool {
+         fm::is_seeking(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_rssi(&self) -> u8 {
+         fm::rssi(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_save_picker_selected(&self) -> Option<u8> {
+         fm::save_picker_selected(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_channel_freq_at(&self, index: usize) -> Option<u16> {
+         fm::channel_freq_at(self, index)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_input_len(&self) -> usize {
+         fm::input_len(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn fm_input_digit(&self, idx: usize) -> u8 {
+         fm::input_digit(self, idx)
+     }
++    #[cfg(not(feature = "pager-only"))]
      pub fn poll_spectrum(&mut self, syst: &mut SYST) {
          spectrum::poll(self, syst);
      }
@@ -385,15 +1336,152 @@ index 5f006e4..371e81e 100644
 +            pager::dispatch(self, syst, ev);
 +        }
 +    }
++    #[cfg(not(feature = "pager-only"))]
      pub fn spectrum_window_start_hz(&self) -> u32 {
          spectrum::window_start_hz(self)
      }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_scan_step_hz(&self) -> u32 {
+         spectrum::scan_step_hz(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_pan_step_hz(&self) -> u32 {
+         spectrum::pan_step_hz(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_bins(&self) -> u16 {
+         spectrum::bins(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_rssi_bin(&self, pos: usize) -> u16 {
+         spectrum::rssi_bin(self, pos)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_rssi_ceiling(&self) -> i16 {
+         spectrum::rssi_ceiling(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_trigger_level(&self) -> u16 {
+         spectrum::trigger_level(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_peak_bin(&self) -> Option<u16> {
+         spectrum::peak_bin(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_listening(&self) -> bool {
+         spectrum::listening(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_modulation(&self) -> Modulation {
+         spectrum::modulation(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_wide_bandwidth(&self) -> bool {
+         spectrum::wide_bandwidth(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_entering_freq(&self) -> bool {
+         spectrum::entering_freq(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_input_len(&self) -> usize {
+         spectrum::input_len(self)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn spectrum_input_digit(&self, idx: usize) -> u8 {
+         spectrum::input_digit(self, idx)
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn rssi_open(&self) -> bool {
+         self.radio.rssi_open()
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn audio_open(&self) -> bool {
+         self.radio.audio_is_open()
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn is_monitor(&self) -> bool {
+         self.radio.is_monitor()
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn dual_standby_enabled(&self) -> bool {
+         self.dual_standby
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn power_save_active(&self) -> bool {
+         self.power_save
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn tx_elapsed_seconds(&self) -> u32 {
+         self.tot_ticks as u32 / TICKS_PER_SECOND as u32
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn channel_display_mode(&self) -> ChannelDisplayMode {
+         self.channel_display_mode
+     }
+     /// 0=Off, 1=Semi, 2=Full; see `flash_map::Settings::bk_in`.
++    #[cfg(not(feature = "pager-only"))]
+     pub fn bk_in(&self) -> u8 {
+         self.settings.bk_in
+     }
+     /// True while a CW/CWF key is physically held down, including
+     /// BK-IN=Off's local-only sidetone
++    #[cfg(not(feature = "pager-only"))]
+     pub fn cw_key_down(&self) -> bool {
+         self.cw_key_down
+     }
++    #[cfg(not(feature = "pager-only"))]
+     pub fn set_channel_display_mode(&mut self, mode: ChannelDisplayMode) {
+         self.channel_display_mode = mode;
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn freq_input_len(&self) -> usize {
+         if matches!(self.sides[self.master].vfo_chan, ChVfoMode::Vfo) {
+             self.input.len
+@@ -1520,10 +1828,12 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn freq_input_digit(&self, idx: usize) -> u8 {
+         self.input.digits[idx]
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn channel_input_len(&self) -> usize {
+         if matches!(self.sides[self.master].vfo_chan, ChVfoMode::Channel) {
+             self.input.len
+@@ -1532,18 +1842,22 @@ impl App {
+         }
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn dtmf_dial_active(&self) -> bool {
+         self.dtmf_dial.is_some()
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn dtmf_dial_len(&self) -> usize {
+         self.dtmf_dial.as_ref().map_or(0, |d| d.len)
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn dtmf_dial_digit(&self, idx: usize) -> u8 {
+         self.dtmf_dial.as_ref().map_or(0, |d| d.digits[idx])
+     }
+ 
++    #[cfg(not(feature = "pager-only"))]
+     pub fn dtmf_dial_capacity(&self) -> usize {
+         DTMF_DIAL_MAX_DIGITS
+     }
 diff --git a/src/app/pager.rs b/src/app/pager.rs
 new file mode 100644
-index 0000000..111b7db
+index 0000000..bdfaa35
 --- /dev/null
 +++ b/src/app/pager.rs
-@@ -0,0 +1,5297 @@
+@@ -0,0 +1,5306 @@
 +//! VOICE MSG: the sotto voice pager, receive side.
 +//!
 +//! A sotto voice message (2400 bit/s speech, 6 bytes per 20 ms) arrives as
@@ -852,8 +1940,10 @@ index 0000000..111b7db
 +    flags: u8,
 +    from: [u8; FROM_MAX],
 +}
++#[link_section = ".ram0"] // hal::ram0
 +static mut PLAY: Play = Play { sf: 0, n: 0, codec: 0, flags: 0, from: [0; FROM_MAX] };
 +/// the caller of the message in the store (from a sotto_play), for the screen; empty otherwise
++#[link_section = ".ram0"] // hal::ram0
 +static mut PLAY_FROM: [u8; FROM_MAX] = [0; FROM_MAX];
 +/// the library slot the running module came from (255: sent over the air), and the slot to run
 +/// again after playback (255: none)
@@ -2858,6 +3948,7 @@ index 0000000..111b7db
 +static mut Y_IRQN: u8 = 3;
 +static mut Y_PENDING: u16 = 0;
 +const SOFT_LEN: usize = 16;
++#[link_section = ".ram0"] // hal::ram0
 +static mut Y_SOFT: [u16; SOFT_LEN] = [0; SOFT_LEN];
 +static mut Y_SOFT_R: u8 = 0;
 +static mut Y_SOFT_N: u8 = 0;
@@ -4027,6 +5118,7 @@ index 0000000..111b7db
 +    slots: [u8; KL_SLOTS as usize],
 +}
 +#[cfg(all(feature = "explore", feature = "spilib"))]
++#[link_section = ".ram0"] // hal::ram0
 +static mut MENU: Menu = Menu { on: false, sel: 0, n: 0, slots: [0; KL_SLOTS as usize] };
 +
 +#[cfg(all(feature = "explore", feature = "spilib"))]
@@ -4062,6 +5154,7 @@ index 0000000..111b7db
 +}
 +
 +#[cfg(banded)]
++#[link_section = ".ram0"] // hal::ram0
 +static mut HELP: Help = Help { on: false, page: 0, n: 0, addr: [0; HELP_PAGES] };
 +
 +#[cfg(banded)]
@@ -4481,23 +5574,27 @@ index 0000000..111b7db
 +        r, app.pager.ifrx_flags, res.ms, res.syncs, res.syms, res.lost, res.acq_q, res.acq_rej, res.afc_hz, res.idle_pct, res.ks,
 +        res.ram, res.gap_us, res.gap_i, res.lag, res.lead_ser, sfree
 +    );
++    #[inline(never)]
++    fn report_ifp_pkts(res: &ffi::IfpResult) {
++        let n = (res.nres.max(0) as usize).min(64);
++        let ns = (res.syncs as usize).min(64);
++        let mut codes = [0u8; 64];
++        let mut miss = [0u8; 64];
++        for i in 0..n {
++            codes[i] = ifp_code(res.res[i]);
++        }
++        for i in 0..ns {
++            miss[i] = ifp_code(res.miss[i]);
++        }
++        rl!(
++            "K6 IFP pkts={} r={} miss={}",
++            res.nres,
++            crate::out::ascii(&codes[..n]),
++            crate::out::ascii(&miss[..ns])
++        );
++    }
 +    let n = (res.nres.max(0) as usize).min(64);
-+    let ns = (res.syncs as usize).min(64);
-+    let mut codes = [0u8; 64];
-+    let mut miss = [0u8; 64];
-+    for i in 0..n {
-+        codes[i] = ifp_code(res.res[i]);
-+    }
-+    // each sync word's wrong symbols (one a packet, in order)
-+    for i in 0..ns {
-+        miss[i] = ifp_code(res.miss[i]);
-+    }
-+    rl!(
-+        "K6 IFP pkts={} r={} miss={}",
-+        res.nres,
-+        crate::out::ascii(&codes[..n]),
-+        crate::out::ascii(&miss[..ns])
-+    );
++    report_ifp_pkts(&res);
 +    // back to the pager's set-up, GP0 as it was
 +    app.radio.fd6818.reg_write(syst, MOD_GPIO, gpio);
 +    app.sync_watching_to_master(syst);
@@ -5693,10 +6790,10 @@ index 0000000..111b7db
 +];
 diff --git a/src/app/pager/explore.rs b/src/app/pager/explore.rs
 new file mode 100644
-index 0000000..1aa4347
+index 0000000..a0cf616
 --- /dev/null
 +++ b/src/app/pager/explore.rs
-@@ -0,0 +1,2538 @@
+@@ -0,0 +1,2539 @@
 +//! EXPLORE: the K6 signal explorer's list of likely repeaters, in the pager image (sotto's
 +//! docs/k6-explore-app.md; the design is the "K6 signal explorer" plan, Phase 3).
 +//!
@@ -6175,6 +7272,7 @@ index 0000000..1aa4347
 +}
 +/// the saved table's frequencies, for the new / known rule on the list (more stay unmarked)
 +const KNOWN_N: usize = 64;
++#[link_section = ".ram0"] // hal::ram0
 +static mut KNOWN: [u32; KNOWN_N] = [0; KNOWN_N];
 +const RT_F_CALL_USER: u16 = 0x0010;
 +const RT_F_DMR: u16 = 0x0020;
@@ -8807,10 +9905,10 @@ index 73a6de2..6407ded 100644
              side1_long: buf[20].min(11),
 diff --git a/src/hal/arena.rs b/src/hal/arena.rs
 new file mode 100644
-index 0000000..bbad62b
+index 0000000..990739d
 --- /dev/null
 +++ b/src/hal/arena.rs
-@@ -0,0 +1,113 @@
+@@ -0,0 +1,123 @@
 +//! One block of RAM shared by the things that never run at the same time.
 +//!
 +//! A voice message needs the message store, the PWM audio ring and the decoder's working
@@ -8847,6 +9945,16 @@ index 0000000..bbad62b
 +//! hiss image's running stack still limits it: 268 bytes to spare (256 before), the voice +
 +//! EXPLORE image 552.
 +//!
++//! 2026-11-26: 16,688 bytes, 1,280 more (module API level 16). The pager-only build leaves 13
++//! of Aura's modes out of `App` (APP_SLOT 2,164 -> 1,236 B in hal::ram0), and the room went to
++//! libsotto_k6.a's .bss, EXPLORE's KNOWN list and the pager's zeroed statics. main's one-time
++//! set-up moved into boot_init_app (main's frame 880 -> 160 B in the hiss image), and the hiss
++//! image builds with FX_SYNTH_STATE, so synth's 2 KB arrays sit in the decoder pool (4,280 B)
++//! instead of on the stack (the M0 model: the same cycles, the same PCM). On the radio at
++//! 16,432 (d3ac7ad): one clean boot, a FUSOTTO RX call returned with stack_free=772 B (408 on
++//! the level 13-15 images) and played with ram_free=1,468. So 256 more: 16,688 bytes, which
++//! leaves the stack about 516 B, still above what the earlier images ran with.
++//!
 +//! Size until then: the same 11,776 bytes in every image that reads its codebooks from SPI flash and plays
 +//! voice, so a module that fits one fits all. In the hiss band image that is store 4,096 + ring
 +//! 2,560 + decoder 2,240 (sotto_pager.c SP_DEC_MAX 2,232) + the 864 bytes the pager-only build
@@ -8866,7 +9974,7 @@ index 0000000..bbad62b
 +/// the PWM audio ring (hal::pwm_audio)
 +pub const RING_BYTES: usize = super::pwm_audio::RING_BYTES;
 +#[cfg(not(small_arena))]
-+pub const ARENA_BYTES: usize = 15408;
++pub const ARENA_BYTES: usize = 16688;
 +#[cfg(small_arena)]
 +pub const ARENA_BYTES: usize = STORE_BYTES + RING_BYTES;
 +/// the decoder's pool: what is left after the store and the ring
@@ -8878,7 +9986,7 @@ index 0000000..bbad62b
 +const _: () = assert!(ARENA_BYTES % 4 == 0 && DEC_OFF % 4 == 0);
 +const _: () = assert!(ARENA_BYTES >= DEC_OFF);
 +#[cfg(feature = "hiss")]
-+const _: () = assert!(DEC_BYTES >= 2232); // sotto_pager.c's SP_DEC_MAX with SP_HISS
++const _: () = assert!(DEC_BYTES >= 4280); // sotto_pager.c's SP_DEC_MAX with SP_HISS + FX_SYNTH_STATE
 +#[cfg(not(small_arena))]
 +const _: () = assert!(ARENA_BYTES - TLM_BYTES >= DEC_OFF); // telemetry clear of the ring
 +
@@ -10011,7 +11119,7 @@ index c298592..acce259 100644
      tim.cnt().read().bits() as u16
  }
 diff --git a/src/main.rs b/src/main.rs
-index 9d2b0c0..86b6938 100644
+index 9d2b0c0..5b29186 100644
 --- a/src/main.rs
 +++ b/src/main.rs
 @@ -1,6 +1,8 @@
@@ -10023,7 +11131,7 @@ index 9d2b0c0..86b6938 100644
  mod app;
  
  mod board;
-@@ -11,10 +13,11 @@ mod flash_map;
+@@ -11,11 +13,13 @@ mod flash_map;
  mod hal;
  mod ui;
  
@@ -10034,12 +11142,85 @@ index 9d2b0c0..86b6938 100644
 -use panic_halt as _;
 +// panics: app::pager reports them on the serial cable and reboots (was panic_halt)
  
++#[cfg(not(feature = "pager-only"))]
  use app::satellite;
  use device::display::{Backlight, Display};
-@@ -30,8 +33,50 @@ use hal_shim::{ClosurePin, SystDelay};
+ use device::flashlight::Flashlight;
+@@ -30,131 +34,100 @@ use hal_shim::{ClosurePin, SystDelay};
  
  const DEFAULT_FREQ_HZ: u32 = 439_500_000;
  
+-#[entry]
+-fn main() -> ! {
+-    let _dp = unsafe { Peripherals::steal() };
+-
+-    let rcc = unsafe { &*kd32f328_pac::Rcc::ptr() };
+-    let gpioa = unsafe { &*kd32f328_pac::Gpioa::ptr() };
+-    let gpiob = unsafe { &*kd32f328_pac::Gpiob::ptr() };
+-    let gpioc = unsafe { &*kd32f328_pac::Gpioc::ptr() };
+-    let gpiof = unsafe { &*kd32f328_pac::Gpiof::ptr() };
+-    let flash = unsafe { &*kd32f328_pac::Flash::ptr() };
+-    let usart1 = unsafe { &*kd32f328_pac::Usart1::ptr() };
+-    let spi1 = unsafe { &*kd32f328_pac::Spi1::ptr() };
+-    let spi2 = unsafe { &*kd32f328_pac::Spi2::ptr() };
+-    let adc_regs = unsafe { &*kd32f328_pac::Adc::ptr() };
+-
+-    clock::setup_pll(rcc, flash);
+-    clock::enable_peripheral_clocks(rcc);
+-    hal::uptime::init();
+-
+-    // board pin init
+-    board::init_power_pins(gpioa);
+-    let power = Power::new(gpioa);
+-    power.latch_on();
+-
+-    board::init_ptt_rxd_pin(gpioa);
+-    let flashlight = Flashlight::new(gpiob);
+-    board::init_debug_uart_tx_pin(gpioa);
+-    board::init_lcd_control_pins(gpiob, gpioc);
+-    board::init_lcd_spi_pins(gpiob);
+-    board::init_lcd_backlight_pin(gpiof);
+-    let backlight = Backlight::new(gpiof);
+-    backlight.on();
+-    board::init_fd6818_pins(gpiob);
+-    board::init_norflash_pins(gpioa);
+-    board::init_speaker_switch_pin(gpiob);
+-    board::init_rx_band_pins(gpioa);
+-    board::init_i2c_pins(gpioa);
+-    board::init_battery_adc_pin(gpioa);
+-    board::init_vox_adc_pin(gpioa);
+-    board::init_keypad_pins(gpiob, gpioc, gpiof);
+-    board::init_rx_led_pin(gpioa);
+-    // Constructed here (rather than right before its first use, as before)
+-    // so it's available for the first-boot format-confirmation gate below.
+-    let mut keypad = Keypad::new(gpiob, gpioc, gpiof);
+-
+-    let mut dbg = uart::DebugUart::new(usart1, clock::SYSCLK_HZ, 115_200);
+-    uart::install_bootloader_trampoline();
+-    unsafe { cortex_m::peripheral::NVIC::unmask(kd32f328_pac::Interrupt::USART1) };
+-    writeln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ).ok();
+-
+-    let mut cp = cortex_m::Peripherals::take().unwrap();
+-    unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
+-    // Enabled this early (rather than just before the main loop, as before)
+-    // so UART RX -- hence CPS handshake detection -- already works during
+-    // the first-boot format-confirmation gate below, before `App` exists.
+-    // USART1 is the only interrupt configured at this point.
+-    unsafe { cortex_m::interrupt::enable() };
+-
+-    // display
+-    let spi_bus = spi::SpiBus::new(spi2, spi::ClockMode::Mode3, 8);
+-    let cs_pin = ClosurePin(|level| board::set_lcd_cs(gpiob, level));
+-    let dc_pin = ClosurePin(|level| board::set_lcd_dc(gpioc, level));
+-    let mut rst_pin = ClosurePin(|level| board::set_lcd_reset(gpiob, level));
+-
+-    let spi_device = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(spi_bus, cs_pin)
+-        .unwrap_or_else(|_| unreachable!());
+-    let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
+-
+-    let mut page_buffer: st7565::GraphicsPageBuffer<128, 8> = st7565::GraphicsPageBuffer::new();
+-    let mut lcd = st7565::ST7565::new(interface, display_spec::Sc5260Spec)
+-        .into_graphics_mode(&mut page_buffer);
 +// in the bootloader's idle RAM (hal::ram0): its 2.1 KB went to the shared block. Not in all of
 +// Aura (the size report build), whose App is bigger than the room left there
 +#[cfg_attr(feature = "pager-only", link_section = ".ram0")]
@@ -10060,7 +11241,15 @@ index 9d2b0c0..86b6938 100644
 +) -> &'static mut app::App {
 +    slot.write(app::App::new(radio, chip_id, keypad, storage, flashlight, fm_radio, cfg, syst))
 +}
-+
+ 
+-    {
+-        let mut syst_delay = SystDelay(&mut cp.SYST);
+-        lcd.reset(&mut rst_pin, &mut syst_delay).ok();
+-    }
+-    lcd.flush().ok();
+-    lcd.set_display_on(true).ok();
+-    let mut display = Display::new(lcd);
+-    writeln!(dbg, "lcd init done").ok();
 +/// The boot logo's 1 KB buffer exists only during this call, instead of in main's stack frame
 +/// for good (main never returns, and the pager's decoder needs that stack).
 +#[cfg(not(feature = "pager-only"))]
@@ -10072,100 +11261,20 @@ index 9d2b0c0..86b6938 100644
 +    let logo = storage.read_boot_logo();
 +    ui::boot::draw_logo(lcd, &logo);
 +}
-+
- #[entry]
- fn main() -> ! {
-+    // boottrace: what the bootloader handed over, before anything here changes it
-+    #[cfg(feature = "boottrace")]
-+    let snap = hal::ram0::snap();
-+    #[cfg(feature = "boottrace")]
-+    hal::ram0::dog_start();
-+    // first: the core buffers in the bootloader's idle RAM start out zero, as in .bss
-+    hal::ram0::clear();
-+    #[cfg(feature = "explore")]
-+    app::pager::explore_init(); // its state is in hal::ram0 too
-     let _dp = unsafe { Peripherals::steal() };
  
-     let rcc = unsafe { &*kd32f328_pac::Rcc::ptr() };
-@@ -76,17 +121,43 @@ fn main() -> ! {
-     let mut keypad = Keypad::new(gpiob, gpioc, gpiof);
- 
-     let mut dbg = uart::DebugUart::new(usart1, clock::SYSCLK_HZ, 115_200);
-+    // boottrace: 1 = past the RAM0 clear and the UART set-up (sp, SysTick CSR)
-+    hal::ram0::bt(1, hal::ram0::sp(), unsafe { core::ptr::read_volatile(0xE000_E010 as *const u32) });
-+    #[cfg(feature = "boottrace")]
-+    hal::ram0::snap_print(&snap);
-     uart::install_bootloader_trampoline();
-+    hal::ram0::bt(2, unsafe { core::ptr::read_volatile(0x2000_1000 as *const u32) }, unsafe {
-+        core::ptr::read_volatile(0x2000_1004 as *const u32)
-+    });
-     unsafe { cortex_m::peripheral::NVIC::unmask(kd32f328_pac::Interrupt::USART1) };
--    writeln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ).ok();
-+    dln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ);
-+    dln!(dbg, "K6 BOOT build={}", app::pager::BUILD);
-+    // what the bootloader left at the bottom of RAM (the live vector table, it seems): the
-+    // initial SP and the 15 system exception vectors, then SysTick and the first IRQs
-+    dln!(dbg, "K6 VEC");
-+    for i in 0..20u32 {
-+        let w = unsafe { core::ptr::read_volatile((0x2000_0000 + 4 * i) as *const u32) };
-+        dln!(dbg, " {:08x}", w);
-+    }
-+    dln!(dbg, "");
-+    // crash and stuck-key-up backstop: a vector table in SRAM at 0 (hal::txdog); its boot line
-+    // goes on the serial report from VOICE MSG's first entry
-+    #[cfg(not(feature = "lean"))]
-+    hal::txdog::install();
-+    hal::ram0::bt(3, hal::ram0::sp(), hal::ram0::used() as u32);
- 
-     let mut cp = cortex_m::Peripherals::take().unwrap();
-+    // The bootloader leaves SysTick's interrupt on (CSR 0x00010006, sotto's fdirq module,
-+    // 2026-11-09): every delay::us then ended in an exception through its table, and an FD6818
-+    // register read took 193 us instead of 98 (fdtick: 196 us a pair with it off)
-+    cp.SYST.disable_interrupt();
-     unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
-     // Enabled this early (rather than just before the main loop, as before)
-     // so UART RX -- hence CPS handshake detection -- already works during
-     // the first-boot format-confirmation gate below, before `App` exists.
-     // USART1 is the only interrupt configured at this point.
-     unsafe { cortex_m::interrupt::enable() };
-+    hal::ram0::bt(4, hal::ram0::sp(), 0);
- 
-     // display
-     let spi_bus = spi::SpiBus::new(spi2, spi::ClockMode::Mode3, 8);
-@@ -98,63 +169,82 @@ fn main() -> ! {
-         .unwrap_or_else(|_| unreachable!());
-     let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
- 
-+    // the 1 KB page buffer: in main's frame for good, or (images that play voice from SPI
-+    // codebooks) in the PWM ring only while the screen is drawn, device::display
-+    #[cfg(not(shared_lcd))]
-     let mut page_buffer: st7565::GraphicsPageBuffer<128, 8> = st7565::GraphicsPageBuffer::new();
-+    #[cfg(not(shared_lcd))]
-+    let page_buffer = &mut page_buffer;
-+    #[cfg(all(shared_lcd, not(banded)))]
-+    let page_buffer = device::display::shared_page_buffer();
-+    #[cfg(not(banded))]
-     let mut lcd = st7565::ST7565::new(interface, display_spec::Sc5260Spec)
--        .into_graphics_mode(&mut page_buffer);
-+        .into_graphics_mode(page_buffer);
-+    // the `banded` image: no page buffer anywhere, the driver in raw mode (device::display)
-+    #[cfg(banded)]
-+    let mut lcd = st7565::ST7565::new(interface, display_spec::Sc5260Spec).into_raw_mode();
- 
-     {
-         let mut syst_delay = SystDelay(&mut cp.SYST);
-         lcd.reset(&mut rst_pin, &mut syst_delay).ok();
-     }
-+    #[cfg(not(banded))]
-     lcd.flush().ok();
-     lcd.set_display_on(true).ok();
-     let mut display = Display::new(lcd);
--    writeln!(dbg, "lcd init done").ok();
-+    #[cfg(banded)]
-+    display.draw_pages(|_, _| ()); // a blank screen
-+    ui::hook_mod_screen(&mut display); // module API level 6: a module's own screen
-+    dln!(dbg, "lcd init done");
- 
++#[inline(never)]
++#[allow(clippy::too_many_arguments)]
++fn boot_init_app<DI: display_interface::WriteOnlyDataCommand>(
++    cp: &mut cortex_m::Peripherals,
++    gpioa: &'static kd32f328_pac::gpioa::RegisterBlock,
++    gpiob: &'static kd32f328_pac::gpiob::RegisterBlock,
++    spi1: &'static kd32f328_pac::spi1::RegisterBlock,
++    adc_regs: &'static kd32f328_pac::adc::RegisterBlock,
++    mut keypad: Keypad,
++    flashlight: Flashlight,
++    display: &mut Display<'_, DI>,
++    dbg: &mut uart::DebugUart<'_>,
++) -> &'static mut app::App {
      // rfic
      let mut rfic = fd6818::Fd6818::new(gpiob);
      let chip_id = rfic.chip_id(&mut cp.SYST);
@@ -10194,10 +11303,11 @@ index 9d2b0c0..86b6938 100644
              if cps_handshake.poll() {
 -                ui::cps::draw_programming(display.as_draw_target());
 -                display.flush();
-+                screen!(display, |lcd| ui::cps::draw_programming(lcd));
-                 cps::run_preboot_dump_session(&mut storage, &mut cp.SYST, &mut dbg);
+-                cps::run_preboot_dump_session(&mut storage, &mut cp.SYST, &mut dbg);
 -                ui::boot::draw_format_prompt(display.as_draw_target());
 -                display.flush();
++                screen!(display, |lcd| ui::cps::draw_programming(lcd));
++                cps::run_preboot_dump_session(&mut storage, &mut cp.SYST, dbg);
 +                screen!(display, |lcd| ui::boot::draw_format_prompt(lcd));
              }
              delay::ms(&mut cp.SYST, 10);
@@ -10229,7 +11339,7 @@ index 9d2b0c0..86b6938 100644
          writeln!(
              dbg,
              "squelch cal @0xf0c0: th_in={:?} th_out={:?}",
-@@ -163,11 +253,11 @@ fn main() -> ! {
+@@ -163,11 +136,11 @@ fn main() -> ! {
          .ok();
          rfic.set_squelch_cal(sql_cal);
      } else {
@@ -10243,7 +11353,7 @@ index 9d2b0c0..86b6938 100644
  
      rfic.set_audio_calibration(cal_buf[0], cal_buf[1], cal_buf[2], cal_buf[3], cal_buf[4]);
      rfic.apply_af_calibration(
-@@ -177,18 +267,17 @@ fn main() -> ! {
+@@ -177,18 +150,17 @@ fn main() -> ! {
          cal_buf[13],
          cal_buf[14],
      );
@@ -10265,7 +11375,7 @@ index 9d2b0c0..86b6938 100644
  
      let ani_raw = storage.read_ani_raw();
      let ani = AniConfig::from_raw(
-@@ -219,9 +308,8 @@ fn main() -> ! {
+@@ -219,9 +191,8 @@ fn main() -> ! {
      let fm_radio = FmRadio::new(gpioa);
  
      if radio.ptt_asserted() || keypad.any_pressed(&mut cp.SYST) {
@@ -10277,7 +11387,7 @@ index 9d2b0c0..86b6938 100644
          let mut released_ticks = 0u32;
          while released_ticks < 50 {
              delay::ms(&mut cp.SYST, 10);
-@@ -234,7 +322,12 @@ fn main() -> ! {
+@@ -234,7 +205,12 @@ fn main() -> ! {
      }
  
      // app class
@@ -10291,14 +11401,15 @@ index 9d2b0c0..86b6938 100644
          radio,
          chip_id,
          keypad,
-@@ -252,63 +345,146 @@ fn main() -> ! {
+@@ -252,63 +228,293 @@ fn main() -> ! {
          },
          &mut cp.SYST,
      );
 +    hal::ram0::bt(6, hal::ram0::sp(), 0);
++    app
++}
  
-+    ui::glyph::set_flash(&mut app.storage_mut().norflash, false); // the Storage moved into the App
-     app.init_battery_samples();
+-    app.init_battery_samples();
 -    let boot_mode = app.settings().boot_display_mode;
 -    match boot_mode {
 -        1 => {
@@ -10315,7 +11426,79 @@ index 9d2b0c0..86b6938 100644
 -            display.flush();
 -        }
 -        _ => {}
--    }
++#[entry]
++fn main() -> ! {
++    // boottrace: what the bootloader handed over, before anything here changes it
++    #[cfg(feature = "boottrace")]
++    let snap = hal::ram0::snap();
++    #[cfg(feature = "boottrace")]
++    hal::ram0::dog_start();
++    // first: the core buffers in the bootloader's idle RAM start out zero, as in .bss
++    hal::ram0::clear();
++    #[cfg(feature = "explore")]
++    app::pager::explore_init(); // its state is in hal::ram0 too
++    let _dp = unsafe { Peripherals::steal() };
++
++    let rcc = unsafe { &*kd32f328_pac::Rcc::ptr() };
++    let gpioa = unsafe { &*kd32f328_pac::Gpioa::ptr() };
++    let gpiob = unsafe { &*kd32f328_pac::Gpiob::ptr() };
++    let gpioc = unsafe { &*kd32f328_pac::Gpioc::ptr() };
++    let gpiof = unsafe { &*kd32f328_pac::Gpiof::ptr() };
++    let flash = unsafe { &*kd32f328_pac::Flash::ptr() };
++    let usart1 = unsafe { &*kd32f328_pac::Usart1::ptr() };
++    let spi1 = unsafe { &*kd32f328_pac::Spi1::ptr() };
++    let spi2 = unsafe { &*kd32f328_pac::Spi2::ptr() };
++    let adc_regs = unsafe { &*kd32f328_pac::Adc::ptr() };
++
++    clock::setup_pll(rcc, flash);
++    clock::enable_peripheral_clocks(rcc);
++    hal::uptime::init();
++
++    // board pin init
++    board::init_power_pins(gpioa);
++    let power = Power::new(gpioa);
++    power.latch_on();
++
++    board::init_ptt_rxd_pin(gpioa);
++    let flashlight = Flashlight::new(gpiob);
++    board::init_debug_uart_tx_pin(gpioa);
++    board::init_lcd_control_pins(gpiob, gpioc);
++    board::init_lcd_spi_pins(gpiob);
++    board::init_lcd_backlight_pin(gpiof);
++    let backlight = Backlight::new(gpiof);
++    backlight.on();
++    board::init_fd6818_pins(gpiob);
++    board::init_norflash_pins(gpioa);
++    board::init_speaker_switch_pin(gpiob);
++    board::init_rx_band_pins(gpioa);
++    board::init_i2c_pins(gpioa);
++    board::init_battery_adc_pin(gpioa);
++    board::init_vox_adc_pin(gpioa);
++    board::init_keypad_pins(gpiob, gpioc, gpiof);
++    board::init_rx_led_pin(gpioa);
++    // Constructed here (rather than right before its first use, as before)
++    // so it's available for the first-boot format-confirmation gate below.
++    let mut keypad = Keypad::new(gpiob, gpioc, gpiof);
++
++    let mut dbg = uart::DebugUart::new(usart1, clock::SYSCLK_HZ, 115_200);
++    // boottrace: 1 = past the RAM0 clear and the UART set-up (sp, SysTick CSR)
++    hal::ram0::bt(1, hal::ram0::sp(), unsafe { core::ptr::read_volatile(0xE000_E010 as *const u32) });
++    #[cfg(feature = "boottrace")]
++    hal::ram0::snap_print(&snap);
++    uart::install_bootloader_trampoline();
++    hal::ram0::bt(2, unsafe { core::ptr::read_volatile(0x2000_1000 as *const u32) }, unsafe {
++        core::ptr::read_volatile(0x2000_1004 as *const u32)
++    });
++    unsafe { cortex_m::peripheral::NVIC::unmask(kd32f328_pac::Interrupt::USART1) };
++    dln!(dbg, "bfk6-fw boot, sysclk={}Hz", clock::SYSCLK_HZ);
++    dln!(dbg, "K6 BOOT build={}", app::pager::BUILD);
++    // what the bootloader left at the bottom of RAM (the live vector table, it seems): the
++    // initial SP and the 15 system exception vectors, then SysTick and the first IRQs
++    dln!(dbg, "K6 VEC");
++    for i in 0..20u32 {
++        let w = unsafe { core::ptr::read_volatile((0x2000_0000 + 4 * i) as *const u32) };
++        dln!(dbg, " {:08x}", w);
+     }
 -    if boot_mode != 0 && app.settings().boot_sound_enabled {
 -        let tune = app.settings().boot_tune;
 -        let aborted = app
@@ -10323,6 +11506,86 @@ index 9d2b0c0..86b6938 100644
 -            .play_boot_tune(&mut cp.SYST, &tune, |syst| power.debounced_off(syst));
 -        if aborted {
 -            power.shutdown(&mut cp.SYST);
+-        }
++    dln!(dbg, "");
++    // crash and stuck-key-up backstop: a vector table in SRAM at 0 (hal::txdog); its boot line
++    // goes on the serial report from VOICE MSG's first entry
++    #[cfg(not(feature = "lean"))]
++    hal::txdog::install();
++    hal::ram0::bt(3, hal::ram0::sp(), hal::ram0::used() as u32);
++
++    let mut cp = cortex_m::Peripherals::take().unwrap();
++    // The bootloader leaves SysTick's interrupt on (CSR 0x00010006, sotto's fdirq module,
++    // 2026-11-09): every delay::us then ended in an exception through its table, and an FD6818
++    // register read took 193 us instead of 98 (fdtick: 196 us a pair with it off)
++    cp.SYST.disable_interrupt();
++    unsafe { cp.NVIC.set_priority(kd32f328_pac::Interrupt::USART1, 0) };
++    // Enabled this early (rather than just before the main loop, as before)
++    // so UART RX -- hence CPS handshake detection -- already works during
++    // the first-boot format-confirmation gate below, before `App` exists.
++    // USART1 is the only interrupt configured at this point.
++    unsafe { cortex_m::interrupt::enable() };
++    hal::ram0::bt(4, hal::ram0::sp(), 0);
++
++    // display
++    let spi_bus = spi::SpiBus::new(spi2, spi::ClockMode::Mode3, 8);
++    let cs_pin = ClosurePin(|level| board::set_lcd_cs(gpiob, level));
++    let dc_pin = ClosurePin(|level| board::set_lcd_dc(gpioc, level));
++    let mut rst_pin = ClosurePin(|level| board::set_lcd_reset(gpiob, level));
++
++    let spi_device = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(spi_bus, cs_pin)
++        .unwrap_or_else(|_| unreachable!());
++    let interface = display_interface_spi::SPIInterface::new(spi_device, dc_pin);
++
++    // the 1 KB page buffer: in main's frame for good, or (images that play voice from SPI
++    // codebooks) in the PWM ring only while the screen is drawn, device::display
++    #[cfg(not(shared_lcd))]
++    let mut page_buffer: st7565::GraphicsPageBuffer<128, 8> = st7565::GraphicsPageBuffer::new();
++    #[cfg(not(shared_lcd))]
++    let page_buffer = &mut page_buffer;
++    #[cfg(all(shared_lcd, not(banded)))]
++    let page_buffer = device::display::shared_page_buffer();
++    #[cfg(not(banded))]
++    let mut lcd = st7565::ST7565::new(interface, display_spec::Sc5260Spec)
++        .into_graphics_mode(page_buffer);
++    // the `banded` image: no page buffer anywhere, the driver in raw mode (device::display)
++    #[cfg(banded)]
++    let mut lcd = st7565::ST7565::new(interface, display_spec::Sc5260Spec).into_raw_mode();
++
++    {
++        let mut syst_delay = SystDelay(&mut cp.SYST);
++        lcd.reset(&mut rst_pin, &mut syst_delay).ok();
+     }
+-    if boot_mode != 0 {
+-        let mut remaining_ms: u32 = 1000;
+-        while remaining_ms > 0 {
+-            let slice = remaining_ms.min(30);
+-            delay::ms(&mut cp.SYST, slice);
+-            remaining_ms -= slice;
+-            if power.debounced_off(&mut cp.SYST) {
++    #[cfg(not(banded))]
++    lcd.flush().ok();
++    lcd.set_display_on(true).ok();
++    let mut display = Display::new(lcd);
++    #[cfg(banded)]
++    display.draw_pages(|_, _| ()); // a blank screen
++    ui::hook_mod_screen(&mut display); // module API level 6: a module's own screen
++    dln!(dbg, "lcd init done");
++
++    let mut app: &'static mut app::App = boot_init_app(
++        &mut cp,
++        gpioa,
++        gpiob,
++        spi1,
++        adc_regs,
++        keypad,
++        flashlight,
++        &mut display,
++        &mut dbg,
++    );
++
++    ui::glyph::set_flash(&mut app.storage_mut().norflash, false); // the Storage moved into the App
++    app.init_battery_samples();
 +    // Aura's boot screen (voltage, its "UV-K6x Aura" text or the stored logo), boot tune and
 +    // the 1 s hold after it: not in the pager-only images, which go straight to VOICE MSG.
 +    // Their ProFont 14 font (4 KB) went with them (ui::boot), 2026-11-10
@@ -10340,15 +11603,7 @@ index 9d2b0c0..86b6938 100644
 +                screen!(display, |lcd| show_boot_logo(lcd, app.storage_mut()));
 +            }
 +            _ => {}
-         }
--    }
--    if boot_mode != 0 {
--        let mut remaining_ms: u32 = 1000;
--        while remaining_ms > 0 {
--            let slice = remaining_ms.min(30);
--            delay::ms(&mut cp.SYST, slice);
--            remaining_ms -= slice;
--            if power.debounced_off(&mut cp.SYST) {
++        }
 +        if boot_mode != 0 && app.settings().boot_sound_enabled {
 +            let tune = app.settings().boot_tune;
 +            let aborted = app
@@ -10381,7 +11636,7 @@ index 9d2b0c0..86b6938 100644
 -    )
 -    .ok();
 +    );
-+
+ 
 +    // Pager-only image (feature "pager-only"): VOICE MSG is the whole firmware. Nothing here
 +    // writes flash: no channel-state save at power-off.
 +    #[cfg(feature = "pager-only")]
@@ -10458,7 +11713,9 @@ index 9d2b0c0..86b6938 100644
 +            }
 +        }
 +    }
- 
++
++    #[cfg(not(feature = "pager-only"))]
++    {
      // scheduler + main loop
      let mut scheduler = scheduler::Scheduler::new();
      let mut applied_contrast: u8 = u8::MAX;
@@ -10473,7 +11730,7 @@ index 9d2b0c0..86b6938 100644
  
          if cps_handshake.poll() {
              cps::run_session(&mut app, &mut cp.SYST, &mut display, &mut dbg);
-@@ -329,9 +505,22 @@ fn main() -> ! {
+@@ -329,9 +535,22 @@ fn main() -> ! {
              app.transmit_pending_sstv(&mut cp.SYST, &power);
          }
  
@@ -10497,7 +11754,7 @@ index 9d2b0c0..86b6938 100644
              app.radio_mut().rf_off(&mut cp.SYST);
              app.save_channel_state();
              power.shutdown(&mut cp.SYST);
-@@ -340,7 +529,7 @@ fn main() -> ! {
+@@ -340,7 +559,7 @@ fn main() -> ! {
          // battery
          if due.every_500ms {
              app.poll_battery();
@@ -10506,7 +11763,7 @@ index 9d2b0c0..86b6938 100644
          }
  
          // Wall clock tick + Doppler update
-@@ -381,7 +570,7 @@ fn main() -> ! {
+@@ -381,7 +600,7 @@ fn main() -> ! {
                          wide,
                      ) {
                          app.set_transmitting_for_tracking();
@@ -10515,7 +11772,7 @@ index 9d2b0c0..86b6938 100644
                      }
                  } else if !pressed && tracking_tx {
                      let ui = app.satellite_ui();
-@@ -396,11 +585,13 @@ fn main() -> ! {
+@@ -396,11 +615,13 @@ fn main() -> ! {
                          wide,
                      );
                      app.clear_transmitting_for_tracking();
@@ -10530,7 +11787,7 @@ index 9d2b0c0..86b6938 100644
          } else if matches!(
              app.side_modulation(app.master_index()),
              Modulation::Cw | Modulation::Cwf
-@@ -409,9 +600,9 @@ fn main() -> ! {
+@@ -409,9 +630,9 @@ fn main() -> ! {
          } else if let Some(level) = app.radio_mut().poll_ptt() {
              app.set_ptt(&mut cp.SYST, !level);
              if app.is_transmitting() {
@@ -10542,7 +11799,7 @@ index 9d2b0c0..86b6938 100644
              }
          }
  
-@@ -465,9 +656,13 @@ fn main() -> ! {
+@@ -465,9 +686,13 @@ fn main() -> ! {
              }
          }
  
@@ -10559,7 +11816,7 @@ index 9d2b0c0..86b6938 100644
              if !app.power_save_is_asleep() {
                  app.poll_squelch(&mut cp.SYST, 3);
                  app.poll_dual_standby(&mut cp.SYST, app.rssi_open());
-@@ -484,7 +679,7 @@ fn main() -> ! {
+@@ -484,7 +709,7 @@ fn main() -> ! {
              if !app.is_transmitting() && !app.power_save_is_asleep() {
                  let rssi = app.radio_mut().rssi(&mut cp.SYST);
                  app.set_rssi_raw(rssi as u8);
@@ -10568,7 +11825,7 @@ index 9d2b0c0..86b6938 100644
                      dbg,
                      "RSSI: {} audio_open={} freq={} ch_mode={} ch_num={}",
                      rssi,
-@@ -492,8 +687,7 @@ fn main() -> ! {
+@@ -492,8 +717,7 @@ fn main() -> ! {
                      app.watching_freq_hz(),
                      app.watching_is_channel_mode(),
                      app.watching_channel_num()
@@ -10578,6 +11835,12 @@ index 9d2b0c0..86b6938 100644
              }
  
              app.poll_blink();
+@@ -501,4 +725,5 @@ fn main() -> ! {
+         }
+         delay::ms(&mut cp.SYST, 10);
+     }
++    }
+ }
 diff --git a/src/out.rs b/src/out.rs
 new file mode 100644
 index 0000000..50efe96
@@ -11382,30 +12645,68 @@ index 0000000..325b106
 +    lcd.fill_solid(&Rectangle::new(Point::new(126, y), Size::new(2, th)), BinaryColor::On).ok();
 +}
 diff --git a/src/ui/mod.rs b/src/ui/mod.rs
-index cdfa0f7..8bcbec0 100644
+index cdfa0f7..27c183d 100644
 --- a/src/ui/mod.rs
 +++ b/src/ui/mod.rs
-@@ -3,9 +3,11 @@ mod chanmgr;
+@@ -1,36 +1,66 @@
+ pub mod boot;
++#[cfg(not(feature = "pager-only"))]
+ mod chanmgr;
++#[cfg(not(feature = "pager-only"))]
  mod contacts;
  pub mod cps;
++#[cfg(not(feature = "pager-only"))]
  mod fm;
 +pub mod glyph;
  pub mod icons;
++#[cfg(not(feature = "pager-only"))]
  mod launcher;
++#[cfg(not(feature = "pager-only"))]
  mod list;
 +mod pager;
++#[cfg(not(feature = "pager-only"))]
  mod scan;
++#[cfg(not(feature = "pager-only"))]
  mod scanqt;
++#[cfg(not(feature = "pager-only"))]
  mod search;
-@@ -19,6 +21,7 @@ use chanmgr::draw_chanmgr;
++#[cfg(not(feature = "pager-only"))]
+ mod settings;
++#[cfg(not(feature = "pager-only"))]
+ mod satellite;
++#[cfg(not(feature = "pager-only"))]
+ mod spectrum;
++#[cfg(not(feature = "pager-only"))]
+ mod sstv;
++#[cfg(not(feature = "pager-only"))]
+ mod standby;
+ 
++#[cfg(not(feature = "pager-only"))]
+ use chanmgr::draw_chanmgr;
++#[cfg(not(feature = "pager-only"))]
  use contacts::draw_contacts;
++#[cfg(not(feature = "pager-only"))]
  use fm::draw_fm;
++#[cfg(not(feature = "pager-only"))]
  use launcher::draw_app_menu;
 +use pager::draw_pager;
++#[cfg(not(feature = "pager-only"))]
  use satellite::draw_satellite;
++#[cfg(not(feature = "pager-only"))]
  use sstv::draw_sstv;
++#[cfg(not(feature = "pager-only"))]
  use scan::draw_scan;
-@@ -31,6 +34,8 @@ use standby::draw_standby;
++#[cfg(not(feature = "pager-only"))]
+ use scanqt::draw_scanqt;
++#[cfg(not(feature = "pager-only"))]
+ use search::draw_search;
++#[cfg(not(feature = "pager-only"))]
+ use settings::draw_settings;
++#[cfg(not(feature = "pager-only"))]
+ use spectrum::draw_spectrum;
++#[cfg(not(feature = "pager-only"))]
+ use standby::draw_standby;
+ 
  use crate::app;
  use crate::device::display::Display;
  use display_interface::WriteOnlyDataCommand;
@@ -11414,7 +12715,7 @@ index cdfa0f7..8bcbec0 100644
  
  // TextBuf
  pub struct TextBuf<const N: usize> {
-@@ -47,17 +52,207 @@ impl<const N: usize> TextBuf<N> {
+@@ -47,21 +77,212 @@ impl<const N: usize> TextBuf<N> {
      }
  
      pub fn as_str(&self) -> &str {
@@ -11626,7 +12927,12 @@ index cdfa0f7..8bcbec0 100644
          Ok(())
      }
  }
-@@ -77,6 +272,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
+ 
++#[cfg(not(feature = "pager-only"))]
+ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut app::App) {
+     match app.mode() {
+         app::Mode::AppMenu => draw_app_menu(display.as_draw_target(), &*app),
+@@ -77,6 +298,7 @@ pub fn draw<DI: WriteOnlyDataCommand>(display: &mut Display<'_, DI>, app: &mut a
              draw_satellite(display.as_draw_target(), app);
          }
          app::Mode::Sstv => draw_sstv(display.as_draw_target(), app),

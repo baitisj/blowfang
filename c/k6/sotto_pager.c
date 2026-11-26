@@ -29,11 +29,19 @@
    the M0, 964 on a 64-bit host), sotto 600 / 400's decoder, and the layer's state with its
    hooks (sotto_fx_vlr_dec16_bytes(): 720 on the M0, 904 on the host; sotto 1200's is smaller) */
 #if UINTPTR_MAX > 0xFFFFFFFFu
+#ifdef FX_SYNTH_STATE
+#define SP_DEC_CORE (992 + 2048)
+#else
 #define SP_DEC_CORE 992
+#endif
 #define SP_DEC_VLR 640
 #define SP_DEC_HISS 928
 #else
+#ifdef FX_SYNTH_STATE
+#define SP_DEC_CORE (904 + 2048)
+#else
 #define SP_DEC_CORE 904
+#endif
 #define SP_DEC_VLR 592
 #define SP_DEC_HISS 736
 #endif
