@@ -105,6 +105,23 @@ def test_keys_tune_the_listener(built):
     assert b.chips[0].hz < up
 
 
+def test_a_tap_is_one_step_and_a_hold_repeats(built):
+    """the keypad's debounce and repeat count scans, which the base firmware makes every 20 ms;
+    SURF asks for keys at every sweep step, so the glue paces the scans (a 150 ms tap stepped
+    twice before, and would have made a tap of # a long press)"""
+    b = bd.RT950Board(*built, band=band())
+    b.run_for(3.0)
+    moves = []
+    for hold in (0.15, 0.15, 0.45, 1.0):
+        hz = b.chips[0].hz
+        b.tap("UP", hold)
+        b.run_for(hold + 0.4)
+        moves.append(b.chips[0].hz - hz)
+    step = moves[0]
+    assert step > 0 and moves[1:3] == [step, step]         # under the 600 ms repeat: one step
+    assert moves[3] >= 3 * step                             # held a second: repeats
+
+
 def test_nothing_is_a_transmit_setting(built):
     b = bd.RT950Board(*built, band=band())
     b.run_for(3.0)
