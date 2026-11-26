@@ -33,6 +33,7 @@
 #include "app/audio.h"
 #include "app/keypad.h"
 #include "app/rx_path.h"
+#include "kernel/scheduler.h"
 #include "rt_api.h"
 #include "surf2.h"
 
@@ -137,8 +138,14 @@ static int key(void) {
       'B',                      /* KEY_SIDE4 */
   };
   static uint8_t held;           /* # held: its long press sent */
+  static uint32_t polled;        /* when the keypad was last scanned */
   key_event_t e;
   IWDG_FEED();
+  /* the keypad's debounce and repeat count calls, not time: the base firmware scans it every
+     TICK_KEYPAD_MS (20 ms: 60 ms debounce, first repeat at 600 ms). SURF asks at every sweep
+     step, so scanning each time would repeat a short tap and make a tap of # a long press */
+  if ((uint32_t)(ms() - polled) < TICK_KEYPAD_MS) return 0;
+  polled = ms();
   if (!keypad_get_event(&e)) return 0;
   if (e.type == KEY_EVT_PRESS) held = 0;
   /* # held until the keypad repeats it: TUNE (# | RT_LONG), once a press (unverified on the

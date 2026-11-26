@@ -120,6 +120,17 @@ jobs:
             radios/rt950/build/rt950-backup-only.BTF
             radios/rt950/build/rt950-backup-only.elf
             radios/rt950/build/rt950-backup-only.verify.txt
+      - name: the SURF image (the base firmware booting into dual-chip SURF; runs on the emulated board)
+        run: make -C radios/rt950 surf-image JM="$PWD/jm"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rt950-surf2
+          path: |
+            radios/rt950/build/rt950-surf2.BTF
+            radios/rt950/build/rt950-surf2.bin
+            radios/rt950/build/rt950-surf2.elf
+            radios/rt950/build/rt950-surf2.syms
+            radios/rt950/build/rt950-surf2.verify.txt
       - name: portable host builds
         run: make -C c/common
       - name: tests
@@ -128,6 +139,7 @@ jobs:
             tests/test_rt950_surf.py \
             tests/test_rt950_digi.py \
             tests/test_rt950_backup.py \
+            tests/test_rt950_board.py \
             tests/test_ssb_polar.py \
             tests/test_tone_fsk.py \
             tests/test_k6_surf.py

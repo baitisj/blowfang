@@ -1,8 +1,10 @@
 # SoapyFang
 
 Real or recorded I/Q behind an emulated BK48xx-family RF chip (the FD6818 / BK4829 of the UV-K6
-and the UV-21 Pro), so emulated radio firmware hears real signals. Today it drives the UV-21 Pro
-port image on the board of `sim/uv21/board.py`, in the same browser workbench.
+and the UV-21 Pro), so emulated radio firmware hears real signals. It drives the UV-21 Pro port
+image on the board of `sim/uv21/board.py`, and the RT-950 Pro SURF image on `sim/rt950/` (both
+BK4829s hear the one source: `python3 -m sim.rt950`, the same options, page on port 5059), each in
+a browser workbench.
 
     python3 -m sim.soapyfang                                    # the synthetic band (no SDR)
     python3 -m sim.soapyfang --source sigmf:PATH.sigmf-meta     # a recording
@@ -21,7 +23,8 @@ squelch).
 | `sources.py` | `IqSource`: `SyntheticSource` (the Station list as FM I/Q over a noise floor), `SigmfSource` (cf32_le, ci16_le, ci8), `SoapySource` (any SoapySDR receiver), `PlutoIioSource` (the Pluto through `iio_readdev`, set up by tools/pluto_bench.py, which `pluto.py`'s `open_pluto` brings in: hamlet's way), `open_source()` |
 | `chip.py` | `ChipModel`: REG_67 RSSI from FFT bins in the channel, REG_65 noise, REG_63 glitch, REG_0C squelch bit, 8 kHz speaker audio |
 | `board.py` | `SoapyUV21Board`: `UV21Board` with those registers from the chip, and a fast register-read path |
-| `workbench.py`, `panel.html` | the UV-21 workbench with the SoapyFang panel and audio |
+| `page.py`, `panel.html` | what every SoapyFang workbench shares: the panel and its calls, the command line, a session that closes its source (`sim/workbench.py` is the workbench itself) |
+| `workbench.py` | the UV-21 workbench with the SoapyFang panel and audio (`sim/rt950/workbench.py` is the RT-950's) |
 
 ## Rules it keeps
 
@@ -43,6 +46,10 @@ symbol listing `llvm-nm radios/uv21/build/port.elf > port.syms`.
  "steps": [{"do": "sim.soapyfang",
             "args": ["--minutes", "30", "--gain", "50", "--image", "job:port.bin", "--syms", "job:port.syms"]}]}
 ```
+
+For the RT-950 SURF image add `"--radio", "rt950"` and carry the CI artifact `rt950-surf2`'s
+`rt950-surf2.bin` and `rt950-surf2.syms` (and `"--center", "146520000"`, where the base firmware's
+VFO A starts with blank settings; SURF moves the window from there).
 
 The page is on hamlet's 127.0.0.1:5058 only; from another computer, `ssh -L 5058:127.0.0.1:5058
 hamlet` and open http://127.0.0.1:5058/. The step ends itself after `--minutes` (55 at most) and

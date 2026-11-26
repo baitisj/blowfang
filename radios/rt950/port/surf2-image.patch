@@ -1,0 +1,51 @@
+diff --git a/Makefile b/Makefile
+index f0a7823..191074f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -87,6 +87,12 @@ SRCS = \
+ 	$(SRC_DIR)/tests/rung9.c \
+ 	$(SRC_DIR)/debug_uart.c
+ 
++ifdef BLOWFANG_SURF2
++# blowfang's dual-chip SURF (radios/rt950 in baitisj/blowfang, GPL-3): the radio boots into it
++SRCS += $(SRC_DIR)/app/surf2.c
++SRCS += $(SRC_DIR)/app/jm_glue.c
++endif
++
+ OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+ 
+ # -- Target output --------------------------------------------------------
+@@ -139,6 +145,11 @@ ifdef TEST
+ CFLAGS += -DHW_TEST=$(TEST)
+ endif
+ 
++# blowfang's SURF build (above): the hook in main()
++ifdef BLOWFANG_SURF2
++CFLAGS += -DBLOWFANG_SURF2
++endif
++
+ # Debug UART output: make DEBUG=1
+ ifdef DEBUG
+ CFLAGS += -DDEBUG_UART
+diff --git a/src/main.c b/src/main.c
+index 55b3e0d..f9dd646 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -1247,6 +1247,17 @@ int main(void)
+ #endif
+     }
+ 
++#ifdef BLOWFANG_SURF2
++    /* blowfang's SURF from the active VFO's frequency, until Back; then the radio listens there
++     * again and the scheduler takes over as in a stock build */
++    {
++        extern int rt950_surf2(uint32_t vfo_hz);
++        radio_vfo_t v = vfo_get_active();
++        rt950_surf2(vfo_get_state(v)->freq_hz);
++        vfo_apply(v);
++    }
++#endif
++
+     /* Main loop - never returns */
+     dbg_puts("[DBG] entering scheduler\n");
+     sched_run();

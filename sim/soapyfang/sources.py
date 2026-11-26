@@ -72,7 +72,7 @@ class SyntheticSource(IqSource):
 
     def __init__(self, band=None, rate=1_200_000, center_hz=440_000_000, floor_dbm=-125.0, seed=1):
         if band is None:
-            from sim.uv21.board import default_band
+            from sim.band import default_band
             band = default_band()
         self.band = band                    # shared, not copied: the workbench edits it live
         self.rate = float(rate)

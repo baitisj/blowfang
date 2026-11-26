@@ -27,7 +27,6 @@ import random
 import struct
 import subprocess
 import sys
-from dataclasses import dataclass, field
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -66,74 +65,7 @@ MATRIX = {
 SIDE = {"SIDE1": (C, 14), "SIDE2": (B, 14), "BAND": (F, 6)}   # top, middle, bottom
 KEYS = tuple(MATRIX) + tuple(SIDE)
 
-MORSE = {"A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.",
-         "H": "....", "I": "..", "J": ".---", "K": "-.-", "L": ".-..", "M": "--", "N": "-.",
-         "O": "---", "P": ".--.", "Q": "--.-", "R": ".-.", "S": "...", "T": "-", "U": "..-",
-         "V": "...-", "W": ".--", "X": "-..-", "Y": "-.--", "Z": "--..", "0": "-----",
-         "1": ".----", "2": "..---", "3": "...--", "4": "....-", "5": ".....", "6": "-....",
-         "7": "--...", "8": "---..", "9": "----.", "/": "-..-."}
-
-
-def morse_keying(text, wpm=20):
-    """[(on, seconds), ...] for text in CW at wpm (a dot is 1.2 / wpm s)"""
-    dot = 1.2 / wpm
-    out = []
-    for w, word in enumerate(text.upper().split()):
-        if w:
-            out.append((0, 7 * dot))
-        for c, ch in enumerate(word):
-            if c:
-                out.append((0, 3 * dot))
-            for e, el in enumerate(MORSE.get(ch, "")):
-                if e:
-                    out.append((0, dot))
-                out.append((1, dot if el == "." else 3 * dot))
-    return out
-
-
-@dataclass
-class Station:
-    """one signal of the model band"""
-    name: str
-    hz: int
-    dbm: float
-    kind: str = "carrier"          # carrier | voice (overs) | cw (an ident every period_s) | off
-    width_hz: int = 6000           # half the occupied width: full level inside it
-    on_s: float = 6.0              # voice: an over this long ...
-    period_s: float = 20.0         # ... every period (voice), or an ident every period (cw)
-    phase_s: float = 0.0
-    text: str = "AG7EW"            # cw: what it sends
-    enabled: bool = True
-    _cw: list = field(default_factory=list, repr=False)
-
-    def keyed(self, t):
-        if not self.enabled or self.kind == "off":
-            return False
-        if self.kind == "carrier":
-            return True
-        u = (t + self.phase_s) % self.period_s
-        if self.kind == "voice":
-            return u < self.on_s
-        if not self._cw:
-            self._cw = morse_keying(self.text)
-        for on, d in self._cw:
-            if u < d:
-                return bool(on)
-            u -= d
-        return False
-
-
-def default_band():
-    """made-up 70 cm activity round 440 MHz (no real station's data), and the CW wake beacon on
-    440.850, the frequency the port listens on for it"""
-    return [
-        Station("repeater A", 441_200_000, -71, "voice", on_s=8, period_s=25, phase_s=3),
-        Station("repeater B", 442_900_000, -88, "voice", on_s=5, period_s=17, phase_s=9),
-        Station("simplex", 446_000_000, -95, "voice", on_s=4, period_s=30, phase_s=14),
-        Station("beacon", 432_300_000, -102, "carrier", width_hz=1500),
-        Station("data burst", 439_975_000, -84, "voice", on_s=0.4, period_s=1.1),
-        Station("wake (CW)", 440_850_000, -78, "cw", period_s=15, text="AG7EW AG7EW"),
-    ]
+from sim.band import MORSE, Station, default_band, morse_keying  # noqa: E402,F401  (were here)
 
 
 class UV21Board(tp.Port):

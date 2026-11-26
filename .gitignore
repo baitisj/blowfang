@@ -77,3 +77,6 @@ c/common/ysf_echo_host
 # I/Q recordings (SigMF): off-air captures never go in Git; tests write theirs to a temp folder
 *.sigmf-data
 *.sigmf-meta
+
+# the RT-950 base firmware checkout tests/test_rt950_board.py builds against (CI clones it here)
+/jm/

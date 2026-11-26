@@ -46,6 +46,9 @@ firmware/k6-aura/
 sim/
 !sim/uv21/
 !sim/soapyfang/
+!sim/rt950/
+!sim/band.py
+!sim/workbench.py
 modem/
 !modem/dmrvoice.py
 tools/k6_*
@@ -171,6 +174,19 @@ sim/k6digi/__init__.py
 sim/k6digi/ft8_wav.py
 sim/k6digi/ft8ref.py
 sim/k6digi/wsprref.py
+# the SURF image on the emulated board (tests/test_rt950_board.py), with SoapyFang's chip model
+sim/rt950/
+sim/band.py
+sim/soapyfang/chip.py
+sim/soapyfang/dsp.py
+sim/soapyfang/sources.py
+sim/soapyfang/__init__.py
+# and its browser workbench (python3 -m sim.rt950: the runner's sim.soapyfang step with --radio rt950)
+sim/workbench.py
+sim/soapyfang/__main__.py
+sim/soapyfang/page.py
+sim/soapyfang/panel.html
+sim/soapyfang/pluto.py
 
 [uv21]
 .github/workflows/uv21.yml
@@ -194,6 +210,8 @@ tools/k6_fmprobe.py
 # SURF, the port's main screen, includes the K6's SURF core; the emulated board with a model band
 # and its browser workbench (tests/test_uv21_surf.py runs the board)
 c/common/surf_core.inc
+sim/band.py
+sim/workbench.py
 sim/uv21/
 # SoapyFang: I/Q from an SDR, a SigMF file or the synthetic band, through an emulated BK48xx chip,
 # into the port image on that board (tests/test_soapyfang.py; generated signals only)
