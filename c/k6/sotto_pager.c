@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <string.h>
 #include "sotto_pager.h"
-#include "sp_cb.h"
-#include "sp_vlr.h"
+#include "../common/sp_cb.h"
+#include "../common/sp_vlr.h"
 #include "../sotto.h"
 #ifdef SP_VLR
 #include "../sotto_vlr.h"

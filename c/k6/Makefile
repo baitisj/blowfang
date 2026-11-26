@@ -34,11 +34,11 @@ km_host: host/km_host.o host/k6_mod_test.o host/lz4d.o $(OBJS)
 	$(CC) -o $@ $^
 lz4d_host: host/lz4d_host.o host/lz4d.o
 	$(CC) -o $@ $^
-host/lz4d_host.o host/lz4d.o: lz4d.h
+host/lz4d_host.o host/lz4d.o: ../common/lz4d.h
 kl_host: host/kl_host.o host/k6_lib.o host/k6_mod_test.o host/lz4d.o $(OBJS)
 	$(CC) -o $@ $^
-host/kl_host.o host/k6_lib.o: k6_lib.h k6_mod.h lz4d.h
-host/k6_mod_test.o: k6_mod.c k6_mod.h k6_lib.h lz4d.h sotto_pager.h
+host/kl_host.o host/k6_lib.o: k6_lib.h k6_mod.h ../common/lz4d.h
+host/k6_mod_test.o: k6_mod.c k6_mod.h k6_lib.h ../common/lz4d.h sotto_pager.h
 	@mkdir -p host
 	$(CC) $(CFLAGS) $(K6FLAGS) -DKM_KEY=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 -c -o $@ $<
 pager_host: host/pager_host.o $(OBJS)
@@ -60,6 +60,9 @@ host/%.o: %.c sotto_pager.h
 host/sotto_fx_dec.o: ../fixed/sotto_fx_dec.c ../fixed/fx.h ../fixed/fx_internal.h ../fixed/fx_tables.h
 	@mkdir -p host
 	$(CC) $(CFLAGS) $(K6FLAGS) $(DECFLAGS) -c -o $@ $<
+host/%.o: ../common/%.c
+	@mkdir -p host
+	$(CC) $(CFLAGS) $(K6FLAGS) -c -o $@ $<
 host/%.o: ../fixed/%.c ../fixed/fx.h ../fixed/fx_tables.h
 	@mkdir -p host
 	$(CC) $(CFLAGS) $(K6FLAGS) -c -o $@ $<
@@ -78,19 +81,28 @@ pager_host_lr_cbs: $(CB_SRC:%.c=host-lrcbs/%.o) host-lrcbs/sotto_fx_dec.o host-l
 	$(CC) -o $@ $^
 pager_host_cbi: $(CB_SRC:%.c=host-cbi/%.o) host-cbi/sotto_fx_dec.o host/sp_vlr.o host/fx_math.o host/fx_tables.o
 	$(CC) -o $@ $^
-host-cbs/%.o: %.c sotto_pager.h sp_cb.h host-cb/cb_crc.h
+host-cbs/%.o: %.c sotto_pager.h ../common/sp_cb.h host-cb/cb_crc.h
+	@mkdir -p host-cbs
+	$(CC) $(CFLAGS) $(K6FLAGS) $(CBFLAGS) -c -o $@ $<
+host-cbs/%.o: ../common/%.c ../common/sp_cb.h host-cb/cb_crc.h
 	@mkdir -p host-cbs
 	$(CC) $(CFLAGS) $(K6FLAGS) $(CBFLAGS) -c -o $@ $<
 host-cbs/%.o: ../fixed/%.c ../fixed/fx.h ../fixed/fx_tables.h host-cb/cb_crc.h
 	@mkdir -p host-cbs
 	$(CC) $(CFLAGS) $(K6FLAGS) $(CBFLAGS) $(DECFLAGS) -c -o $@ $<
-host-lrcbs/%.o: %.c sotto_pager.h sp_cb.h host-cb/cb_crc.h
+host-lrcbs/%.o: %.c sotto_pager.h ../common/sp_cb.h host-cb/cb_crc.h
+	@mkdir -p host-lrcbs
+	$(CC) $(CFLAGS) $(K6FLAGS) $(CBFLAGS) -DSP_LR -c -o $@ $<
+host-lrcbs/%.o: ../common/%.c ../common/sp_cb.h host-cb/cb_crc.h
 	@mkdir -p host-lrcbs
 	$(CC) $(CFLAGS) $(K6FLAGS) $(CBFLAGS) -DSP_LR -c -o $@ $<
 host-lrcbs/%.o: ../fixed/%.c ../fixed/fx.h ../fixed/fx_tables.h ../sotto_lr_dec.inc ../sotto_lr_tables.h host-cb/cb_crc.h
 	@mkdir -p host-lrcbs
 	$(CC) $(CFLAGS) $(K6FLAGS) $(CBFLAGS) $(DECFLAGS) -DSP_LR -c -o $@ $<
-host-cbi/%.o: %.c sotto_pager.h sp_cb.h
+host-cbi/%.o: %.c sotto_pager.h ../common/sp_cb.h
+	@mkdir -p host-cbi
+	$(CC) $(CFLAGS) $(K6FLAGS) -DFX_CB_SPI -DSP_CB_INSTALL -c -o $@ $<
+host-cbi/%.o: ../common/%.c ../common/sp_cb.h
 	@mkdir -p host-cbi
 	$(CC) $(CFLAGS) $(K6FLAGS) -DFX_CB_SPI -DSP_CB_INSTALL -c -o $@ $<
 host-cbi/%.o: ../fixed/%.c ../fixed/fx.h ../fixed/fx_tables.h
@@ -104,7 +116,7 @@ VLR_SRC = sotto_pager.c sp_cb.c sp_vlr.c flash_host.c pager_host.c
 VLR_DEC = sotto_fx_dec.o sotto_fx_lr.o sotto_fx_vlr.o
 vlr_image: host/vlr_image.o host-vlr/sp_vlr.o host/sp_cb.o host/fx_tables.o host-vlr/sotto_vlr_tables.o
 	$(CC) -o $@ $^
-host/vlr_image.o: vlr_image.c sp_vlr.h
+host/vlr_image.o: vlr_image.c ../common/sp_vlr.h
 	@mkdir -p host
 	$(CC) $(CFLAGS) $(K6FLAGS) -c -o $@ $<
 host-cb/vlr_crc.h: vlr_image
@@ -119,10 +131,13 @@ pager_host_vlr_cbs: $(VLR_SRC:%.c=host-vlrcbs/%.o) $(VLR_DEC:%=host-vlrcbs/%) ho
 pager_host_vlr_cbi: $(VLR_SRC:%.c=host-vlrcbi/%.o) $(VLR_DEC:%=host-vlrcbi/%) host-vlrcbi/sotto_vlr_tables.o \
 	host/fx_math.o host/fx_tables.o
 	$(CC) -o $@ $^
-VLR_HDRS = sotto_pager.h sp_cb.h sp_vlr.h ../sotto_vlr.h ../sotto_vlr_tables.h
+VLR_HDRS = sotto_pager.h ../common/sp_cb.h ../common/sp_vlr.h ../sotto_vlr.h ../sotto_vlr_tables.h
 VLR_FX_HDRS = ../fixed/fx.h ../fixed/fx_tables.h ../fixed/fx_internal.h ../sotto_lr_dec.inc ../sotto_lr_tables.h \
 	../sotto_vlr.h ../sotto_vlr_tables.h ../sotto_vlr_dec.inc
 host-vlr/%.o: %.c $(VLR_HDRS)
+	@mkdir -p host-vlr
+	$(CC) $(CFLAGS) $(K6FLAGS) $(VLRFLAGS) -c -o $@ $<
+host-vlr/%.o: ../common/%.c $(VLR_HDRS)
 	@mkdir -p host-vlr
 	$(CC) $(CFLAGS) $(K6FLAGS) $(VLRFLAGS) -c -o $@ $<
 host-vlr/sotto_vlr_tables.o: ../sotto_vlr_tables.c ../sotto_vlr_tables.h
@@ -141,6 +156,9 @@ pager_host_vlrh: host-vlrh/pager_host.o host-vlrh/sotto_pager.o host-vlrh/sp_cb.
 host-vlrh/%.o: %.c $(VLR_HDRS)
 	@mkdir -p host-vlrh
 	$(CC) $(CFLAGS) $(K6FLAGS) $(HISSFLAGS) -c -o $@ $<
+host-vlrh/%.o: ../common/%.c $(VLR_HDRS)
+	@mkdir -p host-vlrh
+	$(CC) $(CFLAGS) $(K6FLAGS) $(HISSFLAGS) -c -o $@ $<
 host-vlrh/sotto_vlr_tables.o: ../sotto_vlr_tables.c ../sotto_vlr_tables.h
 	@mkdir -p host-vlrh
 	$(CC) $(CFLAGS) $(K6FLAGS) $(HISSFLAGS) -c -o $@ $<
@@ -151,6 +169,9 @@ VCBSFLAGS = $(VLRFLAGS) $(CBFLAGS) -DVLR_CB_SPI -include host-cb/vlr_crc.h
 host-vlrcbs/%.o: %.c $(VLR_HDRS) host-cb/cb_crc.h host-cb/vlr_crc.h
 	@mkdir -p host-vlrcbs
 	$(CC) $(CFLAGS) $(K6FLAGS) $(VCBSFLAGS) -c -o $@ $<
+host-vlrcbs/%.o: ../common/%.c $(VLR_HDRS) host-cb/cb_crc.h host-cb/vlr_crc.h
+	@mkdir -p host-vlrcbs
+	$(CC) $(CFLAGS) $(K6FLAGS) $(VCBSFLAGS) -c -o $@ $<
 host-vlrcbs/sotto_vlr_tables.o: ../sotto_vlr_tables.c ../sotto_vlr_tables.h
 	@mkdir -p host-vlrcbs
 	$(CC) $(CFLAGS) $(K6FLAGS) -DVLR_CB_SPI -c -o $@ $<
@@ -159,6 +180,9 @@ host-vlrcbs/%.o: ../fixed/%.c $(VLR_FX_HDRS) host-cb/cb_crc.h host-cb/vlr_crc.h
 	$(CC) $(CFLAGS) $(K6FLAGS) $(VCBSFLAGS) $(DECFLAGS) -c -o $@ $<
 VCBIFLAGS = $(VLRFLAGS) $(CBFLAGS) -DVLR_CB_SPI -DSP_VLR_INSTALL
 host-vlrcbi/%.o: %.c $(VLR_HDRS) host-cb/cb_crc.h
+	@mkdir -p host-vlrcbi
+	$(CC) $(CFLAGS) $(K6FLAGS) $(VCBIFLAGS) -c -o $@ $<
+host-vlrcbi/%.o: ../common/%.c $(VLR_HDRS) host-cb/cb_crc.h
 	@mkdir -p host-vlrcbi
 	$(CC) $(CFLAGS) $(K6FLAGS) $(VCBIFLAGS) -c -o $@ $<
 host-vlrcbi/sotto_vlr_tables.o: ../sotto_vlr_tables.c ../sotto_vlr_tables.h

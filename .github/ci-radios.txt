@@ -76,12 +76,15 @@ docs/k6-modules.md
 sotto
 c/*
 c/common/ffsk_tx.*
+c/common/lz4d.*
 c/common/m17_rx.h
 c/common/pager_tx.*
 c/common/range_rx*
 c/common/range_tx*
 c/common/rds.h
 c/common/sotto_rx.*
+c/common/sp_cb.*
+c/common/sp_vlr.*
 c/common/surf_core.inc
 c/common/ysf_rx.h
 c/common/ysf_tx.*
@@ -152,6 +155,8 @@ radios/uv380/src/board.h
 .github/workflows/rt950.yml
 radios/rt950/
 c/common/
+!c/common/sp_cb.*
+!c/common/sp_vlr.*
 tools/ssb_polar_sweep.py
 tests/test_rt950*
 tests/test_ssb_polar.py

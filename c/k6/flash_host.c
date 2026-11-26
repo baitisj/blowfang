@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT */
 #include <stdio.h>
 #include <string.h>
-#include "sp_cb.h"
+#include "../common/sp_cb.h"
 #include "flash_host.h"
 
 #define FLASH_BYTES (2u << 20)

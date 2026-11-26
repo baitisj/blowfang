@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT */
 #include <stdio.h>
 #include <string.h>
-#include "sp_vlr.h"
+#include "../common/sp_vlr.h"
 
 int main(int argc, char **argv) {
   uint8_t h[SP_VLR_HDR], b[256];
