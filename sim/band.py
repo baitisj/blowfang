@@ -75,3 +75,15 @@ def default_band():
         Station("data burst", 439_975_000, -84, "voice", on_s=0.4, period_s=1.1),
         Station("wake (CW)", 440_850_000, -78, "cw", period_s=15, text="AG7EW AG7EW"),
     ]
+
+
+def two_metre_band():
+    """made-up 2 m activity within SURF's default ±250 kHz of 146.52 MHz (the RT-950 base
+    firmware's VFO A with blank settings; no real station's data)"""
+    return [
+        Station("calling", 146_520_000, -82, "voice", on_s=4, period_s=20, phase_s=6),
+        Station("repeater A", 146_760_000, -70, "voice", on_s=8, period_s=25, phase_s=3),
+        Station("repeater B", 146_340_000, -92, "voice", on_s=5, period_s=17, phase_s=9),
+        Station("beacon", 146_600_000, -104, "carrier", width_hz=1500),
+        Station("CW", 146_430_000, -86, "cw", period_s=15, text="AG7EW AG7EW"),
+    ]

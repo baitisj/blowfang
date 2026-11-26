@@ -957,3 +957,19 @@ def test_rt950_files_lists_hashes_and_verifies_stock(work, rt950_tree):
     got = json.loads((work / "rd" / "rt950-files.json").read_text())
     assert [g["file"] for g in got] == ["stock/RT_950Pro_GOOD.BTF", "ci-image/rt950-backup-only.BTF"]
     assert got[0]["verify_rc"] == 0 and "verify_rc" not in got[1]
+
+
+def test_soapyfang_radio_picks_the_board(work):
+    """--radio rt950 runs sim.rt950 and isn't passed on; no --radio is the UV-21 (sim.soapyfang)"""
+    img, _ = stage(work, "p.bin", b"\0" * 64)
+    syms, _ = stage(work, "p.syms", b"08003000 T x\n")
+    base = ["--minutes", "5", "--image", img, "--syms", syms]
+    for radio, mod in ((None, "sim.soapyfang"), ("uv21", "sim.soapyfang"), ("rt950", "sim.rt950")):
+        step = {"do": "sim.soapyfang", "args": (["--radio", radio] if radio else []) + base}
+        j = job("s1", step, freq_mhz="bench", minutes=10)
+        assert problems(j) == ""
+        argv, _, bg = br.command(j, step, str(work))
+        assert argv[1:3] == ["-m", mod] and "--radio" not in argv and not bg
+        assert argv[argv.index("--source") + 1] == "pluto" and argv[argv.index("--image") + 1] == img
+    bad = {"do": "sim.soapyfang", "args": ["--radio", "k6"] + base}
+    assert "--radio k6" in problems(job("s2", bad, freq_mhz="bench", minutes=10))

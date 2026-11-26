@@ -202,6 +202,10 @@ class RT950Board:
     def seconds(self):
         return self.cycles / CPU_HZ
 
+    def tuned_hz(self):
+        """the listener's (chip 0's) frequency"""
+        return self.chips[0].hz
+
     def advance(self, cycles):
         self.cycles += int(cycles)
         self._tick()

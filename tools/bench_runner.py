@@ -137,12 +137,14 @@ PLUTO_FW_SUBS = ("doctor", "info", "backup", "ramboot", "fpga", "psd", "riq", "r
 CUE_MAX_S = 1700                            # a cue waits for its call this long at most (the step: 1800 s, with the send)
 PARROT_MAX_MIN = 25                         # a parrot holds the bench: 25 min at most (the step's 1800 s)
 IC7100_SUBS = ("send", "id", "stop")
-# sim.soapyfang: the UV-21 port image on the emulated board, its RF chip fed by the Pluto's live I/Q
-# (sim/soapyfang), the workbench page on hamlet's 127.0.0.1 only. Receive only: PlutoIioSource opens
-# no transmit stream (pluto_bench.setup's quiet() powers the TX LO down first)
+# sim.soapyfang: the UV-21 port image (or with --radio rt950 the RT-950 SURF image, sim/rt950) on its
+# emulated board, its RF chips fed by the Pluto's live I/Q (sim/soapyfang), the workbench page on
+# hamlet's 127.0.0.1 only. Receive only: PlutoIioSource opens no transmit stream (pluto_bench.setup's
+# quiet() powers the TX LO down first)
 SOAPYFANG_PORT = 5058
 SOAPYFANG_MAX_MIN = 55                       # under the step's 3600 s timeout
-SOAPYFANG_OPTS = ("--minutes", "--gain", "--center", "--rate", "--image", "--syms", "--dbm-offset")
+SOAPYFANG_OPTS = ("--minutes", "--gain", "--center", "--rate", "--image", "--syms", "--dbm-offset", "--radio")
+SOAPYFANG_RADIOS = {"uv21": "sim.soapyfang", "rt950": "sim.rt950"}
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 WHO_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 HEX_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -1070,7 +1072,9 @@ def check_uv380_cmd(job, c, what, problems):
 def check_soapyfang(args, what, problems):
     """--minutes M (required, up to SOAPYFANG_MAX_MIN), --image and --syms (a prebuilt port.bin and
     its llvm-nm listing: hamlet has no thumbv7em target), and optionally --gain 0..71 (receive),
-    --center HZ (the first window, 70 MHz-6 GHz), --rate HZ (0.6-4 MS/s), --dbm-offset DB"""
+    --center HZ (the first window, 70 MHz-6 GHz), --rate HZ (0.6-4 MS/s), --dbm-offset DB, and
+    --radio uv21 (the default) or rt950 (the RT-950 SURF image: the CI artifact rt950-surf2's .bin
+    and .syms)"""
     if len(args) % 2:
         problems.append(f"{what}: args are --option value pairs")
         return
@@ -1084,6 +1088,8 @@ def check_soapyfang(args, what, problems):
     for k in ("--minutes", "--image", "--syms"):
         if k not in got:
             problems.append(f"{what}: needs {k}")
+    if got.get("--radio", "uv21") not in SOAPYFANG_RADIOS:
+        problems.append(f"{what}: --radio {got['--radio']}: only {' or '.join(SOAPYFANG_RADIOS)}")
     try:
         for k, lo, hi in (("--minutes", 0.1, SOAPYFANG_MAX_MIN), ("--gain", 0, 71),
                           ("--center", 70e6, 6e9), ("--rate", 6e5, 4e6), ("--dbm-offset", -200, 200)):
@@ -1253,8 +1259,10 @@ def command(job, step, rd):
         return [py(), "-m", "modem.uv21mod", "run", k6_cable(), os.path.join(job_sources(job), *uv21_module(args[0]))] \
             + defs + ["--log", os.path.join(rd, "uv21mod.log"), "--run-timeout", str(UV21_MOD_RUN_S)], co, False
     if do == "sim.soapyfang":       # the page on hamlet only: ssh -L 5058:127.0.0.1:5058 hamlet
-        return [py(), "-m", "sim.soapyfang", "--source", "pluto", "--host", "127.0.0.1",
-                "--port", str(SOAPYFANG_PORT)] + args, co, False
+        opts = dict(zip(args[0::2], args[1::2]))
+        mod = SOAPYFANG_RADIOS[opts.pop("--radio", "uv21")]
+        return [py(), "-m", mod, "--source", "pluto", "--host", "127.0.0.1",
+                "--port", str(SOAPYFANG_PORT)] + [x for kv in opts.items() for x in kv], co, False
     if do == "uv380.rx":
         return [py(), tool("uv380_i2sprobe.py"), "mod", uv380_port(),
                 os.path.join(job_sources(job), *uv380_rx_module(args[0])), "--key-file", key,
@@ -2140,6 +2148,8 @@ def sample_jobs(tmp, co, key):
         ("SoapyFang without an image (hamlet can't build one)", J("bad-soapyimg", {"do": "sim.soapyfang", "args": ["--minutes", "30"]}, freq_mhz="bench", minutes=35), False),
         ("SoapyFang for an hour", J("bad-soapylong", {"do": "sim.soapyfang", "args": ["--minutes", "60", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=65), False),
         ("SoapyFang on the LAN", J("bad-soapyhost", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--host", "0.0.0.0"]}, freq_mhz="bench", minutes=35), False),
+        ("SoapyFang: the RT-950 SURF sim on the live Pluto for 30 min", J("ok-soapy950", {"do": "sim.soapyfang", "args": ["--radio", "rt950", "--minutes", "30", "--gain", "50", "--center", "146520000", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=35), True),
+        ("SoapyFang on a radio it has no board for", J("bad-soapyradio", {"do": "sim.soapyfang", "args": ["--radio", "k6", "--minutes", "30", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=35), False),
         ("SoapyFang from another source", J("bad-soapysrc", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--source", "soapy:driver=plutosdr"]}, freq_mhz="bench", minutes=35), False),
         ("list the serial ports", J("ok-ports", {"do": "serial.list"}, freq_mhz="bench"), True),
         ("RT-950 stock read over its cable", J("ok-rt950", {"do": "rt950.info", "cable": "1a86:7523"}, {"do": "rt950.read", "cable": "1a86:7523", "args": ["--addr", "2", "--passes", "2"]}, freq_mhz="bench"), True),
@@ -2160,6 +2170,7 @@ def inbox_samples():
     return [
         ("Pluto send of a pushed WAV", J("in-ok", {"do": "pluto", "args": ["send", "job:x.wav", "--gain", "-60"]}), True),
         ("SoapyFang with a pushed UV-21 image", J("in-soapy", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", "job:port.bin", "--syms", "job:port.syms"]}, freq_mhz="bench", minutes=35), True),
+        ("SoapyFang with the pushed RT-950 SURF image", J("in-soapy950", {"do": "sim.soapyfang", "args": ["--radio", "rt950", "--minutes", "30", "--image", "job:rt950-surf2.bin", "--syms", "job:rt950-surf2.syms"]}, freq_mhz="bench", minutes=35), True),
         ("UV-21 Pro register sweep from a branch's module", J("in-uv21mod", {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_VALS=0x1657,0xC65A"]}, freq_mhz="bench", sources_commit="519e64f"), True),
         ("UV-380 M17 from a branch's module, Pluto capture in the run folder", J("in-m17", {"do": "pluto", "args": ["rx", "run:m.cf32", "--hz", "441900000"], "background": True}, {"do": "uv380.m17", "args": ["bert"]}, freq_mhz=441.850, sources_commit="519e64f"), True),
         ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),

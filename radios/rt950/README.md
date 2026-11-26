@@ -78,6 +78,10 @@ python -m pytest -q tests/test_rt950_surf.py tests/test_rt950_digi.py tests/test
   chips hear real I/Q: a SigMF recording, the synthetic band or a live SDR.
   `tests/test_rt950_board.py` boots it into SURF and checks the sweep, the bars, the keys, that
   nothing is a transmit setting, and that the fast register path matches the bit-banged bus.
+- `python3 -m sim.rt950`: that board in a browser workbench (http://127.0.0.1:5059/): the screen,
+  a faceplate without PTT, a made-up 2 m band to edit, the SoapyFang panel and the listener's
+  audio. `--source pluto` etc. as in `sim/soapyfang/README.md`; on hamlet the Pluto session is
+  the bench runner's `sim.soapyfang` step with `--radio rt950` and the `rt950-surf2` artifact.
 
 ## What needs Andrew's radio
 

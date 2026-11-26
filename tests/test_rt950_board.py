@@ -7,6 +7,7 @@ SoapyFang's chip model feeds both chips. MIT
 Needs a checkout of the base firmware (jaymart1983/Radtel-RT950-Pro-Firmware at the commit
 .github/workflows/rt950.yml pins) at ./jm or $RT950_JM, and arm-none-eabi-gcc; skipped without."""
 import os
+import time
 import shutil
 import sys
 
@@ -144,3 +145,42 @@ def test_soapyfang_feeds_both_chips(built, surfing):
         b.close()
     assert b.window_misses == 0                             # the sweep stays in chip 0's window
     assert abs(top(b) - top(surfing)) <= 1                  # where the RSSI arithmetic puts it
+
+
+def test_the_workbench_page_serves_surf(built):
+    """python3 -m sim.rt950's page on the synthetic 2 m band: the screen, the state with both chips,
+    SoapyFang's panel, a key that tunes, and no PTT key to press"""
+    import json
+    import threading
+    import urllib.error
+    from http.server import ThreadingHTTPServer
+    import urllib.request
+    from sim.rt950 import workbench as wbm
+    from sim.soapyfang.sources import SyntheticSource
+    src = SyntheticSource(rate=1_200_000, center_hz=VFO_HZ)
+    wb = wbm.RT950Workbench(src, built=built)
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), wbm.handler(wb))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{srv.server_address[1]}"
+    get = lambda p: urllib.request.urlopen(url + p, timeout=30).read()
+    post = lambda p, body: urllib.request.urlopen(urllib.request.Request(
+        url + p, json.dumps(body).encode(), {"Content-Type": "application/json"}), timeout=30)
+    try:
+        page = get("/").decode()
+        assert "RT-950" in page and 'id="sf"' in page and 'data-key="PTT"' not in page
+        assert get("/api/screen.png")[:8] == b"\x89PNG\r\n\x1a\n"
+        s = json.loads(get("/api/state"))
+        assert s["tuned_hz"] == VFO_HZ and s["sweep_hz"] and not s["error"]
+        assert {st["name"] for st in s["stations"]} >= {"calling", "repeater A"}   # the 2 m band
+        assert json.loads(get("/api/soapyfang"))["tuned_hz"] == VFO_HZ
+        post("/api/key", {"key": "UP", "action": "tap"})
+        t = time.time()
+        while json.loads(get("/api/state"))["tuned_hz"] == VFO_HZ and time.time() - t < 30:
+            time.sleep(0.2)
+        assert json.loads(get("/api/state"))["tuned_hz"] > VFO_HZ
+        with pytest.raises(urllib.error.HTTPError):
+            post("/api/key", {"key": "PTT", "action": "tap"})
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        wb.stop()

@@ -17,13 +17,17 @@ def missing(argv):
     return out
 
 
-gone = missing(sys.argv[1:])
-if gone:
-    names = ", ".join(p for p, _ in gone)
-    pip = " ".join(q for _, q in gone if q)
-    raise SystemExit(f"SoapyFang can't start: missing {names}.\n  Arch: sudo pacman -S --needed "
-                     + " ".join(p for p, _ in gone) + (f"\n  elsewhere: pip install {pip}" if pip else ""))
+def check(argv):
+    """stop here, naming everything missing, rather than part way into a session"""
+    gone = missing(argv)
+    if gone:
+        names = ", ".join(p for p, _ in gone)
+        pip = " ".join(q for _, q in gone if q)
+        raise SystemExit(f"SoapyFang can't start: missing {names}.\n  Arch: sudo pacman -S --needed "
+                         + " ".join(p for p, _ in gone) + (f"\n  elsewhere: pip install {pip}" if pip else ""))
 
-from .workbench import main  # noqa: E402
 
-main()
+if __name__ == "__main__":
+    check(sys.argv[1:])
+    from .workbench import main
+    main()
