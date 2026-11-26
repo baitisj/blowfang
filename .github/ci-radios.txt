@@ -51,6 +51,7 @@ sim/
 !sim/workbench.py
 modem/
 !modem/dmrvoice.py
+!modem/uv21mod.py
 tools/k6_*
 tools/k6-*
 tools/k6_cc/

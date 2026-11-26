@@ -28,10 +28,11 @@ impl RxRing {
     fn push(&self, byte: u8) {
         let head = self.head.load(Ordering::Relaxed);
         let next = (head + 1) & RX_RING_MASK;
-        let tail = self.tail.load(Ordering::Acquire);
-        if next == tail {
-            // Ring full: drop oldest byte (same overwrite policy as before).
-            self.tail.store((tail + 1) & RX_RING_MASK, Ordering::Release);
+        if next == self.tail.load(Ordering::Acquire) {
+            // Full (255 bytes): the new byte is dropped. Only the consumer moves `tail`; if the
+            // interrupt dropped the oldest instead, a `pop` it cut into would put `tail` back and
+            // lose the whole ring.
+            return;
         }
         unsafe { (*self.buf.get())[head] = byte };
         self.head.store(next, Ordering::Release);
