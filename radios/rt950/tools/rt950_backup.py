@@ -243,6 +243,9 @@ def backup(radio, outdir, ranges, min_passes=2, max_passes=4, progress=None, ter
             h = sha(data)
             hashes.append({"file": fn, "sha256": h})
             radio.log(f"{name} pass {p}: {h}")
+            if min_passes == 1:         # one pass only (a slow 4 MB read split over two jobs):
+                agreed, good = h, fn    # its hash is compared with the other job's afterwards
+                break
             if p >= min_passes and [x["sha256"] for x in hashes].count(h) >= 2:
                 agreed = h
                 good = fn
@@ -264,6 +267,8 @@ def backup(radio, outdir, ranges, min_passes=2, max_passes=4, progress=None, ter
         if agreed:                      # each CPS region inside it (calibration at 0xE000/0xF000/0xF200)
             entry["regions"] = {r: sha(data[a - start:a - start + n]) for r, a, n in STOCK_REGIONS
                                 if start <= a and a + n <= start + length}
+        if min_passes == 1:
+            entry["single_pass"] = True
         man["ranges"].append(entry)
     man["finished_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     man["ok"] = ok
@@ -345,7 +350,9 @@ def main(argv=None):
                        help="--addr 2 only: read just the regions Radtel's CPS reads")
         p.add_argument("--spi-len", type=lambda s: int(s, 0), default=SPI_LEN)
         p.add_argument("--bootloader-len", type=lambda s: int(s, 0), default=BOOTLOADER_LEN)
-        p.add_argument("--passes", type=int, default=2)
+        p.add_argument("--passes", type=int, default=2,
+                       help="read until two passes agree, at least this many; 1: one pass only, "
+                            "its hash to compare with another read (the 4 MB read takes ~95 min a pass)")
         p.add_argument("--block", type=int, default=BLOCK, choices=(8, 16, 32, 64, 128),
                        help="bytes per read (smaller over Bluetooth if 128 stalls)")
         p.add_argument("--timeout", type=float, default=2.0, help="seconds to wait for each reply")

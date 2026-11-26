@@ -757,7 +757,7 @@ def check_step(job, i, step, rs, problems):
 USB_IDS_RE = re.compile(r"[0-9a-f]{4}:[0-9a-f]{4}")
 RT950_OPTS = {"rt950.info": ("--addr", "--timeout"),
               "rt950.read": ("--addr", "--timeout", "--block", "--passes", "--cps-regions")}
-RT950_VALUES = {"--addr": ("2", "3"), "--block": ("16", "32", "64", "128"), "--passes": ("2", "3", "4")}
+RT950_VALUES = {"--addr": ("2", "3"), "--block": ("16", "32", "64", "128"), "--passes": ("1", "2", "3", "4")}
 RT950_NOT = ("067b:",)                       # the K6 / UV-21 cable's PL2303: never the CPS handshake
 
 
