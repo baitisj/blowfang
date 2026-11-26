@@ -8,7 +8,7 @@ use crate::board;
 use at32f421_pac as pac;
 use crate::device::display::Display;
 use crate::device::keypad::{KeyEventKind, KeyId};
-use crate::hal::{con, delay, uptime};
+use crate::hal::{arena, con, delay, uptime};
 use crate::ui::font55;
 use cortex_m::peripheral::SYST;
 use embedded_graphics::mono_font::{ascii::{FONT_10X20, FONT_6X10}, MonoTextStyleBuilder};
@@ -55,7 +55,7 @@ const WAKE_HZ: u32 = 440_850_000;
 /// longer holds all 128 peaks, or leaves more than 64 B unused.
 const STATE_WORDS: usize = 500;
 const NPM: u32 = 128;
-static mut STATE: [u64; STATE_WORDS] = [0; STATE_WORDS];
+const _: () = assert!(STATE_WORDS * 8 <= arena::BYTES);
 
 /// What the callbacks reach while SURF runs: set by `run`, cleared after
 struct Ctx {
@@ -228,8 +228,8 @@ extern "C" fn text(x: i32, y: i32, s: *const u8, fg: u16, bg: u16, font: i32) ->
         .unwrap_or(0)
 }
 
-/// what a RAM module reaches (umod.rs): SURF's own callbacks, so a module runs inside SURF's
-/// housekeeping with its context set
+/// what a RAM module reaches (umod.rs): SURF's own callbacks. The module runs from `run` after
+/// `uv21_surf` has returned (the arena is SURF's state too), with the context still set
 static UM_API: crate::umod::UmApi = crate::umod::UmApi {
     abi: crate::umod::ABI as u32,
     fd_read,
@@ -244,14 +244,14 @@ static UM_API: crate::umod::UmApi = crate::umod::UmApi {
 /// the main loop's housekeeping while SURF runs: the power switch (off for 200 ms straight, as
 /// main.rs's check_power_off), and every 50 ms the battery and the backlight; the alive line
 /// every 10 s, so the bench's logger sees the image running
-extern "C" fn poll() -> i32 {
+fn check_power_off() {
     let dp = unsafe { pac::Peripherals::steal() };
     let gpiob = &dp.gpiob;
     if board::read_power_key(gpiob) {
         for _ in 0..10 {
             delay::ms(syst(), 20);
             if !board::read_power_key(gpiob) {
-                return 0;
+                return;
             }
         }
         let s = syst();
@@ -261,7 +261,14 @@ extern "C" fn poll() -> i32 {
             cortex_m::asm::wfi();
         }
     }
-    crate::umod::service(&UM_API); // a module upload on the serial line (umod.rs)
+}
+
+extern "C" fn poll() -> i32 {
+    let dp = unsafe { pac::Peripherals::steal() };
+    check_power_off();
+    if crate::umod::service(&UM_API) {
+        return 1; // leave SURF: `run` hands the arena to umod::run_session
+    }
     let now = ms();
     let c = ctx();
     if now.wrapping_sub(c.t_house) >= 50 {
@@ -275,6 +282,7 @@ extern "C" fn poll() -> i32 {
         c.t_alive = now;
         con::puts("alive surf");
         con::kv_hex("s", now / 1000, 4);
+        con::kv_hex("stk", crate::hal::stackprobe::spare(), 4);
         con::nl();
     }
     0
@@ -335,8 +343,11 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
         con::nl();
         0
     } else {
-        unsafe { uv21_surf(&mut api, core::ptr::addr_of_mut!(STATE) as *mut u8, room) }
+        unsafe { uv21_surf(&mut api, arena::base(), room) }
     };
+    if crate::umod::pending() {
+        crate::umod::run_session(&UM_API, check_power_off);
+    }
     unsafe {
         WAKE = api.wake_hz;
         CTX = None;

@@ -56,14 +56,28 @@ def upload(b, img):
 def test_hello_runs_once_and_says_its_line(built):
     b = radio(built)
     got, _ = send(b, "um ?", r"um abi=\S+ room=\S+")
-    assert got == "um abi=1 room=1000"
+    assert got == "um abi=1 room=3000"
     ret, out = upload(b, uv21mod.image(*uv21mod.build(os.path.join(MOD, "hello.c"))))
     assert ret == 0x4829, hex(ret)                                     # the BK4829's ID
-    assert re.search(r"hello uv21 rf=4829 ram=0[0-9a-f]{3}", out), out[-300:]
+    assert re.search(r"hello uv21 rf=4829 ram=2[0-9a-f]{3}", out), out[-300:]
+    stk = re.search(r"um stk=([0-9a-f]{4})\r\num end", out)               # the stack never touched,
+    assert stk and int(stk.group(1), 16) >= 1024, out[-300:]            # before `um end`'s line
+    assert re.search(r"um end 00004829\r\n.*surf ram need=", out, re.S), out[-300:]   # SURF again
     got, _ = send(b, uv21mod.lines(b"x")[-1])                           # (once: no image now)
     assert got.startswith("um bad short"), got
-    m, out = until(b, r"alive surf", 12)                                # SURF goes on
+    m, out = until(b, r"alive surf s=[0-9a-f]{4} stk=([0-9a-f]{4})", 12)   # SURF goes on, afresh
+    assert m and int(m.group(1), 16) >= 1024, out[-200:]
+
+
+def test_an_upload_that_goes_quiet_gives_surf_back(built):
+    b = radio(built)
+    send(b, uv21mod.lines(uv21mod.image(*uv21mod.build(os.path.join(MOD, "hello.c"))))[0])
+    m, out = until(b, r"um idle", 15)                                   # 10 s with nothing on the line
+    assert m, out[-300:]
+    m, out = until(b, r"alive surf", 12)
     assert m, out[-200:]
+    got, _ = send(b, uv21mod.lines(b"x")[-1])                           # (the upload is gone)
+    assert got.startswith("um bad short"), got
 
 
 def test_a_bad_line_changes_nothing(built):

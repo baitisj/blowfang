@@ -1,50 +1,56 @@
-use core::cell::RefCell;
-use cortex_m::interrupt::Mutex;
+use core::cell::UnsafeCell;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use at32f421_pac as pac;
 
-const RX_RING_CAP: usize = 256;
+const RX_RING_CAP: usize = 256; // power of two
+const RX_RING_MASK: usize = RX_RING_CAP - 1;
 
+/// Lock-free single-producer (USART1 IRQ) / single-consumer (main loop) RX ring.
+/// Avoids disabling interrupts (`cpsid i`) and `RefCell` borrow flags while polling.
 struct RxRing {
-    buf: [u8; RX_RING_CAP],
-    head: usize,
-    tail: usize,
-    len: usize,
+    buf: UnsafeCell<[u8; RX_RING_CAP]>,
+    head: AtomicUsize,
+    tail: AtomicUsize,
 }
+
+unsafe impl Sync for RxRing {}
 
 impl RxRing {
     const fn new() -> Self {
         RxRing {
-            buf: [0; RX_RING_CAP],
-            head: 0,
-            tail: 0,
-            len: 0,
+            buf: UnsafeCell::new([0; RX_RING_CAP]),
+            head: AtomicUsize::new(0),
+            tail: AtomicUsize::new(0),
         }
     }
 
-    fn push(&mut self, byte: u8) {
-        if self.len == RX_RING_CAP {
-            self.tail = (self.tail + 1) % RX_RING_CAP;
-            self.len -= 1;
+    fn push(&self, byte: u8) {
+        let head = self.head.load(Ordering::Relaxed);
+        let next = (head + 1) & RX_RING_MASK;
+        if next == self.tail.load(Ordering::Acquire) {
+            // Full (255 bytes): the new byte is dropped. Only the consumer moves `tail`; if the
+            // interrupt dropped the oldest instead, a `pop` it cut into would put `tail` back and
+            // lose the whole ring.
+            return;
         }
-        self.buf[self.head] = byte;
-        self.head = (self.head + 1) % RX_RING_CAP;
-        self.len += 1;
+        unsafe { (*self.buf.get())[head] = byte };
+        self.head.store(next, Ordering::Release);
     }
 
-    fn pop(&mut self) -> Option<u8> {
-        if self.len == 0 {
+    fn pop(&self) -> Option<u8> {
+        let tail = self.tail.load(Ordering::Relaxed);
+        let head = self.head.load(Ordering::Acquire);
+        if tail == head {
             return None;
         }
-        let byte = self.buf[self.tail];
-        self.tail = (self.tail + 1) % RX_RING_CAP;
-        self.len -= 1;
+        let byte = unsafe { (*self.buf.get())[tail] };
+        self.tail.store((tail + 1) & RX_RING_MASK, Ordering::Release);
         Some(byte)
     }
 }
 
-static RX_RING: Mutex<RefCell<RxRing>> =
-    Mutex::new(RefCell::new(RxRing::new()));
+static RX_RING: RxRing = RxRing::new();
 
 /// UV-21 Pro: the KDH bootloader's flash-mode command, as the bench's probe sends it. Seen whole
 /// on the serial line, it resets the MCU into the bootloader, so a new image can go on with no
@@ -75,16 +81,14 @@ pub unsafe extern "C" fn USART1() {
     if sts.rdbf().bit_is_set() {
         let byte = regs.dt().read().dt().bits() as u8;
         kdh_watch(byte);
-        cortex_m::interrupt::free(|cs| {
-            RX_RING.borrow(cs).borrow_mut().push(byte)
-        });
+        RX_RING.push(byte);
     } else if sts.roerr().bit_is_set() {
         let _ = regs.dt().read().dt().bits();
     }
 }
 
 pub fn take_byte() -> Option<u8> {
-    cortex_m::interrupt::free(|cs| RX_RING.borrow(cs).borrow_mut().pop())
+    RX_RING.pop()
 }
 
 pub fn write_byte(byte: u8) {

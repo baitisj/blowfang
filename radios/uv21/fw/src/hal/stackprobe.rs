@@ -34,7 +34,7 @@ unsafe fn paint_stack() {
     }
 }
 
-#[allow(dead_code)]
+/// (deepest stack use since boot, stack never touched), in bytes: the painted words still whole
 pub fn high_water() -> (u32, u32) {
     let lo = heap_start();
     let top = stack_top();
@@ -49,4 +49,9 @@ pub fn high_water() -> (u32, u32) {
 
     let low_mark = p as u32;
     (top - low_mark, low_mark - lo)
+}
+
+/// the stack never touched since boot, in bytes (`um ?`, `um end` and the alive line report it)
+pub fn spare() -> u32 {
+    high_water().1
 }
