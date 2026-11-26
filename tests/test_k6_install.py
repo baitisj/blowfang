@@ -328,12 +328,33 @@ def test_lost_answer_to_the_last_chunk(bundle, keyfile, monkeypatch):
 def test_flash_over_the_cable(bundle, keyfile, monkeypatch):
     radio = Radio()
     img = (bundle / "aura-voice-explore.bin").read_bytes()
-    r, log = run(["--key-file", str(keyfile), "flash", str(bundle / "aura-voice-explore.bin")], radio, monkeypatch)
+    r, log = run(["--key-file", str(keyfile), "flash", str(bundle / "aura-voice-explore.bin"),
+                  "--boot-s", "0"], radio, monkeypatch)
     assert r == 0, log
     assert radio.restarts == 1
     want = k6mod.key_image(img, KEY)
     assert radio.flashed[:len(want)] == want and not any(radio.flashed[len(want):])
     assert k6mod.PLACEHOLDER not in radio.flashed and KEY in radio.flashed
+    radio.shutdown()
+
+
+def test_flash_prints_the_first_boot(bundle, keyfile, monkeypatch):
+    """the new image's first lines come out right after END, before any logger opened after the
+    tool could catch them (a boot trace's K6 BT markers): flash prints them"""
+    radio = Radio()
+    boot = radio._boot
+
+    def booted():
+        n = len(radio.flashes)
+        boot()
+        if len(radio.flashes) > n:
+            radio.out += b"\r\nK6 BT 00000001 20005e30 00010007\r\nK6 ARENA bytes=16432\r\n"
+    radio._boot = booted
+    r, log = run(["--key-file", str(keyfile), "flash", str(bundle / "aura-voice-explore.bin"), "--boot-s", "0.5"],
+                 radio, monkeypatch)
+    assert r == 0, log
+    assert radio.restarts == 1 and len(radio.flashes) == 1
+    assert "K6 BT 00000001 20005e30 00010007" in log and "K6 ARENA bytes=16432" in log
     radio.shutdown()
 
 
@@ -369,7 +390,7 @@ def test_install_on_a_new_radio(start, out_dir, keyfile, tmp_path, monkeypatch):
     monkeypatch.setattr(ki, "open_port", lambda a: radio)
     lines = []
     extra = ["--fresh"] if start == "fresh" else []
-    r = ki.main(["--key-file", str(keyfile), "install", str(b)] + extra,
+    r = ki.main(["--key-file", str(keyfile), "install", str(b), "--boot-s", "0"] + extra,
                 log=lambda *x, **k: lines.append(" ".join(map(str, x))), ask=ask)
     log = "\n".join(lines)
     assert r == 0, log
@@ -397,7 +418,7 @@ def test_update_needs_no_hands(why, bundle, keyfile, tmp_path, monkeypatch):
     monkeypatch.setattr(ki, "open_port", lambda a: radio)
     lines = []
     extra = ["--no-backup"] if why == "--no-backup" else []
-    r = ki.main(["--key-file", str(keyfile), "install", str(bundle)] + extra,
+    r = ki.main(["--key-file", str(keyfile), "install", str(bundle), "--boot-s", "0"] + extra,
                 log=lambda *x, **k: lines.append(" ".join(map(str, x))), ask=lambda q: asked.append(q) or "")
     log = "\n".join(lines)
     assert r == 0, log
