@@ -20,7 +20,7 @@ import re
 import sys
 import time
 
-from . import k6mod
+from . import picmod
 
 MAGIC = b"U3M"
 LEVEL = 1
@@ -31,24 +31,14 @@ TABLES = {
     "openrtx": (b"U3R", 5, 16384),      # firmware/uv380-openrtx/ortx_mod.h: OM_MAGIC, OM_LEVEL, OM_ARENA
 }
 ENTRY = "uv_main"
-ROOT = k6mod.ROOT
+ROOT = picmod.ROOT
 LINK = os.path.join(ROOT, "radios", "uv380", "mod", "module.ld")
 CFLAGS = [
     "--target=thumbv7em-none-eabihf",
     "-mcpu=cortex-m4",
     "-mfpu=fpv4-sp-d16",
     "-mfloat-abi=hard",
-    "-mthumb",
-    "-Os",
-    "-fropi",
-    "-ffreestanding",
-    "-fno-builtin",
-    "-nostdlib",
-    "-ffunction-sections",
-    "-fdata-sections",
-    "-fomit-frame-pointer",
-    "-Wall",
-    "-Werror",
+    *picmod.COMMON_CFLAGS,
     "-I" + os.path.join(ROOT, "radios", "uv380", "src"),
     "-I" + os.path.join(ROOT, "firmware", "uv380-openrtx"),
 ]
@@ -61,20 +51,22 @@ def source_table(src):
 
 def build(src):
     """C source -> (code bytes, entry offset)."""
-    return k6mod.build(src, cflags=CFLAGS, link=LINK, entry_sym=ENTRY)
+    return picmod.build(src, cflags=CFLAGS, link=LINK, entry_sym=ENTRY)
 
 
 def source_level(src):
     """The API level a module's C source declares (#define UV_MODULE_LEVEL n), or 1."""
-    m = re.search(r"^\s*#\s*define\s+UV_MODULE_LEVEL\s+(\d+)", open(src).read(), re.M)
-    return int(m.group(1)) if m else LEVEL
+    return picmod.source_int(src, "UV_MODULE_LEVEL", LEVEL)
 
 
 def image(code, entry, serial, key, level=LEVEL, table="uv380"):
     magic, newest, arena = TABLES[table]
     if level > newest:
         raise ValueError(f"API level {level}: the {table} table is at level {newest}")
-    img = k6mod.image(code, entry, serial, key, level, magic=magic)
+    code = bytes(code)
+    if entry >= len(code) or entry & 1 or len(code) > 0xFFFF:
+        raise ValueError("bad entry offset or code length")
+    img = picmod.signed_image(code, entry, serial, key, magic, level=level)
     if len(img) > arena:
         raise ValueError(f"{len(img)} bytes is more than the {table} module arena ({arena})")
     return img
@@ -91,7 +83,7 @@ def main(argv=None):
     table = a.table or source_table(a.source)
     code, entry = build(a.source)
     serial = a.serial if a.serial is not None else int(time.time())
-    img = image(code, entry, serial, k6mod.read_key(a.key_file), source_level(a.source), table)
+    img = image(code, entry, serial, picmod.read_key(a.key_file), source_level(a.source), table)
     with open(a.output, "wb") as f:
         f.write(img)
     print(f"{a.output}: {table} table, {len(code)} B code, entry +{entry}, serial {serial}, "

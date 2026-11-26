@@ -104,6 +104,7 @@ modem/k6g.py
 modem/k6mod.py
 modem/k6r.py
 modem/pager.py
+modem/picmod.py
 modem/psk31.py
 modem/uv380mod.py
 tools/uv380_*
@@ -174,6 +175,7 @@ tools/k6_upload.py
 modem/__init__.py
 modem/k6.py
 modem/k6mod.py
+modem/picmod.py
 modem/psk31.py
 # FT8 and WSPR references the RT-950's tone FSK is decoded with
 sim/k6digi/__init__.py
@@ -208,6 +210,7 @@ tests/test_uv21*
 modem/__init__.py
 modem/k6mod.py
 modem/pager.py
+modem/picmod.py
 modem/uv21mod.py
 # the FM chip probe's test runs the K6 probe's chip model and report tool (tests/test_uv21_fmprobe.py)
 tests/test_k6_fmprobe.py
@@ -245,6 +248,7 @@ modem/fsk24.py
 modem/k6.py
 modem/k6mod.py
 modem/m17.py
+modem/picmod.py
 modem/psk31.py
 modem/sdr.py
 modem/uv21mod.py

@@ -19,7 +19,7 @@ import sys
 import time
 import zlib
 
-from . import k6mod
+from . import picmod
 
 ABI = 1
 MAGIC = b"UM21"
@@ -27,24 +27,14 @@ HDR = 12
 ROOM = 12288              # umod.rs ROOM: header, code and the module's RAM
 CHUNK = 48               # bytes a "um w" line carries
 ENTRY = "um_main"
-ROOT = k6mod.ROOT
+ROOT = picmod.ROOT
 MOD_DIR = os.path.join(ROOT, "radios", "uv21", "mod")
 LINK = os.path.join(MOD_DIR, "module.ld")
 CFLAGS = [
     "--target=thumbv7em-none-eabi",
     "-mcpu=cortex-m4",
     "-mfloat-abi=soft",
-    "-mthumb",
-    "-Os",
-    "-fropi",
-    "-ffreestanding",
-    "-fno-builtin",
-    "-nostdlib",
-    "-ffunction-sections",
-    "-fdata-sections",
-    "-fomit-frame-pointer",
-    "-Wall",
-    "-Werror",
+    *picmod.COMMON_CFLAGS,
     "-I" + MOD_DIR,
 ]
 # a -D setting: a C name, then a number or a list of up to 32 numbers (hex or decimal)
@@ -56,7 +46,7 @@ def build(src, defines=()):
     for d in defines:
         if not DEFINE.fullmatch(d):
             raise ValueError(f"-D {d}: NAME=number or NAME=n1,n2,... (hex or decimal)")
-    return k6mod.build(src, cflags=CFLAGS + ["-D" + d for d in defines], link=LINK, entry_sym=ENTRY)
+    return picmod.build(src, cflags=CFLAGS + ["-D" + d for d in defines], link=LINK, entry_sym=ENTRY)
 
 
 def image(code, entry):
