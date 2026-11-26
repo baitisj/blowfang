@@ -103,7 +103,7 @@ ROWGEN=-DFX_MP_ROWGEN
 # get that much stack back (docs/k6-voice-explore.md). The SPI images but hiss (its CPU and
 # timing were tuned as they are; the lean images keep the decoder in a static pool)
 SYNTH=
-[ "${K6_CB:-}" = spi ] && [ -z "$HISS" ] && SYNTH=-DFX_SYNTH_STATE
+[ "${K6_CB:-}" = spi ] && SYNTH=-DFX_SYNTH_STATE
 CC=${K6_CC:-clang}
 AR=${K6_AR:-llvm-ar}
 OBJCOPY=${K6_OBJCOPY:-llvm-objcopy}

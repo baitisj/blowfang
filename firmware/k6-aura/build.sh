@@ -503,6 +503,7 @@ for m in $K6_MODULES; do
   blk=11776
   [ "${lvl:-1}" -ge 12 ] && blk=14976
   [ "${lvl:-1}" -ge 13 ] && blk=15408
+  [ "${lvl:-1}" -ge 16 ] && blk=16432
   [ "$(wc -c < "$OUT/mod-$m.bin")" -le $((blk - 24)) ] || { echo "mod-$m.bin: over the $blk-byte module block (level ${lvl:-1})"; exit 1; }
 done
 # the help card decks (tools/k6_cards.py, docs/manual/cards/): out/cards-core.bin goes into

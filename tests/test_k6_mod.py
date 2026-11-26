@@ -247,7 +247,7 @@ def test_loader_takes_level_15_refuses_16():
     for level in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
         rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000 + level, KEY, level=level), 1, 128))
         assert rs[-1] == 3
-    rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000, KEY, level=16), 1, 128))
+    rs, *_ = run_host(k6mod.packets(k6mod.image(code, 0, 1000, KEY, level=17), 1, 128))
     assert 3 not in rs
 
 
@@ -263,6 +263,9 @@ def test_arena_by_level():
     assert k6mod.arena_bytes(14) == k6mod.ARENA_BYTES_13
     # level 15 (the FuSotto outbox in SPI): the same block
     assert k6mod.arena_bytes(15) == k6mod.ARENA_BYTES_13
+    # level 16 (leaner pager-only App + boot_init_app + FX_SYNTH_STATE on hiss): +1,024 B
+    assert k6mod.arena_bytes(16) == k6mod.ARENA_BYTES_16 == 16432
+    assert k6mod.arena_bytes(16) - k6mod.arena_bytes(13) == 1024
 
 
 # ---- upload ARQ: magic 0xAE asks for a reply, the K6's 0xAF reports (k6_mod.h) ----
