@@ -161,6 +161,15 @@ No hands, over the cable session (Jeff's go 06:03Z): the boot-trace build, then 
 So the block took 256 more (16,688): about 516 B of `stack_free` left on that run, still above the
 408 the earlier images ran with. 512 more would leave about 260.
 
+### On the radio at 16,688 (fcb6370, 2026-11-26 06:54-07:00Z)
+
+Release build (build ID c95b6e728ee515b9) and the library, `k6_install --verify` with the first
+boot printed (`--boot-s`): `K6 ARENA bytes=16688 at 0x20001084 ram0=3684 store=4096 ring=1280
+dec=11312 need=3552`, `K6 TXDOG on`, `K6 LIB used=32`, 31 images read back equal, no `K6 FAULT`.
+The same stack job (arena16-st2): `stack=2220 B` at the call, `ysf start ... msg=803`, the call
+byte-exact (crc d821 from=AG7EW), `stack_free=516 B` as predicted, `K6 PLAY ... played=40
+ram_free=1212 late=0 pcm=25cf3af6` (the same PCM as at 16,432).
+
 The first push of this branch regenerated the patch without memory.x's deletion, so the crate
 root's stock memory.x (no RAM0) shadowed memory.x.in again and every image with `.ram0` failed to
 link (`undefined symbol: __sram0`). The deletion is back in the patch.
