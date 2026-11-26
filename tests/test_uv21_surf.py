@@ -299,13 +299,14 @@ def test_monitor_only_opens_the_squelch(steady):
     # happen to the scanning routines and the carets should continue to fall as normal"
     # (port 20: that's MON-W)
     mode(steady, "MON-W")
-    # the audio open, but for the short hushes of a refresh sweep or a wake look: sampled, since
-    # one look can land in one of those
-    af, end = [], steady.seconds + 1.5
+    # the audio open, but for the short hushes of a refresh sweep or a wake look: sampled over a
+    # whole refresh cycle (5 s), since a shorter window that lands on the refresh sweep sees the
+    # audio mostly hushed (any 1.5 s: 32-35 % open at worst; any 6 s: 57 %, 73 % over 20 s)
+    af, end = [], steady.seconds + 6
     while steady.seconds < end:
         steady.step(20_000)
         af.append(steady.regs.get(0x47))
-    assert af.count(AF_FM) > len(af) * 0.6, [hex(v or 0) for v in af]
+    assert af.count(AF_FM) > len(af) * 0.45, [hex(v or 0) for v in af]
     before = carets(steady)
     seen = tunes(steady, 7)                                             # (a refresh sweep every 5 s)
     assert len(seen) > 5, sorted(seen)
