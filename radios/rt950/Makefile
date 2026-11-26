@@ -8,6 +8,10 @@
 #   make -C radios/rt950 backup-image JM=DIR   the dump-only image for the backup: that
 #                                      checkout with backup/backup-only.patch, built and checked
 #                                      (build/rt950-backup-only.BTF; docs/rt950-backup.md)
+#   make -C radios/rt950 surf-image JM=DIR   that checkout with port/surf2-image.patch and SURF
+#                                      (src/, port/jm_glue.c, c/common/surf_core.inc) linked in: the
+#                                      radio boots into dual-chip SURF (build/rt950-surf2.{elf,bin,
+#                                      BTF,syms}); run it on the emulated board with sim/rt950
 # The target build uses clang (as the K6 modules do) unless CROSS=arm-none-eabi-gcc.
 # SPDX-License-Identifier: GPL-3.0-or-later
 CC ?= cc
@@ -84,4 +88,24 @@ backup-image: backup/backup-only.patch backup/check_image.py | build
 clean:
 	rm -rf build
 
-.PHONY: all target target-libm glue backup-image clean
+# the SURF image: the pinned base firmware booting into blowfang's dual-chip SURF; the base's own
+# Makefile (arm-none-eabi-gcc, its -Wall -Wextra -Wshadow -Werror) builds it, so SURF and the glue
+# compile under the base's rules too
+SK = build/jm-surf2
+surf-image: port/surf2-image.patch port/jm_glue.c $(APP) $(DEPS) | build
+	rm -rf $(SK)
+	mkdir -p $(SK)
+	cd $(JM) && git archive HEAD | tar -x -C $(CURDIR)/$(SK)
+	patch -d $(SK) -p1 --quiet < port/surf2-image.patch
+	cp src/surf2.c src/surf2.h src/rt_api.h port/jm_glue.c $(COMMON)/surf_core.inc $(SK)/src/app/
+	sed -i 's|#include "../../../c/common/surf_core.inc"|#include "surf_core.inc"|' $(SK)/src/app/surf2.c
+	$(MAKE) -C $(SK) btf BLOWFANG_SURF2=1 TARGET=rt950-surf2
+	cp $(SK)/build/rt950-surf2.elf build/
+	cp $(SK)/build/rt950-surf2.bin build/
+	cp $(SK)/build/rt950-surf2.BTF build/
+	llvm-nm build/rt950-surf2.elf > build/rt950-surf2.syms 2>/dev/null || arm-none-eabi-nm build/rt950-surf2.elf > build/rt950-surf2.syms
+	python3 $(SK)/tools/firmware_upload.py verify build/rt950-surf2.BTF | tee build/rt950-surf2.verify.txt
+	grep -q "valid app flash" build/rt950-surf2.verify.txt
+	arm-none-eabi-size build/rt950-surf2.elf
+
+.PHONY: all target target-libm glue backup-image surf-image clean

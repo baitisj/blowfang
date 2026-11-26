@@ -68,6 +68,16 @@ make -C radios/rt950 backup-image JM=../jm   # the dump-only image, built and ch
 make -C c/common                          # the polar SSB and tone_fsk host programs
 python -m pytest -q tests/test_rt950_surf.py tests/test_rt950_digi.py tests/test_rt950_backup.py tests/test_ssb_polar.py tests/test_tone_fsk.py
 ```
+- `port/surf2-image.patch` and `make surf-image JM=DIR`: the pinned base firmware with SURF linked
+  in, booting straight into it (from VFO A's frequency; Back returns to the base firmware). The
+  base's own Makefile builds it, so SURF and the glue compile under its `-Werror` rules; the
+  flash tool's `verify` checks the .BTF. CI uploads it as `rt950-surf2`. It has not been on a
+  radio.
+- `sim/rt950/` (MIT): that image on an emulated board (the AT32F403A in unicorn, the keypad
+  matrix, the LCD, both BK4829s), and with SoapyFang's chip model (`sim/rt950/soapy.py`) both
+  chips hear real I/Q: a SigMF recording, the synthetic band or a live SDR.
+  `tests/test_rt950_board.py` boots it into SURF and checks the sweep, the bars, the keys, that
+  nothing is a transmit setting, and that the fast register path matches the bit-banged bus.
 
 ## What needs Andrew's radio
 

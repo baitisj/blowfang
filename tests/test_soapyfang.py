@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sim.soapyfang.chip import ChipModel  # noqa: E402
 from sim.soapyfang.sources import (PlutoIioSource, SigmfSource, SoapySource, SyntheticSource,  # noqa: E402
                                    open_source, write_sigmf)
-from sim.uv21.board import Station  # noqa: E402
+from sim.band import Station  # noqa: E402
 
 F0 = 440_000_000
 
