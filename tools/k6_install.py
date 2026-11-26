@@ -319,8 +319,9 @@ def boot_call(port, cmd, arg, data, retries=5, timeout=2.0, quiet_ok=False):
     raise InstallError(f"no answer from the bootloader to command {cmd:#04x}")
 
 
-def boot_flash(port, image, log=print):
-    """Flash an image into the MCU: the radio must be in UPDATE mode (catch_window)"""
+def boot_flash(port, image, log=print, end_wait=True):
+    """Flash an image into the MCU: the radio must be in UPDATE mode (catch_window). end_wait
+    False: send END once and return without reading, so the caller sees the boot's first lines"""
     n = -(-len(image) // BOOT_PACKAGE)
     if n > 256:
         raise InstallError(f"{len(image)} bytes is more than the bootloader takes")
@@ -331,6 +332,10 @@ def boot_flash(port, image, log=print):
         if seq % 8 == 7 or seq == n - 1:
             log(f"\r  flashing {seq + 1}/{n} KB", end="")
     log("")
+    if not end_wait:
+        port.reset_input_buffer()
+        port.write(boot_frame(BOOT_END))
+        return
     boot_call(port, BOOT_END, 0, b"", retries=2, quiet_ok=True)   # it may restart before it answers
 
 
@@ -540,7 +545,7 @@ def default_backup_path():
     return os.path.join(d, "k6-spiflash-" + datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%MZ") + ".bin")
 
 
-def flash(port, image, key, how, log=print, ask=input):
+def flash(port, image, key, how, log=print, ask=input, boot_s=0.0):
     """Key the image and flash it. how: "cable" (a blowfang radio: end the cable session, catch
     the window after its restart, no hands) or "power" (you switch the radio on)"""
     data, keyed = keyed_image(image, key)
@@ -558,8 +563,9 @@ def flash(port, image, key, how, log=print, ask=input):
         raise InstallError("the bootloader didn't answer: switch the radio off, press Enter and switch it on "
                            "again (or hold Side Keys 1 and 2 while switching it on)")
     log("  the radio is in UPDATE mode")
-    boot_flash(port, data, log)
+    boot_flash(port, data, log, end_wait=boot_s <= 0)
     log("  flashed; the radio restarts (if its screen stays on UPDATE, switch it off and on)")
+    boot_listen(port, boot_s, log, nudge=boot_frame(BOOT_END))
 
 
 def check_key(c, key, serials, log=print):
@@ -633,13 +639,27 @@ def wait_line(port, prefix, timeout, log=print):
     return None
 
 
-def boot_listen(port, seconds, log=print):
+def boot_listen(port, seconds, log=print, nudge=None):
     """Print the radio's report lines for seconds after a restart: the first boot's lines (a boot
     trace's K6 BT markers, K6 CFG, K6 LIB) come out before a logger opened after this tool could
     see them. 0 skips it."""
-    if seconds > 0:
-        log(f"  the first boot's report ({seconds:g} s):")
-        wait_line(port, "\0never", seconds, log)
+    if seconds <= 0:
+        return
+    log(f"  the first boot's report ({seconds:g} s):")
+    t0 = time.monotonic()
+    deadline, buf, seen = t0 + seconds, b"", False
+    while time.monotonic() < deadline:
+        b = port.read(256)
+        seen = seen or bool(b)
+        buf += b
+        if nudge and not seen and time.monotonic() - t0 > 2.5:
+            port.write(nudge)        # END lost: the bootloader is still waiting (one more, as boot_call did)
+            nudge = None
+        while b"\n" in buf:
+            ln, buf = buf.split(b"\n", 1)
+            ln = ln.decode("ascii", "replace").strip()
+            if ln:
+                log(f"  K6 +{time.monotonic() - t0:5.2f}s: {ln}")
 
 
 def first_boot(port, backup_path, log=print, ask=input, timeout=90.0):
@@ -784,8 +804,7 @@ def main(argv=None, log=None, ask=input):
                 how = "power"
                 if not a.power and open_cable(port, log, wait=3.0):
                     how = "cable"
-                flash(port, open(a.image, "rb").read(), key, how, log, ask)
-                boot_listen(port, a.boot_s, log)
+                flash(port, open(a.image, "rb").read(), key, how, log, ask, boot_s=a.boot_s)
                 return 0
             c = open_cable(port, log, wait=20.0)
             if not c:
