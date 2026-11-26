@@ -42,7 +42,7 @@ index 785c441..65b82b3 100644
  opt-level = "z"
  lto = true
 diff --git a/build.rs b/build.rs
-index 34078b1..67e6ba5 100644
+index 34078b1..d17bcfd 100644
 --- a/build.rs
 +++ b/build.rs
 @@ -42,14 +42,71 @@ fn watch_git_dir() {
@@ -51,8 +51,8 @@ index 34078b1..67e6ba5 100644
      let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
 +    let feat = |f: &str| env::var_os(format!("CARGO_FEATURE_{f}")).is_some();
 +    // hal::ram0 also takes sotto's C statics (libsotto_k6.a's .bss, 444 B: the hiss image's stack
-+    // was the arena's limit) in the images with no EXPLORE: EXPLORE's state fills the voice +
-+    // EXPLORE image's RAM0 instead (2026-11-19). Not lean: its library keeps the decoder's
++    // was the arena's limit, 2026-11-19), in the voice + EXPLORE image too since the leaner
++    // pager-only App left room there (level 16). Not lean: its library keeps the decoder's
 +    // memory in a static of its own, too big for RAM0, and it has the stack to spare
 +    let mut mem = include_str!("memory.x.in").to_string();
 +    if !feat("LEAN") {
@@ -119,6 +119,25 @@ index 34078b1..67e6ba5 100644
      println!("cargo:rustc-env=GIT_VERSION={}", git_version());
      watch_git_dir();
  }
+diff --git a/memory.x b/memory.x
+deleted file mode 100644
+index 4fe73cb..0000000
+--- a/memory.x
++++ /dev/null
+@@ -1,13 +0,0 @@
+-/* This MCU has no VTOR: real hardware IRQ dispatch is fixed at whatever
+- * vector table lives in the first-stage bootloader's own flash region, not
+- * at this application's own vector table. The bootloader trampolines a
+- * small, fixed set of IRQs through a 10-entry array of raw function
+- * pointers ("UserVectors") at a fixed RAM address, 0x20001000..0x20001028
+- *  RAM starts just past that block so nothing here ever collides with it.
+- */
+-MEMORY
+-{
+-  FLASH : ORIGIN = 0x08002000, LENGTH = 120K
+-  RAM   : ORIGIN = 0x20001028, LENGTH = 17720
+-}
+-
 diff --git a/memory.x.in b/memory.x.in
 new file mode 100644
 index 0000000..1726a6d
@@ -9886,10 +9905,10 @@ index 73a6de2..6407ded 100644
              side1_long: buf[20].min(11),
 diff --git a/src/hal/arena.rs b/src/hal/arena.rs
 new file mode 100644
-index 0000000..58555cc
+index 0000000..cbf529e
 --- /dev/null
 +++ b/src/hal/arena.rs
-@@ -0,0 +1,113 @@
+@@ -0,0 +1,121 @@
 +//! One block of RAM shared by the things that never run at the same time.
 +//!
 +//! A voice message needs the message store, the PWM audio ring and the decoder's working
@@ -9925,6 +9944,14 @@ index 0000000..58555cc
 +//! state (600 B, for 256 B of its KNOWN list moved back out) in the voice + EXPLORE image. The
 +//! hiss image's running stack still limits it: 268 bytes to spare (256 before), the voice +
 +//! EXPLORE image 552.
++//!
++//! 2026-11-26: 16,432 bytes, 1,024 more (module API level 16). The pager-only build leaves 13
++//! of Aura's modes out of `App` (APP_SLOT 2,164 -> 1,236 B in hal::ram0), and the room went to
++//! libsotto_k6.a's .bss, EXPLORE's KNOWN list and the pager's zeroed statics. main's one-time
++//! set-up moved into boot_init_app (main's frame 880 -> 160 B in the hiss image), and the hiss
++//! image builds with FX_SYNTH_STATE, so synth's 2 KB arrays sit in the decoder pool (4,280 B)
++//! instead of on the stack (the M0 model: the same cycles, the same PCM). Running stack to
++//! spare: hiss image 1,308 B, voice + EXPLORE 1,252, its boot-trace build 1,148 (ATfE build).
 +//!
 +//! Size until then: the same 11,776 bytes in every image that reads its codebooks from SPI flash and plays
 +//! voice, so a module that fits one fits all. In the hiss band image that is store 4,096 + ring
