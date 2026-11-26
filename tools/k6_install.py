@@ -633,6 +633,15 @@ def wait_line(port, prefix, timeout, log=print):
     return None
 
 
+def boot_listen(port, seconds, log=print):
+    """Print the radio's report lines for seconds after a restart: the first boot's lines (a boot
+    trace's K6 BT markers, K6 CFG, K6 LIB) come out before a logger opened after this tool could
+    see them. 0 skips it."""
+    if seconds > 0:
+        log(f"  the first boot's report ({seconds:g} s):")
+        wait_line(port, "\0never", seconds, log)
+
+
 def first_boot(port, backup_path, log=print, ask=input, timeout=90.0):
     """After an image's first flash on a radio Aura never formatted: back up at FORMAT FLASH?,
     then the owner presses MENU. Ends at the image's K6 CB line (its codebook check)."""
@@ -704,6 +713,7 @@ def cmd_install(a, bundle, port, key, log=print, ask=input):
     log("6. Loading EXPLORE's pages, the help deck and the modules over the cable...")
     load(c, bundle, key, serials, log, verify=a.verify)
     c.end()
+    boot_listen(port, a.boot_s, log)
     log("\nDone. The radio restarts into EXPLORE. Hold MENU on any screen for its help card.")
     return 0
 
@@ -722,6 +732,8 @@ def main(argv=None, log=None, ask=input):
                                                            "anyway once ~/blowfang-backups holds one)")
     i.add_argument("--verify", action="store_true", help="read every library slot back after writing it")
     i.add_argument("--yes", action="store_true", help="don't ask before replacing the stock firmware")
+    i.add_argument("--boot-s", type=float, default=30.0, help="print the report lines of the boot "
+                                                               "after the library is in, s (0: don't)")
     i.add_argument("--fresh", action="store_true", help="install as on a new radio even if it runs blowfang "
                                                        "(flashes the codebook installers again)")
     b = sub.add_parser("backup", help="the whole 2 MB SPI flash to a file")
@@ -730,6 +742,8 @@ def main(argv=None, log=None, ask=input):
     f.add_argument("image")
     f.add_argument("--power", action="store_true", help="catch the bootloader as you switch the radio on, "
                                                         "even if it runs blowfang")
+    f.add_argument("--boot-s", type=float, default=30.0, help="print the new image's first boot report "
+                                                               "lines, s (0: don't)")
     ld = sub.add_parser("load", help="the library: EXPLORE's pages, the help deck, the modules")
     ld.add_argument("bundle")
     ld.add_argument("--only", help="these slots only, e.g. 0,13,26")
@@ -771,6 +785,7 @@ def main(argv=None, log=None, ask=input):
                 if not a.power and open_cable(port, log, wait=3.0):
                     how = "cable"
                 flash(port, open(a.image, "rb").read(), key, how, log, ask)
+                boot_listen(port, a.boot_s, log)
                 return 0
             c = open_cable(port, log, wait=20.0)
             if not c:
