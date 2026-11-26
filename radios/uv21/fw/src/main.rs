@@ -79,6 +79,67 @@ impl Serial {
     }
 }
 
+/// One-time boot calibration and App construction kept out of `main()`'s permanent stack frame
+/// so Storage, calibration buffers and settings temporaries are reclaimed before SURF runs.
+#[inline(never)]
+fn boot_build_app<'a>(
+    gpioa: &'a pac::Gpioa,
+    gpiob: &'a pac::Gpiob,
+    spi1: &'a pac::Spi1,
+    adc: &'a pac::Adc,
+    cp: &mut cortex_m::Peripherals,
+    mut rfic: Fd6818<'a>,
+    serial: &Serial,
+) -> app::App<'a> {
+    let norflash = NorFlash::new(gpioa, spi1);
+    let mut storage = device::storage::Storage::new(norflash);
+    let mut flag_byte = [0u8; 1];
+    storage.read_raw(flash_map::addr::PA_TABLE_BASE_HIGH, &mut flag_byte);
+    let cal = storage.read_calibration();
+    if flag_byte[0] != 0xFF {
+        rfic.set_xtal_adjust(cal[6]);
+        rfic.set_audio_calibration(cal[0], cal[1], cal[2], cal[3], cal[4]);
+        rfic.set_squelch_cal(storage.read_squelch_cal());
+    }
+    hal::con::puts("calibration");
+    hal::con::kv_hex("applied", (flag_byte[0] != 0xFF) as u32, 1);
+    hal::con::nl();
+    dbg_println!(
+        serial,
+        "calibration {}",
+        if flag_byte[0] != 0xFF {
+            "applied"
+        } else {
+            "blank, using defaults"
+        }
+    );
+
+    // AF response filters: the UV-21 stock init's own values (REG_44/45/74/75, fd6818b.rs init)
+    // stand; the UV-5RH pushed its flat table entry here, which would undo them.
+
+    // UV-21 Pro: the receive front end's band switch on PA13/PA14 (board/rxpath.rs), and the
+    // UV-5RH's GPIO5/GPIO6 switch only in the modes that keep it
+    board::set_rx_path_mode(board::RX_PATH_DEFAULT);
+    rfic.set_rf_gpio56(&mut cp.SYST, board::rx_path_rf_gpio56(board::RX_PATH_DEFAULT));
+
+    let cfg = ChannelConfig {
+        freq_hz: TEST_FREQ_HZ,
+        tx_freq_hz: TEST_FREQ_HZ,
+        wide_band: WIDE_BAND,
+        power: Power::Low,
+        subaudio_tx: SubAudio::None,
+        subaudio_rx: SubAudio::None,
+        modulation: Modulation::Fm,
+    };
+
+    // FIXME: placeholder
+    let ani = AniConfig::from_raw([0, 0, 0], 0);
+    let radio = Radio::new(rfic, gpioa, gpiob, adc, cfg, ani);
+
+    let keypad = device::keypad::Keypad::new(gpioa, gpiob);
+    app::App::new(radio, keypad, &mut storage)
+}
+
 #[entry]
 fn main() -> ! {
     let dp = unsafe { pac::Peripherals::steal() };
@@ -262,53 +323,7 @@ fn main() -> ! {
     rfic.init(&mut cp.SYST);
     dbg_println!(serial, "fd6818 init done");
 
-    let norflash = NorFlash::new(&dp.gpioa, &dp.spi1);
-    let mut storage = device::storage::Storage::new(norflash);
-    let mut flag_byte = [0u8; 1];
-    storage.read_raw(flash_map::addr::PA_TABLE_BASE_HIGH, &mut flag_byte);
-    let cal = storage.read_calibration();
-    if flag_byte[0] != 0xFF {
-        rfic.set_xtal_adjust(cal[6]);
-        rfic.set_audio_calibration(cal[0], cal[1], cal[2], cal[3], cal[4]);
-        rfic.set_squelch_cal(storage.read_squelch_cal());
-    }
-    hal::con::puts("calibration");
-    hal::con::kv_hex("applied", (flag_byte[0] != 0xFF) as u32, 1);
-    hal::con::nl();
-    dbg_println!(
-        serial,
-        "calibration {}",
-        if flag_byte[0] != 0xFF {
-            "applied"
-        } else {
-            "blank, using defaults"
-        }
-    );
-
-    // AF response filters: the UV-21 stock init's own values (REG_44/45/74/75, fd6818b.rs init)
-    // stand; the UV-5RH pushed its flat table entry here, which would undo them.
-
-    // UV-21 Pro: the receive front end's band switch on PA13/PA14 (board/rxpath.rs), and the
-    // UV-5RH's GPIO5/GPIO6 switch only in the modes that keep it
-    board::set_rx_path_mode(board::RX_PATH_DEFAULT);
-    rfic.set_rf_gpio56(&mut cp.SYST, board::rx_path_rf_gpio56(board::RX_PATH_DEFAULT));
-
-    let cfg = ChannelConfig {
-        freq_hz: TEST_FREQ_HZ,
-        tx_freq_hz: TEST_FREQ_HZ,
-        wide_band: WIDE_BAND,
-        power: Power::Low,
-        subaudio_tx: SubAudio::None,
-        subaudio_rx: SubAudio::None,
-        modulation: Modulation::Fm,
-    };
-
-    // FIXME: placeholder
-    let ani = AniConfig::from_raw([0, 0, 0], 0);
-    let radio = Radio::new(rfic, &dp.gpioa, &dp.gpiob, &dp.adc, cfg, ani);
-
-    let keypad = device::keypad::Keypad::new(&dp.gpioa, &dp.gpiob);
-    let mut app = app::App::new(radio, keypad, &mut storage);
+    let mut app = boot_build_app(&dp.gpioa, &dp.gpiob, &dp.spi1, &dp.adc, &mut cp, rfic, &serial);
     app.poll_battery();
 
     // UV-21: no splash, boot tune or wait (the operator asked for none): straight to SURF, the

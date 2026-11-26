@@ -11,7 +11,7 @@
 //!
 //! | line                    | does                                          | answer             |
 //! |-------------------------|-----------------------------------------------|--------------------|
-//! | `um ?`                  | asks                                          | `um abi=1 room=1000` |
+//! | `um ?`                  | asks                                          | `um abi=1 room=2000` |
 //! | `um b LLLL`             | begins an image of LLLL bytes (hex)           | `um ok b`          |
 //! | `um w OOOO HEX.. CCCC`  | bytes at offset OOOO, CRC-16/XMODEM CCCC      | `um ok OOOO`       |
 //! | `um r CCCCCCCC`         | runs it, if whole with that CRC-32            | `um run`, then the module's lines, `um end rrrrrrrr` |
@@ -26,7 +26,7 @@
 use crate::hal::{con, uart};
 
 pub const ABI: u16 = 1;
-const ROOM: usize = 4096;
+const ROOM: usize = 8192;
 const HDR: usize = 12;
 const MAGIC: [u8; 4] = *b"UM21";
 const LINE_MAX: usize = 160;
@@ -66,9 +66,10 @@ pub fn service(api: &UmApi) {
         if b == b'\n' || b == b'\r' {
             unsafe { LINE_N = 0 };
             if n > 0 && n <= LINE_MAX {
-                let mut line = [0u8; LINE_MAX];
-                line.copy_from_slice(unsafe { &*core::ptr::addr_of!(LINE) });
-                handle(api, &line[..n]);
+                // LINE is only modified by service() (never in an IRQ) and not re-entered while
+                // a module runs, so reading it directly avoids pinning 160 B on the module stack.
+                let line = unsafe { &(&*core::ptr::addr_of!(LINE))[..n] };
+                handle(api, line);
             }
         } else if n < LINE_MAX {
             unsafe {
@@ -126,6 +127,34 @@ fn bad(what: &str, v: u32) {
     con::nl();
 }
 
+#[inline(never)] // keep the 80-byte decode buffer off the stack while a module runs (`b"r"`)
+fn handle_write(a: Option<&[u8]>, b: Option<&[u8]>, c: Option<&[u8]>) {
+    let (off, data, crc) = match (a.and_then(num), b, c.and_then(num)) {
+        (Some(o), Some(d), Some(k)) => (o as usize, d, k as u16),
+        _ => return bad("line", 0),
+    };
+    let n = data.len() / 2;
+    let (want, got) = unsafe { (WANT, GOT) };
+    if data.len() % 2 != 0 || n == 0 || off != got || off + n > want {
+        return bad("off", got as u32);
+    }
+    let mut buf = [0u8; LINE_MAX / 2];
+    for i in 0..n {
+        match (hexval(data[2 * i]), hexval(data[2 * i + 1])) {
+            (Some(h), Some(l)) => buf[i] = (h << 4 | l) as u8,
+            _ => return bad("hex", off as u32),
+        }
+    }
+    if crc16_xmodem(&buf[..n]) != crc {
+        return bad("crc", off as u32);
+    }
+    block()[off..off + n].copy_from_slice(&buf[..n]);
+    unsafe { GOT = off + n };
+    con::puts("um ok ");
+    con::hex(off as u32, 4);
+    con::nl();
+}
+
 fn handle(api: &UmApi, line: &[u8]) {
     let mut parts = line.split(|&c| c == b' ').filter(|p| !p.is_empty());
     if parts.next() != Some(b"um") {
@@ -154,32 +183,7 @@ fn handle(api: &UmApi, line: &[u8]) {
             }
             _ => bad("len", 0),
         },
-        b"w" => {
-            let (off, data, crc) = match (a.and_then(num), b, c.and_then(num)) {
-                (Some(o), Some(d), Some(k)) => (o as usize, d, k as u16),
-                _ => return bad("line", 0),
-            };
-            let n = data.len() / 2;
-            let (want, got) = unsafe { (WANT, GOT) };
-            if data.len() % 2 != 0 || n == 0 || off != got || off + n > want {
-                return bad("off", got as u32);
-            }
-            let mut buf = [0u8; LINE_MAX / 2];
-            for i in 0..n {
-                match (hexval(data[2 * i]), hexval(data[2 * i + 1])) {
-                    (Some(h), Some(l)) => buf[i] = (h << 4 | l) as u8,
-                    _ => return bad("hex", off as u32),
-                }
-            }
-            if crc16_xmodem(&buf[..n]) != crc {
-                return bad("crc", off as u32);
-            }
-            block()[off..off + n].copy_from_slice(&buf[..n]);
-            unsafe { GOT = off + n };
-            con::puts("um ok ");
-            con::hex(off as u32, 4);
-            con::nl();
-        }
+        b"w" => handle_write(a, b, c),
         b"r" => {
             let (want, got) = unsafe { (WANT, GOT) };
             let img = &block()[..want];
