@@ -19,6 +19,7 @@ import tty
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rt950_backup import XOR_KEYS
+from rt950_backup import STOCK_RAW
 from rt950_backup import xor
 
 STOCK_IDENTITY = b"RT950PRO-STOCK\x00\x00"   # (made up: the real one is recorded on the day)
@@ -113,7 +114,13 @@ class FakeRadio:
                     if addr == self.corrupt_at:
                         self.corrupt_at = None
                         data[0] ^= 0x10
-                    os.write(self.master, bytes([op]) + rest + xor(bytes(data), key))
+                    out = bytearray(xor(bytes(data), key))
+                    if self.mode == "stock":    # as the real stock firmware: these go out unscrambled
+                        for lo, ln in STOCK_RAW:
+                            a, b = max(lo, addr), min(lo + ln, addr + n)
+                            if a < b:
+                                out[a - addr:b - addr] = data[a - addr:b - addr]
+                    os.write(self.master, bytes([op]) + rest + bytes(out))
                 elif op in (0x57, 0x58):
                     self.writes += 1
                 elif op == 0x45:

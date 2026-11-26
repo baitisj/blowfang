@@ -94,6 +94,12 @@ STOCK_REGIONS = [               # --cps-regions: only what Radtel's CPS itself r
     ("cal_f000", 0xF000, 128),
     ("cal_f200", 0xF200, 128),
 ]
+# what the stock firmware sends WITHOUT the session XOR (found 2026-11-25: four reads under four
+# session keys agreed here only once each read's own key was put back): kept as sent
+STOCK_RAW = (
+    (0xF000, 0x80),     # cal_f000
+    (0xF200, 0x80),     # cal_f200
+)
 SPI_LEN = 0x400000
 MCU_WINDOW = 0x800000
 BOOTLOADER_LEN = 0x3000
@@ -177,7 +183,14 @@ class Radio:
         resp = self.take(len(hdr) + n, f"read 0x{addr:06X}")
         if resp[:len(hdr)] != hdr:
             raise RuntimeError(f"read 0x{addr:06X}: the reply's header was {resp[:len(hdr)].hex()}")
-        return xor(resp[len(hdr):], self.key)
+        body = resp[len(hdr):]
+        out = bytearray(xor(body, self.key))
+        if self.addr_bytes == 2:            # the stock firmware's unscrambled regions, as sent
+            for lo, ln in STOCK_RAW:
+                a, b = max(lo, addr), min(lo + ln, addr + n)
+                if a < b:
+                    out[a - addr:b - addr] = body[a - addr:b - addr]
+        return bytes(out)
 
     def close(self, terminate):
         try:
@@ -229,6 +242,7 @@ def backup(radio, outdir, ranges, min_passes=2, max_passes=4, progress=None, ter
         "identity": identity.decode("ascii", "replace"),
         "model": model,
         "key_index": getattr(radio, "key_index", None),   # the session's XOR key (compare --keys)
+        "raw_regions": [f"0x{lo:04X}+0x{ln:X}" for lo, ln in STOCK_RAW] if radio.addr_bytes == 2 else [],
         "ranges": [],
     }
     ok = True

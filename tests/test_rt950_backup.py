@@ -194,3 +194,16 @@ def test_one_pass_only_for_a_split_read(radio, tmp_path):
     rng = man["ranges"][0]
     assert len(rng["passes"]) == 1 and rng["single_pass"] and rng["agreed_sha256"] == rng["passes"][0]["sha256"]
     assert read(tmp_path / "cps64k.bin") == r.spi[:0x10000]
+
+
+@pytest.mark.parametrize("block", [32, 128])
+def test_stock_calibration_comes_back_as_sent_whatever_the_session_key(radio, tmp_path, block):
+    r = radio("stock")
+    outs = []
+    for i in range(2):
+        out = tmp_path / f"r{i}"
+        assert rb.main(["read", r.path, str(out), "--addr", "2", "--block", str(block)]) == 0
+        outs.append(read(out / "cps64k.bin"))
+    assert outs[0] == outs[1] == r.spi[:0x10000]
+    man = json.loads(read(tmp_path / "r1" / "manifest.json"))
+    assert man["raw_regions"] == ["0xF000+0x80", "0xF200+0x80"]

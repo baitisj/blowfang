@@ -91,7 +91,12 @@ configs, while a 32-byte read matched Stage A there. The calibration regions at 
 differ between every session, while each session's two passes agree. That points to the radio
 sending them without the session XOR, so each read leaves them scrambled by its own key. The
 manifest now records the session's key index, and `rt950.compare --keys` names the key pair that
-makes two reads agree.
+makes two reads agree. Four reads (Stage A over Bluetooth, key 7; rt950-read-1125b, key 9;
+rt950-read-1125c, key 1; rt950-keys-1125a, key 16) agree once each read's own key is put back,
+so the calibration was unchanged. `rt950_backup.py` now keeps 0xF000-0xF07F and 0xF200-0xF27F as
+the radio sends them (`STOCK_RAW`, `raw_regions` in the manifest), so newer stock reads need no
+key; for those four older reads, XOR those two regions with their key again to get the radio's
+bytes.
 
 On 2026-11-26 the dump-only image served about 770 B/s (job rt950-stageb-1126a reached 54 % of
 the first pass in 50 minutes), so one 4 MB pass takes about 95 minutes, not the 6.5 minutes 115200
