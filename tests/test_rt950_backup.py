@@ -185,3 +185,12 @@ def test_manifest_records_the_session_key(radio, tmp_path):
     assert rb.main(["read", r.path, str(tmp_path), "--addr", "2"]) == 0
     man = json.loads(read(tmp_path / "manifest.json"))
     assert 0 <= man["key_index"] < len(rb.XOR_KEYS)
+
+
+def test_one_pass_only_for_a_split_read(radio, tmp_path):
+    r = radio("stock")
+    assert rb.main(["read", r.path, str(tmp_path), "--addr", "2", "--passes", "1"]) == 0
+    man = json.loads(read(tmp_path / "manifest.json"))
+    rng = man["ranges"][0]
+    assert len(rng["passes"]) == 1 and rng["single_pass"] and rng["agreed_sha256"] == rng["passes"][0]["sha256"]
+    assert read(tmp_path / "cps64k.bin") == r.spi[:0x10000]

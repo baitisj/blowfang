@@ -93,8 +93,10 @@ sending them without the session XOR, so each read leaves them scrambled by its 
 manifest now records the session's key index, and `rt950.compare --keys` names the key pair that
 makes two reads agree.
 
-At 115200 baud a 128-byte read is about 12 ms, so the 4 MB pass takes about 6.5 minutes and
-two take about 13. Stage A's 64 KB takes a few seconds a pass.
+On 2026-11-26 the dump-only image served about 770 B/s (job rt950-stageb-1126a reached 54 % of
+the first pass in 50 minutes), so one 4 MB pass takes about 95 minutes, not the 6.5 minutes 115200
+baud would allow. Through the runner, read it as two jobs of `--passes 1` (each step's timeout up
+to 7200 s) and compare the two manifests' `spi4m` and `bootloader` hashes. Stage A's 64 KB takes a few seconds a pass.
 
 The backups stay on hamlet and on Jeff's own storage. They never go into git (`.gitignore`
 refuses `*.BTF` and `rt950-backup-*/`) or project files.
