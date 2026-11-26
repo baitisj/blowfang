@@ -9905,10 +9905,10 @@ index 73a6de2..6407ded 100644
              side1_long: buf[20].min(11),
 diff --git a/src/hal/arena.rs b/src/hal/arena.rs
 new file mode 100644
-index 0000000..cbf529e
+index 0000000..990739d
 --- /dev/null
 +++ b/src/hal/arena.rs
-@@ -0,0 +1,121 @@
+@@ -0,0 +1,123 @@
 +//! One block of RAM shared by the things that never run at the same time.
 +//!
 +//! A voice message needs the message store, the PWM audio ring and the decoder's working
@@ -9945,13 +9945,15 @@ index 0000000..cbf529e
 +//! hiss image's running stack still limits it: 268 bytes to spare (256 before), the voice +
 +//! EXPLORE image 552.
 +//!
-+//! 2026-11-26: 16,432 bytes, 1,024 more (module API level 16). The pager-only build leaves 13
++//! 2026-11-26: 16,688 bytes, 1,280 more (module API level 16). The pager-only build leaves 13
 +//! of Aura's modes out of `App` (APP_SLOT 2,164 -> 1,236 B in hal::ram0), and the room went to
 +//! libsotto_k6.a's .bss, EXPLORE's KNOWN list and the pager's zeroed statics. main's one-time
 +//! set-up moved into boot_init_app (main's frame 880 -> 160 B in the hiss image), and the hiss
 +//! image builds with FX_SYNTH_STATE, so synth's 2 KB arrays sit in the decoder pool (4,280 B)
-+//! instead of on the stack (the M0 model: the same cycles, the same PCM). Running stack to
-+//! spare: hiss image 1,308 B, voice + EXPLORE 1,252, its boot-trace build 1,148 (ATfE build).
++//! instead of on the stack (the M0 model: the same cycles, the same PCM). On the radio at
++//! 16,432 (d3ac7ad): one clean boot, a FUSOTTO RX call returned with stack_free=772 B (408 on
++//! the level 13-15 images) and played with ram_free=1,468. So 256 more: 16,688 bytes, which
++//! leaves the stack about 516 B, still above what the earlier images ran with.
 +//!
 +//! Size until then: the same 11,776 bytes in every image that reads its codebooks from SPI flash and plays
 +//! voice, so a module that fits one fits all. In the hiss band image that is store 4,096 + ring
@@ -9972,7 +9974,7 @@ index 0000000..cbf529e
 +/// the PWM audio ring (hal::pwm_audio)
 +pub const RING_BYTES: usize = super::pwm_audio::RING_BYTES;
 +#[cfg(not(small_arena))]
-+pub const ARENA_BYTES: usize = 16432;
++pub const ARENA_BYTES: usize = 16688;
 +#[cfg(small_arena)]
 +pub const ARENA_BYTES: usize = STORE_BYTES + RING_BYTES;
 +/// the decoder's pool: what is left after the store and the ring

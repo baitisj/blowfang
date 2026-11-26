@@ -119,15 +119,16 @@ Jeff asked for more arena; this round takes stack back from the core instead of 
 | main's one-time set-up (radio chip, calibration, storage, `App`) in `boot_init_app`, `#[inline(never)]`; the IFP session's packet report in its own function | main's frame 880 -> 160 B (hiss image), if_session 480 -> 392 B |
 | the hiss image builds with `FX_SYNTH_STATE` like the other SPI images | synth's 2 KB arrays live in the decoder pool (4,280 B, inside the arena) instead of on the stack |
 
-The block grows by 1,024 to **16,432 bytes** (`KM_LEVEL` 16, `modem.k6mod.ARENA_BYTES_16`).
-ATfE build of 96668ac plus the memory.x fix:
+The block first grew by 1,024 to 16,432 bytes, and after the radio check below by 256 more to
+**16,688 bytes** (`KM_LEVEL` 16, `modem.k6mod.ARENA_BYTES_16`). ATfE build of 96668ac plus the
+memory.x fix (boot stack to spare at 16,688: voice-explore 1,580, hiss 1,768):
 
-| image | running stack to spare at 15,408 (main 47d5a68) | at 16,432 | boot stack to spare at 16,432 |
+| image | running stack to spare at 15,408 (main 47d5a68) | at 16,432 | at 16,688 |
 |---|---|---|---|
-| vlrh (hiss) | 424 | 1,308 | 2,024 |
-| voice-explore | 560 | 1,252 | 1,836 |
-| voice-explore boot trace | 456 | 1,148 | 1,732 |
-| pager-only, lr, vlr | about 1,360 | about 1,500 | about 2,030 |
+| vlrh (hiss) | 424 | 1,308 | 1,052 |
+| voice-explore | 560 | 1,252 | 996 |
+| voice-explore boot trace | 456 | 1,148 | 892 |
+| pager-only, lr, vlr | about 1,360 | about 1,500 | about 1,240 |
 
 `FX_SYNTH_STATE` in the hiss image, on the M0 model (`c/k6/bench_k6.py --hiss`, EARS p047, two
 flash wait states, ATfE): the same cycles and bit-identical PWM output at all three rates.
@@ -140,6 +141,25 @@ flash wait states, ATfE): the same cycles and bit-identical PWM output at all th
 
 The C library's stack on the model drops from 2,952 to 1,816 B (600 / 400) and 2,920 to 1,784
 (1200); the pool takes the 2,048 inside the arena.
+
+### On the radio, level 16 at 16,432 (d3ac7ad, 2026-11-26 06:10-06:38Z)
+
+No hands, over the cable session (Jeff's go 06:03Z): the boot-trace build, then the release build
+(build ID d7e138ec1634c3d4) and the library.
+
+- Boot trace: one boot in 5 minutes, markers 1 to 7 in order, no `K6 FAULT`. SP at the top of
+  main 0x20005e30, at placing the App (BT 5/6) 0x20005ad8: main's frame is 856 bytes there.
+  `K6 ARENA bytes=16432 at 0x20001084 ram0=3684 store=4096 ring=1280 dec=11056 need=3552`.
+- Release: the same ARENA line, `K6 TXDOG on`, `K6 LIB used=32`, 31 images written and read back
+  equal (163,399 B in 44 s), no `K6 FAULT`, then EXPLORE.
+- Stack (inbox job arena16-st1): CW-ID wake on 440.850 (`K6 EX beacon -59 dBm floor -111`),
+  ysfrx uploaded over the Pluto, one FuSotto call from AG7EW:
+  `K6 MOD run ... stack=2476 B` (2,136 before), `ysf start ... msg=761` (594 at level 13),
+  `Y call fr=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW`, `K6 MOD ret=10 ... stack_free=772 B`
+  (408 on every level 13-15 run), `K6 PLAY ... played=40 ... ram_free=1468 ... late=0`.
+
+So the block took 256 more (16,688): about 516 B of `stack_free` left on that run, still above the
+408 the earlier images ran with. 512 more would leave about 260.
 
 The first push of this branch regenerated the patch without memory.x's deletion, so the crate
 root's stock memory.x (no RAM0) shadowed memory.x.in again and every image with `.ram0` failed to

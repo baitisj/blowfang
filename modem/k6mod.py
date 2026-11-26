@@ -31,7 +31,7 @@ TLM_MAX = 12             # telemetry parts a module may ask for
 ARENA_BYTES = 11776     # the block a module runs in (SPI-codebook images, 2026-11-08 on)
 ARENA_BYTES_12 = 14976  # the same block in the images with module API level 12 (2026-11-19, hal::ram0)
 ARENA_BYTES_13 = 15408  # level 13 (later 2026-11-19: sotto's C statics and EXPLORE's state in hal::ram0)
-ARENA_BYTES_16 = 16432  # level 16 (leaner pager-only App + boot_init_app + FX_SYNTH_STATE on hiss: +1,024 B)
+ARENA_BYTES_16 = 16688  # level 16 (leaner pager-only App + boot_init_app + FX_SYNTH_STATE on hiss: +1,280 B)
 LEVEL_BIG_ARENA = 12    # a module that needs more than ARENA_BYTES declares this level (or 13 for
                         # more than ARENA_BYTES_12): older images refuse it (header level > their
                         # KM_LEVEL) instead of running it

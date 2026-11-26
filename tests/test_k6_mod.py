@@ -263,9 +263,9 @@ def test_arena_by_level():
     assert k6mod.arena_bytes(14) == k6mod.ARENA_BYTES_13
     # level 15 (the FuSotto outbox in SPI): the same block
     assert k6mod.arena_bytes(15) == k6mod.ARENA_BYTES_13
-    # level 16 (leaner pager-only App + boot_init_app + FX_SYNTH_STATE on hiss): +1,024 B
-    assert k6mod.arena_bytes(16) == k6mod.ARENA_BYTES_16 == 16432
-    assert k6mod.arena_bytes(16) - k6mod.arena_bytes(13) == 1024
+    # level 16 (leaner pager-only App + boot_init_app + FX_SYNTH_STATE on hiss): +1,280 B
+    assert k6mod.arena_bytes(16) == k6mod.ARENA_BYTES_16 == 16688
+    assert k6mod.arena_bytes(16) - k6mod.arena_bytes(13) == 1280
 
 
 # ---- upload ARQ: magic 0xAE asks for a reply, the K6's 0xAF reports (k6_mod.h) ----
