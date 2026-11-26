@@ -24,7 +24,7 @@ from . import k6mod
 ABI = 1
 MAGIC = b"UM21"
 HDR = 12
-ROOM = 8192              # umod.rs ROOM: header, code and the module's RAM
+ROOM = 12288              # umod.rs ROOM: header, code and the module's RAM
 CHUNK = 48               # bytes a "um w" line carries
 ENTRY = "um_main"
 ROOT = k6mod.ROOT

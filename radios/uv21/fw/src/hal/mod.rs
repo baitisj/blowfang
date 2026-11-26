@@ -1,3 +1,4 @@
+pub mod arena;
 pub mod adc;
 pub mod clock;
 pub mod con;

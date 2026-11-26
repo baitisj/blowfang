@@ -56,10 +56,10 @@ def upload(b, img):
 def test_hello_runs_once_and_says_its_line(built):
     b = radio(built)
     got, _ = send(b, "um ?", r"um abi=\S+ room=\S+")
-    assert got == "um abi=1 room=2000"
+    assert got == "um abi=1 room=3000"
     ret, out = upload(b, uv21mod.image(*uv21mod.build(os.path.join(MOD, "hello.c"))))
     assert ret == 0x4829, hex(ret)                                     # the BK4829's ID
-    assert re.search(r"hello uv21 rf=4829 ram=1[0-9a-f]{3}", out), out[-300:]
+    assert re.search(r"hello uv21 rf=4829 ram=2[0-9a-f]{3}", out), out[-300:]
     got, _ = send(b, uv21mod.lines(b"x")[-1])                           # (once: no image now)
     assert got.startswith("um bad short"), got
     m, out = until(b, r"alive surf", 12)                                # SURF goes on

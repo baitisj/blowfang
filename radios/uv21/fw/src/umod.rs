@@ -2,7 +2,7 @@
 //! these registers can be done from a RAM module ... that, my good Claude, can be automated!").
 //!
 //! A module is position-independent Thumb code (radios/uv21/mod, built by modem/uv21mod.py) that
-//! runs once in a 4 KB block of RAM and returns. It reaches the radio only through `UmApi`, whose
+//! runs once in a 12 KB shared RAM arena (hal::arena) and returns. It reaches the radio only through `UmApi`, whose
 //! register writes pass the RF driver's receive-only filter like every other write. Nothing is
 //! kept: the next upload replaces it, and a power cycle clears it. The SPI flash isn't touched.
 //!
@@ -11,7 +11,7 @@
 //!
 //! | line                    | does                                          | answer             |
 //! |-------------------------|-----------------------------------------------|--------------------|
-//! | `um ?`                  | asks                                          | `um abi=1 room=2000` |
+//! | `um ?`                  | asks                                          | `um abi=1 room=3000` |
 //! | `um b LLLL`             | begins an image of LLLL bytes (hex)           | `um ok b`          |
 //! | `um w OOOO HEX.. CCCC`  | bytes at offset OOOO, CRC-16/XMODEM CCCC      | `um ok OOOO`       |
 //! | `um r CCCCCCCC`         | runs it, if whole with that CRC-32            | `um run`, then the module's lines, `um end rrrrrrrr` |
@@ -23,10 +23,10 @@
 //! code. The entry is `int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len)`, with
 //! `ram` the zeroed rest of the block (radios/uv21/mod/uv21_mod.h).
 
-use crate::hal::{con, uart};
+use crate::hal::{arena, con, uart, uptime};
 
 pub const ABI: u16 = 1;
-const ROOM: usize = 8192;
+pub const ROOM: usize = arena::BYTES;
 const HDR: usize = 12;
 const MAGIC: [u8; 4] = *b"UM21";
 const LINE_MAX: usize = 160;
@@ -46,30 +46,37 @@ pub struct UmApi {
 
 type Entry = extern "C" fn(*const UmApi, *mut u8, u32) -> i32;
 
-#[repr(C, align(8))]
-struct Block([u8; ROOM]);
+/// Idle timeout (ms) for an abandoned upload session before returning to SURF.
+const SESSION_IDLE_MS: u32 = 10_000;
 
-static mut BLOCK: Block = Block([0; ROOM]);
 static mut LINE: [u8; LINE_MAX] = [0; LINE_MAX];
 static mut LINE_N: usize = 0;
 static mut WANT: usize = 0;
 static mut GOT: usize = 0;
+/// Set by `um b` while SURF is running; `surf::poll` leaves SURF so `run_session` can take the
+/// whole shared arena without overwriting SURF's live state.
+static mut PENDING_WANT: usize = 0;
 
 fn block() -> &'static mut [u8; ROOM] {
-    unsafe { &mut (*core::ptr::addr_of_mut!(BLOCK)).0 }
+    arena::slice()
 }
 
-/// Drains the serial line; a whole line is acted on. Called from SURF's housekeeping.
-pub fn service(api: &UmApi) {
+pub fn pending() -> bool {
+    unsafe { PENDING_WANT != 0 }
+}
+
+/// Drains the serial line while SURF is running. Returns `true` when `um b` has requested the
+/// shared arena so SURF should exit and hand control to `run_session`.
+pub fn service(api: &UmApi) -> bool {
     while let Some(b) = uart::take_byte() {
         let n = unsafe { LINE_N };
         if b == b'\n' || b == b'\r' {
             unsafe { LINE_N = 0 };
             if n > 0 && n <= LINE_MAX {
-                // LINE is only modified by service() (never in an IRQ) and not re-entered while
-                // a module runs, so reading it directly avoids pinning 160 B on the module stack.
                 let line = unsafe { &(&*core::ptr::addr_of!(LINE))[..n] };
-                handle(api, line);
+                if handle(api, line, true) {
+                    return true;
+                }
             }
         } else if n < LINE_MAX {
             unsafe {
@@ -78,6 +85,68 @@ pub fn service(api: &UmApi) {
             }
         } else {
             unsafe { LINE_N = LINE_MAX + 1 }; // too long: dropped at its end
+        }
+    }
+    false
+}
+
+/// Runs a complete module upload + execute session with exclusive ownership of `hal::arena`
+/// (called from `surf::run` after `uv21_surf` has returned). Returns when the module finishes
+/// or the session goes idle.
+pub fn run_session(api: &UmApi, check_power: fn()) {
+    let want = unsafe {
+        let w = PENDING_WANT;
+        PENDING_WANT = 0;
+        w
+    };
+    if want == 0 {
+        return;
+    }
+    block().fill(0);
+    unsafe {
+        WANT = want;
+        GOT = 0;
+    }
+    con::puts("um ok b");
+    con::nl();
+
+    let mut last_ms = uptime::now32() / 10;
+    loop {
+        check_power();
+        let mut got_byte = false;
+        while let Some(b) = uart::take_byte() {
+            got_byte = true;
+            let n = unsafe { LINE_N };
+            if b == b'\n' || b == b'\r' {
+                unsafe { LINE_N = 0 };
+                if n > 0 && n <= LINE_MAX {
+                    let line = unsafe { &(&*core::ptr::addr_of!(LINE))[..n] };
+                    if handle(api, line, false) {
+                        return;
+                    }
+                }
+            } else if n < LINE_MAX {
+                unsafe {
+                    (&mut *core::ptr::addr_of_mut!(LINE))[n] = b;
+                    LINE_N = n + 1;
+                }
+            } else {
+                unsafe { LINE_N = LINE_MAX + 1 };
+            }
+        }
+        let now = uptime::now32() / 10;
+        if got_byte {
+            last_ms = now;
+        } else {
+            if now.wrapping_sub(last_ms) >= SESSION_IDLE_MS {
+                unsafe {
+                    WANT = 0;
+                    GOT = 0;
+                }
+                return;
+            }
+            // Brief wait with interrupts enabled so USART1 RX IRQ isn't starved by take_byte()'s critical section.
+            (api.delay_us)(200);
         }
     }
 }
@@ -155,10 +224,11 @@ fn handle_write(a: Option<&[u8]>, b: Option<&[u8]>, c: Option<&[u8]>) {
     con::nl();
 }
 
-fn handle(api: &UmApi, line: &[u8]) {
+/// Returns `true` when `surf::poll` should leave SURF (if `in_surf`), or when `run_session` should return (after `um r` executes).
+fn handle(api: &UmApi, line: &[u8], in_surf: bool) -> bool {
     let mut parts = line.split(|&c| c == b' ').filter(|p| !p.is_empty());
     if parts.next() != Some(b"um") {
-        return;
+        return false;
     }
     let cmd = parts.next().unwrap_or(b"");
     let a = parts.next();
@@ -173,6 +243,10 @@ fn handle(api: &UmApi, line: &[u8]) {
         }
         b"b" => match a.and_then(num) {
             Some(n) if (HDR as u32..=ROOM as u32).contains(&n) => {
+                if in_surf {
+                    unsafe { PENDING_WANT = n as usize };
+                    return true;
+                }
                 block().fill(0);
                 unsafe {
                     WANT = n as usize;
@@ -188,16 +262,16 @@ fn handle(api: &UmApi, line: &[u8]) {
             let (want, got) = unsafe { (WANT, GOT) };
             let img = &block()[..want];
             if want == 0 || got != want {
-                return bad("short", got as u32);
+                { bad("short", got as u32); return false; }
             }
             if a.and_then(num) != Some(crc32(img)) {
-                return bad("crc32", want as u32);
+                { bad("crc32", want as u32); return false; }
             }
             let abi = u16::from_le_bytes([img[4], img[5]]);
             let entry = u16::from_le_bytes([img[6], img[7]]) as usize;
             let len = u16::from_le_bytes([img[8], img[9]]) as usize;
             if img[..4] != MAGIC || abi != ABI || len != want || !(HDR..want).contains(&entry) {
-                return bad("header", abi as u32);
+                { bad("header", abi as u32); return false; }
             }
             let ram_at = (want + 7) & !7;
             let base = block().as_mut_ptr();
@@ -213,7 +287,9 @@ fn handle(api: &UmApi, line: &[u8]) {
             con::puts("um end ");
             con::hex(r as u32, 8);
             con::nl();
+            return true;
         }
         _ => bad("cmd", 0),
     }
+    false
 }

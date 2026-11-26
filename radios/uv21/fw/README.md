@@ -126,8 +126,8 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
 
 ## RAM modules (port 15)
 
-A module is a small position-independent C program (`../mod/`, MIT) that runs once in an 8 KB
-block of RAM while SURF runs, prints lines on the cable's console and returns. It reaches the
+A module is a small position-independent C program (`../mod/`, MIT) that runs once in a 12 KB
+shared RAM arena (`hal::arena`, pausing SURF while it runs) while SURF runs, prints lines on the cable's console and returns. It reaches the
 radio only through `um_api_t` in `../mod/uv21_mod.h`: RF chip register reads and writes, tune,
 the receive front end, a delay, the time and console lines. Its register writes go through the
 same receive-only filter as the image's own, so a module can't key the radio. Nothing is kept: the
