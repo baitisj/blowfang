@@ -1,0 +1,15 @@
+{
+ "id": "hubmap-1127e",
+ "who": "hubmap",
+ "freq_mhz": "bench",
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "serial.list"
+  },
+  {
+   "do": "rt950.info",
+   "cable": "1a86:7523"
+  }
+ ]
+}
