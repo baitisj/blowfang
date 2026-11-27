@@ -218,6 +218,9 @@ def main(argv=None):
         print(report(r))
         if a.cmd == "check":
             ok, bad = check(r)
+            far = [f"{f / 1000:.1f} MHz {e / 1000:+.0f} s" for f, e in r["d"] if abs(e) > 2000]
+            if far:   # clean-looking clock groups the vote left out: weak stations' garbage, or a clock off
+                print("note: clock groups the vote left out: " + ", ".join(far))
             print("PASS" if ok else "FAIL: " + "; ".join(bad))
             return 0 if ok else 1
 
