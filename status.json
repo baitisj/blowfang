@@ -5,9 +5,15 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-27T21:40:11Z",
+ "waiting": [
+  {
+   "id": "hubmap-1127c",
+   "who": "hubmap",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-27T22:34:45Z",
  "error": null,
  "update": null,
- "updated": "2026-11-27T21:40:20Z"
+ "updated": "2026-11-27T22:34:45Z"
 }
