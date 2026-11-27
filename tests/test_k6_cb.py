@@ -1,4 +1,4 @@
-"""The K6 pager with sotto's codebook in SPI flash (c/k6/sp_cb.h): the decoder reads each
+"""The K6 pager with sotto's codebook in SPI flash (c/common/sp_cb.h): the decoder reads each
 20-byte vector from the (emulated) flash instead of the table, and must play exactly what the
 table build plays, in v3.7 and sotto 1200, stored or streamed, with lost packets. Also the
 image format, the install path, and that a missing or wrong image plays nothing.

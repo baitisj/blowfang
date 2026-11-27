@@ -1,5 +1,5 @@
 """LZ4 on the K6 (docs/k6-lz4.md; Jeff 2026-11-14 and 2026-11-20): modem/lz4.py's packer against
-the reference lz4 (when installed) and the radio's decoder c/k6/lz4d.c (c/k6/lz4d_host): the
+the reference lz4 (when installed) and the radio's decoder c/common/lz4d.c (c/k6/lz4d_host): the
 same bytes, every read and write bounds-checked, partial output kept; and packed module images
 through the loader and the SPI library (c/k6/kl_host): a packed module unpacks in place on
 arrival, sealed again under the radio's key; a packed module or page stays packed in its slot

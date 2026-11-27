@@ -22,7 +22,7 @@ A deck: a 16 B header ('K6HC', count, version 2, 10 zero bytes), count 16 B inde
 screen's name, 8 B NUL padded; its page, 0 up; a zero byte; 2 zero bytes; the card's offset from
 the deck's start, u32), then the cards. Version 2 (module API level 15, docs/k6-lz4.md) keeps
 each card packed: 8 band ends (u16, from the card's start, band 0 starting at 16), then the 8
-bands of 128 B, each one LZ4 block (modem/lz4.py, c/k6/lz4d.c) or the 128 B as they are; the
+bands of 128 B, each one LZ4 block (modem/lz4.py, c/common/lz4d.c) or the 128 B as they are; the
 radio unpacks one band into the band it draws through, so a card still costs it no buffer. The
 core deck goes from 9,376 B to about 7,100 B in SPI. It travels as a module image with the library
 and deck flags (modem.k6mod.image(cards=True), packed on top with lz4=True: about 5.6 KB on the

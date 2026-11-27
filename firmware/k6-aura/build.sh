@@ -167,7 +167,7 @@ rm -f "$OUT/sotto-cb.bin" "$OUT/sotto-vlr.bin"
 if [ "${FULL:-1}" = 1 ]; then
   variant aura-pager "Aura + pager (all of Aura)" || echo "(all of Aura + pager doesn't fit: report only)"
 fi
-# sotto's codebook in the K6's SPI flash (c/k6/sp_cb.h, docs/k6-spi-codebook.md), the default:
+# sotto's codebook in the K6's SPI flash (c/common/sp_cb.h, docs/k6-spi-codebook.md), the default:
 #   aura-pager-only    v3.7 without the 30 KB table: reads the codebook at SPI flash 0x100000
 #   aura-pager-lr      sotto 1200 without the table (LR=0 skips it)
 #   aura-pager-cbi     v3.7 with the table linked: at power-on it writes out/sotto-cb.bin to the

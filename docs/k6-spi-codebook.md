@@ -16,14 +16,14 @@ flash serves both.
   `FX_CB_VEC(stage, index, buf)`. In a normal build that is `fx_cb[stage] + index * FX_CBW`, so
   nothing changes. With `-DFX_CB_SPI` it calls `fx_cb_fetch`, which reads the 20 bytes into
   `buf`. The decoder no longer references `fx_cb`, so `--gc-sections` drops the table.
-- **The module (`c/k6/sp_cb.h`, `sp_cb.c`).** This defines the image format, the check, the
+- **The module (`c/common/sp_cb.h`, `sp_cb.c`).** This defines the image format, the check, the
   one-time install, `fx_cb_fetch` and a timing bench. The firmware supplies three functions:
   `sp_flash_read`, `sp_flash_erase4k` and `sp_flash_write`. Aura's are in the patch's
   `src/app/pager.rs`, on its `NorFlash` driver.
 - **The image** sits at SPI flash 0x100000 (32 + 30,720 bytes, 8 sectors of 4 KB). That is above
   everything Aura uses, which ends near 0xED200, and in the first slots of the module library
   planned in the explorer design. (sotto 600 / 400's own 21 KB of codebooks follow at 0x108000,
-  in the same kind of image with the magic `K6VL`: `c/k6/sp_vlr.h`, docs/sotto-vlr.md.) The
+  in the same kind of image with the magic `K6VL`: `c/common/sp_vlr.h`, docs/sotto-vlr.md.) The
   image is a 32-byte header followed by the table:
   - the magic `K6CB`, then version 1
   - 20 bytes per vector and the table's length

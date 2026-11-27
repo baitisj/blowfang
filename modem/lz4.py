@@ -1,6 +1,6 @@
 """LZ4 blocks for the K6 (Jeff, 2026-11-14 and 2026-11-20; docs/k6-lz4.md): a packer that writes
 the standard LZ4 block format, tuned for small blocks (an optimal parse, not the fast greedy
-one), and the reference decoder that mirrors the radio's c/k6/lz4d.c byte for byte.
+one), and the reference decoder that mirrors the radio's c/common/lz4d.c byte for byte.
 
   compress(data)        -> one LZ4 block (no frame, no size header)
   decompress(block, n)  -> the n bytes it holds (ValueError if it doesn't decode to exactly n)

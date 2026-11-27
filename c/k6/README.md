@@ -27,10 +27,12 @@ c/k6/pager_host -t                              # the calibration test packet, h
   in dB, or a tone detector's key state): any speed, the detector's lag taken out, callsign
   check. `mod/cwprobe.c` is the API level 2 module that tried the detectors on the radio,
   `mod/cwlisten.c` the listener built on the one that won, the tone detector ([`docs/k6-cwid.md`](../../docs/k6-cwid.md), `tests/test_k6_cwid.py`).
-- `sp_cb.h/.c` puts sotto's 30 KB codebook in the radio's SPI flash, read a vector at a time
+- `../common/sp_cb.h/.c` puts sotto's 30 KB codebook in the radio's SPI flash, read a vector at a time
   (`-DFX_CB_SPI`), with a power-on check, a one-time installer and a speed bench
   ([`docs/k6-spi-codebook.md`](../../docs/k6-spi-codebook.md)). `cb_image.c` writes the image,
   `flash_host.c` is the emulated NOR flash for `pager_host_cbs` / `_lr_cbs` / `_cbi`, and
   `flash_bench.c` is the stand-in for `bench.elf` (`tests/test_k6_cb.py`).
+- `../common/sp_cb`, `sp_vlr` and the LZ4 decoder `lz4d` are portable C, kept in `c/common/` so
+  other radios can use them; only the K6 builds them so far (`.github/ci-radios.txt`).
 
 SPDX-License-Identifier: MIT

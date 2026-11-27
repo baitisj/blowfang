@@ -13,7 +13,7 @@
 #        K6_CODEC=vlr sh tools/k6_build.sh   sotto 1200 plus sotto 600 / 400 (-DSP_LR -DSP_VLR: magic
 #            0xA9, 0xAC, 0xAD; c/fixed/sotto_fx_vlr.c and c/sotto_vlr_tables.c) into c/k6/build-vlr.
 #            With K6_CB=spi both codebooks are read from the SPI flash: v3.7's at 0x100000 and
-#            sotto 600 / 400's 21 KB at 0x108000 (c/k6/sp_vlr.h, image $OUT/sotto-vlr.bin, CRC
+#            sotto 600 / 400's 21 KB at 0x108000 (c/common/sp_vlr.h, image $OUT/sotto-vlr.bin, CRC
 #            -DSP_VLR_CRC); with K6_CB=install the sotto 600 / 400 tables are linked and written
 #            there once at power-on (v3.7's codebook must be there already: aura-pager-cbi);
 #            with K6_CB=rom they are linked and read in place from the MCU's flash, as ROM, and
@@ -27,7 +27,7 @@
 #            makes one). Without it the loader holds a placeholder and refuses every module
 #            (CI's build) until `python -m modem.k6 keyimage` writes a key into the .bin. A keyed library or image holds the key: keep it on your machine.
 #        K6_CB=spi sh tools/k6_build.sh   sotto's 30 KB shape codebook lives in the radio's SPI flash
-#            (c/k6/sp_cb.h, at 0x100000) instead of the MCU's: the decoder reads each 20-byte
+#            (c/common/sp_cb.h, at 0x100000) instead of the MCU's: the decoder reads each 20-byte
 #            vector when it needs it (-DFX_CB_SPI) and the linker drops the table. The image to
 #            put there is $OUT/sotto-cb.bin, and its CRC (-DSP_CB_CRC) is what the radio checks.
 #        K6_CB=install   the same, with the table linked: at power-on the radio writes the image
@@ -114,7 +114,7 @@ CFLAGS="--target=thumbv6m-none-eabi -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -no
   -DSOTTO_V36 -DSOTTO_PITCH_THIRD -DFX_CS512_CONST $ROWGEN $SYNTH -DFX_YIELD_HOOK $LR -I$ROOT/c -O2 $NOPAR $PKY $*"
 mkdir -p "$OUT"
 if [ -n "${K6_CB:-}" ]; then
-  # the codebook image and its CRC, from this tree's fx_tables.c (a host build of c/k6/sp_cb.c)
+  # the codebook image and its CRC, from this tree's fx_tables.c (a host build of c/common/sp_cb.c)
   ${HOSTCC:-cc} -O2 -std=c99 -I"$ROOT/c" "$ROOT/c/k6/cb_image.c" "$ROOT/c/common/sp_cb.c" "$ROOT/c/fixed/fx_tables.c" \
     -o "$OUT/cb_image"
   "$OUT/cb_image" "$OUT/sotto-cb.bin"

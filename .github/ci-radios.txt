@@ -95,6 +95,10 @@ radios/uv380/
 # its tests build the OpenRTX RAM modules, the I2S probe and sotto8k too
 firmware/uv380-openrtx/
 c/common/
+# the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
+!c/common/lz4d.*
+!c/common/sp_cb.*
+!c/common/sp_vlr.*
 sotto
 c/*
 modem/__init__.py
@@ -139,6 +143,10 @@ tests/test_pager_rx.py
 .github/workflows/uv380-openrtx.yml
 firmware/uv380-openrtx/
 c/common/
+# the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
+!c/common/lz4d.*
+!c/common/sp_cb.*
+!c/common/sp_vlr.*
 sotto
 c/*
 modem/__init__.py
@@ -156,6 +164,8 @@ radios/uv380/src/board.h
 .github/workflows/rt950.yml
 radios/rt950/
 c/common/
+# the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
+!c/common/lz4d.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 tools/ssb_polar_sweep.py

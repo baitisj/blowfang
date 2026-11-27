@@ -325,7 +325,7 @@ the sotto 1200 library with the very-low-rate decoder (`-DSP_LR -DSP_VLR`,
 so a long streamed message can run the sender 1.5 groups ahead of playback: about 85 s of sotto
 600 before the ring overruns, unless the sender pauses. Both codebooks come from the SPI flash:
 v3.7's at 0x100000 (the 1200 decoder's) and sotto 600 / 400's 21,280 bytes at 0x108000
-([`c/k6/sp_vlr.h`](../../c/k6/sp_vlr.h)). Flash `out/aura-pager-vlri.bin` once first: it holds
+([`c/common/sp_vlr.h`](../../c/common/sp_vlr.h)). Flash `out/aura-pager-vlri.bin` once first: it holds
 those codebooks and writes `out/sotto-vlr.bin` there on its first boot (serial `K6 VLR r=2`;
 `r=1` after). It plays everything too, but leaves out the PTT calibration transmit (`lean`). A
 radio without the codebooks still stores the messages; `K6 VLR r=-1` says why they don't play,
