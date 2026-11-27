@@ -28,8 +28,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sotto_pager.h"
-#include "sp_cb.h"
-#include "sp_vlr.h"
+#include "../common/sp_cb.h"
+#include "../common/sp_vlr.h"
 #ifdef FX_CB_SPI
 #include "flash_host.h"
 #endif

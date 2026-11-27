@@ -3,8 +3,8 @@
  * flash (sp_cb_bench_image, made from sotto-cb.bin), as if it sat at SP_CB_ADDR, and in a
  * sotto 600 / 400 build (VLR_CB_SPI) from sp_vlr_bench_image (sotto-vlr.bin) at SP_VLR_ADDR;
  * writes and erases do nothing. The SPI transfer itself isn't modelled. SPDX-License-Identifier: MIT */
-#include "sp_cb.h"
-#include "sp_vlr.h"
+#include "../common/sp_cb.h"
+#include "../common/sp_vlr.h"
 
 extern const unsigned char sp_cb_bench_image[SP_CB_HDR + 30720];
 #ifdef VLR_CB_SPI

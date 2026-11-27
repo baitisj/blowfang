@@ -1,6 +1,6 @@
 /* k6_lib: the K6's SPI module library (see k6_lib.h). SPDX-License-Identifier: MIT */
 #include "k6_lib.h"
-#include "lz4d.h"
+#include "../common/lz4d.h"
 
 static unsigned u16le(const uint8_t *p) { return (unsigned)p[0] | (unsigned)p[1] << 8; }
 

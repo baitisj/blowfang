@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "lz4d.h"
+#include "../common/lz4d.h"
 
 static uint8_t src[70000], buf[70000 + 64];
 static char line[150000];

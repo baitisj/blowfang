@@ -4,7 +4,7 @@
  * and prints the sizes and CRC. SPDX-License-Identifier: MIT */
 #include <stdio.h>
 #include <string.h>
-#include "sp_cb.h"
+#include "../common/sp_cb.h"
 
 int main(int argc, char **argv) {
   uint8_t h[SP_CB_HDR], b[256];

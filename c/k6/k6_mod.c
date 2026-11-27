@@ -2,7 +2,7 @@
    SPDX-License-Identifier: MIT */
 #include "k6_mod.h"
 #include "k6_lib.h"
-#include "lz4d.h"
+#include "../common/lz4d.h"
 #include "sotto_pager.h"
 #include <stddef.h>
 

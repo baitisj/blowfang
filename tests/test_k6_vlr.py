@@ -2,7 +2,7 @@
 are stored as any other and play through the fixed-point very-low-rate decoder 20 ms at a time,
 bit-exactly as c/fixed/sotto_vlr_dec_fx decodes the same superframes and good flags; the same
 build still plays sotto 1200; the shape codebooks can live in (emulated) SPI flash at 0x108000
-(c/k6/sp_vlr.h) and install themselves once. Needs make -C c/k6 and make -C c VARIANT=v3.7 fixed.
+(c/common/sp_vlr.h) and install themselves once. Needs make -C c/k6 and make -C c VARIANT=v3.7 fixed.
 SPDX-License-Identifier: MIT"""
 import os
 import subprocess

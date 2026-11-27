@@ -21,7 +21,7 @@ no shared dictionary. The cards shrink more, because they are mostly blank scree
 `modem/lz4.py` packs with an optimal parse, which matches `lz4 -12` to within 2 bytes on the
 core deck.
 
-## The decoder (c/k6/lz4d.c)
+## The decoder (c/common/lz4d.c)
 
 `lz4d(src, n, dst, cap)` reads one LZ4 block (the standard block format: no frame, no size
 header) and returns the bytes written, or -1.

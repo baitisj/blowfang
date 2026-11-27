@@ -3147,7 +3147,7 @@ index 0000000..bdfaa35
 +
 +pub struct PagerState {
 +    pub chip_ok: bool,
-+    /// sotto's codebook (c/k6/sp_cb.h): sp_cb_setup's result at power-on; 1 or 2 = it plays,
++    /// sotto's codebook (c/common/sp_cb.h): sp_cb_setup's result at power-on; 1 or 2 = it plays,
 +    /// below 1 = no good codebook in the SPI flash, so messages are stored but not played
 +    pub cb: i8,
 +    /// typing a frequency (#), in kHz like Aura's VFO entry; RAM only, never saved
@@ -3627,7 +3627,7 @@ index 0000000..bdfaa35
 +    (p - start) as u32
 +}
 +
-+// ---- sotto's codebook in the SPI flash (c/k6/sp_cb.h) ----
++// ---- sotto's codebook in the SPI flash (c/common/sp_cb.h) ----
 +//
 +// Built with K6_CB=spi or install (tools/k6_build.sh), the decoder reads each 20-byte codebook
 +// vector from the SPI flash at 0x100000 through these three functions instead of a 30 KB table
@@ -3705,7 +3705,7 @@ index 0000000..bdfaa35
 +            unsafe { ffi::sp_cb_reads() }
 +        );
 +    }
-+    // sotto 600 / 400's codebooks (c/k6/sp_vlr.h, SPI flash 0x108000): checked, or written once
++    // sotto 600 / 400's codebooks (c/common/sp_vlr.h, SPI flash 0x108000): checked, or written once
 +    // by the install image, in the images that play them. 0 = this image doesn't: no line.
 +    let t0 = uptime::now();
 +    let v = unsafe { ffi::sp_vlr_setup() };
@@ -5171,7 +5171,7 @@ index 0000000..bdfaa35
 +/// The card's page p (8 pixel rows, bit 0 the top one) into buf, from SPI. A deck v2 card
 +/// (tools/k6_cards.py, docs/k6-lz4.md) is a table of 8 u16 band ends (from the card's start;
 +/// band 0 starts at 16), then the bands: 128 bytes as they are, or fewer, one LZ4 block of 128
-+/// (c/k6/lz4d.h). A band that doesn't read or decode shows blank.
++/// (c/common/lz4d.h). A band that doesn't read or decode shows blank.
 +#[cfg(banded)]
 +pub fn help_band(p: u8, buf: &mut [u8; 128]) {
 +    let h = help();
