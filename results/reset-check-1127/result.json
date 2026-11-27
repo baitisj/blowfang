@@ -1,0 +1,12 @@
+{
+ "id": "reset-check-1127",
+ "status": "queued",
+ "queued": "2026-11-27T17:15:23Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "925e44f3f57ca9d784d35d8e31577dd8bfad42b2",
+  "path": "jobs/reset-check-1127"
+ },
+ "runner_commit": "984641100bf52efdf958c67e06c26b05f690a535",
+ "updated": "2026-11-27T17:15:23Z"
+}
