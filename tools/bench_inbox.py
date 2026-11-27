@@ -22,7 +22,8 @@ The branch:
   jobs/ID/cancel           (any content) cancel it
   results/ID/result.json   queued | refused | running | done | failed | cancelled, with reasons
   results/ID/runner.log    the run's log, its tail if long
-  results/ID/files/...     the run folder's files up to 20 MB each (files.json lists them all)
+  results/ID/files/...     the run folder's small text files (files.json lists them all; audio, IQ,
+                           images and anything big stay on hamlet)
   status.json              the runner: its commit, the running job, the queue, the last poll
 
 A job from the inbox differs from a local one in what it may name, because whoever can push to
@@ -62,8 +63,13 @@ HEARTBEAT_S = 3600                 # status.json pushed at least this often
 MAX_FILES = 64                     # files in one job's folder
 MAX_FILE = 16 << 20
 MAX_JOB = 32 << 20
-RETURN_FILE_MAX = 20 << 20         # a run's file that comes back in results/ID/files
-RETURN_JOB_MAX = 40 << 20
+# What comes back in results/ID/files: small text only. The branch is public and every clone
+# carries all of it, so audio, IQ, images and dumps stay in the run folder on hamlet (files.json
+# lists them with size, sha256 and path). Until 2026-11-27 runs sent back files up to 20 MB, and
+# the branch grew to ~800 MB, off-air captures included.
+RETURN_TYPES = (".json", ".jsonl", ".log", ".txt", ".out", ".md", ".csv", ".tsv")
+RETURN_FILE_MAX = 512 << 10        # a run's file that comes back in results/ID/files
+RETURN_JOB_MAX = 4 << 20
 LOG_MAX = 512 << 10
 KEEP_WORKTREES = 6                 # inbox-* / src-* worktrees kept beside the ones in use
 FINAL = ("done", "failed", "refused", "cancelled")
@@ -101,6 +107,17 @@ def _br():
         import bench_runner
         BR = bench_runner
     return BR
+
+
+def return_why(rel, size, budget):
+    """None when a run's file comes back in the branch, else why it stays on hamlet"""
+    if not rel.lower().endswith(RETURN_TYPES):
+        return "not text (audio, IQ, images and dumps stay on hamlet)"
+    if size > RETURN_FILE_MAX:
+        return f"over {RETURN_FILE_MAX >> 10} KB"
+    if size > budget:
+        return f"over the job's {RETURN_JOB_MAX >> 20} MB"
+    return None
 
 
 def utcnow():
@@ -559,13 +576,16 @@ class Inbox:
                         continue
                     allf.append((os.path.getsize(p), rel, p))
             for size, rel, p in sorted(allf):
-                back = size <= RETURN_FILE_MAX and size <= budget
+                kept = return_why(rel, size, budget)
+                back = kept is None
                 h = hashlib.sha256()
                 with open(p, "rb") as fh:
                     for b in iter(lambda: fh.read(1 << 20), b""):
                         h.update(b)
-                listing.append({"name": rel, "bytes": size, "sha256": h.hexdigest(), "returned": back,
-                                "hamlet": p})
+                e = {"name": rel, "bytes": size, "sha256": h.hexdigest(), "returned": back, "hamlet": p}
+                if kept:
+                    e["kept"] = kept
+                listing.append(e)
                 if back:
                     budget -= size
                     files.append((f"results/{jid}/files/{rel}", open(p, "rb").read()))
@@ -953,7 +973,8 @@ def show_text(root, tip, jid, lines=40):
     r = git("show", f"{tip}:results/{jid}/files.json", cwd=root, check=False)
     if r.returncode == 0:
         for f in json.loads(r.stdout):
-            txt.append(f"  {'back' if f['returned'] else 'hamlet'}  {f['bytes']:>11}  {f['name']}")
+            txt.append(f"  {'back' if f['returned'] else 'hamlet'}  {f['bytes']:>11}  {f['name']}"
+                       + (f"  ({f['kept']})" if f.get("kept") else ""))
     r = git("show", f"{tip}:results/{jid}/runner.log", cwd=root, check=False)
     if r.returncode == 0:
         txt.append(f"--- runner.log (last {lines} lines)")

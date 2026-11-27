@@ -169,7 +169,7 @@ The branch is `claude/bench-jobs` (an orphan branch; it never merges):
 | `jobs/ID/cancel` | the thread | drop a waiting job, or stop a running one within about a minute. For a `repeat`, `cancel ID-rN` stops that run (it has only `results/ID-rN`), and `cancel ID` (the first id) stops the whole series |
 | `results/ID/result.json` | the runner | `queued`, `refused` (with `problems`), `running`, then `done` / `failed` / `cancelled`, as `show` prints it locally |
 | `results/ID/runner.log` | the runner | the run's log (its last 512 KB) |
-| `results/ID/files/…`, `files.json` | the runner | the run folder's files up to 20 MB each (40 MB a job); `files.json` lists every file with its size and sha256, and where a big one stays on hamlet |
+| `results/ID/files/…`, `files.json` | the runner | the run folder's small text files (`.json`, `.jsonl`, `.log`, `.txt`, `.out`, `.md`, `.csv`, `.tsv`; ≤ 512 KB each, ≤ 4 MB a job). Audio, IQ, images, dumps and anything bigger stay in `~/blowfang-work/runs/queue/ID` on hamlet: the branch is public and every clone carries it. `files.json` lists every file with its size, sha256 and hamlet path, and says why one stayed (`kept`) |
 | `status.json` | the runner | its installed commit, the running job, the queue, pause and IC-7100 hold, the last error and self-update; pushed when it changes and at least hourly |
 
 The runner fetches the branch every minute while idle (a bare clone in
