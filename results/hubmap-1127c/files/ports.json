@@ -1,0 +1,42 @@
+[
+ {
+  "by_id": "usb-1a86_USB_Serial-if00-port0",
+  "dev": "/dev/ttyUSB4",
+  "ids": "1a86:7523",
+  "manufacturer": null,
+  "product": "USB Serial",
+  "has_serial": false
+ },
+ {
+  "by_id": "usb-Analog_Devices_Inc._PlutoSDR__ADALM-PLUTO__<serial>-if03",
+  "dev": "/dev/ttyACM0",
+  "ids": "0456:b673",
+  "manufacturer": "Analog Devices Inc.",
+  "product": "PlutoSDR (ADALM-PLUTO)",
+  "has_serial": true
+ },
+ {
+  "by_id": "usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0",
+  "dev": "/dev/ttyUSB2",
+  "ids": "067b:2303",
+  "manufacturer": "Prolific Technology Inc.",
+  "product": "USB-Serial Controller",
+  "has_serial": false
+ },
+ {
+  "by_id": "usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_<serial>-if00-port0",
+  "dev": "/dev/ttyUSB0",
+  "ids": "10c4:ea60",
+  "manufacturer": "Silicon Labs",
+  "product": "CP2102 USB to UART Bridge Controller",
+  "has_serial": true
+ },
+ {
+  "by_id": "usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_<serial>-if00-port0",
+  "dev": "/dev/ttyUSB1",
+  "ids": "10c4:ea60",
+  "manufacturer": "Silicon Labs",
+  "product": "CP2102 USB to UART Bridge Controller",
+  "has_serial": true
+ }
+]
