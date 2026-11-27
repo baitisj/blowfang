@@ -1,0 +1,119 @@
+{
+ "id": "c4fm-chain2",
+ "who": "c4fm",
+ "freq_mhz": 440.85,
+ "minutes": 16,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 840,
+   "file": "k6.log"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon|K6 MOD say \\w+ end",
+   "seconds": 130,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:c4ftm.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "3",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "cd6950d1b564d800915d32968d17a96caa80c1fba22d22a2492a3625392989a8"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD say c4 armed",
+   "seconds": 60
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dtmf1.wav",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD say c4 go",
+   "seconds": 20
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c4.wav",
+    "--hz",
+    "440850500",
+    "--seconds",
+    "45"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4lock (sent|w=)|K6 MOD ret=",
+   "seconds": 120,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 90
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

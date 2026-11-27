@@ -1,0 +1,24 @@
+[
+ {
+  "name": "ptt.cf32.json",
+  "bytes": 133,
+  "sha256": "ae3496c8d4330b98c0f053bae0acac0eb3961125c5da8aa8b26408395f05c319",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/pttcap1/ptt.cf32.json"
+ },
+ {
+  "name": "ptt.wav",
+  "bytes": 9600044,
+  "sha256": "ddcd2f1d48b3d9acd1ec698051c6022764226fb936f4ca347e4f4e54943f497b",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/pttcap1/ptt.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "ptt.cf32",
+  "bytes": 192000000,
+  "sha256": "5c91a1884128f2cc8b4a2a661e8cdeff38af84352f53ae7b12a4c20d68a6f309",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/pttcap1/ptt.cf32"
+ }
+]

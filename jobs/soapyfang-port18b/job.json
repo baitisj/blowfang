@@ -1,0 +1,61 @@
+{
+ "id": "soapyfang-port18b",
+ "who": "soapyfang",
+ "freq_mhz": "bench",
+ "minutes": 235,
+ "wait_bench_min": 30,
+ "steps": [
+  {
+   "do": "sim.soapyfang",
+   "args": [
+    "--minutes",
+    "55",
+    "--gain",
+    "50",
+    "--image",
+    "job:port.bin",
+    "--syms",
+    "job:port.syms"
+   ]
+  },
+  {
+   "do": "sim.soapyfang",
+   "args": [
+    "--minutes",
+    "55",
+    "--gain",
+    "50",
+    "--image",
+    "job:port.bin",
+    "--syms",
+    "job:port.syms"
+   ]
+  },
+  {
+   "do": "sim.soapyfang",
+   "args": [
+    "--minutes",
+    "55",
+    "--gain",
+    "50",
+    "--image",
+    "job:port.bin",
+    "--syms",
+    "job:port.syms"
+   ]
+  },
+  {
+   "do": "sim.soapyfang",
+   "args": [
+    "--minutes",
+    "55",
+    "--gain",
+    "50",
+    "--image",
+    "job:port.bin",
+    "--syms",
+    "job:port.syms"
+   ]
+  }
+ ]
+}

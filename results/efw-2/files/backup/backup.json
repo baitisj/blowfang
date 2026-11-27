@@ -1,0 +1,31 @@
+{
+ "utc": "2026-11-22T07:52:03Z",
+ "before": "fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c\nmodel=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)\nreserved=\nfpga=operating\npl_is_chan=no\nfit_size=BC2533\nattr_name=compatible attr_val=ad9364\nuptime=451460.32\n00000000-1fffffff : System RAM",
+ "parts": {
+  "boot": {
+   "bytes": 1048576,
+   "sha256": "9c5bb8999f92c4b1e414296be4e4c0a9a92a4c466a36ad42275216abb317daaa"
+  },
+  "uboot-env": {
+   "bytes": 131072,
+   "sha256": "f7e1b7c42ff0b7a7d96b89f70a897ff3beb8319bfcc166bb57cddc620fc10219"
+  },
+  "uboot-extra-env": {
+   "bytes": 4096,
+   "sha256": "3d0c95fbd14283a659d4fb328d4f189994fff164db0e0bf3329eb8a95441dca9"
+  },
+  "spare": {
+   "bytes": 917504,
+   "sha256": "c367d2dfb0c14bd807efbb83f8bea131a7c4f24b5c5557b6d27c0cfa4e2552fd"
+  },
+  "firmware": {
+   "bytes": 31457280,
+   "sha256": "afab5e5b754dbe0f41ba61412672f68bfbd264856eec9ec3932d5d025f30497a"
+  }
+ },
+ "fit": {
+  "bytes": 12330291,
+  "sha256": "3fa622a1725a98a88640d28eaa61e8edb594bfd1534ea6cf184c8c8bd57ab2eb",
+  "known": "v0.39"
+ }
+}

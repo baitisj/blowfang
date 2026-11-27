@@ -1,0 +1,13 @@
+p mode=1 od=0 pull=0 out=0 in=0
+s 0a=ffff 0b=ffff
+r00 ffff ffff ffff ffff ffff ffff ffff ffff
+r08 ffff ffff ffff ffff ffff ffff ffff ffff
+r10 ffff ffff ffff ffff ffff ffff ffff ffff
+r18 ffff ffff ffff ffff ffff ffff ffff ffff
+S 0a=ffff 0b=ffff
+R00 ffff ffff ffff ffff ffff ffff ffff ffff
+R08 ffff ffff ffff ffff ffff ffff ffff ffff
+R10 ffff ffff ffff ffff ffff ffff ffff ffff
+R18 ffff ffff ffff ffff ffff ffff ffff ffff
+T 100100 0a=ffff 0b=ffff
+um end 0000ffff

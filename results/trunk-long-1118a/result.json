@@ -1,0 +1,46 @@
+{
+ "id": "trunk-long-1118a",
+ "who": "position",
+ "started": "2026-11-18T20:57:45Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-18T20:57:45Z",
+   "ended": "2026-11-18T20:57:48Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T20:57:48Z",
+   "ended": "2026-11-18T20:57:52Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-18T20:57:52Z",
+   "ended": "2026-11-18T20:57:55Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-18T20:57:55Z",
+   "ended": "2026-11-18T20:57:59Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be",
+ "head": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "ended": "2026-11-18T20:57:59Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f33afd467d41780242c9a10f81ebaa07160a170b",
+  "path": "jobs/trunk-long-1118a"
+ },
+ "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "updated": "2026-11-18T20:57:59Z"
+}

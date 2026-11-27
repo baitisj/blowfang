@@ -1,0 +1,14 @@
+2026-11-18T20:57:45Z job trunk-long-1118a by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be at 36dd1f8f20bed4165b7ec5357cf044b057bbd443
+2026-11-18T20:57:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L863819.cf32 --hz 863819800 --seconds 2 --gain 65
+/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L863819.cf32: 2.0 s on 863819800 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L863819.cf32), floor -43.1 dBFS, signal on 0%
+2026-11-18T20:57:48Z step 1 (pluto) rc=0
+2026-11-18T20:57:48Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L771257.cf32 --hz 771257300 --seconds 2 --gain 65
+/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L771257.cf32: 2.0 s on 771257300 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L771257.cf32), floor -45.1 dBFS, signal on 0%
+2026-11-18T20:57:52Z step 2 (pluto) rc=0
+2026-11-18T20:57:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L771106.cf32 --hz 771106800 --seconds 2 --gain 65
+/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L771106.cf32: 2.0 s on 771106800 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L771106.cf32), floor -49.5 dBFS, signal on 0%
+2026-11-18T20:57:55Z step 3 (pluto) rc=0
+2026-11-18T20:57:55Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L773657.cf32 --hz 773657300 --seconds 2 --gain 65
+/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L773657.cf32: 2.0 s on 773657300 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/trunk-long-1118a/L773657.cf32), floor -59.8 dBFS, signal on 5%
+2026-11-18T20:57:59Z step 4 (pluto) rc=0
+2026-11-18T20:57:59Z job trunk-long-1118a done

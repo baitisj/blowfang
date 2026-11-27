@@ -1,0 +1,36 @@
+{
+ "id": "kws-noaa-1",
+ "who": "nato-kws",
+ "freq_mhz": "bench",
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:noaa162550.wav",
+    "--hz",
+    "162550000",
+    "--seconds",
+    "30",
+    "--gain",
+    "40",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:noaa162400.wav",
+    "--hz",
+    "162400000",
+    "--seconds",
+    "30",
+    "--gain",
+    "40",
+    "--wav-only"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,60 @@
+{
+ "id": "dsraw-ladder1",
+ "who": "dsotto-raw",
+ "started": "2026-11-19T09:43:11Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T09:43:11Z",
+   "ended": "2026-11-19T09:43:22Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-19T09:43:22Z",
+   "ended": "2026-11-19T09:43:24Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-19T09:43:24Z",
+   "ended": "2026-11-19T09:43:24Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T09:43:24Z",
+   "ended": "2026-11-19T09:43:26Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-19T09:43:26Z",
+   "ended": "2026-11-19T09:45:25Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T09:45:25Z",
+   "ended": "2026-11-19T09:45:53Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-989248773c0f",
+ "head": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "ended": "2026-11-19T09:45:53Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "b3e44dafca16fd58c85a59f945ed1f496b61632c",
+  "path": "jobs/dsraw-ladder1"
+ },
+ "runner_commit": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "updated": "2026-11-19T09:45:53Z"
+}

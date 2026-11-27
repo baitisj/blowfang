@@ -1,0 +1,60 @@
+{
+ "id": "wmota-2",
+ "who": "watermark",
+ "freq_mhz": 441.85,
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "ic7100.tune",
+   "hz": 441850000
+  },
+  {
+   "do": "pluto",
+   "background": true,
+   "args": [
+    "rx",
+    "run:wm_rx.wav",
+    "--hz",
+    "441850000",
+    "--seconds",
+    "120",
+    "--gain",
+    "20",
+    "--wav-only",
+    "--wav-rate",
+    "8000"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 4
+  },
+  {
+   "do": "ic7100",
+   "continue_on_error": true,
+   "args": [
+    "send",
+    "job:marked_audio.wav",
+    "--freq",
+    "441850000"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 2
+  },
+  {
+   "do": "ic7100",
+   "continue_on_error": true,
+   "args": [
+    "send",
+    "job:clean_audio.wav",
+    "--freq",
+    "441850000"
+   ]
+  },
+  {
+   "do": "ic7100.power0"
+  }
+ ]
+}

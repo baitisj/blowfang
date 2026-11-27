@@ -1,0 +1,25 @@
+{
+ "id": "soapyfang-live-2",
+ "who": "soapyfang",
+ "started": "2026-11-24T03:35:58Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "sim.soapyfang",
+   "started": "2026-11-24T03:35:58Z",
+   "ended": "2026-11-24T04:06:08Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-8533b53c96f9",
+ "head": "8533b53c96f9d90300c0bdb6281d74987810a94d",
+ "ended": "2026-11-24T04:06:08Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f5a56e097809d0f986ff888f81aa49886acbaa14",
+  "path": "jobs/soapyfang-live-2"
+ },
+ "runner_commit": "8533b53c96f9d90300c0bdb6281d74987810a94d",
+ "updated": "2026-11-24T04:06:10Z"
+}

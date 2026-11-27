@@ -1,0 +1,25 @@
+{
+ "id": "micr1a",
+ "who": "micprobe",
+ "started": "2026-11-20T05:30:13Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-20T05:30:13Z",
+   "ended": "2026-11-20T05:35:22Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-3a77493dab19",
+ "head": "3a77493dab192500760cb9c5da0501f9bb4156e3",
+ "ended": "2026-11-20T05:35:22Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "378f0cf2b964499387bec5d02f6833ec24bb1aca",
+  "path": "jobs/micr1a"
+ },
+ "runner_commit": "3a77493dab192500760cb9c5da0501f9bb4156e3",
+ "updated": "2026-11-20T05:35:22Z"
+}

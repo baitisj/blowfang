@@ -1,0 +1,16 @@
+{
+ "id": "uv380-back-1118h",
+ "who": "c4fm",
+ "freq_mhz": 441.85,
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  }
+ ]
+}

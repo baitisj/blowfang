@@ -1,0 +1,23 @@
+2026-11-22T07:45:55Z job efw-1 by earshot, checkout /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac at df50adf160ac510bb8be78ca88342c220a91d2f5
+2026-11-22T07:45:55Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot doctor
+dfu-util   MISSING
+ssh        /usr/bin/ssh
+scp        /usr/bin/scp
+sshpass    MISSING
+flock      /usr/bin/flock
+python3    /usr/bin/python3
+ssh: ok
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=
+fpga=operating
+pl_is_chan=no
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=451093.25
+00000000-1fffffff : System RAM
+2026-11-22T07:45:56Z step 1 (pluto.fw) rc=0
+2026-11-22T07:45:56Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot backup /home/baitisj/blowfang-work/runs/queue/efw-1/backup
+dfu-util is not installed on this host (Debian/Ubuntu: sudo apt install dfu-util)
+2026-11-22T07:45:57Z step 2 (pluto.fw) rc=1
+2026-11-22T07:45:57Z job efw-1 failed: step 2 (pluto.fw): exit 1

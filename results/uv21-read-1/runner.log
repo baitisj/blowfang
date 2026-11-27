@@ -1,0 +1,14 @@
+2026-11-23T09:14:31Z job uv21-read-1 by uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-8985332a11ca at 8985332a11ca17efaf215006718d8d5e89f95ebc
+2026-11-23T09:14:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-8985332a11ca/tools/bench_kplug.py read --port /dev/ttyUSB2 --out /home/baitisj/blowfang-work/runs/queue/uv21-read-1 --private /home/baitisj/blowfang-work/private/kplug/uv21-read-1 --model UV-21ProV2 --extra 0x8040:0x9000 --extra 0x9040:0xA000 --extra 0xA2C0:0xD000 --extra 0xD040:0x10000
+ident normal: 06
+  F: 01360174040005200220026001035003 '.6.t... . .`..P.'
+  M: 55563231202020202b4c3030303030 'UV21    +L00000'
+  SEND: 06 '.'
+region 0x0000+0x8040: read
+region 0x9000+0x40: read
+region 0xa000+0x2c0: read
+region 0xd000+0x40: read
+codeplug 33664 bytes -> /home/baitisj/blowfang-work/private/kplug/uv21-read-1/clone.img (CHIRP: UV-21ProV2); 22 channels programmed; 498 extra blocks; 0 bad blocks
+the radio may stay in its PC/programming screen until it is switched off and on
+2026-11-23T09:14:40Z step 1 (kplug.read) rc=0
+2026-11-23T09:14:40Z job uv21-read-1 done

@@ -1,0 +1,39 @@
+2026-11-18T22:38:17Z job dmr-uvref1 by c4fm, checkout /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347 at b3631bbb9347cdb86d79c58d31572c4ec813c87e
+2026-11-18T22:38:17Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 440850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/dmr-uvref1/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: freq 440850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T22:38:28Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+2026-11-18T22:38:28Z step 1 (uv380.cmd) rc=0
+2026-11-18T22:38:28Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347/firmware/uv380-openrtx/mod/c6dmrrx_long.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/dmr-uvref1/uv380.log --run-timeout 200
+2026-11-18T22:38:30Z step 2 (uv380.rx) rc=0
+2026-11-18T22:38:38Z step 3 (wait) rc=0
+2026-11-18T22:38:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347/tools/pluto_bench.py --as c4fm send /home/baitisj/blowfang-work/runs/inbox/dmr-uvref1/dmr_plain.wav --peak 2250 --gain -40
+send: wav peak 0.630 of full scale -> 2250 Hz before pre-emphasis
+send dmr_plain.wav: 9.8 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 22:38:39Z
+end 22:38:49Z: 9.8 s of signal in 9.6 s (kept up)
+2026-11-18T22:38:49Z step 4 (pluto) rc=0
+2026-11-18T22:38:52Z step 5 (wait) rc=0
+2026-11-18T22:38:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347/tools/pluto_bench.py --as c4fm send /home/baitisj/blowfang-work/runs/inbox/dmr-uvref1/dmr_inv.wav --peak 2250 --gain -40
+send: wav peak 0.630 of full scale -> 2250 Hz before pre-emphasis
+send dmr_inv.wav: 9.8 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 22:38:53Z
+end 22:39:03Z: 9.8 s of signal in 9.6 s (kept up)
+2026-11-18T22:39:03Z step 6 (pluto) rc=0
+2026-11-18T22:39:06Z step 7 (wait) rc=0
+2026-11-18T22:39:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347/tools/pluto_bench.py --as c4fm send /home/baitisj/blowfang-work/runs/inbox/dmr-uvref1/dmr_plain.wav --peak 1600 --gain -40
+send: wav peak 0.630 of full scale -> 1600 Hz before pre-emphasis
+send dmr_plain.wav: 9.8 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 22:39:07Z
+end 22:39:17Z: 9.8 s of signal in 9.6 s (kept up)
+2026-11-18T22:39:17Z step 8 (pluto) rc=0
+2026-11-18T22:39:19Z stopping a background uv380.rx still running at the job's end
+2026-11-18T22:39:19Z job dmr-uvref1 done

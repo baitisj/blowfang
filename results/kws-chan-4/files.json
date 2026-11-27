@@ -1,0 +1,10 @@
+[
+ {
+  "name": "m3_70/442.3000_20261122T0718491Z.flac",
+  "bytes": 36353,
+  "sha256": "34eb5f224bd0740fa19842b2cdfa82c56108701d9ec9c5b29e5dda2738313492",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-chan-4/m3_70/442.3000_20261122T0718491Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

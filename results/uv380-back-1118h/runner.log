@@ -1,0 +1,15 @@
+2026-11-18T22:25:23Z job uv380-back-1118h by c4fm, checkout /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347 at b3631bbb9347cdb86d79c58d31572c4ec813c87e
+2026-11-18T22:25:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 441850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uv380-back-1118h/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T22:25:33Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T22:25:33Z step 1 (uv380.cmd) rc=0
+2026-11-18T22:25:33Z job uv380-back-1118h done

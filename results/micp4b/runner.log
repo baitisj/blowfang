@@ -1,0 +1,31 @@
+2026-11-20T03:02:02Z job micp4b by micprobe, checkout /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36 at a59e428b9b36f68df4636eb53f4154365d93d3ec
+2026-11-20T03:02:02Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold micprobe -- timeout -s INT --kill-after=10 300 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/micp4b/k6.log
+2026-11-20T03:02:04Z step 1 (logger) rc=0
+2026-11-20T03:02:07Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-20T03:02:07Z step 2 (ic7100.tune) rc=0
+2026-11-20T03:02:08Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/micp4b/micrec.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --api-level 4 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/micp4b/k6-rate.json --telemetry 0 --rounds 1 --run-s 0
+19:02:10 send 1: 21 of 21 XL chunks at F/1800 (serial 1795143729, xfer 49); module /home/baitisj/blowfang-work/runs/inbox/micp4b/micrec.bin: 2458 B code, entry +0, API level 4, serial 1795143729, xfer 49, 2482 B image in 21 XL chunks; 42 packets, 27.4 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 34.8 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 03:02:11Z
+end 03:02:45Z: 34.8 s of signal in 34.7 s (kept up)
+19:02:46 listening for the K6's report
+19:03:12 no report heard
+19:03:12 no report after a whole send: the K6 may be set to L packets, so the next send is 43 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 21 chunks sent were lost
+19:03:12 CW ID
+2026-11-20T03:03:13Z step 3 (k6.upload) rc=0
+2026-11-20T03:03:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as micprobe send /home/baitisj/blowfang-work/runs/inbox/micp4b/voice251.wav --hz 445850000 --dev 3000 --gain -30
+send: wav peak 0.885 of full scale -> 2655 Hz before pre-emphasis
+send voice251.wav: 19.4 s on 445850000 Hz (LO 445850000.0), gain -30.0 dB, rate 2400000, RF on
+start 03:03:14Z
+end 03:03:33Z: 19.4 s of signal in 19.3 s (kept up)
+2026-11-20T03:03:33Z step 4 (pluto) rc=0
+2026-11-20T03:03:33Z seen /micrec done/ in /home/baitisj/blowfang-work/runs/queue/micp4b/k6.log
+2026-11-20T03:03:33Z step 5 (wait) rc=0
+2026-11-20T03:03:41Z step 6 (wait) rc=0
+2026-11-20T03:03:41Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release micprobe
+the port is free (micprobe let go)
+2026-11-20T03:03:42Z step 7 (logger.stop) rc=0
+2026-11-20T03:03:42Z job micp4b done

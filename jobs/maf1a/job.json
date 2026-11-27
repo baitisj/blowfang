@@ -1,0 +1,121 @@
+{
+ "id": "maf1a",
+ "who": "micprobe",
+ "freq_mhz": "bench",
+ "minutes": 45,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 2700,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:micaf.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "13",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "f26f720ddb74c3bc90aaec87a6fff168aa0bf6682aba409c525efa64e285d3cf"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 445850000,
+   "mode": "FM"
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0.3
+  },
+  {
+   "do": "wait",
+   "seconds": 150
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone30.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone30.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.af",
+   "level": "restore"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "wait",
+   "pattern": "micaf done",
+   "seconds": 2100,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

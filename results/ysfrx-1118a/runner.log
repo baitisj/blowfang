@@ -1,0 +1,37 @@
+2026-11-18T21:48:31Z job ysfrx-1118a by ysfrx, checkout /home/baitisj/blowfang-work/worktrees/inbox-38cbfe8f7726 at 38cbfe8f7726dbeb603afecbce5f7ed194b2e690, module sources /home/baitisj/blowfang-work/worktrees/src-9f63b685f083 at 9f63b685f0832c85a4ecbf0c391e59aa42d2b5bf
+2026-11-18T21:48:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-38cbfe8f7726/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 441850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/ysfrx-1118a/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T21:48:42Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T21:48:42Z step 1 (uv380.cmd) rc=0
+2026-11-18T21:48:42Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-38cbfe8f7726/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-9f63b685f083/firmware/uv380-openrtx/mod/c6ysfrx_tap.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/ysfrx-1118a/uv380.log --run-timeout 200
+2026-11-18T21:48:44Z step 2 (uv380.rx) rc=0
+2026-11-18T21:48:44Z seen /ysf start/ in /home/baitisj/blowfang-work/runs/queue/ysfrx-1118a/uv380.log
+2026-11-18T21:48:44Z step 3 (wait) rc=0
+2026-11-18T21:48:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-38cbfe8f7726/tools/pluto_bench.py --as ysfrx send /home/baitisj/blowfang-work/runs/inbox/ysfrx-1118a/ysf.wav --hz 441850000 --dev 5400 --gain -50
+/home/baitisj/blowfang-work/worktrees/inbox-38cbfe8f7726/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.916 of full scale -> 4945 Hz before pre-emphasis
+send ysf.wav: 16.4 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 21:48:45Z
+end 21:49:01Z: 16.4 s of signal in 16.3 s (kept up)
+2026-11-18T21:49:01Z step 4 (pluto) rc=0
+2026-11-18T21:49:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-38cbfe8f7726/tools/pluto_bench.py --as ysfrx send /home/baitisj/blowfang-work/runs/inbox/ysfrx-1118a/ysf.wav --hz 441850000 --dev 5400 --gain -60 --offset-hz 1000
+/home/baitisj/blowfang-work/worktrees/inbox-38cbfe8f7726/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.916 of full scale -> 4945 Hz before pre-emphasis
+send ysf.wav: 16.4 s on 441850000 Hz (LO 441849000.0), gain -60.0 dB, rate 2400000, RF on
+start 21:49:02Z
+end 21:49:19Z: 16.4 s of signal in 16.3 s (kept up)
+2026-11-18T21:49:19Z step 5 (pluto) rc=0
+2026-11-18T21:51:14Z seen /mod say end / in /home/baitisj/blowfang-work/runs/queue/ysfrx-1118a/uv380.log
+2026-11-18T21:51:14Z step 6 (wait) rc=0
+2026-11-18T21:51:14Z job ysfrx-1118a done

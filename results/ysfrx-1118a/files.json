@@ -1,0 +1,17 @@
+[
+ {
+  "name": "uv380.rx.out",
+  "bytes": 22351,
+  "sha256": "cc763f93bcf7cf3fa0b03a2b01c4212daae8bda1ee74d9bfbd1724edb821ca64",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysfrx-1118a/uv380.rx.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 6181006,
+  "sha256": "33399e5fa478c6f33a8c506ca4ce1ba44354431d0a9066b3f74db5f34a8a7735",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysfrx-1118a/uv380.log",
+  "kept": "over 512 KB; dropped from the branch 2026-11-27"
+ }
+]

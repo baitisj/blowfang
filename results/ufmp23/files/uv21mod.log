@@ -1,0 +1,6 @@
+s 0a=2131 0b=0000
+S 0a=2000 0b=0000
+T 106500 0a=4531 0b=6f80
+key wait
+key timeout
+um end 00006f80

@@ -1,0 +1,119 @@
+{
+ "id": "c4fm-sotto3",
+ "who": "c4fm",
+ "started": "2026-11-18T11:35:54Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T11:35:54Z",
+   "ended": "2026-11-18T11:35:56Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T11:35:56Z",
+   "ended": "2026-11-18T11:36:07Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-18T11:36:07Z",
+   "ended": "2026-11-18T11:36:20Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T11:36:20Z",
+   "ended": "2026-11-18T11:36:32Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-18T11:36:32Z",
+   "ended": "2026-11-18T11:38:42Z",
+   "rc": 1,
+   "why": "no /EX beacon|K6 MOD say \\w+ end/ in /home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/k6.log"
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-18T11:38:42Z",
+   "ended": "2026-11-18T11:38:55Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-18T11:38:55Z",
+   "ended": "2026-11-18T11:39:07Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-sotto3/k6.log"
+  },
+  {
+   "n": 8,
+   "do": "k6.upload",
+   "started": "2026-11-18T11:39:07Z",
+   "ended": "2026-11-18T11:41:45Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "uv380.rx",
+   "started": "2026-11-18T11:41:45Z",
+   "ended": "2026-11-18T11:41:47Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-18T11:41:47Z",
+   "ended": "2026-11-18T11:42:00Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "pluto",
+   "started": "2026-11-18T11:42:00Z",
+   "ended": "2026-11-18T11:42:02Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-18T11:42:02Z",
+   "ended": "2026-11-18T11:42:25Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-18T11:42:25Z",
+   "ended": "2026-11-18T11:43:23Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "logger.stop",
+   "started": "2026-11-18T11:43:23Z",
+   "ended": "2026-11-18T11:43:24Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-b04eb6b5ba17",
+ "head": "b04eb6b5ba17f441327eec247581a4bbda77d1cd",
+ "ended": "2026-11-18T11:44:15Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "33374a3c00b1ee9596ea2d0cf52aad8f34ebb218",
+  "path": "jobs/c4fm-sotto3"
+ },
+ "runner_commit": "b04eb6b5ba17f441327eec247581a4bbda77d1cd",
+ "updated": "2026-11-18T11:44:16Z"
+}

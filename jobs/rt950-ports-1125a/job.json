@@ -1,0 +1,11 @@
+{
+ "id": "rt950-ports-1125a",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 2,
+ "steps": [
+  {
+   "do": "serial.list"
+  }
+ ]
+}

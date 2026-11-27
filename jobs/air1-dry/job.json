@@ -1,0 +1,38 @@
+{
+ "id": "air1-dry",
+ "who": "multimode",
+ "freq_mhz": 441.85,
+ "minutes": 6,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2",
+    "trim 6100"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "m17",
+    "dry"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "ysf",
+    "dry"
+   ]
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "dmr",
+    "dry"
+   ]
+  }
+ ]
+}

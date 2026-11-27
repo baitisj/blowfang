@@ -1,0 +1,83 @@
+{
+ "id": "bigant-1122d",
+ "who": "position",
+ "freq_mhz": 432.1,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:P770318.cf32",
+    "--hz",
+    "770348750",
+    "--seconds",
+    "4",
+    "--gain",
+    "50"
+   ],
+   "timeout": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:P769856.cf32",
+    "--hz",
+    "769886250",
+    "--seconds",
+    "4",
+    "--gain",
+    "50"
+   ],
+   "timeout": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:P769081.cf32",
+    "--hz",
+    "769111250",
+    "--seconds",
+    "4",
+    "--gain",
+    "50"
+   ],
+   "timeout": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:P769343.cf32",
+    "--hz",
+    "769373750",
+    "--seconds",
+    "4",
+    "--gain",
+    "50"
+   ],
+   "timeout": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:P774456.cf32",
+    "--hz",
+    "774486250",
+    "--seconds",
+    "4",
+    "--gain",
+    "50"
+   ],
+   "timeout": 90,
+   "continue_on_error": true
+  }
+ ]
+}

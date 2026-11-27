@@ -1,0 +1,29 @@
+2026-11-22T05:13:15Z job kws-chan-1 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-46f18b299885 at 46f18b299885b1bba0407bf9c6330e7398e4a758
+2026-11-22T05:13:15Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46f18b299885/tools/pluto_bench.py --as nato-kws chan --probe
+Linux pluto 6.1.0-gf3da30df6004 #5 SMP PREEMPT Tue Oct 15 10:50:00 CEST 2024 armv7l GNU/Linux
+processor	: 0
+2
+              total        used        free      shared  buff/cache   available
+Mem:         507532       10080      447752          72       49700      445032
+Swap:             0           0           0
+/usr/bin/iio_readdev
+Usage:
+	iio_readdev [OPTION]...	[-t <trigger>] [-b <buffer-size>][-s <samples>] <iio_device> [<channel> ...]
+Options:
+NAME=Buildroot
+VERSION=2022.02.3-adi-5718-ge783aadcce
+tmpfs                   247.8M     32.0K    247.8M   0% /tmp
+
+2026-11-22T05:13:16Z step 1 (pluto) rc=0
+2026-11-22T05:13:16Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46f18b299885/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-1/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-1/chan1 --hz 443000000 --seconds 120 --gain 60 --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (df2974aef3baf22c...) in the Pluto's RAM at /tmp/pluto_chan
+442.3000_20261122T0513332Z.flac: 22164 bytes
+442.3000_20261122T0513523Z.flac: 22190 bytes
+442.3000_20261122T0514103Z.flac: 22088 bytes
+442.3000_20261122T0514284Z.flac: 37582 bytes
+442.3000_20261122T0514476Z.flac: 23654 bytes
+442.3000_20261122T0515057Z.flac: 23720 bytes
+pluto_chan: 8 channels, 120.00 s of input in 411.18 s (343% of real time)
+chan: 120 s in 411.6 s on 8 channels, 6 overs, 161784 bytes (1348 B/s) (SLOW: the Pluto did not keep up)
+2026-11-22T05:20:08Z step 2 (pluto) rc=0
+2026-11-22T05:20:08Z job kws-chan-1 done

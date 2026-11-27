@@ -1,0 +1,93 @@
+2026-11-23T13:58:01Z job kws-n70-r11 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-320699a1c0c1 at 320699a1c0c150e7f276da638a01476703f66a21
+2026-11-23T13:58:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-320699a1c0c1/tools/pluto_fw.py --as nato-kws fpga /home/baitisj/blowfang-work/runs/inbox/kws-n70/system_top.bit.bin /home/baitisj/blowfang-work/runs/inbox/kws-n70/chanctl /home/baitisj/blowfang-work/runs/inbox/kws-n70/ensure_pluto_fpga.sh /home/baitisj/blowfang-work/runs/inbox/kws-n70/pluto_runtime_load.sh
+Pluto FPGA channelizer ready
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=bc2533
+attr_name=compatible attr_val=ad9364
+uptime=103301.88
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+fpga: channelizer loaded (pl_is_chan=yes)
+2026-11-23T13:58:03Z step 1 (pluto.fw) rc=0
+2026-11-23T13:58:03Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-320699a1c0c1/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-n70/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-n70-r11/c70 --bins /home/baitisj/blowfang-work/runs/inbox/kws-n70/pluto-fpga-source --hz 443000000 --seconds 1440 --gain 60 --channels 440100000,441375000,442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000,444700000 --band 440000000,446000000
+chan: pluto_chan (284744a6925f81a7...) and the producer (c462e7586d0a1970...) in the Pluto's RAM; streams [13, 14, 16, 17, 35, 455, 481, 498, 499, 508, 509]
+442.3000_20261123T1358371Z.flac: 41459 bytes
+442.3000_20261123T1359380Z.flac: 40920 bytes
+440.1000_20261123T1359346Z.flac: 475300 bytes
+440.1000_20261123T1400120Z.flac: 35697 bytes
+442.3000_20261123T1400409Z.flac: 41208 bytes
+440.1000_20261123T1400281Z.flac: 369806 bytes
+442.3000_20261123T1401428Z.flac: 41270 bytes
+440.1000_20261123T1401528Z.flac: 111002 bytes
+440.1000_20261123T1402047Z.flac: 40880 bytes
+440.1000_20261123T1402096Z.flac: 64038 bytes
+442.3000_20261123T1402447Z.flac: 91899 bytes
+440.1000_20261123T1402536Z.flac: 70805 bytes
+440.1000_20261123T1403297Z.flac: 93501 bytes
+440.1000_20261123T1403382Z.flac: 39997 bytes
+440.1000_20261123T1403429Z.flac: 22072 bytes
+442.3000_20261123T1403506Z.flac: 40944 bytes
+440.1000_20261123T1403478Z.flac: 245879 bytes
+440.1000_20261123T1404077Z.flac: 76949 bytes
+442.3000_20261123T1404525Z.flac: 41170 bytes
+440.1000_20261123T1404586Z.flac: 267171 bytes
+440.1000_20261123T1405369Z.flac: 142552 bytes
+442.3000_20261123T1405544Z.flac: 41170 bytes
+442.3000_20261123T1406564Z.flac: 41116 bytes
+440.1000_20261123T1406570Z.flac: 136317 bytes
+440.1000_20261123T1407127Z.flac: 98872 bytes
+440.1000_20261123T1407272Z.flac: 32835 bytes
+440.1000_20261123T1407468Z.flac: 18243 bytes
+442.3000_20261123T1407583Z.flac: 40997 bytes
+442.3000_20261123T1409002Z.flac: 41304 bytes
+442.3000_20261123T1410021Z.flac: 41063 bytes
+440.1000_20261123T1410365Z.flac: 160044 bytes
+440.1000_20261123T1410530Z.flac: 93255 bytes
+442.3000_20261123T1411030Z.flac: 41243 bytes
+440.1000_20261123T1411064Z.flac: 146926 bytes
+440.1000_20261123T1411413Z.flac: 36411 bytes
+440.1000_20261123T1411493Z.flac: 29467 bytes
+440.1000_20261123T1411539Z.flac: 30759 bytes
+442.3000_20261123T1412050Z.flac: 41139 bytes
+440.1000_20261123T1412382Z.flac: 139574 bytes
+440.1000_20261123T1412498Z.flac: 41996 bytes
+442.3000_20261123T1413079Z.flac: 87896 bytes
+440.1000_20261123T1413241Z.flac: 230395 bytes
+440.1000_20261123T1414078Z.flac: 79419 bytes
+442.3000_20261123T1414137Z.flac: 41357 bytes
+440.1000_20261123T1414149Z.flac: 165954 bytes
+440.1000_20261123T1414394Z.flac: 67009 bytes
+442.3000_20261123T1415156Z.flac: 41073 bytes
+440.1000_20261123T1415228Z.flac: 98278 bytes
+440.1000_20261123T1416014Z.flac: 45131 bytes
+442.3000_20261123T1416176Z.flac: 40847 bytes
+442.3000_20261123T1417195Z.flac: 41082 bytes
+442.3000_20261123T1418214Z.flac: 41209 bytes
+442.3000_20261123T1419233Z.flac: 40931 bytes
+440.1000_20261123T1419411Z.flac: 82012 bytes
+442.3000_20261123T1420252Z.flac: 41135 bytes
+440.1000_20261123T1420492Z.flac: 151246 bytes
+442.3000_20261123T1421272Z.flac: 41072 bytes
+band: most active 440.350 (151 s), 440.550 (130 s), 440.100 (106 s), 440.150 (92 s), 440.750 (61 s), 440.700 (61 s), 444.600 (54 s), 444.650 (54 s)
+pluto_chan: 440106084 Hz from stream 455
+pluto_chan: 441381102 Hz from stream 481
+pluto_chan: 442256114 Hz from stream 498
+pluto_chan: 442306115 Hz from stream 499
+pluto_chan: 442756121 Hz from stream 508
+pluto_chan: 442831122 Hz from stream 510
+pluto_chan: 443631133 Hz from stream 14
+pluto_chan: 443656134 Hz from stream 14
+pluto_chan: 443756135 Hz from stream 16
+pluto_chan: 443781135 Hz from stream 17
+pluto_chan: 444706148 Hz from stream 35
+pluto_chan: config {"input_center_hz":443000000,"input_rate_hz":25600000,"input_bandwidth_hz":20000000,"filter_delay_input_samples_times_two":4095,"first_output_center_input_sample_times_two":4095,"hardware_counter":true,"continuity_verified":false,"activity_calibrated":false,"activity_method":"fpga-welch-minstat-cfar
+pluto_chan: RIQ1, 11 channels, 2187692 messages, 22 gaps, 14107 PSD frames, 1440.01 s of the slowest stream in 1440.28 s
+pluto-fpga-source waiting on TCP:9010; radio unopened
+{"status":"stopped","wire_bytes":6011548385,"frames":0,"adc_losses":2,"sel_drops":0}
+chan: 1440 s in 1441.9 s on 11 channels from 10 bins, 57 overs, 5187490 bytes (3602 B/s)
+2026-11-23T14:22:08Z step 2 (pluto) rc=0
+2026-11-23T14:22:08Z job kws-n70-r11 done

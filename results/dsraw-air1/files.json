@@ -1,0 +1,38 @@
+[
+ {
+  "name": "dsr.cf32.json",
+  "bytes": 133,
+  "sha256": "13c3acb5bc6db3f59ab469723e67e8f002feb3cf4dd024ee24b1894139ae5669",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-air1/dsr.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 196,
+  "sha256": "6cbc8d63ff9376ccbad731a8351d6b78a95be1a63b5132248b8a5baa900cba45",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-air1/pluto.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 3689,
+  "sha256": "cd0078bf930bc2b80e0a472d563d0f5f969ce81982cdd3c2c535a268c481145b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-air1/uv380.log"
+ },
+ {
+  "name": "dsr.wav",
+  "bytes": 5760044,
+  "sha256": "2baa8d3dc4e976fbbf44d9187f0cf1ae916f38de9596c6d2e1f5d380a6e9f621",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-air1/dsr.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "dsr.cf32",
+  "bytes": 115200000,
+  "sha256": "ac0c82a56496c112fdcd7b86641ec9d6412945a8ee5e96c2fcc5ef4b69f1e5c3",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/dsraw-air1/dsr.cf32"
+ }
+]

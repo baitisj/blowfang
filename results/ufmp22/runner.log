@@ -1,0 +1,16 @@
+2026-11-25T08:17:39Z job ufmp22 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-5fe650a2a129 at 5fe650a2a129d3b210acdf4346603e8f315d17f8, module sources /home/baitisj/blowfang-work/worktrees/src-cfaceda08bf9 at cfaceda08bf94ccd6aa081d5fcc062503912fadb
+2026-11-25T08:17:39Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-cfaceda08bf9/radios/uv21/mod/fmstock.c -D FT_WAIT_MS=1000 -D FT_KHZ=106500 --log /home/baitisj/blowfang-work/runs/queue/ufmp22/uv21mod.log --run-timeout 180
+s 0a=2000 0b=0000
+r00 5804 0595 0000 0000 0200 00eb 0000 0002
+r08 7ef4 0000 2000 0000 5803 5804 5808 5804
+r10 0003 0000 8670 f00f 010d 9000 1400 2100
+r18 b654 0020 000e 9adc 7ef6 38c5 1062 0400
+S 0a=2000 0b=0000
+R00 5804 0597 8061 0000 0200 00e0 0000 0202
+R08 7ef4 0000 2000 0000 5803 5804 5808 5804
+R10 0003 0000 8660 f00f 010d 9000 4400 2100
+R18 b654 0020 000e 8ade 7ef6 38c5 1062 0400
+T 106500 0a=4531 0b=6f80
+um end 00006f80
+2026-11-25T08:17:42Z step 1 (uv21.mod) rc=0
+2026-11-25T08:17:42Z job ufmp22 done

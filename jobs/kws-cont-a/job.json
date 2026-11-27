@@ -1,0 +1,42 @@
+{
+ "id": "kws-cont-a",
+ "who": "nato-kws",
+ "freq_mhz": "bench",
+ "minutes": 40,
+ "steps": [
+  {
+   "do": "pluto.fw",
+   "args": [
+    "fpga",
+    "job:system_top.bit.bin",
+    "job:chanctl",
+    "job:ensure_pluto_fpga.sh",
+    "job:pluto_runtime_load.sh"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "chan",
+    "job:pluto_chan.armhf",
+    "run:b2m",
+    "--bins",
+    "job:pluto-fpga-source",
+    "--hz",
+    "146300000",
+    "--seconds",
+    "1440",
+    "--gain",
+    "45",
+    "--channels",
+    "145230000,146610000,146780000,146800000,146900000,146960000,147000000,147160000,147280000,147340000,147360000,147380000",
+    "--band",
+    "144000000,148000000"
+   ]
+  }
+ ],
+ "repeat": {
+  "every_min": 10,
+  "until": "2026-11-23T03:00:00Z"
+ }
+}

@@ -1,0 +1,24 @@
+[
+ {
+  "name": "SHA256SUMS",
+  "bytes": 243,
+  "sha256": "72d8f9301fb8aa904550b772ebd0e47a590a3db12b8710f9936a7c1db7bf9be6",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/rt950-keys-1125a/SHA256SUMS",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "compare.json",
+  "bytes": 1161,
+  "sha256": "8f6f4ed190384400cd2766c9c8298cc77b56f937847a0adb19106bad2ff79bef",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/rt950-keys-1125a/compare.json"
+ },
+ {
+  "name": "manifest.json",
+  "bytes": 1787,
+  "sha256": "d8d9fab3f261360bae885885d7e93aa1ca2e6ec99e5333c25027281209d87442",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/rt950-keys-1125a/manifest.json"
+ }
+]

@@ -1,0 +1,16 @@
+2026-11-26T06:54:45Z job wmota-2 by watermark, checkout /home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115 at 67ca9dfc811540cd073978d27ce22a098cc84ac7
+2026-11-26T06:54:48Z IC-7100 F 441850000 M FM-D RFPOWER 0.00
+2026-11-26T06:54:48Z step 1 (ic7100.tune) rc=0
+2026-11-26T06:54:48Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115/tools/pluto_bench.py --as watermark rx /home/baitisj/blowfang-work/runs/queue/wmota-2/wm_rx.wav --hz 441850000 --seconds 120 --gain 20 --wav-only --wav-rate 8000
+2026-11-26T06:54:50Z step 2 (pluto) rc=0
+2026-11-26T06:54:54Z step 3 (wait) rc=0
+2026-11-26T06:54:55Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py --as watermark send /home/baitisj/blowfang-work/runs/inbox/wmota-2/marked_audio.wav --freq 441850000
+sent /home/baitisj/blowfang-work/runs/inbox/wmota-2/marked_audio.wav (27.0 s) on 441850000 Hz from 2026-11-26 06:55:09 UTC; t0=1795676109.396; PTT now 0
+2026-11-26T06:55:41Z step 4 (ic7100) rc=0
+2026-11-26T06:55:43Z step 5 (wait) rc=0
+2026-11-26T06:55:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py --as watermark send /home/baitisj/blowfang-work/runs/inbox/wmota-2/clean_audio.wav --freq 441850000
+sent /home/baitisj/blowfang-work/runs/inbox/wmota-2/clean_audio.wav (27.0 s) on 441850000 Hz from 2026-11-26 06:55:45 UTC; t0=1795676145.286; PTT now 0
+2026-11-26T06:56:17Z step 6 (ic7100) rc=0
+2026-11-26T06:56:18Z IC-7100 RFPOWER 0.00
+2026-11-26T06:56:18Z step 7 (ic7100.power0) rc=0
+2026-11-26T06:56:18Z job wmota-2 done

@@ -1,0 +1,48 @@
+2026-11-26T06:56:23Z job arena16-st2 by arena16, checkout /home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115 at 67ca9dfc811540cd073978d27ce22a098cc84ac7
+2026-11-26T06:56:23Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold arena16 -- timeout -s INT --kill-after=10 600 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/arena16-st2/k6.log
+2026-11-26T06:56:25Z step 1 (logger) rc=0
+2026-11-26T06:56:28Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-26T06:56:28Z step 2 (ic7100.tune) rc=0
+2026-11-26T06:56:28Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115/tools/pluto_bench.py --as arena16 send /home/baitisj/blowfang-work/runs/inbox/arena16-st2/wake.wav --hz 440850000 --dev 3000 --gain -30
+/home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115/tools/pluto_bench.py:422: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.833 of full scale -> 2500 Hz before pre-emphasis
+send wake.wav: 20.9 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 06:56:29Z
+end 06:56:50Z: 20.9 s of signal in 20.8 s (kept up)
+2026-11-26T06:56:50Z step 3 (pluto) rc=0
+2026-11-26T06:56:50Z seen /VOICE MSG for/ in /home/baitisj/blowfang-work/runs/queue/arena16-st2/k6.log
+2026-11-26T06:56:50Z step 4 (wait) rc=0
+2026-11-26T06:56:51Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/arena16-st2/ysfrx.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/arena16-st2/k6-rate.json --telemetry 0
+22:56:53 send 1: 70 of 70 XL chunks at F/1800 (serial 1795676212, xfer 52); module /home/baitisj/blowfang-work/runs/inbox/arena16-st2/ysfrx.bin: 8512 B code, entry +16, API level 2, serial 1795676212, xfer 52, 8536 B image in 70 XL chunks; 140 packets, 90.1 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 97.5 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 06:56:54Z
+end 06:58:32Z: 97.5 s of signal in 97.4 s (kept up)
+22:58:32 listening for the K6's report
+22:58:58 no report heard
+22:58:58 no report after a whole send: the K6 may be set to L packets, so the next send is 148 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 70 chunks sent were lost
+22:58:58 CW ID
+2026-11-26T06:58:59Z step 5 (k6.upload) rc=0
+2026-11-26T06:58:59Z seen /ysf start/ in /home/baitisj/blowfang-work/runs/queue/arena16-st2/k6.log
+2026-11-26T06:58:59Z step 6 (wait) rc=0
+2026-11-26T06:59:01Z step 7 (wait) rc=0
+2026-11-26T06:59:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115/tools/pluto_bench.py --as arena16 send /home/baitisj/blowfang-work/runs/inbox/arena16-st2/ysf.wav --hz 440850000 --dev 5400 --gain -40
+/home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115/tools/pluto_bench.py:422: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysf.wav: 22.2 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 06:59:02Z
+end 06:59:24Z: 22.2 s of signal in 22.1 s (kept up)
+2026-11-26T06:59:24Z step 8 (pluto) rc=0
+2026-11-26T06:59:24Z seen /K6 PLAY put/ in /home/baitisj/blowfang-work/runs/queue/arena16-st2/k6.log
+2026-11-26T06:59:24Z step 9 (wait) rc=0
+2026-11-26T07:00:24Z step 10 (wait) rc=0
+2026-11-26T07:00:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release arena16
+the port is free (arena16 let go)
+2026-11-26T07:00:25Z step 11 (logger.stop) rc=0
+2026-11-26T07:00:26Z IC-7100 RFPOWER 0.00
+2026-11-26T07:00:26Z step 12 (ic7100.power0) rc=0
+2026-11-26T07:00:26Z job arena16-st2 done

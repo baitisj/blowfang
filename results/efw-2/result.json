@@ -1,0 +1,60 @@
+{
+ "id": "efw-2",
+ "who": "earshot",
+ "started": "2026-11-22T07:52:03Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto.fw",
+   "started": "2026-11-22T07:52:03Z",
+   "ended": "2026-11-22T07:52:27Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto.fw",
+   "started": "2026-11-22T07:52:27Z",
+   "ended": "2026-11-22T07:52:52Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto.fw",
+   "started": "2026-11-22T07:52:52Z",
+   "ended": "2026-11-22T07:53:13Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto.fw",
+   "started": "2026-11-22T07:53:13Z",
+   "ended": "2026-11-22T07:53:30Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto.fw",
+   "started": "2026-11-22T07:53:30Z",
+   "ended": "2026-11-22T07:53:46Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto.fw",
+   "started": "2026-11-22T07:53:46Z",
+   "ended": "2026-11-22T07:53:46Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac",
+ "head": "df50adf160ac510bb8be78ca88342c220a91d2f5",
+ "ended": "2026-11-22T07:53:46Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "10cf9ea7a79796184f16147170c011f18b54b8c3",
+  "path": "jobs/efw-2"
+ },
+ "runner_commit": "df50adf160ac510bb8be78ca88342c220a91d2f5",
+ "updated": "2026-11-22T07:53:47Z"
+}

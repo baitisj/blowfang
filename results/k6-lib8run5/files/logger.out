@@ -1,0 +1,277 @@
+listening (Ctrl-C to stop) ...
+K6 MOD say H 143.995 0 -77 a328539
+K6 MOD say S0 66 1074 c1 h1
+K6 MOD say S1 66 174 c0 h0
+K6 MOD say S2 66 1019 c0 h0
+K6 MOD say N 144.160 -86 fl-99 b16
+K6 MOD say H 143.995 0 -76 a330803
+K6 MOD say W 144.160 0 -86 a330935
+K6 MOD say S0 67 1162 c2 h2
+K6 MOD say S1 67 155 c0 h0
+K6 MOD say S2 67 1002 c0 h0
+K6 MOD say H 144.015 0 -76 a333123
+K6 MOD say H 144.045 343 -78 a333101
+K6 MOD say H 144.100 181 -75 a333577
+K6 MOD say H 144.110 0 -77 a333763
+K6 MOD say S0 68 1192 c0 h0
+K6 MOD say S1 68 155 c0 h0
+K6 MOD say S2 68 1045 c2 h0
+K6 MOD say H 143.995 0 -76 a335517
+K6 MOD say S0 69 1030 c1 h1
+K6 MOD say S1 69 154 c0 h0
+K6 MOD say S2 69 1022 c0 h0
+K6 MOD say N 144.175 -86 fl-99 b18
+K6 MOD say H 143.995 0 -76 a337723
+K6 MOD say W 144.175 0 -86 a337859
+K6 MOD say S0 70 1129 c2 h2
+K6 MOD say S1 70 155 c0 h0
+K6 MOD say S2 70 1038 c0 h0
+K6 MOD say H 143.995 0 -77 a340045
+K6 MOD say W 144.160 0 -85 a340091
+K6 MOD say S0 71 1042 c2 h2
+K6 MOD say S1 71 168 c0 h0
+K6 MOD say S2 71 1038 c0 h0
+K6 MOD say H 143.995 0 -76 a342279
+K6 MOD say H 144.100 0 -79 a342481
+K6 MOD say H 143.995 0 -75 a342657
+K6 MOD say H 144.015 162 -81 a342683
+K6 MOD say H 144.140 0 -79 a343145
+K6 MOD say H 144.100 193 -78 a342967
+K6 MOD say S0 72 1271 c1 h1
+K6 MOD say S1 72 166 c1 h0
+K6 MOD say S2 72 1120 c7 h0
+K6 MOD say H 143.995 0 -77 a344837
+K6 MOD say S0 73 1026 c2 h1
+K6 MOD say S1 73 166 c1 h0
+K6 MOD say S2 73 1049 c1 h0
+K6 MOD say H 143.995 0 -76 a347079
+K6 MOD say S0 74 1076 c1 h1
+K6 MOD say S1 74 174 c0 h0
+K6 MOD say S2 74 1019 c0 h0
+K6 MOD say H 143.995 0 -76 a349349
+K6 MOD say S0 75 1014 c1 h1
+K6 MOD say S1 75 205 c0 h0
+K6 MOD say S2 75 1002 c0 h0
+K6 MOD say H 143.995 0 -76 a351585
+K6 MOD say W 144.175 0 -87 a351635
+K6 MOD say S0 76 1029 c2 h2
+K6 MOD say S1 76 188 c0 h0
+K6 MOD say S2 76 1013 c0 h0
+K6 MOD say H 144.045 0 -76 a353651
+K6 MOD say H 143.995 0 -74 a353817
+K6 MOD say H 144.045 0 -80 a354103
+K6 MOD say H 144.100 182 -77 a354267
+K6 MOD say S0 77 1178 c1 h1
+K6 MOD say S1 77 178 c2 h0
+K6 MOD say S2 77 1085 c4 h0
+K6 MOD say H 143.995 0 -76 a356241
+K6 MOD say S0 78 1074 c1 h1
+K6 MOD say S1 78 186 c1 h0
+K6 MOD say S2 78 1002 c0 h0
+K6 MOD say H 143.995 0 -76 a358521
+K6 MOD say S0 79 1074 c1 h1
+K6 MOD say S1 79 174 c0 h0
+K6 MOD say S2 79 1019 c0 h0
+K6 MOD say H 143.995 0 -76 a360771
+K6 MOD say S0 80 1014 c1 h1
+K6 MOD say S1 80 204 c0 h0
+K6 MOD say S2 80 1002 c0 h0
+K6 MOD say H 143.995 0 -76 a363009
+K6 MOD say S0 81 1061 c2 h1
+K6 MOD say S1 81 155 c0 h0
+K6 MOD say H 144.015 0 -80 a364919
+K6 MOD say S2 81 1086 c0 h0
+K6 MOD say N 144.075 -80 fl-99 b7
+K6 MOD say N 144.115 -76 fl-99 b12
+K6 MOD say H 143.995 0 -76 a365313
+K6 MOD say H 144.045 0 -79 a365213
+K6 MOD say H 144.075 0 -80 a365427
+K6 MOD say H 144.115 0 -76 a365609
+K6 MOD say H 144.100 183 -76 a365435
+K6 MOD say S0 82 1353 c3 h3
+K6 MOD say S1 82 138 c0 h0
+K6 MOD say S2 82 1031 c1 h0
+K6 MOD say H 143.995 0 -77 a367835
+K6 MOD say S0 83 1096 c1 h1
+K6 MOD say S1 83 155 c0 h0
+K6 MOD say S2 83 1019 c0 h0
+K6 MOD say H 143.995 0 -76 a370105
+K6 MOD say S0 84 1033 c1 h1
+K6 MOD say S1 84 155 c0 h0
+K6 MOD say S2 84 1019 c0 h0
+K6 MOD say H 143.995 0 -76 a372327
+K6 MOD say S0 85 1033 c1 h1
+K6 MOD say S1 85 168 c0 h0
+K6 MOD say S2 85 1038 c0 h0
+K6 MOD say F0 -99 q-139: -96 -98 -98 -99 -98 -98 -99 -99
+K6 MOD say H 143.995 0 -76 a374689
+K6 MOD say S0 86 1030 c1 h1
+K6 MOD say F1 -98 q-137: -97 -96 -93 -96 -96 -96 -98 -98
+K6 MOD say S1 86 175 c0 h0
+K6 MOD say F2 -116 q-147: -115 -116 -116 -115 -115 -114 -114 -114
+K6 MOD say H 144.075 162 -77 a376489
+K6 MOD say S2 86 1105 c0 h0
+K6 MOD say H 143.995 0 -77 a377279
+K6 MOD say S0 87 1031 c1 h1
+K6 MOD say S1 87 155 c0 h0
+K6 MOD say S2 87 1057 c3 h0
+K6 MOD say H 143.995 0 -77 a379535
+K6 MOD say S0 88 1030 c1 h1
+K6 MOD say S1 88 168 c0 h0
+K6 MOD say S2 88 1002 c0 h0
+K6 MOD say H 143.995 0 -76 a381721
+K6 MOD say S0 89 1113 c1 h1
+K6 MOD say S1 89 155 c0 h0
+K6 MOD say S2 89 1021 c0 h0
+K6 MOD say H 143.995 0 -77 a384011
+K6 MOD say W 144.115 0 -88 a384049
+K6 MOD say S0 90 1122 c2 h2
+K6 MOD say S1 90 167 c1 h0
+K6 MOD say S2 90 1019 c0 h0
+K6 MOD say H 143.995 0 -77 a386303
+K6 MOD say S0 91 1161 c1 h1
+K6 MOD say H 144.045 0 -75 a387159
+K6 MOD say H 144.015 0 -79 a387181
+K6 MOD say S1 91 166 c1 h0
+K6 MOD say H 144.075 176 -83 a387715
+K6 MOD say H 144.115 139 -77 a387893
+K6 MOD say S2 91 1199 c8 h0
+K6 MOD say H 143.995 0 -77 a388843
+K6 MOD say S0 92 1014 c1 h1
+K6 MOD say S1 92 188 c0 h0
+K6 MOD say S2 92 1101 c7 h0
+K6 MOD say H 143.995 0 -76 a391133
+K6 MOD say S0 93 1095 c1 h1
+K6 MOD say S1 93 166 c1 h0
+K6 MOD say S2 93 1002 c0 h0
+K6 MOD say H 143.995 0 -76 a393413
+K6 MOD say S0 94 1050 c1 h1
+K6 MOD say S1 94 155 c0 h0
+K6 MOD say S2 94 1019 c0 h0
+K6 MOD say H 143.995 0 -76 a395641
+K6 MOD say S0 95 1033 c1 h1
+K6 MOD say S1 95 155 c0 h0
+K6 MOD say S2 95 1038 c0 h0
+K6 MOD say N 144.185 -88 fl-99 b19
+K6 MOD say H 143.995 0 -76 a397847
+K6 MOD say W 144.185 0 -88 a397985
+K6 MOD say S0 96 1173 c2 h2
+K6 MOD say S1 96 174 c0 h0
+K6 MOD say S2 96 1026 c1 h0
+K6 MOD say H 144.015 0 -76 a400081
+K6 MOD say H 144.100 0 -76 a400549
+K6 MOD say H 144.115 0 -79 a400737
+K6 MOD say S0 97 1119 c0 h0
+K6 MOD say S1 97 166 c1 h0
+K6 MOD say S2 97 1038 c0 h0
+K6 MOD say H 143.995 0 -77 a402543
+K6 MOD say S0 98 1030 c1 h1
+K6 MOD say S1 98 155 c0 h0
+K6 MOD say S2 98 1022 c0 h0
+K6 MOD say H 143.995 0 -76 a404767
+K6 MOD say S0 99 1030 c1 h1
+K6 MOD say S1 99 155 c0 h0
+K6 MOD say S2 99 1038 c0 h0
+K6 MOD say H 143.995 0 -76 a406975
+K6 MOD say S0 100 1173 c2 h2
+K6 MOD say S1 100 174 c0 h0
+K6 MOD say S2 100 1002 c0 h0
+K6 MOD say H 143.995 0 -76 a409341
+K6 MOD say H 144.015 0 -74 a409517
+K6 MOD say H 144.075 0 -80 a409975
+K6 MOD say H 144.100 0 -76 a410111
+K6 MOD say S0 101 1320 c2 h2
+K6 MOD say S1 101 138 c0 h0
+K6 MOD say S2 101 1097 c5 h0
+K6 MOD say N 144.155 -88 fl-99 b16
+K6 MOD say H 143.995 0 -76 a411879
+K6 MOD say W 144.155 0 -88 a412011
+K6 MOD say S0 102 1192 c2 h2
+K6 MOD say S1 102 155 c0 h0
+K6 MOD say S2 102 1022 c0 h0
+K6 MOD say H 143.995 0 -76 a414265
+K6 MOD say S0 103 1074 c1 h1
+K6 MOD say S1 103 155 c0 h0
+K6 MOD say S2 103 1038 c0 h0
+K6 MOD say H 143.995 0 -76 a416517
+K6 MOD say S0 104 1014 c1 h1
+K6 MOD say S1 104 154 c0 h0
+K6 MOD say S2 104 1038 c0 h0
+K6 MOD say H 143.995 0 -76 a418741
+K6 MOD say H 144.100 0 -77 a418897
+K6 MOD say H 144.115 0 -81 a418915
+K6 MOD say H 144.075 0 -78 a419373
+K6 MOD say S0 105 1196 c1 h1
+K6 MOD say H 144.100 0 -81 a419677
+K6 MOD say S1 105 174 c0 h0
+K6 MOD say S2 105 1084 c7 h0
+K6 MOD say H 143.995 0 -76 a421195
+K6 MOD say S0 106 1050 c1 h1
+K6 MOD say S1 106 155 c0 h0
+K6 MOD say S2 106 1038 c0 h0
+K6 MOD say H 143.995 0 -76 a423439
+K6 MOD say S0 107 1030 c1 h1
+K6 MOD say S1 107 155 c0 h0
+K6 MOD say S2 107 1022 c0 h0
+K6 MOD say H 143.995 0 -76 a425647
+K6 MOD say S0 108 1093 c1 h1
+K6 MOD say S1 108 155 c0 h0
+K6 EX beacon -20 dBm floor -115: VOICE MSG for 60 s
+K6 MOD say H 443.525 424379 -85 a4815
+K6 MOD say H 440.925 302013 -91 a127181
+K6 MOD say T 143.995 n108 t0 -75 d3
+K6 MOD say T 144.185 n1 t0 -88 d0
+K6 MOD say T 443.525 n1 t424 -85 d0 s
+K6 MOD say T 144.045 n10 t0 -80 d10
+K6 MOD say T 440.925 n1 t302 -91 d0 s
+K6 MOD say T 144.100 n12 t1 -78 d6
+K6 MOD say T 144.155 n1 t0 -88 d0
+K6 MOD say T 144.075 n5 t0 -80 d6
+K6 MOD say T 144.115 n5 t0 -82 d12
+K6 MOD say T 144.015 n10 t0 -81 d14
+K6 MOD say Z sw=108 bins=93340 ms=428400 bps=217 hot=8
+K6 CAND band=ALL n=11 sweeps=108 bins=93340 ms=428402
+K6 CAND 0 r 143995000 off=0 tone=0 call= score=3 overs=108 on=0 hi=-74 lo=-77 ids=0 skirts=0 fl=0
+K6 CAND 1 r 144100000 off=0 tone=0 call= score=0 overs=12 on=0 hi=-75 lo=-81 ids=0 skirts=0 fl=0
+K6 CAND 2 r 144110000 off=0 tone=0 call= score=0 overs=10 on=0 hi=-75 lo=-85 ids=0 skirts=0 fl=0
+K6 CAND 3 r 144045000 off=0 tone=0 call= score=0 overs=10 on=0 hi=-75 lo=-85 ids=0 skirts=0 fl=0
+K6 CAND 4 r 144015000 off=0 tone=0 call= score=0 overs=8 on=0 hi=-74 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 5 r 144080000 off=0 tone=0 call= score=0 overs=7 on=0 hi=-77 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 6 r 144135000 off=0 tone=0 call= score=0 overs=2 on=0 hi=-78 lo=-79 ids=0 skirts=0 fl=0
+K6 CAND 7 ? 144060000 off=0 tone=0 call= score=0 overs=1 on=0 hi=-79 lo=-79 ids=0 skirts=0 fl=0
+K6 CAND 8 r 146940000 off=-600000 tone=0 call= score=5 overs=10 on=0 hi=-82 lo=-82 ids=0 skirts=0 fl=96
+K6 CAND 9 s 443525000 off=5000000 tone=1365 call= score=-100 overs=1 on=424 hi=-85 lo=-85 ids=0 skirts=0 fl=112
+K6 CAND 10 s 440925000 off=5000000 tone=0 call= score=-100 overs=1 on=302 hi=-91 lo=-91 ids=0 skirts=0 fl=240
+K6 EX leave
+K6 firmware build 305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-115 batt=8470 build=305eb04-20261119T2227Z
+#3    sync N  BAD  got 128  BE 239/512  s-x+  pkt 13  1345272375543434346825353442641213454255542453432431656344453213  (radio said 492)  [S@0 F@26+3 F@53+3 F@82+3 F@109+3 F@139+3 F@167+3 F@194+3 F@220+3 F@248+3 F@276+3 D@582+1]  gap 6447
+#4    sync N  BAD  got 128  BE 201/512  s+x-  pkt 14  42.3142334..132334.35.346356256352534452423411341554242621445335  (radio said 479)  [S@0 F@26+3 F@53+3 F@79+3 F@107+3 F@135+3 F@162+3 F@189+3 F@216+3 F@243+3 F@270+3 D@576+1]  gap 107
+K6 CTL seq=198 lib slot=8
+K6 LIB run slot=8 r=8512
+K6 MOD run serial=1795129462 code=8512 B at 0x20001194 stack=2688 B scratch=6872 B
+K6 MOD say ysf start f=440850000 floor=-66 msg=594
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW
+K6 MOD ret=10 (0xa) in 6249 ms stack_free=408 B
+K6 PLAY put r=40 n=40 codec=a9 crc=7eaf from=AG7EW rerun=8
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-78 batt=8490 build=305eb04-20261119T2227Z
+K6 EX quiet 60 s: EXPLORE
+K6 STEP stream id=01 total=40 got=40 ring=0
+K6 PLAY id=01 total=40 stored=40 got=40 packets=0/0 played=40 dec_mean_us=13360 dec_max_us=21200 ram_free=1032 aborted=0 stream=0 waits=0 late=0 under=0 overruns=0 yields=0 pcm=25cf3af6 samples=12800 rebuilt=0 rung=F18 syncs=4 crcbad=3 rssi_min=-73 rssi_med=-72 missing=0
+K6 LIB run slot=8 r=8512
+K6 MOD run serial=1795129462 code=8512 B at 0x20001194 stack=2832 B scratch=6872 B
+K6 MOD say ysf start f=440850000 floor=-61 msg=594
+K6 MOD say c -81 46 h=0
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y call fr=10 vw=40/40 sf=40 miss=0 crc=d821 from=AG7EW
+K6 MOD ret=10 (0xa) in 4142 ms stack_free=1032 B
+K6 PLAY put r=40 n=40 codec=a9 crc=7eaf from=AG7EW rerun=8
+K6 STEP stream id=02 total=40 got=40 ring=0
+K6 PLAY id=02 total=40 stored=40 got=40 packets=0/0 played=40 dec_mean_us=13340 dec_max_us=21300 ram_free=1120 aborted=0 stream=0 waits=0 late=0 under=0 overruns=0 yields=0 pcm=25cf3af6 samples=12800 rebuilt=0 rung=F18 syncs=0 crcbad=0 rssi_min=0 rssi_med=0 missing=0
+K6 LIB run slot=8 r=8512
+K6 MOD run serial=1795129462 code=8512 B at 0x20001194 stack=2832 B scratch=6872 B
+K6 MOD say ysf start f=440850000 floor=-61 msg=594
+K6 MOD say s 40 h=0 lost=0 idle=56 ks=5662
+K6 MOD say s 80 h=0 lost=0 idle=56 ks=5662
+K6 MOD say s 120 h=0 lost=0 idle=56 ks=5662

@@ -1,0 +1,16 @@
+[
+ {
+  "name": "logger.out",
+  "bytes": 703,
+  "sha256": "539d9d39762b5288706d4549be2f80c5dc2e8b9bf67a7007eca6ced4ee9f8d3f",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ufmp4/logger.out"
+ },
+ {
+  "name": "uv21.log",
+  "bytes": 1120,
+  "sha256": "ae45c16f461a00c2a92f12c4d6cf7f40ef9fe3a615e9dbcc3c63e82ada7f33ba",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ufmp4/uv21.log"
+ }
+]

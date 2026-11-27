@@ -1,0 +1,31 @@
+[
+ {
+  "name": "b2m/overs.json",
+  "bytes": 2,
+  "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r10/b2m/overs.json"
+ },
+ {
+  "name": "b2m/chan.json",
+  "bytes": 1597,
+  "sha256": "4b644a271081eef500e88844b27def1cf766eb79221ee3201f60080a714512fe",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r10/b2m/chan.json"
+ },
+ {
+  "name": "b2m/band.json",
+  "bytes": 44264,
+  "sha256": "d192e15b85ff6ed899082e6a533cb8ab6735569e13e2d520316e22686739f344",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r10/b2m/band.json"
+ },
+ {
+  "name": "b2m/levels.json",
+  "bytes": 864213,
+  "sha256": "263c35f6ae561ce220de0d749b5d25f2f383bf13c274d8de72946a3c1694aa41",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r10/b2m/levels.json",
+  "kept": "over 512 KB; dropped from the branch 2026-11-27"
+ }
+]

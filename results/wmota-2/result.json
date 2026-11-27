@@ -1,0 +1,67 @@
+{
+ "id": "wmota-2",
+ "who": "watermark",
+ "started": "2026-11-26T06:54:45Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "ic7100.tune",
+   "started": "2026-11-26T06:54:45Z",
+   "ended": "2026-11-26T06:54:48Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-26T06:54:48Z",
+   "ended": "2026-11-26T06:54:50Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-26T06:54:50Z",
+   "ended": "2026-11-26T06:54:54Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "ic7100",
+   "started": "2026-11-26T06:54:54Z",
+   "ended": "2026-11-26T06:55:41Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-26T06:55:41Z",
+   "ended": "2026-11-26T06:55:43Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "ic7100",
+   "started": "2026-11-26T06:55:43Z",
+   "ended": "2026-11-26T06:56:17Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "ic7100.power0",
+   "started": "2026-11-26T06:56:17Z",
+   "ended": "2026-11-26T06:56:18Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115",
+ "head": "67ca9dfc811540cd073978d27ce22a098cc84ac7",
+ "ended": "2026-11-26T06:56:18Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "8ee8fbe658601c224a844a76852c1df5c903428f",
+  "path": "jobs/wmota-2"
+ },
+ "runner_commit": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "updated": "2026-11-26T06:56:18Z"
+}

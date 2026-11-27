@@ -1,0 +1,23 @@
+[
+ {
+  "name": "b2m/overs.json",
+  "bytes": 2,
+  "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-night-r4/b2m/overs.json"
+ },
+ {
+  "name": "b2m/chan.json",
+  "bytes": 1574,
+  "sha256": "4bbdadfd0b5dff1443af1d045c534f91ecd3c3a0a7bf08d224ab8f729c2fd3f0",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-night-r4/b2m/chan.json"
+ },
+ {
+  "name": "b2m/levels.json",
+  "bytes": 360213,
+  "sha256": "9af9cd1b2e13ed98419f7769b24f0f58feb216985d30e536e71ab3cad0c72e33",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-night-r4/b2m/levels.json"
+ }
+]

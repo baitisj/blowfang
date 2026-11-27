@@ -1,0 +1,274 @@
+{
+ "id": "aprslad-b2",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T09:45:59Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T09:45:59Z",
+   "ended": "2026-11-19T09:46:01Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T09:46:01Z",
+   "ended": "2026-11-19T09:46:04Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T09:46:04Z",
+   "ended": "2026-11-19T09:47:52Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T09:47:52Z",
+   "ended": "2026-11-19T09:49:22Z",
+   "rc": 1,
+   "why": "no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T09:49:22Z",
+   "ended": "2026-11-19T09:51:02Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T09:51:02Z",
+   "ended": "2026-11-19T09:54:17Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T09:54:17Z",
+   "ended": "2026-11-19T09:59:17Z",
+   "rc": 1,
+   "why": "no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log"
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-19T09:59:17Z",
+   "ended": "2026-11-19T09:59:22Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "logger.stop",
+   "started": "2026-11-19T09:59:22Z",
+   "ended": "2026-11-19T09:59:22Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "logger",
+   "started": "2026-11-19T09:59:22Z",
+   "ended": "2026-11-19T09:59:24Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T09:59:24Z",
+   "ended": "2026-11-19T09:59:28Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "k6.upload",
+   "started": "2026-11-19T09:59:28Z",
+   "ended": "2026-11-19T10:01:16Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-19T10:01:16Z",
+   "ended": "2026-11-19T10:02:46Z",
+   "rc": 1,
+   "why": "no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log"
+  },
+  {
+   "n": 14,
+   "do": "wait",
+   "started": "2026-11-19T10:02:46Z",
+   "ended": "2026-11-19T10:04:26Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "pluto",
+   "started": "2026-11-19T10:04:26Z",
+   "ended": "2026-11-19T10:07:40Z",
+   "rc": 0
+  },
+  {
+   "n": 16,
+   "do": "wait",
+   "started": "2026-11-19T10:07:40Z",
+   "ended": "2026-11-19T10:12:41Z",
+   "rc": 1,
+   "why": "no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log"
+  },
+  {
+   "n": 17,
+   "do": "wait",
+   "started": "2026-11-19T10:12:41Z",
+   "ended": "2026-11-19T10:12:46Z",
+   "rc": 0
+  },
+  {
+   "n": 18,
+   "do": "logger.stop",
+   "started": "2026-11-19T10:12:46Z",
+   "ended": "2026-11-19T10:12:46Z",
+   "rc": 0
+  },
+  {
+   "n": 19,
+   "do": "logger",
+   "started": "2026-11-19T10:12:46Z",
+   "ended": "2026-11-19T10:12:48Z",
+   "rc": 0
+  },
+  {
+   "n": 20,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T10:12:48Z",
+   "ended": "2026-11-19T10:12:51Z",
+   "rc": 0
+  },
+  {
+   "n": 21,
+   "do": "k6.upload",
+   "started": "2026-11-19T10:12:51Z",
+   "ended": "2026-11-19T10:14:39Z",
+   "rc": 0
+  },
+  {
+   "n": 22,
+   "do": "wait",
+   "started": "2026-11-19T10:14:39Z",
+   "ended": "2026-11-19T10:16:09Z",
+   "rc": 1,
+   "why": "no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log"
+  },
+  {
+   "n": 23,
+   "do": "wait",
+   "started": "2026-11-19T10:16:09Z",
+   "ended": "2026-11-19T10:17:49Z",
+   "rc": 0
+  },
+  {
+   "n": 24,
+   "do": "pluto",
+   "started": "2026-11-19T10:17:49Z",
+   "ended": "2026-11-19T10:21:04Z",
+   "rc": 0
+  },
+  {
+   "n": 25,
+   "do": "wait",
+   "started": "2026-11-19T10:21:04Z",
+   "ended": "2026-11-19T10:26:04Z",
+   "rc": 1,
+   "why": "no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log"
+  },
+  {
+   "n": 26,
+   "do": "wait",
+   "started": "2026-11-19T10:26:04Z",
+   "ended": "2026-11-19T10:26:09Z",
+   "rc": 0
+  },
+  {
+   "n": 27,
+   "do": "logger.stop",
+   "started": "2026-11-19T10:26:09Z",
+   "ended": "2026-11-19T10:26:10Z",
+   "rc": 0
+  },
+  {
+   "n": 28,
+   "do": "logger",
+   "started": "2026-11-19T10:26:10Z",
+   "ended": "2026-11-19T10:26:12Z",
+   "rc": 0
+  },
+  {
+   "n": 29,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T10:26:12Z",
+   "ended": "2026-11-19T10:26:15Z",
+   "rc": 0
+  },
+  {
+   "n": 30,
+   "do": "k6.upload",
+   "started": "2026-11-19T10:26:15Z",
+   "ended": "2026-11-19T10:28:03Z",
+   "rc": 0
+  },
+  {
+   "n": 31,
+   "do": "wait",
+   "started": "2026-11-19T10:28:03Z",
+   "ended": "2026-11-19T10:29:33Z",
+   "rc": 1,
+   "why": "no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log"
+  },
+  {
+   "n": 32,
+   "do": "wait",
+   "started": "2026-11-19T10:29:33Z",
+   "ended": "2026-11-19T10:31:13Z",
+   "rc": 0
+  },
+  {
+   "n": 33,
+   "do": "pluto",
+   "started": "2026-11-19T10:31:13Z",
+   "ended": "2026-11-19T10:33:59Z",
+   "rc": 1,
+   "why": "timeout 166 s"
+  },
+  {
+   "n": 34,
+   "do": "wait",
+   "started": "2026-11-19T10:33:59Z",
+   "ended": "2026-11-19T10:33:59Z",
+   "rc": 1,
+   "why": "refused: the job's 48 min are used up"
+  },
+  {
+   "n": 35,
+   "do": "wait",
+   "started": "2026-11-19T10:33:59Z",
+   "ended": "2026-11-19T10:33:59Z",
+   "rc": 1,
+   "why": "refused: the job's 48 min are used up"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-989248773c0f",
+ "head": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "reason": "step 35 (wait): refused: the job's 48 min are used up",
+ "ended": "2026-11-19T10:33:59Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "706c5a663e5d9f8dc752dc08cf8bdc8921dade10",
+  "path": "jobs/aprslad-b2"
+ },
+ "runner_commit": "989248773c0fcdc58be9b1a604c15d6fe055e9ab",
+ "updated": "2026-11-19T10:34:00Z"
+}

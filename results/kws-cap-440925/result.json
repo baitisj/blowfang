@@ -1,0 +1,12 @@
+{
+ "id": "kws-cap-440925",
+ "status": "cancelled",
+ "reason": "cancelled before it ran",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "81812538868ce7881a38d7f950e76af98a30eaee",
+  "path": "jobs/kws-cap-440925"
+ },
+ "runner_commit": "866a22a0c2b125feb744ad588735523a719b2b56",
+ "updated": "2026-11-22T04:43:42Z"
+}

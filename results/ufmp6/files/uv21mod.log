@@ -1,0 +1,23 @@
+P 119 319 2 5 30 50 115 6 7
+A 10 11 30 40
+a 10=1 11=1 60=0
+b10 ffffffffffffffffffffffffffffffff
+b11 ffffffffffffffffffffffffffffffff
+b30 ffffffffffffffffffffffffffffffff
+b40 ffffffffffffffffffffffffffffffff
+d00 ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d0b ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d16 ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d21 ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d2c ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d37 ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d42 ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d4d ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff ffff
+d58 ffff ffff ffff ffff ffff ffff ffff ffff
+i ffff ffff ffff
+E n=-5 ms=539
+um end fffffffb
+P 119 319 2 5 30 50 115 6 8
+i ffff ffff ffff
+E n=-5 ms=249
+um end fffffffb

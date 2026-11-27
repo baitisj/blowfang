@@ -1,0 +1,16 @@
+[
+ {
+  "name": "logger.out",
+  "bytes": 1381,
+  "sha256": "141f178ce01858d36dbec0f6524b7856a1a2d056e6fcc52f8a2f8a1c41bd42ff",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/cabprobe1/logger.out"
+ },
+ {
+  "name": "cab.log",
+  "bytes": 2081,
+  "sha256": "484754483b5603a4956aa82f512c6ac7554287d97391ed7015e68f9dc786dbdc",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/cabprobe1/cab.log"
+ }
+]

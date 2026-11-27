@@ -1,0 +1,6 @@
+2026-11-25T03:34:33Z job ufmp4 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088 at e10c1c08d08852c7f00d59504f06caf3cc21b24f, module sources /home/baitisj/blowfang-work/worktrees/src-2f2b666d3b76 at 2f2b666d3b76ec9294dcc3111e28bc9062eb357c
+2026-11-25T03:34:33Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold fmprobe-uv21 -- timeout -s INT --kill-after=10 330 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/ufmp4/uv21.log
+2026-11-25T03:34:35Z step 1 (logger) rc=0
+2026-11-25T03:39:55Z step 2 (wait) rc=1 (no /alive surf|surf ram/ in /home/baitisj/blowfang-work/runs/queue/ufmp4/k6.log)
+2026-11-25T03:39:55Z stopping the job's background logger still running at its end
+2026-11-25T03:39:55Z job ufmp4 failed: step 2 (wait): no /alive surf|surf ram/ in /home/baitisj/blowfang-work/runs/queue/ufmp4/k6.log

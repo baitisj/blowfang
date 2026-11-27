@@ -1,0 +1,103 @@
+{
+ "id": "mkr2b",
+ "who": "micprobe",
+ "freq_mhz": "bench",
+ "minutes": 45,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 2700,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:mickrec.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "13",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "799a74ee67678f901f6e3173163a6feb823e9b1069dbb5f0d74f84c7ccb28f0f"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 445850000,
+   "mode": "FM"
+  },
+  {
+   "do": "ic7100.af",
+   "level": 0.3
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "cue",
+    "job:voice251_loud.wav",
+    "--hz",
+    "445850000",
+    "--listen-hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-46",
+    "--wait-s",
+    "1700"
+   ],
+   "timeout": 1800
+  },
+  {
+   "do": "ic7100.af",
+   "level": "restore"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "wait",
+   "pattern": "mickrec done",
+   "seconds": 2100,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

@@ -1,0 +1,31 @@
+{
+ "id": "ftm-echo1",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 20,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850",
+    "trim -580"
+   ]
+  },
+  {
+   "do": "uv380.ysf",
+   "args": [
+    "echo"
+   ],
+   "timeout": 1000
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "trim 6100"
+   ]
+  }
+ ],
+ "sources_commit": "e4ea6af"
+}

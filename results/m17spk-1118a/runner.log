@@ -1,0 +1,17 @@
+2026-11-18T10:16:26Z job m17spk-1118a by m17rx, checkout /home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47 at 7a912c77cc47354ae2a434248c96e962c981c22b, module sources /home/baitisj/blowfang-work/worktrees/src-1455ca5e484e at 1455ca5e484eac4372af652db5ffafc18410c0ae
+2026-11-18T10:16:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 441850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/m17spk-1118a/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T10:16:37Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-18T10:16:37Z step 1 (uv380.cmd) rc=0
+2026-11-18T10:16:37Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/src-1455ca5e484e/firmware/uv380-openrtx/mod/c6m17rx.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/m17spk-1118a/uv380.log --run-timeout 200
+2026-11-18T10:16:39Z step 2 (uv380.rx) rc=1 (the background uv380.rx exited 1)
+2026-11-18T10:16:39Z job m17spk-1118a failed: step 2 (uv380.rx): the background uv380.rx exited 1

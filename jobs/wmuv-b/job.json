@@ -1,0 +1,59 @@
+{
+ "id": "wmuv-b",
+ "who": "watermark",
+ "freq_mhz": 441.85,
+ "minutes": 8,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "tap1c"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 12
+  },
+  {
+   "do": "pluto",
+   "continue_on_error": true,
+   "args": [
+    "steps",
+    "job:marked.wav",
+    "--hz",
+    "441850000",
+    "--gains",
+    "-76",
+    "--dev",
+    "2500",
+    "--pause",
+    "2",
+    "--out",
+    "run:steps.json"
+   ]
+  },
+  {
+   "do": "pluto",
+   "continue_on_error": true,
+   "args": [
+    "send",
+    "job:clean.wav",
+    "--hz",
+    "441850000",
+    "--gain",
+    "-50",
+    "--dev",
+    "2500"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+2026-11-25T13:24:00Z job ufmp28 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-5fe650a2a129 at 5fe650a2a129d3b210acdf4346603e8f315d17f8, module sources /home/baitisj/blowfang-work/worktrees/src-b830c5b22248 at b830c5b22248eaf60fba075283b5aeca512befbd
+2026-11-25T13:24:00Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-b830c5b22248/radios/uv21/mod/fmprobe.c -D FP_PART=8 -D FP_NRDS=2 -D FP_RDS1_S=40 -D FP_RDS_S=30 -D FP_R04=0x0400 -D FP_HIDDEN=0 --log /home/baitisj/blowfang-work/runs/queue/ufmp28/uv21mod.log --run-timeout 180
+P 119 319 2 5 30 50 115 6 8
+i 5804 2000 0000
+w0 DGHDCDDEEEEFFFFHFGGGGKGHJOKIIKIIIKIHHLHGGLGGGNGGFM
+w1 FFFFFEFLEEEEHJEELEEDEDDFMEDGNGELHCCGCCBCCBELDBCBBB
+w2 E
+f0 .........................S........................
+f1 ............................S..S...........S......
+f2 .
+s 92.900 q=63 r=62 tS
+s 96.900 q=61 r=59 ..
+s 103.500 q=60 r=60 tS
+s 102.700 q=59 r=58 ..
+s 97.700 q=58 r=57 ..
+s 95.300 q=57 r=59 ..
+s 96.100 q=57 r=58 ..
+s 99.300 q=57 r=56 .S
+v 308d om>308d no
+r 92.900 q63 g0 ok0 ab0 pl4051 sy0
+g
+r 96.900 q60 g0 ok0 ab0 pl3039 sy0
+g
+E n=4 ms=72357
+um end 00000004
+2026-11-25T13:25:34Z step 1 (uv21.mod) rc=0
+2026-11-25T13:25:34Z job ufmp28 done

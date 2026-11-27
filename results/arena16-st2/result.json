@@ -1,0 +1,102 @@
+{
+ "id": "arena16-st2",
+ "who": "arena16",
+ "started": "2026-11-26T06:56:23Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-26T06:56:23Z",
+   "ended": "2026-11-26T06:56:25Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-26T06:56:25Z",
+   "ended": "2026-11-26T06:56:28Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-26T06:56:28Z",
+   "ended": "2026-11-26T06:56:50Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-26T06:56:50Z",
+   "ended": "2026-11-26T06:56:50Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "k6.upload",
+   "started": "2026-11-26T06:56:50Z",
+   "ended": "2026-11-26T06:58:59Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-26T06:58:59Z",
+   "ended": "2026-11-26T06:58:59Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-26T06:58:59Z",
+   "ended": "2026-11-26T06:59:01Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-26T06:59:01Z",
+   "ended": "2026-11-26T06:59:24Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-26T06:59:24Z",
+   "ended": "2026-11-26T06:59:24Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-26T06:59:24Z",
+   "ended": "2026-11-26T07:00:24Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "logger.stop",
+   "started": "2026-11-26T07:00:24Z",
+   "ended": "2026-11-26T07:00:25Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "ic7100.power0",
+   "started": "2026-11-26T07:00:25Z",
+   "ended": "2026-11-26T07:00:26Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-67ca9dfc8115",
+ "head": "67ca9dfc811540cd073978d27ce22a098cc84ac7",
+ "ended": "2026-11-26T07:00:26Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "6e584706316806b3d97b45aebc8b61882a88e13c",
+  "path": "jobs/arena16-st2"
+ },
+ "runner_commit": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "updated": "2026-11-26T07:00:26Z"
+}

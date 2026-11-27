@@ -1,0 +1,59 @@
+{
+  "a_sha256": "1cb1dc4a9bb67124d5135a53a06185af83d61b2e433fa5d131c9d2e5e91c1064",
+  "b_sha256": "49ac175bf12e0e875b0bb5422238a4a1910b8f56fdbec1600a1f3b1e0882ac35",
+  "a_len": 65536,
+  "b_len": 65536,
+  "same": false,
+  "regions": {
+    "channels": {
+      "differ": 0
+    },
+    "vfo_config": {
+      "differ": 45,
+      "first": "0x8020",
+      "last": "0x8071"
+    },
+    "system_config": {
+      "differ": 85,
+      "first": "0x9020",
+      "last": "0x907F"
+    },
+    "ext_config_1": {
+      "differ": 0
+    },
+    "ext_config_2": {
+      "differ": 62,
+      "first": "0xB022",
+      "last": "0xB0FE"
+    },
+    "dtmf_modulation": {
+      "differ": 0
+    },
+    "aprs_misc": {
+      "differ": 0
+    },
+    "cal_e000": {
+      "differ": 1,
+      "first": "0xE009",
+      "last": "0xE009"
+    },
+    "cal_f000": {
+      "differ": 104,
+      "first": "0xF000",
+      "last": "0xF079"
+    },
+    "cal_f200": {
+      "differ": 34,
+      "first": "0xF200",
+      "last": "0xF243"
+    }
+  },
+  "pages_4k": {
+    "0x8000": 45,
+    "0x9000": 85,
+    "0xB000": 62,
+    "0xE000": 17,
+    "0xF000": 305
+  },
+  "differ": 514
+}

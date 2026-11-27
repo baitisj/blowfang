@@ -1,0 +1,77 @@
+[
+ {
+  "name": "P769081.cf32.json",
+  "bytes": 132,
+  "sha256": "59dcabbe939f4753769ba129610b368f1adb6545815d9a29a40b82ac39f05e1e",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P769081.cf32.json"
+ },
+ {
+  "name": "P769343.cf32.json",
+  "bytes": 133,
+  "sha256": "a44ef1a3cd7b3a8812518af105c37e5bc3bbda243c44f39fdb540d8ede32f87c",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P769343.cf32.json"
+ },
+ {
+  "name": "P769856.cf32.json",
+  "bytes": 133,
+  "sha256": "46abd93041a1158956ff6c3513bf2c3feaa498d26fbacac44139b1ec6fbf1df8",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P769856.cf32.json"
+ },
+ {
+  "name": "P770318.cf32.json",
+  "bytes": 133,
+  "sha256": "2ac52477e17d7cccdd5592f5ae0f16d023904dd5d19c66dbfa87c31457b6c980",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P770318.cf32.json"
+ },
+ {
+  "name": "P774456.cf32.json",
+  "bytes": 133,
+  "sha256": "23db8f61b2c5a10cf83861a98a2641d7649e34b748d28b162210a82351c6aad2",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P774456.cf32.json"
+ },
+ {
+  "name": "P769081.cf32",
+  "bytes": 7680000,
+  "sha256": "c1e7fa4182de9e694131116975b11a1c5b1d119b611583f69f69eea93b686079",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P769081.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "P769343.cf32",
+  "bytes": 7680000,
+  "sha256": "4f35077bf2b66e19d34a027234a748636298f64a2e7a64c0fef0cff7fbecbeff",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P769343.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "P769856.cf32",
+  "bytes": 7680000,
+  "sha256": "441c3d0e8798b17184c6c9cfe60f0a2e119534215ccad30c16c9c6966a751b69",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P769856.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "P770318.cf32",
+  "bytes": 7680000,
+  "sha256": "bc94e736ad863669cbdcfe49238e3fe01e8f027bb66cb237ab174f97b8decf53",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P770318.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "P774456.cf32",
+  "bytes": 7680000,
+  "sha256": "cac634ec51e295b024c9a7ffc2538b0a83fa4083f87fb3dadc6536add3ebca8c",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/bigant-1122d/P774456.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

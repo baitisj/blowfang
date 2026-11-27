@@ -1,0 +1,25 @@
+{
+ "id": "kws-cap-443525",
+ "who": "nato-kws",
+ "started": "2026-11-22T04:23:33Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-22T04:23:33Z",
+   "ended": "2026-11-22T04:43:34Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1",
+ "head": "866a22a0c2b125feb744ad588735523a719b2b56",
+ "ended": "2026-11-22T04:43:34Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "4eaea70e8ab3991229432ed8ed14980b42d414a2",
+  "path": "jobs/kws-cap-443525"
+ },
+ "runner_commit": "866a22a0c2b125feb744ad588735523a719b2b56",
+ "updated": "2026-11-22T04:43:35Z"
+}

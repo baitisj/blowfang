@@ -1,0 +1,11 @@
+{
+ "id": "wmser-1",
+ "who": "watermark",
+ "freq_mhz": 441.85,
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "serial.list"
+  }
+ ]
+}

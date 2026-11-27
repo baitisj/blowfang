@@ -1,0 +1,52 @@
+2026-11-19T02:38:13Z job ysfdemo2 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a at aa318c46915aa8d641fa1055d31f362abacda62f
+2026-11-19T02:38:23Z step 1 (wait) rc=0
+2026-11-19T02:38:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo2/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:38:24Z
+end 02:38:38Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:38:39Z step 2 (pluto) rc=0
+2026-11-19T02:38:59Z step 3 (wait) rc=0
+2026-11-19T02:38:59Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo2/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:39:00Z
+end 02:39:14Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:39:15Z step 4 (pluto) rc=0
+2026-11-19T02:39:35Z step 5 (wait) rc=0
+2026-11-19T02:39:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo2/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:39:36Z
+end 02:39:50Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:39:51Z step 6 (pluto) rc=0
+2026-11-19T02:40:11Z step 7 (wait) rc=0
+2026-11-19T02:40:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo2/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:40:12Z
+end 02:40:26Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:40:27Z step 8 (pluto) rc=0
+2026-11-19T02:40:47Z step 9 (wait) rc=0
+2026-11-19T02:40:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo2/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:40:48Z
+end 02:41:02Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:41:03Z step 10 (pluto) rc=0
+2026-11-19T02:41:23Z step 11 (wait) rc=0
+2026-11-19T02:41:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo2/ysf_3536_f.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.936 of full scale -> 5053 Hz before pre-emphasis
+send ysf_3536_f.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:41:24Z
+end 02:41:38Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:41:39Z step 12 (pluto) rc=0
+2026-11-19T02:41:59Z step 13 (wait) rc=0
+2026-11-19T02:41:59Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/ysfdemo2/ysf_251_m.wav --hz 441850000 --dev 5400 --gain -40
+send: wav peak 0.944 of full scale -> 5095 Hz before pre-emphasis
+send ysf_251_m.wav: 14.6 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 02:42:00Z
+end 02:42:14Z: 14.6 s of signal in 14.5 s (kept up)
+2026-11-19T02:42:15Z step 14 (pluto) rc=0
+2026-11-19T02:42:15Z step 15 (wait) rc=1 (cancelled)
+2026-11-19T02:42:15Z job ysfdemo2 cancelled: step 15 (wait): cancelled

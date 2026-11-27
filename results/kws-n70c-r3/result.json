@@ -1,0 +1,32 @@
+{
+ "id": "kws-n70c-r3",
+ "who": "nato-kws",
+ "started": "2026-11-24T01:32:34Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto.fw",
+   "started": "2026-11-24T01:32:34Z",
+   "ended": "2026-11-24T01:32:36Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-24T01:32:36Z",
+   "ended": "2026-11-24T01:56:41Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-d580eb067352",
+ "head": "d580eb067352191a69c75fa355890de89c9c136f",
+ "ended": "2026-11-24T01:56:41Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "c1963d6c53bd06750706191d6dc3e09e8f1b1607",
+  "path": "jobs/kws-n70c"
+ },
+ "runner_commit": "d580eb067352191a69c75fa355890de89c9c136f",
+ "updated": "2026-11-24T01:56:41Z"
+}

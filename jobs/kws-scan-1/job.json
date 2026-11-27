@@ -1,0 +1,260 @@
+{
+ "id": "kws-scan-1",
+ "who": "nato-kws",
+ "freq_mhz": "bench",
+ "minutes": 20,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_4422500.wav",
+    "--hz",
+    "442250000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_4423000.wav",
+    "--hz",
+    "442300000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_4428250.wav",
+    "--hz",
+    "442825000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_4436500.wav",
+    "--hz",
+    "443650000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_4437500.wav",
+    "--hz",
+    "443750000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_4427500.wav",
+    "--hz",
+    "442750000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_1471600.wav",
+    "--hz",
+    "147160000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_1452300.wav",
+    "--hz",
+    "145230000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan1_1466100.wav",
+    "--hz",
+    "146610000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_4422500.wav",
+    "--hz",
+    "442250000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_4423000.wav",
+    "--hz",
+    "442300000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_4428250.wav",
+    "--hz",
+    "442825000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_4436500.wav",
+    "--hz",
+    "443650000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_4437500.wav",
+    "--hz",
+    "443750000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_4427500.wav",
+    "--hz",
+    "442750000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_1471600.wav",
+    "--hz",
+    "147160000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_1452300.wav",
+    "--hz",
+    "145230000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:scan2_1466100.wav",
+    "--hz",
+    "146610000",
+    "--seconds",
+    "45",
+    "--gain",
+    "50",
+    "--wav-only"
+   ]
+  }
+ ]
+}

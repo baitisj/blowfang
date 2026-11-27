@@ -1,0 +1,72 @@
+listening (Ctrl-C to stop) ...
+   wake 440.8500 -68 -117
+   uv21 wake hz=1a46d650 dbm=ffbc floor=ff8b
+   alive surf s=09ed
+   alive surf s=09f7
+   alive surf s=0a01
+   alive surf s=0a0b
+   alive surf s=0a15
+   alive surf s=0a1f
+   alive surf s=0a29
+   wake 440.8500 -68 -117
+   uv21 wake hz=1a46d650 dbm=ffbc floor=ff8b
+   alive surf s=0a33
+   alive surf s=0a3d
+   alive surf s=0a48
+   alive surf s=0a52
+   alive surf s=0a5c
+   alive surf s=0a66
+   wake 440.8500 -79 -117
+   uv21 wake hz=1a46d650 dbm=ffb1 floor=ff8b
+   alive surf s=0a70
+   alive surf s=0a7a
+   alive surf s=0a84
+   alive surf s=0a8e
+   alive surf s=0a98
+   alive surf s=0aa2
+   alive surf s=0aac
+   alive surf s=0ab6
+   alive surf s=0ac0
+   alive surf s=0aca
+   alive surf s=0ad4
+   alive surf s=0ade
+   alive surf s=0ae8
+   alive surf s=0af2
+   alive surf s=0afd
+   alive surf s=0b07
+   alive surf s=0b11
+   alive surf s=0b1b
+   alive surf s=0b25
+   alive surf s=0b2f
+   alive surf s=0b39
+   alive surf s=0b43
+   alive surf s=0b4d
+   alive surf s=0b57
+   alive surf s=0b61
+   alive surf s=0b6b
+   alive surf s=0b75
+   alive surf s=0b7f
+   alive surf s=0b89
+   alive surf s=0b93
+   alive surf s=0b9d
+   alive surf s=0ba7
+   alive surf s=0bb1
+   alive surf s=0bbb
+   alive surf s=0bc5
+   alive surf s=0bcf
+   alive surf s=0bda
+   alive surf s=0be4
+   alive surf s=0bee
+   alive surf s=0bf8
+   alive surf s=0c02
+   alive surf s=0c0c
+   alive surf s=0c16
+   alive surf s=0c20
+   alive surf s=0c2a
+   alive surf s=0c34
+   alive surf s=0c3e
+   alive surf s=0c48
+   alive surf s=0c52
+   alive surf s=0c5c
+   alive surf s=0c66
+   alive surf s=0c70

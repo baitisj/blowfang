@@ -1,0 +1,145 @@
+{
+ "id": "k6-ysfrx17",
+ "who": "k6-ysfrx",
+ "started": "2026-11-19T07:53:44Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T07:53:44Z",
+   "ended": "2026-11-19T07:53:46Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T07:53:46Z",
+   "ended": "2026-11-19T07:53:49Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T07:53:49Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": -15,
+   "why": "cancelled"
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 11,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 12,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 13,
+   "do": "uv380.air",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 14,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 15,
+   "do": "wait",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 16,
+   "do": "logger.stop",
+   "started": "2026-11-19T07:54:44Z",
+   "ended": "2026-11-19T07:54:44Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-25fd9ce15712",
+ "head": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
+ "reason": "step 16 (logger.stop): refused: cancelled",
+ "ended": "2026-11-19T07:54:44Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "c41604a4c5406a96c3fb931a801519026dda3753",
+  "path": "jobs/k6-ysfrx17"
+ },
+ "runner_commit": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
+ "updated": "2026-11-19T07:54:45Z"
+}

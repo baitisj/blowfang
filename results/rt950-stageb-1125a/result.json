@@ -1,0 +1,33 @@
+{
+ "id": "rt950-stageb-1125a",
+ "who": "rt950",
+ "started": "2026-11-26T02:17:05Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "rt950.files",
+   "started": "2026-11-26T02:17:05Z",
+   "ended": "2026-11-26T02:17:05Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "rt950.info",
+   "started": "2026-11-26T02:17:05Z",
+   "ended": "2026-11-26T02:17:06Z",
+   "rc": 1
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e",
+ "head": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "reason": "step 2 (rt950.info): exit 1",
+ "ended": "2026-11-26T02:17:06Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "997a0e0e46c1873bafc862ba35a06887df139fb7",
+  "path": "jobs/rt950-stageb-1125a"
+ },
+ "runner_commit": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "updated": "2026-11-26T02:17:06Z"
+}

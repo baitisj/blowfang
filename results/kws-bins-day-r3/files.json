@@ -1,0 +1,31 @@
+[
+ {
+  "name": "b2m/overs.json",
+  "bytes": 117,
+  "sha256": "951edc0950237b54d8eedda1a33f89b9d8d369c38ca679b69716e27a38c01615",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-day-r3/b2m/overs.json"
+ },
+ {
+  "name": "b2m/chan.json",
+  "bytes": 1571,
+  "sha256": "45587f7c4e250cd3d9a8a0d6f111095aee96a091be92fea0d674e2c1dd4652db",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-day-r3/b2m/chan.json"
+ },
+ {
+  "name": "b2m/147.2800_20261122T1630554Z.flac",
+  "bytes": 20871,
+  "sha256": "8a10e657215feb3c478ae8af0f3266eeb9da849c7776943184b918a10ba9b029",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-day-r3/b2m/147.2800_20261122T1630554Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "b2m/levels.json",
+  "bytes": 360212,
+  "sha256": "0d6a31ce3b3163249a969a8d7611910659a0f502810b8d82ab92a63123daf3bb",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-day-r3/b2m/levels.json"
+ }
+]

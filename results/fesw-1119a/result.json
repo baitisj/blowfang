@@ -1,0 +1,53 @@
+{
+ "id": "fesw-1119a",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T17:21:30Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T17:21:30Z",
+   "ended": "2026-11-19T17:21:32Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T17:21:32Z",
+   "ended": "2026-11-19T17:21:35Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T17:21:35Z",
+   "ended": "2026-11-19T17:22:25Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T17:22:25Z",
+   "ended": "2026-11-19T17:26:45Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "logger.stop",
+   "started": "2026-11-19T17:26:45Z",
+   "ended": "2026-11-19T17:26:46Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9",
+ "head": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "ended": "2026-11-19T17:26:46Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f24deaacfffc6aae92e5aad9cae4fd4f3fab581a",
+  "path": "jobs/fesw-1119a"
+ },
+ "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "updated": "2026-11-19T17:26:47Z"
+}

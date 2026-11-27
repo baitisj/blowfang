@@ -1,0 +1,36 @@
+{
+ "id": "kws-lvl-1",
+ "who": "nato-kws",
+ "freq_mhz": 442.025,
+ "minutes": 5,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:lvl442_g40.wav",
+    "--hz",
+    "442025000",
+    "--seconds",
+    "60",
+    "--gain",
+    "40",
+    "--wav-only"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:lvl442_g60.wav",
+    "--hz",
+    "442025000",
+    "--seconds",
+    "60",
+    "--gain",
+    "60",
+    "--wav-only"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+2026-11-26T20:15:32Z job rt950-read-1126s by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-b366afad369c at b366afad369c924525ae3d968cc32cb4bcd80344
+2026-11-26T20:15:52Z step 1 (wait) rc=0
+2026-11-26T20:15:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b366afad369c/radios/rt950/tools/rt950_backup.py read /dev/ttyUSB3 /home/baitisj/blowfang-work/private/rt950/rt950-read-1126s --summary /home/baitisj/blowfang-work/runs/queue/rt950-read-1126s -v --addr 2 --passes 2 --block 32
+session: identity b'\x016\x01t\x04\x00\x05 \x02\x00\x02`\x01\x030\x04' model 'RT-950'
+    6%  4096/65536   12%  8192/65536   18%  12288/65536   25%  16384/65536   31%  20480/65536   37%  24576/65536   43%  28672/65536   50%  32768/65536   56%  36864/65536   62%  40960/65536   68%  45056/65536   75%  49152/65536   81%  53248/65536   87%  57344/65536   93%  61440/65536  100%  65536/65536
+cps64k pass 1: 6e64fc1bcbaf07390fe862e6805e39a89560c999f1449001a7658165d4f7fd05
+    6%  4096/65536   12%  8192/65536   18%  12288/65536   25%  16384/65536   31%  20480/65536   37%  24576/65536   43%  28672/65536   50%  32768/65536   56%  36864/65536   62%  40960/65536   68%  45056/65536   75%  49152/65536   81%  53248/65536   87%  57344/65536   93%  61440/65536  100%  65536/65536
+cps64k pass 2: 6e64fc1bcbaf07390fe862e6805e39a89560c999f1449001a7658165d4f7fd05
+cps64k          65536 B  agreed 6e64fc1bcbaf07390fe862e6805e39a89560c999f1449001a7658165d4f7fd05
+2026-11-26T20:16:19Z step 2 (rt950.read) rc=0
+2026-11-26T20:16:19Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b366afad369c/radios/rt950/tools/rt950_backup.py compare /home/baitisj/blowfang-work/private/rt950/rt950-read-1125c/cps64k.bin /home/baitisj/blowfang-work/private/rt950/rt950-read-1126s/cps64k.bin --json /home/baitisj/blowfang-work/runs/queue/rt950-read-1126s/compare.json --keys
+channels         same
+vfo_config       same
+system_config    same
+ext_config_1     same
+ext_config_2     same
+dtmf_modulation  same
+aprs_misc        same
+cal_e000         1 bytes differ, 0xE009..0xE009
+cal_f000         80 bytes differ, 0xF000..0xF079
+cal_f200         25 bytes differ, 0xF200..0xF243
+all 64 KB        289 bytes differ
+cal_e000         agrees with session keys (old, new; -1 none): no pair
+cal_f000         agrees with session keys (old, new; -1 none): (-1,1), (1,-1)
+cal_f200         agrees with session keys (old, new; -1 none): (-1,1), (1,-1)
+2026-11-26T20:16:20Z step 3 (rt950.compare) rc=0
+2026-11-26T20:16:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b366afad369c/radios/rt950/tools/rt950_backup.py compare /home/baitisj/blowfang-work/rt950/runs/rt950-backup-20261117/stageA/cps64k.bin /home/baitisj/blowfang-work/private/rt950/rt950-read-1126s/cps64k.bin --json /home/baitisj/blowfang-work/runs/queue/rt950-read-1126s/compare.json --keys
+channels         same
+vfo_config       same
+system_config    same
+ext_config_1     same
+ext_config_2     same
+dtmf_modulation  same
+aprs_misc        same
+cal_e000         1 bytes differ, 0xE009..0xE009
+cal_f000         74 bytes differ, 0xF001..0xF079
+cal_f200         25 bytes differ, 0xF201..0xF243
+all 64 KB        253 bytes differ
+cal_e000         agrees with session keys (old, new; -1 none): no pair
+cal_f000         agrees with session keys (old, new; -1 none): (-1,7), (7,-1)
+cal_f200         agrees with session keys (old, new; -1 none): (-1,7), (7,-1)
+2026-11-26T20:16:20Z step 4 (rt950.compare) rc=0
+2026-11-26T20:16:20Z job rt950-read-1126s done

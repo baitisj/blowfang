@@ -1,0 +1,17 @@
+{
+ "utc_start": "2026-11-22T08:50:40Z",
+ "lo_hz": 470000000,
+ "gain": 40.0,
+ "streams": [
+  7
+ ],
+ "seconds": 30.0,
+ "keep_s": 4.0,
+ "configs": [],
+ "counts": {},
+ "flags": {},
+ "gaps": 0,
+ "bytes": 0,
+ "producer_log": "pluto-fpga-source waiting on TCP:9010; radio unopened\nsample rate readback 25599999 != 25600000\n{\"status\":\"error\",\"wire_bytes\":0,\"frames\":0,\"adc_losses\":2,\"sel_drops\":0}",
+ "first": {}
+}

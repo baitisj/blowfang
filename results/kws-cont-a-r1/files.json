@@ -1,0 +1,47 @@
+[
+ {
+  "name": "b2m/overs.json",
+  "bytes": 232,
+  "sha256": "58ccaf94ee282a05fd1133aa05f07e654126af77cc822c7c2b575919a50f1c59",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r1/b2m/overs.json"
+ },
+ {
+  "name": "b2m/chan.json",
+  "bytes": 1597,
+  "sha256": "1a34bffc552ea2d05ac33803fca5d177dff2392af76a1f8dd7b41fbe8d868131",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r1/b2m/chan.json"
+ },
+ {
+  "name": "b2m/band.json",
+  "bytes": 44341,
+  "sha256": "dccc44a8a6d59bb6f177ec6f7be4a6e09fe4bf775a76650c5e91ba046e274d91",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r1/b2m/band.json"
+ },
+ {
+  "name": "b2m/146.6100_20261122T1825551Z.flac",
+  "bytes": 56994,
+  "sha256": "c3a2d019f109cccbd083a27225f124ca1d4e838aca52a75c4c7980a4dcde1e13",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r1/b2m/146.6100_20261122T1825551Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "b2m/146.6100_20261122T1815509Z.flac",
+  "bytes": 98505,
+  "sha256": "57218560335ab8b8a25aba71b8eda901cf8b440b09746a02ee23a934a9a69200",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r1/b2m/146.6100_20261122T1815509Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "b2m/levels.json",
+  "bytes": 864213,
+  "sha256": "c3f67c803ab07fc5a41bcdf66fca87859c4df0b55b4e6f1e01d28bc8b19471d5",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cont-a-r1/b2m/levels.json",
+  "kept": "over 512 KB; dropped from the branch 2026-11-27"
+ }
+]

@@ -1,0 +1,84 @@
+{
+ "id": "efw-5",
+ "who": "earshot",
+ "freq_mhz": "bench",
+ "minutes": 40,
+ "steps": [
+  {
+   "do": "pluto.fw",
+   "args": [
+    "info"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "fpga",
+    "job:system_top.bit.bin",
+    "job:chanctl",
+    "job:ensure_pluto_fpga.sh",
+    "job:pluto_runtime_load.sh"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "riq",
+    "job:pluto-fpga-source",
+    "run:rf14-before",
+    "--hz",
+    "470000000",
+    "--streams",
+    "7",
+    "--seconds",
+    "30",
+    "--gain",
+    "40",
+    "--keep",
+    "4"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "riq",
+    "job:pluto-fpga-source",
+    "run:noaa",
+    "--hz",
+    "160000000",
+    "--streams",
+    "49,50,51,52",
+    "--seconds",
+    "600",
+    "--gain",
+    "40",
+    "--keep",
+    "4"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "riq",
+    "job:pluto-fpga-source",
+    "run:rf14-after",
+    "--hz",
+    "470000000",
+    "--streams",
+    "7",
+    "--seconds",
+    "30",
+    "--gain",
+    "40",
+    "--keep",
+    "4"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "info"
+   ]
+  }
+ ]
+}

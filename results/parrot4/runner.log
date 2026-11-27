@@ -1,0 +1,27 @@
+2026-11-19T05:04:35Z job parrot4 by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-e0726b20b6a2 at e0726b20b6a2a7d9de6de21d2a825ea9978f9fd5
+2026-11-19T05:04:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e0726b20b6a2/tools/pluto_bench.py --as uv380-multimode parrot --hz 441850000 --gain -40 --minutes 20 --rx-gain 20
+parrot on 441850000 Hz until 05:24:35Z: YSF or M17 sotto heard goes back 2 s later, gain -40 dB
+listening 05:04:35Z
+05:05:04Z heard: ADC peak 14 of 2047 (rx gain 20 dB)
+05:05:04Z heard: burst 10.3 s, carrier +195 Hz
+05:05:04Z heard: YSF sotto 205/205 superframes CRC good, from AG7EW
+parrot ysf 205 superframes: 12.2 s on 441850000 Hz (LO 441850000), gain -40.0 dB, rate 2400000, RF on
+start 05:05:17Z
+end 05:05:29Z: 12.2 s of signal in 12.1 s (kept up)
+listening 05:05:30Z
+05:05:55Z heard: ADC peak 9 of 2047 (rx gain 20 dB)
+05:05:55Z heard: burst 9.5 s, carrier +429 Hz
+05:05:55Z heard: no sotto: YSF syncs 0, FICH good 0, kinds {}; M17 frames 0; deviation p50 1611 Hz, p99 6802 Hz
+05:06:35Z heard: ADC peak 14 of 2047 (rx gain 20 dB)
+05:06:35Z heard: burst 2.6 s, carrier +296 Hz
+05:06:35Z heard: no sotto: YSF syncs 0, FICH good 0, kinds {}; M17 frames 0; deviation p50 1951 Hz, p99 7694 Hz
+05:07:06Z heard: ADC peak 15 of 2047 (rx gain 20 dB)
+05:07:06Z heard: burst 8.2 s, carrier +193 Hz
+05:07:06Z heard: YSF sotto 105/105 superframes CRC good, from AG7EW
+parrot ysf 105 superframes: 10.2 s on 441850000 Hz (LO 441850000), gain -40.0 dB, rate 2400000, RF on
+start 05:07:19Z
+end 05:07:29Z: 10.2 s of signal in 10.1 s (kept up)
+listening 05:07:29Z
+2026-11-19T05:07:37Z stopping (cancelled): SIGTERM to the step's process group
+2026-11-19T05:07:37Z step 1 (pluto) rc=-15 (cancelled)
+2026-11-19T05:07:37Z job parrot4 cancelled: step 1 (pluto): cancelled

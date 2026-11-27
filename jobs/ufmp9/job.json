@@ -1,0 +1,33 @@
+{
+ "id": "ufmp9",
+ "who": "fmprobe-uv21",
+ "freq_mhz": "440.85",
+ "minutes": 5,
+ "sources_commit": "953e56920edde599d9b3cf0ecfdc0a0fad4ab61d",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "fmstock",
+    "FT_PA3=1",
+    "FT_PA3_KEEP=1",
+    "FT_PA3_MS=2000",
+    "FT_WAIT_MS=600"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 10
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "fmstock",
+    "FT_PA3=1",
+    "FT_PA3_KEEP=1",
+    "FT_PA3_MS=100",
+    "FT_WAIT_MS=600"
+   ]
+  }
+ ]
+}

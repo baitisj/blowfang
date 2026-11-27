@@ -1,0 +1,24 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/micp5g/k6-rate.json"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 385092,
+  "sha256": "b135c4d5f04e86a5623a4ecae09c8550d8d09fd58a490b8e778fd4bf0bc54ed0",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/micp5g/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 593564,
+  "sha256": "326909107b3bdb9dba0fc2867f34feb4cb5a58234cb42f1e75337e785d24f5fd",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/micp5g/k6.log",
+  "kept": "over 512 KB; dropped from the branch 2026-11-27"
+ }
+]

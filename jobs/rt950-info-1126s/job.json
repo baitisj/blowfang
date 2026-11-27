@@ -1,0 +1,20 @@
+{
+ "id": "rt950-info-1126s",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 5,
+ "steps": [
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "rt950.info",
+   "cable": "1a86:7523",
+   "args": [
+    "--addr",
+    "2"
+   ]
+  }
+ ]
+}

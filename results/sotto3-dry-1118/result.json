@@ -1,0 +1,48 @@
+{
+ "id": "sotto3-dry-1118",
+ "who": "multimode",
+ "started": "2026-11-18T20:19:11Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T20:19:11Z",
+   "ended": "2026-11-18T20:19:21Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.sotto",
+   "started": "2026-11-18T20:19:21Z",
+   "ended": "2026-11-18T20:19:31Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.sotto",
+   "started": "2026-11-18T20:19:31Z",
+   "ended": "2026-11-18T20:19:41Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.sotto",
+   "started": "2026-11-18T20:19:41Z",
+   "ended": "2026-11-18T20:19:51Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4",
+ "head": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-2bc44cf21d8a",
+ "sources_head": "2bc44cf21d8a2bd2da89af6c0fffdbba19582ff5",
+ "ended": "2026-11-18T20:19:51Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "2548ca929a98fde4977c62ee20b6e095398fc9e7",
+  "path": "jobs/sotto3-dry-1118"
+ },
+ "runner_commit": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "updated": "2026-11-18T20:19:51Z"
+}

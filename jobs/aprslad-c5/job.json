@@ -1,0 +1,351 @@
+{
+ "id": "aprslad-c5",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 26,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 1260,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_k.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate-k.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "931754792e3d951049f1f1b2786974554e2ea1ef339db92d3372d178533ca860"
+  },
+  {
+   "do": "wait",
+   "seconds": 60
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_k_p0_0.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "-600",
+    "--out",
+    "run:s_k_m600_1.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_k_p0_2.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "300",
+    "--out",
+    "run:s_k_p300_3.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_k_p0_4.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "-300",
+    "--out",
+    "run:s_k_m300_5.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_k_p0_6.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "wait",
+   "seconds": 130
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:aprslad_w.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate-w.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "b20c4c3d56a77500a6cfefa82a1e22fdc7e08dcacb49f403abee85e8defd55c3"
+  },
+  {
+   "do": "wait",
+   "seconds": 60
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_w_p0_0.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "-600",
+    "--out",
+    "run:s_w_m600_1.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_w_p0_2.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "300",
+    "--out",
+    "run:s_w_p300_3.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_w_p0_4.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "-300",
+    "--out",
+    "run:s_w_m300_5.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:aprs12.wav",
+    "--gains",
+    "-62",
+    "--peak",
+    "3000",
+    "--pause",
+    "1",
+    "--offset-hz",
+    "0",
+    "--out",
+    "run:s_w_p0_6.json"
+   ],
+   "continue_on_error": true,
+   "timeout": 90
+  },
+  {
+   "do": "wait",
+   "seconds": 130
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

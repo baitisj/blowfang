@@ -1,0 +1,64 @@
+{
+ "id": "c4fm-sotto1",
+ "who": "c4fm",
+ "started": "2026-11-18T08:06:45Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T08:06:45Z",
+   "ended": "2026-11-18T08:06:47Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T08:06:47Z",
+   "ended": "2026-11-18T08:06:57Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-18T08:06:57Z",
+   "ended": "2026-11-18T08:07:10Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T08:07:10Z",
+   "ended": "2026-11-18T08:07:22Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-sotto1/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-18T08:07:22Z",
+   "ended": "2026-11-18T08:08:46Z",
+   "rc": 1,
+   "why": "cancelled"
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-18T08:08:46Z",
+   "ended": "2026-11-18T08:08:46Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26",
+ "head": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "reason": "step 6 (pluto): refused: cancelled",
+ "ended": "2026-11-18T08:08:46Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "fdce899e6e9f3c5d50c29d43c796e3f64bae112f",
+  "path": "jobs/c4fm-sotto1"
+ },
+ "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "updated": "2026-11-18T08:08:47Z"
+}

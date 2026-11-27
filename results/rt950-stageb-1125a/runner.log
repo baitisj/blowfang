@@ -1,0 +1,16 @@
+2026-11-26T02:17:05Z job rt950-stageb-1125a by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e at 47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc
+2026-11-26T02:17:05Z ci-image/rt950-backup-only.BTF 43008 B sha256 dbfc1a828be1c3eb3b94c8e01f008f391f6a2d064c945b565344daa8eadea054
+2026-11-26T02:17:05Z step 1 (rt950.files) rc=0
+2026-11-26T02:17:05Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/radios/rt950/tools/rt950_backup.py info /dev/ttyUSB3 --addr 3
+Traceback (most recent call last):
+  File "/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/radios/rt950/tools/rt950_backup.py", line 414, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/radios/rt950/tools/rt950_backup.py", line 381, in main
+    identity, model = radio.handshake()
+                      ~~~~~~~~~~~~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/radios/rt950/tools/rt950_backup.py", line 155, in handshake
+    raise RuntimeError("no ACK to the handshake: is the radio on, and on the cable?")
+RuntimeError: no ACK to the handshake: is the radio on, and on the cable?
+2026-11-26T02:17:06Z step 2 (rt950.info) rc=1
+2026-11-26T02:17:06Z job rt950-stageb-1125a failed: step 2 (rt950.info): exit 1

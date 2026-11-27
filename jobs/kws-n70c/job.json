@@ -1,0 +1,43 @@
+{
+ "id": "kws-n70c",
+ "who": "nato-kws",
+ "freq_mhz": "bench",
+ "minutes": 40,
+ "steps": [
+  {
+   "do": "pluto.fw",
+   "args": [
+    "fpga",
+    "job:system_top.bit.bin",
+    "job:chanctl",
+    "job:ensure_pluto_fpga.sh",
+    "job:pluto_runtime_load.sh"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "chan",
+    "job:pluto_chan.armhf",
+    "run:c70",
+    "--bins",
+    "job:pluto-fpga-source",
+    "--hz",
+    "443000000",
+    "--seconds",
+    "1440",
+    "--gain",
+    "60",
+    "--channels",
+    "440100000,441375000,442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000,444700000",
+    "--band",
+    "440000000,446000000"
+   ]
+  }
+ ],
+ "repeat": {
+  "every_min": 10,
+  "until": "2026-11-24T03:00:00Z"
+ },
+ "not_before": "2026-11-23T23:50:00Z"
+}

@@ -1,0 +1,15 @@
+2026-11-25T19:39:25Z job rt950-cmp-1125a by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-d489ab25b922 at d489ab25b9221729c5b92489b8404dc6fef6cfdc
+2026-11-25T19:39:25Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-d489ab25b922/radios/rt950/tools/rt950_backup.py compare /home/baitisj/blowfang-work/rt950/runs/rt950-backup-20261117/stageA/cps64k.bin /home/baitisj/blowfang-work/private/rt950/rt950-read-1125b/cps64k.bin --json /home/baitisj/blowfang-work/runs/queue/rt950-cmp-1125a/compare.json
+channels         same
+vfo_config       45 bytes differ, 0x8020..0x8071
+system_config    85 bytes differ, 0x9020..0x907F
+ext_config_1     same
+ext_config_2     62 bytes differ, 0xB022..0xB0FE
+dtmf_modulation  same
+aprs_misc        same
+cal_e000         1 bytes differ, 0xE009..0xE009
+cal_f000         104 bytes differ, 0xF000..0xF079
+cal_f200         34 bytes differ, 0xF200..0xF243
+all 64 KB        514 bytes differ
+2026-11-25T19:39:26Z step 1 (rt950.compare) rc=0
+2026-11-25T19:39:26Z job rt950-cmp-1125a done

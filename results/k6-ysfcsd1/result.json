@@ -1,0 +1,102 @@
+{
+ "id": "k6-ysfcsd1",
+ "who": "k6-ysfrx",
+ "started": "2026-11-19T17:17:50Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T17:17:50Z",
+   "ended": "2026-11-19T17:17:52Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T17:17:52Z",
+   "ended": "2026-11-19T17:17:55Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T17:17:55Z",
+   "ended": "2026-11-19T17:20:04Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T17:20:04Z",
+   "ended": "2026-11-19T17:20:04Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T17:20:04Z",
+   "ended": "2026-11-19T17:20:06Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T17:20:06Z",
+   "ended": "2026-11-19T17:20:30Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T17:20:30Z",
+   "ended": "2026-11-19T17:20:34Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-19T17:20:34Z",
+   "ended": "2026-11-19T17:20:57Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T17:20:57Z",
+   "ended": "2026-11-19T17:21:01Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T17:21:01Z",
+   "ended": "2026-11-19T17:21:25Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-19T17:21:25Z",
+   "ended": "2026-11-19T17:21:25Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "logger.stop",
+   "started": "2026-11-19T17:21:25Z",
+   "ended": "2026-11-19T17:21:26Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9",
+ "head": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "ended": "2026-11-19T17:21:26Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "5a875e6593ff2b85d2a7cd7c9111105d75ec67bd",
+  "path": "jobs/k6-ysfcsd1"
+ },
+ "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "updated": "2026-11-19T17:21:26Z"
+}

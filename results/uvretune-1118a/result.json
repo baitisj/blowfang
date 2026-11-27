@@ -1,0 +1,25 @@
+{
+ "id": "uvretune-1118a",
+ "who": "position",
+ "started": "2026-11-18T21:01:13Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T21:01:13Z",
+   "ended": "2026-11-18T21:01:21Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be",
+ "head": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "ended": "2026-11-18T21:01:21Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f88c3fcc3a07daed235672b09d7e73491f4f9bee",
+  "path": "jobs/uvretune-1118a"
+ },
+ "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "updated": "2026-11-18T21:01:21Z"
+}

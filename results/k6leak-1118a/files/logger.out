@@ -1,0 +1,894 @@
+listening (Ctrl-C to stop) ...
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-60 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8460 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8460 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=84 chunk=0 have=1/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=1 have=2/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=2 have=3/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=3 have=4/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=4 have=5/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=5 have=6/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=6 have=7/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=7 have=8/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=8 have=9/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=9 have=10/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=10 have=11/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=11 have=12/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=12 have=13/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=13 have=14/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=14 have=15/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=15 have=16/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=84 chunk=16 have=17/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=84 chunk=17 have=18/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=18 have=19/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=19 have=20/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=20 have=21/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=21 have=22/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=22 have=23/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=23 have=24/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=24 have=25/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=25 have=26/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=26 have=27/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=84 chunk=27 have=28/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=28 have=29/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=84 chunk=29 have=30/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=30 have=31/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=31 have=32/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=32 have=33/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=33 have=34/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=34 have=35/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=84 chunk=35 have=36/37 rssi=-67 noise=17
+K6 MOD r=3 xfer=84 chunk=36 have=37/37 rssi=-67 noise=16
+K6 MOD run serial=1795034196 code=4456 B at 0x200020a4 stack=2028 B scratch=7296 B
+K6 MOD say rxmap: waiting for the carrier to drop, -68 dBm
+K6 MOD say b 425.000 -117 -116 @425.012 z002c
+K6 MOD say b 425.050 -117 -117 @425.050 z0027
+K6 MOD say b 425.100 -116 -117 @425.112 z0024
+K6 MOD say b 425.150 -117 -118 @425.162 z002b
+K6 MOD say b 425.200 -117 -118 @425.200 z0028
+K6 MOD say b 425.250 -116 -116 @425.250 z002b
+K6 MOD say b 425.300 -116 -117 @425.300 z0028
+K6 MOD say b 425.350 -118 -116 @425.387 z0021
+K6 MOD say b 425.400 -116 -117 @425.400 z002c
+K6 MOD say b 425.450 -117 -117 @425.462 z002d
+K6 MOD say b 425.500 -117 -117 @425.537 z002a
+K6 MOD say b 425.550 -117 -118 @425.550 z0024
+K6 MOD say b 425.600 -117 -116 @425.625 z0028
+K6 MOD say b 425.650 -117 -117 @425.650 z0023
+K6 MOD say b 425.700 -117 -116 @425.700 z0035
+K6 MOD say b 425.750 -117 -117 @425.750 z0031
+K6 MOD say b 425.800 -117 -116 @425.825 z0026
+K6 MOD say b 425.850 -117 -117 @425.850 z002c
+K6 MOD say b 425.900 -116 -116 @425.900 z002a
+K6 MOD say b 425.950 -117 -117 @425.962 z0035
+K6 MOD say b 426.000 -117 -116 @426.000 z0034
+K6 MOD say b 426.050 -116 -116 @426.050 z0034
+K6 MOD say b 426.100 -116 -116 @426.112 z001d
+K6 MOD say b 426.150 -117 -116 @426.175 z0028
+K6 MOD say b 426.200 -116 -118 @426.200 z002f
+K6 MOD say b 426.250 -117 -117 @426.250 z002a
+K6 MOD say b 426.300 -116 -118 @426.325 z002c
+K6 MOD say b 426.350 -116 -117 @426.350 z0029
+K6 MOD say b 426.400 -117 -117 @426.437 z0031
+K6 MOD say b 426.450 -116 -117 @426.450 z002f
+K6 MOD say b 426.500 -116 -116 @426.500 z002f
+K6 MOD say b 426.550 -117 -117 @426.587 z0025
+K6 MOD say b 426.600 -116 -116 @426.612 z0030
+K6 MOD say b 426.650 -117 -117 @426.662 z0028
+K6 MOD say b 426.700 -118 -117 @426.725 z002b
+K6 MOD say b 426.750 -117 -118 @426.762 z002f
+K6 MOD say b 426.800 -117 -118 @426.812 z002d
+K6 MOD say b 426.850 -116 -117 @426.850 z002b
+K6 MOD say b 426.900 -117 -117 @426.900 z0037
+K6 MOD say b 426.950 -116 -117 @426.950 z0028
+K6 MOD say b 427.000 -115 -115 @427.025 z0029
+K6 MOD say b 427.050 -115 -116 @427.050 z002e
+K6 MOD say b 427.100 -115 -115 @427.137 z002a
+K6 MOD say b 427.150 -115 -115 @427.150 z002c
+K6 MOD say b 427.200 -115 -115 @427.225 z0025
+K6 MOD say b 427.250 -115 -114 @427.287 z002d
+K6 MOD say b 427.300 -115 -114 @427.300 z0025
+K6 MOD say b 427.350 -115 -115 @427.362 z002b
+K6 MOD say b 427.400 -115 -114 @427.425 z0026
+K6 MOD say b 427.450 -115 -116 @427.450 z0024
+K6 MOD say b 427.500 -115 -116 @427.512 z0029
+K6 MOD say b 427.550 -118 -116 @427.550 z0028
+K6 MOD say b 427.600 -116 -116 @427.600 z0028
+K6 MOD say b 427.650 -116 -117 @427.662 z0031
+K6 MOD say b 427.700 -117 -117 @427.700 z0027
+K6 MOD say b 427.750 -117 -116 @427.750 z0029
+K6 MOD say b 427.800 -116 -116 @427.812 z0029
+K6 MOD say b 427.850 -117 -117 @427.875 z0029
+K6 MOD say b 427.900 -116 -117 @427.900 z002a
+K6 MOD say b 427.950 -117 -118 @427.987 z0030
+K6 MOD say b 428.000 -116 -117 @428.000 z002b
+K6 MOD say b 428.050 -114 -115 @428.062 z0026
+K6 MOD say b 428.100 -115 -116 @428.112 z002b
+K6 MOD say b 428.150 -116 -115 @428.150 z0023
+K6 MOD say b 428.200 -115 -116 @428.200 z0030
+K6 MOD say b 428.250 -115 -114 @428.275 z0023
+K6 MOD say b 428.300 -115 -115 @428.300 z0022
+K6 MOD say b 428.350 -114 -115 @428.350 z0034
+K6 MOD say b 428.400 -115 -115 @428.425 z002b
+K6 MOD say b 428.450 -115 -115 @428.487 z0024
+K6 MOD say b 428.500 -115 -114 @428.525 z0021
+K6 MOD say b 428.550 -115 -115 @428.575 z002b
+K6 MOD say b 428.600 -116 -117 @428.600 z002d
+K6 MOD say b 428.650 -116 -116 @428.650 z001e
+K6 MOD say b 428.700 -116 -116 @428.700 z002d
+K6 MOD say b 428.750 -116 -117 @428.762 z0034
+K6 MOD say b 428.800 -116 -116 @428.812 z0029
+K6 MOD say b 428.850 -117 -116 @428.862 z002f
+K6 MOD say b 428.900 -117 -116 @428.900 z0026
+K6 MOD say b 428.950 -116 -116 @428.950 z002b
+K6 MOD say b 429.000 -117 -114 @429.000 z0011
+K6 MOD say b 429.050 -116 -115 @429.050 z0033
+K6 MOD say b 429.100 -115 -114 @429.112 z002c
+K6 MOD say b 429.150 -115 -115 @429.150 z0031
+K6 MOD say b 429.200 -115 -114 @429.212 z002c
+K6 MOD say b 429.250 -114 -115 @429.262 z0024
+K6 MOD say b 429.300 -115 -115 @429.300 z002d
+K6 MOD say b 429.350 -115 -114 @429.375 z0025
+K6 MOD say b 429.400 -115 -114 @429.412 z0034
+K6 MOD say b 429.450 -115 -115 @429.462 z0026
+K6 MOD say b 429.500 -115 -115 @429.525 z002a
+K6 MOD say b 429.550 -114 -114 @429.562 z0022
+K6 MOD say b 429.600 -115 -114 @429.600 z001c
+K6 MOD say b 429.650 -116 -116 @429.662 z0030
+K6 MOD say b 429.700 -115 -116 @429.712 z003a
+K6 MOD say b 429.750 -117 -115 @429.787 z0024
+K6 MOD say b 429.800 -116 -116 @429.812 z0022
+K6 MOD say b 429.850 -116 -116 @429.850 z002f
+K6 MOD say b 429.900 -116 -117 @429.925 z0028
+K6 MOD say b 429.950 -116 -117 @429.962 z002c
+K6 MOD say b 430.000 -116 -116 @430.000 z002b
+K6 MOD say b 430.050 -116 -114 @430.050 z0028
+K6 MOD say b 430.100 -115 -115 @430.112 z002c
+K6 MOD say b 430.150 -114 -114 @430.175 z0025
+K6 MOD say b 430.200 -114 -114 @430.212 z002d
+K6 MOD say b 430.250 -114 -114 @430.275 z002f
+K6 MOD say b 430.300 -115 -115 @430.312 z002e
+K6 MOD say b 430.350 -114 -114 @430.362 z002c
+K6 MOD say b 430.400 -115 -114 @430.400 z0029
+K6 MOD say b 430.450 -113 -114 @430.487 z0025
+K6 MOD say b 430.500 -114 -114 @430.537 z0038
+K6 MOD say b 430.550 -115 -115 @430.562 z001e
+K6 MOD say b 430.600 -115 -114 @430.625 z0023
+K6 MOD say b 430.650 -116 -114 @430.650 z0030
+K6 MOD say b 430.700 -116 -115 @430.725 z0023
+K6 MOD say b 430.750 -116 -116 @430.750 z0027
+K6 MOD say b 430.800 -115 -116 @430.800 z002b
+K6 MOD say b 430.850 -117 -115 @430.850 z0029
+K6 MOD say b 430.900 -116 -116 @430.900 z0023
+K6 MOD say b 430.950 -117 -116 @430.975 z0035
+K6 MOD say b 431.000 -116 -115 @431.000 z0021
+K6 MOD say b 431.050 -115 -115 @431.050 z002a
+K6 MOD say b 431.100 -115 -115 @431.100 z002d
+K6 MOD say b 431.150 -114 -114 @431.162 z0023
+K6 MOD say b 431.200 -114 -114 @431.225 z0029
+K6 MOD say b 431.250 -115 -114 @431.250 z0022
+K6 MOD say b 431.300 -114 -112 @431.337 z0035
+K6 MOD say b 431.350 -113 -114 @431.350 z0027
+K6 MOD say b 431.400 -113 -113 @431.400 z002b
+K6 MOD say b 431.450 -113 -112 @431.462 z002e
+K6 MOD say b 431.500 -114 -113 @431.500 z0028
+K6 MOD say b 431.550 -113 -113 @431.550 z002e
+K6 MOD say b 431.600 -114 -112 @431.625 z002b
+K6 MOD say b 431.650 -113 -114 @431.662 z0021
+K6 MOD say b 431.700 -115 -114 @431.712 z003c
+K6 MOD say b 431.750 -115 -114 @431.750 z0027
+K6 MOD say b 431.800 -114 -114 @431.837 z0033
+K6 MOD say b 431.850 -114 -114 @431.862 z001e
+K6 MOD say b 431.900 -114 -112 @431.912 z002a
+K6 MOD say b 431.950 -115 -115 @431.962 z002b
+K6 MOD say b 432.000 -115 -103 @432.000 z0003
+K6 MOD say b 432.050 -114 -114 @432.087 z0024
+K6 MOD say b 432.100 -115 -115 @432.100 z0030
+K6 MOD say b 432.150 -115 -113 @432.150 z0023
+K6 MOD say b 432.200 -114 -114 @432.212 z0024
+K6 MOD say b 432.250 -115 -113 @432.275 z0024
+K6 MOD say b 432.300 -114 -114 @432.325 z002d
+K6 MOD say b 432.350 -114 -114 @432.350 z0023
+K6 MOD say b 432.400 -114 -113 @432.400 z0021
+K6 MOD say b 432.450 -114 -115 @432.450 z0027
+K6 MOD say b 432.500 -113 -114 @432.537 z0020
+K6 MOD say b 432.550 -114 -114 @432.550 z0021
+K6 MOD say b 432.600 -114 -114 @432.600 z0027
+K6 MOD say b 432.650 -115 -113 @432.650 z0024
+K6 MOD say b 432.700 -115 -114 @432.725 z0028
+K6 MOD say b 432.750 -114 -114 @432.775 z0023
+K6 MOD say b 432.800 -114 -113 @432.812 z0023
+K6 MOD say b 432.850 -113 -114 @432.887 z002d
+K6 MOD say b 432.900 -114 -113 @432.925 z0028
+K6 MOD say b 432.950 -113 -115 @432.950 z002a
+K6 MOD say b 433.000 -111 -110 @433.037 z002f
+K6 MOD say b 433.050 -113 -108 @433.050 z0029
+K6 MOD say b 433.100 -114 -115 @433.112 z0038
+K6 MOD say b 433.150 -111 -109 @433.150 z0031
+K6 MOD say b 433.200 -108 -109 @433.225 z0025
+K6 MOD say b 433.250 -114 -115 @433.262 z002e
+K6 MOD say b 433.300 -114 -114 @433.312 z002d
+K6 MOD say b 433.350 -116 -115 @433.362 z002d
+K6 MOD say b 433.400 -114 -114 @433.400 z002a
+K6 MOD say b 433.450 -115 -114 @433.450 z002c
+K6 MOD say b 433.500 -115 -114 @433.500 z0026
+K6 MOD say b 433.550 -115 -114 @433.575 z0028
+K6 MOD say b 433.600 -115 -114 @433.612 z0026
+K6 MOD say b 433.650 -116 -114 @433.650 z0024
+K6 MOD say b 433.700 -114 -115 @433.712 z0025
+K6 MOD say b 433.750 -114 -116 @433.762 z0031
+K6 MOD say b 433.800 -115 -115 @433.837 z002c
+K6 MOD say b 433.850 -114 -116 @433.862 z0038
+K6 MOD say b 433.900 -115 -113 @433.937 z0028
+K6 MOD say b 433.950 -114 -114 @433.987 z002d
+K6 MOD say b 434.000 -115 -114 @434.025 z002d
+K6 MOD say b 434.050 -115 -115 @434.075 z0032
+K6 MOD say b 434.100 -115 -115 @434.100 z002c
+K6 MOD say b 434.150 -114 -115 @434.150 z0026
+K6 MOD say b 434.200 -115 -114 @434.200 z0026
+K6 MOD say b 434.250 -114 -115 @434.250 z002a
+K6 MOD say b 434.300 -115 -114 @434.325 z0025
+K6 MOD say b 434.350 -115 -114 @434.362 z002d
+K6 MOD say b 434.400 -115 -115 @434.400 z0030
+K6 MOD say b 434.450 -114 -114 @434.450 z0028
+K6 MOD say b 434.500 -115 -115 @434.537 z0031
+K6 MOD say b 434.550 -113 -114 @434.550 z0028
+K6 MOD say b 434.600 -114 -115 @434.625 z0023
+K6 MOD say b 434.650 -114 -115 @434.662 z002f
+K6 MOD say b 434.700 -114 -114 @434.700 z0022
+K6 MOD say b 434.750 -114 -115 @434.762 z002a
+K6 MOD say b 434.800 -115 -115 @434.800 z0024
+K6 MOD say b 434.850 -116 -115 @434.862 z0025
+K6 MOD say b 434.900 -115 -115 @434.900 z002b
+K6 MOD say b 434.950 -114 -114 @434.950 z002b
+K6 MOD say T 432.000:-103
+K6 MOD say F0 EEFEEFFEFEEEEEEEEEFEEFFEFEFFEFFEFEEEEFEFFFFFFFFFFFFEF
+K6 MOD say F53 FEEFEFEFGFFFFFGFFFFFFFFFEEFEFFFFGFFFFFGFFFEFFFFFFFGG
+K6 MOD say F105 GFGFGGFFFFFFEFEFFFGGFGGGGGGGGFFGGGFFGFFGFGGGGGGGFFG
+K6 MOD say F156 GGGGHGGHJGGFGFFFFFGGFGFGFFFGFGFFFGFGGGGGFFFG
+K6 MOD say P0 FEEEEFEFEEEEFEFEFEFEFFFFEEEEEEFEFEEEEEEEFFFFFGGFGFFFF
+K6 MOD say P53 EEFFEEEEFFFFGFFFFGFEFFEFFFFGFGFGFFGGFFGGFFFFFEEFGFGG
+K6 MOD say P105 GFGGGGFGGFFFFFFFFFGGGHGGHGGHGGGGGHFLGFGGGGGGFGGGGGG
+K6 MOD say P156 GGGFIJFIIFGFGGGGGGFFFFGGGFFFGFGGFGFGFFGFFFFG
+K6 MOD say M lo=425.000 b=50 n=200 s=12500 q=3000 sig=1 ms=16748
+K6 MOD ret=1 (0x1) in 59476 ms stack_free=260 B
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-61 batt=8460 build=8a78fb5-20261117T0904Z
+K6 ARQ tx seq=30 state=1 xfer=84 have=37/37 r=3 parts=1
+K6 ARQ sent seq=30 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-108 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8480 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=201 chunk=0 have=1/37 rssi=-67 noise=18
+K6 MOD r=-1 xfer=201 chunk=1 have=1/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=2 have=2/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=3 have=3/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=4 have=4/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=5 have=5/37 rssi=-67 noise=17
+K6 MOD r=-1 xfer=201 chunk=6 have=5/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=7 have=6/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=201 chunk=8 have=7/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=9 have=8/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=10 have=9/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=11 have=10/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=12 have=11/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=13 have=12/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=14 have=13/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=15 have=14/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=16 have=15/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=17 have=16/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=18 have=17/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=201 chunk=19 have=18/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=20 have=19/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=21 have=20/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=22 have=21/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=23 have=22/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=24 have=23/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=25 have=24/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=26 have=25/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=27 have=26/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=201 chunk=28 have=27/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=201 chunk=29 have=28/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=30 have=29/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=31 have=30/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=32 have=31/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=201 chunk=33 have=32/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=201 chunk=34 have=33/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=35 have=34/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=36 have=35/37 rssi=-67 noise=16
+K6 MOD r=2 xfer=201 chunk=0 have=35/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=201 chunk=1 have=36/37 rssi=-67 noise=18
+K6 MOD r=2 xfer=201 chunk=2 have=36/37 rssi=-67 noise=18
+K6 MOD r=2 xfer=201 chunk=3 have=36/37 rssi=-67 noise=17
+K6 MOD r=2 xfer=201 chunk=4 have=36/37 rssi=-67 noise=17
+K6 MOD r=2 xfer=201 chunk=5 have=36/37 rssi=-67 noise=18
+K6 MOD r=3 xfer=201 chunk=6 have=37/37 rssi=-67 noise=17
+K6 MOD run serial=1795034313 code=4456 B at 0x200020a4 stack=2028 B scratch=7296 B
+K6 MOD say rxmap: waiting for the carrier to drop, -68 dBm
+K6 MOD say b 283.600 -112 -111 @283.625 z0024
+K6 MOD say b 283.650 -111 -112 @283.687 z0028
+K6 MOD say b 283.700 -111 -112 @283.725 z0032
+K6 MOD say b 283.750 -111 -111 @283.762 z002c
+K6 MOD say b 283.800 -112 -111 @283.800 z0035
+K6 MOD say b 283.850 -112 -111 @283.850 z002c
+K6 MOD say b 283.900 -111 -111 @283.900 z0030
+K6 MOD say b 283.950 -113 -112 @283.950 z002c
+K6 MOD say b 284.000 -112 -111 @284.000 z002e
+K6 MOD say b 284.050 -111 -112 @284.062 z002a
+K6 MOD say b 284.100 -112 -112 @284.125 z002b
+K6 MOD say b 284.150 -111 -111 @284.175 z0031
+K6 MOD say b 284.200 -112 -111 @284.212 z0029
+K6 MOD say b 284.250 -111 -111 @284.262 z0033
+K6 MOD say b 284.300 -110 -111 @284.312 z0026
+K6 MOD say b 284.350 -110 -111 @284.350 z0032
+K6 MOD say b 284.400 -110 -111 @284.400 z0029
+K6 MOD say b 284.450 -112 -111 @284.450 z0020
+K6 MOD say b 284.500 -111 -111 @284.500 z0031
+K6 MOD say b 284.550 -111 -112 @284.550 z0027
+K6 MOD say b 284.600 -112 -112 @284.637 z001f
+K6 MOD say b 284.650 -111 -112 @284.675 z0035
+K6 MOD say b 284.700 -112 -111 @284.737 z0026
+K6 MOD say b 284.750 -111 -111 @284.775 z0029
+K6 MOD say b 284.800 -111 -112 @284.800 z0029
+K6 MOD say b 284.850 -112 -111 @284.850 z002d
+K6 MOD say b 284.900 -111 -111 @284.912 z002a
+K6 MOD say b 284.950 -111 -112 @284.950 z002a
+K6 MOD say b 285.000 -111 -110 @285.000 z002f
+K6 MOD say b 285.050 -111 -113 @285.062 z0029
+K6 MOD say b 285.100 -112 -111 @285.100 z002b
+K6 MOD say b 285.150 -112 -112 @285.162 z0021
+K6 MOD say b 285.200 -112 -111 @285.212 z0032
+K6 MOD say b 285.250 -112 -113 @285.250 z0028
+K6 MOD say b 285.300 -112 -111 @285.325 z0033
+K6 MOD say b 285.350 -112 -112 @285.350 z002a
+K6 MOD say b 285.400 -111 -112 @285.400 z002c
+K6 MOD say b 285.450 -112 -112 @285.450 z0022
+K6 MOD say b 285.500 -110 -110 @285.500 z0034
+K6 MOD say b 285.550 -112 -111 @285.562 z0027
+K6 MOD say b 285.600 -112 -112 @285.612 z0022
+K6 MOD say b 285.650 -113 -111 @285.650 z002b
+K6 MOD say b 285.700 -112 -112 @285.700 z0028
+K6 MOD say b 285.750 -112 -112 @285.750 z002f
+K6 MOD say b 285.800 -112 -112 @285.812 z0028
+K6 MOD say b 285.850 -111 -112 @285.887 z0028
+K6 MOD say b 285.900 -111 -111 @285.937 z002a
+K6 MOD say b 285.950 -112 -112 @285.950 z002a
+K6 MOD say b 286.000 -112 -104 @286.000 z0007
+K6 MOD say b 286.050 -111 -111 @286.050 z0027
+K6 MOD say b 286.100 -112 -112 @286.100 z002c
+K6 MOD say b 286.150 -112 -112 @286.162 z002e
+K6 MOD say b 286.200 -111 -111 @286.225 z0024
+K6 MOD say b 286.250 -111 -112 @286.275 z0026
+K6 MOD say b 286.300 -110 -110 @286.325 z0021
+K6 MOD say b 286.350 -112 -111 @286.362 z0029
+K6 MOD say b 286.400 -111 -111 @286.437 z002c
+K6 MOD say b 286.450 -111 -112 @286.475 z0028
+K6 MOD say b 286.500 -112 -111 @286.500 z0031
+K6 MOD say b 286.550 -110 -111 @286.550 z0031
+K6 MOD say b 286.600 -111 -110 @286.625 z002b
+K6 MOD say b 286.650 -111 -112 @286.675 z0026
+K6 MOD say b 286.700 -111 -110 @286.712 z002b
+K6 MOD say b 286.750 -111 -110 @286.787 z002a
+K6 MOD say b 286.800 -111 -110 @286.812 z0037
+K6 MOD say b 286.850 -112 -112 @286.850 z001c
+K6 MOD say b 286.900 -110 -109 @286.900 z0022
+K6 MOD say b 286.950 -109 -110 @286.950 z002f
+K6 MOD say b 287.000 -111 -110 @287.000 z0028
+K6 MOD say b 287.050 -111 -110 @287.062 z002c
+K6 MOD say b 287.100 -108 -109 @287.137 z002d
+K6 MOD say b 287.150 -107 -107 @287.187 z002e
+K6 MOD say b 287.200 -104 -105 @287.225 z002a
+K6 MOD say b 287.250 -104 -103 @287.275 z0023
+K6 MOD say b 287.300 -102 -103 @287.300 z0028
+K6 MOD say b 287.350 -104 -106 @287.350 z002a
+K6 MOD say b 287.400 -104 -106 @287.400 z0026
+K6 MOD say b 287.450 -104 -104 @287.462 z0026
+K6 MOD say b 287.500 -104 -104 @287.500 z0021
+K6 MOD say b 287.550 -104 -104 @287.562 z0027
+K6 MOD say b 287.600 -104 -103 @287.637 z001a
+K6 MOD say b 287.650 -103 -102 @287.687 z0034
+K6 MOD say b 287.700 -101 -102 @287.725 z0023
+K6 MOD say b 287.750 -100 -101 @287.787 z002b
+K6 MOD say b 287.800 -99 -100 @287.800 z002a
+K6 MOD say b 287.850 -100 -99 @287.862 z002e
+K6 MOD say b 287.900 -99 -99 @287.937 z002f
+K6 MOD say b 287.950 -97 -99 @287.950 z002d
+K6 MOD say b 288.000 -98 -98 @288.037 z002b
+K6 MOD say b 288.050 -98 -97 @288.050 z0031
+K6 MOD say b 288.100 -98 -97 @288.125 z0029
+K6 MOD say b 288.150 -97 -97 @288.150 z0024
+K6 MOD say b 288.200 -96 -96 @288.237 z002f
+K6 MOD say b 288.250 -96 -94 @288.287 z0035
+K6 MOD say b 288.300 -93 -94 @288.325 z0033
+K6 MOD say b 288.350 -90 -88 @288.387 z002e
+K6 MOD say b 288.400 -88 -88 @288.400 z0027
+K6 MOD say b 288.450 -89 -89 @288.462 z0030
+K6 MOD say b 288.500 -93 -91 @288.500 z002b
+K6 MOD say b 288.550 -96 -95 @288.562 z0026
+K6 MOD say b 288.600 -96 -96 @288.612 z0027
+K6 MOD say b 288.650 -97 -97 @288.650 z0027
+K6 MOD say b 288.700 -96 -96 @288.712 z0021
+K6 MOD say b 288.750 -98 -98 @288.750 z002f
+K6 MOD say b 288.800 -97 -98 @288.825 z002d
+K6 MOD say b 288.850 -98 -98 @288.850 z0033
+K6 MOD say b 288.900 -98 -98 @288.925 z0028
+K6 MOD say b 288.950 -99 -99 @288.950 z0031
+K6 MOD say b 289.000 -101 -100 @289.000 z002e
+K6 MOD say b 289.050 -101 -101 @289.075 z0024
+K6 MOD say b 289.100 -100 -101 @289.112 z0024
+K6 MOD say b 289.150 -103 -102 @289.187 z0032
+K6 MOD say b 289.200 -102 -103 @289.212 z003a
+K6 MOD say b 289.250 -104 -103 @289.262 z002b
+K6 MOD say b 289.300 -105 -105 @289.300 z0025
+K6 MOD say b 289.350 -105 -105 @289.350 z002a
+K6 MOD say b 289.400 -107 -106 @289.437 z0026
+K6 MOD say b 289.450 -107 -108 @289.450 z0030
+K6 MOD say b 289.500 -108 -108 @289.500 z0027
+K6 MOD say b 289.550 -108 -108 @289.550 z0035
+K6 MOD say b 289.600 -108 -109 @289.600 z0028
+K6 MOD say b 289.650 -109 -109 @289.650 z0029
+K6 MOD say b 289.700 -110 -109 @289.712 z002c
+K6 MOD say b 289.750 -111 -110 @289.750 z002c
+K6 MOD say F0 HHHHHHHGHHHHHHIIIHHHHHHHHHHHHHHHHHHHHHIHHGHHHHHHHHHHH
+K6 MOD say F53 HIHHHHIHHHHHHIIHHJJLLMLLLLLLLMNNNNOOOOOPPQSTSQPPOPOO
+K6 MOD say F105 OONMMNLMLKKJJJJJIIH
+K6 MOD say P0 HHHHHHHHHHHHHHHHHHHHHHHHHHHHIGHHHGHHHHIHHHHHHHHHLHHHH
+K6 MOD say P53 HIHHHHHIHIIIHIIIIIJKLLKKLLLLMMMNNNNOOOOPQQTTSRPPOPOO
+K6 MOD say P105 OONNMMMLLKKKJJJIIII
+K6 MOD say M lo=283.600 b=50 n=124 s=12500 q=3000 sig=0 ms=10376
+K6 MOD ret=0 (0x0) in 48628 ms stack_free=260 B
+K6 ARQ tx seq=31 state=1 xfer=201 have=37/37 r=3 parts=1
+K6 ARQ sent seq=31 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-61 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8480 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=57 chunk=0 have=1/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=1 have=2/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=57 chunk=2 have=3/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=3 have=4/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=4 have=5/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=5 have=6/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=6 have=7/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=7 have=8/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=8 have=9/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=9 have=10/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=10 have=11/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=11 have=12/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=12 have=13/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=13 have=14/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=14 have=15/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=15 have=16/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=16 have=17/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=17 have=18/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=57 chunk=18 have=19/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=19 have=20/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=20 have=21/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=21 have=22/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=22 have=23/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=23 have=24/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=24 have=25/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=57 chunk=25 have=26/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=57 chunk=26 have=27/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=57 chunk=27 have=28/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=28 have=29/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=57 chunk=29 have=30/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=30 have=31/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=57 chunk=31 have=32/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=32 have=33/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=57 chunk=33 have=34/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=34 have=35/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=57 chunk=35 have=36/37 rssi=-67 noise=17
+K6 MOD r=3 xfer=57 chunk=36 have=37/37 rssi=-67 noise=16
+K6 MOD run serial=1795034425 code=4456 B at 0x200020a4 stack=2028 B scratch=7296 B
+K6 MOD say rxmap: waiting for the carrier to drop, -68 dBm
+K6 MOD say b 851.000 -149 -148 @851.012 z0029
+K6 MOD say b 851.100 -149 -149 @851.100 z0029
+K6 MOD say b 851.200 -149 -148 @851.225 z0024
+K6 MOD say b 851.300 -148 -149 @851.300 z0029
+K6 MOD say b 851.400 -149 -147 @851.425 z002f
+K6 MOD say b 851.500 -148 -137 @851.500 z0000
+K6 MOD say b 851.600 -149 -148 @851.675 z0034
+K6 MOD say b 851.700 -148 -147 @851.700 z002b
+K6 MOD say b 851.800 -148 -149 @851.800 z002b
+K6 MOD say b 851.900 -148 -149 @851.900 z0029
+K6 MOD say b 852.000 -149 -148 @852.062 z0031
+K6 MOD say b 852.100 -149 -149 @852.112 z0030
+K6 MOD say b 852.200 -149 -148 @852.200 z002f
+K6 MOD say b 852.300 -148 -149 @852.325 z0022
+K6 MOD say b 852.400 -148 -149 @852.400 z0028
+K6 MOD say b 852.500 -148 -148 @852.550 z002e
+K6 MOD say b 852.600 -149 -149 @852.662 z0024
+K6 MOD say b 852.700 -148 -149 @852.737 z0027
+K6 MOD say b 852.800 -149 -148 @852.837 z0026
+K6 MOD say b 852.900 -148 -149 @852.925 z0030
+K6 MOD say b 853.000 -148 -148 @853.000 z002c
+K6 MOD say b 853.100 -149 -146 @853.125 z0016
+K6 MOD say b 853.200 -148 -148 @853.200 z0034
+K6 MOD say b 853.300 -149 -148 @853.312 z0028
+K6 MOD say b 853.400 -149 -148 @853.437 z0028
+K6 MOD say b 853.500 -148 -149 @853.500 z0034
+K6 MOD say b 853.600 -148 -142 @853.687 z0028
+K6 MOD say b 853.700 -148 -149 @853.750 z002f
+K6 MOD say b 853.800 -149 -149 @853.800 z0027
+K6 MOD say b 853.900 -149 -149 @853.900 z002a
+K6 MOD say b 854.000 -148 -149 @854.000 z002d
+K6 MOD say b 854.100 -148 -150 @854.100 z0022
+K6 MOD say b 854.200 -148 -149 @854.212 z002c
+K6 MOD say b 854.300 -149 -148 @854.325 z0028
+K6 MOD say b 854.400 -147 -149 @854.400 z0025
+K6 MOD say b 854.500 -148 -149 @854.512 z002b
+K6 MOD say b 854.600 -149 -148 @854.600 z002c
+K6 MOD say b 854.700 -149 -145 @854.750 z000f
+K6 MOD say b 854.800 -148 -147 @854.862 z0026
+K6 MOD say b 854.900 -148 -150 @854.987 z002d
+K6 MOD say b 855.000 -149 -150 @855.025 z0028
+K6 MOD say b 855.100 -148 -148 @855.125 z0029
+K6 MOD say b 855.200 -149 -149 @855.212 z002e
+K6 MOD say b 855.300 -148 -149 @855.300 z002b
+K6 MOD say b 855.400 -148 -148 @855.437 z0026
+K6 MOD say b 855.500 -149 -149 @855.512 z0031
+K6 MOD say b 855.600 -149 -149 @855.600 z0029
+K6 MOD say b 855.700 -148 -149 @855.700 z002c
+K6 MOD say b 855.800 -148 -148 @855.862 z002d
+K6 MOD say b 855.900 -148 -148 @855.925 z0026
+K6 MOD say b 856.000 -148 -148 @856.000 z0028
+K6 MOD say b 856.100 -148 -149 @856.137 z0029
+K6 MOD say b 856.200 -148 -149 @856.250 z0022
+K6 MOD say b 856.300 -148 -147 @856.312 z001e
+K6 MOD say b 856.400 -149 -150 @856.400 z002c
+K6 MOD say b 856.500 -148 -148 @856.537 z002b
+K6 MOD say b 856.600 -149 -148 @856.637 z0027
+K6 MOD say b 856.700 -148 -149 @856.700 z0031
+K6 MOD say b 856.800 -149 -149 @856.850 z0024
+K6 MOD say b 856.900 -149 -148 @856.925 z0039
+K6 MOD say b 857.000 -148 -148 @857.012 z0029
+K6 MOD say b 857.100 -148 -149 @857.100 z0030
+K6 MOD say b 857.200 -148 -148 @857.200 z0029
+K6 MOD say b 857.300 -148 -148 @857.312 z0023
+K6 MOD say b 857.400 -148 -148 @857.400 z0021
+K6 MOD say b 857.500 -149 -149 @857.500 z0027
+K6 MOD say b 857.600 -149 -149 @857.662 z0032
+K6 MOD say b 857.700 -148 -148 @857.700 z0032
+K6 MOD say b 857.800 -147 -149 @857.812 z002a
+K6 MOD say b 857.900 -149 -148 @857.900 z001b
+K6 MOD say b 858.000 -149 -128 @858.000 z0000
+K6 MOD say b 858.100 -149 -148 @858.100 z0025
+K6 MOD say b 858.200 -149 -149 @858.200 z002d
+K6 MOD say b 858.300 -148 -148 @858.300 z0025
+K6 MOD say b 858.400 -149 -149 @858.400 z002a
+K6 MOD say b 858.500 -149 -149 @858.500 z002d
+K6 MOD say b 858.600 -149 -148 @858.612 z0033
+K6 MOD say b 858.700 -149 -148 @858.712 z0024
+K6 MOD say b 858.800 -148 -148 @858.887 z002a
+K6 MOD say b 858.900 -149 -147 @858.912 z0024
+K6 MOD say b 859.000 -149 -148 @859.000 z0021
+K6 MOD say b 859.100 -149 -148 @859.137 z002c
+K6 MOD say b 859.200 -148 -149 @859.200 z0027
+K6 MOD say b 859.300 -148 -149 @859.300 z002f
+K6 MOD say b 859.400 -148 -148 @859.425 z002d
+K6 MOD say b 859.500 -148 -149 @859.537 z0037
+K6 MOD say b 859.600 -149 -149 @859.637 z0029
+K6 MOD say b 859.700 -149 -148 @859.725 z0027
+K6 MOD say b 859.800 -148 -148 @859.850 z0031
+K6 MOD say b 859.900 -148 -148 @859.925 z0025
+K6 MOD say b 860.000 -149 -148 @860.025 z002e
+K6 MOD say b 860.100 -148 -143 @860.187 z002e
+K6 MOD say b 860.200 -148 -148 @860.225 z002e
+K6 MOD say b 860.300 -148 -148 @860.300 z0033
+K6 MOD say b 860.400 -149 -148 @860.412 z0031
+K6 MOD say b 860.500 -150 -148 @860.500 z002e
+K6 MOD say b 860.600 -148 -148 @860.637 z0026
+K6 MOD say b 860.700 -148 -149 @860.700 z002f
+K6 MOD say b 860.800 -148 -148 @860.825 z002a
+K6 MOD say b 860.900 -149 -149 @860.937 z0030
+K6 MOD say b 861.000 -148 -148 @861.000 z001b
+K6 MOD say b 861.100 -149 -149 @861.162 z002a
+K6 MOD say b 861.200 -148 -148 @861.225 z0025
+K6 MOD say b 861.300 -148 -149 @861.312 z0030
+K6 MOD say b 861.400 -148 -149 @861.400 z0020
+K6 MOD say b 861.500 -148 -149 @861.537 z0021
+K6 MOD say b 861.600 -148 -148 @861.600 z0031
+K6 MOD say b 861.700 -149 -148 @861.700 z0029
+K6 MOD say b 861.800 -149 -148 @861.837 z002a
+K6 MOD say b 861.900 -150 -148 @861.900 z002e
+K6 MOD say b 862.000 -150 -150 @862.000 z0020
+K6 MOD say b 862.100 -148 -148 @862.125 z0029
+K6 MOD say b 862.200 -148 -148 @862.287 z0038
+K6 MOD say b 862.300 -148 -149 @862.300 z002f
+K6 MOD say b 862.400 -148 -148 @862.400 z0028
+K6 MOD say b 862.500 -147 -149 @862.525 z0025
+K6 MOD say b 862.600 -148 -148 @862.600 z0026
+K6 MOD say b 862.700 -148 -149 @862.725 z0026
+K6 MOD say b 862.800 -148 -148 @862.812 z0027
+K6 MOD say b 862.900 -149 -148 @862.912 z0026
+K6 MOD say b 863.000 -149 -149 @863.087 z0029
+K6 MOD say b 863.100 -149 -149 @863.100 z0024
+K6 MOD say b 863.200 -148 -149 @863.275 z002a
+K6 MOD say b 863.300 -149 -149 @863.312 z002c
+K6 MOD say b 863.400 -148 -149 @863.425 z0026
+K6 MOD say b 863.500 -148 -148 @863.525 z002d
+K6 MOD say b 863.600 -147 -148 @863.600 z002f
+K6 MOD say b 863.700 -148 -148 @863.700 z0026
+K6 MOD say b 863.800 -148 -147 @863.812 z0025
+K6 MOD say b 863.900 -148 -148 @863.925 z0027
+K6 MOD say b 864.000 -148 -150 @864.000 z0023
+K6 MOD say b 864.100 -149 -149 @864.100 z002b
+K6 MOD say b 864.200 -148 -147 @864.275 z0033
+K6 MOD say b 864.300 -148 -149 @864.387 z001e
+K6 MOD say b 864.400 -149 -148 @864.412 z002f
+K6 MOD say b 864.500 -149 -139 @864.500 z0000
+K6 MOD say b 864.600 -149 -147 @864.637 z001d
+K6 MOD say b 864.700 -148 -148 @864.737 z002c
+K6 MOD say b 864.800 -148 -150 @864.850 z0030
+K6 MOD say b 864.900 -149 -148 @864.900 z002e
+K6 MOD say b 865.000 -149 -149 @865.012 z0031
+K6 MOD say b 865.100 -149 -149 @865.100 z002e
+K6 MOD say b 865.200 -149 -149 @865.200 z002b
+K6 MOD say b 865.300 -148 -149 @865.337 z002e
+K6 MOD say b 865.400 -148 -147 @865.400 z002d
+K6 MOD say b 865.500 -147 -149 @865.525 z0023
+K6 MOD say b 865.600 -149 -148 @865.625 z002e
+K6 MOD say b 865.700 -148 -148 @865.725 z002d
+K6 MOD say b 865.800 -149 -149 @865.812 z0023
+K6 MOD say b 865.900 -149 -148 @865.900 z002b
+K6 MOD say b 866.000 -149 -150 @866.000 z002f
+K6 MOD say b 866.100 -149 -148 @866.112 z002e
+K6 MOD say b 866.200 -148 -148 @866.200 z001e
+K6 MOD say b 866.300 -148 -149 @866.300 z0031
+K6 MOD say b 866.400 -148 -150 @866.412 z0025
+K6 MOD say b 866.500 -148 -148 @866.500 z0026
+K6 MOD say b 866.600 -148 -139 @866.687 z0021
+K6 MOD say b 866.700 -148 -148 @866.725 z0028
+K6 MOD say b 866.800 -148 -149 @866.875 z0031
+K6 MOD say b 866.900 -149 -147 @866.937 z001f
+K6 MOD say b 867.000 -149 -149 @867.037 z002c
+K6 MOD say b 867.100 -148 -149 @867.112 z002e
+K6 MOD say b 867.200 -148 -149 @867.225 z002f
+K6 MOD say b 867.300 -149 -148 @867.300 z0027
+K6 MOD say b 867.400 -148 -148 @867.437 z002d
+K6 MOD say b 867.500 -149 -148 @867.512 z0031
+K6 MOD say b 867.600 -149 -148 @867.600 z0027
+K6 MOD say b 867.700 -148 -149 @867.700 z0021
+K6 MOD say b 867.800 -148 -148 @867.837 z0026
+K6 MOD say b 867.900 -148 -148 @867.900 z0029
+K6 MOD say b 868.000 -150 -149 @868.050 z002a
+K6 MOD say b 868.100 -148 -148 @868.175 z0033
+K6 MOD say b 868.200 -148 -149 @868.200 z0034
+K6 MOD say b 868.300 -149 -147 @868.337 z002a
+K6 MOD say b 868.400 -149 -149 @868.412 z002f
+K6 MOD say b 868.500 -149 -148 @868.550 z0023
+K6 MOD say b 868.600 -148 -149 @868.637 z0024
+K6 MOD say b 868.700 -148 -148 @868.725 z0029
+K6 MOD say b 868.800 -149 -148 @868.875 z002a
+K6 MOD say b 868.900 -148 -147 @868.900 z0026
+K6 MOD say T 858.000:-128 851.500:-137 864.500:-139
+K6 MOD say F0 55565656665556665656656556665566656655665656655666666
+K6 MOD say F53 6565655666665566555565555655566665566566655666565666
+K6 MOD say F105 665555666666665556566666665665556655556665655556666
+K6 MOD say F156 666556656556665665556656
+K6 MOD say P0 65656;66556565565565676665955555565567655655655566655
+K6 MOD say P53 65665566566655656@6565566666655655666686666656565655
+K6 MOD say P105 566665665656566555556666655656:66565555656656566556
+K6 MOD say P156 :65655566665665656565666
+K6 MOD say M lo=851.000 b=100 n=180 s=12500 q=3000 sig=3 ms=17672
+K6 MOD ret=3 (0x3) in 60400 ms stack_free=260 B
+K6 ARQ tx seq=32 state=1 xfer=57 have=37/37 r=3 parts=1
+K6 ARQ sent seq=32 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-122 batt=8490 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8480 build=8a78fb5-20261117T0904Z
+K6 MOD r=-1 xfer=57 chunk=0 have=37/37 rssi=-67 noise=17
+K6 MOD r=-1 xfer=57 chunk=1 have=37/37 rssi=-67 noise=16
+K6 MOD r=-1 xfer=57 chunk=2 have=37/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=3 have=1/37 rssi=-67 noise=18
+K6 MOD r=-1 xfer=169 chunk=4 have=1/37 rssi=-67 noise=17
+K6 MOD r=-1 xfer=169 chunk=5 have=1/37 rssi=-67 noise=17
+K6 MOD r=-1 xfer=169 chunk=6 have=1/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=7 have=2/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=169 chunk=8 have=3/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=169 chunk=9 have=4/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=10 have=5/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=11 have=6/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=12 have=7/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=13 have=8/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=14 have=9/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=169 chunk=15 have=10/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=16 have=11/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=17 have=12/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=18 have=13/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=19 have=14/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=20 have=15/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=21 have=16/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=22 have=17/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=23 have=18/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=24 have=19/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=25 have=20/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=26 have=21/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=169 chunk=27 have=22/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=28 have=23/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=29 have=24/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=30 have=25/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=31 have=26/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=32 have=27/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=33 have=28/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=34 have=29/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=169 chunk=35 have=30/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=36 have=31/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=0 have=32/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=1 have=33/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=169 chunk=2 have=34/37 rssi=-67 noise=14
+K6 MOD r=2 xfer=169 chunk=3 have=34/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=4 have=35/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=169 chunk=5 have=36/37 rssi=-67 noise=18
+K6 MOD r=3 xfer=169 chunk=6 have=37/37 rssi=-67 noise=18
+K6 MOD run serial=1795034537 code=4456 B at 0x200020a4 stack=2028 B scratch=7296 B
+K6 MOD say rxmap: waiting for the carrier to drop, -68 dBm
+K6 MOD say b 384.400 -125 -126 @384.412 z002f
+K6 MOD say b 384.450 -125 -125 @384.450 z0023
+K6 MOD say b 384.500 -124 -124 @384.512 z002b
+K6 MOD say b 384.550 -124 -123 @384.550 z0028
+K6 MOD say b 384.600 -123 -124 @384.612 z002c
+K6 MOD say b 384.650 -123 -124 @384.662 z0024
+K6 MOD say b 384.700 -124 -122 @384.737 z0014
+K6 MOD say b 384.750 -125 -124 @384.762 z0021
+K6 MOD say b 384.800 -125 -119 @384.812 z0007
+K6 MOD say b 384.850 -123 -123 @384.887 z0026
+K6 MOD say b 384.900 -124 -125 @384.912 z002c
+K6 MOD say b 384.950 -125 -122 @384.962 z0037
+K6 MOD say b 385.000 -124 -123 @385.037 z0046
+K6 MOD say b 385.050 -123 -123 @385.050 z0025
+K6 MOD say b 385.100 -124 -122 @385.100 z003a
+K6 MOD say b 385.150 -124 -123 @385.162 z002b
+K6 MOD say b 385.200 -124 -124 @385.200 z002e
+K6 MOD say b 385.250 -123 -123 @385.250 z0030
+K6 MOD say b 385.300 -124 -124 @385.337 z0022
+K6 MOD say b 385.350 -124 -122 @385.350 z002f
+K6 MOD say b 385.400 -125 -120 @385.400 z000c
+K6 MOD say b 385.450 -124 -123 @385.475 z002c
+K6 MOD say b 385.500 -124 -123 @385.512 z0024
+K6 MOD say b 385.550 -123 -123 @385.550 z003b
+K6 MOD say b 385.600 -124 -121 @385.612 z0050
+K6 MOD say b 385.650 -124 -124 @385.650 z0031
+K6 MOD say b 385.700 -124 -124 @385.700 z0032
+K6 MOD say b 385.750 -123 -117 @385.762 z0007
+K6 MOD say b 385.800 -124 -123 @385.837 z0019
+K6 MOD say b 385.850 -123 -123 @385.850 z002d
+K6 MOD say b 385.900 -124 -116 @385.912 z0005
+K6 MOD say b 385.950 -123 -122 @385.962 z002b
+K6 MOD say b 386.000 -123 -123 @386.012 z0026
+K6 MOD say b 386.050 -124 -122 @386.062 z004a
+K6 MOD say b 386.100 -123 -123 @386.137 z0029
+K6 MOD say b 386.150 -123 -123 @386.162 z0026
+K6 MOD say b 386.200 -123 -119 @386.200 z0037
+K6 MOD say b 386.250 -123 -117 @386.275 z0009
+K6 MOD say b 386.300 -123 -124 @386.300 z0027
+K6 MOD say b 386.350 -122 -123 @386.350 z0023
+K6 MOD say b 386.400 -123 -120 @386.425 z0019
+K6 MOD say b 386.450 -123 -123 @386.450 z0029
+K6 MOD say b 386.500 -123 -119 @386.500 z002a
+K6 MOD say b 386.550 -123 -120 @386.575 z0046
+K6 MOD say b 386.600 -123 -122 @386.600 z0029
+K6 MOD say b 386.650 -121 -123 @386.687 z0023
+K6 MOD say b 386.700 -121 -121 @386.712 z002b
+K6 MOD say b 386.750 -122 -117 @386.787 z0012
+K6 MOD say b 386.800 -122 -122 @386.800 z002c
+K6 MOD say b 386.850 -123 -115 @386.862 z0004
+K6 MOD say b 386.900 -121 -122 @386.937 z0028
+K6 MOD say b 386.950 -122 -122 @386.950 z002b
+K6 MOD say b 387.000 -122 -119 @387.012 z002c
+K6 MOD say b 387.050 -121 -121 @387.062 z002a
+K6 MOD say b 387.100 -121 -121 @387.100 z0029
+K6 MOD say b 387.150 -122 -121 @387.150 z0025
+K6 MOD say b 387.200 -123 -120 @387.225 z0044
+K6 MOD say b 387.250 -121 -122 @387.262 z0030
+K6 MOD say b 387.300 -123 -120 @387.300 z0023
+K6 MOD say b 387.350 -121 -122 @387.350 z002b
+K6 MOD say b 387.400 -122 -121 @387.400 z0029
+K6 MOD say b 387.450 -122 -116 @387.450 z0007
+K6 MOD say b 387.500 -122 -121 @387.500 z002c
+K6 MOD say b 387.550 -121 -121 @387.587 z0032
+K6 MOD say F0 AABBBBBAABBABBBBBBBBABBBBBBBBBBBBBBBBBBCBBBBBCCCCBCCC
+K6 MOD say F53 CCCBCBCCCCC
+K6 MOD say P0 AABBBBCBDBACBBCBBBBCDBBBCBBEBBFCBCBBDEBBDBDDCBCECFCCD
+K6 MOD say P53 CCCDCDCCFCC
+K6 MOD say M lo=384.400 b=50 n=64 s=12500 q=3000 sig=0 ms=5356
+K6 MOD ret=0 (0x0) in 43608 ms stack_free=260 B
+K6 ARQ tx seq=33 state=1 xfer=169 have=37/37 r=3 parts=1
+K6 ARQ sent seq=33 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-126 batt=8470 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-60 batt=8470 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-114 batt=8450 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8450 build=8a78fb5-20261117T0904Z
+#1    sync N  BAD  got 128  BE 182/512  s+x-  pkt 14  4622.3573421..573421..573421..573421..573421..573421..573421..65  (radio said 392)  [S@0 F@27+3 F@53+3 F@80+3 F@106+3 F@133+3 F@160+3 F@186+3 F@213+3 F@240+3 F@266+3 D@568+1]  gap 5771
+#2    sync N  BAD  got 128  BE 182/512  s+x-  pkt 14  4622.3573421..573421..573421..573421..573421..573421..573421..65  (radio said 392)  [S@0 F@27+3 F@53+3 F@80+3 F@106+3 F@133+3 F@160+3 F@186+3 F@213+3 F@240+3 F@266+3 D@568+1]  gap 122
+#3    sync N  BAD  got 128  BE 182/512  s+x-  pkt 14  4622.3573421..573421..573421..573421..573421..573421..573421..65  (radio said 392)  [S@0 F@26+3 F@53+3 F@80+3 F@106+3 F@133+3 F@160+3 F@186+3 F@213+3 F@240+3 F@266+3 D@568+1]  gap 69
+K6 CTL seq=29 mask=05 val=04 var_vol=00 action=0 changed=1
+K6 CFG why=ctl chip=4819 freq=440850000 phy=D frames=XL baud=2400 rates=F12,F18,D24 stream=0 reg58=00e9 reg2b=8400 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8450 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=28 chunk=0 have=1/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=1 have=2/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=2 have=3/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=28 chunk=3 have=4/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=4 have=5/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=28 chunk=5 have=6/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=28 chunk=6 have=7/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=7 have=8/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=8 have=9/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=28 chunk=9 have=10/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=10 have=11/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=11 have=12/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=12 have=13/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=13 have=14/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=14 have=15/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=15 have=16/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=16 have=17/37 rssi=-67 noise=14
+K6 MOD r=1 xfer=28 chunk=17 have=18/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=18 have=19/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=19 have=20/37 rssi=-67 noise=19
+K6 MOD r=1 xfer=28 chunk=20 have=21/37 rssi=-67 noise=18
+K6 MOD r=1 xfer=28 chunk=21 have=22/37 rssi=-67 noise=14
+K6 MOD r=1 xfer=28 chunk=22 have=23/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=23 have=24/37 rssi=-67 noise=14
+K6 MOD r=1 xfer=28 chunk=24 have=25/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=25 have=26/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=26 have=27/37 rssi=-67 noise=14
+K6 MOD r=1 xfer=28 chunk=27 have=28/37 rssi=-67 noise=14
+K6 MOD r=1 xfer=28 chunk=28 have=29/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=29 have=30/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=30 have=31/37 rssi=-67 noise=17
+K6 MOD r=1 xfer=28 chunk=31 have=32/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=28 chunk=32 have=33/37 rssi=-67 noise=15
+K6 MOD r=1 xfer=28 chunk=33 have=34/37 rssi=-67 noise=16
+K6 MOD r=1 xfer=28 chunk=34 have=35/37 rssi=-67 noise=13
+K6 MOD r=1 xfer=28 chunk=35 have=36/37 rssi=-67 noise=16
+K6 MOD r=3 xfer=28 chunk=36 have=37/37 rssi=-67 noise=16
+K6 MOD run serial=1795034652 code=4456 B at 0x200020a4 stack=2028 B scratch=7296 B
+K6 MOD say rxmap: waiting for the carrier to drop, -67 dBm
+K6 MOD say b 256.200 -109 -111 @256.225 z0024
+K6 MOD say b 256.250 -112 -111 @256.262 z0031
+K6 MOD say b 256.300 -111 -111 @256.300 z0033
+K6 MOD say b 256.350 -110 -110 @256.350 z0029
+K6 MOD say b 256.400 -110 -110 @256.400 z002e
+K6 MOD say b 256.450 -110 -110 @256.462 z0029
+K6 MOD say b 256.500 -111 -110 @256.512 z0039
+K6 MOD say b 256.550 -111 -109 @256.562 z003d
+K6 MOD say b 256.600 -111 -110 @256.612 z0031
+K6 MOD say b 256.650 -111 -112 @256.650 z002a
+K6 MOD say b 256.700 -111 -109 @256.712 z0010
+K6 MOD say b 256.750 -112 -111 @256.750 z0028
+K6 MOD say b 256.800 -111 -111 @256.825 z0036
+K6 MOD say b 256.850 -110 -108 @256.862 z0030
+K6 MOD say b 256.900 -111 -111 @256.912 z0028
+K6 MOD say b 256.950 -110 -111 @256.950 z0030
+K6 MOD say b 257.000 -110 -110 @257.000 z0027
+K6 MOD say b 257.050 -110 -111 @257.050 z002f
+K6 MOD say b 257.100 -111 -110 @257.112 z002d
+K6 MOD say b 257.150 -110 -108 @257.150 z0013
+K6 MOD say b 257.200 -111 -111 @257.200 z0029
+K6 MOD say b 257.250 -111 -110 @257.287 z0026
+K6 MOD say b 257.300 -110 -108 @257.300 z0026
+K6 MOD say b 257.350 -109 -109 @257.387 z0028
+K6 MOD say b 257.400 -110 -111 @257.400 z002e
+K6 MOD say b 257.450 -110 -109 @257.462 z0025
+K6 MOD say b 257.500 -110 -110 @257.512 z0032
+K6 MOD say b 257.550 -109 -109 @257.575 z0026
+K6 MOD say b 257.600 -111 -110 @257.600 z0026
+K6 MOD say b 257.650 -111 -111 @257.675 z001e
+K6 MOD say b 257.700 -111 -112 @257.700 z0025
+K6 MOD say b 257.750 -111 -112 @257.750 z002a
+K6 MOD say b 257.800 -110 -112 @257.800 z0029
+K6 MOD say b 257.850 -111 -110 @257.887 z002b
+K6 MOD say b 257.900 -111 -111 @257.925 z0030
+K6 MOD say b 257.950 -110 -111 @257.950 z0022
+K6 MOD say b 258.000 -109 -109 @258.000 z001f
+K6 MOD say b 258.050 -109 -107 @258.050 z0019
+K6 MOD say b 258.100 -110 -109 @258.100 z0025
+K6 MOD say b 258.150 -110 -107 @258.175 z001b
+K6 MOD say b 258.200 -110 -111 @258.200 z002f
+K6 MOD say b 258.250 -111 -111 @258.250 z001e
+K6 MOD say b 258.300 -110 -108 @258.325 z0012
+K6 MOD say b 258.350 -109 -110 @258.350 z002e
+K6 MOD say F0 IHHIIIHHHHHHHIHIIIHIHHIIIIIIHHHHIHHIIIIIIHII
+K6 MOD say P0 HHHIIIIIIHIHHJHHIHIJHIJIHIIIIHHHHIHHIJIJHHJI
+K6 MOD say M lo=256.200 b=50 n=44 s=12500 q=3000 sig=0 ms=3683
+K6 MOD ret=0 (0x0) in 40503 ms stack_free=260 B
+K6 ARQ tx seq=34 state=1 xfer=28 have=37/37 r=3 parts=1
+K6 ARQ sent seq=34 ms=3927
+K6 CFG why=tick chip=4819 freq=440850000 phy=D frames=XL baud=2400 rates=F12,F18,D24 stream=0 reg58=00e9 reg2b=8400 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-109 batt=8480 build=8a78fb5-20261117T0904Z

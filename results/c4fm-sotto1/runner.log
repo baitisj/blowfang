@@ -1,0 +1,26 @@
+2026-11-18T08:06:45Z job c4fm-sotto1 by c4fm, checkout /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26 at 46b5e93deb267056b3a7a449b9ae09b4daf96b28
+2026-11-18T08:06:45Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold c4fm -- timeout -s INT --kill-after=10 600 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/c4fm-sotto1/k6.log
+2026-11-18T08:06:47Z step 1 (logger) rc=0
+2026-11-18T08:06:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/uv380_i2sprobe.py cmd /dev/ttyACM2 listen 0 power 0 freq 440850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/c4fm-sotto1/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: freq 440850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T08:06:57Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=440850
+2026-11-18T08:06:57Z step 2 (uv380.cmd) rc=0
+2026-11-18T08:06:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26/tools/pluto_bench.py --as c4fm send /home/baitisj/blowfang-work/runs/inbox/c4fm-sotto1/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 08:06:58Z
+end 08:07:10Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T08:07:10Z step 3 (pluto) rc=0
+2026-11-18T08:07:22Z step 4 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-sotto1/k6.log)
+2026-11-18T08:08:46Z step 5 (wait) rc=1 (cancelled)
+2026-11-18T08:08:46Z step 6 (pluto) rc=1 (refused: cancelled)
+2026-11-18T08:08:46Z job c4fm-sotto1 cancelled: step 6 (pluto): refused: cancelled

@@ -1,0 +1,17 @@
+[
+ {
+  "name": "SHA256SUMS",
+  "bytes": 326,
+  "sha256": "67d6ededde3302d4c987910db6e0ffe9958397e354a5f4e75d5a30ee1d554f42",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/rt950-spi-1126c/SHA256SUMS",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "manifest.json",
+  "bytes": 2021,
+  "sha256": "a6e9b72010b4912a24d9a9cfc097b4883dc26ce6abee5fd28920ab6a6de78743",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/rt950-spi-1126c/manifest.json"
+ }
+]

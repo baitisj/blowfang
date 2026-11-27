@@ -1,0 +1,105 @@
+{
+ "id": "c4fm-fifo1",
+ "who": "c4fm",
+ "started": "2026-11-18T10:00:44Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T10:00:44Z",
+   "ended": "2026-11-18T10:00:46Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T10:00:46Z",
+   "ended": "2026-11-18T10:00:59Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T10:00:59Z",
+   "ended": "2026-11-18T10:01:11Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-fifo1/k6.log"
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T10:01:11Z",
+   "ended": "2026-11-18T10:03:21Z",
+   "rc": 1,
+   "why": "no /EX beacon|K6 MOD say \\w+ end/ in /home/baitisj/blowfang-work/runs/queue/c4fm-fifo1/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T10:03:21Z",
+   "ended": "2026-11-18T10:03:34Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T10:03:34Z",
+   "ended": "2026-11-18T10:03:46Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-fifo1/k6.log"
+  },
+  {
+   "n": 7,
+   "do": "k6.upload",
+   "started": "2026-11-18T10:03:46Z",
+   "ended": "2026-11-18T10:05:33Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-18T10:05:33Z",
+   "ended": "2026-11-18T10:05:46Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-18T10:05:46Z",
+   "ended": "2026-11-18T10:05:48Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-18T10:05:48Z",
+   "ended": "2026-11-18T10:06:22Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-18T10:06:22Z",
+   "ended": "2026-11-18T10:06:34Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "logger.stop",
+   "started": "2026-11-18T10:06:34Z",
+   "ended": "2026-11-18T10:06:34Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-7a912c77cc47",
+ "head": "7a912c77cc47354ae2a434248c96e962c981c22b",
+ "ended": "2026-11-18T10:06:34Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "a04159bc604a12b2fb77a08a752477b65fde710c",
+  "path": "jobs/c4fm-fifo1"
+ },
+ "runner_commit": "7a912c77cc47354ae2a434248c96e962c981c22b",
+ "updated": "2026-11-18T10:06:35Z"
+}

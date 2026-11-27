@@ -1,0 +1,46 @@
+2026-11-22T08:50:36Z job efw-4b by earshot, checkout /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17 at e1a0b21c5e17d2bd3ec85fac7e269b3c81c1c7c1
+2026-11-22T08:50:36Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot info
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=3480.27
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+2026-11-22T08:50:37Z step 1 (pluto.fw) rc=0
+2026-11-22T08:50:37Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot fpga /home/baitisj/blowfang-work/runs/inbox/efw-4b/system_top.bit.bin /home/baitisj/blowfang-work/runs/inbox/efw-4b/chanctl /home/baitisj/blowfang-work/runs/inbox/efw-4b/ensure_pluto_fpga.sh /home/baitisj/blowfang-work/runs/inbox/efw-4b/pluto_runtime_load.sh
+Pluto FPGA channelizer ready
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=3482.76
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+fpga: channelizer loaded (pl_is_chan=yes)
+2026-11-22T08:50:39Z step 2 (pluto.fw) rc=0
+2026-11-22T08:50:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot riq /home/baitisj/blowfang-work/runs/inbox/efw-4b/pluto-fpga-source /home/baitisj/blowfang-work/runs/queue/efw-4b/rf14-before --hz 470000000 --streams 7 --seconds 30 --gain 40 --keep 4
+{
+ "utc_start": "2026-11-22T08:50:40Z",
+ "lo_hz": 470000000,
+ "gain": 40.0,
+ "streams": [
+  7
+ ],
+ "seconds": 30.0,
+ "keep_s": 4.0,
+ "counts": {},
+ "flags": {},
+ "gaps": 0,
+ "bytes": 0,
+ "producer_log": "pluto-fpga-source waiting on TCP:9010; radio unopened\nsample rate readback 25599999 != 25600000\n{\"status\":\"error\",\"wire_bytes\":0,\"frames\":0,\"adc_losses\":2,\"sel_drops\":0}",
+ "first": {}
+}
+riq: no IQ messages came
+2026-11-22T08:50:44Z step 3 (pluto.fw) rc=1
+2026-11-22T08:50:44Z job efw-4b failed: step 3 (pluto.fw): exit 1

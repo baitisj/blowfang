@@ -1,0 +1,15 @@
+2026-11-26T09:03:04Z job rt950-spi-1126a by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-c7b3235add99 at c7b3235add99eee6767627ebd7033a19dc43e5f7
+2026-11-26T09:03:19Z step 1 (wait) rc=0
+2026-11-26T09:03:19Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-c7b3235add99/radios/rt950/tools/rt950_backup.py read /dev/ttyUSB3 /home/baitisj/blowfang-work/private/rt950/rt950-spi-1126a --summary /home/baitisj/blowfang-work/runs/queue/rt950-spi-1126a -v --addr 3 --passes 1
+Traceback (most recent call last):
+  File "/home/baitisj/blowfang-work/worktrees/inbox-c7b3235add99/radios/rt950/tools/rt950_backup.py", line 421, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-c7b3235add99/radios/rt950/tools/rt950_backup.py", line 402, in main
+    identity, _ = radio.handshake()
+                  ~~~~~~~~~~~~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-c7b3235add99/radios/rt950/tools/rt950_backup.py", line 155, in handshake
+    raise RuntimeError("no ACK to the handshake: is the radio on, and on the cable?")
+RuntimeError: no ACK to the handshake: is the radio on, and on the cable?
+2026-11-26T09:03:20Z step 2 (rt950.read) rc=1
+2026-11-26T09:03:20Z job rt950-spi-1126a failed: step 2 (rt950.read): exit 1

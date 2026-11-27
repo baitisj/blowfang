@@ -1,0 +1,185 @@
+2026-11-22T08:52:43Z job efw-4c by earshot, checkout /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17 at e1a0b21c5e17d2bd3ec85fac7e269b3c81c1c7c1
+2026-11-22T08:52:43Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot info
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=3607.38
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+2026-11-22T08:52:44Z step 1 (pluto.fw) rc=0
+2026-11-22T08:52:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot ramboot /home/baitisj/blowfang-work/runs/inbox/efw-4c/v039dma.itb
+ramboot: v0.39+dma (aacf6e68ecf244ef...) into RAM; flash untouched
+$ dfu-util -d 0456:b673,0456:b674 -a firmware.dfu -D /tmp/pluto_fw_q5sibcng/ram.dfu
+Download	[======================== ]  96%     11841536 bytes
+Download	[=========================] 100%     12330291 bytes
+Download done.
+DFU state(7) = dfuMANIFEST, status(0) = No error condition is present
+DFU state(2) = dfuIDLE, status(0) = No error condition is present
+Done!
+$ dfu-util -d 0456:b673,0456:b674 -a firmware.dfu -e
+Claiming USB DFU Interface...
+Setting Alternate Interface #1 ...
+Determining device status...
+DFU state(2) = dfuIDLE, status(0) = No error condition is present
+DFU mode device DFU version 0110
+Device returned transfer size 4096
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=no
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=15.33
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+ramboot: v0.39+dma running from RAM
+2026-11-22T08:53:09Z step 2 (pluto.fw) rc=0
+2026-11-22T08:53:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot fpga /home/baitisj/blowfang-work/runs/inbox/efw-4c/system_top.bit.bin /home/baitisj/blowfang-work/runs/inbox/efw-4c/chanctl /home/baitisj/blowfang-work/runs/inbox/efw-4c/ensure_pluto_fpga.sh /home/baitisj/blowfang-work/runs/inbox/efw-4c/pluto_runtime_load.sh
+[00:53:11] load system_top.bit.bin sha256 23632b191f56efce8593764c0f8a6858cd273208f30a7dd344888e978b54e7c9
+[00:53:11] saved settings to /home/baitisj/.cache/amateur-radio-fpga/pluto-session/settings-before.txt: in_voltage_sampling_frequency=30720000 in_voltage_rf_bandwidth=18000000 out_altvoltage0_RX_LO_frequency=2400000000 in_voltage0_gain_control_mode=slow_attack in_voltage0_hardwaregain=71.000000 dB in_voltage_filter_fir_en=0 out_voltage_filter_fir_en=0 out_voltage_sampling_frequency=30720000 
+[00:53:12] PL swap running on the device
+fpga0 state: operating
+adm1177-iio
+ad9361-phy
+xadc
+cf-ad9361-dds-core-lpc
+cf-ad9361-lpc
+PL_SWAP_DONE
+[00:53:29] readback: in_voltage_sampling_frequency=30720000 in_voltage_rf_bandwidth=18000000 out_altvoltage0_RX_LO_frequency=2400000000 in_voltage0_gain_control_mode=slow_attack in_voltage0_hardwaregain=71.000000 dB in_voltage_filter_fir_en=0 out_voltage_filter_fir_en=0 out_voltage_sampling_frequency=30720000 
+{"version":"0x00010000","magic":"0x4348414e","config":"0x08080200","det_config":"0x0d040080","control":0,"running":0,"out_shift":7,"det_on":221,"det_off":133,"det_bias":0,"det_hang":39,"samples":0,"frames":0,"adc_overflows":2,"adc_clips":0,"out_saturations":0,"hist_frames":0,"hist_drops":0,"sel_frames":0,"sel_drops":0,"pack_overruns":0,"blocks":0,"psd_periods":0,"hist_first_frame":0,"fft_events":0,"fir_frames":0}
+Pluto FPGA channelizer ready
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=36.34
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+fpga: channelizer loaded (pl_is_chan=yes)
+2026-11-22T08:53:31Z step 3 (pluto.fw) rc=0
+2026-11-22T08:53:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot riq /home/baitisj/blowfang-work/runs/inbox/efw-4c/pluto-fpga-source /home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-before --hz 470000000 --streams 7 --seconds 30 --gain 40 --keep 4
+{
+ "utc_start": "2026-11-22T08:53:31Z",
+ "lo_hz": 470000000,
+ "gain": 40.0,
+ "streams": [
+  7
+ ],
+ "seconds": 30.0,
+ "keep_s": 4.0,
+ "counts": {
+  "4": 1,
+  "2": 302,
+  "3": 15704,
+  "1": 3073
+ },
+ "flags": {},
+ "gaps": 0,
+ "bytes": 15966050,
+ "producer_log": "pluto-fpga-source waiting on TCP:9010; radio unopened\n{\"status\":\"error\",\"wire_bytes\":15974178,\"frames\":0,\"adc_losses\":2,\"sel_drops\":0}",
+ "first": {
+  "7": [
+   0,
+   1795337612.2038014,
+   470300000
+  ]
+ }
+}
+2026-11-22T08:54:06Z step 4 (pluto.fw) rc=0
+2026-11-22T08:54:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot riq /home/baitisj/blowfang-work/runs/inbox/efw-4c/pluto-fpga-source /home/baitisj/blowfang-work/runs/queue/efw-4c/noaa --hz 160000000 --streams 49,50,51,52 --seconds 600 --gain 40 --keep 4
+{
+ "utc_start": "2026-11-22T08:54:07Z",
+ "lo_hz": 160000000,
+ "gain": 40.0,
+ "streams": [
+  49,
+  50,
+  51,
+  52
+ ],
+ "seconds": 600.0,
+ "keep_s": 4.0,
+ "counts": {
+  "4": 1,
+  "2": 5917,
+  "3": 307684,
+  "1": 240294
+ },
+ "flags": {
+  "discontinuity": 4
+ },
+ "gaps": 0,
+ "bytes": 1043227906,
+ "producer_log": "pluto-fpga-source waiting on TCP:9010; radio unopened\n{\"status\":\"error\",\"wire_bytes\":1043236034,\"frames\":0,\"adc_losses\":2,\"sel_drops\":0}",
+ "first": {
+  "49": [
+   0,
+   1795337647.6729646,
+   162400000
+  ],
+  "50": [
+   0,
+   1795337647.6730876,
+   162450000
+  ],
+  "51": [
+   0,
+   1795337647.673133,
+   162500000
+  ],
+  "52": [
+   0,
+   1795337647.673168,
+   162550000
+  ]
+ }
+}
+2026-11-22T09:04:11Z step 5 (pluto.fw) rc=0
+2026-11-22T09:04:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot riq /home/baitisj/blowfang-work/runs/inbox/efw-4c/pluto-fpga-source /home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-after --hz 470000000 --streams 7 --seconds 30 --gain 40 --keep 4
+{
+ "utc_start": "2026-11-22T09:04:12Z",
+ "lo_hz": 470000000,
+ "gain": 40.0,
+ "streams": [
+  7
+ ],
+ "seconds": 30.0,
+ "keep_s": 4.0,
+ "counts": {
+  "4": 1,
+  "2": 303,
+  "3": 15756,
+  "1": 3073
+ },
+ "flags": {},
+ "gaps": 0,
+ "bytes": 15976917,
+ "producer_log": "pluto-fpga-source waiting on TCP:9010; radio unopened\n{\"status\":\"error\",\"wire_bytes\":15985045,\"frames\":0,\"adc_losses\":2,\"sel_drops\":0}",
+ "first": {
+  "7": [
+   0,
+   1795338253.1575296,
+   470300000
+  ]
+ }
+}
+2026-11-22T09:04:47Z step 6 (pluto.fw) rc=0
+2026-11-22T09:04:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-e1a0b21c5e17/tools/pluto_fw.py --as earshot info
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=713.66
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+2026-11-22T09:04:48Z step 7 (pluto.fw) rc=0
+2026-11-22T09:04:48Z job efw-4c done

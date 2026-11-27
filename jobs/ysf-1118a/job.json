@@ -1,0 +1,47 @@
+{
+ "id": "ysf-1118a",
+ "who": "ysf",
+ "freq_mhz": 441.85,
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:y.wav",
+    "--hz",
+    "441850000",
+    "--seconds",
+    "130"
+   ],
+   "background": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2",
+    "trim -580"
+   ]
+  },
+  {
+   "do": "uv380.ysf",
+   "args": [
+    "dn"
+   ]
+  },
+  {
+   "do": "uv380.ysf",
+   "args": [
+    "data"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "trim 6100"
+   ]
+  }
+ ]
+}

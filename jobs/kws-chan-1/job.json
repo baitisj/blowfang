@@ -1,0 +1,31 @@
+{
+ "id": "kws-chan-1",
+ "who": "nato-kws",
+ "freq_mhz": "bench",
+ "minutes": 8,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "chan",
+    "--probe"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "chan",
+    "job:pluto_chan.armhf",
+    "run:chan1",
+    "--hz",
+    "443000000",
+    "--seconds",
+    "120",
+    "--gain",
+    "60",
+    "--channels",
+    "442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,39 @@
+{
+ "id": "fmso1b",
+ "who": "fmsotto",
+ "started": "2026-11-20T08:35:06Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T08:35:06Z",
+   "ended": "2026-11-20T08:35:08Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-20T08:35:08Z",
+   "ended": "2026-11-20T08:35:53Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "logger.stop",
+   "started": "2026-11-20T08:35:53Z",
+   "ended": "2026-11-20T08:35:54Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-449e94dbf4ed",
+ "head": "449e94dbf4edc520251fd44843c995df5caf5565",
+ "ended": "2026-11-20T08:35:54Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "3cfa376456ce2e9a88702964b80bbf44ad928c02",
+  "path": "jobs/fmso1b"
+ },
+ "runner_commit": "449e94dbf4edc520251fd44843c995df5caf5565",
+ "updated": "2026-11-20T08:35:54Z"
+}

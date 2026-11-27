@@ -1,0 +1,27 @@
+{
+ "id": "uvdiag1",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T02:43:27Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T02:43:27Z",
+   "ended": "2026-11-19T02:43:27Z",
+   "rc": 1,
+   "why": "refused: the UV-380: 0 ports with USB ids 0483:5740 (want one: is it on and on the probe image? UV380_DEV in the unit overrides)"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-aa318c46915a",
+ "head": "aa318c46915aa8d641fa1055d31f362abacda62f",
+ "reason": "step 1 (uv380.cmd): refused: the UV-380: 0 ports with USB ids 0483:5740 (want one: is it on and on the probe image? UV380_DEV in the unit overrides)",
+ "ended": "2026-11-19T02:43:27Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "62a517eecf6d79d06f1db6a079a4bf3575905fa2",
+  "path": "jobs/uvdiag1"
+ },
+ "runner_commit": "aa318c46915aa8d641fa1055d31f362abacda62f",
+ "updated": "2026-11-19T02:43:27Z"
+}

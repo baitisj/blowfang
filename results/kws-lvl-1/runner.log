@@ -1,0 +1,8 @@
+2026-11-22T03:56:22Z job kws-lvl-1 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1 at 866a22a0c2b125feb744ad588735523a719b2b56
+2026-11-22T03:56:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g40.wav --hz 442025000 --seconds 60 --gain 40 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g40.wav: 60.0 s on 442025000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -78.4 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T03:57:24Z step 1 (pluto) rc=0
+2026-11-22T03:57:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g60.wav --hz 442025000 --seconds 60 --gain 60 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g60.wav: 60.0 s on 442025000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -65.3 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T03:58:25Z step 2 (pluto) rc=0
+2026-11-22T03:58:25Z job kws-lvl-1 done

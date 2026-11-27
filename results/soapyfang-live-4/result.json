@@ -1,0 +1,27 @@
+{
+ "id": "soapyfang-live-4",
+ "who": "soapyfang",
+ "started": "2026-11-24T04:44:53Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "sim.soapyfang",
+   "started": "2026-11-24T04:44:53Z",
+   "ended": "2026-11-24T05:21:13Z",
+   "rc": -15,
+   "why": "cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a73725fe1acd",
+ "head": "a73725fe1acdcc8c928dbab9d8608b847abdc5a3",
+ "reason": "step 1 (sim.soapyfang): cancelled",
+ "ended": "2026-11-24T05:21:13Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "56a4d05118ed0d5a6548b702356478462426d6da",
+  "path": "jobs/soapyfang-live-4"
+ },
+ "runner_commit": "8533b53c96f9d90300c0bdb6281d74987810a94d",
+ "updated": "2026-11-24T05:21:14Z"
+}

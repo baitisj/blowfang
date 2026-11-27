@@ -1,0 +1,56 @@
+2026-11-23T23:06:55Z job kws-n70b-r6 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-7add4ed90988 at 7add4ed909888edc7934d247185134993fbda371
+2026-11-23T23:06:55Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-7add4ed90988/tools/pluto_fw.py --as nato-kws fpga /home/baitisj/blowfang-work/runs/inbox/kws-n70b/system_top.bit.bin /home/baitisj/blowfang-work/runs/inbox/kws-n70b/chanctl /home/baitisj/blowfang-work/runs/inbox/kws-n70b/ensure_pluto_fpga.sh /home/baitisj/blowfang-work/runs/inbox/kws-n70b/pluto_runtime_load.sh
+Pluto FPGA channelizer ready
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=bc2533
+attr_name=compatible attr_val=ad9364
+uptime=136235.47
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+fpga: channelizer loaded (pl_is_chan=yes)
+2026-11-23T23:06:57Z step 1 (pluto.fw) rc=0
+2026-11-23T23:06:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-7add4ed90988/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-n70b/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-n70b-r6/c70 --bins /home/baitisj/blowfang-work/runs/inbox/kws-n70b/pluto-fpga-source --hz 443000000 --seconds 1440 --gain 60 --channels 440100000,441375000,442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000,444700000 --band 440000000,446000000
+chan: pluto_chan (284744a6925f81a7...) and the producer (c462e7586d0a1970...) in the Pluto's RAM; streams [13, 14, 16, 17, 35, 455, 481, 498, 499, 508, 509]
+442.3000_20261123T2307252Z.flac: 41396 bytes
+442.3000_20261123T2308261Z.flac: 41342 bytes
+440.1000_20261123T2308220Z.flac: 98352 bytes
+440.1000_20261123T2309046Z.flac: 68533 bytes
+442.3000_20261123T2309280Z.flac: 41097 bytes
+440.1000_20261123T2309517Z.flac: 91849 bytes
+442.3000_20261123T2310309Z.flac: 41125 bytes
+442.3000_20261123T2311329Z.flac: 41248 bytes
+440.1000_20261123T2312244Z.flac: 142994 bytes
+442.3000_20261123T2312348Z.flac: 41507 bytes
+440.1000_20261123T2312520Z.flac: 138959 bytes
+440.1000_20261123T2313195Z.flac: 146615 bytes
+442.3000_20261123T2313367Z.flac: 89965 bytes
+442.3000_20261123T2314425Z.flac: 41158 bytes
+440.1000_20261123T2315322Z.flac: 78049 bytes
+442.3000_20261123T2315445Z.flac: 41075 bytes
+442.3000_20261123T2316464Z.flac: 41374 bytes
+442.3000_20261123T2317483Z.flac: 41450 bytes
+440.1000_20261123T2318189Z.flac: 153666 bytes
+440.1000_20261123T2318327Z.flac: 63737 bytes
+442.3000_20261123T2318502Z.flac: 41633 bytes
+440.1000_20261123T2318491Z.flac: 61592 bytes
+440.1000_20261123T2319232Z.flac: 80223 bytes
+442.3000_20261123T2319511Z.flac: 41220 bytes
+440.1000_20261123T2319545Z.flac: 151983 bytes
+440.1000_20261123T2320071Z.flac: 122507 bytes
+442.3000_20261123T2320531Z.flac: 41251 bytes
+442.3000_20261123T2321550Z.flac: 41181 bytes
+442.3000_20261123T2322579Z.flac: 41269 bytes
+442.3000_20261123T2323598Z.flac: 90362 bytes
+442.3000_20261123T2325057Z.flac: 41411 bytes
+442.3000_20261123T2326076Z.flac: 41223 bytes
+440.1000_20261123T2326361Z.flac: 177273 bytes
+442.3000_20261123T2327095Z.flac: 40950 bytes
+440.1000_20261123T2327117Z.flac: 141447 bytes
+2026-11-23T23:28:04Z stopping (cancelled): SIGTERM to the step's process group
+chan: stopped (SIGTERM)
+2026-11-23T23:28:05Z step 2 (pluto) rc=1 (cancelled)
+2026-11-23T23:28:05Z job kws-n70b-r6 cancelled: step 2 (pluto): cancelled

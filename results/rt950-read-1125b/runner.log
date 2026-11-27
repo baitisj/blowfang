@@ -1,0 +1,11 @@
+2026-11-25T19:00:56Z job rt950-read-1125b by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-3ff86b4a46f5 at 3ff86b4a46f529ad299437a9e226a30dbc82bef2
+2026-11-25T19:01:11Z step 1 (wait) rc=0
+2026-11-25T19:01:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-3ff86b4a46f5/radios/rt950/tools/rt950_backup.py read /dev/ttyUSB3 /home/baitisj/blowfang-work/private/rt950/rt950-read-1125b --summary /home/baitisj/blowfang-work/runs/queue/rt950-read-1125b -v --addr 2 --passes 2
+session: identity b'\x016\x01t\x04\x00\x05 \x02\x00\x02`\x01\x030\x04' model 'RT-950'
+    6%  4096/65536   12%  8192/65536   18%  12288/65536   25%  16384/65536   31%  20480/65536   37%  24576/65536   43%  28672/65536   50%  32768/65536   56%  36864/65536   62%  40960/65536   68%  45056/65536   75%  49152/65536   81%  53248/65536   87%  57344/65536   93%  61440/65536  100%  65536/65536
+cps64k pass 1: 49ac175bf12e0e875b0bb5422238a4a1910b8f56fdbec1600a1f3b1e0882ac35
+    6%  4096/65536   12%  8192/65536   18%  12288/65536   25%  16384/65536   31%  20480/65536   37%  24576/65536   43%  28672/65536   50%  32768/65536   56%  36864/65536   62%  40960/65536   68%  45056/65536   75%  49152/65536   81%  53248/65536   87%  57344/65536   93%  61440/65536  100%  65536/65536
+cps64k pass 2: 49ac175bf12e0e875b0bb5422238a4a1910b8f56fdbec1600a1f3b1e0882ac35
+cps64k          65536 B  agreed 49ac175bf12e0e875b0bb5422238a4a1910b8f56fdbec1600a1f3b1e0882ac35
+2026-11-25T19:01:28Z step 2 (rt950.read) rc=0
+2026-11-25T19:01:28Z job rt950-read-1125b done

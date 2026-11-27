@@ -1,0 +1,17 @@
+{
+ "id": "efw-4",
+ "status": "refused",
+ "reason": "step 3 (pluto.fw): args[0] must be one of doctor, info, backup, ramboot, fpga, psd, reboot; step 4 (pluto.fw): args[0] must be one of doctor, info, backup, ramboot, fpga, psd, reboot; step 5 (pluto.fw): args[0] must be one of doctor, info, backup, ramboot, fpga, psd, reboot",
+ "problems": [
+  "step 3 (pluto.fw): args[0] must be one of doctor, info, backup, ramboot, fpga, psd, reboot",
+  "step 4 (pluto.fw): args[0] must be one of doctor, info, backup, ramboot, fpga, psd, reboot",
+  "step 5 (pluto.fw): args[0] must be one of doctor, info, backup, ramboot, fpga, psd, reboot"
+ ],
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "825993b75313d1d72b0ecfa30b762f0de13a782e",
+  "path": "jobs/efw-4"
+ },
+ "runner_commit": "df50adf160ac510bb8be78ca88342c220a91d2f5",
+ "updated": "2026-11-22T08:41:18Z"
+}

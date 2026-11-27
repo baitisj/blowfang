@@ -1,0 +1,25 @@
+{
+ "id": "uv21-read-1",
+ "who": "uv21",
+ "started": "2026-11-23T09:14:31Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "kplug.read",
+   "started": "2026-11-23T09:14:31Z",
+   "ended": "2026-11-23T09:14:40Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-8985332a11ca",
+ "head": "8985332a11ca17efaf215006718d8d5e89f95ebc",
+ "ended": "2026-11-23T09:14:40Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f87136c23d49b77c0e4a6fd6cd4fd73377b223e3",
+  "path": "jobs/uv21-read-1"
+ },
+ "runner_commit": "8985332a11ca17efaf215006718d8d5e89f95ebc",
+ "updated": "2026-11-23T09:14:40Z"
+}

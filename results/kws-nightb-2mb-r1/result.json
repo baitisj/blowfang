@@ -1,0 +1,12 @@
+{
+ "id": "kws-nightb-2mb-r1",
+ "status": "cancelled",
+ "reason": "cancelled before it ran",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "65e2bbd3497a064559e9f06236f3a8469487d4c8",
+  "path": "jobs/kws-nightb-2mb"
+ },
+ "runner_commit": "5257b64800f94a5caf334d61699b0abc410d3756",
+ "updated": "2026-11-22T07:18:10Z"
+}

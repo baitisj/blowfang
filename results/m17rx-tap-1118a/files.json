@@ -1,0 +1,17 @@
+[
+ {
+  "name": "uv380.rx.out",
+  "bytes": 13588,
+  "sha256": "1e2a6d5898aabdbc2a3474055860d36654064917c3ad3f366ac0b92541b24640",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/m17rx-tap-1118a/uv380.rx.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 4985272,
+  "sha256": "25509d8e0ee276977ff6132a4fe0f3ae6dd665a24e639a38383f779d5bcd37fa",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/m17rx-tap-1118a/uv380.log",
+  "kept": "over 512 KB; dropped from the branch 2026-11-27"
+ }
+]

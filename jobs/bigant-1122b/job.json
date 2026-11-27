@@ -1,0 +1,608 @@
+{
+ "id": "bigant-1122b",
+ "who": "position",
+ "freq_mhz": 432.1,
+ "minutes": 15,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c861100.cf32",
+    "--hz",
+    "861100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c861300.cf32",
+    "--hz",
+    "861300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c861500.cf32",
+    "--hz",
+    "861500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c861700.cf32",
+    "--hz",
+    "861700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c861900.cf32",
+    "--hz",
+    "861900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c862100.cf32",
+    "--hz",
+    "862100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c862300.cf32",
+    "--hz",
+    "862300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c862500.cf32",
+    "--hz",
+    "862500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c862700.cf32",
+    "--hz",
+    "862700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c862900.cf32",
+    "--hz",
+    "862900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c863100.cf32",
+    "--hz",
+    "863100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c863300.cf32",
+    "--hz",
+    "863300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c863500.cf32",
+    "--hz",
+    "863500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c863700.cf32",
+    "--hz",
+    "863700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c863900.cf32",
+    "--hz",
+    "863900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c864100.cf32",
+    "--hz",
+    "864100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c864300.cf32",
+    "--hz",
+    "864300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c864500.cf32",
+    "--hz",
+    "864500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c864700.cf32",
+    "--hz",
+    "864700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c864900.cf32",
+    "--hz",
+    "864900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c865100.cf32",
+    "--hz",
+    "865100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c865300.cf32",
+    "--hz",
+    "865300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c865500.cf32",
+    "--hz",
+    "865500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c865700.cf32",
+    "--hz",
+    "865700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c865900.cf32",
+    "--hz",
+    "865900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c866100.cf32",
+    "--hz",
+    "866100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c866300.cf32",
+    "--hz",
+    "866300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c866500.cf32",
+    "--hz",
+    "866500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c866700.cf32",
+    "--hz",
+    "866700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c866900.cf32",
+    "--hz",
+    "866900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c867100.cf32",
+    "--hz",
+    "867100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c867300.cf32",
+    "--hz",
+    "867300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c867500.cf32",
+    "--hz",
+    "867500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c867700.cf32",
+    "--hz",
+    "867700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c867900.cf32",
+    "--hz",
+    "867900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c868100.cf32",
+    "--hz",
+    "868100000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c868300.cf32",
+    "--hz",
+    "868300000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c868500.cf32",
+    "--hz",
+    "868500000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c868700.cf32",
+    "--hz",
+    "868700000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c868900.cf32",
+    "--hz",
+    "868900000",
+    "--seconds",
+    "0.1",
+    "--gain",
+    "50"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  }
+ ]
+}

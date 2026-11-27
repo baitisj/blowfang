@@ -1,0 +1,89 @@
+{
+ "id": "aprsde-1",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 600,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:dfskcap_de.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "d2ce969fff5e15d234a5f07bf8bf9c7b0f1d3b81514cf43f60a98be8195ed881"
+  },
+  {
+   "do": "wait",
+   "pattern": "say s 0 t=",
+   "seconds": 120,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 1
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:de.wav",
+    "--peak",
+    "3000",
+    "--gain",
+    "-60"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:de.wav",
+    "--peak",
+    "3000",
+    "--gain",
+    "-60"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "dfskcap end",
+   "seconds": 240,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

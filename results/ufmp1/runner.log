@@ -1,0 +1,21 @@
+2026-11-25T02:56:31Z job ufmp1 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088 at e10c1c08d08852c7f00d59504f06caf3cc21b24f, module sources /home/baitisj/blowfang-work/worktrees/src-9399323dfe77 at 9399323dfe77fa058720ad6619eb7d1f5b367c3b
+2026-11-25T02:56:31Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-9399323dfe77/radios/uv21/mod/fmprobe.c -D FP_PART=7 --log /home/baitisj/blowfang-work/runs/queue/ufmp1/uv21mod.log --run-timeout 180
+retry: um b 0da6 -> None
+P 119 319 2 5 30 50 115 6 7
+A 10 11 30 40
+a 10=1 11=1 60=0
+b10 ffffffffffffffffffffffffffffffff
+b11 ffffffffffffffffffffffffffffffff
+b30 ffffffffffffffffffffffffffffffff
+b40 ffffffffffffffffffffffffffffffff
+i ffff
+E n=-5 ms=85
+um end fffffffb
+2026-11-25T02:56:36Z step 1 (uv21.mod) rc=0
+2026-11-25T02:56:36Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-9399323dfe77/radios/uv21/mod/fmprobe.c -D FP_PART=8 -D FP_NRDS=3 -D FP_RDS1_S=65 -D FP_RDS_S=20 --log /home/baitisj/blowfang-work/runs/queue/ufmp1/uv21mod.log --run-timeout 180
+P 119 319 2 5 30 50 115 6 8
+i ffff
+E n=-5 ms=5
+um end fffffffb
+2026-11-25T02:56:39Z step 2 (uv21.mod) rc=0
+2026-11-25T02:56:39Z job ufmp1 done

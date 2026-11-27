@@ -1,0 +1,77 @@
+2026-11-18T20:58:07Z job uvscan-1118a by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be at 36dd1f8f20bed4165b7ec5357cf044b057bbd443
+2026-11-18T20:58:07Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvscan-1118a/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:58:16Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T20:58:16Z step 1 (uv380.cmd) rc=0
+2026-11-18T20:58:16Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/firmware/uv380-openrtx/mod/atscan.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/uvscan-1118a/uv380.log --run-timeout 200
+ok mod begin 2240
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 64
+mod run serial=1795035496 code=2216
+mod say scan start n=801 lo=425000 hi=435000 step=12500 f0=40730263 r30=7026
+mod say r 425000 ROOOOORNOQQNRRORSQTTQSRQRUQRTPQTQQTOPRSQSQPRPRTRQT
+mod say r 425625 RQSSPMSSVURUTQTVSSTQQTRPTOOQQNPOMPPORQQSRPSTQUTQTT
+mod say r 426250 RSMPSVPRUPRURRUQQSRQRRORNQSRQSQPSSQUTQTUQSTQRRSRTQ
+mod say r 426875 QSQPSPPQQORRQQPRSRPSRPTTRTRPQTQQSPQSRQTQPQPPRPPQPN
+mod say r 427500 QQOKNNPPOOOMOPNPPOPQOPPMPPPOQPOQOPRQQROOQPOQQOPROR
+mod say r 428125 KNPQOROOOQONPNOPQPQPPQOPSRRTOPTSRUSQSTRTSPRRRRRPPQ
+mod say r 428750 ONONOPPPRPPQPQTRRSQQTSRTQPRTQSSQRSQRSQQQPPROQONNRP
+mod say r 429375 OJMPQPPPPPRRPSPPRTQSSPQQQQPPOPMNOLMLNNPNMPOOQRQQPO
+mod say r 430000 QQPSQLPRPQRNQRQQRPQRPRSQRRPQRQRRQPQRQPPLOOOONNLNMP
+mod say r 430625 PMKOOPQOPPNPQOQQPOQPPRPPQRQRPPQQQRQPQPOQQOOONOPOMO
+mod say r 431250 LPPNOOOPQPPROPQRPRQPQPQSPPRPNRPNSPNQSQRSPRQRSTPQRO
+mod say r 431875 QTQLQRRSPQSQRTSQSROSRPTPOSSPSSOQQOQSPPQOOROPQOMQPO
+mod say r 432500 LPPQOPPONPPPQPOPQOOPNOOPPPNMPNNONOOOMPNOPMNOOPOQMP
+mod say r 433125 QNPQNPQOQRPPQPQQOPPOPRPPOPOQPNOPNNONMNMLLNNOONONPQ
+mod say r 433750 OKPPPQPNQPQRPQSRQRRRSQQSTRRTSSSSSSSRSRRTRRRPPRPPPL
+mod say r 434375 NNMLNJNOPNPNOPQPPQOQQQQQOPPNPQOPOOOQOMPNNQRQRRPRRS
+mod say r 435000 S
+mod say p 425312 m=-85 fl=-94
+mod say p 425725 m=-83 fl=-94
+mod say p 425737 m=-86 fl=-94
+mod say p 425762 m=-86 fl=-94
+mod say p 425812 m=-83 fl=-94
+mod say p 426187 m=-85 fl=-94
+mod say p 426312 m=-84 fl=-94
+mod say p 426350 m=-86 fl=-94
+mod say p 426387 m=-86 fl=-94
+mod say p 426425 m=-86 fl=-94
+mod say p 426687 m=-85 fl=-94
+mod say p 426737 m=-85 fl=-94
+mod say p 428537 m=-86 fl=-94
+mod say scan end n=801 ms=37867 ret=13
+ok mod run ret=13 ms=37872
+2026-11-18T20:58:54Z step 2 (uv380.rx) rc=0
+2026-11-18T20:58:54Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 tune tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/uvscan-1118a/uv380.log
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T20:59:00Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850 listen=0
+2026-11-18T20:59:00Z step 3 (uv380.cmd) rc=0
+2026-11-18T20:59:00Z job uvscan-1118a done

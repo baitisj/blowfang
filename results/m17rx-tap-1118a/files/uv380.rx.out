@@ -1,0 +1,203 @@
+ok mod begin 3516
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 60
+mod run serial=1794965261 code=3492
+mod say tap start v34=1c,18,3c,9c step=5000 s=120 at=ok 81=04 34was=98 10was=80
+mod say v 0 idx=0 34=1c seq=0
+mod say d 24 half=0 mode=prog f=02
+mod say d 56 half=1 mode=prog f=02
+mod say d 71 half=1 mode=prog f=00
+mod say d 88 half=0 mode=prog f=02
+mod say d 120 half=1 mode=prog f=02
+mod say d 134 half=1 mode=prog f=00
+mod say d 152 half=0 mode=prog f=02
+mod say d 184 half=1 mode=prog f=02
+mod say d 216 half=0 mode=prog f=02
+mod say d 248 half=1 mode=prog f=02
+mod say d 262 half=1 mode=prog f=00
+mod say d 280 half=0 mode=prog f=02
+mod say st 1000 halves=42 gaps=11 flags=31 prog=42 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 2000 halves=76 gaps=14 flags=62 prog=76 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 3000 halves=108 gaps=14 flags=94 prog=108 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 4004 halves=139 gaps=14 flags=125 prog=139 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 5000 idx=1 34=18 seq=736
+mod say st 5004 halves=170 gaps=14 flags=156 prog=170 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 6004 halves=201 gaps=14 flags=187 prog=201 block=0 rssi=-67 43=0200 4e=03 4f=00
+mod say st 7012 halves=233 gaps=14 flags=219 prog=233 block=0 rssi=-68 43=0200 4e=03 4f=00
+(1000 audio lines)
+mod say st 8012 halves=264 gaps=14 flags=250 prog=264 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 9012 halves=295 gaps=14 flags=281 prog=295 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 10000 idx=2 34=3c seq=1360
+mod say st 10020 halves=327 gaps=14 flags=313 prog=327 block=0 rssi=-67 43=0200 4e=03 4f=00
+mod say st 11020 halves=358 gaps=14 flags=344 prog=358 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 12020 halves=389 gaps=14 flags=375 prog=389 block=0 rssi=-67 43=0200 4e=03 4f=00
+mod say st 13028 halves=421 gaps=14 flags=407 prog=421 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 14028 halves=452 gaps=14 flags=438 prog=452 block=0 rssi=-67 43=0200 4e=03 4f=00
+mod say v 15000 idx=3 34=9c seq=1984
+mod say st 15028 halves=483 gaps=14 flags=469 prog=483 block=0 rssi=-68 43=0200 4e=03 4f=00
+(2000 audio lines)
+mod say st 16036 halves=515 gaps=14 flags=501 prog=515 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 17036 halves=546 gaps=14 flags=532 prog=546 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 18036 halves=577 gaps=14 flags=563 prog=577 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 19044 halves=609 gaps=14 flags=595 prog=609 block=0 rssi=-67 43=0200 4e=03 4f=00
+mod say v 20004 idx=0 34=1c seq=2612
+mod say st 20044 halves=640 gaps=14 flags=626 prog=640 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 21044 halves=671 gaps=14 flags=657 prog=671 block=0 rssi=-67 43=0200 4e=03 4f=00
+mod say st 22052 halves=703 gaps=14 flags=689 prog=703 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 23052 halves=734 gaps=14 flags=720 prog=734 block=0 rssi=-67 43=0200 4e=03 4f=00
+(3000 audio lines)
+mod say st 24052 halves=765 gaps=14 flags=751 prog=765 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 25004 idx=1 34=18 seq=3236
+mod say st 25060 halves=797 gaps=14 flags=783 prog=797 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 26060 halves=828 gaps=14 flags=814 prog=828 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 27060 halves=859 gaps=14 flags=845 prog=859 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 28068 halves=891 gaps=14 flags=877 prog=891 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 29068 halves=922 gaps=14 flags=908 prog=922 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 30004 idx=2 34=3c seq=3860
+mod say st 30068 halves=953 gaps=14 flags=939 prog=953 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 31076 halves=985 gaps=14 flags=971 prog=985 block=0 rssi=-67 43=0200 4e=03 4f=00
+(4000 audio lines)
+mod say st 32076 halves=1016 gaps=14 flags=1002 prog=1016 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 33076 halves=1047 gaps=14 flags=1033 prog=1047 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 34084 halves=1079 gaps=14 flags=1065 prog=1079 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 35012 idx=3 34=9c seq=4488
+mod say st 35084 halves=1110 gaps=14 flags=1096 prog=1110 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 36084 halves=1141 gaps=14 flags=1127 prog=1141 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 37092 halves=1173 gaps=14 flags=1159 prog=1173 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 38092 halves=1204 gaps=14 flags=1190 prog=1204 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 39092 halves=1235 gaps=14 flags=1221 prog=1235 block=0 rssi=-68 43=0200 4e=03 4f=00
+(5000 audio lines)
+mod say v 40012 idx=0 34=1c seq=5112
+mod say st 40100 halves=1267 gaps=14 flags=1253 prog=1267 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 41100 halves=1297 gaps=15 flags=1284 prog=1297 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 42100 halves=1328 gaps=15 flags=1315 prog=1328 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 43108 halves=1360 gaps=15 flags=1347 prog=1360 block=0 rssi=-68 43=0000 4e=03 4f=00
+mod say st 44108 halves=1391 gaps=15 flags=1378 prog=1391 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 45012 idx=1 34=18 seq=5736
+mod say st 45108 halves=1422 gaps=15 flags=1409 prog=1422 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 46116 halves=1454 gaps=15 flags=1441 prog=1454 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 47116 halves=1485 gaps=15 flags=1472 prog=1485 block=0 rssi=-68 43=0200 4e=03 4f=00
+(6000 audio lines)
+mod say st 48116 halves=1516 gaps=15 flags=1503 prog=1516 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 49124 halves=1548 gaps=15 flags=1535 prog=1548 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 50020 idx=2 34=3c seq=6364
+mod say st 50124 halves=1579 gaps=15 flags=1566 prog=1579 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 51124 halves=1610 gaps=15 flags=1597 prog=1610 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 52132 halves=1642 gaps=15 flags=1629 prog=1642 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 53132 halves=1673 gaps=15 flags=1660 prog=1673 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 54132 halves=1704 gaps=15 flags=1691 prog=1704 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 55020 idx=3 34=9c seq=6988
+mod say st 55140 halves=1736 gaps=15 flags=1723 prog=1736 block=0 rssi=-68 43=0200 4e=03 4f=00
+(7000 audio lines)
+mod say st 56140 halves=1767 gaps=15 flags=1754 prog=1767 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 57140 halves=1798 gaps=15 flags=1785 prog=1798 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 58148 halves=1830 gaps=15 flags=1817 prog=1830 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 59148 halves=1861 gaps=15 flags=1848 prog=1861 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 60020 idx=0 34=1c seq=7612
+mod say st 60148 halves=1892 gaps=15 flags=1879 prog=1892 block=0 rssi=-68 43=0000 4e=03 4f=00
+mod say st 61156 halves=1924 gaps=15 flags=1911 prog=1924 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 62156 halves=1955 gaps=15 flags=1942 prog=1955 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 63156 halves=1986 gaps=15 flags=1973 prog=1986 block=0 rssi=-68 43=0200 4e=03 4f=00
+(8000 audio lines)
+mod say st 64164 halves=2018 gaps=15 flags=2005 prog=2018 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 65028 idx=1 34=18 seq=8240
+mod say st 65164 halves=2049 gaps=15 flags=2036 prog=2049 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 66164 halves=2080 gaps=15 flags=2067 prog=2080 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 67172 halves=2112 gaps=15 flags=2099 prog=2112 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 68172 halves=2143 gaps=15 flags=2130 prog=2143 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say st 69172 halves=2174 gaps=15 flags=2161 prog=2174 block=0 rssi=-68 43=0200 4e=03 4f=00
+mod say v 70028 idx=2 34=3c seq=8864
+mod say st 70180 halves=2206 gaps=15 flags=2193 prog=2206 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 71180 halves=2237 gaps=15 flags=2224 prog=2237 block=0 rssi=-94 43=0200 4e=03 4f=00
+(9000 audio lines)
+mod say st 72180 halves=2268 gaps=15 flags=2255 prog=2268 block=0 rssi=-96 43=0200 4e=03 4f=00
+mod say st 73188 halves=2300 gaps=15 flags=2287 prog=2300 block=0 rssi=-95 43=0200 4e=03 4f=00
+mod say st 74188 halves=2331 gaps=15 flags=2318 prog=2331 block=0 rssi=-89 43=0200 4e=03 4f=00
+mod say v 75028 idx=3 34=9c seq=9488
+mod say st 75188 halves=2362 gaps=15 flags=2349 prog=2362 block=0 rssi=-89 43=0200 4e=03 4f=00
+mod say st 76196 halves=2394 gaps=15 flags=2381 prog=2394 block=0 rssi=-96 43=0200 4e=03 4f=00
+mod say st 77196 halves=2425 gaps=15 flags=2412 prog=2425 block=0 rssi=-89 43=0200 4e=03 4f=00
+mod say st 78196 halves=2456 gaps=15 flags=2443 prog=2456 block=0 rssi=-88 43=0200 4e=03 4f=00
+mod say st 79204 halves=2488 gaps=15 flags=2475 prog=2488 block=0 rssi=-89 43=0200 4e=03 4f=00
+(10000 audio lines)
+mod say v 80036 idx=0 34=1c seq=10116
+mod say st 80204 halves=2519 gaps=15 flags=2506 prog=2519 block=0 rssi=-89 43=0200 4e=03 4f=00
+mod say st 81204 halves=2550 gaps=15 flags=2537 prog=2550 block=0 rssi=-95 43=0200 4e=03 4f=00
+mod say st 82212 halves=2582 gaps=15 flags=2569 prog=2582 block=0 rssi=-90 43=0200 4e=03 4f=00
+mod say st 83212 halves=2613 gaps=15 flags=2600 prog=2613 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 84212 halves=2644 gaps=15 flags=2631 prog=2644 block=0 rssi=-96 43=0000 4e=03 4f=00
+mod say v 85036 idx=1 34=18 seq=10740
+mod say st 85220 halves=2676 gaps=15 flags=2663 prog=2676 block=0 rssi=-93 43=0200 4e=03 4f=00
+mod say st 86220 halves=2705 gaps=17 flags=2694 prog=2705 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 87220 halves=2733 gaps=20 flags=2725 prog=2733 block=0 rssi=-93 43=0200 4e=03 4f=00
+(11000 audio lines)
+mod say st 88228 halves=2765 gaps=20 flags=2757 prog=2765 block=0 rssi=-93 43=0000 4e=03 4f=00
+mod say st 89228 halves=2795 gaps=21 flags=2788 prog=2795 block=0 rssi=-90 43=0200 4e=03 4f=00
+mod say v 90036 idx=2 34=3c seq=11364
+mod say st 90228 halves=2824 gaps=23 flags=2819 prog=2824 block=0 rssi=-96 43=0200 4e=03 4f=00
+mod say st 91236 halves=2858 gaps=25 flags=2851 prog=2858 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 92236 halves=2891 gaps=27 flags=2882 prog=2891 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 93236 halves=2934 gaps=39 flags=2913 prog=2934 block=0 rssi=-95 43=0000 4e=03 4f=00
+mod say st 94243 halves=2969 gaps=42 flags=2945 prog=2969 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say v 95044 idx=3 34=9c seq=12144
+(12000 audio lines)
+mod say st 95243 halves=3000 gaps=42 flags=2976 prog=3000 block=0 rssi=-89 43=0200 4e=03 4f=00
+mod say st 96243 halves=3031 gaps=42 flags=3007 prog=3031 block=0 rssi=-89 43=0200 4e=03 4f=00
+mod say st 97251 halves=3063 gaps=42 flags=3039 prog=3063 block=0 rssi=-95 43=0200 4e=03 4f=00
+mod say st 98251 halves=3094 gaps=44 flags=3070 prog=3094 block=0 rssi=-96 43=0200 4e=03 4f=00
+mod say st 99251 halves=3127 gaps=46 flags=3101 prog=3127 block=0 rssi=-92 43=0200 4e=03 4f=00
+mod say v 100047 idx=0 34=1c seq=12872
+mod say st 100259 halves=3172 gaps=59 flags=3133 prog=3172 block=0 rssi=-93 43=0200 4e=03 4f=00
+mod say st 101259 halves=3204 gaps=60 flags=3164 prog=3204 block=0 rssi=-92 43=0200 4e=03 4f=00
+mod say st 102259 halves=3235 gaps=60 flags=3195 prog=3235 block=0 rssi=-93 43=0200 4e=03 4f=00
+(13000 audio lines)
+mod say st 103267 halves=3267 gaps=60 flags=3227 prog=3267 block=0 rssi=-90 43=0200 4e=03 4f=00
+mod say st 104267 halves=3298 gaps=60 flags=3258 prog=3298 block=0 rssi=-89 43=0000 4e=03 4f=00
+mod say v 105047 idx=1 34=18 seq=13528
+mod say st 105267 halves=3329 gaps=60 flags=3289 prog=3329 block=0 rssi=-92 43=0200 4e=03 4f=00
+mod say st 106275 halves=3361 gaps=60 flags=3321 prog=3361 block=0 rssi=-96 43=0200 4e=03 4f=00
+mod say st 107275 halves=3390 gaps=61 flags=3352 prog=3390 block=0 rssi=-95 43=0200 4e=03 4f=00
+mod say st 108275 halves=3421 gaps=62 flags=3383 prog=3421 block=0 rssi=-95 43=0200 4e=03 4f=00
+mod say st 109283 halves=3451 gaps=64 flags=3415 prog=3451 block=0 rssi=-89 43=0200 4e=03 4f=00
+mod say v 110051 idx=2 34=3c seq=14156
+mod say st 110283 halves=3482 gaps=64 flags=3446 prog=3482 block=0 rssi=-89 43=0200 4e=03 4f=00
+(14000 audio lines)
+mod say st 111283 halves=3513 gaps=64 flags=3477 prog=3513 block=0 rssi=-93 43=0200 4e=03 4f=00
+mod say st 112291 halves=3545 gaps=64 flags=3509 prog=3545 block=0 rssi=-91 43=0200 4e=03 4f=00
+mod say st 113291 halves=3576 gaps=64 flags=3540 prog=3576 block=0 rssi=-93 43=0200 4e=03 4f=00
+mod say st 114291 halves=3607 gaps=64 flags=3571 prog=3607 block=0 rssi=-88 43=0200 4e=03 4f=00
+mod say v 115051 idx=3 34=9c seq=14780
+mod say st 115299 halves=3639 gaps=64 flags=3603 prog=3639 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 116299 halves=3670 gaps=64 flags=3634 prog=3670 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say st 117299 halves=3701 gaps=64 flags=3665 prog=3701 block=0 rssi=-95 43=0200 4e=03 4f=00
+mod say st 118307 halves=3733 gaps=64 flags=3697 prog=3733 block=0 rssi=-95 43=0200 4e=03 4f=00
+(15000 audio lines)
+mod say st 119307 halves=3764 gaps=64 flags=3728 prog=3764 block=0 rssi=-94 43=0200 4e=03 4f=00
+mod say end halves=3786 gaps=64 flags=3750 prog=3786 block=0 lines=15400
+ok mod run ret=0 ms=120013

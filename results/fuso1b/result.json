@@ -1,0 +1,116 @@
+{
+ "id": "fuso1b",
+ "who": "fusotx",
+ "started": "2026-11-20T16:18:21Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T16:18:21Z",
+   "ended": "2026-11-20T16:18:23Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-20T16:18:23Z",
+   "ended": "2026-11-20T16:18:27Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-20T16:18:27Z",
+   "ended": "2026-11-20T16:19:41Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-20T16:19:41Z",
+   "ended": "2026-11-20T16:22:41Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-20T16:22:41Z",
+   "ended": "2026-11-20T16:22:41Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "k6.upload",
+   "started": "2026-11-20T16:22:41Z",
+   "ended": "2026-11-20T16:24:49Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-20T16:24:49Z",
+   "ended": "2026-11-20T16:24:49Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-20T16:24:49Z",
+   "ended": "2026-11-20T16:24:52Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-20T16:24:52Z",
+   "ended": "2026-11-20T16:25:05Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-20T16:25:05Z",
+   "ended": "2026-11-20T16:25:07Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-20T16:25:07Z",
+   "ended": "2026-11-20T16:25:37Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-20T16:25:37Z",
+   "ended": "2026-11-20T16:26:28Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-20T16:26:28Z",
+   "ended": "2026-11-20T16:26:33Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "logger.stop",
+   "started": "2026-11-20T16:26:33Z",
+   "ended": "2026-11-20T16:26:33Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-bceb3b51f8f1",
+ "head": "bceb3b51f8f1e5e3c31adcae764c806754896206",
+ "ended": "2026-11-20T16:26:33Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "932815b886cf6d038be4feabf46925c962d73b82",
+  "path": "jobs/fuso1b"
+ },
+ "runner_commit": "bceb3b51f8f1e5e3c31adcae764c806754896206",
+ "updated": "2026-11-20T16:26:34Z"
+}

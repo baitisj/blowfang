@@ -1,0 +1,39 @@
+{
+ "id": "rt950-read-1126s",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 45,
+ "steps": [
+  {
+   "do": "wait",
+   "seconds": 20
+  },
+  {
+   "do": "rt950.read",
+   "cable": "1a86:7523",
+   "args": [
+    "--addr",
+    "2",
+    "--passes",
+    "2",
+    "--block",
+    "32"
+   ]
+  },
+  {
+   "do": "rt950.compare",
+   "backup": "rt950-read-1126s",
+   "against": "rt950-read-1125c",
+   "args": [
+    "--keys"
+   ]
+  },
+  {
+   "do": "rt950.compare",
+   "backup": "rt950-read-1126s",
+   "args": [
+    "--keys"
+   ]
+  }
+ ]
+}

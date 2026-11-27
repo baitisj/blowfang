@@ -1,0 +1,30 @@
+[
+ {
+  "name": "b2m/overs.json",
+  "bytes": 2,
+  "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-map-r1/b2m/overs.json"
+ },
+ {
+  "name": "b2m/chan.json",
+  "bytes": 1591,
+  "sha256": "1224a759521d825ab5324c0a8db8588e2fcb4af2a60ead154d76a6b5ce0dc410",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-map-r1/b2m/chan.json"
+ },
+ {
+  "name": "b2m/band.json",
+  "bytes": 23630,
+  "sha256": "1e086920df9aa0be5d7ade230e6b492adb98219a5f3abd340ce34ff0d8a5cee3",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-map-r1/b2m/band.json"
+ },
+ {
+  "name": "b2m/levels.json",
+  "bytes": 360213,
+  "sha256": "dc8feb491662fc0615932f4058d552a2a6726609127f1d0e2c6fef695d2f18e0",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-map-r1/b2m/levels.json"
+ }
+]

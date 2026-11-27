@@ -1,0 +1,48 @@
+{
+ "id": "m17rx-tap-1118a",
+ "who": "m17rx",
+ "freq_mhz": 441.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "tap"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "tap start",
+   "file": "uv380.log",
+   "seconds": 120
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:m17rx.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "4800",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "end halves",
+   "file": "uv380.log",
+   "seconds": 240
+  }
+ ]
+}

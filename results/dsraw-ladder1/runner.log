@@ -1,0 +1,45 @@
+2026-11-19T09:43:11Z job dsraw-ladder1 by dsotto-raw, checkout /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f at 989248773c0fcdc58be9b1a604c15d6fe055e9ab
+2026-11-19T09:43:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 441850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=24 last=45 pv=0/45
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=24 last=45 pv=0/45
+timeout: listen
+2026-11-19T09:43:22Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-19T09:43:22Z step 1 (uv380.cmd) rc=0
+2026-11-19T09:43:22Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/uv380_i2sprobe.py mod /dev/ttyACM1 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/firmware/uv380-openrtx/mod/c6fmtap_1c.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/uv380.log --run-timeout 200
+2026-11-19T09:43:24Z step 2 (uv380.rx) rc=0
+2026-11-19T09:43:24Z seen /tap start/ in /home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/uv380.log
+2026-11-19T09:43:24Z step 3 (wait) rc=0
+2026-11-19T09:43:26Z step 4 (wait) rc=0
+2026-11-19T09:43:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/pluto_bench.py --as dsotto-raw steps /home/baitisj/blowfang-work/runs/inbox/dsraw-ladder1/dsr-ladder.wav --hz 441850000 --dev 4800 --gains -64,-66,-68,-70,-72,-74 --pause 2 --out /home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/steps.json
+/home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/pluto_bench.py:504: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+steps: 6 sends of dsr-ladder.wav (10.2 s), peak deviation 4495 Hz before pre-emphasis, 4495 Hz sent, gains -64,-66,-68,-70,-72,-74 dB
+steps gain -64: 17.6 s on 441850000 Hz (LO 441850000.0), gain -64.0 dB, rate 2400000, RF on
+start 09:43:27Z
+end 09:43:44Z: 17.6 s of signal in 17.5 s (kept up)
+steps gain -66: 17.6 s on 441850000 Hz (LO 441850000.0), gain -66.0 dB, rate 2400000, RF on
+start 09:43:46Z
+end 09:44:04Z: 17.6 s of signal in 17.5 s (kept up)
+steps gain -68: 17.6 s on 441850000 Hz (LO 441850000.0), gain -68.0 dB, rate 2400000, RF on
+start 09:44:06Z
+end 09:44:23Z: 17.6 s of signal in 17.5 s (kept up)
+steps gain -70: 17.6 s on 441850000 Hz (LO 441850000.0), gain -70.0 dB, rate 2400000, RF on
+start 09:44:26Z
+end 09:44:43Z: 17.6 s of signal in 17.5 s (kept up)
+steps gain -72: 17.6 s on 441850000 Hz (LO 441850000.0), gain -72.0 dB, rate 2400000, RF on
+start 09:44:45Z
+end 09:45:03Z: 17.6 s of signal in 17.5 s (kept up)
+steps gain -74: 17.6 s on 441850000 Hz (LO 441850000.0), gain -74.0 dB, rate 2400000, RF on
+start 09:45:05Z
+end 09:45:23Z: 17.6 s of signal in 17.5 s (kept up)
+2026-11-19T09:45:25Z step 5 (pluto) rc=0
+2026-11-19T09:45:53Z seen /end halves=/ in /home/baitisj/blowfang-work/runs/queue/dsraw-ladder1/uv380.log
+2026-11-19T09:45:53Z step 6 (wait) rc=0
+2026-11-19T09:45:53Z job dsraw-ladder1 done

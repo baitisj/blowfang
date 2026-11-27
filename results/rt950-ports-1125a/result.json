@@ -1,0 +1,25 @@
+{
+ "id": "rt950-ports-1125a",
+ "who": "rt950",
+ "started": "2026-11-25T18:57:51Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "serial.list",
+   "started": "2026-11-25T18:57:51Z",
+   "ended": "2026-11-25T18:57:51Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-3ff86b4a46f5",
+ "head": "3ff86b4a46f529ad299437a9e226a30dbc82bef2",
+ "ended": "2026-11-25T18:57:51Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "36d8eb31e9f9bdc6f7ee8f57ac9a4820c8fe531e",
+  "path": "jobs/rt950-ports-1125a"
+ },
+ "runner_commit": "3ff86b4a46f529ad299437a9e226a30dbc82bef2",
+ "updated": "2026-11-25T18:57:51Z"
+}

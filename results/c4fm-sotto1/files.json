@@ -1,0 +1,23 @@
+[
+ {
+  "name": "uv380.log",
+  "bytes": 379,
+  "sha256": "00e7bd4509386cf20bfce6608b6a206cc0476a71ac3a6324e2a5a0ad22035b8a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto1/uv380.log"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 3206,
+  "sha256": "011ff6d084a8b4f102359f6658a4a46d2d239e48e3bc8468eeccabbf46145e63",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto1/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 3552,
+  "sha256": "2e4885e79bd6903a44ea5e380de79babd2c921c77b87ed248cdf3c2e0f1e0de3",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-sotto1/k6.log"
+ }
+]

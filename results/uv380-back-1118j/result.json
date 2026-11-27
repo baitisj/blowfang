@@ -1,0 +1,12 @@
+{
+ "id": "uv380-back-1118j",
+ "status": "cancelled",
+ "reason": "cancelled before it ran",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "07440d7b5729679ce73dd8bded31703b2a6fc435",
+  "path": "jobs/uv380-back-1118j"
+ },
+ "runner_commit": "b3631bbb9347cdb86d79c58d31572c4ec813c87e",
+ "updated": "2026-11-18T22:39:21Z"
+}

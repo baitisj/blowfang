@@ -1,0 +1,17 @@
+[
+ {
+  "name": "cap442025.wav.json",
+  "bytes": 84195,
+  "sha256": "fd32fd9896691b446a5d072414fd208b0c0f8c529d612fa467bfece25efa2126",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cap-442025/cap442025.wav.json"
+ },
+ {
+  "name": "cap442025.wav",
+  "bytes": 19200044,
+  "sha256": "05efd0b3111bbd14f3ae46471e4774b17aa43fb552faa345e31c5841acd914e6",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-cap-442025/cap442025.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

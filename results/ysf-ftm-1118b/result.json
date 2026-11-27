@@ -1,0 +1,15 @@
+{
+ "id": "ysf-ftm-1118b",
+ "status": "refused",
+ "reason": "step 5 (uv380.cmd): 441.850 MHz is outside the job's claim (440.850 MHz, 100 kHz guard)",
+ "problems": [
+  "step 5 (uv380.cmd): 441.850 MHz is outside the job's claim (440.850 MHz, 100 kHz guard)"
+ ],
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "cff4f84deadaa692271ca1378160bdbaaec7ce0b",
+  "path": "jobs/ysf-ftm-1118b"
+ },
+ "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "updated": "2026-11-18T06:05:19Z"
+}

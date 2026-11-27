@@ -1,0 +1,122 @@
+{
+ "id": "c4fm-sotto3",
+ "who": "c4fm",
+ "freq_mhz": 440.85,
+ "minutes": 14,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 600,
+   "file": "k6.log"
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 440850"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon|K6 MOD say \\w+ end",
+   "seconds": 130,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-30"
+   ]
+  },
+  {
+   "do": "wait",
+   "pattern": "EX beacon",
+   "seconds": 12,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:c4sotto.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "3",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json"
+   ],
+   "continue_on_error": true,
+   "sha256": "0c90ace2c3c3e42b58b10f970b3d95a83ab039e0228ce4d4a343bebb78e2e5cf"
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "tap1c"
+   ],
+   "background": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:trigger.wav",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:c4.wav",
+    "--hz",
+    "440850500",
+    "--seconds",
+    "70"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4lock (sent|w=)|K6 MOD ret=",
+   "seconds": 120,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "c4\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 90
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

@@ -1,0 +1,8 @@
+2026-11-26T14:44:15Z job soapy950-live-1126b by rt950-soapyfang, checkout /home/baitisj/blowfang-work/worktrees/inbox-4a06b30e5c31 at 4a06b30e5c3132e8927f5a819b30165a7be7f601
+2026-11-26T14:44:15Z $ /usr/bin/python3 -m sim.rt950 --source pluto --host 127.0.0.1 --port 5058 --minutes 5 --gain 50 --center 146520000 --image /home/baitisj/blowfang-work/runs/inbox/soapy950-live-1126b/rt950-surf2.bin --syms /home/baitisj/blowfang-work/runs/inbox/soapy950-live-1126b/rt950-surf2.syms
+SoapyFang source: Pluto ip:192.168.2.1 (2.4 MS/s, RX gain 50 dB, receive only)
+booting the RT-950 SURF image ...
+SoapyFang RT-950 SURF workbench on http://127.0.0.1:5058/, until 14:49:29Z (Ctrl-C stops it)
+SoapyFang stopped; the source is closed
+2026-11-26T14:49:30Z step 1 (sim.soapyfang) rc=0
+2026-11-26T14:49:30Z job soapy950-live-1126b done

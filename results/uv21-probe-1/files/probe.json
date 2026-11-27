@@ -1,0 +1,5 @@
+{
+ "step": "probe",
+ "handshake": "ack",
+ "boot": true
+}

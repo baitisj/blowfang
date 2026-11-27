@@ -1,0 +1,3 @@
+2026-11-19T20:25:27Z job aprsair-4 by k6-aprs-ladder, checkout /home/baitisj/blowfang-work/worktrees/inbox-f541fbd5d75a at f541fbd5d75ab520e4f8a81ade00f7e9d017f187
+2026-11-19T20:26:27Z step 1 (wait) rc=1 (cancelled)
+2026-11-19T20:26:27Z job aprsair-4 cancelled: step 1 (wait): cancelled

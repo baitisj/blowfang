@@ -1,0 +1,27 @@
+{
+ "id": "kws-chan-4",
+ "who": "nato-kws",
+ "started": "2026-11-22T07:18:12Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-22T07:18:12Z",
+   "ended": "2026-11-22T07:19:14Z",
+   "rc": 1,
+   "why": "cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-46a6f8b11697",
+ "head": "46a6f8b11697d8854637007d4f0f4123a6574fee",
+ "reason": "step 1 (pluto): cancelled",
+ "ended": "2026-11-22T07:19:14Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "781b007afdccd6edbb86435ec5ff107feb5a4945",
+  "path": "jobs/kws-chan-4"
+ },
+ "runner_commit": "5257b64800f94a5caf334d61699b0abc410d3756",
+ "updated": "2026-11-22T07:19:14Z"
+}

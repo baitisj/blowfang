@@ -1,0 +1,125 @@
+{
+ "id": "k6-ram0soak2",
+ "who": "k6-ysfrx",
+ "started": "2026-11-19T17:26:50Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T17:26:50Z",
+   "ended": "2026-11-19T17:26:52Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T17:26:52Z",
+   "ended": "2026-11-19T17:26:55Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T17:26:55Z",
+   "ended": "2026-11-19T17:27:49Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T17:27:49Z",
+   "ended": "2026-11-19T17:27:49Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T17:27:49Z",
+   "ended": "2026-11-19T17:28:26Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T17:28:26Z",
+   "ended": "2026-11-19T17:28:26Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T17:28:26Z",
+   "ended": "2026-11-19T17:29:11Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "k6.upload",
+   "started": "2026-11-19T17:29:11Z",
+   "ended": "2026-11-19T17:31:19Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T17:31:19Z",
+   "ended": "2026-11-19T17:32:19Z",
+   "rc": 1,
+   "why": "no /ysf start/ in /home/baitisj/blowfang-work/runs/queue/k6-ram0soak2/k6.log"
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-19T17:32:19Z",
+   "ended": "2026-11-19T17:32:21Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "pluto",
+   "started": "2026-11-19T17:32:21Z",
+   "ended": "2026-11-19T17:32:45Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "wait",
+   "started": "2026-11-19T17:32:45Z",
+   "ended": "2026-11-19T17:32:49Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "pluto",
+   "started": "2026-11-19T17:32:49Z",
+   "ended": "2026-11-19T17:33:12Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "wait",
+   "started": "2026-11-19T17:33:12Z",
+   "ended": "2026-11-19T17:36:13Z",
+   "rc": 1,
+   "why": "no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/k6-ram0soak2/k6.log"
+  },
+  {
+   "n": 15,
+   "do": "logger.stop",
+   "started": "2026-11-19T17:36:13Z",
+   "ended": "2026-11-19T17:36:13Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9",
+ "head": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "ended": "2026-11-19T17:36:13Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "4d8729e66fd0ac4384cfac59c2a6638ced8ae662",
+  "path": "jobs/k6-ram0soak2"
+ },
+ "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "updated": "2026-11-19T17:36:14Z"
+}

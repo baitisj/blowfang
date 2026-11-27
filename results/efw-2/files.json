@@ -1,0 +1,77 @@
+[
+ {
+  "name": "backup/dfu-list.txt",
+  "bytes": 843,
+  "sha256": "24165f8ea8d823d0b61b83a37040da51323032c805c9419c4e7b2708fcdb5491",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/dfu-list.txt"
+ },
+ {
+  "name": "backup/backup.json",
+  "bytes": 1044,
+  "sha256": "fa1497b1d240836ef091cc400fff8e187d933d0754f4f17c232315374dca31ed",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/backup.json"
+ },
+ {
+  "name": "backup/uboot-extra-env.bin",
+  "bytes": 4096,
+  "sha256": "3d0c95fbd14283a659d4fb328d4f189994fff164db0e0bf3329eb8a95441dca9",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/uboot-extra-env.bin",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "psd-70cm.json",
+  "bytes": 6278,
+  "sha256": "2da8f27cf477e4e744201cff7022a47c37cbe8add8c5e23afb39e9a777cd52aa",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/psd-70cm.json"
+ },
+ {
+  "name": "psd-2m.json",
+  "bytes": 7059,
+  "sha256": "1deb620c4597b93df9e10ac0c7a8388fd95883fc108fdc98e97f91604c1162b0",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/psd-2m.json"
+ },
+ {
+  "name": "backup/uboot-env.bin",
+  "bytes": 131072,
+  "sha256": "f7e1b7c42ff0b7a7d96b89f70a897ff3beb8319bfcc166bb57cddc620fc10219",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/uboot-env.bin",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "backup/spare.bin",
+  "bytes": 917504,
+  "sha256": "c367d2dfb0c14bd807efbb83f8bea131a7c4f24b5c5557b6d27c0cfa4e2552fd",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/spare.bin",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "backup/boot.bin",
+  "bytes": 1048576,
+  "sha256": "9c5bb8999f92c4b1e414296be4e4c0a9a92a4c466a36ad42275216abb317daaa",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/boot.bin",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "backup/firmware-original.itb",
+  "bytes": 12330291,
+  "sha256": "3fa622a1725a98a88640d28eaa61e8edb594bfd1534ea6cf184c8c8bd57ab2eb",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/firmware-original.itb",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "backup/firmware.bin",
+  "bytes": 31457280,
+  "sha256": "afab5e5b754dbe0f41ba61412672f68bfbd264856eec9ec3932d5d025f30497a",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-2/backup/firmware.bin"
+ }
+]

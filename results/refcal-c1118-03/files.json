@@ -1,0 +1,113 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/k6-rate.json"
+ },
+ {
+  "name": "p35m.cf32.json",
+  "bytes": 132,
+  "sha256": "3726598e3fc0ca9d25bb4824f7a034d536bc837e0e8d6437d83f0d012ef4d32d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p35m.cf32.json"
+ },
+ {
+  "name": "p14a.cf32.json",
+  "bytes": 133,
+  "sha256": "628d25531b4b5eebaed22556b1e101bf047aa75060714f276bdd13aaeade62e2",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p14a.cf32.json"
+ },
+ {
+  "name": "p14b.cf32.json",
+  "bytes": 133,
+  "sha256": "0332ae44548f74644fe64a9ebb3e7c113e50c3e2515b263fb85c187cf88bb0ee",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p14b.cf32.json"
+ },
+ {
+  "name": "p14m.cf32.json",
+  "bytes": 133,
+  "sha256": "dba0770b344dc482619dae520188a58a41a501a60536ae1b21328400f0764799",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p14m.cf32.json"
+ },
+ {
+  "name": "p35a.cf32.json",
+  "bytes": 133,
+  "sha256": "59971739b438be2a28b8849574a8cc784cf8001861fd7665d1594971bd8fc924",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p35a.cf32.json"
+ },
+ {
+  "name": "p35b.cf32.json",
+  "bytes": 133,
+  "sha256": "0e8493bf03e2bc5b1d45b0d28d839cfaef7b61bc9e98e2894491196eb520c137",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p35b.cf32.json"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 5770,
+  "sha256": "f6a7d15a057b14d548290c5cf07d7e83191389a5e56a13104e38ed23929e773c",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 8358,
+  "sha256": "6edfe675b53444c6750451471d459a303ffadd2eb3f948cce7cf0dc286bac048",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/k6.log"
+ },
+ {
+  "name": "p14a.cf32",
+  "bytes": 960000,
+  "sha256": "3f16b5c4ce68ab1d06712ed9a77e2d9b5e496b3f25d703e9c6a7237d842c184d",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p14a.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "p14b.cf32",
+  "bytes": 960000,
+  "sha256": "6cf01eac43287740d9c7086bc8da84077dc0a65242cb6c0290b9347d6ea8b1d9",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p14b.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "p14m.cf32",
+  "bytes": 960000,
+  "sha256": "acbc43a7812dda68627837ae007a8278a9463babff56a26b11ab12ba56ca6672",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p14m.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "p35a.cf32",
+  "bytes": 960000,
+  "sha256": "d2c5b73540601a5abe344ad2f7248e2b18119a4f977156f53c74206ae33f4ff6",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p35a.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "p35b.cf32",
+  "bytes": 960000,
+  "sha256": "4a2869270201b39bc8ccd5c2b2aed41c0786a057aa8e8189d18cefc1ba39d11d",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p35b.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "p35m.cf32",
+  "bytes": 960000,
+  "sha256": "8fe769b703f91fd5dfebe64f89c3a652ba1c337c42d3835e8896a93667ae8482",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-c1118-03/p35m.cf32",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

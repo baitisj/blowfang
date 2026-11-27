@@ -1,0 +1,7 @@
+2026-11-23T14:57:40Z job uv21-probe-1 by uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-758c82c83bd1 at 758c82c83bd17fa4d5188e83f65230bc2df16b3a
+2026-11-23T14:57:40Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-758c82c83bd1/tools/uv21_kdh.py probe --port /dev/ttyUSB2 --out /home/baitisj/blowfang-work/runs/queue/uv21-probe-1 --wait-boot-s 200
+waiting up to 200 s for a power-on: switch the radio off and on now
+the bootloader answered command 42: flash mode
+handshake: ack
+2026-11-23T14:59:59Z step 1 (kdh.probe) rc=0
+2026-11-23T14:59:59Z job uv21-probe-1 done

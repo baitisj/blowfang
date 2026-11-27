@@ -1,0 +1,23 @@
+{
+ "id": "uv21-read-1",
+ "who": "uv21",
+ "freq_mhz": 440.85,
+ "minutes": 20,
+ "steps": [
+  {
+   "do": "kplug.read",
+   "args": [
+    "--model",
+    "UV-21ProV2",
+    "--extra",
+    "0x8040:0x9000",
+    "--extra",
+    "0x9040:0xA000",
+    "--extra",
+    "0xA2C0:0xD000",
+    "--extra",
+    "0xD040:0x10000"
+   ]
+  }
+ ]
+}

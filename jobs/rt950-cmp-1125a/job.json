@@ -1,0 +1,12 @@
+{
+ "id": "rt950-cmp-1125a",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "rt950.compare",
+   "backup": "rt950-read-1125b"
+  }
+ ]
+}

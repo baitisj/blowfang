@@ -1,0 +1,338 @@
+listening (Ctrl-C to stop) ...
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8460 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=29 chunk=0 have=1/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=1 have=2/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=2 have=3/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=3 have=4/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=4 have=5/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=5 have=6/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=29 chunk=6 have=7/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=7 have=8/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=29 chunk=8 have=9/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=9 have=10/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=10 have=11/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=11 have=12/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=12 have=13/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=13 have=14/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=14 have=15/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=15 have=16/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=16 have=17/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=17 have=18/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=18 have=19/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=19 have=20/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=20 have=21/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=21 have=22/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=22 have=23/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=23 have=24/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=24 have=25/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=25 have=26/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=26 have=27/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=27 have=28/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=28 have=29/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=29 have=30/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=30 have=31/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=29 chunk=31 have=32/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=32 have=33/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=29 chunk=33 have=34/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=34 have=35/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=29 chunk=35 have=36/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=36 have=37/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=37 have=38/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=38 have=39/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=39 have=40/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=40 have=41/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=41 have=42/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=42 have=43/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=43 have=44/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=44 have=45/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=45 have=46/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=46 have=47/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=47 have=48/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=48 have=49/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=49 have=50/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=50 have=51/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=29 chunk=51 have=52/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=52 have=53/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=53 have=54/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=54 have=55/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=29 chunk=55 have=56/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=29 chunk=56 have=57/58 rssi=-67 noise=17
+K6 MOD r=3 xfer=29 chunk=57 have=58/58 rssi=-67 noise=16
+K6 MOD run serial=1795104285 code=6976 B at 0x200020a4 stack=2028 B scratch=4776 B
+K6 MOD say aprs start hz=144390000 fsk=233 sync=240 plain set=offt
+K6 MOD say m 1 rssi=-96 pk=-89 pre=0 ok=0
+K6 MOD say m 2 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 3 rssi=-98 pk=-90 pre=0 ok=0
+K6 MOD say m 4 rssi=-95 pk=-90 pre=0 ok=0
+K6 MOD say m 5 rssi=-100 pk=-90 pre=0 ok=0
+K6 MOD say m 6 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 7 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 8 rssi=-98 pk=-89 pre=0 ok=0
+K6 MOD say m 9 rssi=-95 pk=-90 pre=0 ok=0
+K6 MOD say m 10 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say m 11 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 12 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 13 rssi=-97 pk=-89 pre=0 ok=0
+K6 MOD say m 14 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say aprs fsk ms=900017 key=0 pre=0 fake=51 inv=0 rt=8
+K6 MOD say aprs end ok=0 bad=0 ts=0 v=0 lost=0
+K6 MOD ret=0 (0x0) in 900018 ms stack_free=260 B
+K6 ARQ tx seq=97 state=1 xfer=29 have=58/58 r=3 parts=1
+K6 ARQ sent seq=97 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-123 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-109 batt=8490 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8490 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8480 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=21 chunk=0 have=1/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=1 have=2/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=2 have=3/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=3 have=4/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=4 have=5/53 rssi=-67 noise=19
+K6 MOD r=1 xfer=21 chunk=5 have=6/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=6 have=7/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=7 have=8/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=8 have=9/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=9 have=10/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=10 have=11/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=11 have=12/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=12 have=13/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=13 have=14/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=14 have=15/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=15 have=16/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=16 have=17/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=17 have=18/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=18 have=19/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=19 have=20/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=20 have=21/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=21 have=22/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=22 have=23/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=23 have=24/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=24 have=25/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=25 have=26/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=26 have=27/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=27 have=28/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=21 chunk=28 have=29/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=29 have=30/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=30 have=31/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=31 have=32/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=32 have=33/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=33 have=34/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=34 have=35/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=35 have=36/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=36 have=37/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=37 have=38/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=38 have=39/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=21 chunk=39 have=40/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=40 have=41/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=21 chunk=41 have=42/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=21 chunk=42 have=43/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=43 have=44/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=44 have=45/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=45 have=46/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=46 have=47/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=47 have=48/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=48 have=49/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=21 chunk=49 have=50/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=21 chunk=50 have=51/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=21 chunk=51 have=52/53 rssi=-67 noise=16
+K6 MOD r=3 xfer=21 chunk=52 have=53/53 rssi=-67 noise=15
+K6 MOD run serial=1795105301 code=6378 B at 0x200020a4 stack=2028 B scratch=5372 B
+K6 MOD say aprs start hz=144390000 fsk=233 sync=240 plain
+K6 MOD say m 1 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 2 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say y 1 t=152745 w=71 ok=0 e=0 d=0 s=1 k=1352
+K6 MOD say m 3 rssi=-95 pk=-90 pre=1 ok=0
+K6 MOD say m 4 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say m 5 rssi=-96 pk=-89 pre=1 ok=0
+K6 MOD say m 6 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say m 7 rssi=-96 pk=-89 pre=1 ok=0
+K6 MOD say m 8 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say m 9 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say y 2 t=587111 w=42 ok=0 e=0 d=0 s=1 k=1352
+K6 MOD say m 10 rssi=-96 pk=-90 pre=2 ok=0
+K6 MOD say m 11 rssi=-96 pk=-89 pre=2 ok=0
+K6 MOD say y 3 t=673142 w=40 ok=0 e=0 d=0 s=1 k=1352
+K6 MOD say m 12 rssi=-96 pk=-90 pre=3 ok=0
+K6 MOD say m 13 rssi=-96 pk=-90 pre=3 ok=0
+K6 MOD say m 14 rssi=-95 pk=-89 pre=3 ok=0
+K6 MOD say aprs fsk ms=900002 key=0 pre=3 fake=62 inv=0
+K6 MOD say aprs end ok=0 bad=0 ts=0 v=0 lost=0
+K6 MOD ret=0 (0x0) in 900003 ms stack_free=260 B
+K6 ARQ tx seq=98 state=1 xfer=21 have=53/53 r=3 parts=1
+K6 ARQ sent seq=98 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-109 batt=8490 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-115 batt=8490 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-109 batt=8510 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8520 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8500 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=8 chunk=0 have=1/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=1 have=2/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=2 have=3/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=3 have=4/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=4 have=5/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=5 have=6/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=6 have=7/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=7 have=8/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=8 have=9/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=9 have=10/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=10 have=11/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=11 have=12/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=12 have=13/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=13 have=14/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=14 have=15/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=15 have=16/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=16 have=17/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=17 have=18/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=8 chunk=18 have=19/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=19 have=20/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=20 have=21/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=8 chunk=21 have=22/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=22 have=23/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=23 have=24/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=24 have=25/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=25 have=26/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=26 have=27/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=8 chunk=27 have=28/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=28 have=29/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=29 have=30/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=30 have=31/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=31 have=32/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=32 have=33/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=33 have=34/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=8 chunk=34 have=35/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=35 have=36/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=36 have=37/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=37 have=38/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=38 have=39/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=39 have=40/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=40 have=41/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=41 have=42/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=42 have=43/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=43 have=44/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=44 have=45/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=45 have=46/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=46 have=47/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=47 have=48/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=48 have=49/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=49 have=50/58 rssi=-67 noise=15
+K6 MOD r=1 xfer=8 chunk=50 have=51/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=51 have=52/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=52 have=53/58 rssi=-67 noise=17
+K6 MOD r=1 xfer=8 chunk=53 have=54/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=54 have=55/58 rssi=-67 noise=16
+K6 MOD r=1 xfer=8 chunk=55 have=56/58 rssi=-67 noise=18
+K6 MOD r=1 xfer=8 chunk=56 have=57/58 rssi=-67 noise=18
+K6 MOD r=3 xfer=8 chunk=57 have=58/58 rssi=-67 noise=18
+K6 MOD run serial=1795106312 code=6976 B at 0x200020a4 stack=2028 B scratch=4776 B
+K6 MOD say aprs start hz=144390000 fsk=233 sync=240 plain set=offt
+K6 MOD say m 1 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 2 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 3 rssi=-95 pk=-90 pre=0 ok=0
+K6 MOD say m 4 rssi=-97 pk=-90 pre=0 ok=0
+K6 MOD say m 5 rssi=-96 pk=-89 pre=0 ok=0
+K6 MOD say m 6 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say m 7 rssi=-95 pk=-90 pre=0 ok=0
+K6 MOD say m 8 rssi=-97 pk=-90 pre=0 ok=0
+K6 MOD say m 9 rssi=-96 pk=-89 pre=0 ok=0
+K6 MOD say m 10 rssi=-101 pk=-89 pre=0 ok=0
+K6 MOD say m 11 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say m 12 rssi=-96 pk=-89 pre=0 ok=0
+K6 MOD say m 13 rssi=-97 pk=-89 pre=0 ok=0
+K6 MOD say m 14 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say aprs fsk ms=900033 key=0 pre=0 fake=66 inv=0 rt=8
+K6 MOD say aprs end ok=0 bad=0 ts=0 v=0 lost=0
+K6 MOD ret=0 (0x0) in 900034 ms stack_free=260 B
+K6 ARQ tx seq=99 state=1 xfer=8 have=58/58 r=3 parts=1
+K6 ARQ sent seq=99 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-124 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-114 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-110 batt=8520 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-108 batt=8520 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8520 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8500 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=0 chunk=0 have=1/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=0 chunk=1 have=2/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=0 chunk=2 have=3/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=0 chunk=3 have=4/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=4 have=5/53 rssi=-67 noise=19
+K6 MOD r=1 xfer=0 chunk=5 have=6/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=0 chunk=6 have=7/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=0 chunk=7 have=8/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=8 have=9/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=0 chunk=9 have=10/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=0 chunk=10 have=11/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=11 have=12/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=12 have=13/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=13 have=14/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=14 have=15/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=15 have=16/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=16 have=17/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=17 have=18/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=18 have=19/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=19 have=20/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=20 have=21/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=21 have=22/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=22 have=23/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=23 have=24/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=24 have=25/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=25 have=26/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=26 have=27/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=27 have=28/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=28 have=29/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=29 have=30/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=30 have=31/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=0 chunk=31 have=32/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=32 have=33/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=33 have=34/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=34 have=35/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=35 have=36/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=36 have=37/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=37 have=38/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=38 have=39/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=39 have=40/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=40 have=41/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=41 have=42/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=42 have=43/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=43 have=44/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=44 have=45/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=45 have=46/53 rssi=-67 noise=18
+K6 MOD r=1 xfer=0 chunk=46 have=47/53 rssi=-67 noise=15
+K6 MOD r=1 xfer=0 chunk=47 have=48/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=48 have=49/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=49 have=50/53 rssi=-67 noise=16
+K6 MOD r=1 xfer=0 chunk=50 have=51/53 rssi=-67 noise=17
+K6 MOD r=1 xfer=0 chunk=51 have=52/53 rssi=-67 noise=15
+K6 MOD r=3 xfer=0 chunk=52 have=53/53 rssi=-67 noise=17
+K6 MOD run serial=1795107328 code=6378 B at 0x200020a4 stack=2028 B scratch=5372 B
+K6 MOD say aprs start hz=144390000 fsk=233 sync=240 plain
+K6 MOD say m 1 rssi=-95 pk=-89 pre=0 ok=0
+K6 MOD say m 2 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say m 3 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say m 4 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say m 5 rssi=-96 pk=-89 pre=0 ok=0
+K6 MOD say m 6 rssi=-96 pk=-89 pre=0 ok=0
+K6 MOD say m 7 rssi=-96 pk=-90 pre=0 ok=0
+K6 MOD say m 8 rssi=-96 pk=-89 pre=0 ok=0
+K6 MOD say y 1 t=505085 w=46 ok=0 e=0 d=0 s=1 k=1352
+K6 MOD say m 9 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say m 10 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say m 11 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say m 12 rssi=-96 pk=-89 pre=1 ok=0
+K6 MOD say m 13 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say m 14 rssi=-96 pk=-90 pre=1 ok=0
+K6 MOD say aprs fsk ms=900033 key=0 pre=1 fake=72 inv=0
+K6 MOD say aprs end ok=0 bad=0 ts=0 v=0 lost=0
+K6 MOD ret=0 (0x0) in 900035 ms stack_free=260 B
+K6 ARQ tx seq=100 state=1 xfer=0 have=53/53 r=3 parts=1
+K6 ARQ sent seq=100 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-110 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-109 batt=8470 build=8a78fb5-20261117T0904Z

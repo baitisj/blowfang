@@ -1,0 +1,214 @@
+2026-11-19T09:45:59Z job aprslad-b2 by k6-aprs-ladder, checkout /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f at 989248773c0fcdc58be9b1a604c15d6fe055e9ab
+2026-11-19T09:45:59Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-aprs-ladder -- timeout -s INT --kill-after=10 540 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_w1.log
+2026-11-19T09:46:01Z step 1 (logger) rc=0
+2026-11-19T09:46:04Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T09:46:04Z step 2 (ic7100.tune) rc=0
+2026-11-19T09:46:05Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_w.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6-rate.json --telemetry 0
+01:46:07 send 1: 54 of 54 XL chunks at F/1800 (serial 1795081566, xfer 94); module /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_w.bin: 6449 B code, entry +16, API level 2, serial 1795081566, xfer 94, 6473 B image in 54 XL chunks; 108 packets, 69.6 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 77.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 09:46:08Z
+end 09:47:25Z: 77.0 s of signal in 76.9 s (kept up)
+01:47:25 listening for the K6's report
+01:47:51 no report heard
+01:47:51 no report after a whole send: the K6 may be set to L packets, so the next send is 112 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 54 chunks sent were lost
+01:47:52 CW ID
+2026-11-19T09:47:52Z step 3 (k6.upload) rc=0
+2026-11-19T09:49:22Z step 4 (wait) rc=1 (no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log)
+2026-11-19T09:51:02Z step 5 (wait) rc=0
+2026-11-19T09:51:02Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/pluto_bench.py --as k6-aprs-ladder steps /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprs3.wav --gains -60,-66,-70,-73,-76,-79,-82,-85,-88 --peak 3000 --pause 3 --out /home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_w1.json
+steps: 9 sends of aprs3.wav (11.1 s), peak deviation 3000 Hz before pre-emphasis, 3000 Hz sent, gains -60,-66,-70,-73,-76,-79,-82,-85,-88 dB
+steps gain -60: 18.5 s on 440850000 Hz (LO 440850000.0), gain -60.0 dB, rate 2400000, RF on
+start 09:51:03Z
+end 09:51:21Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -66: 18.5 s on 440850000 Hz (LO 440850000.0), gain -66.0 dB, rate 2400000, RF on
+start 09:51:24Z
+end 09:51:43Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -70: 18.5 s on 440850000 Hz (LO 440850000.0), gain -70.0 dB, rate 2400000, RF on
+start 09:51:46Z
+end 09:52:04Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -73: 18.5 s on 440850000 Hz (LO 440850000.0), gain -73.0 dB, rate 2400000, RF on
+start 09:52:08Z
+end 09:52:26Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -76: 18.5 s on 440850000 Hz (LO 440850000.0), gain -76.0 dB, rate 2400000, RF on
+start 09:52:29Z
+end 09:52:47Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -79: 18.5 s on 440850000 Hz (LO 440850000.0), gain -79.0 dB, rate 2400000, RF on
+start 09:52:51Z
+end 09:53:09Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -82: 18.5 s on 440850000 Hz (LO 440850000.0), gain -82.0 dB, rate 2400000, RF on
+start 09:53:12Z
+end 09:53:30Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -85: 18.5 s on 440850000 Hz (LO 440850000.0), gain -85.0 dB, rate 2400000, RF on
+start 09:53:34Z
+end 09:53:52Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -88: 18.5 s on 440850000 Hz (LO 440850000.0), gain -88.0 dB, rate 2400000, RF on
+start 09:53:55Z
+end 09:54:13Z: 18.5 s of signal in 18.3 s (kept up)
+2026-11-19T09:54:17Z step 6 (pluto) rc=0
+2026-11-19T09:59:17Z step 7 (wait) rc=1 (no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log)
+2026-11-19T09:59:22Z step 8 (wait) rc=0
+2026-11-19T09:59:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release k6-aprs-ladder
+the port is free
+2026-11-19T09:59:22Z step 9 (logger.stop) rc=0
+2026-11-19T09:59:22Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-aprs-ladder -- timeout -s INT --kill-after=10 540 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_n1.log
+2026-11-19T09:59:24Z step 10 (logger) rc=0
+2026-11-19T09:59:28Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T09:59:28Z step 11 (ic7100.tune) rc=0
+2026-11-19T09:59:28Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_n.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6-rate.json --telemetry 0
+01:59:30 send 1: 54 of 54 XL chunks at F/1800 (serial 1795082369, xfer 129); module /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_n.bin: 6451 B code, entry +16, API level 2, serial 1795082369, xfer 129, 6475 B image in 54 XL chunks; 108 packets, 69.6 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 77.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 09:59:31Z
+end 10:00:48Z: 77.0 s of signal in 76.9 s (kept up)
+02:00:49 listening for the K6's report
+02:01:15 no report heard
+02:01:15 no report after a whole send: the K6 may be set to L packets, so the next send is 112 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 54 chunks sent were lost
+02:01:15 CW ID
+2026-11-19T10:01:16Z step 12 (k6.upload) rc=0
+2026-11-19T10:02:46Z step 13 (wait) rc=1 (no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log)
+2026-11-19T10:04:26Z step 14 (wait) rc=0
+2026-11-19T10:04:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/pluto_bench.py --as k6-aprs-ladder steps /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprs3.wav --gains -60,-66,-70,-73,-76,-79,-82,-85,-88 --peak 3000 --pause 3 --out /home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_n1.json
+steps: 9 sends of aprs3.wav (11.1 s), peak deviation 3000 Hz before pre-emphasis, 3000 Hz sent, gains -60,-66,-70,-73,-76,-79,-82,-85,-88 dB
+steps gain -60: 18.5 s on 440850000 Hz (LO 440850000.0), gain -60.0 dB, rate 2400000, RF on
+start 10:04:27Z
+end 10:04:45Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -66: 18.5 s on 440850000 Hz (LO 440850000.0), gain -66.0 dB, rate 2400000, RF on
+start 10:04:48Z
+end 10:05:06Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -70: 18.5 s on 440850000 Hz (LO 440850000.0), gain -70.0 dB, rate 2400000, RF on
+start 10:05:10Z
+end 10:05:28Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -73: 18.5 s on 440850000 Hz (LO 440850000.0), gain -73.0 dB, rate 2400000, RF on
+start 10:05:31Z
+end 10:05:50Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -76: 18.5 s on 440850000 Hz (LO 440850000.0), gain -76.0 dB, rate 2400000, RF on
+start 10:05:53Z
+end 10:06:11Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -79: 18.5 s on 440850000 Hz (LO 440850000.0), gain -79.0 dB, rate 2400000, RF on
+start 10:06:14Z
+end 10:06:33Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -82: 18.5 s on 440850000 Hz (LO 440850000.0), gain -82.0 dB, rate 2400000, RF on
+start 10:06:36Z
+end 10:06:54Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -85: 18.5 s on 440850000 Hz (LO 440850000.0), gain -85.0 dB, rate 2400000, RF on
+start 10:06:57Z
+end 10:07:16Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -88: 18.5 s on 440850000 Hz (LO 440850000.0), gain -88.0 dB, rate 2400000, RF on
+start 10:07:19Z
+end 10:07:37Z: 18.5 s of signal in 18.3 s (kept up)
+2026-11-19T10:07:40Z step 15 (pluto) rc=0
+2026-11-19T10:12:41Z step 16 (wait) rc=1 (no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log)
+2026-11-19T10:12:46Z step 17 (wait) rc=0
+2026-11-19T10:12:46Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release k6-aprs-ladder
+the port is free
+2026-11-19T10:12:46Z step 18 (logger.stop) rc=0
+2026-11-19T10:12:46Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-aprs-ladder -- timeout -s INT --kill-after=10 540 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_g1.log
+2026-11-19T10:12:48Z step 19 (logger) rc=0
+2026-11-19T10:12:51Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T10:12:51Z step 20 (ic7100.tune) rc=0
+2026-11-19T10:12:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_g.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6-rate.json --telemetry 0
+02:12:54 send 1: 54 of 54 XL chunks at F/1800 (serial 1795083173, xfer 165); module /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_g.bin: 6505 B code, entry +16, API level 2, serial 1795083173, xfer 165, 6529 B image in 54 XL chunks; 108 packets, 69.6 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 77.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 10:12:55Z
+end 10:14:12Z: 77.0 s of signal in 76.9 s (kept up)
+02:14:12 listening for the K6's report
+02:14:39 no report heard
+02:14:39 no report after a whole send: the K6 may be set to L packets, so the next send is 113 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 54 chunks sent were lost
+02:14:39 CW ID
+2026-11-19T10:14:39Z step 21 (k6.upload) rc=0
+2026-11-19T10:16:09Z step 22 (wait) rc=1 (no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log)
+2026-11-19T10:17:49Z step 23 (wait) rc=0
+2026-11-19T10:17:49Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/pluto_bench.py --as k6-aprs-ladder steps /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprs3.wav --gains -60,-66,-70,-73,-76,-79,-82,-85,-88 --peak 3000 --pause 3 --out /home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_g1.json
+steps: 9 sends of aprs3.wav (11.1 s), peak deviation 3000 Hz before pre-emphasis, 3000 Hz sent, gains -60,-66,-70,-73,-76,-79,-82,-85,-88 dB
+steps gain -60: 18.5 s on 440850000 Hz (LO 440850000.0), gain -60.0 dB, rate 2400000, RF on
+start 10:17:50Z
+end 10:18:09Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -66: 18.5 s on 440850000 Hz (LO 440850000.0), gain -66.0 dB, rate 2400000, RF on
+start 10:18:12Z
+end 10:18:30Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -70: 18.5 s on 440850000 Hz (LO 440850000.0), gain -70.0 dB, rate 2400000, RF on
+start 10:18:33Z
+end 10:18:52Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -73: 18.5 s on 440850000 Hz (LO 440850000.0), gain -73.0 dB, rate 2400000, RF on
+start 10:18:55Z
+end 10:19:13Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -76: 18.5 s on 440850000 Hz (LO 440850000.0), gain -76.0 dB, rate 2400000, RF on
+start 10:19:16Z
+end 10:19:35Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -79: 18.5 s on 440850000 Hz (LO 440850000.0), gain -79.0 dB, rate 2400000, RF on
+start 10:19:38Z
+end 10:19:56Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -82: 18.5 s on 440850000 Hz (LO 440850000.0), gain -82.0 dB, rate 2400000, RF on
+start 10:19:59Z
+end 10:20:18Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -85: 18.5 s on 440850000 Hz (LO 440850000.0), gain -85.0 dB, rate 2400000, RF on
+start 10:20:21Z
+end 10:20:39Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -88: 18.5 s on 440850000 Hz (LO 440850000.0), gain -88.0 dB, rate 2400000, RF on
+start 10:20:42Z
+end 10:21:01Z: 18.5 s of signal in 18.3 s (kept up)
+2026-11-19T10:21:04Z step 24 (pluto) rc=0
+2026-11-19T10:26:04Z step 25 (wait) rc=1 (no /K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log)
+2026-11-19T10:26:09Z step 26 (wait) rc=0
+2026-11-19T10:26:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release k6-aprs-ladder
+the port is free
+2026-11-19T10:26:10Z step 27 (logger.stop) rc=0
+2026-11-19T10:26:10Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold k6-aprs-ladder -- timeout -s INT --kill-after=10 540 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6_n2.log
+2026-11-19T10:26:12Z step 28 (logger) rc=0
+2026-11-19T10:26:15Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-19T10:26:15Z step 29 (ic7100.tune) rc=0
+2026-11-19T10:26:16Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_n.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 2 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6-rate.json --telemetry 0
+02:26:18 send 1: 54 of 54 XL chunks at F/1800 (serial 1795083977, xfer 201); module /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprslad_n.bin: 6451 B code, entry +16, API level 2, serial 1795083977, xfer 201, 6475 B image in 54 XL chunks; 108 packets, 69.6 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 77.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 10:26:19Z
+end 10:27:36Z: 77.0 s of signal in 76.9 s (kept up)
+02:27:36 listening for the K6's report
+02:28:02 no report heard
+02:28:02 no report after a whole send: the K6 may be set to L packets, so the next send is 112 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 54 chunks sent were lost
+02:28:03 CW ID
+2026-11-19T10:28:03Z step 30 (k6.upload) rc=0
+2026-11-19T10:29:33Z step 31 (wait) rc=1 (no /aprs start/ in /home/baitisj/blowfang-work/runs/queue/aprslad-b2/k6.log)
+2026-11-19T10:31:13Z step 32 (wait) rc=0
+2026-11-19T10:31:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/tools/pluto_bench.py --as k6-aprs-ladder steps /home/baitisj/blowfang-work/runs/inbox/aprslad-b2/aprs3.wav --gains -60,-66,-70,-73,-76,-79,-82,-85,-88 --peak 3000 --pause 3 --out /home/baitisj/blowfang-work/runs/queue/aprslad-b2/steps_n2.json
+steps: 9 sends of aprs3.wav (11.1 s), peak deviation 3000 Hz before pre-emphasis, 3000 Hz sent, gains -60,-66,-70,-73,-76,-79,-82,-85,-88 dB
+steps gain -60: 18.5 s on 440850000 Hz (LO 440850000.0), gain -60.0 dB, rate 2400000, RF on
+start 10:31:14Z
+end 10:31:32Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -66: 18.5 s on 440850000 Hz (LO 440850000.0), gain -66.0 dB, rate 2400000, RF on
+start 10:31:36Z
+end 10:31:54Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -70: 18.5 s on 440850000 Hz (LO 440850000.0), gain -70.0 dB, rate 2400000, RF on
+start 10:31:57Z
+end 10:32:15Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -73: 18.5 s on 440850000 Hz (LO 440850000.0), gain -73.0 dB, rate 2400000, RF on
+start 10:32:19Z
+end 10:32:37Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -76: 18.5 s on 440850000 Hz (LO 440850000.0), gain -76.0 dB, rate 2400000, RF on
+start 10:32:40Z
+end 10:32:58Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -79: 18.5 s on 440850000 Hz (LO 440850000.0), gain -79.0 dB, rate 2400000, RF on
+start 10:33:02Z
+end 10:33:20Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -82: 18.5 s on 440850000 Hz (LO 440850000.0), gain -82.0 dB, rate 2400000, RF on
+start 10:33:23Z
+end 10:33:41Z: 18.5 s of signal in 18.3 s (kept up)
+steps gain -85: 18.5 s on 440850000 Hz (LO 440850000.0), gain -85.0 dB, rate 2400000, RF on
+start 10:33:45Z
+2026-11-19T10:33:59Z stopping (timeout 166 s): SIGTERM to the step's process group
+signal 15 while keyed: unkeying
+2026-11-19T10:33:59Z step 33 (pluto) rc=1 (timeout 166 s)
+2026-11-19T10:33:59Z step 34 (wait) rc=1 (refused: the job's 48 min are used up)
+2026-11-19T10:33:59Z step 35 (wait) rc=1 (refused: the job's 48 min are used up)
+2026-11-19T10:33:59Z stopping the job's background logger still running at its end
+2026-11-19T10:33:59Z job aprslad-b2 failed: step 35 (wait): refused: the job's 48 min are used up

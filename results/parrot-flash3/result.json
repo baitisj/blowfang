@@ -1,0 +1,27 @@
+{
+ "id": "parrot-flash3",
+ "who": "uv380-multimode",
+ "started": "2026-11-20T01:01:31Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-20T01:01:31Z",
+   "ended": "2026-11-20T01:15:38Z",
+   "rc": -15,
+   "why": "cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36",
+ "head": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "reason": "step 1 (pluto): cancelled",
+ "ended": "2026-11-20T01:15:38Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "6e55d011a2ed3cc23dbe4a572d7fc85209a3f540",
+  "path": "jobs/parrot-flash3"
+ },
+ "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "updated": "2026-11-20T01:15:38Z"
+}

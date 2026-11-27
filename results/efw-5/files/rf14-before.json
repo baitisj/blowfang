@@ -1,0 +1,5188 @@
+{
+ "utc_start": "2026-11-22T09:46:22Z",
+ "lo_hz": 470000000,
+ "gain": 40.0,
+ "streams": [
+  7
+ ],
+ "seconds": 30.0,
+ "keep_s": 4.0,
+ "configs": [
+  {
+   "input_center_hz": 470000000,
+   "input_rate_hz": 25600000,
+   "input_bandwidth_hz": 20000000,
+   "filter_delay_input_samples_times_two": 4095,
+   "first_output_center_input_sample_times_two": 4095,
+   "hardware_counter": true,
+   "continuity_verified": false,
+   "activity_calibrated": false,
+   "activity_method": "fpga-welch-minstat-cfar",
+   "receiver_state": "running",
+   "producer": "fpga-pfb",
+   "input_adc_bits": 12,
+   "input_adc_shift": 0,
+   "profile": {
+    "max_input_rate_hz": 25600000,
+    "bins": 512,
+    "taps": 8,
+    "hop": 256,
+    "pre_roll_ms": 0,
+    "hang_ms": 100,
+    "max_iq_packet_ms": 10
+   },
+   "capabilities": {
+    "controls_supported": true,
+    "configure_supported": true,
+    "pin_supported": true,
+    "stop_supported": true
+   },
+   "psd": {
+    "bins": 512,
+    "center_hz": 469975000,
+    "span_hz": 25600000,
+    "unit": "dBFS"
+   },
+   "streams": [
+    {
+     "stream_id": 1,
+     "center_hz": 470000000,
+     "target_hz": 470000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 2,
+     "center_hz": 470050000,
+     "target_hz": 470050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 3,
+     "center_hz": 470100000,
+     "target_hz": 470100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 4,
+     "center_hz": 470150000,
+     "target_hz": 470150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 5,
+     "center_hz": 470200000,
+     "target_hz": 470200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 6,
+     "center_hz": 470250000,
+     "target_hz": 470250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 7,
+     "center_hz": 470300000,
+     "target_hz": 470300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": true,
+     "iq_forwarded": true
+    },
+    {
+     "stream_id": 8,
+     "center_hz": 470350000,
+     "target_hz": 470350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 9,
+     "center_hz": 470400000,
+     "target_hz": 470400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 10,
+     "center_hz": 470450000,
+     "target_hz": 470450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 11,
+     "center_hz": 470500000,
+     "target_hz": 470500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 12,
+     "center_hz": 470550000,
+     "target_hz": 470550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 13,
+     "center_hz": 470600000,
+     "target_hz": 470600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 14,
+     "center_hz": 470650000,
+     "target_hz": 470650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 15,
+     "center_hz": 470700000,
+     "target_hz": 470700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 16,
+     "center_hz": 470750000,
+     "target_hz": 470750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 17,
+     "center_hz": 470800000,
+     "target_hz": 470800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 18,
+     "center_hz": 470850000,
+     "target_hz": 470850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 19,
+     "center_hz": 470900000,
+     "target_hz": 470900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 20,
+     "center_hz": 470950000,
+     "target_hz": 470950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 21,
+     "center_hz": 471000000,
+     "target_hz": 471000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 22,
+     "center_hz": 471050000,
+     "target_hz": 471050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 23,
+     "center_hz": 471100000,
+     "target_hz": 471100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 24,
+     "center_hz": 471150000,
+     "target_hz": 471150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 25,
+     "center_hz": 471200000,
+     "target_hz": 471200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 26,
+     "center_hz": 471250000,
+     "target_hz": 471250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 27,
+     "center_hz": 471300000,
+     "target_hz": 471300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 28,
+     "center_hz": 471350000,
+     "target_hz": 471350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 29,
+     "center_hz": 471400000,
+     "target_hz": 471400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 30,
+     "center_hz": 471450000,
+     "target_hz": 471450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 31,
+     "center_hz": 471500000,
+     "target_hz": 471500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 32,
+     "center_hz": 471550000,
+     "target_hz": 471550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 33,
+     "center_hz": 471600000,
+     "target_hz": 471600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 34,
+     "center_hz": 471650000,
+     "target_hz": 471650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 35,
+     "center_hz": 471700000,
+     "target_hz": 471700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 36,
+     "center_hz": 471750000,
+     "target_hz": 471750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 37,
+     "center_hz": 471800000,
+     "target_hz": 471800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 38,
+     "center_hz": 471850000,
+     "target_hz": 471850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 39,
+     "center_hz": 471900000,
+     "target_hz": 471900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 40,
+     "center_hz": 471950000,
+     "target_hz": 471950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 41,
+     "center_hz": 472000000,
+     "target_hz": 472000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 42,
+     "center_hz": 472050000,
+     "target_hz": 472050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 43,
+     "center_hz": 472100000,
+     "target_hz": 472100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 44,
+     "center_hz": 472150000,
+     "target_hz": 472150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 45,
+     "center_hz": 472200000,
+     "target_hz": 472200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 46,
+     "center_hz": 472250000,
+     "target_hz": 472250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 47,
+     "center_hz": 472300000,
+     "target_hz": 472300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 48,
+     "center_hz": 472350000,
+     "target_hz": 472350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 49,
+     "center_hz": 472400000,
+     "target_hz": 472400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 50,
+     "center_hz": 472450000,
+     "target_hz": 472450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 51,
+     "center_hz": 472500000,
+     "target_hz": 472500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 52,
+     "center_hz": 472550000,
+     "target_hz": 472550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 53,
+     "center_hz": 472600000,
+     "target_hz": 472600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 54,
+     "center_hz": 472650000,
+     "target_hz": 472650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 55,
+     "center_hz": 472700000,
+     "target_hz": 472700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 56,
+     "center_hz": 472750000,
+     "target_hz": 472750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 57,
+     "center_hz": 472800000,
+     "target_hz": 472800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 58,
+     "center_hz": 472850000,
+     "target_hz": 472850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 59,
+     "center_hz": 472900000,
+     "target_hz": 472900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 60,
+     "center_hz": 472950000,
+     "target_hz": 472950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 61,
+     "center_hz": 473000000,
+     "target_hz": 473000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 62,
+     "center_hz": 473050000,
+     "target_hz": 473050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 63,
+     "center_hz": 473100000,
+     "target_hz": 473100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 64,
+     "center_hz": 473150000,
+     "target_hz": 473150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 65,
+     "center_hz": 473200000,
+     "target_hz": 473200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 66,
+     "center_hz": 473250000,
+     "target_hz": 473250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 67,
+     "center_hz": 473300000,
+     "target_hz": 473300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 68,
+     "center_hz": 473350000,
+     "target_hz": 473350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 69,
+     "center_hz": 473400000,
+     "target_hz": 473400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 70,
+     "center_hz": 473450000,
+     "target_hz": 473450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 71,
+     "center_hz": 473500000,
+     "target_hz": 473500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 72,
+     "center_hz": 473550000,
+     "target_hz": 473550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 73,
+     "center_hz": 473600000,
+     "target_hz": 473600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 74,
+     "center_hz": 473650000,
+     "target_hz": 473650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 75,
+     "center_hz": 473700000,
+     "target_hz": 473700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 76,
+     "center_hz": 473750000,
+     "target_hz": 473750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 77,
+     "center_hz": 473800000,
+     "target_hz": 473800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 78,
+     "center_hz": 473850000,
+     "target_hz": 473850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 79,
+     "center_hz": 473900000,
+     "target_hz": 473900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 80,
+     "center_hz": 473950000,
+     "target_hz": 473950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 81,
+     "center_hz": 474000000,
+     "target_hz": 474000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 82,
+     "center_hz": 474050000,
+     "target_hz": 474050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 83,
+     "center_hz": 474100000,
+     "target_hz": 474100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 84,
+     "center_hz": 474150000,
+     "target_hz": 474150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 85,
+     "center_hz": 474200000,
+     "target_hz": 474200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 86,
+     "center_hz": 474250000,
+     "target_hz": 474250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 87,
+     "center_hz": 474300000,
+     "target_hz": 474300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 88,
+     "center_hz": 474350000,
+     "target_hz": 474350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 89,
+     "center_hz": 474400000,
+     "target_hz": 474400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 90,
+     "center_hz": 474450000,
+     "target_hz": 474450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 91,
+     "center_hz": 474500000,
+     "target_hz": 474500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 92,
+     "center_hz": 474550000,
+     "target_hz": 474550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 93,
+     "center_hz": 474600000,
+     "target_hz": 474600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 94,
+     "center_hz": 474650000,
+     "target_hz": 474650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 95,
+     "center_hz": 474700000,
+     "target_hz": 474700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 96,
+     "center_hz": 474750000,
+     "target_hz": 474750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 97,
+     "center_hz": 474800000,
+     "target_hz": 474800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 98,
+     "center_hz": 474850000,
+     "target_hz": 474850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 99,
+     "center_hz": 474900000,
+     "target_hz": 474900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 100,
+     "center_hz": 474950000,
+     "target_hz": 474950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 101,
+     "center_hz": 475000000,
+     "target_hz": 475000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 102,
+     "center_hz": 475050000,
+     "target_hz": 475050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 103,
+     "center_hz": 475100000,
+     "target_hz": 475100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 104,
+     "center_hz": 475150000,
+     "target_hz": 475150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 105,
+     "center_hz": 475200000,
+     "target_hz": 475200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 106,
+     "center_hz": 475250000,
+     "target_hz": 475250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 107,
+     "center_hz": 475300000,
+     "target_hz": 475300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 108,
+     "center_hz": 475350000,
+     "target_hz": 475350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 109,
+     "center_hz": 475400000,
+     "target_hz": 475400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 110,
+     "center_hz": 475450000,
+     "target_hz": 475450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 111,
+     "center_hz": 475500000,
+     "target_hz": 475500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 112,
+     "center_hz": 475550000,
+     "target_hz": 475550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 113,
+     "center_hz": 475600000,
+     "target_hz": 475600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 114,
+     "center_hz": 475650000,
+     "target_hz": 475650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 115,
+     "center_hz": 475700000,
+     "target_hz": 475700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 116,
+     "center_hz": 475750000,
+     "target_hz": 475750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 117,
+     "center_hz": 475800000,
+     "target_hz": 475800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 118,
+     "center_hz": 475850000,
+     "target_hz": 475850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 119,
+     "center_hz": 475900000,
+     "target_hz": 475900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 120,
+     "center_hz": 475950000,
+     "target_hz": 475950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 121,
+     "center_hz": 476000000,
+     "target_hz": 476000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 122,
+     "center_hz": 476050000,
+     "target_hz": 476050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 123,
+     "center_hz": 476100000,
+     "target_hz": 476100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 124,
+     "center_hz": 476150000,
+     "target_hz": 476150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 125,
+     "center_hz": 476200000,
+     "target_hz": 476200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 126,
+     "center_hz": 476250000,
+     "target_hz": 476250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 127,
+     "center_hz": 476300000,
+     "target_hz": 476300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 128,
+     "center_hz": 476350000,
+     "target_hz": 476350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 129,
+     "center_hz": 476400000,
+     "target_hz": 476400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 130,
+     "center_hz": 476450000,
+     "target_hz": 476450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 131,
+     "center_hz": 476500000,
+     "target_hz": 476500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 132,
+     "center_hz": 476550000,
+     "target_hz": 476550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 133,
+     "center_hz": 476600000,
+     "target_hz": 476600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 134,
+     "center_hz": 476650000,
+     "target_hz": 476650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 135,
+     "center_hz": 476700000,
+     "target_hz": 476700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 136,
+     "center_hz": 476750000,
+     "target_hz": 476750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 137,
+     "center_hz": 476800000,
+     "target_hz": 476800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 138,
+     "center_hz": 476850000,
+     "target_hz": 476850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 139,
+     "center_hz": 476900000,
+     "target_hz": 476900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 140,
+     "center_hz": 476950000,
+     "target_hz": 476950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 141,
+     "center_hz": 477000000,
+     "target_hz": 477000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 142,
+     "center_hz": 477050000,
+     "target_hz": 477050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 143,
+     "center_hz": 477100000,
+     "target_hz": 477100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 144,
+     "center_hz": 477150000,
+     "target_hz": 477150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 145,
+     "center_hz": 477200000,
+     "target_hz": 477200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 146,
+     "center_hz": 477250000,
+     "target_hz": 477250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 147,
+     "center_hz": 477300000,
+     "target_hz": 477300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 148,
+     "center_hz": 477350000,
+     "target_hz": 477350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 149,
+     "center_hz": 477400000,
+     "target_hz": 477400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 150,
+     "center_hz": 477450000,
+     "target_hz": 477450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 151,
+     "center_hz": 477500000,
+     "target_hz": 477500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 152,
+     "center_hz": 477550000,
+     "target_hz": 477550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 153,
+     "center_hz": 477600000,
+     "target_hz": 477600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 154,
+     "center_hz": 477650000,
+     "target_hz": 477650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 155,
+     "center_hz": 477700000,
+     "target_hz": 477700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 156,
+     "center_hz": 477750000,
+     "target_hz": 477750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 157,
+     "center_hz": 477800000,
+     "target_hz": 477800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 158,
+     "center_hz": 477850000,
+     "target_hz": 477850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 159,
+     "center_hz": 477900000,
+     "target_hz": 477900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 160,
+     "center_hz": 477950000,
+     "target_hz": 477950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 161,
+     "center_hz": 478000000,
+     "target_hz": 478000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 162,
+     "center_hz": 478050000,
+     "target_hz": 478050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 163,
+     "center_hz": 478100000,
+     "target_hz": 478100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 164,
+     "center_hz": 478150000,
+     "target_hz": 478150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 165,
+     "center_hz": 478200000,
+     "target_hz": 478200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 166,
+     "center_hz": 478250000,
+     "target_hz": 478250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 167,
+     "center_hz": 478300000,
+     "target_hz": 478300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 168,
+     "center_hz": 478350000,
+     "target_hz": 478350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 169,
+     "center_hz": 478400000,
+     "target_hz": 478400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 170,
+     "center_hz": 478450000,
+     "target_hz": 478450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 171,
+     "center_hz": 478500000,
+     "target_hz": 478500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 172,
+     "center_hz": 478550000,
+     "target_hz": 478550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 173,
+     "center_hz": 478600000,
+     "target_hz": 478600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 174,
+     "center_hz": 478650000,
+     "target_hz": 478650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 175,
+     "center_hz": 478700000,
+     "target_hz": 478700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 176,
+     "center_hz": 478750000,
+     "target_hz": 478750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 177,
+     "center_hz": 478800000,
+     "target_hz": 478800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 178,
+     "center_hz": 478850000,
+     "target_hz": 478850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 179,
+     "center_hz": 478900000,
+     "target_hz": 478900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 180,
+     "center_hz": 478950000,
+     "target_hz": 478950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 181,
+     "center_hz": 479000000,
+     "target_hz": 479000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 182,
+     "center_hz": 479050000,
+     "target_hz": 479050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 183,
+     "center_hz": 479100000,
+     "target_hz": 479100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 184,
+     "center_hz": 479150000,
+     "target_hz": 479150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 185,
+     "center_hz": 479200000,
+     "target_hz": 479200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 186,
+     "center_hz": 479250000,
+     "target_hz": 479250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 187,
+     "center_hz": 479300000,
+     "target_hz": 479300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 188,
+     "center_hz": 479350000,
+     "target_hz": 479350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 189,
+     "center_hz": 479400000,
+     "target_hz": 479400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 190,
+     "center_hz": 479450000,
+     "target_hz": 479450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 191,
+     "center_hz": 479500000,
+     "target_hz": 479500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 192,
+     "center_hz": 479550000,
+     "target_hz": 479550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 193,
+     "center_hz": 479600000,
+     "target_hz": 479600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 194,
+     "center_hz": 479650000,
+     "target_hz": 479650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 195,
+     "center_hz": 479700000,
+     "target_hz": 479700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 196,
+     "center_hz": 479750000,
+     "target_hz": 479750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 197,
+     "center_hz": 479800000,
+     "target_hz": 479800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 198,
+     "center_hz": 479850000,
+     "target_hz": 479850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 199,
+     "center_hz": 479900000,
+     "target_hz": 479900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 200,
+     "center_hz": 479950000,
+     "target_hz": 479950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 201,
+     "center_hz": 480000000,
+     "target_hz": 480000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 202,
+     "center_hz": 480050000,
+     "target_hz": 480050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 203,
+     "center_hz": 480100000,
+     "target_hz": 480100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 204,
+     "center_hz": 480150000,
+     "target_hz": 480150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 205,
+     "center_hz": 480200000,
+     "target_hz": 480200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 206,
+     "center_hz": 480250000,
+     "target_hz": 480250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 207,
+     "center_hz": 480300000,
+     "target_hz": 480300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 208,
+     "center_hz": 480350000,
+     "target_hz": 480350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 209,
+     "center_hz": 480400000,
+     "target_hz": 480400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 210,
+     "center_hz": 480450000,
+     "target_hz": 480450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 211,
+     "center_hz": 480500000,
+     "target_hz": 480500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 212,
+     "center_hz": 480550000,
+     "target_hz": 480550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 213,
+     "center_hz": 480600000,
+     "target_hz": 480600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 214,
+     "center_hz": 480650000,
+     "target_hz": 480650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 215,
+     "center_hz": 480700000,
+     "target_hz": 480700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 216,
+     "center_hz": 480750000,
+     "target_hz": 480750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 217,
+     "center_hz": 480800000,
+     "target_hz": 480800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 218,
+     "center_hz": 480850000,
+     "target_hz": 480850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 219,
+     "center_hz": 480900000,
+     "target_hz": 480900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 220,
+     "center_hz": 480950000,
+     "target_hz": 480950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 221,
+     "center_hz": 481000000,
+     "target_hz": 481000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 222,
+     "center_hz": 481050000,
+     "target_hz": 481050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 223,
+     "center_hz": 481100000,
+     "target_hz": 481100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 224,
+     "center_hz": 481150000,
+     "target_hz": 481150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 225,
+     "center_hz": 481200000,
+     "target_hz": 481200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 226,
+     "center_hz": 481250000,
+     "target_hz": 481250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 227,
+     "center_hz": 481300000,
+     "target_hz": 481300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 228,
+     "center_hz": 481350000,
+     "target_hz": 481350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 229,
+     "center_hz": 481400000,
+     "target_hz": 481400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 230,
+     "center_hz": 481450000,
+     "target_hz": 481450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 231,
+     "center_hz": 481500000,
+     "target_hz": 481500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 232,
+     "center_hz": 481550000,
+     "target_hz": 481550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 233,
+     "center_hz": 481600000,
+     "target_hz": 481600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 234,
+     "center_hz": 481650000,
+     "target_hz": 481650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 235,
+     "center_hz": 481700000,
+     "target_hz": 481700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 236,
+     "center_hz": 481750000,
+     "target_hz": 481750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 237,
+     "center_hz": 481800000,
+     "target_hz": 481800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 238,
+     "center_hz": 481850000,
+     "target_hz": 481850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 239,
+     "center_hz": 481900000,
+     "target_hz": 481900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 240,
+     "center_hz": 481950000,
+     "target_hz": 481950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 241,
+     "center_hz": 482000000,
+     "target_hz": 482000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 242,
+     "center_hz": 482050000,
+     "target_hz": 482050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 243,
+     "center_hz": 482100000,
+     "target_hz": 482100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 244,
+     "center_hz": 482150000,
+     "target_hz": 482150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 245,
+     "center_hz": 482200000,
+     "target_hz": 482200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 246,
+     "center_hz": 482250000,
+     "target_hz": 482250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 247,
+     "center_hz": 482300000,
+     "target_hz": 482300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 248,
+     "center_hz": 482350000,
+     "target_hz": 482350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 249,
+     "center_hz": 482400000,
+     "target_hz": 482400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 250,
+     "center_hz": 482450000,
+     "target_hz": 482450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 251,
+     "center_hz": 482500000,
+     "target_hz": 482500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 252,
+     "center_hz": 482550000,
+     "target_hz": 482550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 253,
+     "center_hz": 482600000,
+     "target_hz": 482600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 254,
+     "center_hz": 482650000,
+     "target_hz": 482650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 255,
+     "center_hz": 482700000,
+     "target_hz": 482700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 256,
+     "center_hz": 482750000,
+     "target_hz": 482750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 257,
+     "center_hz": 457200000,
+     "target_hz": 457200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 258,
+     "center_hz": 457250000,
+     "target_hz": 457250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 259,
+     "center_hz": 457300000,
+     "target_hz": 457300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 260,
+     "center_hz": 457350000,
+     "target_hz": 457350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 261,
+     "center_hz": 457400000,
+     "target_hz": 457400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 262,
+     "center_hz": 457450000,
+     "target_hz": 457450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 263,
+     "center_hz": 457500000,
+     "target_hz": 457500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 264,
+     "center_hz": 457550000,
+     "target_hz": 457550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 265,
+     "center_hz": 457600000,
+     "target_hz": 457600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 266,
+     "center_hz": 457650000,
+     "target_hz": 457650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 267,
+     "center_hz": 457700000,
+     "target_hz": 457700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 268,
+     "center_hz": 457750000,
+     "target_hz": 457750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 269,
+     "center_hz": 457800000,
+     "target_hz": 457800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 270,
+     "center_hz": 457850000,
+     "target_hz": 457850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 271,
+     "center_hz": 457900000,
+     "target_hz": 457900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 272,
+     "center_hz": 457950000,
+     "target_hz": 457950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 273,
+     "center_hz": 458000000,
+     "target_hz": 458000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 274,
+     "center_hz": 458050000,
+     "target_hz": 458050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 275,
+     "center_hz": 458100000,
+     "target_hz": 458100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 276,
+     "center_hz": 458150000,
+     "target_hz": 458150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 277,
+     "center_hz": 458200000,
+     "target_hz": 458200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 278,
+     "center_hz": 458250000,
+     "target_hz": 458250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 279,
+     "center_hz": 458300000,
+     "target_hz": 458300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 280,
+     "center_hz": 458350000,
+     "target_hz": 458350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 281,
+     "center_hz": 458400000,
+     "target_hz": 458400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 282,
+     "center_hz": 458450000,
+     "target_hz": 458450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 283,
+     "center_hz": 458500000,
+     "target_hz": 458500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 284,
+     "center_hz": 458550000,
+     "target_hz": 458550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 285,
+     "center_hz": 458600000,
+     "target_hz": 458600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 286,
+     "center_hz": 458650000,
+     "target_hz": 458650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 287,
+     "center_hz": 458700000,
+     "target_hz": 458700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 288,
+     "center_hz": 458750000,
+     "target_hz": 458750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 289,
+     "center_hz": 458800000,
+     "target_hz": 458800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 290,
+     "center_hz": 458850000,
+     "target_hz": 458850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 291,
+     "center_hz": 458900000,
+     "target_hz": 458900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 292,
+     "center_hz": 458950000,
+     "target_hz": 458950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 293,
+     "center_hz": 459000000,
+     "target_hz": 459000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 294,
+     "center_hz": 459050000,
+     "target_hz": 459050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 295,
+     "center_hz": 459100000,
+     "target_hz": 459100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 296,
+     "center_hz": 459150000,
+     "target_hz": 459150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 297,
+     "center_hz": 459200000,
+     "target_hz": 459200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 298,
+     "center_hz": 459250000,
+     "target_hz": 459250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 299,
+     "center_hz": 459300000,
+     "target_hz": 459300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 300,
+     "center_hz": 459350000,
+     "target_hz": 459350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 301,
+     "center_hz": 459400000,
+     "target_hz": 459400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 302,
+     "center_hz": 459450000,
+     "target_hz": 459450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 303,
+     "center_hz": 459500000,
+     "target_hz": 459500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 304,
+     "center_hz": 459550000,
+     "target_hz": 459550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 305,
+     "center_hz": 459600000,
+     "target_hz": 459600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 306,
+     "center_hz": 459650000,
+     "target_hz": 459650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 307,
+     "center_hz": 459700000,
+     "target_hz": 459700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 308,
+     "center_hz": 459750000,
+     "target_hz": 459750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 309,
+     "center_hz": 459800000,
+     "target_hz": 459800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 310,
+     "center_hz": 459850000,
+     "target_hz": 459850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 311,
+     "center_hz": 459900000,
+     "target_hz": 459900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 312,
+     "center_hz": 459950000,
+     "target_hz": 459950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 313,
+     "center_hz": 460000000,
+     "target_hz": 460000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 314,
+     "center_hz": 460050000,
+     "target_hz": 460050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 315,
+     "center_hz": 460100000,
+     "target_hz": 460100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 316,
+     "center_hz": 460150000,
+     "target_hz": 460150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 317,
+     "center_hz": 460200000,
+     "target_hz": 460200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 318,
+     "center_hz": 460250000,
+     "target_hz": 460250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 319,
+     "center_hz": 460300000,
+     "target_hz": 460300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 320,
+     "center_hz": 460350000,
+     "target_hz": 460350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 321,
+     "center_hz": 460400000,
+     "target_hz": 460400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 322,
+     "center_hz": 460450000,
+     "target_hz": 460450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 323,
+     "center_hz": 460500000,
+     "target_hz": 460500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 324,
+     "center_hz": 460550000,
+     "target_hz": 460550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 325,
+     "center_hz": 460600000,
+     "target_hz": 460600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 326,
+     "center_hz": 460650000,
+     "target_hz": 460650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 327,
+     "center_hz": 460700000,
+     "target_hz": 460700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 328,
+     "center_hz": 460750000,
+     "target_hz": 460750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 329,
+     "center_hz": 460800000,
+     "target_hz": 460800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 330,
+     "center_hz": 460850000,
+     "target_hz": 460850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 331,
+     "center_hz": 460900000,
+     "target_hz": 460900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 332,
+     "center_hz": 460950000,
+     "target_hz": 460950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 333,
+     "center_hz": 461000000,
+     "target_hz": 461000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 334,
+     "center_hz": 461050000,
+     "target_hz": 461050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 335,
+     "center_hz": 461100000,
+     "target_hz": 461100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 336,
+     "center_hz": 461150000,
+     "target_hz": 461150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 337,
+     "center_hz": 461200000,
+     "target_hz": 461200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 338,
+     "center_hz": 461250000,
+     "target_hz": 461250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 339,
+     "center_hz": 461300000,
+     "target_hz": 461300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 340,
+     "center_hz": 461350000,
+     "target_hz": 461350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 341,
+     "center_hz": 461400000,
+     "target_hz": 461400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 342,
+     "center_hz": 461450000,
+     "target_hz": 461450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 343,
+     "center_hz": 461500000,
+     "target_hz": 461500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 344,
+     "center_hz": 461550000,
+     "target_hz": 461550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 345,
+     "center_hz": 461600000,
+     "target_hz": 461600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 346,
+     "center_hz": 461650000,
+     "target_hz": 461650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 347,
+     "center_hz": 461700000,
+     "target_hz": 461700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 348,
+     "center_hz": 461750000,
+     "target_hz": 461750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 349,
+     "center_hz": 461800000,
+     "target_hz": 461800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 350,
+     "center_hz": 461850000,
+     "target_hz": 461850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 351,
+     "center_hz": 461900000,
+     "target_hz": 461900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 352,
+     "center_hz": 461950000,
+     "target_hz": 461950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 353,
+     "center_hz": 462000000,
+     "target_hz": 462000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 354,
+     "center_hz": 462050000,
+     "target_hz": 462050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 355,
+     "center_hz": 462100000,
+     "target_hz": 462100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 356,
+     "center_hz": 462150000,
+     "target_hz": 462150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 357,
+     "center_hz": 462200000,
+     "target_hz": 462200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 358,
+     "center_hz": 462250000,
+     "target_hz": 462250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 359,
+     "center_hz": 462300000,
+     "target_hz": 462300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 360,
+     "center_hz": 462350000,
+     "target_hz": 462350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 361,
+     "center_hz": 462400000,
+     "target_hz": 462400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 362,
+     "center_hz": 462450000,
+     "target_hz": 462450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 363,
+     "center_hz": 462500000,
+     "target_hz": 462500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 364,
+     "center_hz": 462550000,
+     "target_hz": 462550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 365,
+     "center_hz": 462600000,
+     "target_hz": 462600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 366,
+     "center_hz": 462650000,
+     "target_hz": 462650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 367,
+     "center_hz": 462700000,
+     "target_hz": 462700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 368,
+     "center_hz": 462750000,
+     "target_hz": 462750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 369,
+     "center_hz": 462800000,
+     "target_hz": 462800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 370,
+     "center_hz": 462850000,
+     "target_hz": 462850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 371,
+     "center_hz": 462900000,
+     "target_hz": 462900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 372,
+     "center_hz": 462950000,
+     "target_hz": 462950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 373,
+     "center_hz": 463000000,
+     "target_hz": 463000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 374,
+     "center_hz": 463050000,
+     "target_hz": 463050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 375,
+     "center_hz": 463100000,
+     "target_hz": 463100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 376,
+     "center_hz": 463150000,
+     "target_hz": 463150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 377,
+     "center_hz": 463200000,
+     "target_hz": 463200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 378,
+     "center_hz": 463250000,
+     "target_hz": 463250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 379,
+     "center_hz": 463300000,
+     "target_hz": 463300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 380,
+     "center_hz": 463350000,
+     "target_hz": 463350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 381,
+     "center_hz": 463400000,
+     "target_hz": 463400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 382,
+     "center_hz": 463450000,
+     "target_hz": 463450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 383,
+     "center_hz": 463500000,
+     "target_hz": 463500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 384,
+     "center_hz": 463550000,
+     "target_hz": 463550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 385,
+     "center_hz": 463600000,
+     "target_hz": 463600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 386,
+     "center_hz": 463650000,
+     "target_hz": 463650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 387,
+     "center_hz": 463700000,
+     "target_hz": 463700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 388,
+     "center_hz": 463750000,
+     "target_hz": 463750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 389,
+     "center_hz": 463800000,
+     "target_hz": 463800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 390,
+     "center_hz": 463850000,
+     "target_hz": 463850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 391,
+     "center_hz": 463900000,
+     "target_hz": 463900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 392,
+     "center_hz": 463950000,
+     "target_hz": 463950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 393,
+     "center_hz": 464000000,
+     "target_hz": 464000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 394,
+     "center_hz": 464050000,
+     "target_hz": 464050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 395,
+     "center_hz": 464100000,
+     "target_hz": 464100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 396,
+     "center_hz": 464150000,
+     "target_hz": 464150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 397,
+     "center_hz": 464200000,
+     "target_hz": 464200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 398,
+     "center_hz": 464250000,
+     "target_hz": 464250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 399,
+     "center_hz": 464300000,
+     "target_hz": 464300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 400,
+     "center_hz": 464350000,
+     "target_hz": 464350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 401,
+     "center_hz": 464400000,
+     "target_hz": 464400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 402,
+     "center_hz": 464450000,
+     "target_hz": 464450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 403,
+     "center_hz": 464500000,
+     "target_hz": 464500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 404,
+     "center_hz": 464550000,
+     "target_hz": 464550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 405,
+     "center_hz": 464600000,
+     "target_hz": 464600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 406,
+     "center_hz": 464650000,
+     "target_hz": 464650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 407,
+     "center_hz": 464700000,
+     "target_hz": 464700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 408,
+     "center_hz": 464750000,
+     "target_hz": 464750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 409,
+     "center_hz": 464800000,
+     "target_hz": 464800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 410,
+     "center_hz": 464850000,
+     "target_hz": 464850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 411,
+     "center_hz": 464900000,
+     "target_hz": 464900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 412,
+     "center_hz": 464950000,
+     "target_hz": 464950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 413,
+     "center_hz": 465000000,
+     "target_hz": 465000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 414,
+     "center_hz": 465050000,
+     "target_hz": 465050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 415,
+     "center_hz": 465100000,
+     "target_hz": 465100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 416,
+     "center_hz": 465150000,
+     "target_hz": 465150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 417,
+     "center_hz": 465200000,
+     "target_hz": 465200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 418,
+     "center_hz": 465250000,
+     "target_hz": 465250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 419,
+     "center_hz": 465300000,
+     "target_hz": 465300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 420,
+     "center_hz": 465350000,
+     "target_hz": 465350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 421,
+     "center_hz": 465400000,
+     "target_hz": 465400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 422,
+     "center_hz": 465450000,
+     "target_hz": 465450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 423,
+     "center_hz": 465500000,
+     "target_hz": 465500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 424,
+     "center_hz": 465550000,
+     "target_hz": 465550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 425,
+     "center_hz": 465600000,
+     "target_hz": 465600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 426,
+     "center_hz": 465650000,
+     "target_hz": 465650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 427,
+     "center_hz": 465700000,
+     "target_hz": 465700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 428,
+     "center_hz": 465750000,
+     "target_hz": 465750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 429,
+     "center_hz": 465800000,
+     "target_hz": 465800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 430,
+     "center_hz": 465850000,
+     "target_hz": 465850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 431,
+     "center_hz": 465900000,
+     "target_hz": 465900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 432,
+     "center_hz": 465950000,
+     "target_hz": 465950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 433,
+     "center_hz": 466000000,
+     "target_hz": 466000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 434,
+     "center_hz": 466050000,
+     "target_hz": 466050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 435,
+     "center_hz": 466100000,
+     "target_hz": 466100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 436,
+     "center_hz": 466150000,
+     "target_hz": 466150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 437,
+     "center_hz": 466200000,
+     "target_hz": 466200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 438,
+     "center_hz": 466250000,
+     "target_hz": 466250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 439,
+     "center_hz": 466300000,
+     "target_hz": 466300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 440,
+     "center_hz": 466350000,
+     "target_hz": 466350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 441,
+     "center_hz": 466400000,
+     "target_hz": 466400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 442,
+     "center_hz": 466450000,
+     "target_hz": 466450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 443,
+     "center_hz": 466500000,
+     "target_hz": 466500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 444,
+     "center_hz": 466550000,
+     "target_hz": 466550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 445,
+     "center_hz": 466600000,
+     "target_hz": 466600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 446,
+     "center_hz": 466650000,
+     "target_hz": 466650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 447,
+     "center_hz": 466700000,
+     "target_hz": 466700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 448,
+     "center_hz": 466750000,
+     "target_hz": 466750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 449,
+     "center_hz": 466800000,
+     "target_hz": 466800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 450,
+     "center_hz": 466850000,
+     "target_hz": 466850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 451,
+     "center_hz": 466900000,
+     "target_hz": 466900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 452,
+     "center_hz": 466950000,
+     "target_hz": 466950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 453,
+     "center_hz": 467000000,
+     "target_hz": 467000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 454,
+     "center_hz": 467050000,
+     "target_hz": 467050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 455,
+     "center_hz": 467100000,
+     "target_hz": 467100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 456,
+     "center_hz": 467150000,
+     "target_hz": 467150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 457,
+     "center_hz": 467200000,
+     "target_hz": 467200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 458,
+     "center_hz": 467250000,
+     "target_hz": 467250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 459,
+     "center_hz": 467300000,
+     "target_hz": 467300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 460,
+     "center_hz": 467350000,
+     "target_hz": 467350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 461,
+     "center_hz": 467400000,
+     "target_hz": 467400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 462,
+     "center_hz": 467450000,
+     "target_hz": 467450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 463,
+     "center_hz": 467500000,
+     "target_hz": 467500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 464,
+     "center_hz": 467550000,
+     "target_hz": 467550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 465,
+     "center_hz": 467600000,
+     "target_hz": 467600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 466,
+     "center_hz": 467650000,
+     "target_hz": 467650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 467,
+     "center_hz": 467700000,
+     "target_hz": 467700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 468,
+     "center_hz": 467750000,
+     "target_hz": 467750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 469,
+     "center_hz": 467800000,
+     "target_hz": 467800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 470,
+     "center_hz": 467850000,
+     "target_hz": 467850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 471,
+     "center_hz": 467900000,
+     "target_hz": 467900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 472,
+     "center_hz": 467950000,
+     "target_hz": 467950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 473,
+     "center_hz": 468000000,
+     "target_hz": 468000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 474,
+     "center_hz": 468050000,
+     "target_hz": 468050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 475,
+     "center_hz": 468100000,
+     "target_hz": 468100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 476,
+     "center_hz": 468150000,
+     "target_hz": 468150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 477,
+     "center_hz": 468200000,
+     "target_hz": 468200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 478,
+     "center_hz": 468250000,
+     "target_hz": 468250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 479,
+     "center_hz": 468300000,
+     "target_hz": 468300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 480,
+     "center_hz": 468350000,
+     "target_hz": 468350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 481,
+     "center_hz": 468400000,
+     "target_hz": 468400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 482,
+     "center_hz": 468450000,
+     "target_hz": 468450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 483,
+     "center_hz": 468500000,
+     "target_hz": 468500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 484,
+     "center_hz": 468550000,
+     "target_hz": 468550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 485,
+     "center_hz": 468600000,
+     "target_hz": 468600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 486,
+     "center_hz": 468650000,
+     "target_hz": 468650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 487,
+     "center_hz": 468700000,
+     "target_hz": 468700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 488,
+     "center_hz": 468750000,
+     "target_hz": 468750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 489,
+     "center_hz": 468800000,
+     "target_hz": 468800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 490,
+     "center_hz": 468850000,
+     "target_hz": 468850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 491,
+     "center_hz": 468900000,
+     "target_hz": 468900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 492,
+     "center_hz": 468950000,
+     "target_hz": 468950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 493,
+     "center_hz": 469000000,
+     "target_hz": 469000000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 494,
+     "center_hz": 469050000,
+     "target_hz": 469050000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 495,
+     "center_hz": 469100000,
+     "target_hz": 469100000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 496,
+     "center_hz": 469150000,
+     "target_hz": 469150000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 497,
+     "center_hz": 469200000,
+     "target_hz": 469200000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 498,
+     "center_hz": 469250000,
+     "target_hz": 469250000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 499,
+     "center_hz": 469300000,
+     "target_hz": 469300000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 500,
+     "center_hz": 469350000,
+     "target_hz": 469350000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 501,
+     "center_hz": 469400000,
+     "target_hz": 469400000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 502,
+     "center_hz": 469450000,
+     "target_hz": 469450000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 503,
+     "center_hz": 469500000,
+     "target_hz": 469500000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 504,
+     "center_hz": 469550000,
+     "target_hz": 469550000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 505,
+     "center_hz": 469600000,
+     "target_hz": 469600000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 506,
+     "center_hz": 469650000,
+     "target_hz": 469650000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 507,
+     "center_hz": 469700000,
+     "target_hz": 469700000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 508,
+     "center_hz": 469750000,
+     "target_hz": 469750000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 509,
+     "center_hz": 469800000,
+     "target_hz": 469800000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 510,
+     "center_hz": 469850000,
+     "target_hz": 469850000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 511,
+     "center_hz": 469900000,
+     "target_hz": 469900000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    },
+    {
+     "stream_id": 512,
+     "center_hz": 469950000,
+     "target_hz": 469950000,
+     "sample_rate_num_hz": 25600000,
+     "sample_rate_den": 256,
+     "protocol": "Unknown",
+     "pinned": false,
+     "iq_forwarded": false
+    }
+   ]
+  }
+ ],
+ "counts": {
+  "4": 1,
+  "2": 302,
+  "3": 15704,
+  "1": 3073
+ },
+ "flags": {},
+ "gaps": 0,
+ "bytes": 15965863,
+ "xo_correction_before": "39999914",
+ "producer_log": "pluto-fpga-source waiting on TCP:9010; radio unopened\n{\"status\":\"error\",\"wire_bytes\":15973991,\"frames\":0,\"adc_losses\":2,\"sel_drops\":0}",
+ "first": {
+  "7": [
+   0,
+   1795340782.471333,
+   470300000
+  ]
+ }
+}

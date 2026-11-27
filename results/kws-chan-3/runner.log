@@ -1,0 +1,51 @@
+2026-11-22T06:23:06Z job kws-chan-3 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9 at 5257b64800f94a5caf334d61699b0abc410d3756
+2026-11-22T06:23:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-3/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-3/f70r --hz 443000000 --seconds 60 --gain 60 --threads 2 --a1mode 2 --reader readdev --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (83dde09b3021c293...) in the Pluto's RAM at /tmp/pluto_chan
+pluto_chan: A1MODE 2, 8 channels on 2 threads, 60.00 s of input in 60.08 s (100% of real time)
+chan: 60 s in 61.6 s on 8 channels, 0 overs, 6 bytes (0 B/s) (kept up)
+2026-11-22T06:24:10Z step 1 (pluto) rc=0
+2026-11-22T06:24:10Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-3/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-3/f70d --hz 443000000 --seconds 60 --gain 60 --threads 2 --a1mode 2 --reader dev --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (83dde09b3021c293...) in the Pluto's RAM at /tmp/pluto_chan
+pluto_chan: A1MODE 2, 8 channels on 2 threads, 60.00 s of input in 64.62 s (108% of real time)
+chan: 60 s in 66.2 s on 8 channels, 0 overs, 6 bytes (0 B/s) (kept up)
+2026-11-22T06:25:19Z step 2 (pluto) rc=0
+2026-11-22T06:25:19Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-3/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-3/m0_70 --hz 443000000 --seconds 60 --gain 60 --threads 2 --a1mode 0 --reader dev --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (83dde09b3021c293...) in the Pluto's RAM at /tmp/pluto_chan
+442.3000_20261122T0625417Z.flac: 30973 bytes
+442.3000_20261122T0626163Z.flac: 30857 bytes
+pluto_chan: A1MODE 0, 8 channels on 2 threads, 60.00 s of input in 104.43 s (174% of real time)
+chan: 60 s in 106.0 s on 8 channels, 2 overs, 67016 bytes (1117 B/s) (SLOW: the Pluto did not keep up)
+2026-11-22T06:27:07Z step 3 (pluto) rc=0
+2026-11-22T06:27:07Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-3/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-3/m1_70 --hz 443000000 --seconds 60 --gain 60 --threads 2 --a1mode 1 --reader dev --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (83dde09b3021c293...) in the Pluto's RAM at /tmp/pluto_chan
+442.3000_20261122T0627301Z.flac: 26470 bytes
+442.3000_20261122T0627562Z.flac: 26425 bytes
+pluto_chan: A1MODE 1, 8 channels on 2 threads, 60.00 s of input in 141.99 s (237% of real time)
+chan: 60 s in 143.6 s on 8 channels, 2 overs, 58081 bytes (968 B/s) (SLOW: the Pluto did not keep up)
+2026-11-22T06:29:33Z step 4 (pluto) rc=0
+2026-11-22T06:29:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-3/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-3/m0_2m --hz 146305000 --seconds 60 --gain 45 --threads 2 --a1mode 0 --reader dev --channels 145230000,146610000,146780000,146800000,146900000,146960000,147000000,147160000,147280000,147340000,147360000,147380000
+chan: pluto_chan.armhf (83dde09b3021c293...) in the Pluto's RAM at /tmp/pluto_chan
+146.9000_20261122T0629360Z.flac: 48098 bytes
+147.0000_20261122T0629359Z.flac: 49706 bytes
+146.9000_20261122T0629396Z.flac: 27280 bytes
+146.9600_20261122T0629397Z.flac: 25678 bytes
+147.0000_20261122T0629396Z.flac: 27280 bytes
+146.9000_20261122T0629431Z.flac: 16062 bytes
+147.0000_20261122T0629426Z.flac: 24071 bytes
+147.0000_20261122T0629472Z.flac: 24071 bytes
+146.9000_20261122T0629555Z.flac: 76934 bytes
+147.0000_20261122T0629555Z.flac: 76934 bytes
+146.9000_20261122T0630052Z.flac: 20871 bytes
+147.0000_20261122T0630052Z.flac: 20871 bytes
+147.0000_20261122T0630186Z.flac: 48098 bytes
+pluto_chan: A1MODE 0, 12 channels on 2 threads, 60.00 s of input in 125.58 s (209% of real time)
+chan: 60 s in 127.1 s on 12 channels, 13 overs, 493650 bytes (8228 B/s) (SLOW: the Pluto did not keep up)
+2026-11-22T06:31:42Z step 5 (pluto) rc=0
+2026-11-22T06:31:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-3/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-3/m1_2m --hz 146305000 --seconds 60 --gain 45 --threads 2 --a1mode 1 --reader dev --channels 145230000,146610000,146780000,146800000,146900000,146960000,147000000,147160000,147280000,147340000,147360000,147380000
+chan: pluto_chan.armhf (83dde09b3021c293...) in the Pluto's RAM at /tmp/pluto_chan
+147.0000_20261122T0631595Z.flac: 84943 bytes
+146.6100_20261122T0632092Z.flac: 29096 bytes
+pluto_chan: A1MODE 1, 12 channels on 2 threads, 60.00 s of input in 183.02 s (305% of real time)
+chan: 60 s in 184.6 s on 12 channels, 2 overs, 121625 bytes (2027 B/s) (SLOW: the Pluto did not keep up)
+2026-11-22T06:34:48Z step 6 (pluto) rc=0
+2026-11-22T06:34:48Z job kws-chan-3 done

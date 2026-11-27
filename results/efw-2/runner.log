@@ -1,0 +1,382 @@
+2026-11-22T07:52:03Z job efw-2 by earshot, checkout /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac at df50adf160ac510bb8be78ca88342c220a91d2f5
+2026-11-22T07:52:03Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot backup /home/baitisj/blowfang-work/runs/queue/efw-2/backup
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=
+fpga=operating
+pl_is_chan=no
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=451460.32
+00000000-1fffffff : System RAM
+$ dfu-util -d 0456:b673,0456:b674 -a boot.dfu -U /home/baitisj/blowfang-work/runs/queue/efw-2/backup/boot.bin
+
+Upload	[                         ]   0%            0 bytes
+Upload	[======================== ]  99%         4096 bytes
+Upload	[=========================] 100%      1048576 bytes
+Upload done.
+Received a total of 1048576 bytes
+$ dfu-util -d 0456:b673,0456:b674 -a uboot-env.dfu -U /home/baitisj/blowfang-work/runs/queue/efw-2/backup/uboot-env.bin
+
+Upload	[                         ]   0%            0 bytes
+Upload	[======================== ]  99%         4096 bytes
+Upload	[=========================] 100%       131072 bytes
+Upload done.
+Received a total of 131072 bytes
+$ dfu-util -d 0456:b673,0456:b674 -a uboot-extra-env.dfu -U /home/baitisj/blowfang-work/runs/queue/efw-2/backup/uboot-extra-env.bin
+
+Upload	[                         ]   0%            0 bytes
+Upload	[======================== ]  99%         4096 bytes
+Upload	[=========================] 100%         4096 bytes
+Upload done.
+Received a total of 4096 bytes
+$ dfu-util -d 0456:b673,0456:b674 -a spare.dfu -U /home/baitisj/blowfang-work/runs/queue/efw-2/backup/spare.bin
+
+Upload	[                         ]   0%            0 bytes
+Upload	[======================== ]  99%         4096 bytes
+Upload	[=========================] 100%       917504 bytes
+Upload done.
+Received a total of 917504 bytes
+$ dfu-util -d 0456:b673,0456:b674 -a firmware.dfu -U /home/baitisj/blowfang-work/runs/queue/efw-2/backup/firmware.bin
+Upload	[======================== ]  99%     17063936 bytes
+Upload	[======================== ]  99%     23146496 bytes
+Upload	[======================== ]  99%     29143040 bytes
+Upload	[=========================] 100%     31457280 bytes
+Upload done.
+Received a total of 31457280 bytes
+$ dfu-util -d 0456:b673,0456:b674 -a firmware.dfu -e
+Claiming USB DFU Interface...
+Setting Alternate Interface #1 ...
+Determining device status...
+DFU state(2) = dfuIDLE, status(0) = No error condition is present
+DFU mode device DFU version 0110
+Device returned transfer size 4096
+quiet: TX LO down, DDS tones off, RX LO parked
+{
+ "utc": "2026-11-22T07:52:03Z",
+ "parts": {
+  "boot": {
+   "bytes": 1048576,
+   "sha256": "9c5bb8999f92c4b1e414296be4e4c0a9a92a4c466a36ad42275216abb317daaa"
+  },
+  "uboot-env": {
+   "bytes": 131072,
+   "sha256": "f7e1b7c42ff0b7a7d96b89f70a897ff3beb8319bfcc166bb57cddc620fc10219"
+  },
+  "uboot-extra-env": {
+   "bytes": 4096,
+   "sha256": "3d0c95fbd14283a659d4fb328d4f189994fff164db0e0bf3329eb8a95441dca9"
+  },
+  "spare": {
+   "bytes": 917504,
+   "sha256": "c367d2dfb0c14bd807efbb83f8bea131a7c4f24b5c5557b6d27c0cfa4e2552fd"
+  },
+  "firmware": {
+   "bytes": 31457280,
+   "sha256": "afab5e5b754dbe0f41ba61412672f68bfbd264856eec9ec3932d5d025f30497a"
+  }
+ },
+ "fit": {
+  "bytes": 12330291,
+  "sha256": "3fa622a1725a98a88640d28eaa61e8edb594bfd1534ea6cf184c8c8bd57ab2eb",
+  "known": "v0.39"
+ }
+}
+backup: done; keep these private (uboot-env holds the unit's settings)
+2026-11-22T07:52:27Z step 1 (pluto.fw) rc=0
+2026-11-22T07:52:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot ramboot /home/baitisj/blowfang-work/runs/inbox/efw-2/v039dma.itb
+ramboot: v0.39+dma (aacf6e68ecf244ef...) into RAM; flash untouched
+$ dfu-util -d 0456:b673,0456:b674 -a firmware.dfu -D /tmp/pluto_fw_xfexpnqg/ram.dfu
+Download	[======================== ]  96%     11841536 bytes
+Download	[=========================] 100%     12330291 bytes
+Download done.
+DFU state(7) = dfuMANIFEST, status(0) = No error condition is present
+DFU state(2) = dfuIDLE, status(0) = No error condition is present
+Done!
+$ dfu-util -d 0456:b673,0456:b674 -a firmware.dfu -e
+Claiming USB DFU Interface...
+Setting Alternate Interface #1 ...
+Determining device status...
+DFU state(2) = dfuIDLE, status(0) = No error condition is present
+DFU mode device DFU version 0110
+Device returned transfer size 4096
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=no
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=15.33
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+ramboot: v0.39+dma running from RAM
+2026-11-22T07:52:52Z step 2 (pluto.fw) rc=0
+2026-11-22T07:52:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot fpga /home/baitisj/blowfang-work/runs/inbox/efw-2/system_top.bit.bin /home/baitisj/blowfang-work/runs/inbox/efw-2/chanctl /home/baitisj/blowfang-work/runs/inbox/efw-2/ensure_pluto_fpga.sh /home/baitisj/blowfang-work/runs/inbox/efw-2/pluto_runtime_load.sh
+[23:52:53] load system_top.bit.bin sha256 23632b191f56efce8593764c0f8a6858cd273208f30a7dd344888e978b54e7c9
+[23:52:54] saved settings to /home/baitisj/.cache/amateur-radio-fpga/pluto-session/settings-before.txt: in_voltage_sampling_frequency=30720000 in_voltage_rf_bandwidth=18000000 out_altvoltage0_RX_LO_frequency=2400000000 in_voltage0_gain_control_mode=slow_attack in_voltage0_hardwaregain=71.000000 dB in_voltage_filter_fir_en=0 out_voltage_filter_fir_en=0 out_voltage_sampling_frequency=30720000 
+[23:52:55] PL swap running on the device
+fpga0 state: operating
+adm1177-iio
+ad9361-phy
+xadc
+cf-ad9361-dds-core-lpc
+cf-ad9361-lpc
+PL_SWAP_DONE
+[23:53:12] readback: in_voltage_sampling_frequency=30720000 in_voltage_rf_bandwidth=18000000 out_altvoltage0_RX_LO_frequency=2400000000 in_voltage0_gain_control_mode=slow_attack in_voltage0_hardwaregain=71.000000 dB in_voltage_filter_fir_en=0 out_voltage_filter_fir_en=0 out_voltage_sampling_frequency=30720000 
+{"version":"0x00010000","magic":"0x4348414e","config":"0x08080200","det_config":"0x0d040080","control":0,"running":0,"out_shift":7,"det_on":221,"det_off":133,"det_bias":0,"det_hang":39,"samples":0,"frames":0,"adc_overflows":2,"adc_clips":0,"out_saturations":0,"hist_frames":0,"hist_drops":0,"sel_frames":0,"sel_drops":0,"pack_overruns":0,"blocks":0,"psd_periods":0,"hist_first_frame":0,"fft_events":0,"fir_frames":0}
+Pluto FPGA channelizer ready
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=36.33
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+fpga: channelizer loaded (pl_is_chan=yes)
+2026-11-22T07:53:13Z step 3 (pluto.fw) rc=0
+2026-11-22T07:53:13Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot psd /home/baitisj/blowfang-work/runs/queue/efw-2/psd-70cm.json --hz 440000000 --gain 60
+in_voltage_sampling_frequency=25600000
+in_voltage_rf_bandwidth=20000000
+out_altvoltage0_RX_LO_frequency=440000000
+in_voltage0_hardwaregain=60.000000 dB
+{"version":"0x00010000","magic":"0x4348414e","config":"0x08080200","det_config":"0x0d040080","control":1,"running":1,"out_shift":7,"det_on":221,"det_off":133,"det_bias":0,"det_hang":39,"samples":76831053,"frames":300105,"adc_overflows":2,"adc_clips":0,"out_saturations":0,"hist_frames":0,"hist_drops":0,"sel_frames":0,"sel_drops":0,"pack_overruns":0,"blocks":1172,"psd_periods":36,"hist_first_frame":0,"fft_events":0,"fir_frames":300106}
+{
+ "utc": "2026-11-22T07:53:29Z",
+ "lo_hz": 440000000,
+ "gain": 60.0,
+ "rate": 25600000,
+ "bins": 512,
+ "frames": 10,
+ "active": "[0,1,3,4,6,7,8,9,10,11,18,22,26,30,32,33,34,42,46,51,53,55,66,69,70,73,74,81,85,87,90,91,95,96,97,100,106,107,108,109,111,115,116,120,122,124,126,127,128,129,130,131,142,143,146,148,162,170,171,175,176,180,199,200,201,222,223,225,245,246,247,249,250,251,255,256,263,266,267,271,272,284,302,306,307,308,309,311,312,313,314,315,316,317,318,320,321,322,323,324,325,326,327,328,331,332,333,334,335,336,337,338,339,340,341,342,343,344,345,346,347,348,349,350,352,353,354,355,356,357,358,359,360,362,364,365,366,367,369,372,373,374,375,379,380,381,382,383,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410,412,413,414,415,416,417,418,420,421,422,423,424,426,428,429,431,432,433,434,435,437,438,439,441,442,443,446,447,448,450,451,452,454,456,459,461,463,464,465,466,470,477,480,487,496,501]",
+ "median": 6251.4,
+ "top_bins": [
+  [
+   283,
+   428550000,
+   7953.5,
+   1.27
+  ],
+  [
+   282,
+   428500000,
+   7933.6,
+   1.27
+  ],
+  [
+   239,
+   451950000,
+   7930.7,
+   1.27
+  ],
+  [
+   238,
+   451900000,
+   7930.6,
+   1.27
+  ],
+  [
+   256,
+   427200000,
+   7765.1,
+   1.24
+  ],
+  [
+   257,
+   427250000,
+   7706.0,
+   1.23
+  ],
+  [
+   267,
+   427750000,
+   6995.1,
+   1.12
+  ],
+  [
+   266,
+   427700000,
+   6992.5,
+   1.12
+  ],
+  [
+   255,
+   452750000,
+   6642.0,
+   1.06
+  ],
+  [
+   7,
+   440350000,
+   6596.6,
+   1.06
+  ],
+  [
+   391,
+   433950000,
+   6583.1,
+   1.05
+  ],
+  [
+   352,
+   432000000,
+   6545.9,
+   1.05
+  ],
+  [
+   6,
+   440300000,
+   6543.0,
+   1.05
+  ],
+  [
+   353,
+   432050000,
+   6466.4,
+   1.03
+  ],
+  [
+   147,
+   447350000,
+   6460.9,
+   1.03
+  ],
+  [
+   390,
+   433900000,
+   6455.4,
+   1.03
+  ]
+ ]
+}
+2026-11-22T07:53:30Z step 4 (pluto.fw) rc=0
+2026-11-22T07:53:30Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot psd /home/baitisj/blowfang-work/runs/queue/efw-2/psd-2m.json --hz 153600000 --gain 40
+in_voltage_sampling_frequency=25600000
+in_voltage_rf_bandwidth=20000000
+out_altvoltage0_RX_LO_frequency=153600000
+in_voltage0_hardwaregain=40.000000 dB
+{"version":"0x00010000","magic":"0x4348414e","config":"0x08080200","det_config":"0x0d040080","control":1,"running":1,"out_shift":7,"det_on":221,"det_off":133,"det_bias":0,"det_hang":39,"samples":76832115,"frames":300109,"adc_overflows":2,"adc_clips":0,"out_saturations":0,"hist_frames":0,"hist_drops":0,"sel_frames":0,"sel_drops":0,"pack_overruns":0,"blocks":1172,"psd_periods":36,"hist_first_frame":0,"fft_events":0,"fir_frames":300110}
+{
+ "utc": "2026-11-22T07:53:46Z",
+ "lo_hz": 153600000,
+ "gain": 40.0,
+ "rate": 25600000,
+ "bins": 512,
+ "frames": 10,
+ "active": "[0,6,11,14,15,18,20,23,29,32,34,39,42,43,50,55,56,62,63,65,66,68,70,71,72,73,74,75,76,77,79,80,81,84,85,86,88,89,90,91,92,93,94,95,96,97,98,99,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,160,161,165,166,167,168,173,174,177,178,179,181,182,183,184,195,196,199,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,256,257,258,262,263,264,265,266,267,268,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,292,293,295,296,297,298,299,300,301,302,303,304,305,306,307,308,309,310,313,314,315,318,319,323,324,325,326,327,328,329,330,331,332,333,334,335,336,337,338,339,340,341,342,343,344,345,346,347,348,349,350,351,352,353,354,355,356,357,358,359,360,361,362,363,364,365,366,367,368,369,370,371,372,373,374,375,376,377,378,379,380,381,382,383,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,416,417,418,419,420,421,422,423,424,425,426,427,428,429,430,431,432,433,434,435,436,437,438,439,440,441,442,443,444,445,446,447,448,449,450,451,452,453,454,455,456,457,458,459,460,461,462,463,464,465,466,467,468,469,470,471,472,473,474,475,476,477,478,479,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,495,496,497,498,499,500,501,502,503,504,505,506,507,508,509,511]",
+ "median": 6331.6,
+ "top_bins": [
+  [
+   317,
+   143850000,
+   8447.8,
+   1.33
+  ],
+  [
+   316,
+   143800000,
+   8446.2,
+   1.33
+  ],
+  [
+   449,
+   150450000,
+   7328.1,
+   1.16
+  ],
+  [
+   321,
+   144050000,
+   7302.9,
+   1.15
+  ],
+  [
+   379,
+   146950000,
+   7298.7,
+   1.15
+  ],
+  [
+   322,
+   144100000,
+   7271.1,
+   1.15
+  ],
+  [
+   378,
+   146900000,
+   7261.7,
+   1.15
+  ],
+  [
+   448,
+   150400000,
+   7257.2,
+   1.15
+  ],
+  [
+   312,
+   143600000,
+   7217.7,
+   1.14
+  ],
+  [
+   494,
+   152700000,
+   7149.4,
+   1.13
+  ],
+  [
+   493,
+   152650000,
+   7148.8,
+   1.13
+  ],
+  [
+   311,
+   143550000,
+   7119.4,
+   1.12
+  ],
+  [
+   133,
+   160250000,
+   7100.2,
+   1.12
+  ],
+  [
+   134,
+   160300000,
+   7080.3,
+   1.12
+  ],
+  [
+   416,
+   148800000,
+   7047.1,
+   1.11
+  ],
+  [
+   417,
+   148850000,
+   7046.6,
+   1.11
+  ]
+ ]
+}
+2026-11-22T07:53:46Z step 5 (pluto.fw) rc=0
+2026-11-22T07:53:46Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-df50adf160ac/tools/pluto_fw.py --as earshot info
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=BC2533
+attr_name=compatible attr_val=ad9364
+uptime=69.70
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+2026-11-22T07:53:46Z step 6 (pluto.fw) rc=0
+2026-11-22T07:53:46Z job efw-2 done

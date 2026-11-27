@@ -1,0 +1,28 @@
+{
+ "lo_hz": 443000000,
+ "source": "earshot bins",
+ "streams": [
+  14,
+  16,
+  17,
+  35,
+  455,
+  481,
+  498,
+  499,
+  508,
+  510
+ ],
+ "xo_scale": 1.0000138251911332,
+ "gain": 60,
+ "bin_sha256": "284744a6925f81a7ae93eea70a1bad56d2259ba14c97310ca348e07d6f6bc015",
+ "producer_sha256": "c462e7586d0a197005feb213125e93efc41f57259125c240a177d5ca50b56429",
+ "seconds": 1440.0,
+ "took_s": 1441.9,
+ "pluto_stderr": "pluto_chan: 440106084 Hz from stream 455\npluto_chan: 441381102 Hz from stream 481\npluto_chan: 442256114 Hz from stream 498\npluto_chan: 442306115 Hz from stream 499\npluto_chan: 442756121 Hz from stream 508\npluto_chan: 442831122 Hz from stream 510\npluto_chan: 443631133 Hz from stream 14\npluto_chan: 443656134 Hz from stream 14\npluto_chan: 443756135 Hz from stream 16\npluto_chan: 443781135 Hz from stream 17\npluto_chan: 444706148 Hz from stream 35\npluto_chan: config {\"input_center_hz\":443000000,\"input_rate_hz\":25600000,\"input_bandwidth_hz\":20000000,\"filter_delay_input_samples_times_two\":4095,\"first_output_center_input_sample_times_two\":4095,\"hardware_counter\":true,\"continuity_verified\":false,\"activity_calibrated\":false,\"activity_method\":\"fpga-welch-minstat-cfar\npluto_chan: RIQ1, 11 channels, 2188222 messages, 55 gaps, 14117 PSD frames, 1440.00 s of the slowest stream in 1440.28 s\npluto-fpga-source waiting on TCP:9010; radio unopened\n{\"status\":\"stopped\",\"wire_bytes\":6011861802,\"frames\":0,\"adc_losses\":2,\"sel_drops\":0}",
+ "rc": 0,
+ "utc": "2026-11-23T10:33:01Z",
+ "overs": 28,
+ "bytes": 1602075,
+ "secs": 1440.0
+}

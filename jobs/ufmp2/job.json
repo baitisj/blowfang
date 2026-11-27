@@ -1,0 +1,22 @@
+{
+ "id": "ufmp2",
+ "who": "fmprobe-uv21",
+ "freq_mhz": "440.85",
+ "minutes": 5,
+ "sources_commit": "ca082c82c9541226dd929ef3d6d3579a2039d7c8",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "i2cpeek"
+   ]
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "i2cpeek",
+    "IP_HALF_US=40"
+   ]
+  }
+ ]
+}

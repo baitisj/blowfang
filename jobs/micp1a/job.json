@@ -1,0 +1,108 @@
+{
+ "id": "micp1a",
+ "who": "micprobe",
+ "freq_mhz": 440.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 420,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:voxcap.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "3",
+    "--run-s",
+    "10"
+   ],
+   "continue_on_error": true,
+   "sha256": "6f3774aea2a4dc9abfcdf900d6ad36f770c2b6af11ccc1ff40c99c43e2fe6e2f"
+  },
+  {
+   "do": "wait",
+   "pattern": "voxcap done",
+   "seconds": 30,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 3
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:afpin.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "4",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "9f9ce43376c67bbf025dc8cc8a4a11d9ae1856790dd2175fe35f57b4fb3a4b1d"
+  },
+  {
+   "do": "wait",
+   "pattern": "afpin i ticks",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:tone1k.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "afpin done",
+   "seconds": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

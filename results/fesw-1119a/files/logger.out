@@ -1,0 +1,268 @@
+listening (Ctrl-C to stop) ...
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-111 batt=8530 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=33 chunk=0 have=1/9 rssi=-67 noise=18
+K6 MOD r=1 xfer=33 chunk=1 have=2/9 rssi=-67 noise=17
+K6 MOD r=1 xfer=33 chunk=2 have=3/9 rssi=-67 noise=17
+K6 MOD r=1 xfer=33 chunk=3 have=4/9 rssi=-67 noise=15
+K6 MOD r=1 xfer=33 chunk=4 have=5/9 rssi=-67 noise=16
+K6 MOD r=1 xfer=33 chunk=5 have=6/9 rssi=-67 noise=16
+K6 MOD r=1 xfer=33 chunk=6 have=7/9 rssi=-67 noise=17
+K6 MOD r=1 xfer=33 chunk=7 have=8/9 rssi=-67 noise=17
+K6 MOD r=3 xfer=33 chunk=8 have=9/9 rssi=-67 noise=16
+K6 MOD run serial=1795108897 code=1036 B at 0x200020a4 stack=2028 B scratch=10716 B
+K6 MOD say fesw start n=16 rounds=5 odr=8192
+K6 MOD say fe 0 f=136000 s=0 t=759 r=-103 -92 -90 n=80 g=74
+K6 MOD say fe 0 f=136000 s=1 t=1519 r=-129 -128 -126 n=67 g=26
+K6 MOD say fe 0 f=136000 s=2 t=2278 r=-148 -146 -145 n=67 g=27
+K6 MOD say fe 0 f=140000 s=0 t=3038 r=-94 -93 -90 n=80 g=73
+K6 MOD say fe 0 f=140000 s=1 t=3797 r=-126 -124 -123 n=69 g=32
+K6 MOD say fe 0 f=140000 s=2 t=4556 r=-151 -146 -140 n=68 g=28
+K6 MOD say fe 0 f=143000 s=0 t=5316 r=-96 -93 -92 n=80 g=74
+K6 MOD say fe 0 f=143000 s=1 t=6075 r=-127 -125 -123 n=61 g=18
+K6 MOD say fe 0 f=143000 s=2 t=6835 r=-131 -131 -130 n=31 g=0
+K6 MOD say fe 0 f=144200 s=0 t=7595 r=-90 -87 -85 n=80 g=75
+K6 MOD say fe 0 f=144200 s=1 t=8354 r=-126 -124 -122 n=66 g=26
+K6 MOD say fe 0 f=144200 s=2 t=9113 r=-143 -140 -139 n=66 g=26
+K6 MOD say fe 0 f=144340 s=0 t=9873 r=-96 -94 -92 n=80 g=74
+K6 MOD say fe 0 f=144340 s=1 t=10632 r=-126 -123 -122 n=66 g=26
+K6 MOD say fe 0 f=144340 s=2 t=11392 r=-152 -147 -142 n=68 g=29
+K6 MOD say fe 0 f=144390 s=0 t=12151 r=-94 -93 -92 n=80 g=77
+K6 MOD say fe 0 f=144390 s=1 t=12911 r=-126 -125 -122 n=66 g=25
+K6 MOD say fe 0 f=144390 s=2 t=13670 r=-151 -144 -141 n=67 g=27
+K6 MOD say fe 0 f=144440 s=0 t=14430 r=-95 -93 -92 n=80 g=75
+K6 MOD say fe 0 f=144440 s=1 t=15189 r=-127 -126 -124 n=67 g=27
+K6 MOD say fe 0 f=144440 s=2 t=15948 r=-152 -150 -149 n=69 g=30
+K6 MOD say fe 0 f=144600 s=0 t=16708 r=-96 -95 -94 n=80 g=75
+K6 MOD say fe 0 f=144600 s=1 t=17468 r=-127 -126 -125 n=67 g=26
+K6 MOD say fe 0 f=144600 s=2 t=18227 r=-151 -150 -149 n=68 g=28
+K6 MOD say fe 0 f=146000 s=0 t=18987 r=-98 -96 -94 n=80 g=73
+K6 MOD say fe 0 f=146000 s=1 t=19746 r=-127 -125 -123 n=66 g=25
+K6 MOD say fe 0 f=146000 s=2 t=20505 r=-152 -150 -149 n=68 g=29
+K6 MOD say fe 0 f=148000 s=0 t=21265 r=-98 -97 -96 n=81 g=73
+K6 MOD say fe 0 f=148000 s=1 t=22024 r=-124 -122 -121 n=66 g=25
+K6 MOD say fe 0 f=148000 s=2 t=22784 r=-153 -149 -141 n=69 g=29
+K6 MOD say fe 0 f=152000 s=0 t=23544 r=-92 -91 -90 n=80 g=73
+K6 MOD say fe 0 f=152000 s=1 t=24303 r=-124 -122 -120 n=67 g=25
+K6 MOD say fe 0 f=152000 s=2 t=25062 r=-142 -140 -139 n=66 g=26
+K6 MOD say fe 0 f=156000 s=0 t=25822 r=-91 -90 -89 n=76 g=49
+K6 MOD say fe 0 f=156000 s=1 t=26581 r=-116 -115 -114 n=36 g=1
+K6 MOD say fe 0 f=156000 s=2 t=27341 r=-118 -118 -117 n=16 g=0
+K6 MOD say fe 0 f=160000 s=0 t=28100 r=-98 -93 -91 n=80 g=75
+K6 MOD say fe 0 f=160000 s=1 t=28860 r=-128 -123 -120 n=66 g=26
+K6 MOD say fe 0 f=160000 s=2 t=29619 r=-152 -147 -140 n=67 g=27
+K6 MOD say fe 0 f=162550 s=0 t=30379 r=-92 -90 -89 n=81 g=75
+K6 MOD say fe 0 f=162550 s=1 t=31138 r=-132 -128 -119 n=66 g=25
+K6 MOD say fe 0 f=162550 s=2 t=31897 r=-140 -139 -138 n=66 g=24
+K6 MOD say fe 0 f=170000 s=0 t=32657 r=-97 -95 -93 n=80 g=76
+K6 MOD say fe 0 f=170000 s=1 t=33417 r=-120 -119 -117 n=66 g=26
+K6 MOD say fe 0 f=170000 s=2 t=34176 r=-152 -145 -140 n=67 g=26
+K6 MOD say fe 0 f=440925 s=0 t=34936 r=-115 -110 -108 n=70 g=35
+K6 MOD say fe 0 f=440925 s=1 t=35695 r=-105 -103 -101 n=80 g=74
+K6 MOD say fe 0 f=440925 s=2 t=36454 r=-152 -150 -149 n=67 g=25
+K6 MOD say fe 1 f=136000 s=0 t=37214 r=-104 -103 -102 n=79 g=70
+K6 MOD say fe 1 f=136000 s=1 t=37973 r=-130 -128 -127 n=67 g=27
+K6 MOD say fe 1 f=136000 s=2 t=38733 r=-154 -152 -151 n=69 g=28
+K6 MOD say fe 1 f=140000 s=0 t=39493 r=-95 -94 -93 n=80 g=75
+K6 MOD say fe 1 f=140000 s=1 t=40252 r=-126 -125 -124 n=68 g=33
+K6 MOD say fe 1 f=140000 s=2 t=41011 r=-151 -150 -149 n=69 g=30
+K6 MOD say fe 1 f=143000 s=0 t=41771 r=-97 -96 -95 n=80 g=72
+K6 MOD say fe 1 f=143000 s=1 t=42530 r=-127 -126 -124 n=61 g=18
+K6 MOD say fe 1 f=143000 s=2 t=43290 r=-132 -132 -131 n=31 g=0
+K6 MOD say fe 1 f=144200 s=0 t=44049 r=-94 -89 -83 n=80 g=72
+K6 MOD say fe 1 f=144200 s=1 t=44809 r=-125 -123 -122 n=66 g=25
+K6 MOD say fe 1 f=144200 s=2 t=45568 r=-147 -144 -143 n=67 g=27
+K6 MOD say fe 1 f=144340 s=0 t=46328 r=-97 -96 -95 n=80 g=75
+K6 MOD say fe 1 f=144340 s=1 t=47087 r=-127 -126 -124 n=67 g=27
+K6 MOD say fe 1 f=144340 s=2 t=47846 r=-152 -150 -149 n=67 g=25
+K6 MOD say fe 1 f=144390 s=0 t=48606 r=-97 -96 -95 n=80 g=76
+K6 MOD say fe 1 f=144390 s=1 t=49366 r=-127 -126 -125 n=66 g=25
+K6 MOD say fe 1 f=144390 s=2 t=50125 r=-152 -150 -149 n=68 g=28
+K6 MOD say fe 1 f=144440 s=0 t=50885 r=-97 -96 -95 n=80 g=73
+K6 MOD say fe 1 f=144440 s=1 t=51644 r=-128 -126 -125 n=66 g=25
+K6 MOD say fe 1 f=144440 s=2 t=52403 r=-152 -150 -148 n=68 g=27
+K6 MOD say fe 1 f=144600 s=0 t=53163 r=-96 -94 -93 n=80 g=73
+K6 MOD say fe 1 f=144600 s=1 t=53922 r=-126 -124 -123 n=66 g=25
+K6 MOD say fe 1 f=144600 s=2 t=54682 r=-151 -145 -141 n=67 g=26
+K6 MOD say fe 1 f=146000 s=0 t=55442 r=-98 -97 -95 n=80 g=74
+K6 MOD say fe 1 f=146000 s=1 t=56201 r=-126 -125 -124 n=67 g=26
+K6 MOD say fe 1 f=146000 s=2 t=56960 r=-152 -151 -149 n=68 g=27
+K6 MOD say fe 1 f=148000 s=0 t=57720 r=-98 -97 -96 n=80 g=75
+K6 MOD say fe 1 f=148000 s=1 t=58479 r=-124 -123 -122 n=66 g=26
+K6 MOD say fe 1 f=148000 s=2 t=59239 r=-153 -151 -150 n=69 g=29
+K6 MOD say fe 1 f=152000 s=0 t=59998 r=-99 -98 -97 n=80 g=75
+K6 MOD say fe 1 f=152000 s=1 t=60758 r=-124 -123 -122 n=67 g=27
+K6 MOD say fe 1 f=152000 s=2 t=61517 r=-152 -151 -150 n=69 g=27
+K6 MOD say fe 1 f=156000 s=0 t=62277 r=-92 -91 -90 n=72 g=37
+K6 MOD say fe 1 f=156000 s=1 t=63036 r=-116 -115 -115 n=30 g=1
+K6 MOD say fe 1 f=156000 s=2 t=63796 r=-118 -118 -118 n=17 g=0
+K6 MOD say fe 1 f=160000 s=0 t=64555 r=-97 -95 -91 n=80 g=74
+K6 MOD say fe 1 f=160000 s=1 t=65315 r=-132 -130 -129 n=67 g=27
+K6 MOD say fe 1 f=160000 s=2 t=66074 r=-153 -151 -150 n=68 g=26
+K6 MOD say fe 1 f=162550 s=0 t=66834 r=-98 -97 -95 n=80 g=75
+K6 MOD say fe 1 f=162550 s=1 t=67593 r=-133 -132 -130 n=66 g=25
+K6 MOD say fe 1 f=162550 s=2 t=68352 r=-148 -146 -145 n=56 g=8
+K6 MOD say fe 1 f=170000 s=0 t=69112 r=-97 -97 -96 n=80 g=72
+K6 MOD say fe 1 f=170000 s=1 t=69871 r=-131 -129 -128 n=67 g=26
+K6 MOD say fe 1 f=170000 s=2 t=70631 r=-152 -151 -150 n=67 g=26
+K6 MOD say fe 1 f=440925 s=0 t=71391 r=-116 -115 -113 n=66 g=26
+K6 MOD say fe 1 f=440925 s=1 t=72150 r=-119 -117 -110 n=67 g=25
+K6 MOD say fe 1 f=440925 s=2 t=72909 r=-153 -150 -149 n=67 g=25
+K6 MOD say fe 2 f=136000 s=0 t=73669 r=-103 -95 -90 n=80 g=72
+K6 MOD say fe 2 f=136000 s=1 t=74428 r=-129 -128 -127 n=67 g=27
+K6 MOD say fe 2 f=136000 s=2 t=75188 r=-153 -147 -143 n=67 g=27
+K6 MOD say fe 2 f=140000 s=0 t=75947 r=-96 -95 -94 n=80 g=74
+K6 MOD say fe 2 f=140000 s=1 t=76707 r=-126 -125 -124 n=69 g=33
+K6 MOD say fe 2 f=140000 s=2 t=77466 r=-151 -150 -149 n=69 g=29
+K6 MOD say fe 2 f=143000 s=0 t=78226 r=-98 -97 -95 n=80 g=73
+K6 MOD say fe 2 f=143000 s=1 t=78985 r=-127 -126 -125 n=62 g=19
+K6 MOD say fe 2 f=143000 s=2 t=79745 r=-132 -132 -132 n=31 g=0
+K6 MOD say fe 2 f=144200 s=0 t=80504 r=-90 -86 -85 n=80 g=73
+K6 MOD say fe 2 f=144200 s=1 t=81264 r=-128 -125 -124 n=66 g=27
+K6 MOD say fe 2 f=144200 s=2 t=82023 r=-147 -144 -142 n=67 g=27
+K6 MOD say fe 2 f=144340 s=0 t=82783 r=-96 -94 -91 n=80 g=75
+K6 MOD say fe 2 f=144340 s=1 t=83542 r=-127 -125 -122 n=67 g=26
+K6 MOD say fe 2 f=144340 s=2 t=84301 r=-146 -142 -141 n=66 g=25
+K6 MOD say fe 2 f=144390 s=0 t=85061 r=-97 -95 -93 n=80 g=75
+K6 MOD say fe 2 f=144390 s=1 t=85821 r=-127 -126 -124 n=67 g=27
+K6 MOD say fe 2 f=144390 s=2 t=86580 r=-151 -150 -149 n=69 g=29
+K6 MOD say fe 2 f=144440 s=0 t=87340 r=-97 -96 -95 n=80 g=73
+K6 MOD say fe 2 f=144440 s=1 t=88099 r=-127 -126 -124 n=67 g=26
+K6 MOD say fe 2 f=144440 s=2 t=88858 r=-152 -150 -149 n=69 g=30
+K6 MOD say fe 2 f=144600 s=0 t=89618 r=-97 -96 -95 n=80 g=74
+K6 MOD say fe 2 f=144600 s=1 t=90377 r=-127 -126 -125 n=66 g=26
+K6 MOD say fe 2 f=144600 s=2 t=91137 r=-151 -150 -149 n=68 g=27
+K6 MOD say fe 2 f=146000 s=0 t=91897 r=-98 -96 -95 n=80 g=73
+K6 MOD say fe 2 f=146000 s=1 t=92656 r=-126 -125 -123 n=66 g=25
+K6 MOD say fe 2 f=146000 s=2 t=93415 r=-144 -142 -141 n=67 g=26
+K6 MOD say fe 2 f=148000 s=0 t=94175 r=-97 -95 -93 n=80 g=74
+K6 MOD say fe 2 f=148000 s=1 t=94934 r=-124 -123 -122 n=67 g=26
+K6 MOD say fe 2 f=148000 s=2 t=95694 r=-152 -151 -150 n=69 g=29
+K6 MOD say fe 2 f=152000 s=0 t=96453 r=-99 -98 -97 n=80 g=76
+K6 MOD say fe 2 f=152000 s=1 t=97213 r=-125 -123 -121 n=66 g=26
+K6 MOD say fe 2 f=152000 s=2 t=97972 r=-152 -151 -150 n=68 g=27
+K6 MOD say fe 2 f=156000 s=0 t=98732 r=-92 -91 -90 n=71 g=33
+K6 MOD say fe 2 f=156000 s=1 t=99491 r=-116 -115 -115 n=22 g=0
+K6 MOD say fe 2 f=156000 s=2 t=100250 r=-118 -118 -118 n=16 g=0
+K6 MOD say fe 2 f=160000 s=0 t=101010 r=-98 -97 -96 n=80 g=72
+K6 MOD say fe 2 f=160000 s=1 t=101770 r=-132 -131 -129 n=68 g=28
+K6 MOD say fe 2 f=160000 s=2 t=102529 r=-153 -146 -139 n=67 g=26
+K6 MOD say fe 2 f=162550 s=0 t=103289 r=-91 -90 -89 n=80 g=74
+K6 MOD say fe 2 f=162550 s=1 t=104048 r=-133 -128 -119 n=67 g=26
+K6 MOD say fe 2 f=162550 s=2 t=104807 r=-141 -139 -138 n=66 g=23
+K6 MOD say fe 2 f=170000 s=0 t=105567 r=-97 -95 -92 n=80 g=74
+K6 MOD say fe 2 f=170000 s=1 t=106326 r=-131 -129 -128 n=66 g=26
+K6 MOD say fe 2 f=170000 s=2 t=107086 r=-152 -151 -150 n=67 g=26
+K6 MOD say fe 2 f=440925 s=0 t=107846 r=-93 -93 -92 n=51 g=1
+K6 MOD say fe 2 f=440925 s=1 t=108605 r=-120 -118 -116 n=67 g=25
+K6 MOD say fe 2 f=440925 s=2 t=109364 r=-148 -146 -145 n=62 g=18
+K6 MOD say fe 3 f=136000 s=0 t=110124 r=-104 -103 -101 n=79 g=67
+K6 MOD say fe 3 f=136000 s=1 t=110883 r=-131 -128 -126 n=67 g=26
+K6 MOD say fe 3 f=136000 s=2 t=111643 r=-154 -153 -151 n=69 g=28
+K6 MOD say fe 3 f=140000 s=0 t=112402 r=-96 -95 -94 n=80 g=74
+K6 MOD say fe 3 f=140000 s=1 t=113162 r=-126 -125 -124 n=68 g=31
+K6 MOD say fe 3 f=140000 s=2 t=113921 r=-151 -142 -140 n=67 g=27
+K6 MOD say fe 3 f=143000 s=0 t=114681 r=-96 -93 -92 n=80 g=74
+K6 MOD say fe 3 f=143000 s=1 t=115440 r=-127 -126 -124 n=63 g=21
+K6 MOD say fe 3 f=143000 s=2 t=116200 r=-133 -132 -131 n=34 g=0
+K6 MOD say fe 3 f=144200 s=0 t=116959 r=-88 -86 -85 n=80 g=75
+K6 MOD say fe 3 f=144200 s=1 t=117719 r=-125 -123 -122 n=66 g=25
+K6 MOD say fe 3 f=144200 s=2 t=118478 r=-146 -144 -142 n=67 g=26
+K6 MOD say fe 3 f=144340 s=0 t=119238 r=-98 -96 -95 n=80 g=75
+K6 MOD say fe 3 f=144340 s=1 t=119997 r=-127 -126 -124 n=67 g=26
+K6 MOD say fe 3 f=144340 s=2 t=120756 r=-151 -150 -149 n=68 g=28
+K6 MOD say fe 3 f=144390 s=0 t=121516 r=-97 -96 -95 n=80 g=74
+K6 MOD say fe 3 f=144390 s=1 t=122276 r=-127 -126 -125 n=66 g=26
+K6 MOD say fe 3 f=144390 s=2 t=123035 r=-151 -150 -148 n=69 g=29
+K6 MOD say fe 3 f=144440 s=0 t=123795 r=-97 -96 -95 n=80 g=73
+K6 MOD say fe 3 f=144440 s=1 t=124554 r=-127 -126 -125 n=66 g=27
+K6 MOD say fe 3 f=144440 s=2 t=125313 r=-151 -150 -148 n=68 g=28
+K6 MOD say fe 3 f=144600 s=0 t=126073 r=-96 -94 -93 n=80 g=74
+K6 MOD say fe 3 f=144600 s=1 t=126832 r=-127 -124 -122 n=67 g=26
+K6 MOD say fe 3 f=144600 s=2 t=127592 r=-151 -144 -141 n=67 g=26
+K6 MOD say fe 3 f=146000 s=0 t=128352 r=-98 -97 -95 n=80 g=74
+K6 MOD say fe 3 f=146000 s=1 t=129111 r=-126 -125 -124 n=67 g=27
+K6 MOD say fe 3 f=146000 s=2 t=129870 r=-151 -151 -149 n=68 g=27
+K6 MOD say fe 3 f=148000 s=0 t=130630 r=-98 -97 -96 n=80 g=74
+K6 MOD say fe 3 f=148000 s=1 t=131389 r=-125 -123 -122 n=67 g=26
+K6 MOD say fe 3 f=148000 s=2 t=132149 r=-152 -151 -150 n=69 g=31
+K6 MOD say fe 3 f=152000 s=0 t=132908 r=-99 -98 -97 n=80 g=74
+K6 MOD say fe 3 f=152000 s=1 t=133668 r=-124 -123 -122 n=66 g=26
+K6 MOD say fe 3 f=152000 s=2 t=134427 r=-153 -151 -150 n=68 g=26
+K6 MOD say fe 3 f=156000 s=0 t=135187 r=-93 -92 -90 n=72 g=37
+K6 MOD say fe 3 f=156000 s=1 t=135946 r=-116 -115 -114 n=29 g=0
+K6 MOD say fe 3 f=156000 s=2 t=136706 r=-118 -118 -118 n=17 g=0
+K6 MOD say fe 3 f=160000 s=0 t=137465 r=-97 -94 -91 n=80 g=72
+K6 MOD say fe 3 f=160000 s=1 t=138225 r=-123 -121 -121 n=67 g=27
+K6 MOD say fe 3 f=160000 s=2 t=138984 r=-153 -147 -139 n=67 g=26
+K6 MOD say fe 3 f=162550 s=0 t=139744 r=-98 -97 -96 n=80 g=76
+K6 MOD say fe 3 f=162550 s=1 t=140503 r=-133 -131 -130 n=67 g=27
+K6 MOD say fe 3 f=162550 s=2 t=141262 r=-147 -146 -145 n=56 g=8
+K6 MOD say fe 3 f=170000 s=0 t=142022 r=-98 -97 -96 n=80 g=75
+K6 MOD say fe 3 f=170000 s=1 t=142782 r=-132 -130 -128 n=67 g=26
+K6 MOD say fe 3 f=170000 s=2 t=143541 r=-152 -151 -150 n=68 g=26
+K6 MOD say fe 3 f=440925 s=0 t=144301 r=-117 -115 -113 n=66 g=26
+K6 MOD say fe 3 f=440925 s=1 t=145060 r=-119 -118 -116 n=66 g=26
+K6 MOD say fe 3 f=440925 s=2 t=145819 r=-151 -150 -149 n=67 g=25
+K6 MOD say fe 4 f=136000 s=0 t=146579 r=-104 -102 -102 n=79 g=68
+K6 MOD say fe 4 f=136000 s=1 t=147338 r=-129 -128 -126 n=67 g=27
+K6 MOD say fe 4 f=136000 s=2 t=148098 r=-149 -146 -143 n=68 g=27
+K6 MOD say fe 4 f=140000 s=0 t=148858 r=-95 -94 -93 n=80 g=76
+K6 MOD say fe 4 f=140000 s=1 t=149617 r=-126 -125 -124 n=68 g=31
+K6 MOD say fe 4 f=140000 s=2 t=150376 r=-151 -150 -149 n=69 g=31
+K6 MOD say fe 4 f=143000 s=0 t=151136 r=-97 -97 -96 n=80 g=70
+K6 MOD say fe 4 f=143000 s=1 t=151895 r=-127 -126 -125 n=60 g=17
+K6 MOD say fe 4 f=143000 s=2 t=152655 r=-132 -132 -132 n=30 g=0
+K6 MOD say fe 4 f=144200 s=0 t=153414 r=-91 -87 -85 n=80 g=75
+K6 MOD say fe 4 f=144200 s=1 t=154174 r=-127 -125 -124 n=66 g=25
+K6 MOD say fe 4 f=144200 s=2 t=154933 r=-148 -145 -144 n=67 g=27
+K6 MOD say fe 4 f=144340 s=0 t=155693 r=-96 -94 -91 n=80 g=74
+K6 MOD say fe 4 f=144340 s=1 t=156452 r=-127 -125 -122 n=66 g=25
+K6 MOD say fe 4 f=144340 s=2 t=157212 r=-143 -142 -141 n=66 g=27
+K6 MOD say fe 4 f=144390 s=0 t=157971 r=-96 -94 -92 n=80 g=75
+K6 MOD say fe 4 f=144390 s=1 t=158731 r=-127 -126 -124 n=66 g=26
+K6 MOD say fe 4 f=144390 s=2 t=159490 r=-151 -150 -149 n=68 g=29
+K6 MOD say fe 4 f=144440 s=0 t=160250 r=-97 -96 -94 n=80 g=73
+K6 MOD say fe 4 f=144440 s=1 t=161009 r=-128 -126 -125 n=67 g=27
+K6 MOD say fe 4 f=144440 s=2 t=161768 r=-151 -150 -149 n=69 g=28
+K6 MOD say fe 4 f=144600 s=0 t=162528 r=-97 -96 -95 n=80 g=71
+K6 MOD say fe 4 f=144600 s=1 t=163288 r=-128 -126 -125 n=66 g=25
+K6 MOD say fe 4 f=144600 s=2 t=164047 r=-151 -150 -148 n=68 g=28
+K6 MOD say fe 4 f=146000 s=0 t=164807 r=-98 -97 -96 n=80 g=74
+K6 MOD say fe 4 f=146000 s=1 t=165566 r=-126 -125 -124 n=67 g=24
+K6 MOD say fe 4 f=146000 s=2 t=166325 r=-151 -143 -141 n=68 g=27
+K6 MOD say fe 4 f=148000 s=0 t=167085 r=-96 -94 -93 n=80 g=75
+K6 MOD say fe 4 f=148000 s=1 t=167844 r=-124 -120 -116 n=66 g=26
+K6 MOD say fe 4 f=148000 s=2 t=168604 r=-147 -143 -141 n=67 g=27
+K6 MOD say fe 4 f=152000 s=0 t=169364 r=-99 -97 -91 n=80 g=77
+K6 MOD say fe 4 f=152000 s=1 t=170123 r=-125 -123 -122 n=66 g=26
+K6 MOD say fe 4 f=152000 s=2 t=170882 r=-153 -151 -150 n=68 g=28
+K6 MOD say fe 4 f=156000 s=0 t=171642 r=-93 -92 -91 n=72 g=35
+K6 MOD say fe 4 f=156000 s=1 t=172401 r=-116 -115 -115 n=22 g=0
+K6 MOD say fe 4 f=156000 s=2 t=173161 r=-118 -118 -118 n=16 g=0
+K6 MOD say fe 4 f=160000 s=0 t=173920 r=-98 -97 -96 n=80 g=74
+K6 MOD say fe 4 f=160000 s=1 t=174680 r=-133 -131 -130 n=68 g=29
+K6 MOD say fe 4 f=160000 s=2 t=175439 r=-153 -151 -150 n=68 g=27
+K6 MOD say fe 4 f=162550 s=0 t=176199 r=-98 -97 -95 n=80 g=75
+K6 MOD say fe 4 f=162550 s=1 t=176958 r=-133 -131 -121 n=66 g=26
+K6 MOD say fe 4 f=162550 s=2 t=177717 r=-140 -139 -138 n=65 g=24
+K6 MOD say fe 4 f=170000 s=0 t=178477 r=-97 -95 -93 n=80 g=75
+K6 MOD say fe 4 f=170000 s=1 t=179237 r=-131 -129 -128 n=66 g=25
+K6 MOD say fe 4 f=170000 s=2 t=179996 r=-152 -151 -150 n=67 g=26
+K6 MOD say fe 4 f=440925 s=0 t=180756 r=-116 -115 -113 n=66 g=26
+K6 MOD say fe 4 f=440925 s=1 t=181515 r=-119 -118 -117 n=66 g=26
+K6 MOD say fe 4 f=440925 s=2 t=182274 r=-152 -151 -149 n=67 g=25
+K6 MOD say fesw end n=240
+K6 MOD ret=240 (0xf0) in 182275 ms stack_free=260 B
+K6 ARQ tx seq=104 state=1 xfer=33 have=9/9 r=3 parts=1
+K6 ARQ sent seq=104 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-126 batt=8530 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-114 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8500 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8460 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-109 batt=8480 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-113 batt=8480 build=8a78fb5-20261117T0904Z

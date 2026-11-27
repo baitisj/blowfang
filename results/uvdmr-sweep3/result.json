@@ -1,0 +1,181 @@
+{
+ "id": "uvdmr-sweep3",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T08:14:34Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:14:34Z",
+   "ended": "2026-11-19T08:14:44Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-19T08:14:44Z",
+   "ended": "2026-11-19T08:14:46Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-19T08:14:46Z",
+   "ended": "2026-11-19T08:14:54Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-19T08:14:54Z",
+   "ended": "2026-11-19T08:15:05Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-19T08:15:05Z",
+   "ended": "2026-11-19T08:15:16Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-19T08:15:16Z",
+   "ended": "2026-11-19T08:15:27Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T08:15:27Z",
+   "ended": "2026-11-19T08:16:17Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "uv380.rx",
+   "started": "2026-11-19T08:16:17Z",
+   "ended": "2026-11-19T08:16:19Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T08:16:19Z",
+   "ended": "2026-11-19T08:16:27Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T08:16:27Z",
+   "ended": "2026-11-19T08:16:38Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "pluto",
+   "started": "2026-11-19T08:16:38Z",
+   "ended": "2026-11-19T08:16:49Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "pluto",
+   "started": "2026-11-19T08:16:49Z",
+   "ended": "2026-11-19T08:17:00Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-19T08:17:00Z",
+   "ended": "2026-11-19T08:17:51Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:17:51Z",
+   "ended": "2026-11-19T08:17:57Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:17:57Z",
+   "ended": "2026-11-19T08:18:03Z",
+   "rc": 0
+  },
+  {
+   "n": 16,
+   "do": "wait",
+   "started": "2026-11-19T08:18:03Z",
+   "ended": "2026-11-19T08:18:08Z",
+   "rc": 0
+  },
+  {
+   "n": 17,
+   "do": "pluto",
+   "started": "2026-11-19T08:18:08Z",
+   "ended": "2026-11-19T08:18:23Z",
+   "rc": 0
+  },
+  {
+   "n": 18,
+   "do": "wait",
+   "started": "2026-11-19T08:18:23Z",
+   "ended": "2026-11-19T08:18:31Z",
+   "rc": 0
+  },
+  {
+   "n": 19,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:18:31Z",
+   "ended": "2026-11-19T08:18:38Z",
+   "rc": 0
+  },
+  {
+   "n": 20,
+   "do": "pluto",
+   "started": "2026-11-19T08:18:38Z",
+   "ended": "2026-11-19T08:18:53Z",
+   "rc": 0
+  },
+  {
+   "n": 21,
+   "do": "wait",
+   "started": "2026-11-19T08:18:53Z",
+   "ended": "2026-11-19T08:19:01Z",
+   "rc": 0
+  },
+  {
+   "n": 22,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:19:01Z",
+   "ended": "2026-11-19T08:19:07Z",
+   "rc": 0
+  },
+  {
+   "n": 23,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T08:19:07Z",
+   "ended": "2026-11-19T08:19:16Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-25fd9ce15712",
+ "head": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-79337b1edf88",
+ "sources_head": "79337b1edf884c27d372c3073bbb8935bf3fe6b1",
+ "ended": "2026-11-19T08:19:16Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "adc2417e8c3f275294187e29f29a0b59724900d1",
+  "path": "jobs/uvdmr-sweep3"
+ },
+ "runner_commit": "25fd9ce157129bc3358ce6011cba31f20f18ef0f",
+ "updated": "2026-11-19T08:19:16Z"
+}

@@ -1,0 +1,19 @@
+2026-11-24T03:28:50Z job soapyfang-live-1 by soapyfang, checkout /home/baitisj/blowfang-work/worktrees/inbox-8533b53c96f9 at 8533b53c96f9d90300c0bdb6281d74987810a94d
+2026-11-24T03:28:50Z $ /usr/bin/python3 -m sim.soapyfang --source pluto --host 127.0.0.1 --port 5058 --minutes 30 --gain 50 --image /home/baitisj/blowfang-work/runs/inbox/soapyfang-live-1/port.bin --syms /home/baitisj/blowfang-work/runs/inbox/soapyfang-live-1/port.syms
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/baitisj/blowfang-work/worktrees/inbox-8533b53c96f9/sim/soapyfang/__main__.py", line 1, in <module>
+    from .workbench import main
+  File "/home/baitisj/blowfang-work/worktrees/inbox-8533b53c96f9/sim/soapyfang/workbench.py", line 23, in <module>
+    from sim.uv21 import workbench as uv21wb
+  File "/home/baitisj/blowfang-work/worktrees/inbox-8533b53c96f9/sim/uv21/workbench.py", line 20, in <module>
+    from .board import KEYS, UV21Board
+  File "/home/baitisj/blowfang-work/worktrees/inbox-8533b53c96f9/sim/uv21/board.py", line 32, in <module>
+    import test_uv21_bringup as bu  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-8533b53c96f9/tests/test_uv21_bringup.py", line 14, in <module>
+    import pytest
+ModuleNotFoundError: No module named 'pytest'
+2026-11-24T03:28:51Z step 1 (sim.soapyfang) rc=1
+2026-11-24T03:28:51Z job soapyfang-live-1 failed: step 1 (sim.soapyfang): exit 1

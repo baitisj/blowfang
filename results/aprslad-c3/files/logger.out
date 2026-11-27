@@ -1,0 +1,190 @@
+listening (Ctrl-C to stop) ...
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-67 batt=8460 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=95 chunk=0 have=1/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=1 have=2/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=2 have=3/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=95 chunk=3 have=4/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=4 have=5/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=95 chunk=5 have=6/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=6 have=7/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=7 have=8/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=8 have=9/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=9 have=10/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=10 have=11/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=11 have=12/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=12 have=13/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=13 have=14/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=14 have=15/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=15 have=16/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=16 have=17/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=17 have=18/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=95 chunk=18 have=19/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=19 have=20/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=20 have=21/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=21 have=22/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=22 have=23/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=23 have=24/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=24 have=25/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=25 have=26/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=26 have=27/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=27 have=28/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=28 have=29/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=29 have=30/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=30 have=31/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=31 have=32/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=32 have=33/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=33 have=34/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=34 have=35/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=35 have=36/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=95 chunk=36 have=37/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=37 have=38/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=38 have=39/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=39 have=40/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=40 have=41/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=41 have=42/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=42 have=43/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=43 have=44/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=44 have=45/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=45 have=46/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=46 have=47/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=47 have=48/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=95 chunk=48 have=49/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=95 chunk=49 have=50/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=95 chunk=50 have=51/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=51 have=52/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=95 chunk=52 have=53/54 rssi=-67 noise=16
+K6 MOD r=3 xfer=95 chunk=53 have=54/54 rssi=-67 noise=18
+K6 MOD run serial=1795091807 code=6533 B at 0x200020a4 stack=2028 B scratch=5216 B
+K6 MOD say aprs start hz=440850000 fsk=233 sync=240 plain set=wide
+K6 MOD say y 1 t=414 w=187 ok=0 e=1 d=1 s=1 k=1352 r=-68
+K6 MOD say y 2 t=4902 w=192 ok=0 e=1 d=1 s=1 k=1352 r=-68
+K6 MOD say y 3 t=5672 w=77 ok=0 e=0 d=0 s=1 k=1352 r=-68
+K6 MOD say y 4 t=5972 w=49 ok=0 e=0 d=0 s=0 k=1352 r=-68
+K6 MOD say y 5 t=9505 w=98 ok=0 e=0 d=0 s=1 k=1352 r=-68
+K6 MOD say y 6 t=11887 w=48 ok=0 e=0 d=0 s=1 k=1352 r=-68
+K6 MOD say y 7 t=17842 w=125 ok=0 e=1 d=1 s=1 k=1352 r=-68
+K6 MOD say y 8 t=23588 w=100 ok=0 e=1 d=1 s=0 k=1352 r=-68
+K6 MOD say y 9 t=25070 w=109 ok=0 e=1 d=1 s=1 k=1352 r=-68
+K6 MOD say y 10 t=25939 w=373 ok=0 e=2 d=1 s=0 k=1352 r=-68
+K6 MOD say y 11 t=29756 w=69 ok=0 e=1 d=0 s=1 k=1352 r=-68
+K6 MOD say y 12 t=31037 w=80 ok=0 e=0 d=0 s=1 k=1352 r=-68
+K6 MOD say y 13 t=31545 w=226 ok=0 e=1 d=1 s=0 k=1352 r=-68
+K6 MOD say m 1 rssi=-114 pk=-68 pre=13 ok=0
+K6 MOD say m 2 rssi=-114 pk=-107 pre=13 ok=0
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:23h
+K6 MOD say clk --:--:-- w=4000 v=1
+K6 MOD say y 14 t=130113 w=180 ok=1 e=5 d=1 s=0 k=1389 r=-89
+K6 MOD say f AG7EW-2 n=51 h=0 ts=10:55:24h
+K6 MOD say clk 10:55:25.080 w=3775 v=2
+K6 MOD say y 15 t=131346 w=177 ok=1 e=3 d=1 s=0 k=1382 r=-89
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:26h
+K6 MOD say clk 10:55:26.860 w=3238 v=2
+K6 MOD say y 16 t=132580 w=179 ok=1 e=7 d=1 s=0 k=1382 r=-89
+K6 MOD say f AG7EW-2 n=51 h=0 ts=10:55:27h
+K6 MOD say clk 10:55:28.085 w=3769 v=2
+K6 MOD say y 17 t=133813 w=174 ok=1 e=2 d=1 s=0 k=1376 r=-89
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:28h
+K6 MOD say clk 10:55:29.093 w=3767 v=2
+K6 MOD say y 18 t=135034 w=180 ok=1 e=5 d=0 s=0 k=1376 r=-89
+K6 MOD say f AG7EW-2 n=51 h=0 ts=10:55:29h
+K6 MOD say clk 10:55:30.080 w=3774 v=2
+K6 MOD say y 19 t=136276 w=175 ok=1 e=1 d=0 s=0 k=1376 r=-89
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:31h
+K6 MOD say clk 10:55:31.860 w=3234 v=2
+K6 MOD say y 20 t=137502 w=179 ok=1 e=5 d=0 s=0 k=1376 r=-90
+K6 MOD say f AG7EW-2 n=51 h=0 ts=10:55:32h
+K6 MOD say clk 10:55:33.079 w=3775 v=2
+K6 MOD say y 21 t=138735 w=710 ok=1 e=83 d=42 s=0 k=1376 r=-89
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:36h
+K6 MOD say clk 10:55:36.860 w=3699 v=2
+K6 MOD say y 22 t=142440 w=204 ok=1 e=10 d=3 s=0 k=1332 r=-89
+K6 MOD say f AG7EW-2 n=51 h=0 ts=10:55:37h
+K6 MOD say clk 10:55:38.099 w=3755 v=2
+K6 MOD say y 23 t=143659 w=175 ok=1 e=2 d=0 s=0 k=1332 r=-90
+K6 MOD say y 24 t=165855 w=117 ok=0 e=2 d=0 s=0 k=1332 r=-90
+K6 MOD say y 25 t=166910 w=175 ok=0 e=2 d=1 s=0 k=1332 r=-90
+K6 MOD say y 26 t=168155 w=126 ok=0 e=1 d=0 s=0 k=1332 r=-90
+K6 MOD say y 27 t=179111 w=177 ok=0 e=4 d=0 s=0 k=1332 r=-89
+K6 MOD say y 28 t=180363 w=170 ok=0 e=3 d=0 s=0 k=1332 r=-89
+K6 MOD say m 3 rssi=-114 pk=-89 pre=28 ok=10
+K6 MOD say y 29 t=181591 w=172 ok=0 e=2 d=0 s=0 k=1332 r=-89
+K6 MOD say y 30 t=182821 w=170 ok=0 e=0 d=0 s=0 k=1332 r=-89
+K6 MOD say y 31 t=184048 w=173 ok=0 e=8 d=0 s=0 k=1352 r=-90
+K6 MOD say y 32 t=185286 w=169 ok=0 e=7 d=1 s=0 k=1352 r=-90
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:31h
+K6 MOD say clk --:--:-- w=4000 v=1
+K6 MOD say y 33 t=186492 w=179 ok=1 e=6 d=1 s=0 k=1376 r=-89
+K6 MOD say f AG7EW-2 n=51 h=0 ts=10:55:32h
+K6 MOD say clk 10:55:33.081 w=3773 v=2
+K6 MOD say y 34 t=187730 w=175 ok=1 e=3 d=1 s=0 k=1375 r=-90
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:33h
+K6 MOD say clk 10:55:34.093 w=3767 v=2
+K6 MOD say y 35 t=188957 w=178 ok=1 e=4 d=1 s=0 k=1374 r=-90
+K6 MOD say y 36 t=190192 w=174 ok=0 e=3 d=1 s=0 k=1374 r=-90
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:36h
+K6 MOD say clk 10:55:36.860 w=3696 v=2
+K6 MOD say y 37 t=191413 w=179 ok=1 e=9 d=1 s=0 k=1373 r=-90
+K6 MOD say f AG7EW-2 n=51 h=0 ts=10:55:37h
+K6 MOD say clk 10:55:38.082 w=3772 v=2
+K6 MOD say y 38 t=192653 w=175 ok=1 e=3 d=0 s=0 k=1373 r=-90
+K6 MOD say y 39 t=203617 w=178 ok=0 e=4 d=0 s=0 k=1373 r=-89
+K6 MOD say y 40 t=204839 w=176 ok=0 e=3 d=0 s=0 k=1373 r=-89
+K6 MOD say y 41 t=206075 w=179 ok=0 e=6 d=1 s=0 k=1373 r=-89
+K6 MOD say y 42 t=207308 w=174 ok=0 e=3 d=0 s=0 k=1373 r=-89
+K6 MOD say y 43 t=208536 w=179 ok=0 e=2 d=0 s=0 k=1373 r=-89
+K6 MOD say y 44 t=209775 w=173 ok=0 e=1 d=0 s=0 k=1373 r=-89
+K6 MOD say y 45 t=210992 w=181 ok=0 e=6 d=0 s=0 k=1373 r=-89
+K6 MOD say y 46 t=212236 w=174 ok=0 e=1 d=0 s=0 k=1352 r=-89
+K6 MOD say y 47 t=213457 w=179 ok=0 e=2 d=1 s=0 k=1352 r=-89
+K6 MOD say y 48 t=214699 w=174 ok=0 e=6 d=1 s=0 k=1352 r=-90
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:36h
+K6 MOD say y 49 t=215925 w=177 ok=1 e=5 d=1 s=0 k=1377 r=-90
+K6 MOD say y 50 t=217153 w=176 ok=0 e=7 d=1 s=0 k=1377 r=-90
+K6 MOD say y 51 t=228218 w=143 ok=0 e=2 d=1 s=0 k=1377 r=-89
+K6 MOD say y 52 t=229330 w=179 ok=0 e=3 d=1 s=0 k=1377 r=-89
+K6 MOD say y 53 t=230558 w=178 ok=0 e=2 d=1 s=0 k=1377 r=-89
+K6 MOD say y 54 t=231794 w=169 ok=0 e=3 d=1 s=0 k=1377 r=-89
+K6 MOD say y 55 t=233028 w=177 ok=0 e=3 d=1 s=0 k=1377 r=-89
+K6 MOD say y 56 t=234262 w=166 ok=0 e=2 d=1 s=0 k=1377 r=-89
+K6 MOD say y 57 t=235483 w=180 ok=0 e=6 d=1 s=0 k=1352 r=-89
+K6 MOD say y 58 t=236722 w=166 ok=0 e=4 d=1 s=0 k=1352 r=-89
+K6 MOD say y 59 t=237949 w=178 ok=0 e=3 d=1 s=0 k=1352 r=-89
+K6 MOD say y 60 t=239184 w=166 ok=0 e=4 d=1 s=0 k=1352 r=-89
+K6 MOD say y 61 t=240400 w=182 ok=0 e=3 d=1 s=0 k=1352 r=-89
+K6 MOD say m 4 rssi=-114 pk=-89 pre=61 ok=16
+K6 MOD say y 62 t=241648 w=176 ok=0 e=5 d=2 s=0 k=1352 r=-90
+K6 MOD say y 63 t=252610 w=176 ok=0 e=4 d=1 s=0 k=1352 r=-89
+K6 MOD say y 64 t=253823 w=170 ok=0 e=3 d=1 s=0 k=1352 r=-89
+K6 MOD say y 65 t=255057 w=179 ok=0 e=6 d=1 s=0 k=1352 r=-89
+K6 MOD say y 66 t=256298 w=168 ok=0 e=5 d=1 s=0 k=1352 r=-89
+K6 MOD say y 67 t=257533 w=176 ok=0 e=5 d=1 s=0 k=1352 r=-89
+K6 MOD say y 68 t=258761 w=167 ok=0 e=5 d=1 s=0 k=1352 r=-90
+K6 MOD say y 69 t=259981 w=180 ok=0 e=5 d=1 s=0 k=1352 r=-90
+K6 MOD say y 70 t=261220 w=168 ok=0 e=6 d=1 s=0 k=1352 r=-90
+K6 MOD say y 71 t=262444 w=179 ok=0 e=4 d=1 s=0 k=1352 r=-90
+K6 MOD say y 72 t=263681 w=169 ok=0 e=2 d=1 s=0 k=1352 r=-90
+K6 MOD say y 73 t=264904 w=180 ok=0 e=3 d=1 s=0 k=1352 r=-90
+K6 MOD say y 74 t=266145 w=169 ok=0 e=4 d=1 s=0 k=1352 r=-89
+K6 MOD say y 75 t=286989 w=154 ok=0 e=2 d=1 s=0 k=1352 r=-89
+K6 MOD say y 76 t=288160 w=136 ok=0 e=1 d=1 s=0 k=1352 r=-89
+K6 MOD say y 77 t=289389 w=175 ok=0 e=1 d=1 s=0 k=1352 r=-89
+K6 MOD say y 78 t=290635 w=167 ok=0 e=5 d=1 s=0 k=1352 r=-89
+K6 MOD say m 5 rssi=-114 pk=-78 pre=78 ok=16
+K6 MOD say y 79 t=301604 w=171 ok=0 e=2 d=1 s=0 k=1352 r=-90
+K6 MOD say y 80 t=302823 w=172 ok=0 e=2 d=1 s=0 k=1352 r=-90
+K6 MOD say y 81 t=304058 w=179 ok=0 e=6 d=1 s=0 k=1352 r=-89
+K6 MOD say y 82 t=305297 w=167 ok=0 e=1 d=1 s=0 k=1352 r=-89
+K6 MOD say y 83 t=306520 w=178 ok=0 e=4 d=1 s=0 k=1352 r=-90
+K6 MOD say y 84 t=307752 w=166 ok=0 e=2 d=1 s=0 k=1352 r=-90
+K6 MOD say y 85 t=309001 w=174 ok=0 e=5 d=1 s=0 k=1352 r=-90
+K6 MOD say y 86 t=310221 w=167 ok=0 e=1 d=1 s=0 k=1352 r=-90
+K6 MOD say y 87 t=311442 w=180 ok=0 e=6 d=1 s=0 k=1352 r=-90
+K6 MOD say y 88 t=312682 w=169 ok=0 e=3 d=1 s=0 k=1352 r=-90
+K6 MOD say f AG7EW-1 n=52 h=0 ts=10:55:36h
+K6 MOD say y 89 t=313910 w=178 ok=1 e=5 d=1 s=0 k=1380 r=-90
+K6 MOD say y 90 t=315142 w=171 ok=0 e=2 d=1 s=0 k=1380 r=-90
+K6 MOD say m 6 rssi=-115 pk=-89 pre=90 ok=17
+K6 MOD say aprs fsk ms=400010 key=0 pre=90 fake=166 inv=0
+K6 MOD say aprs end ok=17 bad=72 ts=15 v=2 utc=10:59:04.833 lost=0
+K6 MOD ret=2 (0x2) in 400011 ms stack_free=260 B

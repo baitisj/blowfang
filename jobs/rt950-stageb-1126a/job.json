@@ -1,0 +1,31 @@
+{
+ "id": "rt950-stageb-1126a",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 60,
+ "steps": [
+  {
+   "do": "rt950.info",
+   "cable": "1a86:7523",
+   "args": [
+    "--addr",
+    "3"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 15
+  },
+  {
+   "do": "rt950.read",
+   "cable": "1a86:7523",
+   "args": [
+    "--addr",
+    "3",
+    "--passes",
+    "2"
+   ],
+   "timeout": 3000
+  }
+ ]
+}

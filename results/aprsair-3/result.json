@@ -1,0 +1,123 @@
+{
+ "id": "aprsair-3",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T15:52:38Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "wait",
+   "started": "2026-11-19T15:52:38Z",
+   "ended": "2026-11-19T16:04:38Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "logger",
+   "started": "2026-11-19T16:04:38Z",
+   "ended": "2026-11-19T16:04:40Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T16:04:40Z",
+   "ended": "2026-11-19T16:04:44Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-19T16:04:44Z",
+   "ended": "2026-11-19T16:06:36Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T16:06:36Z",
+   "ended": "2026-11-19T16:21:36Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T16:21:36Z",
+   "ended": "2026-11-19T16:21:39Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "k6.upload",
+   "started": "2026-11-19T16:21:39Z",
+   "ended": "2026-11-19T16:23:26Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-19T16:23:26Z",
+   "ended": "2026-11-19T16:38:27Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T16:38:27Z",
+   "ended": "2026-11-19T16:38:30Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "k6.upload",
+   "started": "2026-11-19T16:38:30Z",
+   "ended": "2026-11-19T16:40:22Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-19T16:40:22Z",
+   "ended": "2026-11-19T16:55:23Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T16:55:23Z",
+   "ended": "2026-11-19T16:55:26Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "k6.upload",
+   "started": "2026-11-19T16:55:26Z",
+   "ended": "2026-11-19T16:57:13Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "wait",
+   "started": "2026-11-19T16:57:13Z",
+   "ended": "2026-11-19T17:12:13Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "logger.stop",
+   "started": "2026-11-19T17:12:13Z",
+   "ended": "2026-11-19T17:12:13Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9",
+ "head": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "ended": "2026-11-19T17:12:13Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "b06cd9f6c9050d2d53bb95cf372d4a3be929cf2b",
+  "path": "jobs/aprsair-3"
+ },
+ "runner_commit": "ef67e4cfcec9778c8bc4f26509869f9cb482d73a",
+ "updated": "2026-11-19T17:12:14Z"
+}

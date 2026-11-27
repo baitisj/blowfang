@@ -1,0 +1,62 @@
+{
+ "id": "m17spk-1118d",
+ "who": "m17rx",
+ "started": "2026-11-18T15:41:06Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T15:41:07Z",
+   "ended": "2026-11-18T15:41:17Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-18T15:41:17Z",
+   "ended": "2026-11-18T15:41:19Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T15:41:19Z",
+   "ended": "2026-11-18T15:41:19Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-18T15:41:19Z",
+   "ended": "2026-11-18T15:41:53Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T15:41:53Z",
+   "ended": "2026-11-18T15:42:27Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T15:42:27Z",
+   "ended": "2026-11-18T15:43:48Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794",
+ "head": "a7074a21a7949de86c16dd707b004c265e160ebe",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-4b6ff86f1266",
+ "sources_head": "4b6ff86f126610c98beee649ac223469283d8ce6",
+ "ended": "2026-11-18T15:43:48Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "d243a9386fa61a3cc9205f092c2ac2d0d425e875",
+  "path": "jobs/m17spk-1118d"
+ },
+ "runner_commit": "a7074a21a7949de86c16dd707b004c265e160ebe",
+ "updated": "2026-11-18T15:43:49Z"
+}

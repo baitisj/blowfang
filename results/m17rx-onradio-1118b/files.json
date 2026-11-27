@@ -1,0 +1,17 @@
+[
+ {
+  "name": "uv380.rx.out",
+  "bytes": 31140,
+  "sha256": "7fd70b0ca10de892ee23687ae2c1c45f17bc5c6d4fe496db00f75f18b614203a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/m17rx-onradio-1118b/uv380.rx.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 6190101,
+  "sha256": "651b2b2bd800bd2ba3243f390fae4530ff9b044144f78b8c08dbe175c7d15a47",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/m17rx-onradio-1118b/uv380.log",
+  "kept": "over 512 KB; dropped from the branch 2026-11-27"
+ }
+]

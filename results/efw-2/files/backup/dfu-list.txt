@@ -1,0 +1,12 @@
+dfu-util 0.11
+
+Copyright 2005-2009 Weston Schmidt, Harald Welte and OpenMoko Inc.
+Copyright 2010-2021 Tormod Volden and Stefan Schmidt
+This program is Free Software and has ABSOLUTELY NO WARRANTY
+Please report bugs to http://sourceforge.net/p/dfu-util/tickets/
+
+Found DFU: [0456:b674] ver=0221, devnum=64, cfg=1, intf=0, path="1-3", alt=4, name="spare.dfu", serial="UNKNOWN"
+Found DFU: [0456:b674] ver=0221, devnum=64, cfg=1, intf=0, path="1-3", alt=3, name="uboot-env.dfu", serial="UNKNOWN"
+Found DFU: [0456:b674] ver=0221, devnum=64, cfg=1, intf=0, path="1-3", alt=2, name="uboot-extra-env.dfu", serial="UNKNOWN"
+Found DFU: [0456:b674] ver=0221, devnum=64, cfg=1, intf=0, path="1-3", alt=1, name="firmware.dfu", serial="UNKNOWN"
+Found DFU: [0456:b674] ver=0221, devnum=64, cfg=1, intf=0, path="1-3", alt=0, name="boot.dfu", serial="UNKNOWN"

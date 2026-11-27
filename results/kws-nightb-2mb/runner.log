@@ -1,0 +1,7 @@
+2026-11-22T06:34:54Z job kws-nightb-2mb by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9 at 5257b64800f94a5caf334d61699b0abc410d3756
+2026-11-22T06:34:54Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-nightb-2mb/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-nightb-2mb/2mb --hz 146630000 --seconds 800 --gain 45 --threads 2 --channels 146780000,146900000,147280000,147340000,147360000,147380000
+chan: pluto_chan.armhf (780b154b0b9a6c7e...) in the Pluto's RAM at /tmp/pluto_chan
+2026-11-22T06:58:54Z stopping (timeout 1440 s): SIGTERM to the step's process group
+chan: stopped (SIGTERM)
+2026-11-22T06:58:55Z step 1 (pluto) rc=1 (timeout 1440 s)
+2026-11-22T06:58:55Z job kws-nightb-2mb failed: step 1 (pluto): timeout 1440 s

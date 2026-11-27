@@ -1,0 +1,271 @@
+[
+ {
+  "name": "c70/chan.json",
+  "bytes": 1572,
+  "sha256": "9987c3d94b8840385cd8ed73a74e022231a6ef9737039ab2ae1874c0d7d14eb6",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/chan.json"
+ },
+ {
+  "name": "c70/overs.json",
+  "bytes": 3459,
+  "sha256": "3e9c14d3682cb82691a58d170007d4c080939901294107467b1c2ee309852e15",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/overs.json"
+ },
+ {
+  "name": "c70/440.1000_20261123T0801480Z.flac",
+  "bytes": 33082,
+  "sha256": "5a59cd61a8d26984f3b4809e6be0eba8310196da71722f832402e5bab8625e97",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/440.1000_20261123T0801480Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0753586Z.flac",
+  "bytes": 40656,
+  "sha256": "93121bf4f8971f20afd3667de641b35f8f264a8b163c1774d33a906fb8174c5a",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0753586Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0803198Z.flac",
+  "bytes": 40762,
+  "sha256": "bcb0717a90831ffefe1d104ef84e0169e78212607440061bf522f0b2e175bff9",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0803198Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0747471Z.flac",
+  "bytes": 40781,
+  "sha256": "ed23585f202402f04fa2651f978e3e9e5349ccf41c3ba9232af8d570de77172e",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0747471Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0755005Z.flac",
+  "bytes": 40785,
+  "sha256": "83b505f9b2264cce401474281a5db2bc1a3813fc34a65012b02a31ed1dd0ff40",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0755005Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0752567Z.flac",
+  "bytes": 40800,
+  "sha256": "f8212bbdd0bf25a7b5c088251701142a9eb9f1ebfa2efa7e9da0ac09954da302",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0752567Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0756025Z.flac",
+  "bytes": 40809,
+  "sha256": "b041153f7fea3d4e268feb5d0d74dd9379a96270a1d1a78b775a0058b81f2c7f",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0756025Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0805237Z.flac",
+  "bytes": 40816,
+  "sha256": "b287f7dff14db093f340a71f7d106024c0c3cd7083562c3f84b6f2e5ff7fa788",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0805237Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0744374Z.flac",
+  "bytes": 40840,
+  "sha256": "60e6c57f00f9d0680355e0facc33381a5c4fbdd1dc9b8759ac3cb253acdf5d2a",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0744374Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0759121Z.flac",
+  "bytes": 40860,
+  "sha256": "717534a729664bee6272e853cb850ff80f71cc24749e129ff5547f821ec676bd",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0759121Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0801150Z.flac",
+  "bytes": 40872,
+  "sha256": "3e397df37ccb6c687d427de3bc66a6c21371672b729ae204043722317bab775f",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0801150Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0800141Z.flac",
+  "bytes": 40879,
+  "sha256": "25ae66cf325375ff28aa94f21a1f11365c0d5caae944d1f601f32d345a8cec32",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0800141Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0743355Z.flac",
+  "bytes": 40880,
+  "sha256": "602b71898d985d42e758944ccb284e7b1a3e5f7e7de4f33647f71f74aab40a6d",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0743355Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0802179Z.flac",
+  "bytes": 40918,
+  "sha256": "af7e7853c294a57ff58545c900517791df9cdf95661bbad2dfb89f5c47c66f12",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0802179Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0748480Z.flac",
+  "bytes": 40921,
+  "sha256": "102e089c6c538486ccdb68761c6268f130426e5b603a35702c6357f82741baa9",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0748480Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0758102Z.flac",
+  "bytes": 40961,
+  "sha256": "28793adc2b93b947e45d9f461f93ec1a95185f1e01047e51e2a554bce5aa8dc2",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0758102Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0751548Z.flac",
+  "bytes": 40969,
+  "sha256": "8d738051bab02e61aae4862c28c2c6b4e6b83e5e6b44eae2940b414b6042828d",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0751548Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0749509Z.flac",
+  "bytes": 41045,
+  "sha256": "315ba0e335b70d2ead20f3d3cf5943b6b3310ee8510a00c302766d726665040b",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0749509Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0804217Z.flac",
+  "bytes": 41105,
+  "sha256": "850e8dffe55ff0cb459553ed76f685ea35b19a1bf4ffb0c2fa56a8b9c0d0fb80",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0804217Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0750528Z.flac",
+  "bytes": 42500,
+  "sha256": "564045162066cf9dd70c8af4916cf4526f730659b3652be54d9ff97e0cd087a9",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0750528Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0745393Z.flac",
+  "bytes": 42728,
+  "sha256": "e43fda1e79359b26953342b5860a37ea93f381a289aa5a1724dc34a208edbf99",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0745393Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0742335Z.flac",
+  "bytes": 42760,
+  "sha256": "b70aba93f89166787b962cd66cfa12e86b2f45ad7971eace345f0a40cb1a9725",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0742335Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/band.json",
+  "bytes": 64697,
+  "sha256": "88b365e69ce98c9969255b2fda0d5d6f941f6a30e5f2937c1fcef018ee55e27b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/band.json"
+ },
+ {
+  "name": "c70/440.1000_20261123T0758341Z.flac",
+  "bytes": 77222,
+  "sha256": "62dd8ab1f7b63e707192974c57a211e27ec913569fffb4fc3654c3b2375d9439",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/440.1000_20261123T0758341Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/440.1000_20261123T0743055Z.flac",
+  "bytes": 79786,
+  "sha256": "44200c6559965c35ec8ed83190c10bb589cbcddcf0090e8ba6cb4b12121749bc",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/440.1000_20261123T0743055Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0757044Z.flac",
+  "bytes": 87228,
+  "sha256": "34231d9e0d2cf9bd9034786e219f4c44172230eb895029df527a901f6d1e528e",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0757044Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.3000_20261123T0746412Z.flac",
+  "bytes": 89148,
+  "sha256": "535d25e688eae9c1e4b7912f90e23e32a7f205ef96adacfe2f600b9a32b6a7a6",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.3000_20261123T0746412Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/440.1000_20261123T0748187Z.flac",
+  "bytes": 92754,
+  "sha256": "73144473e4088a0a482382dad4bc96549e442aadd3f65f3e475a35f3f241827e",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/440.1000_20261123T0748187Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/440.1000_20261123T0757186Z.flac",
+  "bytes": 93322,
+  "sha256": "a19ff57331e76770f7185683c21714a8f0255b4320b0c50324cf554b77d35cd5",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/440.1000_20261123T0757186Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.2500_20261123T0754008Z.flac",
+  "bytes": 129175,
+  "sha256": "983be4b8931a5ec58077c6c5a86637505231f34a65968615dd049b698868f2e1",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.2500_20261123T0754008Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/442.8250_20261123T0757158Z.flac",
+  "bytes": 133187,
+  "sha256": "b06e3d005a16739f11d24456854f593d33f65cae8b3f4d3ac46717a5a95791d3",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/442.8250_20261123T0757158Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c70/levels.json",
+  "bytes": 792200,
+  "sha256": "44a473d04b6b12707d8f1ddc45cde08d378af8283118c339f5fb44a51d93b2be",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-n70/c70/levels.json",
+  "kept": "over 512 KB; dropped from the branch 2026-11-27"
+ }
+]

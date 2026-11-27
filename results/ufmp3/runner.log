@@ -1,0 +1,43 @@
+2026-11-25T03:01:41Z job ufmp3 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088 at e10c1c08d08852c7f00d59504f06caf3cc21b24f, module sources /home/baitisj/blowfang-work/worktrees/src-ca082c82c954 at ca082c82c9541226dd929ef3d6d3579a2039d7c8
+2026-11-25T03:01:41Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold fmprobe-uv21 -- timeout -s INT --kill-after=10 60 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/ufmp3/uv21.log
+2026-11-25T03:01:43Z step 1 (logger) rc=0
+2026-11-25T03:02:28Z step 2 (wait) rc=1 (no /alive surf/ in /home/baitisj/blowfang-work/runs/queue/ufmp3/k6.log)
+2026-11-25T03:02:31Z step 3 (wait) rc=0
+2026-11-25T03:02:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release fmprobe-uv21
+the port is free (fmprobe-uv21 let go)
+2026-11-25T03:02:32Z step 4 (logger.stop) rc=0
+2026-11-25T03:02:32Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-ca082c82c954/radios/uv21/mod/hello.c --log /home/baitisj/blowfang-work/runs/queue/ufmp3/uv21mod.log --run-timeout 180
+retry: um b 00d2 -> None
+retry: um b 00d2 -> None
+retry: um b 00d2 -> None
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088/modem/uv21mod.py", line 173, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088/modem/uv21mod.py", line 167, in main
+    out, ret = upload(port, img, log=say, run_timeout=a.run_timeout)
+               ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088/modem/uv21mod.py", line 116, in upload
+    raise Failed(f"no 'um ok' for {ln[:24]}")
+Failed: no 'um ok' for um b 00d2
+2026-11-25T03:02:38Z step 5 (uv21.mod) rc=1
+2026-11-25T03:02:38Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-ca082c82c954/radios/uv21/mod/i2cpeek.c --log /home/baitisj/blowfang-work/runs/queue/ufmp3/uv21mod.log --run-timeout 180
+retry: um b 059e -> None
+retry: um b 059e -> None
+retry: um b 059e -> None
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088/modem/uv21mod.py", line 173, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088/modem/uv21mod.py", line 167, in main
+    out, ret = upload(port, img, log=say, run_timeout=a.run_timeout)
+               ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088/modem/uv21mod.py", line 116, in upload
+    raise Failed(f"no 'um ok' for {ln[:24]}")
+Failed: no 'um ok' for um b 059e
+2026-11-25T03:02:45Z step 6 (uv21.mod) rc=1
+2026-11-25T03:02:45Z job ufmp3 failed: step 6 (uv21.mod): exit 1

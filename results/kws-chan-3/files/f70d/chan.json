@@ -1,0 +1,18 @@
+{
+ "lo_hz": 443000000,
+ "rate": 2400000,
+ "threads": 2,
+ "a1mode": 2,
+ "reader": "dev",
+ "gain": 60,
+ "rx_bw": 2000000,
+ "bin_sha256": "83dde09b3021c293e40a8f7b2bf92b3bcedf0c50950f016654e9ee1df534890c",
+ "seconds": 60.0,
+ "took_s": 66.2,
+ "pluto_stderr": "pluto_chan: A1MODE 2, 8 channels on 2 threads, 60.00 s of input in 64.62 s (108% of real time)",
+ "rc": 0,
+ "utc": "2026-11-22T06:24:12Z",
+ "overs": 0,
+ "bytes": 6,
+ "secs": 0.0
+}

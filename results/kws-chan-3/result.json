@@ -1,0 +1,60 @@
+{
+ "id": "kws-chan-3",
+ "who": "nato-kws",
+ "started": "2026-11-22T06:23:06Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-22T06:23:06Z",
+   "ended": "2026-11-22T06:24:10Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-22T06:24:10Z",
+   "ended": "2026-11-22T06:25:19Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-22T06:25:19Z",
+   "ended": "2026-11-22T06:27:07Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-22T06:27:07Z",
+   "ended": "2026-11-22T06:29:33Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-22T06:29:33Z",
+   "ended": "2026-11-22T06:31:42Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-22T06:31:42Z",
+   "ended": "2026-11-22T06:34:48Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-5257b64800f9",
+ "head": "5257b64800f94a5caf334d61699b0abc410d3756",
+ "ended": "2026-11-22T06:34:48Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "7bf8da62fe658b7c40097df29765147ac4a58477",
+  "path": "jobs/kws-chan-3"
+ },
+ "runner_commit": "5257b64800f94a5caf334d61699b0abc410d3756",
+ "updated": "2026-11-22T06:34:49Z"
+}

@@ -1,0 +1,23 @@
+{
+ "id": "micr1a",
+ "who": "micprobe",
+ "freq_mhz": 445.85,
+ "minutes": 8,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "steps",
+    "job:tone1300.wav",
+    "--hz",
+    "445850000",
+    "--dev",
+    "3000",
+    "--gains",
+    "-46,-46,-46,-46,-46,-46,-46,-46",
+    "--pause",
+    "1"
+   ]
+  }
+ ]
+}

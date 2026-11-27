@@ -1,0 +1,17 @@
+[
+ {
+  "name": "pluto.out",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/wmota-2/pluto.out"
+ },
+ {
+  "name": "wm_rx.wav",
+  "bytes": 1426108,
+  "sha256": "5b02712aeb1bae9f8db41a5c4b3b078f14e06f9005b22e9f662bfaa0b920ae47",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/wmota-2/wm_rx.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

@@ -1,0 +1,18 @@
+{
+ "id": "inbox-smoke-1117",
+ "who": "inbox",
+ "freq_mhz": 440.85,
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "wait",
+   "seconds": 1
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "info"
+   ]
+  }
+ ]
+}

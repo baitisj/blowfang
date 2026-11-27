@@ -1,0 +1,7 @@
+retry: um b 0dca -> None
+s 0a=ffff 0b=ffff
+S 0a=ffff 0b=ffff
+T 106500 0a=ffff 0b=ffff
+key wait
+key timeout
+um end 0000ffff

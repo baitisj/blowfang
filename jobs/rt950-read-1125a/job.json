@@ -1,0 +1,22 @@
+{
+ "id": "rt950-read-1125a",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 15,
+ "steps": [
+  {
+   "do": "rt950.info",
+   "cable": "1a86:7523"
+  },
+  {
+   "do": "rt950.read",
+   "cable": "1a86:7523",
+   "args": [
+    "--addr",
+    "2",
+    "--passes",
+    "2"
+   ]
+  }
+ ]
+}

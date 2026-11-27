@@ -1,0 +1,34 @@
+{
+ "id": "fmso1c",
+ "who": "fmsotto",
+ "started": "2026-11-20T08:42:15Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T08:42:15Z",
+   "ended": "2026-11-20T08:42:17Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-20T08:42:17Z",
+   "ended": "2026-11-20T09:27:17Z",
+   "rc": 1,
+   "why": "no /K6 BOOT/ in /home/baitisj/blowfang-work/runs/queue/fmso1c/k6.log"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-449e94dbf4ed",
+ "head": "449e94dbf4edc520251fd44843c995df5caf5565",
+ "reason": "step 2 (wait): no /K6 BOOT/ in /home/baitisj/blowfang-work/runs/queue/fmso1c/k6.log",
+ "ended": "2026-11-20T09:27:17Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "54fa80ac36c72c98fc41f95502aa98e6490eb6fb",
+  "path": "jobs/fmso1c"
+ },
+ "runner_commit": "449e94dbf4edc520251fd44843c995df5caf5565",
+ "updated": "2026-11-20T09:27:17Z"
+}

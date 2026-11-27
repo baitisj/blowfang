@@ -1,0 +1,105 @@
+{
+ "id": "c4fm-voice2",
+ "who": "c4fm",
+ "started": "2026-11-18T23:09:33Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T23:09:33Z",
+   "ended": "2026-11-18T23:09:35Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T23:09:35Z",
+   "ended": "2026-11-18T23:09:48Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T23:09:48Z",
+   "ended": "2026-11-18T23:10:01Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-voice2/k6.log"
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T23:10:01Z",
+   "ended": "2026-11-18T23:12:11Z",
+   "rc": 1,
+   "why": "no /EX beacon|K6 MOD say \\w+ end/ in /home/baitisj/blowfang-work/runs/queue/c4fm-voice2/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T23:12:11Z",
+   "ended": "2026-11-18T23:12:24Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T23:12:24Z",
+   "ended": "2026-11-18T23:12:36Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-voice2/k6.log"
+  },
+  {
+   "n": 7,
+   "do": "k6.upload",
+   "started": "2026-11-18T23:12:36Z",
+   "ended": "2026-11-18T23:15:13Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-18T23:15:13Z",
+   "ended": "2026-11-18T23:15:26Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-18T23:15:26Z",
+   "ended": "2026-11-18T23:15:28Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-18T23:15:28Z",
+   "ended": "2026-11-18T23:15:51Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-18T23:15:51Z",
+   "ended": "2026-11-18T23:16:49Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "logger.stop",
+   "started": "2026-11-18T23:16:49Z",
+   "ended": "2026-11-18T23:16:49Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-b3631bbb9347",
+ "head": "b3631bbb9347cdb86d79c58d31572c4ec813c87e",
+ "ended": "2026-11-18T23:16:49Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "912aa6f1377411abf2a6183eb2f0043be034505b",
+  "path": "jobs/c4fm-voice2"
+ },
+ "runner_commit": "b3631bbb9347cdb86d79c58d31572c4ec813c87e",
+ "updated": "2026-11-18T23:16:50Z"
+}

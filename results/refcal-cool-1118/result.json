@@ -1,0 +1,95 @@
+{
+ "id": "refcal-cool-1118",
+ "who": "refcal",
+ "started": "2026-11-18T00:19:44Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T00:19:44Z",
+   "ended": "2026-11-18T00:19:46Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T00:19:46Z",
+   "ended": "2026-11-18T00:19:47Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-18T00:19:47Z",
+   "ended": "2026-11-18T00:19:49Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-18T00:19:49Z",
+   "ended": "2026-11-18T00:19:50Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T00:19:50Z",
+   "ended": "2026-11-18T00:20:06Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T00:20:06Z",
+   "ended": "2026-11-18T00:20:06Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "k6.upload",
+   "started": "2026-11-18T00:20:06Z",
+   "ended": "2026-11-18T00:21:35Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-18T00:21:35Z",
+   "ended": "2026-11-18T00:22:23Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-18T00:22:23Z",
+   "ended": "2026-11-18T00:22:23Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-18T00:22:23Z",
+   "ended": "2026-11-18T00:22:26Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "logger.stop",
+   "started": "2026-11-18T00:22:26Z",
+   "ended": "2026-11-18T00:22:26Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412",
+ "head": "37b8b1bc74120a6f18b59208141c031c885d5157",
+ "ended": "2026-11-18T00:22:26Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "59b9d4cf9d17d564db352185d5d4430330c63556",
+  "path": "jobs/refcal-cool-1118"
+ },
+ "runner_commit": "37b8b1bc74120a6f18b59208141c031c885d5157",
+ "updated": "2026-11-18T00:22:27Z"
+}

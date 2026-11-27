@@ -1,0 +1,39 @@
+listening (Ctrl-C to stop) ...
+K6 firmware build 305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-67 batt=8480 build=305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-67 batt=8460 build=305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-67 batt=8480 build=305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-66 batt=8480 build=305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-67 batt=8480 build=305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-67 batt=8490 build=305eb04-20261119T2227Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-66 batt=8480 build=305eb04-20261119T2227Z
+K6 MOD r=1 xfer=212 chunk=0 have=1/21 rssi=-73 noise=16
+K6 MOD r=1 xfer=212 chunk=1 have=2/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=2 have=3/21 rssi=-73 noise=15
+K6 MOD r=1 xfer=212 chunk=3 have=4/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=4 have=5/21 rssi=-73 noise=16
+K6 MOD r=1 xfer=212 chunk=5 have=6/21 rssi=-73 noise=18
+K6 MOD r=1 xfer=212 chunk=6 have=7/21 rssi=-73 noise=18
+K6 MOD r=1 xfer=212 chunk=7 have=8/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=8 have=9/21 rssi=-73 noise=16
+K6 MOD r=1 xfer=212 chunk=9 have=10/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=10 have=11/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=11 have=12/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=12 have=13/21 rssi=-73 noise=16
+K6 MOD r=1 xfer=212 chunk=13 have=14/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=14 have=15/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=15 have=16/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=16 have=17/21 rssi=-73 noise=17
+K6 MOD r=1 xfer=212 chunk=17 have=18/21 rssi=-73 noise=16
+K6 MOD r=1 xfer=212 chunk=18 have=19/21 rssi=-73 noise=18
+K6 MOD r=1 xfer=212 chunk=19 have=20/21 rssi=-73 noise=18
+K6 MOD r=3 xfer=212 chunk=20 have=21/21 rssi=-73 noise=17
+K6 MOD run serial=1795157716 code=2474 B at 0x20001194 stack=2136 B scratch=12908 B
+K6 MOD say dmairq start cfgr1=00000002 v25=08000105 bad=00 hf=1
+K6 MOD say dmairq run ms=2007 h=22035 miss=0 isr=22 ks=5621 ones=49
+K6 MOD say dmairq calls say=1 fl=0 h=579 miss=0
+K6 MOD say dmairq done cfgr1=00000002 acr=32 v25=08000105
+K6 MOD ret=22035 (0x5613) in 19507 ms stack_free=296 B
+K6 ARQ tx seq=20 state=1 xfer=212 have=21/21 r=3 parts=1
+K6 ARQ sent seq=20 ms=3922
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=4 rssi=-126 batt=8500 build=305eb04-20261119T2227Z

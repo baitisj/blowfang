@@ -1,0 +1,121 @@
+listen on=0 running=0 fail=0 pk=0 msgs=24 last=45 pv=0/45
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=24 last=45 pv=0/45
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=24 last=45 pv=0/45
+ok mod begin 5324
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 76
+mod run serial=1795102890 code=5300
+mod say sotto dsr sf=45/45 first=5a5b5c5d5e5f last=626364656667 bytes=2354 tx_ms=2612 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=1 dry=1
+mod say tx slots=68 bytes=2354/2354 edges=69 first=29 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 2071 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=2079
+tune lvl=16000 fs=48000 emph=0 trim=-580 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=24 last=45 pv=0/45
+ok mod begin 6025
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 9
+mod run serial=1795102898 code=6001
+mod say sotto dsr sf=45/45 first=5a5b5c5d5e5f last=626364656667 bytes=2354 tx_ms=2612 cal I=7f Q=36 dev=123% -> 45=9c 46=42 src=1 dry=0
+mod say tx_tone ok
+mod say ident keyed after 9 ms
+mod say ident done after 3912 ms
+mod say key ok after 181 ms
+mod say tx slots=68 bytes=2354/2354 edges=69 first=13 ms rftx=1 late=0 lost=0 chk=36/36 spi=0 done=1 restored at 2135 ms
+mod say sotto done
+mod say end
+ok mod run ret=80 ms=7153
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=24 last=45 pv=0/45

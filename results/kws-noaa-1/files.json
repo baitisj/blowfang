@@ -1,0 +1,32 @@
+[
+ {
+  "name": "noaa162400.wav.json",
+  "bytes": 2295,
+  "sha256": "9150394763d435dd820390d22b62cef3bda1348f2be2ebb28c5eec2dafda8d1a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162400.wav.json"
+ },
+ {
+  "name": "noaa162550.wav.json",
+  "bytes": 2295,
+  "sha256": "c420405b6db4c2da415a7293002208c90b434526ab67b83e1b59b0280b0354e1",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162550.wav.json"
+ },
+ {
+  "name": "noaa162400.wav",
+  "bytes": 480044,
+  "sha256": "cbc6f1caf3b5a5738acba719cb667dc84ec45a77e1d0cf59b3bf1f76fd547fe2",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162400.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "noaa162550.wav",
+  "bytes": 480044,
+  "sha256": "952354264083dc23956e8e3ed75a99e5e75115f1a609d82ecf6b79f257c24d93",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162550.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

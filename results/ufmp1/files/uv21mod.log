@@ -1,0 +1,15 @@
+retry: um b 0da6 -> None
+P 119 319 2 5 30 50 115 6 7
+A 10 11 30 40
+a 10=1 11=1 60=0
+b10 ffffffffffffffffffffffffffffffff
+b11 ffffffffffffffffffffffffffffffff
+b30 ffffffffffffffffffffffffffffffff
+b40 ffffffffffffffffffffffffffffffff
+i ffff
+E n=-5 ms=85
+um end fffffffb
+P 119 319 2 5 30 50 115 6 8
+i ffff
+E n=-5 ms=5
+um end fffffffb

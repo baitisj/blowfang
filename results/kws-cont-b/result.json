@@ -1,0 +1,12 @@
+{
+ "id": "kws-cont-b",
+ "status": "cancelled",
+ "reason": "cancelled before it ran",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "3af67d5cb5fc9440f29e2727dce1b0111a7e18a7",
+  "path": "jobs/kws-cont-b"
+ },
+ "runner_commit": "320699a1c0c150e7f276da638a01476703f66a21",
+ "updated": "2026-11-22T17:48:10Z"
+}

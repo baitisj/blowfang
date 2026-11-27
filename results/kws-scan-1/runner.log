@@ -1,0 +1,56 @@
+2026-11-22T04:47:46Z job kws-scan-1 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1 at 866a22a0c2b125feb744ad588735523a719b2b56
+2026-11-22T04:47:46Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4422500.wav --hz 442250000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4422500.wav: 45.0 s on 442250000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -71.1 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:48:33Z step 1 (pluto) rc=0
+2026-11-22T04:48:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4423000.wav --hz 442300000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4423000.wav: 45.0 s on 442300000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -71.0 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:49:19Z step 2 (pluto) rc=0
+2026-11-22T04:49:19Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4428250.wav --hz 442825000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4428250.wav: 45.0 s on 442825000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -71.0 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:50:06Z step 3 (pluto) rc=0
+2026-11-22T04:50:06Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4436500.wav --hz 443650000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4436500.wav: 45.0 s on 443650000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -70.9 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:50:52Z step 4 (pluto) rc=0
+2026-11-22T04:50:52Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4437500.wav --hz 443750000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4437500.wav: 45.0 s on 443750000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -70.8 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:51:39Z step 5 (pluto) rc=0
+2026-11-22T04:51:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4427500.wav --hz 442750000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_4427500.wav: 45.0 s on 442750000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -71.1 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:52:25Z step 6 (pluto) rc=0
+2026-11-22T04:52:25Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_1471600.wav --hz 147160000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_1471600.wav: 45.0 s on 147160000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -49.5 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:53:12Z step 7 (pluto) rc=0
+2026-11-22T04:53:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_1452300.wav --hz 145230000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_1452300.wav: 45.0 s on 145230000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -54.5 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:53:58Z step 8 (pluto) rc=0
+2026-11-22T04:53:58Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_1466100.wav --hz 146610000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan1_1466100.wav: 45.0 s on 146610000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -47.1 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:54:45Z step 9 (pluto) rc=0
+2026-11-22T04:54:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4422500.wav --hz 442250000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4422500.wav: 45.0 s on 442250000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -71.2 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:55:32Z step 10 (pluto) rc=0
+2026-11-22T04:55:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4423000.wav --hz 442300000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4423000.wav: 45.0 s on 442300000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -70.6 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:56:18Z step 11 (pluto) rc=0
+2026-11-22T04:56:18Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4428250.wav --hz 442825000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4428250.wav: 45.0 s on 442825000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -71.0 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:57:05Z step 12 (pluto) rc=0
+2026-11-22T04:57:05Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4436500.wav --hz 443650000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4436500.wav: 45.0 s on 443650000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -70.9 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:57:51Z step 13 (pluto) rc=0
+2026-11-22T04:57:51Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4437500.wav --hz 443750000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4437500.wav: 45.0 s on 443750000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -70.8 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:58:38Z step 14 (pluto) rc=0
+2026-11-22T04:58:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4427500.wav --hz 442750000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_4427500.wav: 45.0 s on 442750000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -71.1 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:59:24Z step 15 (pluto) rc=0
+2026-11-22T04:59:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_1471600.wav --hz 147160000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_1471600.wav: 45.0 s on 147160000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -48.8 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T05:00:11Z step 16 (pluto) rc=0
+2026-11-22T05:00:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_1452300.wav --hz 145230000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_1452300.wav: 45.0 s on 145230000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -54.5 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T05:00:57Z step 17 (pluto) rc=0
+2026-11-22T05:00:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_1466100.wav --hz 146610000 --seconds 45 --gain 50 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-scan-1/scan2_1466100.wav: 45.0 s on 146610000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -46.9 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T05:01:44Z step 18 (pluto) rc=0
+2026-11-22T05:01:44Z job kws-scan-1 done

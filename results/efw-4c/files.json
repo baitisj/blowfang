@@ -1,0 +1,68 @@
+[
+ {
+  "name": "rf14-after.jsonl",
+  "bytes": 5060,
+  "sha256": "a198102065053d61fce2458ee7504f94fa577cf423353775b91a8e13cfcf13e3",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-after.jsonl"
+ },
+ {
+  "name": "rf14-before.jsonl",
+  "bytes": 5062,
+  "sha256": "395ac5847875f8a15c27b33e5ea2881cc18c4f495c07417d296eaa12559d0134",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-before.jsonl"
+ },
+ {
+  "name": "rf14-after.json",
+  "bytes": 122644,
+  "sha256": "667ce0276159a4352e1e7a74b07ae97559a49f8a50e8b9674a73942505ed388d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-after.json"
+ },
+ {
+  "name": "rf14-before.json",
+  "bytes": 122644,
+  "sha256": "10e7cca3e0f6448cb5a90d8bcd6b66ffcb4a3a14b0452e0a84898a50d6007d97",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-before.json"
+ },
+ {
+  "name": "noaa.json",
+  "bytes": 122859,
+  "sha256": "ac72f76401489929f3413d17b4e2842e994408dde1e809fac8bd59f9d8f87e09",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/noaa.json"
+ },
+ {
+  "name": "noaa.jsonl",
+  "bytes": 416445,
+  "sha256": "1a842e19ca16dc3060eeb724c18b612f73d2ab280b68eba5f38c99811d60dd55",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/noaa.jsonl"
+ },
+ {
+  "name": "rf14-after.riq",
+  "bytes": 2013517,
+  "sha256": "7d8682666577aad24fca79371e200bcfbd9028aff99712fc183de91995bba43f",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-after.riq",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "rf14-before.riq",
+  "bytes": 2013613,
+  "sha256": "30096449af58de46fe184542b27fca7c4f171d6de2fdee89188103c274259e33",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/rf14-before.riq",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "noaa.riq",
+  "bytes": 6563544,
+  "sha256": "99e7b853b78536355898aed8afdf8aef1bec98d416d28b6bdea8ab6b64a71da9",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4c/noaa.riq",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

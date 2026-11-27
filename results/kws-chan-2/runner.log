@@ -1,0 +1,20 @@
+2026-11-22T05:32:37Z job kws-chan-2 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23 at a2eb70fcfb2345a96f4f46d1449331da8542358a
+2026-11-22T05:32:37Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-2/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-2/t1 --hz 443000000 --seconds 60 --gain 60 --threads 1 --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (780b154b0b9a6c7e...) in the Pluto's RAM at /tmp/pluto_chan
+442.3000_20261122T0532486Z.flac: 29676 bytes
+442.3000_20261122T0533212Z.flac: 28109 bytes
+pluto_chan: 8 channels on 1 threads, 60.00 s of input in 114.31 s (191% of real time)
+chan: 60 s in 114.8 s on 8 channels, 2 overs, 62971 bytes (1050 B/s) (SLOW: the Pluto did not keep up)
+2026-11-22T05:34:32Z step 1 (pluto) rc=0
+2026-11-22T05:34:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-2/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-2/t2 --hz 443000000 --seconds 60 --gain 60 --threads 2 --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (780b154b0b9a6c7e...) in the Pluto's RAM at /tmp/pluto_chan
+442.3000_20261122T0534580Z.flac: 38451 bytes
+pluto_chan: 8 channels on 2 threads, 60.00 s of input in 68.38 s (114% of real time)
+chan: 60 s in 68.8 s on 8 channels, 1 overs, 43627 bytes (727 B/s) (kept up)
+2026-11-22T05:35:42Z step 2 (pluto) rc=0
+2026-11-22T05:35:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-2/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-2/t2m --hz 146305000 --seconds 60 --gain 45 --threads 2 --channels 145230000,146610000,146780000,146800000,146900000,146960000,147000000,147160000,147280000,147340000,147360000,147380000
+chan: pluto_chan.armhf (780b154b0b9a6c7e...) in the Pluto's RAM at /tmp/pluto_chan
+pluto_chan: 12 channels on 2 threads, 60.00 s of input in 97.02 s (162% of real time)
+chan: 60 s in 97.5 s on 12 channels, 0 overs, 7566 bytes (126 B/s) (SLOW: the Pluto did not keep up)
+2026-11-22T05:37:21Z step 3 (pluto) rc=0
+2026-11-22T05:37:21Z job kws-chan-2 done

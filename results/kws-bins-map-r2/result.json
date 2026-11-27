@@ -1,0 +1,12 @@
+{
+ "id": "kws-bins-map-r2",
+ "status": "cancelled",
+ "reason": "cancelled before it ran",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "4a86db0c09c935cf984eed8f32d08c635ea64311",
+  "path": "jobs/kws-bins-map"
+ },
+ "runner_commit": "320699a1c0c150e7f276da638a01476703f66a21",
+ "updated": "2026-11-22T17:23:59Z"
+}

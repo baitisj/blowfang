@@ -1,0 +1,11 @@
+{
+ "id": "rt950-files-1125d",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 5,
+ "steps": [
+  {
+   "do": "rt950.files"
+  }
+ ]
+}

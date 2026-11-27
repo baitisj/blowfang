@@ -1,0 +1,105 @@
+{
+ "id": "c4fm-lock7",
+ "who": "c4fm",
+ "started": "2026-11-18T10:57:06Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T10:57:06Z",
+   "ended": "2026-11-18T10:57:08Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T10:57:08Z",
+   "ended": "2026-11-18T10:57:21Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T10:57:21Z",
+   "ended": "2026-11-18T10:57:33Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-lock7/k6.log"
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T10:57:33Z",
+   "ended": "2026-11-18T10:59:43Z",
+   "rc": 1,
+   "why": "no /EX beacon|K6 MOD say \\w+ end/ in /home/baitisj/blowfang-work/runs/queue/c4fm-lock7/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T10:59:43Z",
+   "ended": "2026-11-18T10:59:56Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T10:59:56Z",
+   "ended": "2026-11-18T11:00:08Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-lock7/k6.log"
+  },
+  {
+   "n": 7,
+   "do": "k6.upload",
+   "started": "2026-11-18T11:00:08Z",
+   "ended": "2026-11-18T11:02:29Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-18T11:02:29Z",
+   "ended": "2026-11-18T11:02:42Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-18T11:02:42Z",
+   "ended": "2026-11-18T11:02:44Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-18T11:02:44Z",
+   "ended": "2026-11-18T11:03:05Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-18T11:03:05Z",
+   "ended": "2026-11-18T11:04:04Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "logger.stop",
+   "started": "2026-11-18T11:04:04Z",
+   "ended": "2026-11-18T11:04:05Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-b04eb6b5ba17",
+ "head": "b04eb6b5ba17f441327eec247581a4bbda77d1cd",
+ "ended": "2026-11-18T11:04:05Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "693c1ad244cda10f055d2fcfe6e9d06345394b34",
+  "path": "jobs/c4fm-lock7"
+ },
+ "runner_commit": "b04eb6b5ba17f441327eec247581a4bbda77d1cd",
+ "updated": "2026-11-18T11:04:06Z"
+}

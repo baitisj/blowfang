@@ -1,0 +1,16 @@
+{
+ "lo_hz": 146305000,
+ "rate": 2400000,
+ "threads": 2,
+ "gain": 45,
+ "rx_bw": 2000000,
+ "bin_sha256": "780b154b0b9a6c7e8334dc4127d6b1d544de3c59d644e342524155c79d10a842",
+ "seconds": 60.0,
+ "took_s": 97.5,
+ "pluto_stderr": "pluto_chan: 12 channels on 2 threads, 60.00 s of input in 97.02 s (162% of real time)",
+ "rc": 0,
+ "utc": "2026-11-22T05:35:43Z",
+ "overs": 0,
+ "bytes": 7566,
+ "secs": 60.0
+}

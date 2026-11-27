@@ -1,0 +1,55 @@
+{
+ "id": "aprsair-5",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T21:10:40Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "wait",
+   "started": "2026-11-19T21:10:40Z",
+   "ended": "2026-11-19T21:22:40Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "logger",
+   "started": "2026-11-19T21:22:40Z",
+   "ended": "2026-11-19T21:22:42Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T21:22:42Z",
+   "ended": "2026-11-19T21:22:45Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-19T21:22:45Z",
+   "ended": "2026-11-19T21:23:38Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-19T21:23:38Z",
+   "ended": "2026-11-19T21:26:47Z",
+   "rc": 1,
+   "why": "cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-f3b3e18f5617",
+ "head": "f3b3e18f5617efd5896c23bec84cd1cb9e438609",
+ "reason": "step 5 (wait): cancelled",
+ "ended": "2026-11-19T21:26:47Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "7356e5081090b8b12b7382e8175954586ae6bce8",
+  "path": "jobs/aprsair-5"
+ },
+ "runner_commit": "f541fbd5d75ab520e4f8a81ade00f7e9d017f187",
+ "updated": "2026-11-19T21:26:48Z"
+}

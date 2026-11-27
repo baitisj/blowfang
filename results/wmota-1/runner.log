@@ -1,0 +1,33 @@
+2026-11-26T06:47:02Z job wmota-1 by watermark, checkout /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e at 47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc
+2026-11-26T06:47:02Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/tools/pluto_bench.py --as watermark rx /home/baitisj/blowfang-work/runs/queue/wmota-1/wm_rx.wav --hz 441850000 --seconds 330 --gain 40 --wav-only --wav-rate 8000
+2026-11-26T06:47:04Z step 1 (pluto) rc=0
+2026-11-26T06:47:09Z step 2 (wait) rc=0
+2026-11-26T06:47:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/tools/pluto_bench.py --as watermark steps /home/baitisj/blowfang-work/runs/inbox/wmota-1/marked.wav --hz 441850000 --gains -40,-60,-70,-78,-85 --dev 2500 --pause 3 --out /home/baitisj/blowfang-work/runs/queue/wmota-1/steps.json
+/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/tools/pluto_bench.py:527: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+steps: 5 sends of marked.wav (27.0 s), peak deviation 2500 Hz before pre-emphasis, 2500 Hz sent, gains -40,-60,-70,-78,-85 dB
+steps gain -40: 34.4 s on 441850000 Hz (LO 441850000.0), gain -40.0 dB, rate 2400000, RF on
+start 06:47:10Z
+end 06:47:44Z: 34.4 s of signal in 34.3 s (kept up)
+steps gain -60: 34.4 s on 441850000 Hz (LO 441850000.0), gain -60.0 dB, rate 2400000, RF on
+start 06:47:47Z
+end 06:48:22Z: 34.4 s of signal in 34.3 s (kept up)
+steps gain -70: 34.4 s on 441850000 Hz (LO 441850000.0), gain -70.0 dB, rate 2400000, RF on
+start 06:48:25Z
+end 06:48:59Z: 34.4 s of signal in 34.3 s (kept up)
+steps gain -78: 34.4 s on 441850000 Hz (LO 441850000.0), gain -78.0 dB, rate 2400000, RF on
+start 06:49:03Z
+end 06:49:37Z: 34.4 s of signal in 34.3 s (kept up)
+steps gain -85: 34.4 s on 441850000 Hz (LO 441850000.0), gain -85.0 dB, rate 2400000, RF on
+start 06:49:40Z
+end 06:50:14Z: 34.4 s of signal in 34.3 s (kept up)
+2026-11-26T06:50:18Z step 3 (pluto) rc=0
+2026-11-26T06:50:18Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/tools/pluto_bench.py --as watermark send /home/baitisj/blowfang-work/runs/inbox/wmota-1/clean.wav --hz 441850000 --gain -60 --dev 2500
+/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e/tools/pluto_bench.py:422: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 1.000 of full scale -> 2500 Hz before pre-emphasis
+send clean.wav: 34.4 s on 441850000 Hz (LO 441850000.0), gain -60.0 dB, rate 2400000, RF on
+start 06:50:19Z
+end 06:50:53Z: 34.4 s of signal in 34.3 s (kept up)
+2026-11-26T06:50:54Z step 4 (pluto) rc=0
+2026-11-26T06:50:54Z job wmota-1 done

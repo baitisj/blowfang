@@ -1,0 +1,8 @@
+2026-11-22T07:18:12Z job kws-chan-4 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-46a6f8b11697 at 46a6f8b11697d8854637007d4f0f4123a6574fee
+2026-11-22T07:18:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-46a6f8b11697/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-chan-4/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-chan-4/m3_70 --hz 443000000 --seconds 60 --gain 60 --threads 2 --a1mode 3 --reader readdev --channels 442250000,442300000,442750000,442825000,443625000,443650000,443750000,443775000
+chan: pluto_chan.armhf (349c24caa2c48586...) in the Pluto's RAM at /tmp/pluto_chan
+442.3000_20261122T0718491Z.flac: 36353 bytes
+2026-11-22T07:19:13Z stopping (cancelled): SIGTERM to the step's process group
+chan: stopped (SIGTERM)
+2026-11-22T07:19:14Z step 1 (pluto) rc=1 (cancelled)
+2026-11-22T07:19:14Z job kws-chan-4 cancelled: step 1 (pluto): cancelled

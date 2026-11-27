@@ -1,0 +1,19 @@
+2026-11-17T23:27:13Z job inbox-smoke-1117 by inbox, checkout /home/baitisj/blowfang-work/worktrees/inbox-dd3926f8dc4d at dd3926f8dc4daef745c1a80ee6c6bcb802a99f50
+2026-11-17T23:27:14Z step 1 (wait) rc=0
+2026-11-17T23:27:14Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-dd3926f8dc4d/tools/pluto_bench.py --as inbox info
+ad9361-phy altvoltage1 frequency = 440849998
+ad9361-phy altvoltage1 powerdown = 1
+ad9361-phy altvoltage1 frequency_available = [46875001 1 6000000000]
+ad9361-phy voltage0 sampling_frequency = 2400000
+ad9361-phy voltage0 hardwaregain = -40.000000 dB
+ad9361-phy altvoltage0 frequency = 2400000000
+ad9361-phy voltage0 gain_control_mode = manual
+ad9361-phy voltage0 hardwaregain = 30.000000 dB
+ad9361-phy xo_correction = 39999447
+cf-ad9361-dds-core-lpc altvoltage0 raw = 0
+cf-ad9361-dds-core-lpc altvoltage1 raw = 0
+cf-ad9361-dds-core-lpc altvoltage2 raw = 0
+cf-ad9361-dds-core-lpc altvoltage3 raw = 0
+stored calibration: {'xo': 39999447, 'measured_utc': '2026-11-16T19:52:30Z', 'ref_hz': 440850000, 'offset_hz': 5151.1, 'xo_used': 39999914, 'cap': '/home/baitisj/blowfang-work/runs/fsk24-3-20261116/idcap.cf32'}
+2026-11-17T23:27:15Z step 2 (pluto) rc=0
+2026-11-17T23:27:15Z job inbox-smoke-1117 done

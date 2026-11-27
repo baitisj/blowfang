@@ -1,0 +1,36 @@
+2026-11-18T04:07:32Z job c4fm-arm2 by c4fm, checkout /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f at 9bc3c2d2187fe82a24213f34b431454618165ba3
+2026-11-18T04:07:32Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold c4fm -- timeout -s INT --kill-after=10 420 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/c4fm-arm2/k6.log
+2026-11-18T04:07:34Z step 1 (logger) rc=0
+2026-11-18T04:07:34Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f/tools/pluto_bench.py --as c4fm send /home/baitisj/blowfang-work/runs/inbox/c4fm-arm2/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 04:07:35Z
+end 04:07:46Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T04:07:47Z step 2 (pluto) rc=0
+2026-11-18T04:07:59Z step 3 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-arm2/k6.log)
+2026-11-18T04:10:09Z step 4 (wait) rc=1 (no /EX beacon|K6 MOD say \w+ end/ in /home/baitisj/blowfang-work/runs/queue/c4fm-arm2/k6.log)
+2026-11-18T04:10:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f/tools/pluto_bench.py --as c4fm send /home/baitisj/blowfang-work/runs/inbox/c4fm-arm2/trigger.wav --gain -30
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send trigger.wav: 11.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 04:10:10Z
+end 04:10:21Z: 11.6 s of signal in 11.5 s (kept up)
+2026-11-18T04:10:22Z step 5 (pluto) rc=0
+2026-11-18T04:10:34Z step 6 (wait) rc=1 (no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-arm2/k6.log)
+2026-11-18T04:10:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/c4fm-arm2/c4ftm.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 3 --rate F18 --rate-state /home/baitisj/blowfang-work/runs/queue/c4fm-arm2/k6-rate.json
+20:10:37 send 1: 72 of 72 XL chunks at F/1800 (serial 1794975036, xfer 60); module /home/baitisj/blowfang-work/runs/inbox/c4fm-arm2/c4ftm.bin: 8740 B code, entry +16, API level 3, serial 1794975036, xfer 60, 8764 B image in 72 XL chunks; 144 packets, 92.7 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 100.1 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 04:10:38Z
+end 04:12:18Z: 100.1 s of signal in 100.0 s (kept up)
+20:12:18 listening for the K6's report
+20:12:45 no report heard
+20:12:45 no report after a whole send: the K6 may be set to L packets, so the next send is 152 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 72 chunks sent were lost
+20:12:45 CW ID
+2026-11-18T04:12:45Z step 7 (k6.upload) rc=0
+2026-11-18T04:13:15Z step 8 (wait) rc=1 (no /c4lock n=22/ in /home/baitisj/blowfang-work/runs/queue/c4fm-arm2/k6.log)
+2026-11-18T04:13:15Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release c4fm
+the port is free (c4fm let go)
+2026-11-18T04:13:16Z step 9 (logger.stop) rc=0
+2026-11-18T04:13:16Z job c4fm-arm2 done

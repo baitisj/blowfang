@@ -1,0 +1,28 @@
+{
+ "id": "ufmp19",
+ "who": "fmprobe-uv21",
+ "started": "2026-11-25T07:30:38Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv21.mod",
+   "started": "2026-11-25T07:30:38Z",
+   "ended": "2026-11-25T07:33:41Z",
+   "rc": 1
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088",
+ "head": "e10c1c08d08852c7f00d59504f06caf3cc21b24f",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-0a4b18cabda6",
+ "sources_head": "0a4b18cabda6551ff860288fdacbdfa5bf8edfb9",
+ "reason": "step 1 (uv21.mod): exit 1",
+ "ended": "2026-11-25T07:33:41Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "b7e5aea1afee3fbe52d16f68de4e2bafca6400cd",
+  "path": "jobs/ufmp19"
+ },
+ "runner_commit": "e10c1c08d08852c7f00d59504f06caf3cc21b24f",
+ "updated": "2026-11-25T07:33:41Z"
+}

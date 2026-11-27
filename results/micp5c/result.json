@@ -1,0 +1,64 @@
+{
+ "id": "micp5c",
+ "who": "micprobe",
+ "started": "2026-11-20T03:13:20Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T03:13:20Z",
+   "ended": "2026-11-20T03:13:22Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-20T03:13:22Z",
+   "ended": "2026-11-20T03:13:26Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-20T03:13:26Z",
+   "ended": "2026-11-20T03:14:31Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-20T03:14:31Z",
+   "ended": "2026-11-20T03:15:22Z",
+   "rc": 1,
+   "why": "cancelled"
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-20T03:15:22Z",
+   "ended": "2026-11-20T03:15:22Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-20T03:15:22Z",
+   "ended": "2026-11-20T03:15:22Z",
+   "rc": 1,
+   "why": "refused: cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36",
+ "head": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "reason": "step 6 (wait): refused: cancelled",
+ "ended": "2026-11-20T03:15:22Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "2cabc932e1e1ee67258b7e8c0bc6a4b7e692238c",
+  "path": "jobs/micp5c"
+ },
+ "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "updated": "2026-11-20T03:15:23Z"
+}

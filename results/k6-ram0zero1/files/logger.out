@@ -1,0 +1,96 @@
+listening (Ctrl-C to stop) ...
+K6 MOD say S2 1151 1040 c0 h0
+K6 MOD say S0 1152 1020 c0 h0
+K6 MOD say S1 1152 155 c0 h0
+K6 MOD say S2 1152 1023 c0 h0
+K6 MOD say S0 1153 1020 c0 h0
+K6 MOD say S1 1153 155 c0 h0
+K6 MOD say S2 1153 1121 c0 h0
+K6 MOD say H 144.050 0 -79 a3049037
+K6 MOD say H 144.125 0 -81 a3049247
+K6 MOD say H 144.155 0 -79 a3049265
+K6 MOD say H 144.095 313 -76 a3048877
+K6 MOD say H 144.185 162 -75 a3049497
+K6 MOD say S0 1154 1186 c3 h2
+K6 MOD say S1 1154 175 c0 h0
+K6 MOD say S2 1154 1055 c3 h0
+K6 MOD say S0 1155 1023 c0 h0
+K6 MOD say S1 1155 155 c0 h0
+K6 EX beacon -21 dBm: VOICE MSG for 60 s
+K6 MOD say H 144.000 3051662 -74 a2779
+K6 MOD say H 443.525 2677890 -85 a376551
+K6 MOD say T 144.000 n1 t3052 -74 d0 s
+K6 MOD say T 443.525 n14 t2843 -88 d8 s
+K6 MOD say T 144.125 n32 t0 -81 d12
+K6 MOD say T 144.030 n15 t0 -81 d8
+K6 MOD say T 144.210 n1 t0 -78 d0
+K6 MOD say T 144.155 n174 t14 -80 d13
+K6 MOD say T 144.095 n40 t2 -81 d14
+K6 MOD say T 144.050 n5 t0 -80 d4
+K6 MOD say T 144.225 n1 t0 -77 d0
+K6 MOD say T 144.185 n7 t1 -79 d8
+K6 MOD say Z sw=1155 bins=993760 ms=3053659 bps=325 hot=8
+K6 CAND band=ALL n=23 sweeps=1155 bins=993760 ms=3053661
+K6 CAND 0 ? 442025000 off=5000000 tone=1109 call= score=3 overs=1 on=0 hi=-83 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 1 r 144155000 off=0 tone=0 call= score=0 overs=168 on=13 hi=-74 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 2 r 144140000 off=0 tone=0 call= score=0 overs=139 on=10 hi=-74 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 3 r 144175000 off=0 tone=0 call= score=0 overs=98 on=6 hi=-74 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 4 r 144115000 off=0 tone=0 call= score=0 overs=92 on=1 hi=-74 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 5 r 144090000 off=0 tone=0 call= score=0 overs=46 on=2 hi=-74 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 6 r 144130000 off=0 tone=0 call= score=0 overs=44 on=0 hi=-74 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 7 r 144050000 off=0 tone=0 call= score=0 overs=30 on=0 hi=-76 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 8 r 144020000 off=0 tone=0 call= score=0 overs=29 on=1 hi=-76 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 9 r 144060000 off=0 tone=0 call= score=0 overs=29 on=0 hi=-75 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 10 r 144070000 off=0 tone=0 call= score=0 overs=25 on=0 hi=-75 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 11 r 144030000 off=0 tone=0 call= score=0 overs=20 on=0 hi=-77 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 12 r 144105000 off=0 tone=0 call= score=0 overs=17 on=0 hi=-74 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 13 r 144205000 off=0 tone=0 call= score=0 overs=15 on=0 hi=-75 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 14 r 144040000 off=0 tone=0 call= score=0 overs=15 on=0 hi=-77 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 15 r 144080000 off=0 tone=0 call= score=0 overs=11 on=0 hi=-75 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 16 r 144185000 off=0 tone=0 call= score=0 overs=9 on=0 hi=-75 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 17 r 144195000 off=0 tone=0 call= score=0 overs=6 on=0 hi=-75 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 18 r 144225000 off=0 tone=0 call= score=0 overs=2 on=0 hi=-77 lo=-81 ids=0 skirts=0 fl=0
+K6 CAND 19 ? 144235000 off=0 tone=0 call= score=0 overs=1 on=0 hi=-80 lo=-80 ids=0 skirts=0 fl=0
+K6 CAND 20 s 144000000 off=0 tone=0 call= score=-100 overs=1 on=3051 hi=-74 lo=-74 ids=0 skirts=0 fl=16
+K6 CAND 21 r 440925000 off=5000000 tone=0 call= score=5 overs=11 on=9 hi=-91 lo=-95 ids=0 skirts=0 fl=224
+K6 CAND 22 s 443525000 off=5000000 tone=1365 call= score=-100 overs=14 on=2842 hi=-84 lo=-92 ids=0 skirts=0 fl=112
+K6 EX leave
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-20 batt=8460 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=5 bl=4 rssi=-67 batt=8460 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=102 chunk=0 have=1/16 rssi=-67 noise=16
+K6 MOD r=1 xfer=102 chunk=1 have=2/16 rssi=-67 noise=17
+K6 MOD r=1 xfer=102 chunk=2 have=3/16 rssi=-67 noise=16
+K6 MOD r=1 xfer=102 chunk=3 have=4/16 rssi=-67 noise=16
+K6 MOD r=1 xfer=102 chunk=4 have=5/16 rssi=-67 noise=17
+K6 MOD r=1 xfer=102 chunk=5 have=6/16 rssi=-67 noise=18
+K6 MOD r=1 xfer=102 chunk=6 have=7/16 rssi=-67 noise=17
+K6 MOD r=1 xfer=102 chunk=7 have=8/16 rssi=-67 noise=17
+K6 MOD r=1 xfer=102 chunk=8 have=9/16 rssi=-67 noise=16
+K6 MOD r=1 xfer=102 chunk=9 have=10/16 rssi=-67 noise=17
+K6 MOD r=1 xfer=102 chunk=10 have=11/16 rssi=-67 noise=16
+K6 MOD r=1 xfer=102 chunk=11 have=12/16 rssi=-67 noise=17
+K6 MOD r=1 xfer=102 chunk=12 have=13/16 rssi=-67 noise=18
+K6 MOD r=1 xfer=102 chunk=13 have=14/16 rssi=-67 noise=17
+K6 MOD r=1 xfer=102 chunk=14 have=15/16 rssi=-67 noise=17
+K6 MOD r=3 xfer=102 chunk=15 have=16/16 rssi=-67 noise=17
+K6 MOD run serial=1795114086 code=1849 B at 0x200020a4 stack=2028 B scratch=9900 B
+K6 MOD say r0 start csr=18800000
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/modem/k6_harness.py", line 545, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/modem/k6_harness.py", line 522, in main
+    listen(s, a.log)
+    ~~~~~~^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/modem/k6_harness.py", line 368, in listen
+    handle(*x, stats, out, log, seen=seen)
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/modem/k6_harness.py", line 332, in handle
+    d = parse_line(line)
+  File "/home/baitisj/blowfang-work/worktrees/inbox-ef67e4cfcec9/modem/k6_harness.py", line 90, in parse_line
+    d[k] = [int(x) for x in v.split(",") if x]
+            ~~~^^^
+ValueError: invalid literal for int() with base 10: 'f806'

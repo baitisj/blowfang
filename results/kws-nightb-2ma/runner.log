@@ -1,0 +1,5 @@
+2026-11-22T06:11:56Z job kws-nightb-2ma by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23 at a2eb70fcfb2345a96f4f46d1449331da8542358a
+2026-11-22T06:11:56Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-nightb-2ma/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-nightb-2ma/2ma --hz 146195000 --seconds 800 --gain 45 --threads 2 --channels 145230000,146610000,146800000,146960000,147000000,147160000
+chan: upload failed: sh: can't create /tmp/pluto_chan: Text file busy
+2026-11-22T06:11:56Z step 1 (pluto) rc=1
+2026-11-22T06:11:56Z job kws-nightb-2ma failed: step 1 (pluto): exit 1

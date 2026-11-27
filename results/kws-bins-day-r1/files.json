@@ -1,0 +1,23 @@
+[
+ {
+  "name": "b2m/overs.json",
+  "bytes": 2,
+  "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-day-r1/b2m/overs.json"
+ },
+ {
+  "name": "b2m/chan.json",
+  "bytes": 1572,
+  "sha256": "68e5aa7138d1d6c3ec868ca097eb02cf1810419aee0b8ee474ca1bbaf6acc18a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-day-r1/b2m/chan.json"
+ },
+ {
+  "name": "b2m/levels.json",
+  "bytes": 360213,
+  "sha256": "2771114a208b9af9ebf80fa0f599d490053ff4292b244d9d11c2819a9718067a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-bins-day-r1/b2m/levels.json"
+ }
+]

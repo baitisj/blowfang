@@ -1,0 +1,114 @@
+listening (Ctrl-C to stop) ...
+K6 MOD say S0 1029 1021 c0 h0
+K6 MOD say S1 1029 187 c1 h0
+K6 MOD say S2 1029 1033 c1 h0
+K6 MOD say S0 1030 1005 c0 h0
+K6 MOD say S1 1030 206 c0 h0
+K6 MOD say S2 1030 1016 c1 h0
+K6 MOD say S0 1031 1033 c1 h0
+K6 MOD say S1 1031 211 c3 h0
+K6 MOD say S2 1031 1028 c2 h0
+K6 MOD say H 144.025 0 -80 a2674585
+K6 MOD say S0 1032 1052 c1 h1
+K6 MOD say S1 1032 337 c11 h0
+K6 MOD say N 440.850 -56 fl-109 b528
+K6 MOD say K 440.850 6/18
+K6 EX beacon -56 dBm: VOICE MSG for 60 s
+K6 MOD say H 144.000 2673691 -72 a2779
+K6 MOD say H 224.480 162037 -93 a2514433
+K6 MOD say H 440.850 201 -56 a2676269
+K6 MOD say T 144.000 n1 t2674 -72 d0 s
+K6 MOD say T 224.480 n50 t189 -99 d14 s
+K6 MOD say T 144.070 n1 t0 -75 d0
+K6 MOD say T 144.105 n1 t0 -84 d0
+K6 MOD say T 144.025 n10 t1 -80 d9
+K6 MOD say T 440.850 n1 t0 -56 d0
+K6 MOD say T 144.050 n5 t0 -79 d8
+K6 MOD say T 441.850 n4 t15 -47 d19
+K6 MOD say T 440.925 n13 t0 -98 d2
+K6 MOD say T 441.862 n2 t2 -79 d4
+K6 MOD say Z sw=1032 bins=887980 ms=2675688 bps=331 hot=8
+K6 CAND band=ALL n=15 sweeps=1032 bins=887980 ms=2675693
+K6 CAND 0 ? 442825000 off=5000000 tone=1567 call= score=3 overs=1 on=0 hi=-91 lo=-91 ids=0 skirts=0 fl=0
+K6 CAND 1 r 441912500 off=5000000 tone=0 call= score=2 overs=10 on=0 hi=-84 lo=-90 ids=0 skirts=8 fl=0
+K6 CAND 2 r 144025000 off=0 tone=0 call= score=0 overs=94 on=6 hi=-75 lo=-84 ids=0 skirts=0 fl=0
+K6 CAND 3 r 144055000 off=0 tone=0 call= score=0 overs=44 on=0 hi=-75 lo=-82 ids=0 skirts=0 fl=0
+K6 CAND 4 r 144040000 off=0 tone=0 call= score=0 overs=13 on=0 hi=-76 lo=-83 ids=0 skirts=0 fl=0
+K6 CAND 5 r 441837500 off=5000000 tone=0 call= score=0 overs=5 on=4 hi=-45 lo=-80 ids=0 skirts=0 fl=0
+K6 CAND 6 r 144075000 off=0 tone=0 call= score=0 overs=4 on=0 hi=-75 lo=-80 ids=0 skirts=0 fl=0
+K6 CAND 7 r 144065000 off=0 tone=0 call= score=0 overs=2 on=0 hi=-78 lo=-81 ids=0 skirts=0 fl=0
+K6 CAND 8 s 224480000 off=-1600000 tone=1035 call= score=-100 overs=16 on=181 hi=-92 lo=-94 ids=0 skirts=0 fl=16
+K6 CAND 9 s 144000000 off=0 tone=0 call= score=-100 overs=1 on=2673 hi=-72 lo=-72 ids=0 skirts=0 fl=16
+K6 CAND 10 r 441200000 off=5000000 tone=0 call=AG7EW score=4 overs=5 on=15 hi=-101 lo=-106 ids=0 skirts=0 fl=96
+K6 CAND 11 r 441850000 off=5000000 tone=0 call=AG7EW score=2 overs=4 on=14 hi=-38 lo=-57 ids=0 skirts=0 fl=96
+K6 CAND 12 ? 440850000 off=5000000 tone=0 call= score=2 overs=1 on=0 hi=-56 lo=-56 ids=0 skirts=0 fl=32
+K6 CAND 13 ? 440925000 off=5000000 tone=0 call= score=2 overs=1 on=7 hi=-96 lo=-96 ids=0 skirts=0 fl=96
+K6 CAND 14 s 441862500 off=5000000 tone=0 call= score=-100 overs=4 on=8 hi=-77 lo=-81 ids=0 skirts=4 fl=96
+K6 EX leave
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=2 rssi=-55 batt=8530 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=2 rssi=-108 batt=8530 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=103 chunk=0 have=1/40 rssi=-65 noise=14
+K6 MOD r=1 xfer=103 chunk=1 have=2/40 rssi=-65 noise=18
+K6 MOD r=1 xfer=103 chunk=2 have=3/40 rssi=-65 noise=18
+K6 MOD r=1 xfer=103 chunk=3 have=4/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=4 have=5/40 rssi=-66 noise=16
+K6 MOD r=1 xfer=103 chunk=5 have=6/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=6 have=7/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=7 have=8/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=8 have=9/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=9 have=10/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=10 have=11/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=11 have=12/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=12 have=13/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=13 have=14/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=14 have=15/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=15 have=16/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=16 have=17/40 rssi=-66 noise=17
+K6 MOD r=1 xfer=103 chunk=17 have=18/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=18 have=19/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=19 have=20/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=20 have=21/40 rssi=-66 noise=16
+K6 MOD r=1 xfer=103 chunk=21 have=22/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=22 have=23/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=23 have=24/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=24 have=25/40 rssi=-66 noise=16
+K6 MOD r=1 xfer=103 chunk=25 have=26/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=26 have=27/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=27 have=28/40 rssi=-65 noise=18
+K6 MOD r=1 xfer=103 chunk=28 have=29/40 rssi=-65 noise=16
+K6 MOD r=1 xfer=103 chunk=29 have=30/40 rssi=-66 noise=16
+K6 MOD r=1 xfer=103 chunk=30 have=31/40 rssi=-65 noise=15
+K6 MOD r=1 xfer=103 chunk=31 have=32/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=32 have=33/40 rssi=-65 noise=18
+K6 MOD r=1 xfer=103 chunk=33 have=34/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=34 have=35/40 rssi=-66 noise=16
+K6 MOD r=1 xfer=103 chunk=35 have=36/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=36 have=37/40 rssi=-65 noise=17
+K6 MOD r=1 xfer=103 chunk=37 have=38/40 rssi=-65 noise=15
+K6 MOD r=1 xfer=103 chunk=38 have=39/40 rssi=-65 noise=17
+K6 MOD r=3 xfer=103 chunk=39 have=40/40 rssi=-66 noise=15
+K6 MOD run serial=1794964071 code=4856 B at 0x200020a4 stack=2028 B scratch=6896 B
+K6 MOD say R 00005201 004e0015 0000 0000 0000 0225 48000410 2000542c
+K6 MOD say refcal waiting for a carrier
+K6 MOD say refcal t=29826 v=24085 3b=5880 3c=4f88
+K6 MOD say refcal s 440850.00 -100 -120
+K6 MOD say refcal m 440850.00 if=16992.7 n=32 sp=421.0 k=+0
+K6 MOD say refcal m 440850.00 if=17454.6 n=16 sp=331.0 k=+6
+K6 MOD say refcal step 440850.00 d=+461.9 g=+508.7
+K6 MOD say refcal m 440850.00 if=16926.1 n=32 sp=449.0 k=-1
+K6 MOD say refcal r 440850.00 ppb=-190 res=-1.0 k=-1
+K6 MOD say refcal m 440850.00 if=16932.7 n=32 sp=484.0 k=-1
+K6 MOD say refcal r 440850.00 ppb=-205 res=+5.6 k=-1
+K6 MOD say refcal m 440850.00 if=16937.5 n=32 sp=525.0 k=-1
+K6 MOD say refcal r 440850.00 ppb=-216 res=+10.4 k=-1
+K6 MOD say refcal m 440850.00 if=16920.6 n=32 sp=571.0 k=-1
+K6 MOD say refcal r 440850.00 ppb=-178 res=-6.5 k=-1
+K6 MOD say refcal ppb=-205 n=4 k=-1 t=29826 dry
+K6 MOD say R 00045201 004e0015 0000 0000 0000 0000 00000000 00000000
+K6 MOD say refcal done
+K6 MOD ret=-205 (0xffffff33) in 67767 ms stack_free=156 B
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=2 rssi=-65 batt=8510 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=2 rssi=-66 batt=8490 build=8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=1 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=6 bl=2 rssi=-65 batt=8480 build=8a78fb5-20261117T0904Z
+K6 ARQ tx seq=7 state=1 xfer=103 have=40/40 r=3 parts=5

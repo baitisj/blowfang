@@ -1,0 +1,36 @@
+{
+ "id": "ufmp4",
+ "who": "fmprobe-uv21",
+ "started": "2026-11-25T03:34:33Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-25T03:34:33Z",
+   "ended": "2026-11-25T03:34:35Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-25T03:34:35Z",
+   "ended": "2026-11-25T03:39:55Z",
+   "rc": 1,
+   "why": "no /alive surf|surf ram/ in /home/baitisj/blowfang-work/runs/queue/ufmp4/k6.log"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088",
+ "head": "e10c1c08d08852c7f00d59504f06caf3cc21b24f",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-2f2b666d3b76",
+ "sources_head": "2f2b666d3b76ec9294dcc3111e28bc9062eb357c",
+ "reason": "step 2 (wait): no /alive surf|surf ram/ in /home/baitisj/blowfang-work/runs/queue/ufmp4/k6.log",
+ "ended": "2026-11-25T03:39:55Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "081408ad6f49638a3be060c95fe99e937a178154",
+  "path": "jobs/ufmp4"
+ },
+ "runner_commit": "e10c1c08d08852c7f00d59504f06caf3cc21b24f",
+ "updated": "2026-11-25T03:39:55Z"
+}

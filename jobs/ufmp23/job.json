@@ -1,0 +1,21 @@
+{
+ "id": "ufmp23",
+ "who": "fmprobe-uv21",
+ "freq_mhz": "440.85",
+ "minutes": 6,
+ "sources_commit": "cfaceda08bf94ccd6aa081d5fcc062503912fadb",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "fmstock",
+    "FT_WAIT_MS=1000",
+    "FT_KHZ=106500",
+    "FT_PLAY_S=20",
+    "FT_VOL=15",
+    "FT_KEY_S=140",
+    "FT_BK=1"
+   ]
+  }
+ ]
+}

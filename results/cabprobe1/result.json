@@ -1,0 +1,39 @@
+{
+ "id": "cabprobe1",
+ "who": "fmrds",
+ "started": "2026-11-27T03:50:05Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-27T03:50:05Z",
+   "ended": "2026-11-27T03:50:07Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-27T03:50:07Z",
+   "ended": "2026-11-27T03:50:37Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "logger.stop",
+   "started": "2026-11-27T03:50:37Z",
+   "ended": "2026-11-27T03:50:38Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-cf20e6b14225",
+ "head": "cf20e6b14225ac43da375d1c961fc8f4b7f1bc74",
+ "ended": "2026-11-27T03:50:38Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "42962700d7e04219578aada1c827ed68ab1bbe27",
+  "path": "jobs/cabprobe1"
+ },
+ "runner_commit": "cf20e6b14225ac43da375d1c961fc8f4b7f1bc74",
+ "updated": "2026-11-27T03:50:38Z"
+}

@@ -1,0 +1,64 @@
+{
+ "id": "ufmp3",
+ "who": "fmprobe-uv21",
+ "started": "2026-11-25T03:01:41Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-25T03:01:41Z",
+   "ended": "2026-11-25T03:01:43Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-25T03:01:43Z",
+   "ended": "2026-11-25T03:02:28Z",
+   "rc": 1,
+   "why": "no /alive surf/ in /home/baitisj/blowfang-work/runs/queue/ufmp3/k6.log"
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-25T03:02:28Z",
+   "ended": "2026-11-25T03:02:31Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "logger.stop",
+   "started": "2026-11-25T03:02:31Z",
+   "ended": "2026-11-25T03:02:32Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "uv21.mod",
+   "started": "2026-11-25T03:02:32Z",
+   "ended": "2026-11-25T03:02:38Z",
+   "rc": 1
+  },
+  {
+   "n": 6,
+   "do": "uv21.mod",
+   "started": "2026-11-25T03:02:38Z",
+   "ended": "2026-11-25T03:02:45Z",
+   "rc": 1
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088",
+ "head": "e10c1c08d08852c7f00d59504f06caf3cc21b24f",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-ca082c82c954",
+ "sources_head": "ca082c82c9541226dd929ef3d6d3579a2039d7c8",
+ "reason": "step 6 (uv21.mod): exit 1",
+ "ended": "2026-11-25T03:02:45Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "df626d789435b3f63bd5a654cb37e4dfd5a55ecd",
+  "path": "jobs/ufmp3"
+ },
+ "runner_commit": "e10c1c08d08852c7f00d59504f06caf3cc21b24f",
+ "updated": "2026-11-25T03:02:46Z"
+}

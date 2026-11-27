@@ -1,0 +1,23 @@
+[
+ {
+  "name": "uv21mod.log",
+  "bytes": 150,
+  "sha256": "7db68bde6588711b6d4be7dbd88874e2fcf02976df911f9718971f9d7893f130",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ufmp3/uv21mod.log"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 4845,
+  "sha256": "a142baa543e137819b2166a931c0c9cf661e58a9245db220000d9a29e7c5e1b7",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ufmp3/logger.out"
+ },
+ {
+  "name": "uv21.log",
+  "bytes": 6345,
+  "sha256": "fc992ba586cd7f4ad9df19815114f03f13f66a7e561e8a6870f3cfa68eb89f1a",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ufmp3/uv21.log"
+ }
+]

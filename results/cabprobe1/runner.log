@@ -1,0 +1,8 @@
+2026-11-27T03:50:05Z job cabprobe1 by fmrds, checkout /home/baitisj/blowfang-work/worktrees/inbox-cf20e6b14225 at cf20e6b14225ac43da375d1c961fc8f4b7f1bc74
+2026-11-27T03:50:05Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold fmrds -- timeout -s INT --kill-after=10 40 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/cabprobe1/cab.log
+2026-11-27T03:50:07Z step 1 (logger) rc=0
+2026-11-27T03:50:37Z step 2 (wait) rc=0
+2026-11-27T03:50:37Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release fmrds
+the port is free (fmrds let go)
+2026-11-27T03:50:38Z step 3 (logger.stop) rc=0
+2026-11-27T03:50:38Z job cabprobe1 done

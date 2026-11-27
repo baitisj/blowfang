@@ -1,0 +1,68 @@
+{
+ "id": "trunk-long-1118a",
+ "who": "position",
+ "freq_mhz": 432.1,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:L863819.cf32",
+    "--hz",
+    "863819800",
+    "--seconds",
+    "2",
+    "--gain",
+    "65"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:L771257.cf32",
+    "--hz",
+    "771257300",
+    "--seconds",
+    "2",
+    "--gain",
+    "65"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:L771106.cf32",
+    "--hz",
+    "771106800",
+    "--seconds",
+    "2",
+    "--gain",
+    "65"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:L773657.cf32",
+    "--hz",
+    "773657300",
+    "--seconds",
+    "2",
+    "--gain",
+    "65"
+   ],
+   "timeout": 60,
+   "continue_on_error": true
+  }
+ ]
+}

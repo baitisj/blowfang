@@ -1,0 +1,17 @@
+2026-11-18T02:51:59Z job m17rx-onradio-1118a by m17rx, checkout /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f at 9bc3c2d2187fe82a24213f34b431454618165ba3
+2026-11-18T02:51:59Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f/tools/uv380_i2sprobe.py cmd /dev/ttyACM2 listen 0 power 0 freq 441850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/m17rx-onradio-1118a/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T02:52:10Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T02:52:10Z step 1 (uv380.cmd) rc=0
+2026-11-18T02:52:10Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f/tools/uv380_i2sprobe.py mod /dev/ttyACM2 /home/baitisj/blowfang-work/worktrees/inbox-9bc3c2d2187f/firmware/uv380-openrtx/mod/c6m17rx_tap.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/m17rx-onradio-1118a/uv380.log --run-timeout 200
+2026-11-18T02:52:12Z step 2 (uv380.rx) rc=1 (the background uv380.rx exited 1)
+2026-11-18T02:52:12Z job m17rx-onradio-1118a failed: step 2 (uv380.rx): the background uv380.rx exited 1

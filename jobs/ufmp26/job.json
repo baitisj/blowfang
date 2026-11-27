@@ -1,0 +1,19 @@
+{
+ "id": "ufmp26",
+ "who": "fmprobe-uv21",
+ "freq_mhz": "440.85",
+ "minutes": 5,
+ "sources_commit": "428c9b85ffbff169a14055d1a706b4bb26146fbe",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "fmprobe",
+    "FP_PART=8",
+    "FP_NRDS=2",
+    "FP_RDS1_S=62",
+    "FP_RDS_S=40"
+   ]
+  }
+ ]
+}

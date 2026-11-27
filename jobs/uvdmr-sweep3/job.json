@@ -1,0 +1,194 @@
+{
+ "id": "uvdmr-sweep3",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 10,
+ "sources_commit": "79337b1edf884c27d372c3073bbb8935bf3fe6b1",
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "freq 441850"
+   ]
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "dmr"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-60"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3000",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 50
+  },
+  {
+   "do": "uv380.rx",
+   "args": [
+    "dmr"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3500",
+    "--gain",
+    "-60"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:dmr_plain.wav",
+    "--hz",
+    "441850000",
+    "--peak",
+    "3000",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 50
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "phy ysf"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 1"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysfs1.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysfs1.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-50"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 8
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "phy rng"
+   ]
+  }
+ ]
+}

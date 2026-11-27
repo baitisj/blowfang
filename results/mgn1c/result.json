@@ -1,0 +1,18 @@
+{
+ "id": "mgn1c",
+ "status": "refused",
+ "reason": "step 7 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot; step 9 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot; step 11 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot; step 13 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot",
+ "problems": [
+  "step 7 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot",
+  "step 9 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot",
+  "step 11 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot",
+  "step 13 (pluto): args[0] must be one of info, quiet, send, steps, rx, measure, cal, fsk24, parrot"
+ ],
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "bdb8487884d94aaff1b33430bd679d0fa7a5b22c",
+  "path": "jobs/mgn1c"
+ },
+ "runner_commit": "5d0384d2011d49a798bb389a98bc64f444ec5d4a",
+ "updated": "2026-11-21T04:16:50Z"
+}

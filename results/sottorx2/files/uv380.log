@@ -1,0 +1,447 @@
+
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+ok mod begin 7558
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 128
+ok mod hex 1b80 128
+ok mod hex 1c00 128
+ok mod hex 1c80 128
+ok mod hex 1d00 128
+ok mod hex 1d80 6
+mod run serial=1795050447 code=7534
+mod say sottorx start air=m17 s=150 scratch=8824 need=8260
+mod say rx m17 st 1000 halves=31 gaps=0 frames=0 lost=0
+mod say rx m17 st 2000 halves=62 gaps=0 frames=0 lost=0
+mod say rx m17 st 3006 halves=94 gaps=0 frames=0 lost=0
+mod say rx m17 st 4006 halves=125 gaps=0 frames=0 lost=0
+mod say rx m17 st 5006 halves=156 gaps=0 frames=0 lost=0
+mod say rx m17 st 6014 halves=188 gaps=0 frames=12 lost=0
+mod say rx m17 st 7014 halves=219 gaps=0 frames=37 lost=0
+mod say rx m17 msg sf=76 got=76 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=bcbdbebfc0c1 rssi=0 gaps=0
+mod say rx m17 st 1000 halves=31 gaps=0 frames=10 lost=0
+mod say rx m17 st 2000 halves=63 gaps=0 frames=35 lost=0
+mod say rx m17 msg sf=76 got=76 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=bcbdbebfc0c1 rssi=0 gaps=0
+mod say rx m17 st 1000 halves=31 gaps=0 frames=10 lost=0
+mod say rx m17 st 2000 halves=63 gaps=0 frames=36 lost=0
+mod say rx m17 msg sf=76 got=76 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=bcbdbebfc0c1 rssi=0 gaps=0
+mod say rx m17 st 1000 halves=31 gaps=0 frames=0 lost=0
+mod say rx m17 st 2000 halves=63 gaps=0 frames=0 lost=0
+mod say rx m17 st 3001 halves=94 gaps=0 frames=0 lost=0
+mod say rx m17 st 4001 halves=125 gaps=0 frames=0 lost=0
+mod say rx m17 st 5001 halves=156 gaps=0 frames=0 lost=0
+mod say rx m17 st 6009 halves=188 gaps=0 frames=0 lost=0
+mod say rx m17 st 7009 halves=219 gaps=0 frames=0 lost=0
+mod say rx m17 st 8009 halves=250 gaps=0 frames=0 lost=0
+mod say rx m17 st 9017 halves=282 gaps=0 frames=0 lost=0
+mod say rx m17 st 10017 halves=313 gaps=0 frames=9 lost=0
+mod say rx m17 st 11017 halves=344 gaps=0 frames=34 lost=0
+mod say rx m17 msg sf=76 got=76 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=bcbdbebfc0c1 rssi=0 gaps=0
+mod say rx m17 st 1000 halves=31 gaps=0 frames=11 lost=0
+mod say rx m17 st 2008 halves=63 gaps=0 frames=36 lost=0
+mod say rx m17 msg sf=76 got=76 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=bcbdbebfc0c1 rssi=0 gaps=0
+mod say rx m17 st 1000 halves=31 gaps=0 frames=10 lost=0
+mod say rx m17 st 2000 halves=63 gaps=0 frames=35 lost=0
+mod say rx m17 msg sf=76 got=76 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=bcbdbebfc0c1 rssi=0 gaps=0
+mod say rx m17 st 1000 halves=31 gaps=0 frames=0 lost=0
+mod say rx m17 st 2000 halves=63 gaps=0 frames=0 lost=0
+mod say rx m17 st 3001 halves=94 gaps=0 frames=0 lost=0
+mod say rx m17 st 4001 halves=125 gaps=0 frames=0 lost=0
+mod say rx m17 st 5001 halves=156 gaps=0 frames=0 lost=0
+mod say rx m17 st 6007 halves=188 gaps=0 frames=0 lost=0
+mod say rx m17 st 7007 halves=219 gaps=0 frames=0 lost=0
+mod say rx m17 st 8007 halves=250 gaps=0 frames=0 lost=0
+mod say rx m17 st 9007 halves=281 gaps=0 frames=0 lost=0
+mod say rx m17 st 10007 halves=313 gaps=0 frames=0 lost=0
+mod say rx m17 st 11007 halves=344 gaps=0 frames=0 lost=0
+mod say rx m17 st 12007 halves=375 gaps=0 frames=0 lost=0
+mod say rx m17 st 13007 halves=407 gaps=0 frames=0 lost=0
+mod say rx m17 st 14008 halves=438 gaps=0 frames=0 lost=0
+mod say rx m17 st 15008 halves=469 gaps=0 frames=0 lost=0
+mod say rx m17 st 16008 halves=500 gaps=0 frames=0 lost=0
+mod say rx m17 st 17014 halves=532 gaps=0 frames=0 lost=0
+mod say rx m17 st 18014 halves=563 gaps=0 frames=0 lost=0
+mod say rx m17 st 19014 halves=594 gaps=0 frames=0 lost=0
+mod say rx m17 st 20014 halves=625 gaps=0 frames=0 lost=0
+mod say rx m17 st 21014 halves=657 gaps=0 frames=0 lost=0
+mod say rx m17 st 22014 halves=688 gaps=0 frames=0 lost=0
+mod say rx m17 st 23014 halves=719 gaps=0 frames=0 lost=0
+mod say rx m17 st 24014 halves=750 gaps=0 frames=0 lost=0
+mod say rx m17 st 25014 halves=782 gaps=0 frames=0 lost=0
+mod say rx m17 st 26014 halves=813 gaps=0 frames=0 lost=0
+mod say rx m17 st 27014 halves=844 gaps=0 frames=0 lost=0
+mod say rx m17 st 28014 halves=875 gaps=0 frames=0 lost=0
+mod say rx m17 st 29014 halves=907 gaps=0 frames=0 lost=0
+mod say rx m17 st 30014 halves=938 gaps=0 frames=0 lost=0
+mod say rx m17 st 31014 halves=969 gaps=0 frames=0 lost=0
+mod say rx m17 st 32014 halves=1000 gaps=0 frames=0 lost=0
+mod say rx m17 st 33016 halves=1032 gaps=0 frames=0 lost=0
+mod say rx m17 st 34016 halves=1063 gaps=0 frames=0 lost=0
+mod say rx m17 st 35016 halves=1094 gaps=0 frames=0 lost=0
+mod say rx m17 st 36023 halves=1126 gaps=0 frames=0 lost=0
+mod say rx m17 st 37023 halves=1157 gaps=0 frames=0 lost=0
+mod say rx m17 st 38023 halves=1188 gaps=0 frames=0 lost=0
+mod say rx m17 st 39023 halves=1220 gaps=0 frames=0 lost=0
+mod say rx m17 st 40024 halves=1251 gaps=0 frames=0 lost=0
+mod say rx m17 st 41024 halves=1282 gaps=0 frames=0 lost=0
+mod say rx m17 st 42024 halves=1313 gaps=0 frames=0 lost=0
+mod say rx m17 st 43031 halves=1345 gaps=0 frames=0 lost=0
+mod say rx m17 st 44031 halves=1376 gaps=0 frames=0 lost=0
+mod say rx m17 st 45031 halves=1407 gaps=0 frames=0 lost=0
+mod say rx m17 st 46031 halves=1439 gaps=0 frames=0 lost=0
+mod say rx m17 st 47031 halves=1470 gaps=0 frames=0 lost=0
+mod say rx m17 st 48031 halves=1501 gaps=0 frames=0 lost=0
+mod say rx m17 st 49031 halves=1532 gaps=0 frames=0 lost=0
+mod say rx m17 st 50031 halves=1564 gaps=0 frames=0 lost=0
+mod say rx m17 st 51031 halves=1595 gaps=0 frames=0 lost=0
+mod say rx m17 st 52031 halves=1626 gaps=0 frames=0 lost=0
+mod say rx m17 st 53031 halves=1657 gaps=0 frames=0 lost=0
+mod say rx m17 st 54031 halves=1689 gaps=0 frames=0 lost=0
+mod say rx m17 st 55033 halves=1720 gaps=0 frames=0 lost=0
+mod say rx m17 st 56033 halves=1751 gaps=0 frames=0 lost=0
+mod say rx m17 st 57033 halves=1782 gaps=0 frames=0 lost=0
+mod say rx m17 st 58040 halves=1814 gaps=0 frames=0 lost=0
+mod say rx m17 st 59040 halves=1845 gaps=0 frames=0 lost=0
+mod say rx m17 st 60040 halves=1876 gaps=0 frames=0 lost=0
+mod say rx m17 st 61046 halves=1908 gaps=0 frames=0 lost=0
+mod say rx m17 st 62046 halves=1939 gaps=0 frames=0 lost=0
+mod say rx m17 st 63046 halves=1970 gaps=0 frames=0 lost=0
+mod say rx m17 st 64046 halves=2001 gaps=0 frames=0 lost=0
+mod say rx m17 st 65048 halves=2033 gaps=0 frames=0 lost=0
+mod say rx m17 st 66048 halves=2064 gaps=0 frames=0 lost=0
+mod say rx m17 st 67048 halves=2095 gaps=0 frames=0 lost=0
+mod say rx m17 st 68055 halves=2127 gaps=0 frames=0 lost=0
+mod say rx m17 st 69055 halves=2158 gaps=0 frames=0 lost=0
+mod say rx m17 st 70055 halves=2189 gaps=0 frames=0 lost=0
+mod say rx m17 st 71055 halves=2221 gaps=0 frames=0 lost=0
+mod say rx m17 st 72058 halves=2252 gaps=0 frames=0 lost=0
+mod say rx m17 st 73058 halves=2283 gaps=0 frames=0 lost=0
+mod say rx m17 st 74058 halves=2314 gaps=0 frames=0 lost=0
+mod say rx m17 st 75067 halves=2346 gaps=0 frames=0 lost=0
+mod say rx m17 st 76067 halves=2377 gaps=0 frames=0 lost=0
+mod say rx m17 st 77067 halves=2408 gaps=0 frames=0 lost=0
+mod say rx m17 st 78071 halves=2440 gaps=0 frames=0 lost=0
+mod say rx m17 st 79071 halves=2471 gaps=0 frames=0 lost=0
+mod say rx m17 st 80071 halves=2502 gaps=0 frames=0 lost=0
+mod say rx m17 st 81071 halves=2534 gaps=0 frames=0 lost=0
+mod say rx m17 st 82071 halves=2565 gaps=0 frames=0 lost=0
+mod say rx m17 st 83071 halves=2596 gaps=0 frames=0 lost=0
+mod say rx m17 st 84071 halves=2627 gaps=0 frames=0 lost=0
+mod say rx m17 st 85071 halves=2659 gaps=0 frames=0 lost=0
+mod say rx m17 st 86071 halves=2690 gaps=0 frames=0 lost=0
+mod say rx m17 st 87071 halves=2721 gaps=0 frames=0 lost=0
+mod say rx m17 st 88071 halves=2752 gaps=0 frames=0 lost=0
+mod say rx m17 st 89071 halves=2784 gaps=0 frames=0 lost=0
+mod say rx m17 st 90071 halves=2815 gaps=0 frames=0 lost=0
+mod say rx m17 st 91071 halves=2846 gaps=0 frames=0 lost=0
+mod say rx m17 st 92071 halves=2877 gaps=0 frames=0 lost=0
+mod say rx m17 st 93071 halves=2909 gaps=0 frames=0 lost=0
+mod say rx m17 st 94071 halves=2940 gaps=0 frames=0 lost=0
+mod say rx m17 st 95071 halves=2971 gaps=0 frames=0 lost=0
+mod say rx m17 st 96071 halves=3002 gaps=0 frames=0 lost=0
+mod say rx m17 st 97071 halves=3034 gaps=0 frames=0 lost=0
+mod say rx m17 st 98072 halves=3065 gaps=0 frames=0 lost=0
+mod say rx m17 st 99072 halves=3096 gaps=0 frames=0 lost=0
+mod say rx m17 st 100072 halves=3127 gaps=0 frames=0 lost=0
+mod say rx m17 st 101078 halves=3159 gaps=0 frames=0 lost=0
+mod say rx m17 st 102078 halves=3190 gaps=0 frames=0 lost=0
+mod say rx m17 st 103078 halves=3221 gaps=0 frames=0 lost=0
+mod say rx m17 st 104078 halves=3252 gaps=0 frames=0 lost=0
+mod say rx m17 st 105078 halves=3284 gaps=0 frames=0 lost=0
+mod say rx m17 st 106078 halves=3315 gaps=0 frames=0 lost=0
+mod say rx m17 st 107078 halves=3346 gaps=0 frames=0 lost=0
+mod say rx m17 st 108078 halves=3377 gaps=0 frames=0 lost=0
+mod say rx m17 st 109078 halves=3409 gaps=0 frames=0 lost=0
+mod say rx m17 st 110078 halves=3440 gaps=0 frames=0 lost=0
+mod say rx m17 st 111078 halves=3471 gaps=0 frames=0 lost=0
+mod say rx m17 st 112078 halves=3503 gaps=0 frames=0 lost=0
+mod say rx m17 st 113079 halves=3534 gaps=0 frames=0 lost=0
+mod say rx m17 st 114079 halves=3565 gaps=0 frames=0 lost=0
+mod say rx m17 st 115079 halves=3596 gaps=0 frames=0 lost=0
+mod say rx m17 st 116085 halves=3628 gaps=0 frames=0 lost=0
+mod say rx m17 st 117085 halves=3659 gaps=0 frames=0 lost=0
+mod say rx m17 st 118085 halves=3690 gaps=0 frames=0 lost=0
+mod say rx m17 st 119085 halves=3721 gaps=0 frames=0 lost=0
+mod say rx m17 st 120085 halves=3753 gaps=0 frames=0 lost=0
+mod say rx m17 st 121085 halves=3784 gaps=0 frames=0 lost=0
+mod say rx m17 st 122085 halves=3815 gaps=0 frames=0 lost=0
+mod say rx m17 st 123085 halves=3846 gaps=0 frames=0 lost=0
+mod say end msgs=6
+ok mod run ret=6 ms=150009
+ok mod begin 8274
+ok mod hex 0 128
+ok mod hex 80 128
+ok mod hex 100 128
+ok mod hex 180 128
+ok mod hex 200 128
+ok mod hex 280 128
+ok mod hex 300 128
+ok mod hex 380 128
+ok mod hex 400 128
+ok mod hex 480 128
+ok mod hex 500 128
+ok mod hex 580 128
+ok mod hex 600 128
+ok mod hex 680 128
+ok mod hex 700 128
+ok mod hex 780 128
+ok mod hex 800 128
+ok mod hex 880 128
+ok mod hex 900 128
+ok mod hex 980 128
+ok mod hex a00 128
+ok mod hex a80 128
+ok mod hex b00 128
+ok mod hex b80 128
+ok mod hex c00 128
+ok mod hex c80 128
+ok mod hex d00 128
+ok mod hex d80 128
+ok mod hex e00 128
+ok mod hex e80 128
+ok mod hex f00 128
+ok mod hex f80 128
+ok mod hex 1000 128
+ok mod hex 1080 128
+ok mod hex 1100 128
+ok mod hex 1180 128
+ok mod hex 1200 128
+ok mod hex 1280 128
+ok mod hex 1300 128
+ok mod hex 1380 128
+ok mod hex 1400 128
+ok mod hex 1480 128
+ok mod hex 1500 128
+ok mod hex 1580 128
+ok mod hex 1600 128
+ok mod hex 1680 128
+ok mod hex 1700 128
+ok mod hex 1780 128
+ok mod hex 1800 128
+ok mod hex 1880 128
+ok mod hex 1900 128
+ok mod hex 1980 128
+ok mod hex 1a00 128
+ok mod hex 1a80 128
+ok mod hex 1b00 128
+ok mod hex 1b80 128
+ok mod hex 1c00 128
+ok mod hex 1c80 128
+ok mod hex 1d00 128
+ok mod hex 1d80 128
+ok mod hex 1e00 128
+ok mod hex 1e80 128
+ok mod hex 1f00 128
+ok mod hex 1f80 128
+ok mod hex 2000 82
+mod run serial=1795050624 code=8250
+mod say sottorx start air=ysf s=150 scratch=8104 need=6712
+mod say rx ysf st 1000 halves=31 gaps=0 frames=0 lost=0
+mod say rx ysf st 2005 halves=63 gaps=0 frames=0 lost=0
+mod say rx ysf st 3005 halves=94 gaps=0 frames=0 lost=0
+mod say rx ysf st 4005 halves=125 gaps=0 frames=0 lost=0
+mod say rx ysf st 5013 halves=157 gaps=0 frames=0 lost=0
+mod say rx ysf st 6034 halves=189 gaps=0 frames=3 lost=0
+mod say rx ysf st 7058 halves=221 gaps=0 frames=13 lost=0
+mod say rx ysf msg sf=60 got=60 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=626364656667 rssi=0 gaps=0
+mod say rx ysf st 1040 halves=33 gaps=0 frames=5 lost=0
+mod say rx ysf msg sf=60 got=60 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=626364656667 rssi=0 gaps=0
+mod say rx ysf st 1040 halves=33 gaps=0 frames=5 lost=0
+mod say rx ysf msg sf=60 got=60 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=626364656667 rssi=0 gaps=0
+mod say rx ysf st 1011 halves=32 gaps=0 frames=0 lost=0
+mod say rx ysf st 2011 halves=63 gaps=0 frames=0 lost=0
+mod say rx ysf st 3011 halves=94 gaps=0 frames=0 lost=0
+mod say rx ysf st 4019 halves=126 gaps=0 frames=0 lost=0
+mod say rx ysf st 5019 halves=157 gaps=0 frames=0 lost=0
+mod say rx ysf st 6019 halves=188 gaps=0 frames=0 lost=0
+mod say rx ysf st 7027 halves=220 gaps=0 frames=0 lost=0
+mod say rx ysf st 8027 halves=251 gaps=0 frames=0 lost=0
+mod say rx ysf st 9027 halves=282 gaps=0 frames=0 lost=0
+mod say rx ysf st 10032 halves=314 gaps=0 frames=3 lost=0
+mod say rx ysf st 11056 halves=346 gaps=0 frames=13 lost=0
+mod say rx ysf msg sf=60 got=60 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=626364656667 rssi=0 gaps=0
+mod say rx ysf st 1039 halves=33 gaps=0 frames=5 lost=0
+mod say rx ysf msg sf=60 got=60 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=626364656667 rssi=0 gaps=0
+mod say rx ysf st 1040 halves=33 gaps=0 frames=5 lost=0
+mod say rx ysf msg sf=60 got=60 missing=0 bad=0 over=0 end=1 src=AG7EW first=000102030405 last=626364656667 rssi=0 gaps=0
+mod say rx ysf st 1011 halves=32 gaps=0 frames=0 lost=0
+mod say rx ysf st 2011 halves=63 gaps=0 frames=0 lost=0
+mod say rx ysf st 3011 halves=94 gaps=0 frames=0 lost=0
+mod say rx ysf st 4019 halves=126 gaps=0 frames=0 lost=0
+mod say rx ysf st 5019 halves=157 gaps=0 frames=0 lost=0
+mod say rx ysf st 6019 halves=188 gaps=0 frames=0 lost=0
+mod say rx ysf st 7027 halves=220 gaps=0 frames=0 lost=0
+mod say rx ysf st 8027 halves=251 gaps=0 frames=0 lost=0
+mod say rx ysf st 9027 halves=282 gaps=0 frames=0 lost=0
+mod say rx ysf st 10035 halves=314 gaps=0 frames=0 lost=0
+mod say rx ysf st 11035 halves=345 gaps=0 frames=0 lost=0
+mod say rx ysf st 12035 halves=376 gaps=0 frames=0 lost=0
+mod say rx ysf st 13043 halves=408 gaps=0 frames=0 lost=0
+mod say rx ysf st 14043 halves=439 gaps=0 frames=0 lost=0
+mod say rx ysf st 15043 halves=470 gaps=0 frames=0 lost=0
+mod say rx ysf st 16051 halves=502 gaps=0 frames=0 lost=0
+mod say rx ysf st 17051 halves=533 gaps=0 frames=0 lost=0
+mod say rx ysf st 18051 halves=564 gaps=0 frames=0 lost=0
+mod say rx ysf st 19059 halves=596 gaps=0 frames=0 lost=0
+mod say rx ysf st 20059 halves=627 gaps=0 frames=0 lost=0
+mod say rx ysf st 21059 halves=658 gaps=0 frames=0 lost=0
+mod say rx ysf st 22067 halves=690 gaps=0 frames=0 lost=0
+mod say rx ysf st 23067 halves=721 gaps=0 frames=0 lost=0
+mod say rx ysf st 24067 halves=752 gaps=0 frames=0 lost=0
+mod say rx ysf st 25075 halves=784 gaps=0 frames=0 lost=0
+mod say rx ysf st 26075 halves=815 gaps=0 frames=0 lost=0
+mod say rx ysf st 27075 halves=846 gaps=0 frames=0 lost=0
+mod say rx ysf st 28083 halves=878 gaps=0 frames=0 lost=0
+mod say rx ysf st 29083 halves=909 gaps=0 frames=0 lost=0
+mod say rx ysf st 30083 halves=940 gaps=0 frames=0 lost=0
+mod say rx ysf st 31091 halves=972 gaps=0 frames=0 lost=0
+mod say rx ysf st 32091 halves=1003 gaps=0 frames=0 lost=0
+mod say rx ysf st 33091 halves=1034 gaps=0 frames=0 lost=0
+mod say rx ysf st 34098 halves=1066 gaps=0 frames=0 lost=0
+mod say rx ysf st 35098 halves=1097 gaps=0 frames=0 lost=0
+mod say rx ysf st 36098 halves=1128 gaps=0 frames=0 lost=0
+mod say rx ysf st 37106 halves=1160 gaps=0 frames=0 lost=0
+mod say rx ysf st 38106 halves=1191 gaps=0 frames=0 lost=0
+mod say rx ysf st 39106 halves=1222 gaps=0 frames=0 lost=0
+mod say rx ysf st 40114 halves=1254 gaps=0 frames=0 lost=0
+mod say rx ysf st 41114 halves=1285 gaps=0 frames=0 lost=0
+mod say rx ysf st 42114 halves=1316 gaps=0 frames=0 lost=0
+mod say rx ysf st 43122 halves=1348 gaps=0 frames=0 lost=0
+mod say rx ysf st 44122 halves=1379 gaps=0 frames=0 lost=0
+mod say rx ysf st 45122 halves=1410 gaps=0 frames=0 lost=0
+mod say rx ysf st 46130 halves=1442 gaps=0 frames=0 lost=0
+mod say rx ysf st 47130 halves=1473 gaps=0 frames=0 lost=0
+mod say rx ysf st 48130 halves=1504 gaps=0 frames=0 lost=0
+mod say rx ysf st 49138 halves=1536 gaps=0 frames=0 lost=0
+mod say rx ysf st 50138 halves=1567 gaps=0 frames=0 lost=0
+mod say rx ysf st 51138 halves=1598 gaps=0 frames=0 lost=0
+mod say rx ysf st 52146 halves=1630 gaps=0 frames=0 lost=0
+mod say rx ysf st 53146 halves=1661 gaps=0 frames=0 lost=0
+mod say rx ysf st 54146 halves=1692 gaps=0 frames=0 lost=0
+mod say rx ysf st 55154 halves=1724 gaps=0 frames=0 lost=0
+mod say rx ysf st 56154 halves=1755 gaps=0 frames=0 lost=0
+mod say rx ysf st 57154 halves=1786 gaps=0 frames=0 lost=0
+mod say rx ysf st 58162 halves=1818 gaps=0 frames=0 lost=0
+mod say rx ysf st 59162 halves=1849 gaps=0 frames=0 lost=0
+mod say rx ysf st 60162 halves=1880 gaps=0 frames=0 lost=0
+mod say rx ysf st 61170 halves=1912 gaps=0 frames=0 lost=0
+mod say rx ysf st 62170 halves=1943 gaps=0 frames=0 lost=0
+mod say rx ysf st 63170 halves=1974 gaps=0 frames=0 lost=0
+mod say rx ysf st 64178 halves=2006 gaps=0 frames=0 lost=0
+mod say rx ysf st 65178 halves=2037 gaps=0 frames=0 lost=0
+mod say rx ysf st 66178 halves=2068 gaps=0 frames=0 lost=0
+mod say rx ysf st 67186 halves=2100 gaps=0 frames=0 lost=0
+mod say rx ysf st 68186 halves=2131 gaps=0 frames=0 lost=0
+mod say rx ysf st 69186 halves=2162 gaps=0 frames=0 lost=0
+mod say rx ysf st 70194 halves=2194 gaps=0 frames=0 lost=0
+mod say rx ysf st 71194 halves=2225 gaps=0 frames=0 lost=0
+mod say rx ysf st 72194 halves=2256 gaps=0 frames=0 lost=0
+mod say rx ysf st 73202 halves=2288 gaps=0 frames=0 lost=0
+mod say rx ysf st 74202 halves=2319 gaps=0 frames=0 lost=0
+mod say rx ysf st 75202 halves=2350 gaps=0 frames=0 lost=0
+mod say rx ysf st 76210 halves=2382 gaps=0 frames=0 lost=0
+mod say rx ysf st 77210 halves=2413 gaps=0 frames=0 lost=0
+mod say rx ysf st 78210 halves=2444 gaps=0 frames=0 lost=0
+mod say rx ysf st 79218 halves=2476 gaps=0 frames=0 lost=0
+mod say rx ysf st 80218 halves=2507 gaps=0 frames=0 lost=0
+mod say rx ysf st 81218 halves=2538 gaps=0 frames=0 lost=0
+mod say rx ysf st 82226 halves=2570 gaps=0 frames=0 lost=0
+mod say rx ysf st 83226 halves=2601 gaps=0 frames=0 lost=0
+mod say rx ysf st 84226 halves=2632 gaps=0 frames=0 lost=0
+mod say rx ysf st 85234 halves=2664 gaps=0 frames=0 lost=0
+mod say rx ysf st 86234 halves=2695 gaps=0 frames=0 lost=0
+mod say rx ysf st 87234 halves=2726 gaps=0 frames=0 lost=0
+mod say rx ysf st 88242 halves=2758 gaps=0 frames=0 lost=0
+mod say rx ysf st 89242 halves=2789 gaps=0 frames=0 lost=0
+mod say rx ysf st 90242 halves=2820 gaps=0 frames=0 lost=0
+mod say rx ysf st 91250 halves=2852 gaps=0 frames=0 lost=0
+mod say rx ysf st 92250 halves=2883 gaps=0 frames=0 lost=0
+mod say rx ysf st 93250 halves=2914 gaps=0 frames=0 lost=0
+mod say rx ysf st 94258 halves=2946 gaps=0 frames=0 lost=0
+mod say rx ysf st 95258 halves=2977 gaps=0 frames=0 lost=0
+mod say rx ysf st 96258 halves=3008 gaps=0 frames=0 lost=0
+mod say rx ysf st 97266 halves=3040 gaps=0 frames=0 lost=0
+mod say rx ysf st 98266 halves=3071 gaps=0 frames=0 lost=0
+mod say rx ysf st 99266 halves=3102 gaps=0 frames=0 lost=0
+mod say rx ysf st 100274 halves=3134 gaps=0 frames=0 lost=0
+mod say rx ysf st 101274 halves=3165 gaps=0 frames=0 lost=0
+mod say rx ysf st 102274 halves=3196 gaps=0 frames=0 lost=0
+mod say rx ysf st 103282 halves=3228 gaps=0 frames=0 lost=0
+mod say rx ysf st 104282 halves=3259 gaps=0 frames=0 lost=0
+mod say rx ysf st 105282 halves=3290 gaps=0 frames=0 lost=0
+mod say rx ysf st 106290 halves=3322 gaps=0 frames=0 lost=0
+mod say rx ysf st 107290 halves=3353 gaps=0 frames=0 lost=0
+mod say rx ysf st 108290 halves=3384 gaps=0 frames=0 lost=0
+mod say rx ysf st 109298 halves=3416 gaps=0 frames=0 lost=0
+mod say rx ysf st 110298 halves=3447 gaps=0 frames=0 lost=0
+mod say rx ysf st 111298 halves=3478 gaps=0 frames=0 lost=0
+mod say rx ysf st 112306 halves=3510 gaps=0 frames=0 lost=0
+mod say rx ysf st 113306 halves=3541 gaps=0 frames=0 lost=0
+mod say rx ysf st 114306 halves=3572 gaps=0 frames=0 lost=0
+mod say rx ysf st 115314 halves=3604 gaps=0 frames=0 lost=0
+mod say rx ysf st 116314 halves=3635 gaps=0 frames=0 lost=0
+mod say rx ysf st 117314 halves=3666 gaps=0 frames=0 lost=0
+mod say rx ysf st 118322 halves=3698 gaps=0 frames=0 lost=0
+mod say rx ysf st 119322 halves=3729 gaps=0 frames=0 lost=0
+mod say rx ysf st 120322 halves=3760 gaps=0 frames=0 lost=0
+mod say rx ysf st 121330 halves=3792 gaps=0 frames=0 lost=0
+mod say rx ysf st 122330 halves=3823 gaps=0 frames=0 lost=0
+mod say rx ysf st 123330 halves=3854 gaps=0 frames=0 lost=0
+mod say end msgs=6
+ok mod run ret=6 ms=150013

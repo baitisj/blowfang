@@ -1,0 +1,32 @@
+{
+ "id": "kws-bins-2",
+ "who": "nato-kws",
+ "started": "2026-11-22T09:04:54Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto.fw",
+   "started": "2026-11-22T09:04:54Z",
+   "ended": "2026-11-22T09:04:57Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-22T09:04:57Z",
+   "ended": "2026-11-22T09:15:01Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-d6a621b3127d",
+ "head": "d6a621b3127d697151f395ff848c309fa2d788ef",
+ "ended": "2026-11-22T09:15:01Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "6b35a6beb32af3aa911771028f83f28d38b48e88",
+  "path": "jobs/kws-bins-2"
+ },
+ "runner_commit": "e1a0b21c5e17d2bd3ec85fac7e269b3c81c1c7c1",
+ "updated": "2026-11-22T09:15:02Z"
+}

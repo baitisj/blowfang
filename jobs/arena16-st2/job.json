@@ -1,0 +1,102 @@
+{
+ "id": "arena16-st2",
+ "who": "arena16",
+ "freq_mhz": "440.85",
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 600,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 30,
+   "pattern": "VOICE MSG for",
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ysfrx.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "d957b685fc513254821404f0ef4f5c29d8b66c339faec4695b2a1a105ebc587d"
+  },
+  {
+   "do": "wait",
+   "seconds": 60,
+   "pattern": "ysf start",
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 2
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 90,
+   "pattern": "K6 PLAY put",
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "ic7100.power0"
+  }
+ ]
+}

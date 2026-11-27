@@ -1,0 +1,50 @@
+2026-11-25T03:41:07Z job ufmp5 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088 at e10c1c08d08852c7f00d59504f06caf3cc21b24f, module sources /home/baitisj/blowfang-work/worktrees/src-2f2b666d3b76 at 2f2b666d3b76ec9294dcc3111e28bc9062eb357c
+2026-11-25T03:41:07Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-2f2b666d3b76/radios/uv21/mod/i2cpeek.c --log /home/baitisj/blowfang-work/runs/queue/ufmp5/uv21mod.log --run-timeout 180
+A 10 11 30 40
+q20 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q20 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q20 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q20 18 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 18 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 18 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 18 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 00 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 08 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 10 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 18 ffff ffff ffff ffff ffff ffff ffff ffff
+um end 00000004
+2026-11-25T03:41:08Z step 1 (uv21.mod) rc=0
+2026-11-25T03:41:08Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-2f2b666d3b76/radios/uv21/mod/i2cpeek.c -D IP_HALF_US=40 --log /home/baitisj/blowfang-work/runs/queue/ufmp5/uv21mod.log --run-timeout 180
+A 10 11 30 40
+q20 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q20 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q20 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q20 18 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q22 18 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q60 18 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 00 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 08 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 10 ffff ffff ffff ffff ffff ffff ffff ffff
+q80 18 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 00 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 08 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 10 ffff ffff ffff ffff ffff ffff ffff ffff
+k80 18 ffff ffff ffff ffff ffff ffff ffff ffff
+um end 00000004
+2026-11-25T03:41:11Z step 2 (uv21.mod) rc=0
+2026-11-25T03:41:11Z job ufmp5 done

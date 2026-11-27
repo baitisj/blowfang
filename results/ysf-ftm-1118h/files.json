@@ -1,0 +1,38 @@
+[
+ {
+  "name": "y.cf32.json",
+  "bytes": 133,
+  "sha256": "31e53c401a72e0edcf235a7a12c3295dfe7fe9fd9135a8ef28fb4c398a83884e",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/y.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 199,
+  "sha256": "94621561f88c49689513de5dd7f671066ffbcb5b1a18b34e32cebf808a793e22",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/pluto.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 6377,
+  "sha256": "af7425fdc5dc7f727e59e7dcb30cd4ba426c3851e6084d93f92ea6524c16d480",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/uv380.log"
+ },
+ {
+  "name": "y.wav",
+  "bytes": 11520044,
+  "sha256": "05877f7a2139b498890686a9f5cc42aa124de78b774bc2fa778c6b825bf3c917",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/y.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "y.cf32",
+  "bytes": 230400000,
+  "sha256": "d9a122b7629fb8b10ef6525164e4a8d51f1383401f8409ff8a62ae63f63d8472",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ysf-ftm-1118h/y.cf32"
+ }
+]

@@ -1,0 +1,74 @@
+{
+ "id": "micp8a",
+ "who": "micprobe",
+ "started": "2026-11-20T04:22:42Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-20T04:22:42Z",
+   "ended": "2026-11-20T04:22:44Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-20T04:22:44Z",
+   "ended": "2026-11-20T04:22:48Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-20T04:22:48Z",
+   "ended": "2026-11-20T04:24:02Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-20T04:24:02Z",
+   "ended": "2026-11-20T04:25:12Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-20T04:25:12Z",
+   "ended": "2026-11-20T04:25:50Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-20T04:25:50Z",
+   "ended": "2026-11-20T04:25:50Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-20T04:25:50Z",
+   "ended": "2026-11-20T04:25:58Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "logger.stop",
+   "started": "2026-11-20T04:25:58Z",
+   "ended": "2026-11-20T04:25:59Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36",
+ "head": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "ended": "2026-11-20T04:25:59Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "4faabc8595dad011e08aeeb4e563c7645bb6470a",
+  "path": "jobs/micp8a"
+ },
+ "runner_commit": "a59e428b9b36f68df4636eb53f4154365d93d3ec",
+ "updated": "2026-11-20T04:26:00Z"
+}

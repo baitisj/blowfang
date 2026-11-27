@@ -1,0 +1,48 @@
+2026-11-18T00:19:44Z job refcal-cool-1118 by refcal, checkout /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412 at 37b8b1bc74120a6f18b59208141c031c885d5157
+2026-11-18T00:19:44Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold refcal -- timeout -s INT --kill-after=10 600 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/k6.log
+2026-11-18T00:19:46Z step 1 (logger) rc=0
+2026-11-18T00:19:46Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p14a.cf32 --hz 470249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p14a.cf32: 0.5 s on 470249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p14a.cf32), floor -85.4 dBFS, signal on 0%
+2026-11-18T00:19:47Z step 2 (pluto) rc=0
+2026-11-18T00:19:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p26a.cf32 --hz 542249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p26a.cf32: 0.5 s on 542249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p26a.cf32), floor -85.5 dBFS, signal on 0%
+2026-11-18T00:19:49Z step 3 (pluto) rc=0
+2026-11-18T00:19:49Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p35a.cf32 --hz 596249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p35a.cf32: 0.5 s on 596249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p35a.cf32), floor -84.8 dBFS, signal on 1%
+2026-11-18T00:19:50Z step 4 (pluto) rc=0
+2026-11-18T00:19:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412/tools/pluto_bench.py --as refcal send /home/baitisj/blowfang-work/runs/inbox/refcal-cool-1118/wake.wav --gain -30
+send: wav peak 0.500 of full scale -> 1500 Hz before pre-emphasis
+send wake.wav: 14.6 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 00:19:51Z
+end 00:20:06Z: 14.6 s of signal in 14.4 s (kept up)
+2026-11-18T00:20:06Z step 5 (pluto) rc=0
+2026-11-18T00:20:06Z seen /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/k6.log
+2026-11-18T00:20:06Z step 6 (wait) rc=0
+2026-11-18T00:20:07Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/refcal-cool-1118/refcal_wait.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rounds 1 --run-s 0 --api-level 4 --rate F18 --rate-state /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/k6-rate.json
+16:20:09 send 1: 40 of 40 XL chunks at F/1800 (serial 1794961208, xfer 56); module /home/baitisj/blowfang-work/runs/inbox/refcal-cool-1118/refcal_wait.bin: 4856 B code, entry +0, API level 4, serial 1794961208, xfer 56, 4880 B image in 40 XL chunks; 80 packets, 51.7 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 59.1 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 00:20:10Z
+end 00:21:09Z: 59.1 s of signal in 59.0 s (kept up)
+16:21:09 listening for the K6's report
+16:21:35 no report heard
+16:21:35 no report after a whole send: the K6 may be set to L packets, so the next send is 85 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 40 chunks sent were lost
+16:21:35 CW ID
+2026-11-18T00:21:35Z step 7 (k6.upload) rc=0
+2026-11-18T00:21:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412/tools/pluto_bench.py --as refcal send /home/baitisj/blowfang-work/runs/inbox/refcal-cool-1118/tail.wav --gain -40
+send: wav peak 0.150 of full scale -> 450 Hz before pre-emphasis
+send tail.wav: 47.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 00:21:36Z
+end 00:22:23Z: 47.0 s of signal in 46.8 s (kept up)
+2026-11-18T00:22:23Z step 8 (pluto) rc=0
+2026-11-18T00:22:23Z seen /refcal (ppb=|no |done)/ in /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/k6.log
+2026-11-18T00:22:23Z step 9 (wait) rc=0
+2026-11-18T00:22:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-37b8b1bc7412/tools/pluto_bench.py --as refcal rx /home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p14b.cf32 --hz 470249441 --seconds 0.5 --gain 30
+/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p14b.cf32: 0.5 s on 470249441 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118/p14b.cf32), floor -85.2 dBFS, signal on 0%
+2026-11-18T00:22:26Z step 10 (pluto) rc=0
+2026-11-18T00:22:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release refcal
+the port is free (refcal let go)
+2026-11-18T00:22:26Z step 11 (logger.stop) rc=0
+2026-11-18T00:22:26Z job refcal-cool-1118 done

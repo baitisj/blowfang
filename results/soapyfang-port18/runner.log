@@ -1,0 +1,8 @@
+2026-11-24T18:12:45Z job soapyfang-port18 by soapyfang, checkout /home/baitisj/blowfang-work/worktrees/inbox-4a924aec08c1 at 4a924aec08c1ee41487f0642820dc1c757f96ecf
+2026-11-24T18:12:45Z $ /usr/bin/python3 -m sim.soapyfang --source pluto --host 127.0.0.1 --port 5058 --minutes 55 --gain 50 --image /home/baitisj/blowfang-work/runs/inbox/soapyfang-port18/port.bin --syms /home/baitisj/blowfang-work/runs/inbox/soapyfang-port18/port.syms
+SoapyFang source: Pluto ip:192.168.2.1 (2.4 MS/s, RX gain 50 dB, receive only)
+booting the UV-21 port image ...
+SoapyFang UV-21 workbench on http://127.0.0.1:5058/, until 19:07:46Z (Ctrl-C stops it)
+SoapyFang stopped; the source is closed
+2026-11-24T19:08:47Z step 1 (sim.soapyfang) rc=-11
+2026-11-24T19:08:47Z job soapyfang-port18 failed: step 1 (sim.soapyfang): exit -11

@@ -1,0 +1,29 @@
+{
+ "id": "ftm-echo1",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T00:59:26Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T00:59:27Z",
+   "ended": "2026-11-19T00:59:39Z",
+   "rc": 1,
+   "why": "no tune line came back (is the UV-380 on USB, on the probe image?)"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-e4ea6afff0c3",
+ "head": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-e4ea6afff0c3",
+ "sources_head": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "reason": "step 1 (uv380.cmd): no tune line came back (is the UV-380 on USB, on the probe image?)",
+ "ended": "2026-11-19T00:59:39Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "1b795ecc2ba24f584adaea53fa38be8f180c1231",
+  "path": "jobs/ftm-echo1"
+ },
+ "runner_commit": "e4ea6afff0c38f81201ec50f7a0f7e092f8ec851",
+ "updated": "2026-11-19T00:59:39Z"
+}

@@ -1,0 +1,6 @@
+2026-11-22T06:58:59Z job kws-nightb-2ma-r1 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23 at a2eb70fcfb2345a96f4f46d1449331da8542358a
+2026-11-22T06:58:59Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-nightb-2ma/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-nightb-2ma-r1/2ma --hz 146195000 --seconds 800 --gain 45 --threads 2 --channels 145230000,146610000,146800000,146960000,147000000,147160000
+chan: pluto_chan.armhf (780b154b0b9a6c7e...) in the Pluto's RAM at /tmp/pluto_chan
+2026-11-22T07:18:08Z stopping (cancelled): SIGTERM to the step's process group
+2026-11-22T07:18:08Z step 1 (pluto) rc=-15 (cancelled)
+2026-11-22T07:18:08Z job kws-nightb-2ma-r1 cancelled: step 1 (pluto): cancelled

@@ -1,0 +1,92 @@
+{
+ "id": "sottorx1",
+ "who": "uv380-multimode",
+ "started": "2026-11-19T00:55:08Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-19T00:55:08Z",
+   "ended": "2026-11-19T00:55:19Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.rx",
+   "started": "2026-11-19T00:55:19Z",
+   "ended": "2026-11-19T00:55:21Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-19T00:55:21Z",
+   "ended": "2026-11-19T00:55:21Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-19T00:55:21Z",
+   "ended": "2026-11-19T00:55:36Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-19T00:55:36Z",
+   "ended": "2026-11-19T00:55:52Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-19T00:55:52Z",
+   "ended": "2026-11-19T00:57:50Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-19T00:57:50Z",
+   "ended": "2026-11-19T00:58:00Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "uv380.rx",
+   "started": "2026-11-19T00:58:00Z",
+   "ended": "2026-11-19T00:58:02Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-19T00:58:02Z",
+   "ended": "2026-11-19T00:58:02Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-19T00:58:02Z",
+   "ended": "2026-11-19T00:58:10Z",
+   "rc": 1,
+   "why": "cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-bdb08d0500cc",
+ "head": "bdb08d0500cc19086173fcff709e819beb6a411d",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-bdb08d0500cc",
+ "sources_head": "bdb08d0500cc19086173fcff709e819beb6a411d",
+ "reason": "step 10 (pluto): cancelled",
+ "ended": "2026-11-19T00:58:10Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "1e4758350ed7b6a2a7f3f238a3d88f22eec2b703",
+  "path": "jobs/sottorx1"
+ },
+ "runner_commit": "bdb08d0500cc19086173fcff709e819beb6a411d",
+ "updated": "2026-11-19T00:58:10Z"
+}

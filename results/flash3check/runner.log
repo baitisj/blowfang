@@ -1,0 +1,158 @@
+2026-11-20T00:49:02Z job flash3check by uv380-multimode, checkout /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36 at a59e428b9b36f68df4636eb53f4154365d93d3ec
+2026-11-20T00:49:02Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 power 0 freq 441850 trim 6100 phy ysf tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: trim 6100
+phy YSF
+timeout: phy ysf
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-20T00:49:16Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:49:16Z step 1 (uv380.cmd) rc=0
+2026-11-20T00:49:16Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 1 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 1
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-20T00:49:23Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:49:23Z step 2 (uv380.cmd) rc=0
+2026-11-20T00:49:28Z step 3 (wait) rc=0
+2026-11-20T00:49:28Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/flash3check/ysfs1.wav --hz 441850000 --dev 5400 --gain -50
+/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysfs1.wav: 13.7 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 00:49:29Z
+end 00:49:42Z: 13.7 s of signal in 13.6 s (kept up)
+2026-11-20T00:49:43Z step 4 (pluto) rc=0
+2026-11-20T00:49:51Z step 5 (wait) rc=0
+2026-11-20T00:49:51Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=2 last=50 pv=0/50
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=2 last=50 pv=0/50
+timeout: listen
+2026-11-20T00:49:57Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:49:57Z step 6 (uv380.cmd) rc=0
+2026-11-20T00:49:57Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/flash3check/ysfs1.wav --hz 441850000 --dev 5400 --gain -50
+/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysfs1.wav: 13.7 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 00:49:58Z
+end 00:50:12Z: 13.7 s of signal in 13.6 s (kept up)
+2026-11-20T00:50:12Z step 7 (pluto) rc=0
+2026-11-20T00:50:20Z step 8 (wait) rc=0
+2026-11-20T00:50:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=4 last=50 pv=0/50
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=4 last=50 pv=0/50
+timeout: listen
+2026-11-20T00:50:27Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:50:27Z step 9 (uv380.cmd) rc=0
+2026-11-20T00:50:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/flash3check/ysfs1.wav --hz 441850000 --dev 5400 --gain -50
+/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.917 of full scale -> 4951 Hz before pre-emphasis
+send ysfs1.wav: 13.7 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 00:50:28Z
+end 00:50:41Z: 13.7 s of signal in 13.6 s (kept up)
+2026-11-20T00:50:42Z step 10 (pluto) rc=0
+2026-11-20T00:50:50Z step 11 (wait) rc=0
+2026-11-20T00:50:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=50 pv=0/50
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=50 pv=0/50
+timeout: listen
+2026-11-20T00:50:56Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:50:56Z step 12 (uv380.cmd) rc=0
+2026-11-20T00:50:56Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 phy m17 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+phy M17
+timeout: phy m17
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=6 last=50 pv=0/50
+timeout: listen
+2026-11-20T00:51:03Z UV-380 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850 listen=1
+2026-11-20T00:51:03Z step 13 (uv380.cmd) rc=0
+2026-11-20T00:51:08Z step 14 (wait) rc=0
+2026-11-20T00:51:08Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/flash3check/m17s1.wav --hz 441850000 --dev 4800 --gain -50
+/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.728 of full scale -> 3495 Hz before pre-emphasis
+send m17s1.wav: 14.3 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 00:51:09Z
+end 00:51:23Z: 14.3 s of signal in 14.2 s (kept up)
+2026-11-20T00:51:23Z step 15 (pluto) rc=0
+2026-11-20T00:51:31Z step 16 (wait) rc=0
+2026-11-20T00:51:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=44 pv=0/44
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=8 last=44 pv=0/44
+timeout: listen
+2026-11-20T00:51:38Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:51:38Z step 17 (uv380.cmd) rc=0
+2026-11-20T00:51:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/flash3check/m17s1.wav --hz 441850000 --dev 4800 --gain -50
+/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.728 of full scale -> 3495 Hz before pre-emphasis
+send m17s1.wav: 14.3 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 00:51:39Z
+end 00:51:53Z: 14.3 s of signal in 14.2 s (kept up)
+2026-11-20T00:51:53Z step 18 (pluto) rc=0
+2026-11-20T00:52:01Z step 19 (wait) rc=0
+2026-11-20T00:52:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=44 pv=0/44
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=10 last=44 pv=0/44
+timeout: listen
+2026-11-20T00:52:08Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:52:08Z step 20 (uv380.cmd) rc=0
+2026-11-20T00:52:08Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py --as uv380-multimode send /home/baitisj/blowfang-work/runs/inbox/flash3check/m17s1.wav --hz 441850000 --dev 4800 --gain -50
+/home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/pluto_bench.py:403: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.728 of full scale -> 3495 Hz before pre-emphasis
+send m17s1.wav: 14.3 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 00:52:09Z
+end 00:52:23Z: 14.3 s of signal in 14.2 s (kept up)
+2026-11-20T00:52:23Z step 21 (pluto) rc=0
+2026-11-20T00:52:31Z step 22 (wait) rc=0
+2026-11-20T00:52:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
+timeout: listen
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=1 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
+timeout: listen
+2026-11-20T00:52:38Z UV-380 listen=1 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:52:38Z step 23 (uv380.cmd) rc=0
+2026-11-20T00:52:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-a59e428b9b36/tools/uv380_i2sprobe.py cmd /dev/ttyACM1 listen 0 phy rng tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/flash3check/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
+timeout: listen 0
+phy K6 RNG
+timeout: phy rng
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=12 last=44 pv=0/44
+timeout: listen
+2026-11-20T00:52:46Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=1 pwr=0 gain=6 freq=441850
+2026-11-20T00:52:46Z step 24 (uv380.cmd) rc=0
+2026-11-20T00:52:46Z job flash3check done

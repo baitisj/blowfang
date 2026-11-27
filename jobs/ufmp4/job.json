@@ -1,0 +1,40 @@
+{
+ "id": "ufmp4",
+ "who": "fmprobe-uv21",
+ "freq_mhz": "440.85",
+ "minutes": 12,
+ "sources_commit": "2f2b666d3b76ec9294dcc3111e28bc9062eb357c",
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 330,
+   "file": "uv21.log"
+  },
+  {
+   "do": "wait",
+   "pattern": "alive surf|surf ram",
+   "seconds": 320
+  },
+  {
+   "do": "wait",
+   "seconds": 3
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "i2cpeek"
+   ]
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "i2cpeek",
+    "IP_HALF_US=40"
+   ],
+   "continue_on_error": true
+  }
+ ]
+}

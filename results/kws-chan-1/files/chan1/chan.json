@@ -1,0 +1,15 @@
+{
+ "lo_hz": 443000000,
+ "rate": 2400000,
+ "gain": 60,
+ "rx_bw": 2000000,
+ "bin_sha256": "df2974aef3baf22c20afe79d921a9b7a572039c09655f49a7d1e45b6c22bba75",
+ "seconds": 120.0,
+ "took_s": 411.6,
+ "pluto_stderr": "pluto_chan: 8 channels, 120.00 s of input in 411.18 s (343% of real time)",
+ "rc": 0,
+ "utc": "2026-11-22T05:13:16Z",
+ "overs": 6,
+ "bytes": 161784,
+ "secs": 120.0
+}

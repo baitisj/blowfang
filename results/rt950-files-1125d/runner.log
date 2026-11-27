@@ -1,0 +1,46 @@
+2026-11-26T02:38:22Z job rt950-files-1125d by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e at 47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc
+2026-11-26T02:38:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/rt950/jm/tools/firmware_upload.py verify /home/baitisj/blowfang-work/rt950/stock/RT_950Pro_ICON_V0.30_261117.BTF
+Validating BTF file: /home/baitisj/blowfang-work/rt950/stock/RT_950Pro_ICON_V0.30_261117.BTF
+  File size: 676428 bytes
+  Data blocks: 661
+
+  Vector table:
+    Initial SP: 0x20016360 (valid SRAM)
+    Reset vector: 0x080032A1 (valid app flash)
+
+  Model signature @ 0x03E0:
+    String: "RT-950      "
+    Full 32 bytes: 52542d393530202020202020000010b54c1084ea530404d54042c1f1000138bf
+
+  Encryption key @ 0x0400:
+    Seed: b1e40508750cb5fdbfb61659e9a461eb
+    All zero: NO (encrypted)
+
+  First encrypted bytes @ 0x800: f8fa1e4a71d9e7bf7c47005ad11b3af5
+
+  BTF file appears valid for model "RT-950      "
+2026-11-26T02:38:22Z stock/RT_950Pro_ICON_V0.30_261117.BTF 676428 B sha256 9bcabd016357cfee19f436b4e40dc424e241e4e8e34e684d8dbcb13a8e8c3e01 verify rc=0
+2026-11-26T02:38:22Z $ /usr/bin/python3 /home/baitisj/blowfang-work/rt950/jm/tools/firmware_upload.py verify /home/baitisj/blowfang-work/rt950/stock/RT_950Pro_V0.29_260617.BTF
+Validating BTF file: /home/baitisj/blowfang-work/rt950/stock/RT_950Pro_V0.29_260617.BTF
+  File size: 385824 bytes
+  Data blocks: 377
+
+  Vector table:
+    Initial SP: 0x20015F78 (valid SRAM)
+    Reset vector: 0x080032A1 (valid app flash)
+
+  Model signature @ 0x03E0:
+    String: "RT-950      "
+    Full 32 bytes: 52542d393530202020202020000010b54c1084ea530404d54042c1f1000138bf
+
+  Encryption key @ 0x0400:
+    Seed: 5742f67a9219132f45e5108d9c58aa1c
+    All zero: NO (encrypted)
+
+  First encrypted bytes @ 0x800: 1e5ced3896cc416d8614008ea4e7f102
+
+  BTF file appears valid for model "RT-950      "
+2026-11-26T02:38:23Z stock/RT_950Pro_V0.29_260617.BTF 385824 B sha256 53226024c9b4a782c85556a120afa5e690c132a85bf4048e59d2d193e5eaf272 verify rc=0
+2026-11-26T02:38:23Z ci-image/rt950-backup-only.BTF 43008 B sha256 dbfc1a828be1c3eb3b94c8e01f008f391f6a2d064c945b565344daa8eadea054
+2026-11-26T02:38:23Z step 1 (rt950.files) rc=0
+2026-11-26T02:38:23Z job rt950-files-1125d done

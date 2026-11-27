@@ -1,0 +1,74 @@
+{
+ "id": "uhf425-1118a",
+ "who": "position",
+ "started": "2026-11-18T21:13:15Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:15Z",
+   "ended": "2026-11-18T21:13:17Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:17Z",
+   "ended": "2026-11-18T21:13:18Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:18Z",
+   "ended": "2026-11-18T21:13:20Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:20Z",
+   "ended": "2026-11-18T21:13:21Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:21Z",
+   "ended": "2026-11-18T21:13:23Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:23Z",
+   "ended": "2026-11-18T21:13:24Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:24Z",
+   "ended": "2026-11-18T21:13:26Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-18T21:13:26Z",
+   "ended": "2026-11-18T21:13:27Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-36dd1f8f20be",
+ "head": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "ended": "2026-11-18T21:13:27Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "501fc608c78df9953f1d21eeccaf133e1a81cf07",
+  "path": "jobs/uhf425-1118a"
+ },
+ "runner_commit": "36dd1f8f20bed4165b7ec5357cf044b057bbd443",
+ "updated": "2026-11-18T21:13:27Z"
+}

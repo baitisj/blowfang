@@ -1,0 +1,19 @@
+[
+ {
+  "file": "stock/RT_950Pro_ICON_V0.30_261117.BTF",
+  "bytes": 676428,
+  "sha256": "9bcabd016357cfee19f436b4e40dc424e241e4e8e34e684d8dbcb13a8e8c3e01",
+  "verify_rc": 0
+ },
+ {
+  "file": "stock/RT_950Pro_V0.29_260617.BTF",
+  "bytes": 385824,
+  "sha256": "53226024c9b4a782c85556a120afa5e690c132a85bf4048e59d2d193e5eaf272",
+  "verify_rc": 0
+ },
+ {
+  "file": "ci-image/rt950-backup-only.BTF",
+  "bytes": 43008,
+  "sha256": "dbfc1a828be1c3eb3b94c8e01f008f391f6a2d064c945b565344daa8eadea054"
+ }
+]

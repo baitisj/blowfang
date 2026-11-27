@@ -1,0 +1,177 @@
+{
+ "id": "k6leak-1118a",
+ "who": "position",
+ "started": "2026-11-18T20:36:07Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T20:36:07Z",
+   "ended": "2026-11-18T20:36:09Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T20:36:09Z",
+   "ended": "2026-11-18T20:36:22Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T20:36:22Z",
+   "ended": "2026-11-18T20:36:34Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log"
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-18T20:36:34Z",
+   "ended": "2026-11-18T20:38:01Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-18T20:38:01Z",
+   "ended": "2026-11-18T20:38:06Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "pluto",
+   "started": "2026-11-18T20:38:06Z",
+   "ended": "2026-11-18T20:38:19Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-18T20:38:19Z",
+   "ended": "2026-11-18T20:38:31Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log"
+  },
+  {
+   "n": 8,
+   "do": "k6.upload",
+   "started": "2026-11-18T20:38:31Z",
+   "ended": "2026-11-18T20:39:57Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-18T20:39:57Z",
+   "ended": "2026-11-18T20:39:57Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "pluto",
+   "started": "2026-11-18T20:39:57Z",
+   "ended": "2026-11-18T20:40:11Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "wait",
+   "started": "2026-11-18T20:40:11Z",
+   "ended": "2026-11-18T20:40:23Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log"
+  },
+  {
+   "n": 12,
+   "do": "k6.upload",
+   "started": "2026-11-18T20:40:23Z",
+   "ended": "2026-11-18T20:41:50Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "wait",
+   "started": "2026-11-18T20:41:50Z",
+   "ended": "2026-11-18T20:41:50Z",
+   "rc": 0
+  },
+  {
+   "n": 14,
+   "do": "pluto",
+   "started": "2026-11-18T20:41:50Z",
+   "ended": "2026-11-18T20:42:03Z",
+   "rc": 0
+  },
+  {
+   "n": 15,
+   "do": "wait",
+   "started": "2026-11-18T20:42:03Z",
+   "ended": "2026-11-18T20:42:15Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log"
+  },
+  {
+   "n": 16,
+   "do": "k6.upload",
+   "started": "2026-11-18T20:42:15Z",
+   "ended": "2026-11-18T20:43:45Z",
+   "rc": 0
+  },
+  {
+   "n": 17,
+   "do": "wait",
+   "started": "2026-11-18T20:43:45Z",
+   "ended": "2026-11-18T20:43:45Z",
+   "rc": 0
+  },
+  {
+   "n": 18,
+   "do": "pluto",
+   "started": "2026-11-18T20:43:45Z",
+   "ended": "2026-11-18T20:43:58Z",
+   "rc": 0
+  },
+  {
+   "n": 19,
+   "do": "wait",
+   "started": "2026-11-18T20:43:58Z",
+   "ended": "2026-11-18T20:44:10Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/k6leak-1118a/k6.log"
+  },
+  {
+   "n": 20,
+   "do": "k6.upload",
+   "started": "2026-11-18T20:44:10Z",
+   "ended": "2026-11-18T20:45:34Z",
+   "rc": 0
+  },
+  {
+   "n": 21,
+   "do": "wait",
+   "started": "2026-11-18T20:45:34Z",
+   "ended": "2026-11-18T20:45:34Z",
+   "rc": 0
+  },
+  {
+   "n": 22,
+   "do": "logger.stop",
+   "started": "2026-11-18T20:45:34Z",
+   "ended": "2026-11-18T20:45:34Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-9a35cf6044e4",
+ "head": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "ended": "2026-11-18T20:45:34Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "b0513a4448db117b6550102b48a24de5c14b70e0",
+  "path": "jobs/k6leak-1118a"
+ },
+ "runner_commit": "9a35cf6044e4fa190ea598c97f9dc6878055e7f2",
+ "updated": "2026-11-18T20:45:35Z"
+}

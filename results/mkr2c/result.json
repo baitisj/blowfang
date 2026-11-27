@@ -1,0 +1,69 @@
+{
+ "id": "mkr2c",
+ "who": "micprobe",
+ "started": "2026-11-21T05:13:13Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-21T05:13:13Z",
+   "ended": "2026-11-21T05:13:15Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T05:13:15Z",
+   "ended": "2026-11-21T05:13:18Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-21T05:13:18Z",
+   "ended": "2026-11-21T05:14:33Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "k6.upload",
+   "started": "2026-11-21T05:14:33Z",
+   "ended": "2026-11-21T05:15:52Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "ic7100.tune",
+   "started": "2026-11-21T05:15:52Z",
+   "ended": "2026-11-21T05:15:55Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "ic7100.af",
+   "started": "2026-11-21T05:15:55Z",
+   "ended": "2026-11-21T05:15:57Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "pluto",
+   "started": "2026-11-21T05:15:57Z",
+   "ended": "2026-11-21T05:16:14Z",
+   "rc": -15,
+   "why": "cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-6bb97ac71522",
+ "head": "6bb97ac715225f01ca68895cae0091bb7ce9b3b6",
+ "reason": "step 7 (pluto): cancelled",
+ "ended": "2026-11-21T05:16:15Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "a4fde920fa6e1a7b9cd00bef1a643b6211052c40",
+  "path": "jobs/mkr2c"
+ },
+ "runner_commit": "6bb97ac715225f01ca68895cae0091bb7ce9b3b6",
+ "updated": "2026-11-21T05:16:16Z"
+}

@@ -1,0 +1,24 @@
+[
+ {
+  "name": "rf14-before.jsonl",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4b/rf14-before.jsonl"
+ },
+ {
+  "name": "rf14-before.riq",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4b/rf14-before.riq",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "rf14-before.json",
+  "bytes": 420,
+  "sha256": "4bfbded54eec0e93a89f890f79590b42d245434b23c48131a0d8fe20d6db9678",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/efw-4b/rf14-before.json"
+ }
+]

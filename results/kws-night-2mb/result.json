@@ -1,0 +1,26 @@
+{
+ "id": "kws-night-2mb",
+ "who": "nato-kws",
+ "started": "2026-11-22T06:07:49Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-22T06:07:49Z",
+   "ended": "2026-11-22T06:07:50Z",
+   "rc": 1
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a2eb70fcfb23",
+ "head": "a2eb70fcfb2345a96f4f46d1449331da8542358a",
+ "reason": "step 1 (pluto): exit 1",
+ "ended": "2026-11-22T06:07:50Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "2ee6979b75301f220f711e4e9bc07fbc1098e4b5",
+  "path": "jobs/kws-night-2mb"
+ },
+ "runner_commit": "a2eb70fcfb2345a96f4f46d1449331da8542358a",
+ "updated": "2026-11-22T06:07:50Z"
+}

@@ -1,0 +1,27 @@
+{
+ "id": "wmuv-b",
+ "who": "watermark",
+ "started": "2026-11-26T12:07:16Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv380.cmd",
+   "started": "2026-11-26T12:07:16Z",
+   "ended": "2026-11-26T12:07:16Z",
+   "rc": 1,
+   "why": "refused: the UV-380: 0 ports with USB ids 0483:5740 (want one: is it on and on the probe image? UV380_DEV in the unit overrides)"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-c7b3235add99",
+ "head": "c7b3235add99eee6767627ebd7033a19dc43e5f7",
+ "reason": "step 1 (uv380.cmd): refused: the UV-380: 0 ports with USB ids 0483:5740 (want one: is it on and on the probe image? UV380_DEV in the unit overrides)",
+ "ended": "2026-11-26T12:07:16Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "fea117763a24d619f647c846de476916c2256962",
+  "path": "jobs/wmuv-b"
+ },
+ "runner_commit": "c7b3235add99eee6767627ebd7033a19dc43e5f7",
+ "updated": "2026-11-26T12:07:16Z"
+}

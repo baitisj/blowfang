@@ -1,0 +1,112 @@
+{
+ "id": "k6-lib8run2",
+ "who": "k6-ysfrx",
+ "freq_mhz": "bench",
+ "minutes": 9,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 480,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "wait",
+   "seconds": 60,
+   "continue_on_error": true,
+   "pattern": "K6 EX t stopped"
+  },
+  {
+   "do": "ic7100",
+   "args": [
+    "id",
+    "wake the K6 to run FUSOTTO RX from slot 8"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 30,
+   "continue_on_error": true,
+   "pattern": "VOICE MSG for"
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:run8.wav",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 40,
+   "continue_on_error": true,
+   "pattern": "K6 LIB run slot=8"
+  },
+  {
+   "do": "wait",
+   "seconds": 40,
+   "continue_on_error": true,
+   "pattern": "ysf start"
+  },
+  {
+   "do": "wait",
+   "seconds": 2,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 50,
+   "continue_on_error": true,
+   "pattern": "ysf start"
+  },
+  {
+   "do": "wait",
+   "seconds": 2,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "3888",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 30,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 90,
+   "continue_on_error": true
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

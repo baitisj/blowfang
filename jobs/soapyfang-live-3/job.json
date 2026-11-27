@@ -1,0 +1,22 @@
+{
+ "id": "soapyfang-live-3",
+ "who": "soapyfang",
+ "freq_mhz": "bench",
+ "minutes": 60,
+ "wait_bench_min": 120,
+ "steps": [
+  {
+   "do": "sim.soapyfang",
+   "args": [
+    "--minutes",
+    "55",
+    "--gain",
+    "50",
+    "--image",
+    "job:port.bin",
+    "--syms",
+    "job:port.syms"
+   ]
+  }
+ ]
+}

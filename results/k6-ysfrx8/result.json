@@ -1,0 +1,48 @@
+{
+ "id": "k6-ysfrx8",
+ "who": "k6-ysfrx",
+ "started": "2026-11-19T06:26:22Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-19T06:26:22Z",
+   "ended": "2026-11-19T06:26:24Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T06:26:24Z",
+   "ended": "2026-11-19T06:26:27Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "k6.upload",
+   "started": "2026-11-19T06:26:27Z",
+   "ended": "2026-11-19T06:28:27Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-19T06:28:27Z",
+   "ended": "2026-11-19T06:29:27Z",
+   "rc": 1,
+   "why": "no /ysf start/ in /home/baitisj/blowfang-work/runs/queue/k6-ysfrx8/k6.log"
+  }
+ ],
+ "status": "failed",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-1f572382a8ab",
+ "head": "1f572382a8ab34eec237c399c2cabc2eec4cc5ca",
+ "reason": "step 4 (wait): no /ysf start/ in /home/baitisj/blowfang-work/runs/queue/k6-ysfrx8/k6.log",
+ "ended": "2026-11-19T06:29:27Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "57f1e67fe09dcbf3e0052ea15ef32b4ce35b6e04",
+  "path": "jobs/k6-ysfrx8"
+ },
+ "runner_commit": "1f572382a8ab34eec237c399c2cabc2eec4cc5ca",
+ "updated": "2026-11-19T06:29:27Z"
+}

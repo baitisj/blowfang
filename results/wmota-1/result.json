@@ -1,0 +1,46 @@
+{
+ "id": "wmota-1",
+ "who": "watermark",
+ "started": "2026-11-26T06:47:02Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-26T06:47:02Z",
+   "ended": "2026-11-26T06:47:04Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-26T06:47:04Z",
+   "ended": "2026-11-26T06:47:09Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-26T06:47:09Z",
+   "ended": "2026-11-26T06:50:18Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-26T06:50:18Z",
+   "ended": "2026-11-26T06:50:54Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e",
+ "head": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "ended": "2026-11-26T06:50:54Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "d2dc95c1bf21eb5f38acde6b82078a2035de713b",
+  "path": "jobs/wmota-1"
+ },
+ "runner_commit": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "updated": "2026-11-26T06:50:55Z"
+}

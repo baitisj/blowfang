@@ -1,0 +1,40 @@
+{
+ "id": "ufmp3",
+ "who": "fmprobe-uv21",
+ "freq_mhz": "440.85",
+ "minutes": 6,
+ "sources_commit": "ca082c82c9541226dd929ef3d6d3579a2039d7c8",
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 60,
+   "file": "uv21.log"
+  },
+  {
+   "do": "wait",
+   "pattern": "alive surf",
+   "seconds": 45,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 3
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "hello"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "i2cpeek"
+   ]
+  }
+ ]
+}

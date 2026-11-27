@@ -1,0 +1,27 @@
+2026-11-18T01:27:31Z job m17rx-tap-1118a by m17rx, checkout /home/baitisj/blowfang-work/worktrees/inbox-8c2368e53835 at 8c2368e53835b12ad13a216b4690cbe2ad761e7f
+2026-11-18T01:27:31Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-8c2368e53835/tools/uv380_i2sprobe.py cmd /dev/ttyACM2 listen 0 power 0 freq 441850 tune listen --timeout 2 --log /home/baitisj/blowfang-work/runs/queue/m17rx-tap-1118a/uv380.log
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: power 0
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: freq 441850
+tune lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+timeout: tune
+listen on=0 running=0 fail=0 pk=0 msgs=0 last=0 pv=0/0
+timeout: listen
+2026-11-18T01:27:41Z UV-380 listen=0 lvl=16000 fs=48000 emph=0 trim=6100 mark=0 space=0 zero=2 pwr=0 gain=6 freq=441850
+2026-11-18T01:27:41Z step 1 (uv380.cmd) rc=0
+2026-11-18T01:27:41Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-8c2368e53835/tools/uv380_i2sprobe.py mod /dev/ttyACM2 /home/baitisj/blowfang-work/worktrees/inbox-8c2368e53835/firmware/uv380-openrtx/mod/c6fmtap.c --key-file /home/baitisj/.config/sotto/k6-mod.key --log /home/baitisj/blowfang-work/runs/queue/m17rx-tap-1118a/uv380.log --run-timeout 200
+2026-11-18T01:27:43Z step 2 (uv380.rx) rc=0
+2026-11-18T01:27:49Z seen /tap start/ in /home/baitisj/blowfang-work/runs/queue/m17rx-tap-1118a/uv380.log
+2026-11-18T01:27:49Z step 3 (wait) rc=0
+2026-11-18T01:27:49Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-8c2368e53835/tools/pluto_bench.py --as m17rx send /home/baitisj/blowfang-work/runs/inbox/m17rx-tap-1118a/m17rx.wav --hz 441850000 --dev 4800 --gain -50
+send: wav peak 0.733 of full scale -> 3516 Hz before pre-emphasis
+send m17rx.wav: 68.0 s on 441850000 Hz (LO 441850000.0), gain -50.0 dB, rate 2400000, RF on
+start 01:27:50Z
+end 01:28:58Z: 68.0 s of signal in 67.9 s (kept up)
+2026-11-18T01:28:58Z step 4 (pluto) rc=0
+2026-11-18T01:29:49Z seen /end halves/ in /home/baitisj/blowfang-work/runs/queue/m17rx-tap-1118a/uv380.log
+2026-11-18T01:29:49Z step 5 (wait) rc=0
+2026-11-18T01:29:49Z job m17rx-tap-1118a done

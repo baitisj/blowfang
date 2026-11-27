@@ -1,0 +1,153 @@
+listening (Ctrl-C to stop) ...
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8460 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=217 chunk=0 have=1/66 rssi=-67 noise=18
+K6 MOD r=1 xfer=217 chunk=1 have=2/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=2 have=3/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=3 have=4/66 rssi=-67 noise=18
+K6 MOD r=1 xfer=217 chunk=4 have=5/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=5 have=6/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=6 have=7/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=7 have=8/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=8 have=9/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=9 have=10/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=10 have=11/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=11 have=12/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=12 have=13/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=13 have=14/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=14 have=15/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=15 have=16/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=16 have=17/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=17 have=18/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=18 have=19/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=19 have=20/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=20 have=21/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=21 have=22/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=22 have=23/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=23 have=24/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=24 have=25/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=25 have=26/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=26 have=27/66 rssi=-67 noise=18
+K6 MOD r=1 xfer=217 chunk=27 have=28/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=28 have=29/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=29 have=30/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=30 have=31/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=31 have=32/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=32 have=33/66 rssi=-67 noise=18
+K6 MOD r=1 xfer=217 chunk=33 have=34/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=34 have=35/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=35 have=36/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=36 have=37/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=37 have=38/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=38 have=39/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=39 have=40/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=40 have=41/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=41 have=42/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=42 have=43/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=43 have=44/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=44 have=45/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=45 have=46/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=46 have=47/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=47 have=48/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=48 have=49/66 rssi=-67 noise=18
+K6 MOD r=1 xfer=217 chunk=49 have=50/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=50 have=51/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=51 have=52/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=52 have=53/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=53 have=54/66 rssi=-67 noise=18
+K6 MOD r=1 xfer=217 chunk=54 have=55/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=55 have=56/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=56 have=57/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=57 have=58/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=58 have=59/66 rssi=-67 noise=15
+K6 MOD r=1 xfer=217 chunk=59 have=60/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=60 have=61/66 rssi=-67 noise=16
+K6 MOD r=1 xfer=217 chunk=61 have=62/66 rssi=-67 noise=18
+K6 MOD r=1 xfer=217 chunk=62 have=63/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=63 have=64/66 rssi=-67 noise=17
+K6 MOD r=1 xfer=217 chunk=64 have=65/66 rssi=-67 noise=17
+K6 MOD r=3 xfer=217 chunk=65 have=66/66 rssi=-67 noise=17
+K6 MOD run serial=1795068121 code=7970 B at 0x200020a4 stack=2028 B scratch=3780 B
+K6 MOD say ysf start f=440850000 floor=-61 msg=91
+K6 MOD say s 40 h=0 lost=0 idle=55 ks=5605
+K6 MOD say Y l 0 0 0 0 0 0 0 0 f=0
+K6 MOD say Y m 22 0 0 0 0 0 0 6
+K6 MOD say c -77 46 h=0
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 0 0 2 7 18 19 16 25
+K6 MOD say Y h+ 5 2 2 7 11 18 28 40
+K6 MOD say s 80 h=0 lost=2 idle=53 ks=5608
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 1 1 4 10 30 18 21 14
+K6 MOD say Y h+ 5 3 0 5 19 31 21 17
+K6 MOD say Y l 2 0 0 0 0 0 0 0 f=0
+K6 MOD say Y m 54 45 74 65 52 28 14 6
+K6 MOD say Y call fr=8 fich=4 vw=3/45 sf=7 miss=4 crc=789e
+K6 MOD say Y h- 161 46 34 43 36 44 27 29
+K6 MOD say Y h+ 47 43 58 44 24 25 45 94
+K6 MOD say Y d 0 4e4f505152534e4f505152534e4f505152534e4f50515253
+K6 MOD say Y d 24 4e4f505152535a5b5c5d5e5f606162636465
+K6 MOD say Y call fr=3 fich=3 vw=3/15 sf=0 miss=0 over=3 crc=ffff
+K6 MOD say Y h- 8 44 12 20 16 28 10 17
+K6 MOD say Y h+ 13 32 23 20 12 16 19 10
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 0 0 3 6 18 32 22 11
+K6 MOD say Y h+ 1 3 3 10 22 26 24 19
+K6 MOD say c -61 22182 h=0
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 25 0 0 1 0 0 3 0
+K6 MOD say Y h+ 3 2 4 20 23 30 12 77
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 0 3 7 14 18 27 26 5
+K6 MOD say Y h+ 5 2 3 4 21 30 18 17
+K6 MOD say Y call fr=4 fich=2 vw=5/20 sf=0 miss=0 over=5 crc=ffff
+K6 MOD say Y h- 33 26 23 27 29 32 26 16
+K6 MOD say Y h+ 24 45 32 18 16 17 19 17
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 0 1 4 11 26 23 23 11
+K6 MOD say Y h+ 5 2 2 7 23 23 22 17
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 0 0 1 6 18 30 22 16
+K6 MOD say Y h+ 9 1 3 6 18 13 23 34
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 0 0 6 7 19 34 17 4
+K6 MOD say Y h+ 6 1 4 9 16 26 26 25
+K6 MOD say Y call fr=5 fich=5 vw=8/25 sf=0 miss=0 over=8 crc=ffff
+K6 MOD say Y h- 70 35 18 30 37 38 17 18
+K6 MOD say Y h+ 26 51 41 23 13 28 20 35
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 1 3 11 11 14 32 10 9
+K6 MOD say Y h+ 4 2 3 6 17 20 26 31
+K6 MOD say s 120 h=0 lost=3 idle=41 ks=5618
+K6 MOD say Y l 1 0 0 0 0 0 0 0 f=0
+K6 MOD say Y m 61 54 73 65 50 28 18 6
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 0 1 2 9 20 25 24 18
+K6 MOD say Y h+ 4 3 1 3 17 23 23 27
+K6 MOD say c -61 22047 h=0
+K6 MOD say Y call fr=4 fich=3 vw=0/20 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 24 40 21 32 23 27 27 19
+K6 MOD say Y h+ 24 27 33 20 25 14 23 21
+K6 MOD say Y call fr=3 fich=3 vw=2/15 sf=0 miss=0 over=2 crc=ffff
+K6 MOD say Y h- 14 42 12 20 18 12 25 12
+K6 MOD say Y h+ 25 19 23 17 16 17 19 9
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 20 9 10 7 5 5 15 15
+K6 MOD say Y h+ 8 13 12 12 14 9 10 36
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 7 6 8 10 14 7 15 9
+K6 MOD say Y h+ 20 17 17 21 17 11 5 16
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 59 4 4 9 12 4 11 9
+K6 MOD say Y h+ 7 4 6 8 3 3 3 54
+K6 MOD say Y call fr=2 fich=0 vw=0/10 sf=0 miss=0 crc=ffff
+K6 MOD say Y h- 97 2 0 2 3 1 3 1
+K6 MOD say Y h+ 2 2 2 2 4 3 3 73
+K6 MOD say c -79 22043 h=0
+K6 MOD say s 160 h=0 lost=4 idle=44 ks=5609
+K6 MOD say Y l 1 0 0 0 0 0 0 0 f=0
+K6 MOD say Y m 61 55 74 65 50 28 23 6
+K6 MOD say s 200 h=0 lost=4 idle=55 ks=5608
+K6 MOD say Y l 0 0 0 0 0 0 0 0 f=0
+K6 MOD say Y m 33 0 0 0 0 0 0 6
+K6 MOD ret=2 (0x2) in 4183 ms stack_free=260 B

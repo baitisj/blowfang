@@ -1,0 +1,32 @@
+{
+ "id": "rt950-read-1125b",
+ "who": "rt950",
+ "started": "2026-11-25T19:00:56Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "wait",
+   "started": "2026-11-25T19:00:56Z",
+   "ended": "2026-11-25T19:01:11Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "rt950.read",
+   "started": "2026-11-25T19:01:11Z",
+   "ended": "2026-11-25T19:01:28Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-3ff86b4a46f5",
+ "head": "3ff86b4a46f529ad299437a9e226a30dbc82bef2",
+ "ended": "2026-11-25T19:01:28Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "cc920482733261594ca24a3be6005bf51aaf1577",
+  "path": "jobs/rt950-read-1125b"
+ },
+ "runner_commit": "3ff86b4a46f529ad299437a9e226a30dbc82bef2",
+ "updated": "2026-11-25T19:01:28Z"
+}

@@ -1,0 +1,17 @@
+2026-11-25T04:57:12Z job ufmp8 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088 at e10c1c08d08852c7f00d59504f06caf3cc21b24f, module sources /home/baitisj/blowfang-work/worktrees/src-2e23da0f8297 at 2e23da0f82976662172bc60f5af72f212bda513e
+2026-11-25T04:57:12Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-2e23da0f8297/radios/uv21/mod/fmstock.c -D FT_PA3=1 -D FT_PA3_MS=300 --log /home/baitisj/blowfang-work/runs/queue/ufmp8/uv21mod.log --run-timeout 180
+p mode=1 od=0 pull=0 out=0 in=0
+s 0a=ffff 0b=ffff
+r00 ffff ffff ffff ffff ffff ffff ffff ffff
+r08 ffff ffff ffff ffff ffff ffff ffff ffff
+r10 ffff ffff ffff ffff ffff ffff ffff ffff
+r18 ffff ffff ffff ffff ffff ffff ffff ffff
+S 0a=ffff 0b=ffff
+R00 ffff ffff ffff ffff ffff ffff ffff ffff
+R08 ffff ffff ffff ffff ffff ffff ffff ffff
+R10 ffff ffff ffff ffff ffff ffff ffff ffff
+R18 ffff ffff ffff ffff ffff ffff ffff ffff
+T 100100 0a=ffff 0b=ffff
+um end 0000ffff
+2026-11-25T04:57:14Z step 1 (uv21.mod) rc=0
+2026-11-25T04:57:14Z job ufmp8 done

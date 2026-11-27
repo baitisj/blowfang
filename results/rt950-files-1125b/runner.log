@@ -1,0 +1,4 @@
+2026-11-26T00:32:55Z job rt950-files-1125b by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e at 47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc
+2026-11-26T00:32:55Z ci-image/rt950-backup-only.BTF 43008 B sha256 dbfc1a828be1c3eb3b94c8e01f008f391f6a2d064c945b565344daa8eadea054
+2026-11-26T00:32:55Z step 1 (rt950.files) rc=0
+2026-11-26T00:32:55Z job rt950-files-1125b done

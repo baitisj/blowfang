@@ -1,0 +1,132 @@
+{
+ "id": "k6-ysfrx8",
+ "who": "k6-ysfrx",
+ "freq_mhz": "bench",
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 560,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ysfrx.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "682e97d7763813eb07d8e9d5f6bb3af2adba1164065bc9411bad52f8c11e7ef8"
+  },
+  {
+   "do": "wait",
+   "pattern": "ysf start",
+   "seconds": 60
+  },
+  {
+   "do": "wait",
+   "seconds": 2
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 4
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "3888",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 4
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-60"
+   ]
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "power 0",
+    "freq 440850",
+    "trim 6100",
+    "phy ysf"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "ysf",
+    "test"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "freq 441850"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 240,
+   "continue_on_error": true
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

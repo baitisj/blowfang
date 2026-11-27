@@ -1,0 +1,36 @@
+{
+ "id": "ufmp17",
+ "who": "fmprobe-uv21",
+ "freq_mhz": "440.85",
+ "minutes": 5,
+ "sources_commit": "9fe4f17e1249cda4239da2dc605e17dd3eaf06a1",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "fmstock",
+    "FT_BK33_CLR=0x9000",
+    "FT_BK37=0x9F1F",
+    "FT_PA3=1",
+    "FT_PA3_KEEP=1",
+    "FT_PA3_OFF_MS=3000",
+    "FT_PA3_MS=1000",
+    "FT_KHZ=106500"
+   ]
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "fmstock",
+    "FT_BK33_CLR=0xC300",
+    "FT_BK33_HIZ=0x00C3",
+    "FT_BK37=0x9F1F",
+    "FT_PA3=1",
+    "FT_PA3_KEEP=1",
+    "FT_PA3_OFF_MS=3000",
+    "FT_PA3_MS=1000",
+    "FT_KHZ=106500"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "id": "rt950-spi-1126c",
+ "who": "rt950",
+ "freq_mhz": "bench",
+ "minutes": 125,
+ "steps": [
+  {
+   "do": "wait",
+   "seconds": 30
+  },
+  {
+   "do": "rt950.read",
+   "cable": "1a86:7523",
+   "args": [
+    "--addr",
+    "3",
+    "--passes",
+    "1"
+   ],
+   "timeout": 7000
+  }
+ ]
+}

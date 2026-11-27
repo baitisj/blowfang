@@ -1,0 +1,60 @@
+{
+ "id": "efw-2",
+ "who": "earshot",
+ "freq_mhz": "bench",
+ "minutes": 45,
+ "steps": [
+  {
+   "do": "pluto.fw",
+   "args": [
+    "backup",
+    "run:backup"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "ramboot",
+    "job:v039dma.itb"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "fpga",
+    "job:system_top.bit.bin",
+    "job:chanctl",
+    "job:ensure_pluto_fpga.sh",
+    "job:pluto_runtime_load.sh"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "psd",
+    "run:psd-70cm.json",
+    "--hz",
+    "440000000",
+    "--gain",
+    "60"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "psd",
+    "run:psd-2m.json",
+    "--hz",
+    "153600000",
+    "--gain",
+    "40"
+   ]
+  },
+  {
+   "do": "pluto.fw",
+   "args": [
+    "info"
+   ]
+  }
+ ]
+}

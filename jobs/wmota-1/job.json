@@ -1,0 +1,61 @@
+{
+ "id": "wmota-1",
+ "who": "watermark",
+ "freq_mhz": 441.85,
+ "minutes": 15,
+ "steps": [
+  {
+   "do": "pluto",
+   "background": true,
+   "args": [
+    "rx",
+    "run:wm_rx.wav",
+    "--hz",
+    "441850000",
+    "--seconds",
+    "330",
+    "--gain",
+    "40",
+    "--wav-only",
+    "--wav-rate",
+    "8000"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "pluto",
+   "continue_on_error": true,
+   "args": [
+    "steps",
+    "job:marked.wav",
+    "--hz",
+    "441850000",
+    "--gains",
+    "-40,-60,-70,-78,-85",
+    "--dev",
+    "2500",
+    "--pause",
+    "3",
+    "--out",
+    "run:steps.json"
+   ]
+  },
+  {
+   "do": "pluto",
+   "continue_on_error": true,
+   "args": [
+    "send",
+    "job:clean.wav",
+    "--hz",
+    "441850000",
+    "--gain",
+    "-60",
+    "--dev",
+    "2500"
+   ]
+  }
+ ]
+}

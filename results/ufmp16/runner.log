@@ -1,0 +1,20 @@
+2026-11-25T07:18:22Z job ufmp16 by fmprobe-uv21, checkout /home/baitisj/blowfang-work/worktrees/inbox-e10c1c08d088 at e10c1c08d08852c7f00d59504f06caf3cc21b24f, module sources /home/baitisj/blowfang-work/worktrees/src-d94cf22a0cbb at d94cf22a0cbba58f0ebb4dbd2d09e131db554471
+2026-11-25T07:18:22Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB2 /home/baitisj/blowfang-work/worktrees/src-d94cf22a0cbb/radios/uv21/mod/fmstock.c -D FT_BK33_HIZ=0x4300 -D FT_BK37=0x9F1F -D FT_PA3=1 -D FT_PA3_KEEP=1 -D FT_PA3_OFF_MS=3000 -D FT_PA3_MS=1000 -D FT_KHZ=106500 --log /home/baitisj/blowfang-work/runs/queue/ufmp16/uv21mod.log --run-timeout 180
+b 33=9000 34=0000 35=0000 37=9d1f
+B 33=d300 34=0000 35=0000 37=9f1f
+p mode=1 od=0 pull=0 out=1 in=1
+p off done
+s 0a=ffff 0b=ffff
+r00 ffff ffff ffff ffff ffff ffff ffff ffff
+r08 ffff ffff ffff ffff ffff ffff ffff ffff
+r10 ffff ffff ffff ffff ffff ffff ffff ffff
+r18 ffff ffff ffff ffff ffff ffff ffff ffff
+S 0a=ffff 0b=ffff
+R00 ffff ffff ffff ffff ffff ffff ffff ffff
+R08 ffff ffff ffff ffff ffff ffff ffff ffff
+R10 ffff ffff ffff ffff ffff ffff ffff ffff
+R18 ffff ffff ffff ffff ffff ffff ffff ffff
+T 106500 0a=ffff 0b=ffff
+um end 0000ffff
+2026-11-25T07:18:25Z step 1 (uv21.mod) rc=0
+2026-11-25T07:18:25Z job ufmp16 done

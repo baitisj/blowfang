@@ -1,0 +1,25 @@
+{
+ "id": "soapy950-live-1126a",
+ "who": "rt950-soapyfang",
+ "freq_mhz": "bench",
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "sim.soapyfang",
+   "args": [
+    "--radio",
+    "rt950",
+    "--minutes",
+    "5",
+    "--gain",
+    "50",
+    "--center",
+    "146520000",
+    "--image",
+    "job:rt950-surf2.bin",
+    "--syms",
+    "job:rt950-surf2.syms"
+   ]
+  }
+ ]
+}

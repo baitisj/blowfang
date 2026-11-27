@@ -1,0 +1,7 @@
+2026-11-26T20:10:15Z job rt950-info-1126t by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-b366afad369c at b366afad369c924525ae3d968cc32cb4bcd80344
+2026-11-26T20:14:15Z step 1 (wait) rc=0
+2026-11-26T20:14:15Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-b366afad369c/radios/rt950/tools/rt950_backup.py info /dev/ttyUSB3 --addr 2
+session: identity b'\x016\x01t\x04\x00\x05 \x02\x00\x02`\x01\x030\x04' model 'RT-950'
+{"identity_hex": "01360174040005200200026001033004", "identity": "\u00016\u0001t\u0004\u0000\u0005 \u0002\u0000\u0002`\u0001\u00030\u0004", "model": "RT-950"}
+2026-11-26T20:14:16Z step 2 (rt950.info) rc=0
+2026-11-26T20:14:16Z job rt950-info-1126t done

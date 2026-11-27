@@ -1,0 +1,19 @@
+{
+ "id": "aprs-release-1",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 3,
+ "steps": [
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.power0"
+  }
+ ]
+}

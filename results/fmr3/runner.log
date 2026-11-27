@@ -1,0 +1,37 @@
+2026-11-27T03:54:12Z job fmr3 by fmrds, checkout /home/baitisj/blowfang-work/worktrees/inbox-cf20e6b14225 at cf20e6b14225ac43da375d1c961fc8f4b7f1bc74
+2026-11-27T03:54:12Z $ (background) /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-hold fmrds -- timeout -s INT --kill-after=10 1400 /usr/bin/python3 -m modem.k6_harness listen --k6 /dev/ttyUSB2 --log /home/baitisj/blowfang-work/runs/queue/fmr3/k6.log
+2026-11-27T03:54:14Z step 1 (logger) rc=0
+2026-11-27T03:54:17Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-27T03:54:17Z step 2 (ic7100.tune) rc=0
+2026-11-27T03:54:17Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-cf20e6b14225/tools/pluto_bench.py --as fmrds send /home/baitisj/blowfang-work/runs/inbox/fmr3/wake.wav --hz 440850000 --dev 3000 --gain -30
+/home/baitisj/blowfang-work/worktrees/inbox-cf20e6b14225/tools/pluto_bench.py:422: WavFileWarning: Chunk (non-data) not understood, skipping it.
+  fs, x = wavfile.read(a.wav)
+send: wav peak 0.833 of full scale -> 2500 Hz before pre-emphasis
+send wake.wav: 73.2 s on 440850000 Hz (LO 440850000.0), gain -30.0 dB, rate 2400000, RF on
+start 03:54:18Z
+end 03:55:31Z: 73.2 s of signal in 73.1 s (kept up)
+2026-11-27T03:55:31Z step 3 (pluto) rc=0
+2026-11-27T03:55:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-cf20e6b14225/tools/k6_upload.py /home/baitisj/blowfang-work/runs/inbox/fmr3/fmrds.bin --key-file /home/baitisj/.config/sotto/k6-mod.key --via pluto --pluto-gain -40 --rate auto --rate-state /home/baitisj/blowfang-work/runs/queue/fmr3/k6-rate.json --telemetry 0 --api-level 2 --rounds 1 --run-s 0
+19:55:34 send 1: 68 of 68 XL chunks at F/1800 (serial 1795751733, xfer 53); module /home/baitisj/blowfang-work/runs/inbox/fmr3/fmrds.bin: 8162 B code, entry +16, API level 2, serial 1795751733, xfer 53, 8186 B image in 68 XL chunks; 136 packets, 87.6 s on air; reply asked
+send: wav peak 0.300 of full scale -> 3000 Hz before pre-emphasis
+send up1.wav: 95.0 s on 440850000 Hz (LO 440850000.0), gain -40.0 dB, rate 2400000, RF on
+start 03:55:35Z
+end 03:57:10Z: 95.0 s of signal in 94.8 s (kept up)
+19:57:10 listening for the K6's report
+19:57:36 no report heard
+19:57:36 no report after a whole send: the K6 may be set to L packets, so the next send is 142 L chunks
+gave up after 1 sends
+rate ladder (pluto): {'rung': 'D24', 'clean': 0, 'k6_d24': False}, 100% of 68 chunks sent were lost
+19:57:36 CW ID
+2026-11-27T03:57:37Z step 4 (k6.upload) rc=0
+2026-11-27T03:59:27Z seen /K6 MOD say E n=|K6 MOD ret=/ in /home/baitisj/blowfang-work/runs/queue/fmr3/k6.log
+2026-11-27T03:59:27Z step 5 (wait) rc=0
+2026-11-27T03:59:32Z step 6 (wait) rc=0
+2026-11-27T03:59:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/bin/k6_bench.py serial-release fmrds
+the port is free (fmrds let go)
+2026-11-27T03:59:33Z step 7 (logger.stop) rc=0
+2026-11-27T03:59:36Z IC-7100 F 440850000 M FM-D RFPOWER 0.00
+2026-11-27T03:59:36Z step 8 (ic7100.tune) rc=0
+2026-11-27T03:59:37Z IC-7100 RFPOWER 0.00
+2026-11-27T03:59:37Z step 9 (ic7100.power0) rc=0
+2026-11-27T03:59:37Z job fmr3 done

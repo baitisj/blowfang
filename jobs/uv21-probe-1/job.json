@@ -1,0 +1,15 @@
+{
+ "id": "uv21-probe-1",
+ "who": "uv21",
+ "freq_mhz": 440.85,
+ "minutes": 10,
+ "steps": [
+  {
+   "do": "kdh.probe",
+   "args": [
+    "--wait-boot-s",
+    "200"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "id": "ufmp29",
+ "status": "cancelled",
+ "reason": "cancelled before it ran",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "812b4332105bc2bf1419deec155fb435216ee101",
+  "path": "jobs/ufmp29"
+ },
+ "runner_commit": "5fe650a2a129d3b210acdf4346603e8f315d17f8",
+ "updated": "2026-11-25T13:25:36Z"
+}

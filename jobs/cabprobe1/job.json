@@ -1,0 +1,20 @@
+{
+ "id": "cabprobe1",
+ "who": "fmrds",
+ "freq_mhz": "440.85",
+ "minutes": 2,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 40,
+   "file": "cab.log"
+  },
+  {
+   "do": "wait",
+   "seconds": 30
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

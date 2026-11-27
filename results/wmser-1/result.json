@@ -1,0 +1,25 @@
+{
+ "id": "wmser-1",
+ "who": "watermark",
+ "started": "2026-11-26T12:07:09Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "serial.list",
+   "started": "2026-11-26T12:07:09Z",
+   "ended": "2026-11-26T12:07:09Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-c7b3235add99",
+ "head": "c7b3235add99eee6767627ebd7033a19dc43e5f7",
+ "ended": "2026-11-26T12:07:09Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "fea117763a24d619f647c846de476916c2256962",
+  "path": "jobs/wmser-1"
+ },
+ "runner_commit": "c7b3235add99eee6767627ebd7033a19dc43e5f7",
+ "updated": "2026-11-26T12:07:09Z"
+}

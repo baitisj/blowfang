@@ -1,0 +1,122 @@
+{
+ "id": "k6-ram0zero2",
+ "who": "k6-ram0",
+ "freq_mhz": "bench",
+ "minutes": 14,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 780,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "ic7100",
+   "args": [
+    "id",
+    "wake the K6 from EXPLORE"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 20,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ram0zero.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "18c8532b2addf9e665e0ed6f17f01010f5f07af9b75e3bc01a7c21a2391af999"
+  },
+  {
+   "do": "wait",
+   "seconds": 130,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100",
+   "args": [
+    "id",
+    "wake the K6 from EXPLORE"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 20,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ram0zero.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "18c8532b2addf9e665e0ed6f17f01010f5f07af9b75e3bc01a7c21a2391af999"
+  },
+  {
+   "do": "wait",
+   "seconds": 130,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100",
+   "args": [
+    "id",
+    "wake the K6 from EXPLORE"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 20,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 10,
+   "continue_on_error": true
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

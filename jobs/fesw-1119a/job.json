@@ -1,0 +1,49 @@
+{
+ "id": "fesw-1119a",
+ "who": "k6-aprs-ladder",
+ "freq_mhz": "bench",
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 480,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:fesw_vhf.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "3db61fe7e087e33e6cd606a732938cdf6cb4475ad5d799e349299fdc52a28809"
+  },
+  {
+   "do": "wait",
+   "seconds": 260
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

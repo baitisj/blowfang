@@ -1,0 +1,25 @@
+{
+ "id": "rt950-files-1125b",
+ "who": "rt950",
+ "started": "2026-11-26T00:32:55Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "rt950.files",
+   "started": "2026-11-26T00:32:55Z",
+   "ended": "2026-11-26T00:32:55Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-47d5a68e8d6e",
+ "head": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "ended": "2026-11-26T00:32:55Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "3aa4b4d21f22e20f73467a324b721d5b25c341c6",
+  "path": "jobs/rt950-files-1125b"
+ },
+ "runner_commit": "47d5a68e8d6ef20bc15dfb35c5aa1b066da247cc",
+ "updated": "2026-11-26T00:32:55Z"
+}

@@ -1,0 +1,15 @@
+{
+ "id": "k6-ysfrx3",
+ "status": "refused",
+ "reason": "step 12 (uv380.cmd): 441.850 MHz is outside the job's claim (440.850 MHz, 100 kHz guard)",
+ "problems": [
+  "step 12 (uv380.cmd): 441.850 MHz is outside the job's claim (440.850 MHz, 100 kHz guard)"
+ ],
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "f9a2b2a96c1fe65aff18a0cf7dcb0f7b916999d3",
+  "path": "jobs/k6-ysfrx3"
+ },
+ "runner_commit": "1f572382a8ab34eec237c399c2cabc2eec4cc5ca",
+ "updated": "2026-11-19T05:22:12Z"
+}

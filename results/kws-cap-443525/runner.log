@@ -1,0 +1,5 @@
+2026-11-22T04:23:33Z job kws-cap-443525 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1 at 866a22a0c2b125feb744ad588735523a719b2b56
+2026-11-22T04:23:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-cap-443525/cap443525.wav --hz 443525000 --seconds 1200 --gain 60 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-cap-443525/cap443525.wav: 1200.0 s on 443525000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -65.0 dBFS, carrier (floor + 20 dB) on 81%
+2026-11-22T04:43:34Z step 1 (pluto) rc=0
+2026-11-22T04:43:34Z job kws-cap-443525 done

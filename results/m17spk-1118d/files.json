@@ -1,0 +1,16 @@
+[
+ {
+  "name": "uv380.rx.out",
+  "bytes": 71779,
+  "sha256": "1957a93d847dd8aa8f46efb9d1991619283d110813401fe939da8e832666cdae",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/m17spk-1118d/uv380.rx.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 73472,
+  "sha256": "1caf00f428877e8584871d749b945d8bf1b4117f87ddb4422b7782b8804eee8f",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/m17spk-1118d/uv380.log"
+ }
+]

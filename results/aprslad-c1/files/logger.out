@@ -1,0 +1,143 @@
+listening (Ctrl-C to stop) ...
+Exception in thread Thread-1 (_run):
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/threading.py", line 1083, in _bootstrap_inner
+    self._context.run(self.run)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/usr/lib/python3.14/threading.py", line 1025, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/baitisj/blowfang-work/worktrees/inbox-989248773c0f/modem/k6_harness.py", line 277, in _run
+    b = self.ser.read(256)
+  File "/usr/lib/python3.14/site-packages/serial/serialposix.py", line 595, in read
+    raise SerialException(
+        'device reports readiness to read but returned no data '
+        '(device disconnected or multiple access on port?)')
+serial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
+no packets
+no firmware build reported (a K6 BOOT or CFG line with build=; older images have none)
+listening (Ctrl-C to stop) ...
+K6 firmware build 8a78fb5-20261117T0904Z
+K6 CFG why=tick chip=4819 freq=440850000 phy=F frames=XL baud=1800 rates=F12,F18,D24 stream=0 reg58=3f01 reg2b=8000 inv=0 soft=0 swap=1 emph=0 vol=0 len5d=7f00 keep=0 idlekeep=1 idlerd=0 timed=0 rearm=40 auto=1 wd=0 splay=1 draw=13 bl=4 rssi=-112 batt=8460 build=8a78fb5-20261117T0904Z
+K6 MOD r=1 xfer=175 chunk=0 have=1/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=1 have=2/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=2 have=3/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=3 have=4/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=4 have=5/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=5 have=6/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=6 have=7/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=175 chunk=7 have=8/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=175 chunk=8 have=9/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=9 have=10/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=10 have=11/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=175 chunk=11 have=12/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=12 have=13/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=13 have=14/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=14 have=15/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=15 have=16/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=16 have=17/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=175 chunk=17 have=18/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=175 chunk=18 have=19/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=19 have=20/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=20 have=21/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=175 chunk=21 have=22/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=22 have=23/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=23 have=24/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=24 have=25/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=25 have=26/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=26 have=27/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=27 have=28/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=28 have=29/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=29 have=30/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=30 have=31/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=31 have=32/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=32 have=33/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=175 chunk=33 have=34/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=34 have=35/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=35 have=36/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=36 have=37/54 rssi=-67 noise=18
+K6 MOD r=1 xfer=175 chunk=37 have=38/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=175 chunk=38 have=39/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=39 have=40/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=40 have=41/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=41 have=42/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=42 have=43/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=43 have=44/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=44 have=45/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=45 have=46/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=46 have=47/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=47 have=48/54 rssi=-67 noise=15
+K6 MOD r=1 xfer=175 chunk=48 have=49/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=49 have=50/54 rssi=-67 noise=16
+K6 MOD r=1 xfer=175 chunk=50 have=51/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=51 have=52/54 rssi=-67 noise=17
+K6 MOD r=1 xfer=175 chunk=52 have=53/54 rssi=-67 noise=17
+K6 MOD r=3 xfer=175 chunk=53 have=54/54 rssi=-67 noise=17
+K6 MOD run serial=1795085231 code=6451 B at 0x200020a4 stack=2028 B scratch=5300 B
+K6 MOD say aprs start hz=440850000 fsk=233 sync=240 plain set=narrow
+K6 MOD say y 1 t=3132 w=90 ok=0 e=0 d=0 s=0 k=1352 r=-68
+K6 MOD say y 2 t=3583 w=167 ok=0 e=3 d=2 s=1 k=1352 r=-68
+K6 MOD say y 3 t=7615 w=55 ok=0 e=0 d=0 s=0 k=1352 r=-67
+K6 MOD say y 4 t=15069 w=69 ok=0 e=1 d=0 s=1 k=1352 r=-67
+K6 MOD say y 5 t=15801 w=51 ok=0 e=0 d=0 s=1 k=1352 r=-67
+K6 MOD say y 6 t=18893 w=115 ok=0 e=1 d=1 s=1 k=1352 r=-67
+K6 MOD say y 7 t=30791 w=97 ok=0 e=0 d=0 s=1 k=1352 r=-67
+K6 MOD say y 8 t=31691 w=147 ok=0 e=1 d=1 s=1 k=1352 r=-67
+K6 MOD say y 9 t=32556 w=106 ok=0 e=1 d=1 s=1 k=1352 r=-67
+K6 MOD say m 1 rssi=-116 pk=-67 pre=9 ok=0
+K6 MOD say y 10 t=117238 w=41 ok=0 e=0 d=0 s=1 k=1352 r=-114
+K6 MOD say m 2 rssi=-117 pk=-107 pre=10 ok=0
+K6 MOD say m 3 rssi=-117 pk=-107 pre=10 ok=0
+K6 MOD say m 4 rssi=-117 pk=-62 pre=10 ok=0
+K6 MOD say y 11 t=240769 w=110 ok=0 e=1 d=1 s=0 k=1352 r=-97
+K6 MOD say y 12 t=241975 w=169 ok=0 e=1 d=1 s=0 k=1352 r=-97
+K6 MOD say y 13 t=244417 w=179 ok=0 e=2 d=1 s=0 k=1352 r=-97
+K6 MOD say y 14 t=245658 w=169 ok=0 e=2 d=1 s=0 k=1352 r=-97
+K6 MOD say y 15 t=248102 w=180 ok=0 e=3 d=1 s=0 k=1352 r=-97
+K6 MOD say y 16 t=249342 w=168 ok=0 e=5 d=1 s=0 k=1352 r=-97
+K6 MOD say f AG7EW-1 n=52 h=0 ts=09:04:49h
+K6 MOD say clk --:--:-- w=4000 v=1
+K6 MOD say y 17 t=262241 w=174 ok=1 e=6 d=1 s=0 k=1377 r=-87
+K6 MOD say y 18 t=263450 w=178 ok=0 e=7 d=1 s=0 k=1377 r=-87
+K6 MOD say y 19 t=264690 w=147 ok=0 e=3 d=1 s=0 k=1377 r=-87
+K6 MOD say y 20 t=265899 w=181 ok=0 e=2 d=1 s=0 k=1377 r=-87
+K6 MOD say y 21 t=267147 w=175 ok=0 e=4 d=1 s=0 k=1377 r=-87
+K6 MOD say y 22 t=268374 w=132 ok=0 e=6 d=1 s=0 k=1377 r=-87
+K6 MOD say f AG7EW-1 n=52 h=0 ts=09:04:56h
+K6 MOD say clk --:--:-- w=4000 v=1
+K6 MOD say y 23 t=269622 w=170 ok=1 e=2 d=1 s=0 k=1377 r=-87
+K6 MOD say y 24 t=270830 w=175 ok=0 e=1 d=1 s=0 k=1377 r=-87
+K6 MOD say y 25 t=272058 w=158 ok=0 e=4 d=1 s=0 k=1377 r=-87
+K6 MOD say f AG7EW-1 n=52 h=0 ts=09:04:49h
+K6 MOD say clk --:--:-- w=4000 v=1
+K6 MOD say y 26 t=282756 w=511 ok=1 e=111 d=74 s=0 k=1284 r=-97
+K6 MOD say y 27 t=285554 w=48 ok=0 e=0 d=0 s=1 k=1284 r=-97
+K6 MOD say y 28 t=286434 w=167 ok=0 e=2 d=0 s=0 k=1284 r=-97
+K6 MOD say y 29 t=287675 w=176 ok=0 e=5 d=0 s=0 k=1284 r=-97
+K6 MOD say y 30 t=288904 w=124 ok=0 e=0 d=0 s=0 k=1284 r=-96
+K6 MOD say y 31 t=290111 w=170 ok=0 e=7 d=0 s=0 k=1284 r=-97
+K6 MOD say y 32 t=291362 w=414 ok=0 e=53 d=24 s=0 k=1284 r=-96
+K6 MOD say m 5 rssi=-116 pk=-66 pre=32 ok=3
+K6 MOD say y 33 t=304226 w=176 ok=0 e=4 d=1 s=0 k=1284 r=-87
+K6 MOD say y 34 t=305474 w=161 ok=0 e=1 d=0 s=0 k=1284 r=-87
+K6 MOD say y 35 t=307916 w=170 ok=0 e=3 d=0 s=0 k=1284 r=-87
+K6 MOD say y 36 t=309167 w=159 ok=0 e=1 d=0 s=0 k=1284 r=-87
+K6 MOD say y 37 t=311622 w=165 ok=0 e=4 d=0 s=0 k=1284 r=-87
+K6 MOD say y 38 t=312854 w=158 ok=0 e=3 d=0 s=0 k=1284 r=-87
+K6 MOD say y 39 t=324731 w=174 ok=0 e=1 d=0 s=0 k=1284 r=-97
+K6 MOD say y 40 t=325992 w=165 ok=0 e=4 d=0 s=0 k=1284 r=-97
+K6 MOD say y 41 t=328427 w=177 ok=0 e=3 d=1 s=0 k=1284 r=-97
+K6 MOD say y 42 t=329673 w=165 ok=0 e=3 d=0 s=0 k=1284 r=-97
+K6 MOD say y 43 t=331052 w=45 ok=0 e=0 d=0 s=0 k=1284 r=-97
+K6 MOD say y 44 t=332098 w=174 ok=0 e=4 d=0 s=0 k=1284 r=-97
+K6 MOD say y 45 t=333365 w=162 ok=0 e=4 d=0 s=0 k=1284 r=-97
+K6 MOD say y 46 t=334931 w=57 ok=0 e=0 d=0 s=1 k=1284 r=-97
+K6 MOD say y 47 t=350024 w=138 ok=0 e=0 d=0 s=0 k=1284 r=-87
+K6 MOD say y 48 t=351159 w=88 ok=0 e=0 d=0 s=0 k=1284 r=-87
+K6 MOD say y 49 t=353623 w=165 ok=0 e=3 d=1 s=0 k=1284 r=-87
+K6 MOD say y 50 t=354831 w=162 ok=0 e=2 d=0 s=0 k=1284 r=-87
+K6 MOD say m 6 rssi=-116 pk=-54 pre=50 ok=3
+K6 MOD say y 51 t=366744 w=169 ok=0 e=4 d=0 s=0 k=1284 r=-96
+K6 MOD say y 52 t=367982 w=162 ok=0 e=2 d=0 s=0 k=1284 r=-96
+K6 MOD say y 53 t=370427 w=170 ok=0 e=1 d=0 s=0 k=1284 r=-96
+K6 MOD say y 54 t=371675 w=121 ok=0 e=3 d=0 s=0 k=1284 r=-97

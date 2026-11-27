@@ -1,0 +1,50 @@
+{
+  "a_sha256": "1cb1dc4a9bb67124d5135a53a06185af83d61b2e433fa5d131c9d2e5e91c1064",
+  "b_sha256": "7de3b6032ea5070c2675f6a6ffad1e21e55bde272e495c41aff619858db75dd0",
+  "a_len": 65536,
+  "b_len": 65536,
+  "same": false,
+  "regions": {
+    "channels": {
+      "differ": 0
+    },
+    "vfo_config": {
+      "differ": 0
+    },
+    "system_config": {
+      "differ": 0
+    },
+    "ext_config_1": {
+      "differ": 0
+    },
+    "ext_config_2": {
+      "differ": 0
+    },
+    "dtmf_modulation": {
+      "differ": 0
+    },
+    "aprs_misc": {
+      "differ": 0
+    },
+    "cal_e000": {
+      "differ": 1,
+      "first": "0xE009",
+      "last": "0xE009"
+    },
+    "cal_f000": {
+      "differ": 104,
+      "first": "0xF000",
+      "last": "0xF079"
+    },
+    "cal_f200": {
+      "differ": 34,
+      "first": "0xF200",
+      "last": "0xF243"
+    }
+  },
+  "pages_4k": {
+    "0xE000": 17,
+    "0xF000": 305
+  },
+  "differ": 322
+}

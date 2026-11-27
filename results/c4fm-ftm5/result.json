@@ -1,0 +1,86 @@
+{
+ "id": "c4fm-ftm5",
+ "who": "c4fm",
+ "started": "2026-11-18T15:10:47Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T15:10:47Z",
+   "ended": "2026-11-18T15:10:49Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T15:10:49Z",
+   "ended": "2026-11-18T15:11:02Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "wait",
+   "started": "2026-11-18T15:11:02Z",
+   "ended": "2026-11-18T15:11:14Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-ftm5/k6.log"
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-18T15:11:14Z",
+   "ended": "2026-11-18T15:13:24Z",
+   "rc": 1,
+   "why": "no /EX beacon|K6 MOD say \\w+ end/ in /home/baitisj/blowfang-work/runs/queue/c4fm-ftm5/k6.log"
+  },
+  {
+   "n": 5,
+   "do": "pluto",
+   "started": "2026-11-18T15:13:24Z",
+   "ended": "2026-11-18T15:13:37Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-18T15:13:37Z",
+   "ended": "2026-11-18T15:13:49Z",
+   "rc": 1,
+   "why": "no /EX beacon/ in /home/baitisj/blowfang-work/runs/queue/c4fm-ftm5/k6.log"
+  },
+  {
+   "n": 7,
+   "do": "k6.upload",
+   "started": "2026-11-18T15:13:49Z",
+   "ended": "2026-11-18T15:16:14Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "wait",
+   "started": "2026-11-18T15:16:14Z",
+   "ended": "2026-11-18T15:16:14Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-18T15:16:14Z",
+   "ended": "2026-11-18T15:41:02Z",
+   "rc": 1,
+   "why": "cancelled"
+  }
+ ],
+ "status": "cancelled",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-a7074a21a794",
+ "head": "a7074a21a7949de86c16dd707b004c265e160ebe",
+ "reason": "step 9 (wait): cancelled",
+ "ended": "2026-11-18T15:41:02Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "796f3395b1544c78a8f25eef57fa222e31a6a86a",
+  "path": "jobs/c4fm-ftm5"
+ },
+ "runner_commit": "a7074a21a7949de86c16dd707b004c265e160ebe",
+ "updated": "2026-11-18T15:41:03Z"
+}

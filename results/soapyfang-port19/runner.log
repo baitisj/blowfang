@@ -1,0 +1,9 @@
+2026-11-24T19:34:20Z job soapyfang-port19 by soapyfang, checkout /home/baitisj/blowfang-work/worktrees/inbox-66150802055c at 66150802055c26e28d64c8dbf540820ca3807288
+2026-11-24T19:34:20Z $ /usr/bin/python3 -m sim.soapyfang --source pluto --host 127.0.0.1 --port 5058 --minutes 55 --gain 50 --image /home/baitisj/blowfang-work/runs/inbox/soapyfang-port19/port.bin --syms /home/baitisj/blowfang-work/runs/inbox/soapyfang-port19/port.syms
+SoapyFang source: Pluto ip:192.168.2.1 (2.4 MS/s, RX gain 50 dB, receive only)
+booting the UV-21 port image ...
+SoapyFang UV-21 workbench on http://127.0.0.1:5058/, until 20:29:22Z (Ctrl-C stops it)
+2026-11-24T19:43:25Z stopping (cancelled): SIGTERM to the step's process group
+SoapyFang stopped; the source is closed
+2026-11-24T19:43:26Z step 1 (sim.soapyfang) rc=1 (cancelled)
+2026-11-24T19:43:26Z job soapyfang-port19 cancelled: step 1 (sim.soapyfang): cancelled

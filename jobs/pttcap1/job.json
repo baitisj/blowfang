@@ -1,0 +1,38 @@
+{
+ "id": "pttcap1",
+ "who": "uv380-multimode",
+ "freq_mhz": 441.85,
+ "minutes": 5,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf_251_m.wav",
+    "--hz",
+    "441850000",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 15
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:ptt.wav",
+    "--hz",
+    "441850000",
+    "--seconds",
+    "100",
+    "--gain",
+    "20"
+   ]
+  }
+ ]
+}

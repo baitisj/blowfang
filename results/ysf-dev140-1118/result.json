@@ -1,0 +1,53 @@
+{
+ "id": "ysf-dev140-1118",
+ "who": "ysf",
+ "started": "2026-11-18T01:36:09Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "pluto",
+   "started": "2026-11-18T01:36:09Z",
+   "ended": "2026-11-18T01:36:11Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T01:36:11Z",
+   "ended": "2026-11-18T01:36:24Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv380.ysf",
+   "started": "2026-11-18T01:36:24Z",
+   "ended": "2026-11-18T01:36:55Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "uv380.cmd",
+   "started": "2026-11-18T01:36:55Z",
+   "ended": "2026-11-18T01:37:02Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-18T01:37:02Z",
+   "ended": "2026-11-18T01:37:31Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-8476ff52a725",
+ "head": "8476ff52a725e069e9c25f34050b354dde93c1e7",
+ "ended": "2026-11-18T01:37:31Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "ac35626ab815551652be281426ed74d1a3a5b064",
+  "path": "jobs/ysf-dev140-1118"
+ },
+ "runner_commit": "8c2368e53835b12ad13a216b4690cbe2ad761e7f",
+ "updated": "2026-11-18T01:37:32Z"
+}

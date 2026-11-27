@@ -1,0 +1,23 @@
+P 119 319 2 5 30 50 115 6 8
+i 5804 2000 0000
+w0 EGHFFFEGFGGGHGHHIHIIILILJOLKLKLJLKKKIMHKINIGJNJHHM
+w1 FGFGFGGLFEGFHJEFLFEEEDEFMEEHNGELIDDICCCCBCEKCBCCBB
+w2 E
+f0 .tt......................t...........t...t...t...t
+f1 .......S.....t..t.......S...St.SS..s.......S......
+f2 .
+s 92.900 q=62 r=62 t.
+s 96.900 q=61 r=62 tS
+s 103.500 q=61 r=61 tS
+s 96.100 q=60 r=60 t.
+s 102.700 q=59 r=59 tS
+s 95.300 q=58 r=59 t.
+s 97.700 q=58 r=58 t.
+s 92.100 q=57 r=56 ..
+v 308d om>308d no
+r 92.900 q61 g0 ok0 ab0 ss0
+g
+r 96.900 q60 g0 ok0 ab0 ss0
+g
+E n=16 ms=104377
+um end 00000010

@@ -1,0 +1,37 @@
+2026-11-22T16:42:24Z job kws-bins-map by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-2119aa5f8f78 at 2119aa5f8f788a965bcfc2f4dbaddfac52478771
+2026-11-22T16:42:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-2119aa5f8f78/tools/pluto_fw.py --as nato-kws fpga /home/baitisj/blowfang-work/runs/inbox/kws-bins-map/system_top.bit.bin /home/baitisj/blowfang-work/runs/inbox/kws-bins-map/chanctl /home/baitisj/blowfang-work/runs/inbox/kws-bins-map/ensure_pluto_fpga.sh /home/baitisj/blowfang-work/runs/inbox/kws-bins-map/pluto_runtime_load.sh
+Pluto FPGA channelizer ready
+quiet: TX LO down, DDS tones off, RX LO parked
+fw=u-boot-xlnx v0.20-PlutoSDR-25-g90401c
+model=Analog Devices PlutoSDR Rev.B (Z7010/AD9363)
+reserved=#address-cells #size-cells dma_probe@4000000 name ranges
+fpga=operating
+pl_is_chan=yes
+fit_size=bc2533
+attr_name=compatible attr_val=ad9364
+uptime=26765.76
+00000000-03ffffff : System RAM 08000000-1fffffff : System RAM
+fpga: channelizer loaded (pl_is_chan=yes)
+2026-11-22T16:42:26Z step 1 (pluto.fw) rc=0
+2026-11-22T16:42:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-2119aa5f8f78/tools/pluto_bench.py --as nato-kws chan /home/baitisj/blowfang-work/runs/inbox/kws-bins-map/pluto_chan.armhf /home/baitisj/blowfang-work/runs/queue/kws-bins-map/b2m --bins /home/baitisj/blowfang-work/runs/inbox/kws-bins-map/pluto-fpga-source --hz 146300000 --seconds 600 --gain 45 --channels 145230000,146610000,146780000,146800000,146900000,146960000,147000000,147160000,147280000,147340000,147360000,147380000 --band 144000000,148000000
+chan: pluto_chan (284744a6925f81a7...) and the producer (c462e7586d0a1970...) in the Pluto's RAM; streams [7, 11, 13, 14, 15, 18, 21, 22, 23, 492]
+band: most active 146.950 (56 s), 146.900 (52 s), 144.200 (12 s), 144.250 (11 s), 144.350 (9 s), 144.300 (9 s), 144.400 (9 s), 144.150 (8 s)
+pluto_chan: 145232008 Hz from stream 492
+pluto_chan: 146612027 Hz from stream 7
+pluto_chan: 146782029 Hz from stream 11
+pluto_chan: 146802030 Hz from stream 11
+pluto_chan: 146902031 Hz from stream 13
+pluto_chan: 146962032 Hz from stream 14
+pluto_chan: 147002032 Hz from stream 15
+pluto_chan: 147162035 Hz from stream 18
+pluto_chan: 147282036 Hz from stream 21
+pluto_chan: 147342037 Hz from stream 22
+pluto_chan: 147362037 Hz from stream 22
+pluto_chan: 147382038 Hz from stream 23
+pluto_chan: config {"input_center_hz":146300000,"input_rate_hz":25600000,"input_bandwidth_hz":20000000,"filter_delay_input_samples_times_two":4095,"first_output_center_input_sample_times_two":4095,"hardware_counter":true,"continuity_verified":false,"activity_calibrated":false,"activity_method":"fpga-welch-minstat-cfar
+pluto_chan: RIQ1, 12 channels, 912244 messages, 24 gaps, 5891 PSD frames, 600.01 s of the slowest stream in 600.28 s
+pluto-fpga-source waiting on TCP:9010; radio unopened
+{"status":"error","wire_bytes":2504773608,"frames":0,"adc_losses":2,"sel_drops":0}
+chan: 600 s in 601.9 s on 12 channels from 10 bins, 0 overs, 86412 bytes (144 B/s)
+2026-11-22T16:52:31Z step 2 (pluto) rc=0
+2026-11-22T16:52:31Z job kws-bins-map done

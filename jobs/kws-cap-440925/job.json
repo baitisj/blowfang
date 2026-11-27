@@ -1,0 +1,22 @@
+{
+ "id": "kws-cap-440925",
+ "who": "nato-kws",
+ "freq_mhz": 440.925,
+ "minutes": 25,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:cap440925.wav",
+    "--hz",
+    "440925000",
+    "--seconds",
+    "1200",
+    "--gain",
+    "60",
+    "--wav-only"
+   ]
+  }
+ ]
+}

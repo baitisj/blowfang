@@ -1,0 +1,16 @@
+[
+ {
+  "name": "logger.out",
+  "bytes": 14140,
+  "sha256": "74a7d33a2dbdc0fa26841dd65aa12f4a70d541efcf3a541816a85a03571eb816",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118-r3/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 31434,
+  "sha256": "fc9459f30566b30925c45d64e635477120854d2c81112c686dc5229e7163570d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/refcal-cool-1118-r3/k6.log"
+ }
+]

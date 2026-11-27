@@ -1,0 +1,31 @@
+[
+ {
+  "name": "ftm.cf32.json",
+  "bytes": 133,
+  "sha256": "3d18461e3bf8e6b25a967bb3962022e5f59b978b1b8c10e9c5bd62026b99cebc",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ftmref-1118a/ftm.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 200,
+  "sha256": "638ed92a21295101410cd1bba6066d46e1eb0c6c599cce1e9b36f8ff238c143b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ftmref-1118a/pluto.out"
+ },
+ {
+  "name": "ftm.wav",
+  "bytes": 17280044,
+  "sha256": "9edeed7c39a5459a1e455a128593b2a513d79515c60eb4bc5128a6a225bcd38e",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ftmref-1118a/ftm.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "ftm.cf32",
+  "bytes": 345600000,
+  "sha256": "21cd1e9817481acbd06afa191f6d5026d98d8684efb20509c4fd7f3f618fe162",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/ftmref-1118a/ftm.cf32"
+ }
+]

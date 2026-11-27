@@ -1,0 +1,66 @@
+[
+ {
+  "name": "k6-rate.json",
+  "bytes": 67,
+  "sha256": "0d9e1fa8523f920dd7a28e7033100c0c6535d9b2f9fe2dca82079a42f5f2d8fd",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/k6-rate.json"
+ },
+ {
+  "name": "c4.cf32.json",
+  "bytes": 133,
+  "sha256": "1996258b7d5e5a8c54e5f22a8b956e325e3b8d23ec65e110085d9667e2a00041",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/c4.cf32.json"
+ },
+ {
+  "name": "pluto.out",
+  "bytes": 192,
+  "sha256": "18db8df08e8ad3b783d7b11a7f0db68d6c0f71b3e29eb1e431824106c261e7d5",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/pluto.out"
+ },
+ {
+  "name": "uv380.rx.out",
+  "bytes": 6644,
+  "sha256": "7cf8d06aa361a3eec5dd272517ef796ccc22b7a7bdf4e13c48f27188df985574",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/uv380.rx.out"
+ },
+ {
+  "name": "uv380.log",
+  "bytes": 7124,
+  "sha256": "72d2c222287b7b97936bb9e12d6cbffca4ca648d83fefef510f021fd16e271a7",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/uv380.log"
+ },
+ {
+  "name": "logger.out",
+  "bytes": 11879,
+  "sha256": "6aabe535b49a55fa9e38658d858b5b3ab49c56af4f2b157c996c18d1f6398119",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/logger.out"
+ },
+ {
+  "name": "k6.log",
+  "bytes": 16671,
+  "sha256": "7176eaea0ba2dce5ceab3ca6415b5dbc8d345fb2ca4872832ab5e162e07c48e2",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/k6.log"
+ },
+ {
+  "name": "c4.wav",
+  "bytes": 6720044,
+  "sha256": "82dd9f243d3d93270cb9a3bf5ce6c011719ea7bf2cd52a50b9d3283f01402f3e",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/c4.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "c4.cf32",
+  "bytes": 134400000,
+  "sha256": "fed522cd26354a64c3214a2f5a5db043b935bb28cf4b7ad2b411406eb5bf9dc0",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/c4fm-dmr4/c4.cf32"
+ }
+]

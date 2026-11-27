@@ -1,0 +1,52 @@
+{
+  "tool": "rt950_backup.py",
+  "started_utc": "2026-11-26T10:35:39+00:00",
+  "addr_bytes": 3,
+  "identity_hex": "52543935302d4241434b55504f4e4c59",
+  "identity": "RT950-BACKUPONLY",
+  "model": "RT-950",
+  "key_index": 10,
+  "ranges": [
+    {
+      "name": "spi4m",
+      "cps_addr": "0x000000",
+      "length": 4194304,
+      "passes": [
+        {
+          "file": "spi4m.pass1.bin",
+          "sha256": "d82786bac2a3ca45da9b4980988be7d28ead15363a61f5691dbf7869fce7ec7f"
+        }
+      ],
+      "agreed_sha256": "d82786bac2a3ca45da9b4980988be7d28ead15363a61f5691dbf7869fce7ec7f",
+      "regions": {
+        "channels": "bb3d6a9238838186e00f66ded18388544a3b5bea8f00d83b75b9fc481b5e194f",
+        "vfo_config": "5596090924fb5af2518902f69d56a3b69a4aad0a71820d802eee5d08154f6e5b",
+        "system_config": "e7d9aea96eee1296a02200fb2efb45e74a2f38af8ff6ce82a9c731c39997454f",
+        "ext_config_1": "d06f9a5eb0ec79de65223ee7d2b0c71a2382468219cf82635152f6a93e7069ef",
+        "ext_config_2": "4040b27307da522dc5bf1e58f1c4c531d61f7701d40bc5ede24dc0d9fd8b0da4",
+        "dtmf_modulation": "3d6876a0146de8576eb2395a858de1213d1b92c65b779df3a331cfd5a4584546",
+        "aprs_misc": "069af124b2f3cf012a5020a5fbb99a474031f732f11b3429aac3f1e6beb13aab",
+        "cal_e000": "6ea54fb0ae8e4d7f221f045049f8d26970748874d8f6c4718d80cb482b1c784a",
+        "cal_f000": "6dacd7d73d865957db1a735a6c9bc8694864fa5dcd1fb6a75fbaf2848907d210",
+        "cal_f200": "6004f07b94d79ce3dc7d06648ca2155f2081c7d50f35f66b401a41ca942b4339"
+      },
+      "single_pass": true
+    },
+    {
+      "name": "bootloader",
+      "cps_addr": "0x800000",
+      "length": 12288,
+      "passes": [
+        {
+          "file": "bootloader.pass1.bin",
+          "sha256": "cc86323edb194e2c3eef8a5dbc1cb1ff03eb096f5c9ce48ae90e181d9a0a21b1"
+        }
+      ],
+      "agreed_sha256": "cc86323edb194e2c3eef8a5dbc1cb1ff03eb096f5c9ce48ae90e181d9a0a21b1",
+      "regions": {},
+      "single_pass": true
+    }
+  ],
+  "finished_utc": "2026-11-26T12:07:03+00:00",
+  "ok": true
+}

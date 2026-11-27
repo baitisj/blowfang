@@ -1,0 +1,104 @@
+2026-11-22T04:02:09Z job bigant-1122c by position, checkout /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1 at 866a22a0c2b125feb744ad588735523a719b2b56
+2026-11-22T04:02:09Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769100.cf32 --hz 769100000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769100.cf32: 0.1 s on 769100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769100.cf32), floor -79.4 dBFS, signal on 0%
+2026-11-22T04:02:11Z step 1 (pluto) rc=0
+2026-11-22T04:02:11Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769300.cf32 --hz 769300000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769300.cf32: 0.1 s on 769300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769300.cf32), floor -78.1 dBFS, signal on 0%
+2026-11-22T04:02:12Z step 2 (pluto) rc=0
+2026-11-22T04:02:12Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769500.cf32 --hz 769500000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769500.cf32: 0.1 s on 769500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769500.cf32), floor -79.0 dBFS, signal on 0%
+2026-11-22T04:02:14Z step 3 (pluto) rc=0
+2026-11-22T04:02:14Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769700.cf32 --hz 769700000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769700.cf32: 0.1 s on 769700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769700.cf32), floor -79.1 dBFS, signal on 0%
+2026-11-22T04:02:15Z step 4 (pluto) rc=0
+2026-11-22T04:02:15Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769900.cf32 --hz 769900000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769900.cf32: 0.1 s on 769900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c769900.cf32), floor -79.0 dBFS, signal on 0%
+2026-11-22T04:02:17Z step 5 (pluto) rc=0
+2026-11-22T04:02:17Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770100.cf32 --hz 770100000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770100.cf32: 0.1 s on 770100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770100.cf32), floor -78.1 dBFS, signal on 0%
+2026-11-22T04:02:18Z step 6 (pluto) rc=0
+2026-11-22T04:02:18Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770300.cf32 --hz 770300000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770300.cf32: 0.1 s on 770300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770300.cf32), floor -77.5 dBFS, signal on 0%
+2026-11-22T04:02:20Z step 7 (pluto) rc=0
+2026-11-22T04:02:20Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770500.cf32 --hz 770500000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770500.cf32: 0.1 s on 770500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770500.cf32), floor -78.8 dBFS, signal on 0%
+2026-11-22T04:02:21Z step 8 (pluto) rc=0
+2026-11-22T04:02:21Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770700.cf32 --hz 770700000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770700.cf32: 0.1 s on 770700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770700.cf32), floor -77.6 dBFS, signal on 0%
+2026-11-22T04:02:23Z step 9 (pluto) rc=0
+2026-11-22T04:02:23Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770900.cf32 --hz 770900000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770900.cf32: 0.1 s on 770900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c770900.cf32), floor -79.0 dBFS, signal on 0%
+2026-11-22T04:02:24Z step 10 (pluto) rc=0
+2026-11-22T04:02:24Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771100.cf32 --hz 771100000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771100.cf32: 0.1 s on 771100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771100.cf32), floor -47.8 dBFS, signal on 0%
+2026-11-22T04:02:26Z step 11 (pluto) rc=0
+2026-11-22T04:02:26Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771300.cf32 --hz 771300000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771300.cf32: 0.1 s on 771300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771300.cf32), floor -78.5 dBFS, signal on 0%
+2026-11-22T04:02:27Z step 12 (pluto) rc=0
+2026-11-22T04:02:27Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771500.cf32 --hz 771500000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771500.cf32: 0.1 s on 771500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771500.cf32), floor -78.7 dBFS, signal on 0%
+2026-11-22T04:02:29Z step 13 (pluto) rc=0
+2026-11-22T04:02:29Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771700.cf32 --hz 771700000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771700.cf32: 0.1 s on 771700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771700.cf32), floor -78.8 dBFS, signal on 0%
+2026-11-22T04:02:30Z step 14 (pluto) rc=0
+2026-11-22T04:02:30Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771900.cf32 --hz 771900000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771900.cf32: 0.1 s on 771900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c771900.cf32), floor -79.3 dBFS, signal on 0%
+2026-11-22T04:02:32Z step 15 (pluto) rc=0
+2026-11-22T04:02:32Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772100.cf32 --hz 772100000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772100.cf32: 0.1 s on 772100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772100.cf32), floor -79.4 dBFS, signal on 0%
+2026-11-22T04:02:33Z step 16 (pluto) rc=0
+2026-11-22T04:02:33Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772300.cf32 --hz 772300000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772300.cf32: 0.1 s on 772300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772300.cf32), floor -79.0 dBFS, signal on 0%
+2026-11-22T04:02:35Z step 17 (pluto) rc=0
+2026-11-22T04:02:35Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772500.cf32 --hz 772500000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772500.cf32: 0.1 s on 772500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772500.cf32), floor -78.7 dBFS, signal on 0%
+2026-11-22T04:02:36Z step 18 (pluto) rc=0
+2026-11-22T04:02:36Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772700.cf32 --hz 772700000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772700.cf32: 0.1 s on 772700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772700.cf32), floor -79.8 dBFS, signal on 0%
+2026-11-22T04:02:38Z step 19 (pluto) rc=0
+2026-11-22T04:02:38Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772900.cf32 --hz 772900000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772900.cf32: 0.1 s on 772900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c772900.cf32), floor -78.5 dBFS, signal on 0%
+2026-11-22T04:02:39Z step 20 (pluto) rc=0
+2026-11-22T04:02:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773100.cf32 --hz 773100000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773100.cf32: 0.1 s on 773100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773100.cf32), floor -78.8 dBFS, signal on 0%
+2026-11-22T04:02:41Z step 21 (pluto) rc=0
+2026-11-22T04:02:41Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773300.cf32 --hz 773300000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773300.cf32: 0.1 s on 773300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773300.cf32), floor -79.3 dBFS, signal on 0%
+2026-11-22T04:02:42Z step 22 (pluto) rc=0
+2026-11-22T04:02:42Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773500.cf32 --hz 773500000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773500.cf32: 0.1 s on 773500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773500.cf32), floor -79.7 dBFS, signal on 0%
+2026-11-22T04:02:44Z step 23 (pluto) rc=0
+2026-11-22T04:02:44Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773700.cf32 --hz 773700000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773700.cf32: 0.1 s on 773700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773700.cf32), floor -79.7 dBFS, signal on 0%
+2026-11-22T04:02:45Z step 24 (pluto) rc=0
+2026-11-22T04:02:45Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773900.cf32 --hz 773900000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773900.cf32: 0.1 s on 773900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c773900.cf32), floor -79.3 dBFS, signal on 0%
+2026-11-22T04:02:47Z step 25 (pluto) rc=0
+2026-11-22T04:02:47Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774100.cf32 --hz 774100000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774100.cf32: 0.1 s on 774100000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774100.cf32), floor -79.8 dBFS, signal on 0%
+2026-11-22T04:02:48Z step 26 (pluto) rc=0
+2026-11-22T04:02:48Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774300.cf32 --hz 774300000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774300.cf32: 0.1 s on 774300000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774300.cf32), floor -78.0 dBFS, signal on 0%
+2026-11-22T04:02:50Z step 27 (pluto) rc=0
+2026-11-22T04:02:50Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774500.cf32 --hz 774500000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774500.cf32: 0.1 s on 774500000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774500.cf32), floor -79.3 dBFS, signal on 1%
+2026-11-22T04:02:51Z step 28 (pluto) rc=0
+2026-11-22T04:02:51Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774700.cf32 --hz 774700000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774700.cf32: 0.1 s on 774700000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774700.cf32), floor -79.1 dBFS, signal on 0%
+2026-11-22T04:02:53Z step 29 (pluto) rc=0
+2026-11-22T04:02:53Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774900.cf32 --hz 774900000 --seconds 0.1 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774900.cf32: 0.1 s on 774900000 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/c774900.cf32), floor -79.5 dBFS, signal on 0%
+2026-11-22T04:02:54Z step 30 (pluto) rc=0
+2026-11-22T04:02:54Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/L771257.cf32 --hz 771257300 --seconds 2 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L771257.cf32: 2.0 s on 771257300 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L771257.cf32), floor -56.8 dBFS, signal on 0%
+2026-11-22T04:02:58Z step 31 (pluto) rc=0
+2026-11-22T04:02:58Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/L771106.cf32 --hz 771106800 --seconds 2 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L771106.cf32: 2.0 s on 771106800 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L771106.cf32), floor -45.6 dBFS, signal on 0%
+2026-11-22T04:03:01Z step 32 (pluto) rc=0
+2026-11-22T04:03:01Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/L863819.cf32 --hz 863819800 --seconds 2 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L863819.cf32: 2.0 s on 863819800 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L863819.cf32), floor -35.8 dBFS, signal on 0%
+2026-11-22T04:03:05Z step 33 (pluto) rc=0
+2026-11-22T04:03:05Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as position rx /home/baitisj/blowfang-work/runs/queue/bigant-1122c/L773657.cf32 --hz 773657300 --seconds 2 --gain 50
+/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L773657.cf32: 2.0 s on 773657300 Hz at 240000 complex64 (/home/baitisj/blowfang-work/runs/queue/bigant-1122c/L773657.cf32), floor -79.7 dBFS, signal on 0%
+2026-11-22T04:03:08Z step 34 (pluto) rc=0
+2026-11-22T04:03:08Z job bigant-1122c done

@@ -1,0 +1,32 @@
+[
+ {
+  "name": "lvl442_g40.wav.json",
+  "bytes": 4395,
+  "sha256": "8a92ddd6508f051f9d4834f2524557406ebda47fbc5e11b64cabe9630415a24b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g40.wav.json"
+ },
+ {
+  "name": "lvl442_g60.wav.json",
+  "bytes": 4395,
+  "sha256": "898cb590587bc84bbfbcc0df6a112dcf148079d8f729c1ddd7576d3711d3a32b",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g60.wav.json"
+ },
+ {
+  "name": "lvl442_g40.wav",
+  "bytes": 960044,
+  "sha256": "adf84d948c30b28ef2d2ca0681330f052ce5a7a8537fa6204585c1cc0686035e",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g40.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ },
+ {
+  "name": "lvl442_g60.wav",
+  "bytes": 960044,
+  "sha256": "36b8cf1c0fc277d15c93a55819ae89c88212e091d8f67135d191545752f79c84",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-lvl-1/lvl442_g60.wav",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

@@ -1,0 +1,10 @@
+[
+ {
+  "name": "2ma/147.1600_20261122T0543320Z.flac",
+  "bytes": 83483,
+  "sha256": "1c532b980490f438c9a4f954172624d864b47ae6ac3e236e0ebc882bb2d1d4fa",
+  "returned": false,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/kws-night-2ma/2ma/147.1600_20261122T0543320Z.flac",
+  "kept": "not text (audio, IQ, images and dumps stay on hamlet); dropped from the branch 2026-11-27"
+ }
+]

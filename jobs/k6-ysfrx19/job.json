@@ -1,0 +1,139 @@
+{
+ "id": "k6-ysfrx19",
+ "who": "k6-ysfrx",
+ "freq_mhz": "bench",
+ "minutes": 12,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 560,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:ysfrx.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0",
+    "--api-level",
+    "2",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "b9b91e65fcbae26db901e30c565658024b4d363a9e1b54d96d0c75be71937c4f"
+  },
+  {
+   "do": "wait",
+   "pattern": "ysf start",
+   "seconds": 60,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 2,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 4,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "3888",
+    "--gain",
+    "-40"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 4,
+   "continue_on_error": true
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:ysf.wav",
+    "--dev",
+    "5400",
+    "--gain",
+    "-60"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "power 0",
+    "freq 440850",
+    "trim 6100",
+    "phy ysf"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.air",
+   "args": [
+    "ysf",
+    "test"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "freq 441850"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD ret=",
+   "seconds": 240,
+   "continue_on_error": true
+  },
+  {
+   "do": "logger.stop"
+  }
+ ]
+}

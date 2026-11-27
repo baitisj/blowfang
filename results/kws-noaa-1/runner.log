@@ -1,0 +1,8 @@
+2026-11-22T04:46:39Z job kws-noaa-1 by nato-kws, checkout /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1 at 866a22a0c2b125feb744ad588735523a719b2b56
+2026-11-22T04:46:39Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162550.wav --hz 162550000 --seconds 30 --gain 40 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162550.wav: 30.0 s on 162550000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -69.0 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:47:10Z step 1 (pluto) rc=0
+2026-11-22T04:47:10Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-866a22a0c2b1/tools/pluto_bench.py --as nato-kws rx /home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162400.wav --hz 162400000 --seconds 30 --gain 40 --wav-only
+/home/baitisj/blowfang-work/runs/queue/kws-noaa-1/noaa162400.wav: 30.0 s on 162400000 Hz, FM audio at 8000 Hz only (no IQ kept), floor -72.9 dBFS, carrier (floor + 20 dB) on 0%
+2026-11-22T04:47:42Z step 2 (pluto) rc=0
+2026-11-22T04:47:42Z job kws-noaa-1 done

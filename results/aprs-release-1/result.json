@@ -1,0 +1,39 @@
+{
+ "id": "aprs-release-1",
+ "who": "k6-aprs-ladder",
+ "started": "2026-11-19T21:28:02Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger.stop",
+   "started": "2026-11-19T21:28:02Z",
+   "ended": "2026-11-19T21:28:03Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-19T21:28:03Z",
+   "ended": "2026-11-19T21:28:06Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "ic7100.power0",
+   "started": "2026-11-19T21:28:06Z",
+   "ended": "2026-11-19T21:28:07Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-8235569589ba",
+ "head": "8235569589ba9f1325949aa0e9247c93d4ac7b72",
+ "ended": "2026-11-19T21:28:07Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "bb07f81e69432d359a7059c9371111ff7304fdd0",
+  "path": "jobs/aprs-release-1"
+ },
+ "runner_commit": "8235569589ba9f1325949aa0e9247c93d4ac7b72",
+ "updated": "2026-11-19T21:28:07Z"
+}

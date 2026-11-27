@@ -1,0 +1,110 @@
+{
+ "id": "refcal-c1118-02",
+ "who": "refcal",
+ "started": "2026-11-18T07:30:04Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-18T07:30:04Z",
+   "ended": "2026-11-18T07:30:06Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "pluto",
+   "started": "2026-11-18T07:30:06Z",
+   "ended": "2026-11-18T07:30:08Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-18T07:30:08Z",
+   "ended": "2026-11-18T07:30:09Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "pluto",
+   "started": "2026-11-18T07:30:09Z",
+   "ended": "2026-11-18T07:30:40Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "wait",
+   "started": "2026-11-18T07:30:40Z",
+   "ended": "2026-11-18T07:31:00Z",
+   "rc": 1,
+   "why": "no /EX beacon|VOICE MSG/ in /home/baitisj/blowfang-work/runs/queue/refcal-c1118-02/k6.log"
+  },
+  {
+   "n": 6,
+   "do": "k6.upload",
+   "started": "2026-11-18T07:31:00Z",
+   "ended": "2026-11-18T07:32:31Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "pluto",
+   "started": "2026-11-18T07:32:31Z",
+   "ended": "2026-11-18T07:32:32Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-18T07:32:32Z",
+   "ended": "2026-11-18T07:32:34Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "pluto",
+   "started": "2026-11-18T07:32:34Z",
+   "ended": "2026-11-18T07:33:22Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-18T07:33:22Z",
+   "ended": "2026-11-18T07:33:22Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "pluto",
+   "started": "2026-11-18T07:33:22Z",
+   "ended": "2026-11-18T07:33:24Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "pluto",
+   "started": "2026-11-18T07:33:24Z",
+   "ended": "2026-11-18T07:33:27Z",
+   "rc": 0
+  },
+  {
+   "n": 13,
+   "do": "logger.stop",
+   "started": "2026-11-18T07:33:27Z",
+   "ended": "2026-11-18T07:33:27Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-46b5e93deb26",
+ "head": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "ended": "2026-11-18T07:33:27Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "016aab975622272819f2fb1f04c694ae2f9ba687",
+  "path": "jobs/refcal-c1118-02"
+ },
+ "runner_commit": "46b5e93deb267056b3a7a449b9ae09b4daf96b28",
+ "updated": "2026-11-18T07:33:28Z"
+}

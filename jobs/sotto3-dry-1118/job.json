@@ -1,0 +1,38 @@
+{
+ "id": "sotto3-dry-1118",
+ "who": "multimode",
+ "freq_mhz": 441.85,
+ "minutes": 8,
+ "sources_commit": "2bc44cf",
+ "steps": [
+  {
+   "do": "uv380.cmd",
+   "args": [
+    "listen 0",
+    "power 0",
+    "zero 2"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "m17",
+    "dry"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "ysf",
+    "dry"
+   ]
+  },
+  {
+   "do": "uv380.sotto",
+   "args": [
+    "dmr",
+    "dry"
+   ]
+  }
+ ]
+}

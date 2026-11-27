@@ -1,0 +1,15 @@
+{
+ "id": "soapy950-live-1126a",
+ "status": "refused",
+ "reason": "step 1 (sim.soapyfang): '--radio': only --minutes, --gain, --center, --rate, --image, --syms, --dbm-offset (the runner sets the source, host and port)",
+ "problems": [
+  "step 1 (sim.soapyfang): '--radio': only --minutes, --gain, --center, --rate, --image, --syms, --dbm-offset (the runner sets the source, host and port)"
+ ],
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "c16dd94636bdbbc8c5509d7868ac457650e5bc91",
+  "path": "jobs/soapy950-live-1126a"
+ },
+ "runner_commit": "c7b3235add99eee6767627ebd7033a19dc43e5f7",
+ "updated": "2026-11-26T14:15:39Z"
+}

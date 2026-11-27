@@ -1,0 +1,7 @@
+2026-11-26T14:13:45Z job rt950-info-1126s by rt950, checkout /home/baitisj/blowfang-work/worktrees/inbox-4a06b30e5c31 at 4a06b30e5c3132e8927f5a819b30165a7be7f601
+2026-11-26T14:14:05Z step 1 (wait) rc=0
+2026-11-26T14:14:05Z $ /usr/bin/python3 /home/baitisj/blowfang-work/worktrees/inbox-4a06b30e5c31/radios/rt950/tools/rt950_backup.py info /dev/ttyUSB3 --addr 2
+session: identity b'RT950-BACKUPONLY' model 'RT-950'
+{"identity_hex": "52543935302d4241434b55504f4e4c59", "identity": "RT950-BACKUPONLY", "model": "RT-950"}
+2026-11-26T14:14:06Z step 2 (rt950.info) rc=0
+2026-11-26T14:14:06Z job rt950-info-1126s done

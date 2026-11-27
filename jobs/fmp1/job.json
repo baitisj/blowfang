@@ -1,0 +1,76 @@
+{
+ "id": "fmp1",
+ "who": "fmprobe",
+ "freq_mhz": "440.85",
+ "minutes": 20,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 1100,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:fmprobe.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--api-level",
+    "2",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "dc4e81272c375c3de4c7957774bf21ad25029a8fa2351b4aa748debfcf563f86"
+  },
+  {
+   "do": "wait",
+   "pattern": "K6 MOD say E n=|K6 MOD ret=",
+   "seconds": 480,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000,
+   "continue_on_error": true
+  },
+  {
+   "do": "ic7100.power0"
+  }
+ ]
+}

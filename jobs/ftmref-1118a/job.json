@@ -1,0 +1,26 @@
+{
+ "id": "ftmref-1118a",
+ "who": "c4fm",
+ "freq_mhz": 440.85,
+ "minutes": 6,
+ "steps": [
+  {
+   "do": "pluto",
+   "args": [
+    "rx",
+    "run:ftm.wav",
+    "--hz",
+    "440850000",
+    "--seconds",
+    "180"
+   ],
+   "background": true
+  },
+  {
+   "do": "wait",
+   "pattern": "ftm\\.wav: ",
+   "file": "pluto.out",
+   "seconds": 240
+  }
+ ]
+}
