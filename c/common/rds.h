@@ -15,7 +15,9 @@
              hours. A station sends it once a minute, the group starting within 0.1 s of the
              minute edge (IEC 62106), which is what makes it a time source
 
-   Text is taken only when the same characters arrive twice in a row for that position, so one
+   Text, PTY, the flags and the ECC are taken only when the same value arrives twice in a row
+   (for text, at that position; run fmr2 showed one weak station's single groups claiming PTY 30
+   "Alarm Test" and TA), so one
    wrong correction can't put a wrong character in; with the error levels known (strict), a block
    must also be clean (BLER 0). A clock group must be clean in B, C and D when strict (a station
    at RSSI 62 sent two 4A groups with BLER 1-2 that read hour 26 and dates decades off: run
@@ -43,7 +45,8 @@
 
 typedef struct {
   uint16_t pi, g, ok;       /* PI; groups; groups clean in all four blocks (strict only) */
-  uint8_t pty, fl;          /* PTY 0-31; RDS_TP | RDS_TA | RDS_MS | RDS_PI */
+  uint8_t pty, fl;          /* PTY 0-31; RDS_TP | RDS_TA | RDS_MS | RDS_PI (each seen twice in a row) */
+  uint8_t ptyc, tamc, eccc; /* their candidates (+ 1; 0 none yet) */
   uint8_t psok, ecc;        /* the name's pairs confirmed (bits 0-3); ECC, 0 none heard */
   uint8_t rtab, rtend;      /* the text's A/B flag + 1, + 2 for 2B (0 none yet); its end ('\r') + 1 */
   uint16_t rtok;            /* the text's segments confirmed (bit n: characters 4n..4n+3) */
@@ -86,11 +89,20 @@ static inline uint32_t rds_group(rds_t *s, const uint16_t *b, uint32_t e, int st
   if (strict && RDS_BLER(e, 1)) return 0; /* a type we can't trust: nothing else to read */
   ty = B >> 12, ver = (B >> 11) & 1u;
   s->gt |= 1u << (ty * 2 + ver);
-  s->pty = (uint8_t)((B >> 5) & 31u);
-  s->fl = (uint8_t)((s->fl & ~RDS_TP) | (B & 0x400u ? RDS_TP : 0));
+  { /* PTY and TP: taken when two groups in a row agree, as the text is (one bad B can't set them) */
+    uint8_t v = (uint8_t)(((B >> 5) & 63u) + 1u); /* TP << 5 | PTY, + 1 */
+    if (s->ptyc == v) {
+      s->pty = (uint8_t)((v - 1u) & 31u);
+      s->fl = (uint8_t)((s->fl & ~RDS_TP) | ((v - 1u) & 32u ? RDS_TP : 0));
+    }
+    s->ptyc = v;
+  }
   if (ver && !RDS_BLER(e, 2) && !(s->fl & RDS_PI)) s->pi = b[2];
   if (ty == 0) { /* 0A / 0B: TA, MS, the name */
-    s->fl = (uint8_t)((s->fl & ~(RDS_TA | RDS_MS)) | (B & 0x10u ? RDS_TA : 0) | (B & 8u ? RDS_MS : 0));
+    uint8_t tm = (uint8_t)(((B >> 3) & 3u) + 1u); /* TA << 1 | MS, + 1 */
+    if (s->tamc == tm)
+      s->fl = (uint8_t)((s->fl & ~(RDS_TA | RDS_MS)) | ((tm - 1u) & 2u ? RDS_TA : 0) | ((tm - 1u) & 1u ? RDS_MS : 0));
+    s->tamc = tm;
     seg = B & 3u;
     if ((!strict || !RDS_BLER(e, 3)) && rds_pair(&s->psc[seg], &s->ps[2 * seg], b[3])) {
       uint32_t was = s->psok;
@@ -98,7 +110,11 @@ static inline uint32_t rds_group(rds_t *s, const uint16_t *b, uint32_t e, int st
       if (s->psok == 15 && was != 15) ev |= RDS_EV_PS;
     }
   } else if (ty == 1 && !ver) { /* 1A: variant 0 carries the ECC */
-    if ((!strict || !RDS_BLER(e, 2)) && !(b[2] & 0x7000u)) s->ecc = (uint8_t)(b[2] & 0xFF);
+    if ((!strict || !RDS_BLER(e, 2)) && !(b[2] & 0x7000u)) {
+      uint8_t v = (uint8_t)(b[2] & 0xFF);
+      if (s->eccc == v + 1u) s->ecc = v; /* (0xFF never repeats as + 1: fine, no ECC is 0xFF) */
+      s->eccc = (uint8_t)(v + 1u);
+    }
   } else if (ty == 2) { /* 2A / 2B: radio text */
     uint32_t ab = ((B >> 4) & 1u) + 1u + (ver ? 2u : 0); /* a new flag or version: new text */
     if (s->rtab != ab) {
