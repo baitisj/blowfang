@@ -222,7 +222,8 @@ def test_repeats_bring_their_own_outputs_back_and_cancel(env, monkeypatch):
 
     def command(job, step, rd):
         out = step["args"][1]
-        return [sys.executable, "-c", f"open({out!r}, 'w').write({job['id']!r})"], rd, False
+        return [sys.executable, "-c", f"open({out!r}, 'w').write({job['id']!r}); "
+                f"open({os.path.join(rd, 'cap.json')!r}, 'w').write({job['id']!r})"], rd, False
     monkeypatch.setattr(br, "command", command)
     monkeypatch.setattr(br, "checkout_clean", lambda co: (True, "abc1234"))
     run = lambda: br.serve_once(claim=lambda *a, **k: None, release=lambda *a: None,
@@ -234,7 +235,11 @@ def test_repeats_bring_their_own_outputs_back_and_cancel(env, monkeypatch):
         out = env["tmp"] / ("got-" + n)
         monkeypatch.chdir(env["client"])
         assert bi.main(["get", n, str(out)]) == 0
-        assert (out / "files" / "cap.cf32").read_text() == n            # each run's own capture came back
+        assert (out / "files" / "cap.json").read_text() == n            # each run's own text came back
+        assert not (out / "files" / "cap.cf32").exists()                  # the capture stays on hamlet
+        listed = {f["name"]: f for f in json.loads((out / "files.json").read_text())}
+        assert listed["cap.cf32"]["returned"] is False and "not text" in listed["cap.cf32"]["kept"]
+        assert listed["cap.cf32"]["hamlet"].endswith(os.path.join(n, "cap.cf32"))
     # cancel a repeat by its own id: it has only results/rc-r2 in the branch
     assert result(env, "rc-r2")["status"] == "queued"
     assert bi.main(["cancel", "rc-r2"]) == 0
@@ -245,6 +250,15 @@ def test_repeats_bring_their_own_outputs_back_and_cancel(env, monkeypatch):
     assert not run() and result(env, "rc-r2") and not os.path.exists(os.path.join(br.qdir("refused"), "rc-r2.json"))
     ib.tick(idle=False)
     assert result(env, "rc-r2")["status"] == "cancelled"
+
+
+def test_only_small_text_comes_back():
+    assert bi.return_why("a/levels.json", 100, bi.RETURN_JOB_MAX) is None
+    assert bi.return_why("k6.LOG", 100, bi.RETURN_JOB_MAX) is None
+    for name in ("y.wav", "c.flac", "p.cf32", "r.riq", "fw.itb", "region.bin", "noext"):
+        assert "not text" in bi.return_why(name, 100, bi.RETURN_JOB_MAX)
+    assert "KB" in bi.return_why("big.log", bi.RETURN_FILE_MAX + 1, bi.RETURN_JOB_MAX)
+    assert "job's" in bi.return_why("x.log", 100, 99)
 
 
 def test_cancel_by_first_id_stops_the_series(env, monkeypatch):

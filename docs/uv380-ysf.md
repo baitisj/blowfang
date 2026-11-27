@@ -61,15 +61,16 @@ idle-half writes at each 30 ms slot edge, nothing said over USB while keyed, reg
 The bench runner's `uv380.ysf` step (`dn` or `data`) sends one, under the same power-0 read-back
 as `uv380.m17`. A job: Pluto `rx run:y.wav --hz 441850000 --seconds 130` in the background, UV-380
 `listen 0`, `power 0`, `zero 2`, `trim -580` (the FM trim 6100 less the raw mode's 6680 offset),
-`uv380.ysf dn`, `uv380.ysf data`, then `trim 6100` back. The Pluto sits on the channel because the
-runner returns files up to 20 MB: the 48 kHz discriminator wav (12 MB) comes back to a cloud
-thread, the 250 MB .cf32 stays on hamlet. `python3 -m modem.ysf decode y.wav` reads it.
+`uv380.ysf dn`, `uv380.ysf data`, then `trim 6100` back. The Pluto sits on the channel and writes
+the 48 kHz discriminator wav (12 MB); `python3 -m modem.ysf decode y.wav` reads it. Until
+2026-11-27 that wav came back to a cloud thread through the inbox branch; since then the runner
+returns only small text files and the wav stays in the run folder on hamlet.
 
 ## On air (2026-11-18)
 
 Bench runner job `ysf-1118b` (inbox), 00:57-00:59Z: the UV-380 transmitted (0 W, 441.850 MHz, Morse
 ident AG7EW first, `trim -580`) one `dn` and one `data` transmission; the Pluto received on
-441.850 (`rx run:y.wav`, the discriminator wav that comes back to a cloud thread).
+441.850 (`rx run:y.wav`, the discriminator wav).
 
 | | result |
 |---|---|
