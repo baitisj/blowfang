@@ -137,16 +137,26 @@ def test_bad_settings_are_refused_before_building():
 
 
 def test_shared_radio_api_prefix(built, tmp_path):
-    """um_api_t starts with c/common/radio_api.h's prefix, so portable code taking const radio_api_t *
-    works unchanged on UV-21 (abi=2, level=1, ticks, rx_hz, radio_rssi2)."""
+    """um_api_t starts with c/common/radio_api.h's prefix (its layout checked at compile time), so
+    portable code taking const radio_api_t * works unchanged on UV-21: abi=2, level=1, ticks,
+    radio_rssi2, and rx_hz the K6's way: where the radio listens once the module returns (SURF's
+    centre), not moved by the module's own tune."""
     src = tmp_path / "prefix_check.c"
     src.write_text(
         '#include "uv21_mod.h"\n'
+        '#define CHK(f, at) \\\n'
+        '  _Static_assert(__builtin_offsetof(um_api_t, f) == __builtin_offsetof(radio_api_t, f), #f); \\\n'
+        '  _Static_assert(__builtin_offsetof(um_api_t, f) == at, "ABI 2 " #f)\n'
+        'CHK(abi, 0); CHK(level, 2); CHK(say, 4); CHK(ticks, 8); CHK(fd_read, 12);\n'
+        'CHK(fd_write, 16); CHK(delay_us, 20); CHK(tune, 24); CHK(rx_hz, 28); CHK(ms, 32);\n'
+        '_Static_assert(__builtin_offsetof(um_api_t, front_end) == sizeof(radio_api_t), "front_end");\n'
         'static int portable_check(const radio_api_t *r) {\n'
         '  char line[64];\n'
         '  uint32_t t0 = r->ticks();\n'
-        '  r->tune(439500000u, 1);\n'
+        '  r->tune(439600000u, 1);\n'
         '  uint32_t hz = r->rx_hz();\n'
+        '  r->tune(439500000u, 1);\n'
+        '  r->delay_us(20000u);\n'
         '  int rssi2 = radio_rssi2(r);\n'
         '  char *p = um_put(line, "pfx abi=");\n'
         '  p = um_int(p, r->abi);\n'
@@ -157,7 +167,7 @@ def test_shared_radio_api_prefix(built, tmp_path):
         '  p = um_put(p, " rssi=");\n'
         '  p = um_half_db(p, rssi2);\n'
         '  r->say(line);\n'
-        '  return (r->ticks() >= t0 && hz == 439500000u) ? 0x55 : -1;\n'
+        '  return r->ticks() != t0 ? 0x55 : -1;\n'
         '}\n'
         'int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {\n'
         '  (void)ram; (void)ram_len;\n'

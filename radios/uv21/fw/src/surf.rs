@@ -118,13 +118,20 @@ extern "C" fn ticks() -> u32 {
     uptime::now32()
 }
 
+/// c/common/radio_api.h's fd_write: the driver masks the transmitter's enables out of the write
+/// (fd6818b.rs), so nothing is refused and the answer is always 0
 extern "C" fn mod_fd_write(reg: u8, v: u16) -> i32 {
     fd_write(reg, v);
     0
 }
 
+/// where SURF listens again once the module returns: c/common/radio_api.h's rx_hz, the K6's
+/// "frequency the pager listens on". Set by `run` before the module session; a module's tune
+/// doesn't move it
+static mut MOD_HOME_HZ: u32 = 0;
+
 extern "C" fn rx_hz() -> u32 {
-    app().radio_mut().rx_freq_hz()
+    unsafe { MOD_HOME_HZ }
 }
 
 extern "C" fn ms() -> u32 {
@@ -362,6 +369,7 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
         unsafe { uv21_surf(&mut api, arena::base(), room) }
     };
     if crate::umod::pending() {
+        unsafe { MOD_HOME_HZ = if cen != 0 { cen } else { start_hz } };
         crate::umod::run_session(&UM_API, check_power_off);
     }
     unsafe {

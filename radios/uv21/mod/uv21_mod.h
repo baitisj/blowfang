@@ -12,8 +12,16 @@
 #define UM_LEVEL 1
 
 typedef struct um_api {
-  /* Shared BK48xx/FD6818 prefix (c/common/radio_api.h: abi, level, say, ticks, fd_read, fd_write,
-     delay_us, tune, rx_hz, ms). Every register write passes the firmware's receive-only filter. */
+  /* The shared BK48xx/FD6818 prefix (c/common/radio_api.h), UM_ABI 2:
+       abi, level   UM_ABI, UM_LEVEL
+       say          a line on the serial console
+       ticks        uptime in 100 us ticks, 32 bits (the K6's are 16: portable code masks)
+       fd_read      BK4829 register
+       fd_write     always 0: the transmit state, PA bias and TX GPIOs are dropped from the write
+       delay_us     busy wait (see um_wait_us below for waits over 279 ms)
+       tune         receive on hz, the front end's band with it
+       rx_hz        SURF's centre, where it listens again once the module returns
+       ms           ms since boot */
   RADIO_API_PREFIX_FIELDS;
   int (*front_end)(int step);                   /* the receive band switch's mode (0 asks) */
 } um_api_t;

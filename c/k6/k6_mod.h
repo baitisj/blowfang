@@ -58,11 +58,21 @@ extern "C" {
 #define KM_LEVEL 16
 
 typedef struct k6_api {
-  /* Shared BK48xx/FD6818 prefix (c/common/radio_api.h: abi, level, say, ticks, fd_read, fd_write,
-     delay_us, tune, rx_hz, ms). Preserves K6 ABI-1 layout verbatim.
-     - level 1: say ("K6 MOD say <s>", up to 60 chars), ticks (100 us, 16-bit wrap).
-     - level 2: receive-only fd_read/fd_write (0x30/0x33/0x36/0x37 refused -> -1), delay_us, tune,
-       rx_hz, ms (32-bit ms since module start). After return, radio restores its pager frequency. */
+  /* The shared BK48xx/FD6818 prefix (c/common/radio_api.h), the K6's ABI-1 layout as it was:
+       abi, level   KM_ABI, KM_LEVEL
+       say          a serial report line, "K6 MOD say <s>" (up to 60 chars)
+       ticks        uptime in 100 us ticks, 16 bits: wraps every 6.5536 s
+     level 2: the receiver. Receive only: fd_write refuses the registers that switch the chip's
+     state, power, PA and band GPIOs (0x30 0x33 0x36 0x37) and returns -1; tune is the way to
+     move. After the module returns, the radio goes back to its own frequency and the pager's
+     receive set-up. A module that uses these declares K6_MODULE_LEVEL 2.
+       fd_read      FD6818 register
+       fd_write     0, or -1 if refused
+       delay_us     busy wait
+       tune         receive on hz (band switch, PLL, filter, RX on)
+       rx_hz        the frequency the pager listens on
+       ms           ms since the module started, 32 bits (it sums 100 us ticks in ms and
+                    delay_us: a module that calls neither for 6.5 s loses time) */
   RADIO_API_PREFIX_FIELDS;
   int (*key_down)(void);                        /* 1 while any key is held: a long module's way out */
   void *(*scratch)(uint32_t *bytes);            /* RAM free while the module runs (the rest of the

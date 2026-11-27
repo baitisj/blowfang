@@ -100,6 +100,8 @@ c/common/
 !c/common/lz4d.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
+# the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it
+!c/common/radio_api.h
 sotto
 c/*
 modem/__init__.py
@@ -148,6 +150,8 @@ c/common/
 !c/common/lz4d.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
+# the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it
+!c/common/radio_api.h
 sotto
 c/*
 modem/__init__.py
@@ -223,6 +227,8 @@ modem/k6mod.py
 modem/pager.py
 modem/picmod.py
 modem/uv21mod.py
+# um_api_t (radios/uv21/mod/uv21_mod.h) starts with the K6 / UV-21 module API's shared head
+c/common/radio_api.h
 # the RDS module (radios/uv21/mod/fmrds.c) includes the shared decoder; its test reads the
 # output with the K6 module's report tool
 c/common/rds.h
@@ -233,7 +239,6 @@ tests/test_k6_i2s.py
 tools/k6_fmprobe.py
 # SURF, the port's main screen, includes the K6's SURF core; the emulated board with a model band
 # and its browser workbench (tests/test_uv21_surf.py runs the board)
-c/common/radio_api.h
 c/common/surf_core.inc
 sim/band.py
 sim/workbench.py

@@ -147,8 +147,7 @@ def go_img(rda, img):
     mu.reg_write(A.UC_ARM_REG_LR, stop | 1)
     mu.reg_write(A.UC_ARM_REG_R0, api)
     mu.reg_write(A.UC_ARM_REG_R1, block + ram_at)
-    from modem import uv21mod
-    mu.reg_write(A.UC_ARM_REG_R2, uv21mod.ROOM - ram_at)
+    mu.reg_write(A.UC_ARM_REG_R2, 4096 - ram_at)
     entry = int.from_bytes(img[6:8], "little")
     mu.emu_start((block + entry) | 1, stop, count=4_000_000_000)
     ret = mu.reg_read(A.UC_ARM_REG_R0)
@@ -160,7 +159,7 @@ def test_both_parts_fit_the_block_with_their_ram():
     from modem import uv21mod
     for part in (7, 8):
         img = uv21mod.image(*uv21mod.build(SRC, [f"FP_PART={part}"]))
-        assert len(img) + 7 + {7: 380, 8: 240}[part] <= uv21mod.ROOM, (part, len(img))   # sc_t, about
+        assert len(img) + 7 + {7: 380, 8: 240}[part] <= 4096, (part, len(img))   # sc_t, about
 
 
 @need_clang

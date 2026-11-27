@@ -455,10 +455,6 @@ impl<'a> Radio<'a> {
         self.cfg.tx_freq_hz = freq_hz;
     }
 
-    pub fn rx_freq_hz(&self) -> u32 {
-        self.cfg.freq_hz
-    }
-
     pub fn tx_freq_hz(&self) -> u32 {
         self.cfg.tx_freq_hz
     }
