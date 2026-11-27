@@ -1,0 +1,11 @@
+{
+ "id": "hubmap-1127a",
+ "who": "hubmap",
+ "freq_mhz": "bench",
+ "minutes": 2,
+ "steps": [
+  {
+   "do": "serial.list"
+  }
+ ]
+}
