@@ -1,0 +1,13 @@
+{
+ "id": "reset-check-1127",
+ "who": "reposize",
+ "freq_mhz": 440.85,
+ "minutes": 2,
+ "wait_bench_min": 30,
+ "steps": [
+  {
+   "do": "wait",
+   "seconds": 5
+  }
+ ]
+}
