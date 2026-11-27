@@ -8,27 +8,24 @@
 # they carry no 30 KB table. A radio needs out/aura-pager-cbi.bin flashed once first, to write
 # the codebook there. TABLE=1 (the default) also builds the -table images, which carry it.
 #
-# Steps: a fresh clone of Aura at the commit the patch was written against (into
-# firmware/k6-aura/build/aura, which this script owns and deletes), git apply
-# aura-pager.patch, build sotto's receive library with tools/k6_build.sh (clang + ld.lld;
-# or set SOTTO_K6_LIB to a prebuilt libsotto_k6.a), cargo build --release, then the flash
-# and RAM report against the KD32F328's 120 KB / 17,720 bytes for the application.
+# Steps: build sotto's receive library with tools/k6_build.sh (clang + ld.lld; or set
+# SOTTO_K6_LIB to a prebuilt libsotto_k6.a), cargo build --release in radios/k6/fw/ (Aura at
+# AURA_REV with blowfang's changes, radios/k6/fw/README.md), then the flash and RAM report
+# against the KD32F328's 120 KB / 17,720 bytes for the application. AURA_BASELINE=1 also clones
+# stock Aura at AURA_REV into firmware/k6-aura/build/aura-stock and reports its size.
 #
-# Needs: git, rustup (Aura's rust-toolchain.toml pulls stable + thumbv6m-none-eabi), clang and
-# ld.lld 15 or newer for the C library, and llvm-objcopy / llvm-size (or cargo-binutils).
-# The patch is GPL-3.0 like Aura; sotto's C library it links is MIT.
+# Needs: rustup with stable + thumbv6m-none-eabi, clang and ld.lld 15 or newer for the C
+# library, and llvm-objcopy / llvm-size (or cargo-binutils). radios/k6/fw/ is GPL-3.0 like
+# Aura; sotto's C library it links is MIT.
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
 AURA_REPO=${AURA_REPO:-https://github.com/sophiel-meow/bf-k61-firmware-aura}
 AURA_REV=edf3b98c3528f909b0e0f4dda80142a70c194ff0     # master, 2026-11-02
-WORK="$HERE/build/aura"
+WORK="$ROOT/radios/k6/fw"
 OUT="$HERE/out"
 
-rm -rf "$WORK"
 mkdir -p "$HERE/build" "$OUT"
-git clone -q "$AURA_REPO" "$WORK"
-git -C "$WORK" checkout -q "$AURA_REV"
 
 SIZE=${SIZE:-llvm-size}
 command -v "$SIZE" >/dev/null 2>&1 || SIZE="rust-size"
@@ -79,13 +76,16 @@ export SOTTO_BUILD
 echo "$SOTTO_BUILD" > "$OUT/build-id.txt"
 echo "build ID $SOTTO_BUILD"
 
-# Baseline: stock Aura at the same commit, for comparison (AURA_BASELINE=0 skips it)
-if [ "${AURA_BASELINE:-1}" = 1 ]; then
-  (cd "$WORK" && cargo build --release)
-  { echo "== stock Aura $AURA_REV"; fit "$ELF"; breakdown "$ELF"; } | tee "$OUT/size-aura-stock.txt"
+# Optional baseline: stock Aura at the pinned upstream commit (AURA_BASELINE=1 to compare)
+if [ "${AURA_BASELINE:-0}" = 1 ]; then
+  STOCK="$HERE/build/aura-stock"
+  rm -rf "$STOCK"
+  git clone -q "$AURA_REPO" "$STOCK"
+  git -C "$STOCK" checkout -q "$AURA_REV"
+  (cd "$STOCK" && cargo build --release)
+  STOCK_ELF="$STOCK/target/thumbv6m-none-eabi/release/aura"
+  { echo "== stock Aura $AURA_REV"; fit "$STOCK_ELF"; breakdown "$STOCK_ELF"; } | tee "$OUT/size-aura-stock.txt"
 fi
-
-git -C "$WORK" apply "$HERE/aura-pager.patch"
 
 if [ -n "$SOTTO_K6_LIB" ]; then
   LIB=$SOTTO_K6_LIB
@@ -99,7 +99,7 @@ cp "$LIB" "$WORK/lib/libsotto_k6.a"
 # Link with the flash region opened up, so an overflow still links and shows where the bytes go.
 # The layout doesn't depend on the region's length (same origin), so the fit check is the same
 # test the linker makes, and no image is written unless it passes.
-sed -i 's/LENGTH = 120K/LENGTH = 1024K/' "$WORK/memory.x.in"  # build.rs writes memory.x from it
+export K6_FLASH_LEN=1024K  # build.rs expands memory.x in OUT_DIR without touching memory.x.in
 
 # variant NAME TITLE [cargo args]: build, report to out/size-NAME.txt, write out/NAME.bin if it fits
 # hal::txdog (the crash and stuck key-up backstop, docs/k6-modules.md, Security) is on in every

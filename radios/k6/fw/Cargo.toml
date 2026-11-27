@@ -1,0 +1,67 @@
+[package]
+name = "aura"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "aura"
+test = false
+bench = false
+
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = { version = "0.7", features = ["device"] }
+panic-halt = "0.2"
+kd32f328-pac = { path = "kd32f328-pac", features = ["rt"] }
+embedded-hal = "1.0"
+embedded-hal-bus = "0.3"
+display-interface = "0.5"
+display-interface-spi = "0.5"
+st7565 = "0.6"
+embedded-graphics = "0.8"
+profont = "0.7"
+
+[features]
+# The sotto voice pager as the whole firmware: Aura's drivers and VOICE MSG only, so the
+# decoder's 66 KB fits (full Aura leaves 7.5 KB). Built by sotto's firmware/k6-aura/build.sh.
+pager-only = []
+# with pager-only: no PTT calibration transmit, for the codebook install image (flashed once),
+# which holds sotto's 30 KB codebook in MCU flash as well
+lean = []
+# EXPLORE, the K6 signal explorer (src/app/pager/explore.rs), as the pager-only image's start
+# screen. sotto's build links it with a library that has no voice decoder (K6_VOICE=0), the
+# room the explorer needs: VOICE MSG keeps its packets, modules and control, but plays nothing
+explore = ["pager-only"]
+# EXPLORE in the 8 kHz voice image (Jeff 2026-11-09: one image, no switching): explore with the
+# voice library and the voice images' 11,776-byte shared block and shared page buffer. A size
+# report for now (build.sh): it doesn't fit yet, and EXPLORE's sweep still holds the PWM ring
+# while it draws, which the shared page buffer needs
+voice-explore = ["explore"]
+# the hiss band image (docs/k6-hiss-port.md): sotto 1200, 600 and 400 played at 16 kHz through the
+# K6 hiss layer, with a library built K6_HISS=1 (320-sample frames; the PWM ring is 3 of them)
+hiss = []
+# hal::txdog with its SRAM vector table: a fault or a hung key-up reboots the radio (sotto's
+# build turns it on in every image that transmits); lines straight to USART1 from install and a fault
+txdog = []
+# with txdog: no lines straight to USART1 (the boot-loop hunt: does their time at boot matter?)
+txdog-quiet = ["txdog"]
+# boot markers straight to USART1 (`BT n a b`, hal::ram0::bt), polled, at each step of main up to
+# the main loop: where does an image stop at boot? (2026-11-19: the first arena image, f541fbd,
+# sent nothing at all after its flash.) A diagnostic build only
+boottrace = []
+# the SPI module library (c/k6/k6_lib.h): install a module image in an SPI slot, run it on
+# control action 11, and side key 1 reruns the last module. Every image but the lean ones
+spilib = []
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+debug = true
+panic = "abort"
+
+[profile.dev]
+opt-level = "z"
+panic = "abort"
+lto = true
+codegen-units = 1

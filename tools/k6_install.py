@@ -483,9 +483,9 @@ def cmd_bundle(a, log=print):
 NOTICE = """blowfang for the Baofeng UV-K6 / K61, release {build}
 
 The .bin images are builds of Aura (https://github.com/sophiel-meow/bf-k61-firmware-aura, GPL-3.0)
-with blowfang's patch (firmware/k6-aura/aura-pager.patch, GPL-3.0) and sotto's C library (MIT).
-Their complete source is https://github.com/baitisj/blowfang (with its sotto submodule) and Aura
-at the commit firmware/k6-aura/build.sh names. The modules (mod-*.bin), EXPLORE's code pages
+as blowfang changes it (radios/k6/fw/, GPL-3.0) and sotto's C library (MIT). Their complete
+source is https://github.com/baitisj/blowfang, with its sotto submodule; radios/k6/fw/ holds the
+whole firmware crate. The modules (mod-*.bin), EXPLORE's code pages
 (page-*.bin) and the help decks (cards-core.bin, cards-modules.bin) are blowfang's own code, MIT.
 
 Nothing here is Baofeng's: no stock firmware, no part of it. Flashing replaces the stock

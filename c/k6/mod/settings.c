@@ -1,7 +1,7 @@
 /* settings: the radio's own settings (module API level 10). Jeff 2026-11-17: "the backlight
    remains on the entire time, draining battery", and "Probably need this as part of a Settings
-   module". The core image keeps the backlight's idle timeout (Aura's src/hal/light.rs in
-   firmware/k6-aura/aura-pager.patch); this module picks the delay and saves it in Aura's
+   module". The core image keeps the backlight's idle timeout (Aura's src/hal/light.rs, in
+   radios/k6/fw/); this module picks the delay and saves it in Aura's
    settings record, so it holds after a power cycle and a reflash.
 
      SETTINGS

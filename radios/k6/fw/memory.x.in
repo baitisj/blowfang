@@ -1,0 +1,43 @@
+/* This MCU has no VTOR: real hardware IRQ dispatch is fixed at whatever
+ * vector table lives in the first-stage bootloader's own flash region, not
+ * at this application's own vector table. The bootloader trampolines a
+ * small, fixed set of IRQs through a 10-entry array of raw function
+ * pointers ("UserVectors") at a fixed RAM address, 0x20001000..0x20001028
+ *  RAM starts just past that block so nothing here ever collides with it.
+ */
+MEMORY
+{
+  FLASH : ORIGIN = 0x08002000, LENGTH = 1024K
+  RAM   : ORIGIN = 0x20001028, LENGTH = 20424
+  /* The bootloader's own RAM below UserVectors (0x20001000-0x20001027, never touched), idle once
+   * Aura runs: hal::ram0. 0x20000000-0x200000FF stays out (hal::txdog's vector table, 0-0xBF). */
+  RAM0  : ORIGIN = 0x20000100, LENGTH = 0xF00
+}
+
+/* Core buffers that never need to survive a reset (Aura's App, the serial rings, the module
+ * screen): their 3.2 KB of RAM went to the shared block, hal::arena (2026-11-19). NOLOAD: the
+ * startup code doesn't touch it; hal::ram0::clear zeroes it first thing in main. */
+SECTIONS
+{
+  .ram0 (NOLOAD) : ALIGN(4)
+  {
+    __sram0 = .;
+    *(.ram0 .ram0.*);
+    /* @SOTTO_BSS@ build.rs: sotto's C statics too in the images with no EXPLORE, not lean */
+    . = ALIGN(4);
+    __eram0 = .;
+  } > RAM0
+} INSERT BEFORE .bss;
+/* BEFORE .bss, not after it: the linker gives an input section to the first output section in
+ * the script whose pattern matches, so libsotto_k6.a's .bss only lands here ahead of cortex-m-rt's
+ * *(.bss .bss.*). It also leaves the location counter in RAM after .uninit, where link.x sets
+ * __sheap and _stack_end (INSERT AFTER .uninit moved them into RAM0: the boot hang of
+ * 2026-11-19, PR #215). */
+/* LENGTH was 17720 (end 0x20005560). The KD32F328's SRAM is 24 KB, to 0x20006000: sotto's
+ * ramprobe module wrote, read and held every word of 0x20005560-0x20005FFF on the radio
+ * (2026-11-07, docs/k6-modules.md), so the application has those 2720 bytes too. */
+
+/* 20440 less 16: 0x20005FF0-0x20005FFF is hal::txdog's note, kept across a reset. The stack starts
+ * below it. Neither the bootloader (its stack starts at 0x20004028 and grows down) nor Aura's
+ * startup touches it. The bootloader clears its own RAM, 0x20000000-0x20001027, at every reset:
+ * the note at 0x20000FF0 was lost there (2026-11-09). */
