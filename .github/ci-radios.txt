@@ -222,6 +222,10 @@ modem/k6mod.py
 modem/pager.py
 modem/picmod.py
 modem/uv21mod.py
+# the RDS module (radios/uv21/mod/fmrds.c) includes the shared decoder; its test reads the
+# output with the K6 module's report tool
+c/common/rds.h
+tools/k6_fmrds.py
 # the FM chip probe's test runs the K6 probe's chip model and report tool (tests/test_uv21_fmprobe.py)
 tests/test_k6_fmprobe.py
 tests/test_k6_i2s.py
