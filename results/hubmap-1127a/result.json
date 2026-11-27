@@ -1,12 +1,25 @@
 {
  "id": "hubmap-1127a",
- "status": "running",
- "since": "2026-11-27T21:31:11Z",
+ "who": "hubmap",
+ "started": "2026-11-27T21:31:13Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "serial.list",
+   "started": "2026-11-27T21:31:13Z",
+   "ended": "2026-11-27T21:31:13Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-222b2f36eba8",
+ "head": "222b2f36eba8969aa0b029e7f2d2c26ac3891e26",
+ "ended": "2026-11-27T21:31:13Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "4b57097da9d8d259d98c0b3ae2e234b135bac825",
   "path": "jobs/hubmap-1127a"
  },
  "runner_commit": "222b2f36eba8969aa0b029e7f2d2c26ac3891e26",
- "updated": "2026-11-27T21:31:11Z"
+ "updated": "2026-11-27T21:31:13Z"
 }
