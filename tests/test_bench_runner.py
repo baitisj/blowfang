@@ -1124,3 +1124,15 @@ def test_a_logger_on_the_other_cable_does_not_block_a_cable_step(work, monkeypat
     br.free_cable(ctx, {"do": "kdh.probe"})                 # the UV-21's cable: no refusal
     with pytest.raises(br.Refused, match="take_serial"):
         br.free_cable(ctx, {"do": "k6.update"})
+
+
+def test_rt950_cable_skips_the_uv21s_ch340(work, ports, monkeypatch, tmp_path):
+    """11-27: the UV-21's hub cable is a CH340 like the Radtel cable; cables.json takes it out"""
+    two = PORTS + [dict(PORTS[2], by_id=None, by_path="pci-0000:00:14.0-usb-0:2.2:1.0-port0", dev="/dev/ttyUSB4")]
+    monkeypatch.setattr(br, "serial_ports", lambda: [dict(p) for p in two])
+    with pytest.raises(br.Refused, match="2 ports"):
+        br.rt950_cable("1a86:7523")
+    monkeypatch.setenv("UV21_CABLE", "/dev/ttyUSB4")
+    assert br.rt950_cable("1a86:7523") == "/dev/ttyUSB1"
+    monkeypatch.setenv("UV21_CABLE", "/dev/ttyUSB1")
+    assert br.rt950_cable("1a86:7523") == "/dev/ttyUSB4"

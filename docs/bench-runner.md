@@ -151,8 +151,9 @@ one gets SIGTERM at once.
 ## The radios' cables
 
 Each radio with a K-plug has its own cable on hamlet's USB hub (11-27; before that one cable moved
-between the K6 and the UV-21). K-plug cables are Prolific PL2303s, often with no serial number:
-two of those get one shared `/dev/serial/by-id` name that points at only one of them, and `ttyUSB`
+between the K6 and the UV-21). The K6's is a Prolific PL2303 and the UV-21's a CH340, the same
+chip as the RT-950's Radtel cable; none has a serial number. Two adapters of one kind with no
+serial get one shared `/dev/serial/by-id` name that points at only one of them, and `ttyUSB`
 numbers move on every reboot. The runner keys each radio to its hub port instead, in
 `~/blowfang-work/state/cables.json`:
 
@@ -182,7 +183,8 @@ How each step finds its cable:
 3. Else, with no `cables.json` at all, the machine's one PL2303 (counted from `/sys`, not from the
    by-id names) is both radios' cable, as before the hub; two refuse.
 
-The RT-950 Pro's cable (`rt950.*`, by USB ids) is never either radio's K-plug cable. One
+The RT-950 Pro's cable (`rt950.*`) is found by its USB ids among the ports left once the radios'
+cables in `cables.json` are taken out, so the UV-21's CH340 never gets the CPS handshake. One
 serial-hold reader runs at a time, on either cable; a cable step frees only its own cable, and a
 logger on the other one keeps reading.
 

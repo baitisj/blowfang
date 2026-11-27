@@ -302,8 +302,9 @@ def under(p, rs):
 # ---- the radios' K-plug cables (Jeff 11-27: a USB hub, a cable on each radio, no more moving
 # one cable between the K6 and the UV-21) ----
 #
-# The K-plug cables are Prolific PL2303s, and the K6's has no serial number: two such cables get one
-# shared /dev/serial/by-id name, which points at only one of them. The runner keys each radio to its
+# The K6's cable is a Prolific PL2303 and the UV-21's a CH340 (like the RT-950's Radtel cable), none
+# with a serial number: two adapters of one kind get one shared /dev/serial/by-id name, which points
+# at only one of them. The runner keys each radio to its
 # own port instead: $BLOWFANG_WORK/state/cables.json, which serial.identify writes from what the radios
 # themselves say on their cables (the K6's "K6 ..." report lines, the UV-21 image's "alive" line
 # every 10 s), each entry a by-path name (the hub port) or, for a cable with a serial number of its
@@ -944,12 +945,18 @@ def port_users(dev):
 
 
 def rt950_cable(ids):
-    """the RT-950 Pro's programming cable: the one by-id port with the USB ids the job names (or
-    $RT950_CABLE), never the K6 cable, the IC-7100, a ttyACM port, or a port someone has open"""
+    """the RT-950 Pro's programming cable: the one port with the USB ids the job names (or
+    $RT950_CABLE), never the K6's or the UV-21's cable, the IC-7100, a ttyACM port, or a port
+    someone has open. The UV-21's cable on the hub is a CH340 like the Radtel cable (11-27), so the
+    radios' own cables (cables.json) are left out before counting"""
     if os.environ.get("RT950_CABLE"):
         hits = [usb_info(os.environ["RT950_CABLE"])]
     else:
-        hits = [x for x in serial_ports() if x["ids"] == ids]
+        taken = set()
+        for radio in CABLE_ENV:
+            with contextlib.suppress(Refused):
+                taken.add(os.path.realpath(radio_cable(radio)))
+        hits = [x for x in serial_ports() if x["ids"] == ids and x["dev"] not in taken]
     if len({x["dev"] for x in hits}) != 1:
         raise Refused(f"the RT-950 cable: {len(hits)} ports with USB ids {ids} (want one; serial.list"
                       " shows them, RT950_CABLE in the unit overrides)")
