@@ -136,6 +136,13 @@ next upload replaces it, and a power cycle clears it. `src/umod.rs` takes the up
 lines on the K-plug serial line (`um b`, `um w` with a CRC-16 per line, `um r` with the CRC-32 of
 the whole image) and answers each one.
 
+`um_api_t` (ABI 2) starts with the same ten fields as the K6's `k6_api_t`, in
+`c/common/radio_api.h`, so a helper written against `const radio_api_t *` runs on both radios; that
+header lists where the two still differ (tick width, levels, fd_write's answer). `apiprobe.c`
+checks the shared head on the radio: one `api 2/1 hz=... moved=0 t16=... ms=...` line, and 0x55
+back when it all agrees. The firmware refuses an image built for another ABI (`um bad`), so after
+a reflash across ABIs, rebuild modules from the same commit.
+
     python -m modem.uv21mod run /dev/serial/by-id/<the cable> radios/uv21/mod/hello.c
     python -m modem.uv21mod run <port> radios/uv21/mod/regsweep.c -D SW_REG=0x1F \
         -D SW_VALS=0x1657,0xC65A -D SW_HZ=439500000

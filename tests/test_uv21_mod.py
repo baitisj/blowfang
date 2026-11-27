@@ -138,10 +138,10 @@ def test_bad_settings_are_refused_before_building():
 
 def test_shared_radio_api_prefix(built, tmp_path):
     """um_api_t starts with c/common/radio_api.h's prefix (its layout checked at compile time), so
-    portable code taking const radio_api_t * works unchanged on UV-21: abi=2, level=1, ticks,
-    radio_rssi2, and rx_hz the K6's way: where the radio listens once the module returns (SURF's
-    centre), not moved by the module's own tune."""
-    src = tmp_path / "prefix_check.c"
+    portable code taking const radio_api_t * works unchanged on UV-21 (radios/uv21/mod/apiprobe.c):
+    abi=2, level=1, ticks and ms, radio_rssi2, and rx_hz the K6's way: where the radio listens
+    once the module returns (SURF's centre), not moved by the module's own tune."""
+    src = tmp_path / "layout.c"
     src.write_text(
         '#include "uv21_mod.h"\n'
         '#define CHK(f, at) \\\n'
@@ -150,32 +150,12 @@ def test_shared_radio_api_prefix(built, tmp_path):
         'CHK(abi, 0); CHK(level, 2); CHK(say, 4); CHK(ticks, 8); CHK(fd_read, 12);\n'
         'CHK(fd_write, 16); CHK(delay_us, 20); CHK(tune, 24); CHK(rx_hz, 28); CHK(ms, 32);\n'
         '_Static_assert(__builtin_offsetof(um_api_t, front_end) == sizeof(radio_api_t), "front_end");\n'
-        'static int portable_check(const radio_api_t *r) {\n'
-        '  char line[64];\n'
-        '  uint32_t t0 = r->ticks();\n'
-        '  r->tune(439600000u, 1);\n'
-        '  uint32_t hz = r->rx_hz();\n'
-        '  r->tune(439500000u, 1);\n'
-        '  r->delay_us(20000u);\n'
-        '  int rssi2 = radio_rssi2(r);\n'
-        '  char *p = um_put(line, "pfx abi=");\n'
-        '  p = um_int(p, r->abi);\n'
-        '  p = um_put(p, " lvl=");\n'
-        '  p = um_int(p, r->level);\n'
-        '  p = um_put(p, " hz=");\n'
-        '  p = um_int(p, (int32_t)hz);\n'
-        '  p = um_put(p, " rssi=");\n'
-        '  p = um_half_db(p, rssi2);\n'
-        '  r->say(line);\n'
-        '  return r->ticks() != t0 ? 0x55 : -1;\n'
-        '}\n'
-        'int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {\n'
-        '  (void)ram; (void)ram_len;\n'
-        '  return portable_check((const radio_api_t *)api);\n'
-        '}\n'
+        'int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) { return 0; }\n'
     )
+    uv21mod.build(str(src))
     b = radio(built)
-    ret, out = upload(b, uv21mod.image(*uv21mod.build(str(src))))
-    assert ret == 0x55, (hex(ret), out[-300:])
-    m = re.search(r"pfx abi=2 lvl=1 hz=439500000 rssi=(-?[\d.]+)", out)
-    assert m and abs(float(m.group(1)) + 70) <= 2, out[-300:]
+    ret, out = upload(b, uv21mod.image(*uv21mod.build(os.path.join(MOD, "apiprobe.c"))))
+    m = re.search(r"api 2/1 hz=439500000 moved=0 t16=\d+ ms=\d+ rssi=(-?[\d.]+)", out)
+    assert m, out[-300:]
+    assert ret == 0x55, (hex(ret), m.group(0))
+    assert abs(float(m.group(1)) + 70) <= 2, m.group(0)
