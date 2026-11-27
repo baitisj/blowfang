@@ -212,3 +212,29 @@ each port changes. It is receive only until the radio has an antenna, and it res
 bootloader's command-42 frame so every image can go on hands-free. `make port` builds
 `build/port.bin`. Since port 6 it boots into SURF (`surf/`, MIT), with the higher frequencies at
 the top of the screen; `sim/uv21/` runs it in a browser workbench.
+
+### Reflashing the port hands-free (a runner job)
+
+`kdh.flash` doesn't put the radio in flash mode itself: it starts the bootloader handshake
+straight away. Against a running port image, it gets no reply and writes nothing (2026-11-27,
+job uv21-arena-flash-1: `command 0x01: no reply (0/29 packages)`). So every flash job starts with
+a `kdh.probe --wait-boot-s` step. The probe sends the command-42 frame every 50 ms, the port's
+USART1 interrupt resets the MCU on it, and the bootloader answers in flash mode (under 1 s on
+uv21-arena-flash-2). Then `kdh.flash` writes the image. If the probe step fails, the job ends
+before anything is written.
+
+```json
+{"id": "uv21-port-flash-N", "who": "...", "freq_mhz": "bench", "minutes": 10,
+ "checkout": "<a clean worktree of blowfang>",
+ "steps": [
+   {"do": "kdh.probe", "args": ["--wait-boot-s", "60"]},
+   {"do": "kdh.flash", "image": "~/blowfang-work/images/<run>/port.bin", "sha256": "<sha256 of port.bin>",
+    "commit": "<the image's commit>", "args": ["--listen-after-s", "60"]}]}
+```
+
+Submit it locally (`~/blowfang-work/bin/bench_runner.py submit JOB.json`) on Jeff's go: the inbox
+refuses flashes. The image is the `uv21-port` CI artifact of the commit (`port.bin` and `port.elf`
+carry the build ID). The 60 s after the flash should show `boot done`, `surf ram need= room=` and
+`alive surf s=000a stk=...`. Stock firmware doesn't reset on command 42, so with stock on the radio,
+or with the radio off, the probe needs a power cycle while it listens (see the bring-up image
+above).
