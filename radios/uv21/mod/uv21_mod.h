@@ -6,26 +6,32 @@
 #ifndef UV21_MOD_H
 #define UV21_MOD_H
 #include <stdint.h>
+#include "../../../c/common/radio_api.h"
 
-#define UM_ABI 1
+#define UM_ABI 2
+#define UM_LEVEL 1
 
-typedef struct {
-  uint32_t abi;                                 /* UM_ABI */
-  uint16_t (*fd_read)(uint8_t reg);             /* BK4829 register */
-  void (*fd_write)(uint8_t reg, uint16_t v);    /* (transmit state, PA bias and TX GPIOs dropped) */
-  void (*tune)(uint32_t hz, int wide);          /* receive on hz, the front end's band with it */
-  void (*delay_us)(uint32_t us);
-  uint32_t (*ms)(void);
-  void (*say)(const char *line);                /* a line on the serial console */
+typedef struct um_api {
+  /* The shared BK48xx/FD6818 prefix (c/common/radio_api.h), UM_ABI 2:
+       abi, level   UM_ABI, UM_LEVEL
+       say          a line on the serial console
+       ticks        uptime in 100 us ticks, 32 bits (the K6's are 16: portable code masks)
+       fd_read      BK4829 register
+       fd_write     always 0: the transmit state, PA bias and TX GPIOs are dropped from the write
+       delay_us     busy wait (see um_wait_us below for waits over 279 ms)
+       tune         receive on hz, the front end's band with it
+       rx_hz        SURF's centre, where it listens again once the module returns
+       ms           ms since boot */
+  RADIO_API_PREFIX_FIELDS;
   int (*front_end)(int step);                   /* the receive band switch's mode (0 asks) */
 } um_api_t;
 
-/* the entry: ram is the zeroed rest of the 4 KB block, 8-aligned */
+/* the entry: ram is the zeroed rest of the 12 KB arena, 8-aligned */
 int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len);
 
 /* the level the chip reads, dBm x 2 (REG_67: raw / 2 - 174) */
 static inline int um_rssi2(const um_api_t *api) {
-  return (int)(api->fd_read(0x67) & 0x1FF) - 348;
+  return radio_rssi2((const radio_api_t *)api);
 }
 
 /* api->delay_us loads SysTick's 24-bit reload once, so at 60 MHz a single call waits at most

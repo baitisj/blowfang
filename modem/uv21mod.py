@@ -21,7 +21,7 @@ import zlib
 
 from . import picmod
 
-ABI = 1
+ABI = 2
 MAGIC = b"UM21"
 HDR = 12
 ROOM = 12288              # umod.rs ROOM: header, code and the module's RAM

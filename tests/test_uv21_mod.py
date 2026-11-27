@@ -56,7 +56,7 @@ def upload(b, img):
 def test_hello_runs_once_and_says_its_line(built):
     b = radio(built)
     got, _ = send(b, "um ?", r"um abi=\S+ room=\S+")
-    assert got == "um abi=1 room=3000"
+    assert got == "um abi=2 room=3000"
     ret, out = upload(b, uv21mod.image(*uv21mod.build(os.path.join(MOD, "hello.c"))))
     assert ret == 0x4829, hex(ret)                                     # the BK4829's ID
     assert re.search(r"hello uv21 rf=4829 ram=2[0-9a-f]{3}", out), out[-300:]
@@ -134,3 +134,28 @@ def test_a_modules_writes_stay_receive_only(built):
 def test_bad_settings_are_refused_before_building():
     with pytest.raises(ValueError):
         uv21mod.build(os.path.join(MOD, "regsweep.c"), ["SW_REG=0x1F; rm"])
+
+
+def test_shared_radio_api_prefix(built, tmp_path):
+    """um_api_t starts with c/common/radio_api.h's prefix (its layout checked at compile time), so
+    portable code taking const radio_api_t * works unchanged on UV-21 (radios/uv21/mod/apiprobe.c):
+    abi=2, level=1, ticks and ms, radio_rssi2, and rx_hz the K6's way: where the radio listens
+    once the module returns (SURF's centre), not moved by the module's own tune."""
+    src = tmp_path / "layout.c"
+    src.write_text(
+        '#include "uv21_mod.h"\n'
+        '#define CHK(f, at) \\\n'
+        '  _Static_assert(__builtin_offsetof(um_api_t, f) == __builtin_offsetof(radio_api_t, f), #f); \\\n'
+        '  _Static_assert(__builtin_offsetof(um_api_t, f) == at, "ABI 2 " #f)\n'
+        'CHK(abi, 0); CHK(level, 2); CHK(say, 4); CHK(ticks, 8); CHK(fd_read, 12);\n'
+        'CHK(fd_write, 16); CHK(delay_us, 20); CHK(tune, 24); CHK(rx_hz, 28); CHK(ms, 32);\n'
+        '_Static_assert(__builtin_offsetof(um_api_t, front_end) == sizeof(radio_api_t), "front_end");\n'
+        'int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) { return 0; }\n'
+    )
+    uv21mod.build(str(src))
+    b = radio(built)
+    ret, out = upload(b, uv21mod.image(*uv21mod.build(os.path.join(MOD, "apiprobe.c"))))
+    m = re.search(r"api 2/1 hz=439500000 moved=0 t16=\d+ ms=\d+ rssi=(-?[\d.]+)", out)
+    assert m, out[-300:]
+    assert ret == 0x55, (hex(ret), m.group(0))
+    assert abs(float(m.group(1)) + 70) <= 2, m.group(0)

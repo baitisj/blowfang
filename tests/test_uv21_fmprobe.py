@@ -27,7 +27,7 @@ from test_k6_i2s import need_clang  # noqa: E402
 import k6_fmprobe as fp  # noqa: E402
 
 SRC = os.path.join(ROOT, "radios", "uv21", "mod", "fmprobe.c")
-NAMES = ["fd_read", "fd_write", "tune", "delay_us", "ms", "say", "front_end"]
+NAMES = ["say", "ticks", "fd_read", "fd_write", "delay_us", "tune", "rx_hz", "ms", "front_end"]
 SCL, SDA, SCN = 4, 6, 3
 FAST = ["FP_QUICK_MS=200", "FP_SETTLE_MS=320", "FP_RDS1_S=3", "FP_RDS_S=1", "FP_SHAPE_N=30"]
 
@@ -120,7 +120,7 @@ def go_img(rda, img):
     for i in range(len(NAMES)):
         mu.mem_write(stubs + 16 * i, b"\x70\x47")
     mu.mem_write(stop, b"\x00\xbf" * 8)
-    mu.mem_write(api, (1).to_bytes(4, "little")
+    mu.mem_write(api, (2 | (1 << 16)).to_bytes(4, "little")
                  + b"".join((stubs + 16 * i | 1).to_bytes(4, "little") for i in range(len(NAMES))))
     st = {"us": 0, "said": []}
     mu.mmio_map(0x48000000, 0x400, rda.port_r("a"), st, rda.port_w("a"), st)
