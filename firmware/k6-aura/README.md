@@ -9,15 +9,16 @@ and nothing is written to flash per message. The design and the numbers are in
 [`docs/k6-receiver.md`](../../docs/k6-receiver.md). The packet format is `k6-fsk-packet-spec.md`
 (version 1), and its reference packer is [`c/k6/k6fsk_ref.py`](../../c/k6/k6fsk_ref.py).
 
-- `aura-pager.patch`: the change to Aura at commit `edf3b98` (2026-11-02). It is GPL-3.0, like Aura.
-  It adds `src/app/pager.rs`, `src/hal/pwm_audio.rs` and `src/ui/pager.rs`, and wires them into the
-  launcher, keys, screen and main loop. It also adds two raw-register helpers to the FD6818 driver
-  and makes `build.rs` link `lib/libsotto_k6.a`. The cargo feature `pager-only` makes VOICE MSG the
+- [`radios/k6/fw/`](../../radios/k6/fw/README.md): the firmware crate, Aura at commit `edf3b98`
+  (2026-11-02) with blowfang's changes, GPL-3.0 like Aura. Until 2026-11-27 the changes were
+  `aura-pager.patch` in this folder, applied to a fresh clone at each build. They add
+  `src/app/pager.rs`, `src/hal/pwm_audio.rs` and `src/ui/pager.rs`, and wire them into the
+  launcher, keys, screen and main loop. They also add two raw-register helpers to the FD6818
+  driver and make `build.rs` link `lib/libsotto_k6.a`. The cargo feature `pager-only` makes VOICE MSG the
   whole firmware.
-- `build.sh` clones Aura at that commit, applies the patch, and builds sotto's C library
-  (`tools/k6_build.sh`, MIT). It then builds stock Aura, Aura with VOICE MSG added, and the
-  pager-only images, and reports each one's flash and RAM use. It writes each `.bin` only if it
-  fits. The images read sotto's codebook from the radio's SPI flash, and `aura-pager-cbi.bin`
+- `build.sh` builds sotto's C library (`tools/k6_build.sh`, MIT), then Aura with VOICE MSG added
+  and the pager-only images from `radios/k6/fw/` (stock Aura too with `AURA_BASELINE=1`), and
+  reports each one's flash and RAM use. It writes each `.bin` only if it fits. The images read sotto's codebook from the radio's SPI flash, and `aura-pager-cbi.bin`
   writes it there once ([below](#flashing-and-backup)):
 
   | image | plays | codebook |
@@ -74,8 +75,9 @@ cable session (docs/k6-modules.md, "The cable session"). The steps below are the
 with Aura's own tools.
 
 You need a Quansheng-K5-style USB-to-TTL programming cable (the Kenwood 2-pin plug), Python 3 with
-`pyserial`, and Aura's `tools/` folder. After `build.sh` that folder is at `build/aura/tools/`, or you
-can clone Aura.
+`pyserial`, and Aura's `tools/` folder: clone Aura
+([sophiel-meow/bf-k61-firmware-aura](https://github.com/sophiel-meow/bf-k61-firmware-aura)).
+`radios/k6/fw/` carries only the firmware crate, not Aura's tools.
 
 1. **Get `aura-pager-cbi.bin`**, the install image. Download it from the *K6 pager firmware* run's
    artifacts, or run `sh firmware/k6-aura/build.sh`. That needs rustup, clang and lld, and llvm-tools.

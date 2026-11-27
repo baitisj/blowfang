@@ -129,7 +129,7 @@ Each over follows the same steps:
 1. Wait for a clear channel: below -90 dBm for 500 ms, giving up after 15 s.
 2. Key up with `tx_on`, which works only on the pager's frequency at low power.
 3. After a 300 ms lead, send the packet twice on the pager's PHY F (FFSK 1200/1800 Hz at 1800
-   baud, the registers of aura-pager.patch).
+   baud, the registers of radios/k6/fw/src/app/pager.rs).
 4. Send AG7EW in MCW (800 Hz, 25 wpm) on the tone oscillator.
 5. Key down and listen again.
 

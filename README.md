@@ -18,7 +18,7 @@ with no Python: [`web/k6-installer/`](web/k6-installer/).
 
 | Radio | Chips | Based on | State | Where |
 |---|---|---|---|---|
-| Baofeng UV-K6 / K61 | KD32F328 (Cortex-M0), FD6818 (BK4819 family) | [Aura](firmware/k6-aura/) (Rust, GPL-3) | Runs on a radio. The sotto voice pager, EXPLORE, the sotto ARENA, FuSotto send and receive, DMR send, an IF receiver and softmodem, and a library of signed RAM modules loaded over the air (SURF, FT8, WSPR, AIS, APRS clock, DMR detect, CW ID, Morse, MIDI, GROUNDWAVE and more) | `c/k6/`, `firmware/k6-aura/`, `docs/k6-*.md` |
+| Baofeng UV-K6 / K61 | KD32F328 (Cortex-M0), FD6818 (BK4819 family) | [Aura](firmware/k6-aura/) (Rust, GPL-3) | Runs on a radio. The sotto voice pager, EXPLORE, the sotto ARENA, FuSotto send and receive, DMR send, an IF receiver and softmodem, and a library of signed RAM modules loaded over the air (SURF, FT8, WSPR, AIS, APRS clock, DMR detect, CW ID, Morse, MIDI, GROUNDWAVE and more) | `c/k6/`, `radios/k6/fw/`, `firmware/k6-aura/`, `docs/k6-*.md` |
 | TYT MD-UV380 / MD-UV390 / RT3S | STM32F405, AT1846S, HR_C6000 | [OpenRTX](firmware/uv380-openrtx/) (GPL-3), and a bare-metal port for QEMU | Runs on a radio: one multi-mode image that sends and receives sotto over M17, DMR and C4FM, plus the PAGER mode that talks to the K6. No SURF yet | `firmware/uv380-openrtx/`, `radios/uv380/`, `docs/uv380-*.md` |
 | Baofeng UV-21 Pro | AT32F421, BK4829 | [bf-5rh-firmware-open](radios/uv21/fw/) (Rust, GPL-3) | Runs on a radio. A lean port: **SURF is the only screen**, receive only, the SPI flash read only, hands-free reflash. Listens for the CW wake on 440.850 MHz while it surfs | `radios/uv21/`, `sim/uv21/`, `docs/uv21-characteristics.md` |
 | Radtel RT-950 Pro | AT32F403A, two BK4829 | [jaymart1983's firmware](radios/rt950/) (GPL-3) | Built for the radio and tested against a PC model of both chips; **not run on a radio yet**. Two-chip SURF (one chip sweeps while the other listens) and FT8 / WSPR transmit by PLL steps | `radios/rt950/`, `docs/rt950-*.md` |
@@ -133,7 +133,8 @@ branch (`tools/bench_inbox.py`). The ADALM-Pluto SDR is the standard test transm
   and FFSK, the sotto receiver, range test, tone FSK
 - `c/k6/`: the K6 C library (pager reassembly and playback, IF receiver, module loader) and its host builds
 - `c/k6/mod/`: the K6 RAM modules, one file each; `docs/k6-modules.md` is the module API
-- `firmware/k6-aura/`: the patch on Aura and `build.sh`, which builds the K6 images
+- `radios/k6/fw/`: the K6 firmware crate, Aura with the pager, EXPLORE and the module loader added
+- `firmware/k6-aura/`: `build.sh`, which builds the K6 images from `radios/k6/fw/`
 - `firmware/uv380-openrtx/`: the patch on OpenRTX for the UV-380 (PAGER and the multi-mode sotto image)
 - `radios/uv380/`: the bare-metal TYT MD-UV380 port (STM32F405), built for the radio and for QEMU
 - `radios/uv21/`: the UV-21 Pro: the firmware port (`fw/`), SURF (`surf/`), RAM modules (`mod/`),
@@ -271,8 +272,9 @@ The *Forbidden files* workflow fails a push or PR that adds one.
 
 MIT (`LICENSE`), except where blowfang builds on GPL-3 firmware:
 
-- `firmware/k6-aura/aura-pager.patch` is GPL-3.0 like Aura, the firmware it patches
-  (`firmware/k6-aura/LICENSE.md`), and so are the Aura images CI builds;
+- `radios/k6/fw/` is Aura, the K6 firmware, with blowfang's changes, GPL-3.0 like Aura
+  ([radios/k6/fw/LICENSE](radios/k6/fw/LICENSE)), and so are the Aura images CI builds. Its
+  register crate `kd32f328-pac/` stays Apache-2.0 as in Aura;
 - `firmware/uv380-openrtx/` patches OpenRTX and is GPL-3.0-or-later like it;
 - `radios/rt950/` is GPL-3.0-or-later ([radios/rt950/LICENSE](radios/rt950/LICENSE)), so it can
   build on jaymart1983's firmware;

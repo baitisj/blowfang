@@ -8,15 +8,15 @@
 # they carry no 30 KB table. A radio needs out/aura-pager-cbi.bin flashed once first, to write
 # the codebook there. TABLE=1 (the default) also builds the -table images, which carry it.
 #
-# Steps: a fresh clone of Aura at the commit the patch was written against (into
-# firmware/k6-aura/build/aura, which this script owns and deletes), git apply
-# aura-pager.patch, build sotto's receive library with tools/k6_build.sh (clang + ld.lld;
-# or set SOTTO_K6_LIB to a prebuilt libsotto_k6.a), cargo build --release, then the flash
-# and RAM report against the KD32F328's 120 KB / 17,720 bytes for the application.
+# Steps: build sotto's receive library with tools/k6_build.sh (clang + ld.lld; or set
+# SOTTO_K6_LIB to a prebuilt libsotto_k6.a), cargo build --release in radios/k6/fw/ (Aura at
+# AURA_REV with blowfang's changes, radios/k6/fw/README.md), then the flash and RAM report
+# against the KD32F328's 120 KB / 17,720 bytes for the application. AURA_BASELINE=1 also clones
+# stock Aura at AURA_REV into firmware/k6-aura/build/aura-stock and reports its size.
 #
-# Needs: git, rustup (Aura's rust-toolchain.toml pulls stable + thumbv6m-none-eabi), clang and
-# ld.lld 15 or newer for the C library, and llvm-objcopy / llvm-size (or cargo-binutils).
-# The patch is GPL-3.0 like Aura; sotto's C library it links is MIT.
+# Needs: rustup with stable + thumbv6m-none-eabi, clang and ld.lld 15 or newer for the C
+# library, and llvm-objcopy / llvm-size (or cargo-binutils). radios/k6/fw/ is GPL-3.0 like
+# Aura; sotto's C library it links is MIT.
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)

@@ -84,7 +84,7 @@ K6_MODULE_NAME(K6_NAME);
 
 enum { T_HELLO = 1, T_JOIN, T_SHOP, T_MOVE, T_ACK, T_BYE };
 
-/* FD6818 registers (BK4819 numbering) and values, as the pager's own FSK path (aura-pager.patch) */
+/* FD6818 registers (BK4819 numbering) and values, as the pager's own FSK path (radios/k6/fw) */
 #define R_IRQ 0x02
 #define R_STATUS 0x0C
 #define R_IRQ_EN 0x3F

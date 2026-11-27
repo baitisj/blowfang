@@ -2,7 +2,7 @@
 
 The emulator harness (tests/test_k6_i2s.py run(..., lcd={})) records one frame a lcd_flush:
 six text lines, a bar a line and the waterfall rows. render() lays them out the way the
-firmware's draw_mod_screen does (firmware/k6-aura/aura-pager.patch, ui/pager.rs): an inverted
+firmware's draw_mod_screen does (radios/k6/fw/src/ui/pager.rs): an inverted
 title bar 11 px tall, text at x = 1 and baselines y = 9 + 10 * line, the bar after a
 line's text, and the waterfall rows from y = 21 over lines 2-4. png() saves frames side by side,
 one square a pixel, for docs and bench reports.

@@ -13,7 +13,7 @@ import k6_cards as kc  # noqa: E402
 from modem import k6mod  # noqa: E402
 
 CORE = os.path.join(ROOT, "docs", "manual", "cards", "core.txt")
-# every core screen a held MENU asks for (aura-pager.patch: explore::help_name, pager help_key)
+# every core screen a held MENU asks for (radios/k6/fw: explore::help_name, pager help_key)
 CORE_SCREENS = [
     "EXPLORE",
     "TRY",
