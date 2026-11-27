@@ -1,0 +1,1864 @@
+#[cfg(not(feature = "pager-only"))]
+mod aprs_ops;
+#[cfg(not(feature = "pager-only"))]
+mod ax25;
+#[cfg(not(feature = "pager-only"))]
+mod chanmgr;
+#[cfg(not(feature = "pager-only"))]
+mod contacts;
+mod convert;
+#[cfg(not(feature = "pager-only"))]
+pub mod doppler;
+#[cfg(not(feature = "pager-only"))]
+mod fm;
+mod input;
+#[cfg(not(feature = "pager-only"))]
+mod keyfn;
+#[cfg(not(feature = "pager-only"))]
+mod keys;
+#[cfg(not(feature = "pager-only"))]
+mod launcher;
+pub mod pager;
+pub(crate) mod name_edit;
+#[cfg(not(feature = "pager-only"))]
+pub mod satellite;
+#[cfg(not(feature = "pager-only"))]
+mod scan;
+#[cfg(not(feature = "pager-only"))]
+mod scanqt;
+#[cfg(not(feature = "pager-only"))]
+mod search;
+mod settings;
+#[cfg(not(feature = "pager-only"))]
+pub mod sstv;
+#[cfg(not(feature = "pager-only"))]
+pub use settings::CTCSS_TABLE; // re-exported for UI tone display
+#[cfg(not(feature = "pager-only"))]
+mod settings_ops;
+mod side;
+mod side_ops;
+#[cfg(not(feature = "pager-only"))]
+mod spectrum;
+#[cfg(not(feature = "pager-only"))]
+mod tx;
+
+use convert::*;
+use input::*;
+
+use crate::device::flashlight::Flashlight;
+use crate::device::fm_radio::FmRadio;
+use crate::device::keypad::Keypad;
+use crate::device::power::Power as PowerSwitch;
+use crate::device::radio::{
+    BandLock, ChannelConfig, Modulation, Power, Radio, RogerTone, SubAudio,
+};
+use crate::device::storage::Storage;
+use crate::flash_map::{self, addr, MAX_SATELLITES};
+use cortex_m::peripheral::SYST;
+
+const FIRMWARE_VERSION: &str = env!("GIT_VERSION");
+
+const STEP_LIST_DECI_HZ: [u32; 9] = [250, 500, 625, 1000, 1250, 2000, 2500, 5000, 10000];
+const DEFAULT_STEP_INDEX: u8 = 3;
+
+/// Highest valid channel index. `0..=999`, 1000 total slots
+const MAX_CHANNEL_NUM: u16 = 999;
+
+const VFO_INPUT_DIGITS: usize = 6;
+const CHANNEL_INPUT_DIGITS: usize = 3;
+
+const DUAL_STANDBY_HOLD_TICKS: u16 = 10;
+const TICKS_PER_SECOND: u16 = 100;
+
+const ANI_DISPLAY_HOLD_TICKS: u16 = 500;
+
+const NO_CHANNELS_HOLD_TICKS: u16 = 200;
+
+const RX_BLINK_HALF_PERIOD: u16 = 5;
+
+const DTMF_DIAL_MAX_DIGITS: usize = 16;
+
+const POWER_SAVE_IDLE_TICKS: u16 = 1000;
+const POWER_SAVE_AWAKE_TICKS: u16 = 10;
+const POWER_SAVE_SLEEP_TICKS_PER_LEVEL: u16 = 10;
+
+const BACKLIGHT_STEP_TICKS: u16 = 500;
+
+/// TODO: calibrate per band
+const RSSI_DBM_BASE: i16 = 160 - 6 + 20;
+
+pub fn rssi_raw_to_dbm(raw: u16) -> i32 {
+    raw as i32 - RSSI_DBM_BASE as i32
+}
+
+pub fn dbm_to_rssi_raw(dbm: i16) -> i32 {
+    dbm as i32 + RSSI_DBM_BASE as i32
+}
+
+/// Fixed reference point for `App::battery_voltage_cv`'s linear calibration
+/// (hundredths of a volt): `battery_cal_raw` is the raw ADC reading that's
+/// supposed to correspond to exactly this voltage, tuned in the field
+/// against a multimeter.
+pub const BATTERY_CAL_REFERENCE_CV: u16 = 760;
+
+const VOX_THRESHOLD_TABLE: [u8; 11] = [127, 52, 62, 72, 84, 95, 106, 117, 125, 132, 140];
+const VOX_TX_HYSTERESIS: u8 = 8;
+const VOX_HOLD_AFTER_RX_TICKS: u8 = 150;
+const VOX_HOLD_AFTER_KEY_TICKS: u8 = 40;
+const VOX_HOLD_AFTER_TX_FAIL_TICKS: u8 = 120;
+const VOX_HOLD_AFTER_PTT_TICKS: u8 = 100;
+
+const RTONE_HZ_DIV_10: [u16; 4] = [100, 145, 175, 210];
+
+/// CW/CWF sidetone pitch: a common CW monitor-tone frequency.
+const CW_SIDETONE_HZ_DIV_10: u16 = 70;
+/// BK-IN=Semi hang time after the last key release before dropping back to
+/// RX, in `TICKS_PER_SECOND` units.
+const CW_SEMI_HANG_TICKS: u16 = 80;
+/// BK-IN=Full's equivalent: much shorter
+const CW_FULL_HANG_TICKS: u16 = 6;
+
+// Mode
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    Standby,
+    AppMenu,
+    Settings,
+    ChanMgr,
+    Fm,
+    Scan,
+    Search,
+    ScanQt,
+    Contacts,
+    Spectrum,
+    Satellite,
+    SatelliteTracking,
+    Sstv,
+    /// VOICE MSG: the sotto voice pager (`pager.rs`)
+    Pager,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ChVfoMode {
+    Vfo,
+    Channel,
+}
+
+/// Search mode's coarse status, for the standby-adjacent UI screens (the
+/// full state machine lives in `search`, private to this module).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SearchStatus {
+    Hunting,
+    Listening,
+    Found,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ChannelDisplayMode {
+    Frequency,
+    Name,
+    NameFreq,
+}
+
+pub struct App {
+    pub radio: Radio,
+    chip_id: u16,
+    keypad: Keypad,
+    storage: Storage,
+    flashlight: Flashlight,
+    mode: Mode,
+    sides: [side::Side; 2],
+    settings: flash_map::Settings,
+    #[cfg(not(feature = "pager-only"))]
+    settings_ui: settings::SettingsUi,
+    #[cfg(not(feature = "pager-only"))]
+    chanmgr: chanmgr::ChanMgrUi,
+    #[cfg(not(feature = "pager-only"))]
+    contacts: contacts::ContactsUi,
+    launcher_index: usize,
+
+    master: usize,
+    watching: usize,
+    last_signal_side: Option<usize>,
+
+    input: DigitInput<VFO_INPUT_DIGITS>,
+    key_lock: bool,
+    transmitting: bool,
+    tx_prohibited: bool,
+    /// APRS beacon TX in progress, set by `send_beacon`, handled by main loop.
+    aprs_beacon_pending: bool,
+    dual_standby: bool,
+    dual_hold_ticks: u16,
+    tot_ticks: u16,
+
+    key_idle_ticks: u16,
+    vox_det_dly: u8,
+    vox_work_dly: u8,
+    vox_active: bool,
+    rtone_sounding: bool,
+    rtone_self_keyed: bool,
+
+    /// Electric key state while the master side's modulation is `Cw`/`Cwf`;
+    /// `set_ptt` routes to `set_cw_key` instead of the normal voice-PTT
+    /// path in that case.
+    cw_key_down: bool,
+    /// Whether a CW/CWF carrier is currently keyed up, independent of
+    /// `transmitting` (which is voice-PTT specific).
+    cw_tx_active: bool,
+    /// BK-IN=Semi hang countdown after the last key release; `poll_cw_hang`
+    /// ticks it down and drops back to RX at zero.
+    cw_hang_ticks: u16,
+
+    ani_caller: Option<[u8; 3]>,
+    ani_hold_ticks: u16,
+    /// Ticks remaining to show the "NO CHANNELS" overlay after a VFO/Channel
+
+    /// toggle finds nothing programmed. 0 = not showing.
+    no_channels_ticks: u16,
+    blink_phase: u16,
+    /// Runtime "current call target" override:
+    /// sticky across PTTs, set by picking a contact in the Contacts app or
+    /// by a 3-digit manual DTMF dial, cleared whenever the active channel
+    /// changes. Falls back to the side's own `ani_target` (a contact-table
+    /// index) when `None`.
+    ani_target_override: Option<[u8; 3]>,
+    /// `Some` while the standby DTMF dial input box (`*` key) is open;
+    /// `None` the rest of the time (normal standby display).
+    #[cfg(not(feature = "pager-only"))]
+    dtmf_dial: Option<DigitInput<DTMF_DIAL_MAX_DIGITS>>,
+
+    battery_cal: [u8; 7],
+    battery_bars: u8,
+    battery_samples: [u16; 4],
+    battery_sample_idx: usize,
+
+    rssi_raw: u8,
+    mic_level: u8,
+
+    channel_display_mode: ChannelDisplayMode,
+
+    power_save: bool,
+    ps_asleep: bool,
+    ps_idle_ticks: u16,
+    ps_cycle_ticks: u16,
+
+    bl_idle_ticks: u16,
+
+    #[cfg(not(feature = "pager-only"))]
+    scan: scan::ScanState,
+    #[cfg(not(feature = "pager-only"))]
+    search: search::SearchState,
+    #[cfg(not(feature = "pager-only"))]
+    scanqt: scanqt::ScanQtState,
+
+    #[cfg(not(feature = "pager-only"))]
+    fm: fm::FmState,
+    #[cfg(not(feature = "pager-only"))]
+    fm_radio: FmRadio<'static>,
+    #[cfg(not(feature = "pager-only"))]
+    fm_channels: [u16; flash_map::FM_CHANNEL_COUNT],
+
+    #[cfg(not(feature = "pager-only"))]
+    spectrum: spectrum::SpectrumState,
+
+    /// Software wall clock: seconds since midnight. volatile
+    wall_secs: u32,
+    /// `true` once the user has set the wall clock.
+    time_set: bool,
+    /// Tick counter for 1-second wall-clock increment (TICKS_PER_SECOND = 100).
+    wall_tick: u16,
+    /// Satellite app UI state.
+    #[cfg(not(feature = "pager-only"))]
+    satellite: satellite::SatelliteUi,
+    /// Satellite records loaded from SPI flash.
+    #[cfg(not(feature = "pager-only"))]
+    sats: [Option<flash_map::SatRecord>; MAX_SATELLITES],
+    /// Active Doppler tracking state. `None` when not tracking.
+    #[cfg(not(feature = "pager-only"))]
+    pub(crate) doppler: Option<doppler::DopplerState>,
+    /// SSTV app UI state.
+    #[cfg(not(feature = "pager-only"))]
+    pub sstv: sstv::SstvUi,
+    /// Voice pager state (the message itself lives in `pager::STORE`).
+    pager: pager::PagerState,
+}
+
+impl App {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        mut radio: Radio,
+        chip_id: u16,
+        keypad: Keypad,
+        mut storage: Storage,
+        flashlight: Flashlight,
+        _fm_radio: FmRadio<'static>,
+        default_cfg: ChannelConfig,
+        syst: &mut SYST,
+    ) -> Self {
+        let vfo_payload = storage.load_vfo_raw();
+        let settings = storage
+            .load_settings()
+            .unwrap_or(flash_map::Settings::DEFAULT);
+        let battery_cal = storage.read_battery_calibration();
+        #[cfg(not(feature = "pager-only"))]
+        let fm_channels = storage
+            .load_fm_channels()
+            .unwrap_or([flash_map::FM_CHANNEL_EMPTY; flash_map::FM_CHANNEL_COUNT]);
+
+        let mut sides = [
+            side::Side {
+                vfo_chan: ChVfoMode::Vfo,
+                channel_num: 0,
+                freq_step: DEFAULT_STEP_INDEX,
+                rx_freq_hz: default_cfg.freq_hz,
+                tx_freq_hz: default_cfg.tx_freq_hz,
+                freq_dir: 0,
+                offset_hz: 0,
+                reversed: false,
+                ani_target: None,
+                cfg: default_cfg,
+                name: [0; 12],
+                vfo_backup: side::VfoBackup {
+                    rx_freq_hz: default_cfg.freq_hz,
+                    freq_dir: 0,
+                    offset_hz: 0,
+                    wide_band: default_cfg.wide_band,
+                    power: default_cfg.power,
+                    subaudio_tx: default_cfg.subaudio_tx,
+                    subaudio_rx: default_cfg.subaudio_rx,
+                    ani_target: None,
+                },
+            },
+            side::Side {
+                vfo_chan: ChVfoMode::Vfo,
+                channel_num: 0,
+                freq_step: DEFAULT_STEP_INDEX,
+                rx_freq_hz: default_cfg.freq_hz,
+                tx_freq_hz: default_cfg.tx_freq_hz,
+                freq_dir: 0,
+                offset_hz: 0,
+                reversed: false,
+                ani_target: None,
+                cfg: default_cfg,
+                name: [0; 12],
+                vfo_backup: side::VfoBackup {
+                    rx_freq_hz: default_cfg.freq_hz,
+                    freq_dir: 0,
+                    offset_hz: 0,
+                    wide_band: default_cfg.wide_band,
+                    power: default_cfg.power,
+                    subaudio_tx: default_cfg.subaudio_tx,
+                    subaudio_rx: default_cfg.subaudio_rx,
+                    ani_target: None,
+                },
+            },
+        ];
+
+        if let Some(buf) = vfo_payload {
+            for (half, s) in sides.iter_mut().enumerate() {
+                let bytes: [u8; addr::VFO_SIZE as usize] = buf
+                    [half * addr::VFO_SIZE as usize..(half + 1) * addr::VFO_SIZE as usize]
+                    .try_into()
+                    .unwrap();
+                let vfo = flash_map::VfoMode::from_bytes(&bytes);
+                if vfo.freq_deci_hz() != 0 {
+                    s.load_vfo(&vfo);
+                }
+            }
+        }
+
+        // Restore each side's last active mode (VFO vs Channel) + modulation
+        if let Some(state) = storage.load_channel_state() {
+            for (half, s) in sides.iter_mut().enumerate() {
+                let is_channel = state[half * 3] != 0;
+                let num = u16::from_le_bytes([state[half * 3 + 1], state[half * 3 + 2]])
+                    .min(MAX_CHANNEL_NUM);
+                if is_channel && !storage.is_channel_empty(num) {
+                    let ch = storage.read_channel(num);
+                    s.load_channel(num, &ch);
+                }
+                s.cfg.modulation = modulation_from_raw(state[6 + half]);
+            }
+        }
+
+        radio.set_frequency(sides[0].cfg.freq_hz);
+        radio.set_tx_frequency(sides[0].cfg.tx_freq_hz);
+        radio.set_power(sides[0].cfg.power);
+        let (boot_subaudio_tx, boot_subaudio_rx) = cw_safe_subaudio(&sides[0].cfg);
+        radio.set_subaudio_tx(boot_subaudio_tx);
+        radio.set_subaudio_rx(boot_subaudio_rx);
+        radio.set_modulation(sides[0].cfg.modulation);
+        radio.set_sql_level(syst, settings.sql_level);
+        radio.set_tail_elimination(settings.tail_elimination);
+        radio.set_rptrl(settings.rptrl);
+        radio.set_beeps_enabled(settings.beeps_switch);
+        radio.set_roger_tone(RogerTone::from_u8(settings.roger_tone));
+        radio.set_scramble_level(syst, settings.scramble_level);
+        radio.set_rit_offset(settings.rit_offset as i32 * 10);
+        radio.set_tx_allowed(BandLock::from_u8(settings.band_lock).tx_ranges());
+
+        #[cfg(not(feature = "pager-only"))]
+        let sats = storage.load_satellites();
+        #[cfg(not(feature = "pager-only"))]
+        let has_sstv_image = storage.has_sstv_image();
+
+        App {
+            radio,
+            chip_id,
+            keypad,
+            storage,
+            mode: Mode::Standby,
+            sides,
+            settings,
+            #[cfg(not(feature = "pager-only"))]
+            settings_ui: settings::SettingsUi::new(),
+            #[cfg(not(feature = "pager-only"))]
+            chanmgr: chanmgr::ChanMgrUi::new(),
+            #[cfg(not(feature = "pager-only"))]
+            contacts: contacts::ContactsUi::new(),
+            launcher_index: 0,
+            master: 0,
+            watching: 0,
+            last_signal_side: None,
+            input: DigitInput::new(),
+            key_lock: false,
+            transmitting: false,
+            tx_prohibited: false,
+            aprs_beacon_pending: false,
+            flashlight,
+            dual_standby: settings.dual_standby,
+            dual_hold_ticks: DUAL_STANDBY_HOLD_TICKS,
+            tot_ticks: 0,
+            key_idle_ticks: settings.key_auto_lock as u16 * 500,
+            vox_det_dly: 0,
+            vox_work_dly: 0,
+            vox_active: false,
+            rtone_sounding: false,
+            rtone_self_keyed: false,
+            cw_key_down: false,
+            cw_tx_active: false,
+            cw_hang_ticks: 0,
+            ani_caller: None,
+            ani_hold_ticks: 0,
+            no_channels_ticks: 0,
+            blink_phase: 0,
+            ani_target_override: None,
+            #[cfg(not(feature = "pager-only"))]
+            dtmf_dial: None,
+            battery_cal,
+            battery_bars: 4,
+            battery_samples: [0; 4],
+            battery_sample_idx: 0,
+            rssi_raw: 0,
+            mic_level: 0,
+            channel_display_mode: channel_display_mode_from_u8(settings.channel_display_mode),
+            power_save: false,
+            ps_asleep: false,
+            ps_idle_ticks: POWER_SAVE_IDLE_TICKS,
+            ps_cycle_ticks: 0,
+            bl_idle_ticks: settings.backlight_time as u16 * BACKLIGHT_STEP_TICKS,
+            #[cfg(not(feature = "pager-only"))]
+            scan: scan::ScanState::new(),
+            #[cfg(not(feature = "pager-only"))]
+            search: search::SearchState::new(),
+            #[cfg(not(feature = "pager-only"))]
+            scanqt: scanqt::ScanQtState::new(),
+            #[cfg(not(feature = "pager-only"))]
+            fm: fm::FmState::new(),
+            #[cfg(not(feature = "pager-only"))]
+            fm_radio: _fm_radio,
+            #[cfg(not(feature = "pager-only"))]
+            fm_channels,
+            #[cfg(not(feature = "pager-only"))]
+            spectrum: spectrum::SpectrumState::new(default_cfg.freq_hz),
+            wall_secs: 0,
+            time_set: false,
+            wall_tick: 0,
+            #[cfg(not(feature = "pager-only"))]
+            satellite: satellite::SatelliteUi::new(),
+            #[cfg(not(feature = "pager-only"))]
+            sats,
+            #[cfg(not(feature = "pager-only"))]
+            doppler: None,
+            #[cfg(not(feature = "pager-only"))]
+            sstv: sstv::SstvUi {
+                has_image: has_sstv_image,
+                ..sstv::SstvUi::new()
+            },
+            pager: pager::PagerState::new(),
+        }
+    }
+
+    // dual standby
+    #[cfg(not(feature = "pager-only"))]
+    pub fn set_dual_standby(&mut self, syst: &mut SYST, enabled: bool) {
+        self.dual_standby = enabled;
+        self.dual_hold_ticks = DUAL_STANDBY_HOLD_TICKS;
+
+        // force radio to watch current master side
+        if !enabled && self.watching != self.master {
+            self.watching = self.master;
+            self.apply_watching_to_radio(syst);
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_dual_standby(&mut self, syst: &mut SYST, signal_present: bool) {
+        if signal_present {
+            self.last_signal_side = Some(self.watching);
+        }
+        if !self.dual_standby || self.mode != Mode::Standby || self.transmitting {
+            return;
+        }
+        if self.power_save {
+            return;
+        }
+        if self.radio.is_monitor() {
+            if self.watching != self.master {
+                self.watching = self.master;
+                self.apply_watching_to_radio(syst);
+            }
+            self.dual_hold_ticks = DUAL_STANDBY_HOLD_TICKS;
+            return;
+        }
+        if signal_present {
+            self.dual_hold_ticks = DUAL_STANDBY_HOLD_TICKS;
+            return;
+        }
+        if self.dual_hold_ticks > 0 {
+            self.dual_hold_ticks -= 1;
+            return;
+        }
+        self.dual_hold_ticks = DUAL_STANDBY_HOLD_TICKS;
+        self.watching = 1 - self.watching;
+        self.apply_watching_to_radio(syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn note_power_save_activity(&mut self, syst: &mut SYST) {
+        if self.ps_asleep {
+            self.radio.enter_rx(syst);
+            self.ps_asleep = false;
+        }
+        self.power_save = false;
+        self.ps_idle_ticks = POWER_SAVE_IDLE_TICKS;
+        self.ps_cycle_ticks = 0;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn reset_power_save(&mut self, syst: &mut SYST) {
+        self.note_power_save_activity(syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn power_save_is_asleep(&self) -> bool {
+        self.ps_asleep
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_power_save(&mut self, syst: &mut SYST) {
+        if self.settings.save_level == 0 || self.mode != Mode::Standby || self.transmitting {
+            if self.ps_idle_ticks != POWER_SAVE_IDLE_TICKS || self.ps_asleep {
+                self.note_power_save_activity(syst);
+            }
+            return;
+        }
+
+        if !self.ps_asleep && (self.radio.rssi_open() || self.radio.audio_is_open()) {
+            self.power_save = false;
+            self.ps_idle_ticks = POWER_SAVE_IDLE_TICKS;
+            self.ps_cycle_ticks = 0;
+            return;
+        }
+
+        if self.ps_idle_ticks > 0 {
+            self.ps_idle_ticks -= 1;
+            return;
+        }
+
+        self.power_save = true;
+        if self.ps_cycle_ticks > 0 {
+            self.ps_cycle_ticks -= 1;
+            return;
+        }
+
+        if self.ps_asleep {
+            self.radio.enter_rx(syst);
+            self.ps_asleep = false;
+            self.ps_cycle_ticks = POWER_SAVE_AWAKE_TICKS;
+        } else {
+            // About to sleep: if dual-standby is on, hand the *next* wake
+            // to the other side. Only the cached config is pushed here,
+            // the side we just woke up on already got its fair squelch
+            // check during the awake window that's ending now.
+            if self.dual_standby {
+                self.watching = 1 - self.watching;
+                self.push_watching_config();
+            }
+            self.radio.rf_sleep(syst);
+            self.ps_asleep = true;
+            self.ps_cycle_ticks =
+                self.settings.save_level as u16 * POWER_SAVE_SLEEP_TICKS_PER_LEVEL;
+        }
+    }
+
+    // backlight
+    #[cfg(not(feature = "pager-only"))]
+    fn note_backlight_activity(&mut self) {
+        self.bl_idle_ticks = self.settings.backlight_time as u16 * BACKLIGHT_STEP_TICKS;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_backlight(&mut self, elapsed_10ms: u16) {
+        if self.radio.audio_is_open() {
+            self.note_backlight_activity();
+        }
+        if self.mode != Mode::SatelliteTracking {
+            self.bl_idle_ticks = self.bl_idle_ticks.saturating_sub(elapsed_10ms);
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn backlight_should_be_on(&self) -> bool {
+        self.transmitting
+            || self.settings.backlight_time == 0
+            || self.bl_idle_ticks > 0
+            || self.mode == Mode::SatelliteTracking
+    }
+
+    // persistence
+        fn save_vfo(&mut self) {
+        let mut buf = [0u8; 64];
+        for (half, s) in self.sides.iter().enumerate() {
+            buf[half * 32..(half + 1) * 32].copy_from_slice(&s.to_vfo_bytes());
+        }
+        self.storage.save_vfo_raw(&buf);
+    }
+
+    fn save_settings(&mut self) {
+        self.storage.save_settings(&self.settings);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn save_satellites(&mut self) {
+        self.storage.save_satellites(&self.sats);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn save_channel_state(&mut self) {
+        let mut buf = [0u8; 8];
+        for (half, s) in self.sides.iter().enumerate() {
+            buf[half * 3] = matches!(s.vfo_chan, ChVfoMode::Channel) as u8;
+            let bytes = s.channel_num.to_le_bytes();
+            buf[half * 3 + 1] = bytes[0];
+            buf[half * 3 + 2] = bytes[1];
+            buf[6 + half] = modulation_to_raw(s.cfg.modulation);
+        }
+        self.storage.save_channel_state(&buf);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub(super) fn refresh_channel_display(&mut self, num: u16) {
+        side_ops::refresh_channel_display(self, num);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn load_channel_num(&mut self, num: u16) {
+        side_ops::load_channel_num(self, num);
+    }
+
+    fn sync_watching_to_master(&mut self, syst: &mut SYST) {
+        side_ops::sync_watching_to_master(self, syst);
+    }
+
+    // radio sync
+    fn push_watching_config(&mut self) {
+        side_ops::push_watching_config(self);
+    }
+
+    fn apply_watching_to_radio(&mut self, syst: &mut SYST) {
+        side_ops::apply_watching_to_radio(self, syst);
+    }
+
+    // frequency / channel stepping
+    #[cfg(not(feature = "pager-only"))]
+    fn step(&mut self, syst: &mut SYST, up: bool) {
+        side_ops::step(self, syst, up);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn commit_input(&mut self, syst: &mut SYST) {
+        side_ops::commit_input(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn toggle_vfo_channel(&mut self, syst: &mut SYST) {
+        side_ops::toggle_vfo_channel(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn switch_side(&mut self, syst: &mut SYST) {
+        side_ops::switch_side(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn toggle_reverse(&mut self, syst: &mut SYST) {
+        side_ops::toggle_reverse(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn toggle_power(&mut self, syst: &mut SYST) {
+        side_ops::toggle_power(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn toggle_wide_narrow(&mut self, syst: &mut SYST) {
+        side_ops::toggle_wide_narrow(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn toggle_modulation(&mut self, syst: &mut SYST) {
+        side_ops::toggle_modulation(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn commit_side_change(&mut self, syst: &mut SYST) {
+        side_ops::commit_side_change(self, syst);
+    }
+
+    // auto-lock
+    fn reset_key_idle(&mut self) {
+        self.key_idle_ticks = self.settings.key_auto_lock as u16 * 500;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_auto_lock(&mut self, syst: &mut SYST, rx_active: bool, elapsed_10ms: u16) {
+        if self.settings.key_auto_lock == 0
+            || self.key_lock
+            || self.mode != Mode::Standby
+            || self.transmitting
+            || rx_active
+        {
+            return;
+        }
+        if self.key_idle_ticks > 0 {
+            self.key_idle_ticks = self.key_idle_ticks.saturating_sub(elapsed_10ms);
+            if self.key_idle_ticks == 0 {
+                self.key_lock = true;
+                self.radio.play_beep(syst);
+            }
+        }
+    }
+
+    // VOX
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_vox(&mut self, syst: &mut SYST, mic_level: u8, rx_active: bool) {
+        if self.vox_det_dly > 0 {
+            self.vox_det_dly -= 1;
+        }
+        if self.vox_work_dly > 0 {
+            self.vox_work_dly -= 1;
+        }
+        if !self.settings.vox_switch {
+            return;
+        }
+        if self.mode != Mode::Standby || (!self.transmitting && rx_active) {
+            self.vox_det_dly = VOX_HOLD_AFTER_RX_TICKS;
+            return;
+        }
+        if self.vox_det_dly != 0 {
+            return;
+        }
+
+        let level = self.settings.vox_level.clamp(1, 9) as usize;
+        let mut threshold = VOX_THRESHOLD_TABLE[level];
+        if self.transmitting {
+            threshold = threshold.saturating_sub(VOX_TX_HYSTERESIS);
+        }
+
+        if mic_level > threshold {
+            self.vox_work_dly = 50 + self.settings.vox_delay.min(15) * 10;
+            if !self.transmitting {
+                self.set_ptt(syst, true);
+                if self.transmitting {
+                    self.vox_active = true;
+                } else {
+                    self.vox_det_dly = VOX_HOLD_AFTER_TX_FAIL_TICKS;
+                    self.vox_work_dly = 0;
+                }
+            }
+        }
+        if self.vox_active && self.vox_work_dly == 0 {
+            self.vox_active = false;
+            self.set_ptt(syst, false);
+        }
+    }
+
+    // battery
+    pub fn poll_battery(&mut self) {
+        let raw12 = self.radio.read_battery_raw();
+
+        // Ring buffer write
+        self.battery_samples[self.battery_sample_idx] = raw12;
+        self.battery_sample_idx = (self.battery_sample_idx + 1) & 3; // wrap at 4
+
+        // Bars still use the instantaneous 8-bit sample for responsiveness
+        let raw = (raw12 >> 4) as u8;
+        let t = &self.battery_cal;
+        self.battery_bars = if raw > t[5] {
+            4
+        } else if raw > t[4] {
+            3
+        } else if raw > t[3] {
+            2
+        } else if raw > t[2] {
+            1
+        } else {
+            0
+        };
+    }
+
+    pub fn init_battery_samples(&mut self) {
+        for i in 0..4 {
+            self.battery_samples[i] = self.radio.read_battery_raw();
+        }
+        self.battery_sample_idx = 0;
+        let raw = (self.battery_samples[3] >> 4) as u8;
+        let t = &self.battery_cal;
+        self.battery_bars = if raw > t[5] {
+            4
+        } else if raw > t[4] {
+            3
+        } else if raw > t[3] {
+            2
+        } else if raw > t[2] {
+            1
+        } else {
+            0
+        };
+    }
+
+    pub fn battery_raw12_avg(&self) -> u16 {
+        let sum: u32 = self.battery_samples.iter().map(|&v| v as u32).sum();
+        (sum / 4) as u16
+    }
+
+    pub fn battery_bars(&self) -> u8 {
+        self.battery_bars
+    }
+
+    pub fn battery_voltage_cv(&self) -> u16 {
+        (self.battery_raw12_avg() as u32 * BATTERY_CAL_REFERENCE_CV as u32
+            / self.settings.battery_cal_raw.max(1) as u32) as u16
+    }
+
+    pub fn settings(&self) -> &flash_map::Settings {
+        &self.settings
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn set_rssi_raw(&mut self, val: u8) {
+        self.rssi_raw = val;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn rssi_dbm(&self) -> i32 {
+        rssi_raw_to_dbm(self.rssi_raw as u16)
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn s_meter_level(&self) -> u8 {
+        let pos = (-self.rssi_dbm()).clamp(53, 141);
+
+        if pos >= 93 {
+            map(pos, 141, 93, 1, 9).clamp(1, 9) as u8
+        } else {
+            let over = map(pos, 93, 53, 0, 4).clamp(0, 4);
+            (9 + over) as u8
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn s_meter_s_number(&self) -> u8 {
+        let pos = (-self.rssi_dbm()).clamp(53, 141);
+        map(pos, 141, 93, 1, 9).clamp(1, 9) as u8
+    }
+
+    /// How many dB over the S9 reference (-93dBm, matching f4hwn's
+    /// `rssi_dBm >= 93` threshold in its own pos-space) the signal reads,
+    /// 0..40, at full 1dB precision -- not bucketed into 10dB bar
+    /// segments like `s_meter_level`. Rounding to the nearest bar segment
+    /// made two radios reading the same signal within ~2dB of each other
+    /// (K6 -57dBm vs. a real BK4819 radio at -59dBm) show wildly
+    /// different labels (S9+30 vs. S9+35) even though the underlying
+    /// measurements agreed closely.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn s_meter_over_s9_dbm(&self) -> i32 {
+        let pos = (-self.rssi_dbm()).clamp(53, 141);
+        (93 - pos).max(0)
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn mic_level(&self) -> u8 {
+        self.mic_level
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn set_mic_level(&mut self, level: u8) {
+        self.mic_level = level;
+    }
+
+    // DTMF
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_dtmf(&mut self, syst: &mut SYST) {
+        if let Some(caller) = self.radio.poll_dtmf(syst) {
+            self.ani_caller = Some(caller);
+            self.ani_hold_ticks = ANI_DISPLAY_HOLD_TICKS;
+        } else if self.ani_hold_ticks > 0 {
+            self.ani_hold_ticks -= 1;
+            if self.ani_hold_ticks == 0 {
+                self.ani_caller = None;
+            }
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn ani_caller_id(&self) -> Option<[u8; 3]> {
+        self.ani_caller
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_no_channels_notice(&mut self, ticks: u16) {
+        self.no_channels_ticks = self.no_channels_ticks.saturating_sub(ticks);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn no_channels_notice(&self) -> bool {
+        self.no_channels_ticks > 0
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_blink(&mut self) {
+        self.blink_phase = self.blink_phase.wrapping_add(1);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn rx_blink_on(&self) -> bool {
+        (self.blink_phase / RX_BLINK_HALF_PERIOD).is_multiple_of(2)
+    }
+
+    // key dispatch
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_keys(&mut self, syst: &mut SYST) {
+        self.keypad.poll(syst);
+        while let Some(ev) = self.keypad.pop_event() {
+            keys::dispatch(self, syst, ev);
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn launcher_index(&self) -> usize {
+        self.launcher_index
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn launcher_item_count(&self) -> usize {
+        launcher::LAUNCHER_ITEMS.len()
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn launcher_label_at(&self, index: usize) -> &'static str {
+        launcher::LAUNCHER_ITEMS[index].label()
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn launcher_available_at(&self, index: usize) -> bool {
+        launcher::LAUNCHER_ITEMS[index].is_available()
+    }
+
+    // settings UI
+    /// Whether to draw the up/down arrow chrome around the selected row's
+    /// value: true for a cycled Settings item, false while it's in
+    /// text-entry mode
+    /// Returns the currently selected setting item.
+    /// Panics if at the top-level group selection screen.
+    #[cfg(not(feature = "pager-only"))]
+    pub(super) fn current_setting_item(&self) -> settings::SettingItem {
+        self.settings_ui.group.expect("not at top level").items()[self.settings_ui.index]
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_title(&self) -> &'static str {
+        match self.settings_ui.group {
+            Some(g) => g.label(),
+            None => "SETTINGS",
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_show_arrows(&self) -> bool {
+        if self.settings_ui.group.is_none() {
+            return false;
+        }
+        self.settings_ui.editing
+            && !matches!(
+                self.current_setting_item(),
+                settings::SettingItem::Offse
+                    | settings::SettingItem::BattCal
+                    | settings::SettingItem::AprsCall
+                    | settings::SettingItem::AprsDevName
+                    | settings::SettingItem::AprsComment
+                    | settings::SettingItem::AprsFreq
+                    | settings::SettingItem::AprsLat
+                    | settings::SettingItem::AprsLon
+            )
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_index(&self) -> usize {
+        self.settings_ui.index
+    }
+
+    pub fn chip_id(&self) -> u16 {
+        self.chip_id
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_item_count(&self) -> usize {
+        match self.settings_ui.group {
+            Some(g) => g.items().len(),
+            None => settings::SETTINGS_GROUPS.len(),
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_label_at(&self, index: usize) -> &'static str {
+        match self.settings_ui.group {
+            Some(g) => g.items()[index].label(),
+            None => settings::SETTINGS_GROUPS[index].label(),
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_suppress_label(&self, index: usize) -> bool {
+        self.settings_ui.group.is_some()
+            && self.settings_ui.is_editing(index)
+            && matches!(
+                self.current_setting_item(),
+                settings::SettingItem::AprsComment
+            )
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_value_at(&self, index: usize, w: &mut dyn core::fmt::Write) -> bool {
+        match self.settings_ui.group {
+            Some(g) => {
+                settings_ops::value_text_for(self, index, g.items()[index], w);
+                true
+            }
+            None => false, // top-level: no value, like the launcher
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn settings_cursor(&self, index: usize) -> Option<usize> {
+        if !self.settings_ui.is_editing(index) {
+            return None;
+        }
+        match self.current_setting_item() {
+            settings::SettingItem::AprsCall => Some(self.settings_ui.aprs_call_edit.cursor),
+            settings::SettingItem::AprsDevName => Some(self.settings_ui.aprs_dev_name_edit.cursor),
+            settings::SettingItem::AprsComment => Some(self.settings_ui.aprs_comment_edit.cursor),
+            _ => None,
+        }
+    }
+
+    // channel manager UI
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_is_detail(&self) -> bool {
+        chanmgr::is_detail(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_list_row_count(&self) -> usize {
+        chanmgr::list_row_count(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_list_selected_index(&self) -> usize {
+        chanmgr::list_selected_index(self)
+    }
+    /// Reads flash for the currently-visible rows' channel names, so this
+    /// needs `&mut self`.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_list_label(&mut self, index: usize, w: &mut dyn core::fmt::Write) {
+        chanmgr::list_label(self, index, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_field_count(&self) -> usize {
+        chanmgr::detail_field_count(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_field_index(&self) -> usize {
+        chanmgr::detail_field_index(self)
+    }
+    /// Whether to draw the up/down arrow chrome: true only for a field that
+    /// actually cycles via `Up`/`Down`, false for the text-entry fields
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_show_arrows(&self) -> bool {
+        chanmgr::detail_show_arrows(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_field_label(&self, index: usize, w: &mut dyn core::fmt::Write) {
+        chanmgr::detail_label(self, index, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_field_value(&self, index: usize, w: &mut dyn core::fmt::Write) -> bool {
+        chanmgr::detail_value(self, index, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_field_cursor(&self, index: usize) -> Option<usize> {
+        chanmgr::detail_cursor(self, index)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn chanmgr_detail_title(&self, w: &mut dyn core::fmt::Write) {
+        chanmgr::detail_title(self, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_chanmgr_name_timeout(&mut self) {
+        chanmgr::poll_name_timeout(self);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_aprs_call_timeout(&mut self) {
+        if self.mode == Mode::Settings
+            && self.settings_ui.editing
+            && self.settings_ui.group.is_some()
+            && self.current_setting_item() == settings::SettingItem::AprsCall
+        {
+            self.settings_ui.aprs_call_edit.tick();
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_aprs_dev_name_timeout(&mut self) {
+        if self.mode == Mode::Settings
+            && self.settings_ui.editing
+            && self.settings_ui.group.is_some()
+            && self.current_setting_item() == settings::SettingItem::AprsDevName
+        {
+            self.settings_ui.aprs_dev_name_edit.tick();
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_aprs_comment_timeout(&mut self) {
+        if self.mode == Mode::Settings
+            && self.settings_ui.editing
+            && self.settings_ui.group.is_some()
+            && self.current_setting_item() == settings::SettingItem::AprsComment
+        {
+            self.settings_ui.aprs_comment_edit.tick();
+        }
+    }
+
+    // contacts app UI
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_is_detail(&self) -> bool {
+        contacts::is_detail(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_list_row_count(&self) -> usize {
+        contacts::list_row_count()
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_list_selected_index(&self) -> usize {
+        contacts::list_selected_index(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_list_label(&mut self, index: usize, w: &mut dyn core::fmt::Write) {
+        contacts::list_label(self, index, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_field_count(&self) -> usize {
+        contacts::detail_field_count(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_field_index(&self) -> usize {
+        contacts::detail_field_index(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_field_label(&self, index: usize, w: &mut dyn core::fmt::Write) {
+        contacts::detail_label(self, index, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_field_value(&self, index: usize, w: &mut dyn core::fmt::Write) -> bool {
+        contacts::detail_value(self, index, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_field_cursor(&self, index: usize) -> Option<usize> {
+        contacts::detail_cursor(self, index)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contacts_detail_title(&self, w: &mut dyn core::fmt::Write) {
+        contacts::detail_title(self, w)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_contacts_name_timeout(&mut self) {
+        contacts::poll_name_timeout(self);
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_satellite_name_timeout(&mut self) {
+        if self.mode == Mode::Satellite {
+            satellite::poll_name_timeout(&mut self.satellite);
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    fn set_ani_target_override(&mut self, id: [u8; 3]) {
+        tx::set_ani_target_override(self, id);
+    }
+
+    // PTT
+    #[cfg(not(feature = "pager-only"))]
+    pub fn set_ptt(&mut self, syst: &mut SYST, pressed: bool) {
+        tx::set_ptt(self, syst, pressed);
+    }
+
+    // --- CW / TOT poll delegates ------------------------------------------
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_cw_key(&mut self, syst: &mut SYST) {
+        tx::poll_cw_key(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_cw_hang(&mut self, syst: &mut SYST) {
+        tx::poll_cw_hang(self, syst);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_tot(&mut self, syst: &mut SYST, ticks: u16) {
+        tx::poll_tot(self, syst, ticks);
+    }
+
+    // getters
+    pub fn mode(&self) -> Mode {
+        self.mode
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn wall_secs(&self) -> u32 {
+        self.wall_secs
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn time_set(&self) -> bool {
+        self.time_set
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn sats(&self) -> &[Option<flash_map::SatRecord>; MAX_SATELLITES] {
+        &self.sats
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn satellite_ui(&self) -> &satellite::SatelliteUi {
+        &self.satellite
+    }
+
+    /// Set transmitting flag for tracking mode (bypasses normal PTT guards).
+    #[cfg(not(feature = "pager-only"))]
+    pub fn set_transmitting_for_tracking(&mut self) {
+        self.transmitting = true;
+    }
+
+    /// Clear transmitting flag for tracking mode.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn clear_transmitting_for_tracking(&mut self) {
+        self.transmitting = false;
+    }
+
+    /// Increment wall clock tick. Call every 100ms (10 scheduler ticks).
+    /// Returns `true` when a full second has elapsed and Doppler update
+    /// should be performed.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_wall_clock(&mut self) -> bool {
+        self.wall_tick += 1;
+        if self.wall_tick >= 10 {
+            self.wall_tick = 0;
+            satellite::time::wall_clock_tick(&mut self.wall_secs);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Perform per-second Doppler update during tracking mode.
+    /// Skips frequency retune while transmitting to avoid interrupting TX.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_doppler_update(&mut self, syst: &mut SYST) {
+        if self.mode != Mode::SatelliteTracking {
+            return;
+        }
+
+        if self.transmitting {
+            return; // Don't retune during TX
+        }
+
+        // Refresh gain values from FD6818 registers (always, even during TX)
+        let (lnas, lna, pga, if_gain) =
+            satellite::tracking::tracking_read_gains(&mut self.radio, syst);
+        self.satellite.gain_lnas = lnas;
+        self.satellite.gain_lna = lna;
+        self.satellite.gain_pga = pga;
+        self.satellite.gain_if = if_gain;
+
+        if let Some(ref doppler) = self.doppler {
+            let doppler_hz = doppler::doppler_update(doppler, self.wall_secs);
+            self.satellite.current_doppler_hz = doppler_hz;
+            let rx_freq = self.satellite.active_rx_freq_hz;
+            let wide = self.satellite.tracking_wide;
+            satellite::tracking::tracking_update_rx(
+                &mut self.radio,
+                syst,
+                rx_freq,
+                doppler_hz,
+                wide,
+            );
+        }
+    }
+    pub fn is_transmitting(&self) -> bool {
+        self.transmitting || self.cw_tx_active
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn tx_prohibited(&self) -> bool {
+        self.tx_prohibited
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn aprs_beacon_active(&self) -> bool {
+        self.aprs_beacon_pending
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub(super) fn request_aprs_beacon(&mut self) {
+        self.aprs_beacon_pending = true;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn transmit_pending_aprs_beacon(&mut self, syst: &mut SYST) {
+        use crate::device::radio::Power;
+
+        let tone_1200: u16 = (1200u32 * 1_032_444 / 100_000) as u16;
+        let tone_2200: u16 = (2200u32 * 1_032_444 / 100_000) as u16;
+        let (nrzi_buf, bits) = aprs_ops::encode_beacon(self);
+        let power = match self.settings.aprs_power {
+            1 => Power::Mid,
+            2 => Power::High,
+            _ => Power::Low,
+        };
+
+        self.radio.transmit_afsk(
+            syst,
+            &nrzi_buf,
+            bits,
+            self.settings.aprs_freq_hz,
+            power,
+            tone_1200,
+            tone_2200,
+            300, // TX_DELAY_MS
+            50,  // TX_TAIL_MS
+        );
+        self.radio.enter_rx(syst);
+        self.aprs_beacon_pending = false;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn sstv_tx_pending(&self) -> bool {
+        self.sstv.tx_pending
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn handle_sstv_ptt(&mut self, syst: &mut SYST) {
+        if self.mode != Mode::Sstv {
+            return;
+        }
+        // Only trigger on PTT press
+        if let Some(level) = self.radio.poll_ptt() {
+            if !level && !self.sstv.tx_pending && sstv::keys::handle_ptt(self) {
+                self.radio.play_beep(syst);
+            }
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn transmit_pending_sstv(&mut self, syst: &mut SYST, power: &PowerSwitch) {
+        let call = sstv::SstvUi::aprs_call_str(&self.settings);
+        let white = self.sstv.white_text;
+        let text = match self.sstv.tx_mode {
+            Some(sstv::TxMode::Cq) => sstv::tx::build_cq_lines(
+                call,
+                sstv::SstvUi::name_edit_str(&self.sstv.cq_m1),
+                sstv::SstvUi::name_edit_str(&self.sstv.cq_m2),
+                white,
+            ),
+            Some(sstv::TxMode::Qso) => sstv::tx::build_qso_lines(
+                sstv::SstvUi::name_edit_str(&self.sstv.qso_dx_call),
+                call,
+                sstv::SstvUi::name_edit_str(&self.sstv.qso_m1),
+                sstv::SstvUi::name_edit_str(&self.sstv.qso_m2),
+                white,
+            ),
+            None => return,
+        };
+
+        let has_image = self.sstv.has_image;
+
+        let tx_freq_hz = self.side_tx_freq_hz(self.master);
+        let subaudio_tx = self.side_subaudio_tx(self.master);
+        let tx_power = self.side_power(self.master);
+
+        let completed = sstv::tx::transmit_sstv(
+            &mut self.radio,
+            &mut self.storage,
+            &mut self.keypad,
+            power,
+            syst,
+            has_image,
+            &text,
+            tx_freq_hz,
+            subaudio_tx,
+            tx_power,
+            &mut self.sstv.tx_line,
+        );
+
+        self.radio.enter_rx(syst);
+        self.sstv.tx_aborted = !completed;
+        self.sstv.tx_pending = false;
+        self.sstv.page = sstv::SstvPage::Main;
+        self.sstv.field_index = 0;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_sstv_name_timeout(&mut self) {
+        if self.mode == Mode::Sstv {
+            sstv::poll_name_timeout(&mut self.sstv);
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn is_key_locked(&self) -> bool {
+        self.key_lock
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn contrast(&self) -> u8 {
+        self.settings.contrast
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn vox_enabled(&self) -> bool {
+        self.settings.vox_switch
+    }
+    pub fn master_index(&self) -> usize {
+        self.master
+    }
+    pub fn master_freq_hz(&self) -> u32 {
+        self.sides[self.master].cfg.freq_hz
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn watching_freq_hz(&self) -> u32 {
+        self.sides[self.watching].cfg.freq_hz
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn watching_channel_num(&self) -> u16 {
+        self.sides[self.watching].channel_num
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn watching_is_channel_mode(&self) -> bool {
+        self.sides[self.watching].vfo_chan == ChVfoMode::Channel
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_freq_hz(&self, index: usize) -> u32 {
+        self.sides[index].cfg.freq_hz
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_tx_freq_hz(&self, index: usize) -> u32 {
+        self.sides[index].cfg.tx_freq_hz
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_is_channel_mode(&self, index: usize) -> bool {
+        self.sides[index].vfo_chan == ChVfoMode::Channel
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_channel_num(&self, index: usize) -> u16 {
+        self.sides[index].channel_num
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_subaudio_rx(&self, index: usize) -> SubAudio {
+        self.sides[index].cfg.subaudio_rx
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_subaudio_tx(&self, index: usize) -> SubAudio {
+        self.sides[index].cfg.subaudio_tx
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_power(&self, index: usize) -> Power {
+        self.sides[index].cfg.power
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_modulation(&self, index: usize) -> Modulation {
+        self.sides[index].cfg.modulation
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_wide_band(&self, index: usize) -> bool {
+        self.sides[index].cfg.wide_band
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_reversed(&self, index: usize) -> bool {
+        self.sides[index].reversed
+    }
+    /// Repeater shift direction: 0 = off/simplex, 1 = `+`, 2 = `-`.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_freq_dir(&self, index: usize) -> u8 {
+        self.sides[index].shift_dir_offset().0
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_offset_hz(&self, index: usize) -> u32 {
+        self.sides[index].shift_dir_offset().1
+    }
+    /// Trimmed channel name, `""` in VFO mode or for an unnamed channel.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn side_name_str(&self, index: usize) -> &str {
+        channel_name_str(&self.sides[index].name)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn watching_index(&self) -> usize {
+        self.watching
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn last_signal_side(&self) -> Option<usize> {
+        self.last_signal_side
+    }
+    pub fn radio_mut(&mut self) -> &mut Radio {
+        &mut self.radio
+    }
+    pub fn storage_mut(&mut self) -> &mut Storage {
+        &mut self.storage
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_squelch(&mut self, syst: &mut SYST, db: u8) {
+        self.radio.poll_squelch(syst, db);
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_scan(&mut self, syst: &mut SYST) {
+        scan::poll(self, syst);
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_search(&mut self, syst: &mut SYST) {
+        search::poll(self, syst);
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_scanqt(&mut self, syst: &mut SYST) {
+        scanqt::poll(self, syst);
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn scan_direction_up(&self) -> bool {
+        scan::direction_up(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn search_band_label(&self) -> &'static str {
+        search::band_label(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn search_status(&self) -> SearchStatus {
+        search::status(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn search_candidate_freq_hz(&self) -> u32 {
+        search::candidate_freq_hz(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn search_tone(&self) -> Option<SubAudio> {
+        search::tone(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn scanqt_is_found(&self) -> bool {
+        scanqt::is_found(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn scanqt_is_listening(&self) -> bool {
+        scanqt::is_listening(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn scanqt_tone(&self) -> Option<SubAudio> {
+        scanqt::tone(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_fm(&mut self, syst: &mut SYST) {
+        fm::poll(self, syst);
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_deci_mhz(&self) -> u16 {
+        fm::deci_mhz(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_is_channel_mode(&self) -> bool {
+        fm::is_channel_mode(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_channel_index(&self) -> u8 {
+        fm::channel_index(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_is_seeking(&self) -> bool {
+        fm::is_seeking(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_rssi(&self) -> u8 {
+        fm::rssi(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_save_picker_selected(&self) -> Option<u8> {
+        fm::save_picker_selected(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_channel_freq_at(&self, index: usize) -> Option<u16> {
+        fm::channel_freq_at(self, index)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_input_len(&self) -> usize {
+        fm::input_len(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn fm_input_digit(&self, idx: usize) -> u8 {
+        fm::input_digit(self, idx)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn poll_spectrum(&mut self, syst: &mut SYST) {
+        spectrum::poll(self, syst);
+    }
+
+    // voice pager (pager.rs)
+    pub fn poll_pager(&mut self, syst: &mut SYST) {
+        pager::poll(self, syst);
+    }
+    /// EXPLORE (pager/explore.rs) is on: the main loop runs its steps instead of the pager's
+    pub fn exploring(&self) -> bool {
+        pager::explore_on()
+    }
+    pub fn poll_explore(&mut self, syst: &mut SYST) -> bool {
+        pager::explore_poll(self, syst)
+    }
+    /// The explore image starts in VOICE MSG and goes into EXPLORE once it's quiet
+    #[cfg(feature = "explore")]
+    pub fn explore_boot(&mut self) {
+        pager::explore_boot();
+    }
+    #[cfg(feature = "explore")]
+    pub fn poll_explore_idle(&mut self, syst: &mut SYST) {
+        pager::explore_voice_poll(self, syst);
+    }
+    pub fn note_pager_draw(&mut self, ticks: u16) {
+        pager::note_draw(self, ticks);
+    }
+    pub fn pager(&self) -> &pager::PagerState {
+        &self.pager
+    }
+    /// streaming playback's turn in the main loop: true if it decoded a frame
+    pub fn service_pager_stream(&mut self, syst: &mut SYST) -> bool {
+        pager::stream_service(self, syst)
+    }
+    pub fn pager_streaming(&self) -> bool {
+        pager::streaming()
+    }
+    pub fn pager_play_pending(&self) -> bool {
+        self.mode == Mode::Pager && self.pager.play_pending
+    }
+    pub fn play_pager_message(&mut self, syst: &mut SYST, power: &PowerSwitch) {
+        pager::play(self, syst, power);
+    }
+    pub fn pager_cal_pending(&self) -> bool {
+        self.mode == Mode::Pager && self.pager.cal_pending
+    }
+    pub fn transmit_pager_cal(&mut self, syst: &mut SYST) {
+        pager::cal_tx(self, syst);
+    }
+    pub fn handle_pager_ptt(&mut self, syst: &mut SYST) {
+        pager::handle_ptt(self, syst);
+    }
+    /// The cable session (cps::run_cable_session) starts: no module transfer partway
+    #[cfg(feature = "spilib")]
+    pub fn cable_begin(&mut self) {
+        pager::cable_begin();
+    }
+    /// The cable session: one module chunk (a whitened L packet) into the loader; (km_packet's
+    /// result, chunks held, chunks expected, the install's result or 0)
+    #[cfg(feature = "spilib")]
+    pub fn cable_chunk(&mut self, pkt: &[u8]) -> (i8, u8, u8, i32) {
+        pager::cable_chunk(self, pkt)
+    }
+    /// The pager's frequency entry: digits typed so far (kHz), or None when not typing
+    pub fn pager_freq_digits(&self) -> Option<&[u8]> {
+        if self.pager.freq_entry {
+            Some(&self.input.digits[..self.input.len])
+        } else {
+            None
+        }
+    }
+    /// Pager-only image: VOICE MSG is the whole firmware, on the VFO frequency Aura saved.
+    #[cfg(feature = "pager-only")]
+    pub fn enter_pager(&mut self, syst: &mut SYST) {
+        pager::enter(self, syst);
+    }
+    /// Pager-only image: keys go straight to the pager, so the rest of Aura's key handling
+    /// (and the apps it reaches) isn't linked.
+    #[cfg(feature = "pager-only")]
+    pub fn poll_pager_keys(&mut self, syst: &mut SYST) {
+        self.keypad.poll(syst);
+        while let Some(ev) = self.keypad.pop_event() {
+            crate::hal::light::touch(); // any key lights the screen (and still does its job)
+            pager::dispatch(self, syst, ev);
+        }
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_window_start_hz(&self) -> u32 {
+        spectrum::window_start_hz(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_scan_step_hz(&self) -> u32 {
+        spectrum::scan_step_hz(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_pan_step_hz(&self) -> u32 {
+        spectrum::pan_step_hz(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_bins(&self) -> u16 {
+        spectrum::bins(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_rssi_bin(&self, pos: usize) -> u16 {
+        spectrum::rssi_bin(self, pos)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_rssi_ceiling(&self) -> i16 {
+        spectrum::rssi_ceiling(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_trigger_level(&self) -> u16 {
+        spectrum::trigger_level(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_peak_bin(&self) -> Option<u16> {
+        spectrum::peak_bin(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_listening(&self) -> bool {
+        spectrum::listening(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_modulation(&self) -> Modulation {
+        spectrum::modulation(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_wide_bandwidth(&self) -> bool {
+        spectrum::wide_bandwidth(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_entering_freq(&self) -> bool {
+        spectrum::entering_freq(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_input_len(&self) -> usize {
+        spectrum::input_len(self)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn spectrum_input_digit(&self, idx: usize) -> u8 {
+        spectrum::input_digit(self, idx)
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn rssi_open(&self) -> bool {
+        self.radio.rssi_open()
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn audio_open(&self) -> bool {
+        self.radio.audio_is_open()
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn is_monitor(&self) -> bool {
+        self.radio.is_monitor()
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn dual_standby_enabled(&self) -> bool {
+        self.dual_standby
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn power_save_active(&self) -> bool {
+        self.power_save
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn tx_elapsed_seconds(&self) -> u32 {
+        self.tot_ticks as u32 / TICKS_PER_SECOND as u32
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn channel_display_mode(&self) -> ChannelDisplayMode {
+        self.channel_display_mode
+    }
+    /// 0=Off, 1=Semi, 2=Full; see `flash_map::Settings::bk_in`.
+    #[cfg(not(feature = "pager-only"))]
+    pub fn bk_in(&self) -> u8 {
+        self.settings.bk_in
+    }
+    /// True while a CW/CWF key is physically held down, including
+    /// BK-IN=Off's local-only sidetone
+    #[cfg(not(feature = "pager-only"))]
+    pub fn cw_key_down(&self) -> bool {
+        self.cw_key_down
+    }
+    #[cfg(not(feature = "pager-only"))]
+    pub fn set_channel_display_mode(&mut self, mode: ChannelDisplayMode) {
+        self.channel_display_mode = mode;
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn freq_input_len(&self) -> usize {
+        if matches!(self.sides[self.master].vfo_chan, ChVfoMode::Vfo) {
+            self.input.len
+        } else {
+            0
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn freq_input_digit(&self, idx: usize) -> u8 {
+        self.input.digits[idx]
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn channel_input_len(&self) -> usize {
+        if matches!(self.sides[self.master].vfo_chan, ChVfoMode::Channel) {
+            self.input.len
+        } else {
+            0
+        }
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn dtmf_dial_active(&self) -> bool {
+        self.dtmf_dial.is_some()
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn dtmf_dial_len(&self) -> usize {
+        self.dtmf_dial.as_ref().map_or(0, |d| d.len)
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn dtmf_dial_digit(&self, idx: usize) -> u8 {
+        self.dtmf_dial.as_ref().map_or(0, |d| d.digits[idx])
+    }
+
+    #[cfg(not(feature = "pager-only"))]
+    pub fn dtmf_dial_capacity(&self) -> usize {
+        DTMF_DIAL_MAX_DIGITS
+    }
+}

@@ -22,7 +22,7 @@ from modem import k6mod, pager  # noqa: E402
 
 K6 = os.path.join(ROOT, "c", "k6")
 SRC = os.path.join(K6, "k6_rate.c")
-PATCH = os.path.join(ROOT, "firmware", "k6-aura", "aura-pager.patch")
+PAGER_RS = os.path.join(ROOT, "radios", "k6", "fw", "src", "app", "pager.rs")
 F18, D24 = 0, 1
 NONE, CRC, QUIET, REVERT = range(4)
 S = 10_000  # 100 us ticks a second
@@ -170,15 +170,10 @@ def test_arq_report_carries_the_rung():
     assert re.search(r"#define KM_RATE_WHY_SHIFT 6", h)
 
 
-def added(patch_text):
-    """the Aura patch's added lines, joined"""
-    return "\n".join(ln[1:] for ln in patch_text.splitlines() if ln.startswith("+") and not ln.startswith("+++"))
-
-
 def test_image_d2400_recipe_is_run3s():
     """REG_58, REG_72 and REG_2B for D/2400 in the image are fsk24rx's setting 2 (run 3 read every
     packet the Pluto sent in it), the report bits match k6_mod.h, and kr_t's layout matches."""
-    a = added(open(PATCH).read())
+    a = open(PAGER_RS).read()
     rx = open(os.path.join(K6, "mod", "fsk24rx.c")).read()
     assert "{0x00E9, 24779, 1067, 0x0400}," in rx
     assert re.search(r"const CFG_D_2400: u16 = 0x00E9;", a)

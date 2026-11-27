@@ -22,13 +22,10 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
 AURA_REPO=${AURA_REPO:-https://github.com/sophiel-meow/bf-k61-firmware-aura}
 AURA_REV=edf3b98c3528f909b0e0f4dda80142a70c194ff0     # master, 2026-11-02
-WORK="$HERE/build/aura"
+WORK="$ROOT/radios/k6/fw"
 OUT="$HERE/out"
 
-rm -rf "$WORK"
 mkdir -p "$HERE/build" "$OUT"
-git clone -q "$AURA_REPO" "$WORK"
-git -C "$WORK" checkout -q "$AURA_REV"
 
 SIZE=${SIZE:-llvm-size}
 command -v "$SIZE" >/dev/null 2>&1 || SIZE="rust-size"
@@ -79,13 +76,16 @@ export SOTTO_BUILD
 echo "$SOTTO_BUILD" > "$OUT/build-id.txt"
 echo "build ID $SOTTO_BUILD"
 
-# Baseline: stock Aura at the same commit, for comparison (AURA_BASELINE=0 skips it)
-if [ "${AURA_BASELINE:-1}" = 1 ]; then
-  (cd "$WORK" && cargo build --release)
-  { echo "== stock Aura $AURA_REV"; fit "$ELF"; breakdown "$ELF"; } | tee "$OUT/size-aura-stock.txt"
+# Optional baseline: stock Aura at the pinned upstream commit (AURA_BASELINE=1 to compare)
+if [ "${AURA_BASELINE:-0}" = 1 ]; then
+  STOCK="$HERE/build/aura-stock"
+  rm -rf "$STOCK"
+  git clone -q "$AURA_REPO" "$STOCK"
+  git -C "$STOCK" checkout -q "$AURA_REV"
+  (cd "$STOCK" && cargo build --release)
+  STOCK_ELF="$STOCK/target/thumbv6m-none-eabi/release/aura"
+  { echo "== stock Aura $AURA_REV"; fit "$STOCK_ELF"; breakdown "$STOCK_ELF"; } | tee "$OUT/size-aura-stock.txt"
 fi
-
-git -C "$WORK" apply "$HERE/aura-pager.patch"
 
 if [ -n "$SOTTO_K6_LIB" ]; then
   LIB=$SOTTO_K6_LIB
@@ -99,7 +99,7 @@ cp "$LIB" "$WORK/lib/libsotto_k6.a"
 # Link with the flash region opened up, so an overflow still links and shows where the bytes go.
 # The layout doesn't depend on the region's length (same origin), so the fit check is the same
 # test the linker makes, and no image is written unless it passes.
-sed -i 's/LENGTH = 120K/LENGTH = 1024K/' "$WORK/memory.x.in"  # build.rs writes memory.x from it
+export K6_FLASH_LEN=1024K  # build.rs expands memory.x in OUT_DIR without touching memory.x.in
 
 # variant NAME TITLE [cargo args]: build, report to out/size-NAME.txt, write out/NAME.bin if it fits
 # hal::txdog (the crash and stuck key-up backstop, docs/k6-modules.md, Security) is on in every

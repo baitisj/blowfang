@@ -42,6 +42,8 @@ c/k6/pager_host_vlr_cbs
 c/k6/pager_host_vlr_cbi
 firmware/k6-aura/out/
 firmware/k6-aura/lib/
+radios/k6/fw/target/
+radios/k6/fw/lib/
 c/k6/build-vlrh-cbs/
 c/k6/host-vlrh/
 c/k6/pager_host_vlrh

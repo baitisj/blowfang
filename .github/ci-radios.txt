@@ -43,6 +43,7 @@ tests/test_ci_scope.py
 .github/workflows/k6-firmware.yml
 c/k6/
 firmware/k6-aura/
+radios/k6/
 sim/
 !sim/uv21/
 !sim/soapyfang/
