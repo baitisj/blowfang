@@ -56,7 +56,7 @@ def upload(b, img):
 def test_hello_runs_once_and_says_its_line(built):
     b = radio(built)
     got, _ = send(b, "um ?", r"um abi=\S+ room=\S+")
-    assert got == "um abi=1 room=3000"
+    assert got == "um abi=2 room=3000"
     ret, out = upload(b, uv21mod.image(*uv21mod.build(os.path.join(MOD, "hello.c"))))
     assert ret == 0x4829, hex(ret)                                     # the BK4829's ID
     assert re.search(r"hello uv21 rf=4829 ram=2[0-9a-f]{3}", out), out[-300:]
@@ -134,3 +134,38 @@ def test_a_modules_writes_stay_receive_only(built):
 def test_bad_settings_are_refused_before_building():
     with pytest.raises(ValueError):
         uv21mod.build(os.path.join(MOD, "regsweep.c"), ["SW_REG=0x1F; rm"])
+
+
+def test_shared_radio_api_prefix(built, tmp_path):
+    """um_api_t starts with c/common/radio_api.h's prefix, so portable code taking const radio_api_t *
+    works unchanged on UV-21 (abi=2, level=1, ticks, rx_hz, radio_rssi2)."""
+    src = tmp_path / "prefix_check.c"
+    src.write_text(
+        '#include "uv21_mod.h"\n'
+        'static int portable_check(const radio_api_t *r) {\n'
+        '  char line[64];\n'
+        '  uint32_t t0 = r->ticks();\n'
+        '  r->tune(439500000u, 1);\n'
+        '  uint32_t hz = r->rx_hz();\n'
+        '  int rssi2 = radio_rssi2(r);\n'
+        '  char *p = um_put(line, "pfx abi=");\n'
+        '  p = um_int(p, r->abi);\n'
+        '  p = um_put(p, " lvl=");\n'
+        '  p = um_int(p, r->level);\n'
+        '  p = um_put(p, " hz=");\n'
+        '  p = um_int(p, (int32_t)hz);\n'
+        '  p = um_put(p, " rssi=");\n'
+        '  p = um_half_db(p, rssi2);\n'
+        '  r->say(line);\n'
+        '  return (r->ticks() >= t0 && hz == 439500000u) ? 0x55 : -1;\n'
+        '}\n'
+        'int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {\n'
+        '  (void)ram; (void)ram_len;\n'
+        '  return portable_check((const radio_api_t *)api);\n'
+        '}\n'
+    )
+    b = radio(built)
+    ret, out = upload(b, uv21mod.image(*uv21mod.build(str(src))))
+    assert ret == 0x55, (hex(ret), out[-300:])
+    m = re.search(r"pfx abi=2 lvl=1 hz=439500000 rssi=(-?[\d.]+)", out)
+    assert m and abs(float(m.group(1)) + 70) <= 2, out[-300:]

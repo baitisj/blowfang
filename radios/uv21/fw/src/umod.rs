@@ -15,7 +15,7 @@
 //!
 //! | line                    | does                                          | answer             |
 //! |-------------------------|-----------------------------------------------|--------------------|
-//! | `um ?`                  | asks                                          | `um abi=1 room=3000 stk=SSSS` |
+//! | `um ?`                  | asks                                          | `um abi=2 room=3000 stk=SSSS` |
 //! | `um b LLLL`             | begins an image of LLLL bytes (hex)           | `um ok b`          |
 //! | `um w OOOO HEX.. CCCC`  | bytes at offset OOOO, CRC-16/XMODEM CCCC      | `um ok OOOO`       |
 //! | `um r CCCCCCCC`         | runs it, if whole with that CRC-32            | `um run`, the module's lines, `um stk=SSSS`, `um end rrrrrrrr` |
@@ -30,22 +30,26 @@
 
 use crate::hal::{arena, con, stackprobe, uart, uptime};
 
-pub const ABI: u16 = 1;
+pub const ABI: u16 = 2;
+pub const LEVEL: u16 = 1;
 pub const ROOM: usize = arena::BYTES;
 const HDR: usize = 12;
 const MAGIC: [u8; 4] = *b"UM21";
 const LINE_MAX: usize = 160;
 
-/// radios/uv21/mod/uv21_mod.h's um_api_t
+/// radios/uv21/mod/uv21_mod.h's um_api_t (starts with c/common/radio_api.h's shared prefix)
 #[repr(C)]
 pub struct UmApi {
-    pub abi: u32,
-    pub fd_read: extern "C" fn(u8) -> u16,
-    pub fd_write: extern "C" fn(u8, u16),
-    pub tune: extern "C" fn(u32, i32),
-    pub delay_us: extern "C" fn(u32),
-    pub ms: extern "C" fn() -> u32,
+    pub abi: u16,
+    pub level: u16,
     pub say: extern "C" fn(*const u8),
+    pub ticks: extern "C" fn() -> u32,
+    pub fd_read: extern "C" fn(u8) -> u16,
+    pub fd_write: extern "C" fn(u8, u16) -> i32,
+    pub delay_us: extern "C" fn(u32),
+    pub tune: extern "C" fn(u32, i32),
+    pub rx_hz: extern "C" fn() -> u32,
+    pub ms: extern "C" fn() -> u32,
     pub front_end: extern "C" fn(i32) -> i32,
 }
 

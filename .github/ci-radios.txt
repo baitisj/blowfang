@@ -79,6 +79,7 @@ c/common/ffsk_tx.*
 c/common/lz4d.*
 c/common/m17_rx.h
 c/common/pager_tx.*
+c/common/radio_api.h
 c/common/range_rx*
 c/common/range_tx*
 c/common/rds.h
@@ -228,6 +229,7 @@ tests/test_k6_i2s.py
 tools/k6_fmprobe.py
 # SURF, the port's main screen, includes the K6's SURF core; the emulated board with a model band
 # and its browser workbench (tests/test_uv21_surf.py runs the board)
+c/common/radio_api.h
 c/common/surf_core.inc
 sim/band.py
 sim/workbench.py

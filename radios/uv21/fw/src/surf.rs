@@ -114,6 +114,19 @@ extern "C" fn delay_us(us: u32) {
     delay::us(syst(), us);
 }
 
+extern "C" fn ticks() -> u32 {
+    uptime::now32()
+}
+
+extern "C" fn mod_fd_write(reg: u8, v: u16) -> i32 {
+    fd_write(reg, v);
+    0
+}
+
+extern "C" fn rx_hz() -> u32 {
+    app().radio_mut().rx_freq_hz()
+}
+
 extern "C" fn ms() -> u32 {
     uptime::now32() / 10
 }
@@ -231,13 +244,16 @@ extern "C" fn text(x: i32, y: i32, s: *const u8, fg: u16, bg: u16, font: i32) ->
 /// what a RAM module reaches (umod.rs): SURF's own callbacks. The module runs from `run` after
 /// `uv21_surf` has returned (the arena is SURF's state too), with the context still set
 static UM_API: crate::umod::UmApi = crate::umod::UmApi {
-    abi: crate::umod::ABI as u32,
-    fd_read,
-    fd_write,
-    tune,
-    delay_us,
-    ms,
+    abi: crate::umod::ABI,
+    level: crate::umod::LEVEL,
     say,
+    ticks,
+    fd_read,
+    fd_write: mod_fd_write,
+    delay_us,
+    tune,
+    rx_hz,
+    ms,
     front_end,
 };
 
