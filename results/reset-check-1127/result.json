@@ -1,12 +1,25 @@
 {
  "id": "reset-check-1127",
- "status": "running",
- "since": "2026-11-27T17:15:30Z",
+ "who": "reposize",
+ "started": "2026-11-27T17:15:34Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "wait",
+   "started": "2026-11-27T17:15:34Z",
+   "ended": "2026-11-27T17:15:39Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-984641100bf5",
+ "head": "984641100bf52efdf958c67e06c26b05f690a535",
+ "ended": "2026-11-27T17:15:39Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "925e44f3f57ca9d784d35d8e31577dd8bfad42b2",
   "path": "jobs/reset-check-1127"
  },
  "runner_commit": "984641100bf52efdf958c67e06c26b05f690a535",
- "updated": "2026-11-27T17:15:30Z"
+ "updated": "2026-11-27T17:15:39Z"
 }
