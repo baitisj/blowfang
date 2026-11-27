@@ -411,3 +411,26 @@ def test_settle_measures_a_modelled_receiver(sender_tail_us):
     assert all(len(ln) <= 60 for ln in said)
     assert st["writes"] == 0 and st["tunes"] > 400
     assert said[-1].startswith("settle: done in ") and said[-1].endswith("worst on-case 1500 us")
+
+
+@need_clang
+def test_radio_api_prefix_layout_matches_k6_and_uv21(tmp_path):
+    """c/common/radio_api.h's prefix matches both k6_api_t (ABI 1) and um_api_t (ABI 2) byte for byte."""
+    src = tmp_path / "abi_check.c"
+    src.write_text(
+        '#include <stddef.h>\n'
+        '#include "c/k6/k6_mod.h"\n'
+        '#include "radios/uv21/mod/uv21_mod.h"\n'
+        '#define CHK(f) \\\n'
+        '  _Static_assert(offsetof(k6_api_t, f) == offsetof(radio_api_t, f), "k6 " #f); \\\n'
+        '  _Static_assert(offsetof(um_api_t, f) == offsetof(radio_api_t, f), "uv21 " #f)\n'
+        'CHK(abi); CHK(level); CHK(say); CHK(ticks); CHK(fd_read);\n'
+        'CHK(fd_write); CHK(delay_us); CHK(tune); CHK(rx_hz); CHK(ms);\n'
+        '_Static_assert(offsetof(k6_api_t, ms) == 32, "k6 ABI-1 prefix size");\n'
+        '_Static_assert(offsetof(um_api_t, ms) == 32, "uv21 ABI-2 prefix size");\n'
+    )
+    subprocess.run(
+        ["clang", "--target=thumbv6m-none-eabi", "-mcpu=cortex-m0", "-mthumb", "-std=c11",
+         "-I" + ROOT, "-fsyntax-only", str(src)],
+        check=True,
+    )
