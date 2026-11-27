@@ -1,6 +1,7 @@
 use at32f421_pac as pac;
 use radio_common::spsc::SpscRing;
 
+/// USART1 RX: the interrupt pushes, the main loop pops (255 bytes held at most).
 static RX_RING: SpscRing<256> = SpscRing::new();
 
 /// UV-21 Pro: the KDH bootloader's flash-mode command, as the bench's probe sends it. Seen whole

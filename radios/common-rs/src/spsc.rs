@@ -34,6 +34,9 @@ impl<const N: usize> SpscRing<N> {
         let head = self.head.load(Ordering::Relaxed);
         let next = (head + 1) & Self::MASK;
         if next == self.tail.load(Ordering::Acquire) {
+            // Full: the new byte is dropped. Only the consumer moves `tail`; if the producer
+            // dropped the oldest byte instead, a `pop` it interrupted would put `tail` back and
+            // lose the whole ring.
             return;
         }
         unsafe { (*self.buf.get())[head] = byte };

@@ -29,6 +29,7 @@
 //! `ram` the zeroed rest of the arena (radios/uv21/mod/uv21_mod.h).
 
 use crate::hal::{arena, con, stackprobe, uart, uptime};
+use radio_common::wear_leveled::crc16_xmodem;
 
 pub const ABI: u16 = 2;
 pub const LEVEL: u16 = 1;
@@ -161,7 +162,6 @@ fn num(t: &[u8]) -> Option<u32> {
     t.iter().try_fold(0u32, |v, &c| Some(v << 4 | hexval(c)?))
 }
 
-use radio_common::wear_leveled::crc16_xmodem;
 
 fn crc32(d: &[u8]) -> u32 {
     let mut crc = !0u32;

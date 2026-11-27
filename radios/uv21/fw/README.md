@@ -123,6 +123,10 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   retune mutes the speaker and the listen opens it again. Fast passes run 3 s after each full
   sweep there, so the waterfall moves while full sweeps crawl, and the strip takes a column
   every 250 ms once any bin was read (was once a pass). HOLD stops the waterfall in every mode.
+- Shared with the K6 firmware (2026-11-27): the debouncer, SysTick delays, wear-leveled storage
+  and CRC-16/XMODEM, and the USART1 receive ring live in `radios/common-rs/` (the
+  `radio-common` crate). `src/hal/debounce.rs`, `delay.rs` and `wear_leveled.rs` re-export them,
+  and `src/drivers/norflash.rs` implements its `FlashStorage` trait.
 
 ## RAM modules (port 15)
 

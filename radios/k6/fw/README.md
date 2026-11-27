@@ -11,7 +11,8 @@ Build it with `sh firmware/k6-aura/build.sh`, which builds sotto's C library int
 `cargo build --release` here for each image (`firmware/k6-aura/README.md` lists them). Until
 2026-11-27 these changes were `firmware/k6-aura/aura-pager.patch`, applied to a fresh clone of
 Aura at each build; the sources here are that clone with the patch applied, file for file,
-apart from `build.rs`'s `K6_FLASH_LEN` and `.gitignore`.
+apart from `build.rs`'s `K6_FLASH_LEN` and `.gitignore` (and since then the `radio-common` move
+below).
 Aura's `tools/`, `docs/`, `assets/`, `Makefile` and Nix files are not carried: clone Aura for its
 flashing tools.
 
@@ -27,6 +28,10 @@ flashing tools.
   `lib/libsotto_k6.a`; `K6_FLASH_LEN` opens the flash region for build.sh's size reports without
   touching the tracked file. The boot screen's version string (`GIT_VERSION`) is blowfang's
   commit, `-dirty` when the checkout has changes (`git status`).
+- Shared with the UV-21 port (2026-11-27): Aura's debouncer, SysTick delays and wear-leveled
+  storage moved to `radios/common-rs/` (the `radio-common` crate). `src/hal/debounce.rs`,
+  `delay.rs` and `wear_leveled.rs` re-export them, and `src/drivers/norflash.rs` implements its
+  `FlashStorage` trait.
 
 To see the whole change against Aura:
 

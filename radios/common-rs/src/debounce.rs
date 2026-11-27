@@ -1,4 +1,5 @@
-/// Simple threshold debouncer for digital inputs (buttons, squelch, power detect).
+/// Threshold debouncer for digital inputs (keys, squelch, power sense): a new level is reported
+/// once it has held for `THRESHOLD` samples after the one that changed it.
 pub struct Debouncer {
     stable: bool,
     candidate: bool,
@@ -40,7 +41,7 @@ mod tests {
     use super::Debouncer;
 
     #[test]
-    fn requires_four_consecutive_samples_to_flip() {
+    fn flips_after_four_more_matching_samples() {
         let mut d = Debouncer::new(false);
         assert_eq!(d.sample(true), None);
         assert_eq!(d.sample(true), None);
