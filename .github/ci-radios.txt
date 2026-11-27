@@ -44,6 +44,7 @@ tests/test_ci_scope.py
 c/k6/
 firmware/k6-aura/
 radios/k6/
+radios/common-rs/
 sim/
 !sim/uv21/
 !sim/soapyfang/
@@ -218,6 +219,7 @@ sim/soapyfang/pluto.py
 # run in an emulated AT32F421) and the bootloader tool they go through (tested against a model of
 # the bootloader)
 radios/uv21/
+radios/common-rs/
 tools/uv21_kdh.py
 tools/bench_kplug.py
 tests/test_uv21*

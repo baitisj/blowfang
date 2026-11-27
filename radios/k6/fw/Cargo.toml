@@ -10,6 +10,7 @@ bench = false
 
 [dependencies]
 cortex-m = "0.7"
+radio-common = { path = "../../common-rs" }
 cortex-m-rt = { version = "0.7", features = ["device"] }
 panic-halt = "0.2"
 kd32f328-pac = { path = "kd32f328-pac", features = ["rt"] }

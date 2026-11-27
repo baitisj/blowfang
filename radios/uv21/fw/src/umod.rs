@@ -161,16 +161,7 @@ fn num(t: &[u8]) -> Option<u32> {
     t.iter().try_fold(0u32, |v, &c| Some(v << 4 | hexval(c)?))
 }
 
-fn crc16_xmodem(d: &[u8]) -> u16 {
-    let mut crc: u16 = 0;
-    for &b in d {
-        crc ^= (b as u16) << 8;
-        for _ in 0..8 {
-            crc = if crc & 0x8000 != 0 { crc << 1 ^ 0x1021 } else { crc << 1 };
-        }
-    }
-    crc
-}
+use radio_common::wear_leveled::crc16_xmodem;
 
 fn crc32(d: &[u8]) -> u32 {
     let mut crc = !0u32;

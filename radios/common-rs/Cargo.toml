@@ -1,0 +1,8 @@
+[package]
+name = "radio-common"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+cortex-m = "0.7"
