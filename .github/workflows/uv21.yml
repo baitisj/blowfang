@@ -105,6 +105,11 @@ jobs:
         run: rustup toolchain install stable --profile minimal --target thumbv7em-none-eabi
       - name: the firmware port (the 60 KB app area at most)
         run: make -C radios/uv21 port
+      # radios/common-rs, the no_std crate the UV-21 port and the K6 firmware share: its unit
+      # tests run on the host. Here rather than in the K6 workflow: any change to it runs both
+      # (.github/ci-radios.txt), and this one is the lighter
+      - name: radio-common's host tests
+        run: cd radios/common-rs && cargo test
       - uses: actions/upload-artifact@v4
         with:
           name: uv21-port

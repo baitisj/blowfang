@@ -117,3 +117,19 @@ impl<'a> NorFlash<'a> {
         self.wait_until_ready();
     }
 }
+
+impl radio_common::wear_leveled::FlashStorage for NorFlash<'_> {
+    const SECTOR_SIZE: u32 = SECTOR_SIZE;
+
+    fn read_bytes(&mut self, addr: u32, buf: &mut [u8]) {
+        NorFlash::read_bytes(self, addr, buf);
+    }
+
+    fn write_bytes(&mut self, addr: u32, data: &[u8]) {
+        NorFlash::write_bytes(self, addr, data);
+    }
+
+    fn erase_sector(&mut self, addr: u32) {
+        NorFlash::erase_sector(self, addr);
+    }
+}
