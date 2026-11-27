@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "hubmap-1127e",
-   "who": "hubmap",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "hubmap-1127e",
+  "who": "hubmap",
+  "since": "2026-11-27T22:50:07Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-27T22:50:00Z",
  "error": null,
  "update": null,
- "updated": "2026-11-27T22:50:00Z"
+ "updated": "2026-11-27T22:50:07Z"
 }
