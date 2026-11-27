@@ -4,6 +4,7 @@ report on 440.850.
 
   python3 tools/k6_fmrds.py patch IN.bin OUT.bin [--clk-s 65] [--n-clk 4] [--flags 1] ...
   python3 tools/k6_fmrds.py report LOG...           stations, names, text, clocks and the vote
+  python3 tools/k6_fmrds.py check LOG...            PASS / FAIL for an unattended run (exit 0 / 1)
 
 The report lists each station (frequency, signal, PI, programme type by name, the name it
 sends), the radio text the clock listens caught, every clock group with its distance from the
@@ -168,6 +169,32 @@ def report(r):
     return "\n".join(out)
 
 
+def check(r):
+    """(ok, reasons) for an unattended run: the module ran to its end without an error, the chip
+    answered with verbose mode, the sweep heard stations, at least one station's name came in
+    whole, and every clock group it reported is a possible time. A vote of one (no clock set) is
+    not a failure: it depends on what the stations send."""
+    bad = []
+    if "end" not in r:
+        bad.append("no end line (the module never finished, or the log lost it)")
+    elif r["end"].get("n", -1) < 0:
+        bad.append(f"the module returned {r['end']['n']}")
+    v = r.get("verbose", "")
+    if not v.startswith("58"):
+        bad.append(f"chip line {v!r}: no RDA5807 (0x58xx)")
+    elif not v.endswith(" ok"):
+        bad.append("verbose mode refused: no error levels, clocks unchecked")
+    if "f" in r and not r["f"].count("t"):
+        bad.append("the sweep heard no station")
+    named = [f for f, st in r["st"].items() if st["g"] and "." not in st["ps"]]
+    if not named:
+        bad.append("no station's name came in whole")
+    for ct in r["ct"]:
+        if ct["hh"] > 23 or ct["mm"] > 59 or abs(ct["off"]) > 28 or ct["e"] != "000":
+            bad.append(f"clock group {ct} is not a clean time")
+    return not bad, bad
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -176,8 +203,9 @@ def main(argv=None):
     p.add_argument("out")
     for f in FIELDS:
         p.add_argument("--" + f.replace("_", "-"), type=int, default=DEFAULTS[f])
-    p = sub.add_parser("report")
-    p.add_argument("logs", nargs="+")
+    for name in ("report", "check"):
+        p = sub.add_parser(name)
+        p.add_argument("logs", nargs="+")
     a = ap.parse_args(argv)
     if a.cmd == "patch":
         code = open(a.inp, "rb").read()
@@ -186,7 +214,15 @@ def main(argv=None):
         print(f"{a.out}: {unpack(blk)}")
     else:
         text = "\n".join(open(f, errors="replace").read() for f in a.logs)
-        print(report(decode(text)))
+        r = decode(text)
+        print(report(r))
+        if a.cmd == "check":
+            ok, bad = check(r)
+            far = [f"{f / 1000:.1f} MHz {e / 1000:+.0f} s" for f, e in r["d"] if abs(e) > 2000]
+            if far:   # clean-looking clock groups the vote left out: weak stations' garbage, or a clock off
+                print("note: clock groups the vote left out: " + ", ".join(far))
+            print("PASS" if ok else "FAIL: " + "; ".join(bad))
+            return 0 if ok else 1
 
 
 if __name__ == "__main__":

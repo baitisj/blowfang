@@ -130,6 +130,7 @@ def test_stations_names_text_and_the_voted_clock():
     assert lcd["st"]["stack"] < 600, lcd["st"]["stack"]
     rep = fr.report(r)
     assert "Country" in rep and "News" in rep and "voted clock: 2026-11-25" in rep
+    assert fr.check(r) == (True, [])
 
 
 @need_clang
@@ -153,3 +154,10 @@ def test_key_stops_and_cleans_up():
     ret, said, regs, writes = go(rda, keys=((20_000_000, 21_000_000),), clock={"fix": None})
     assert ret == -2 and said[-1].startswith("E n=-2")
     assert rda.gpio == rda.start_gpio and not rda.g[2] & 1
+
+
+def test_check_fails_a_run_that_heard_nothing_or_stopped():
+    r = fr.decode("v 5804 aec0>aeff ok\nf0 ....\nE n=-2 ms=100")
+    ok, bad = fr.check(r)
+    assert not ok and any("returned -2" in b for b in bad) and any("no station" in b for b in bad)
+    assert not fr.check(fr.decode("a 10=0 11=0"))[0]
