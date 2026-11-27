@@ -13,7 +13,9 @@ identical copies, so a fix lands once:
 Each firmware keeps its `src/hal/debounce.rs`, `delay.rs` and `wear_leveled.rs` as one-line
 re-exports or wrappers, so the call sites didn't change. Everything here compiles for Cortex-M0
 (`thumbv6m-none-eabi`) and Cortex-M4 (`thumbv7em-none-eabi`), allocates nothing, and moved
-without changing any code: the K6 images build byte for byte as before (2026-11-27).
+without changing any code. Measured when it moved (2026-11-27): every K6 image kept the same
+functions with the same instructions, only laid out in another order (images within 8 bytes);
+the UV-21 port shrank 36 bytes, as its two inlined copies of the CRC became one shared function.
 
 The unit tests run on the host: `cd radios/common-rs && cargo test` (the UV-21 CI workflow runs
 them). The code comes from Aura (GPL-3) and the UV-21 port, so the crate is GPL-3.0 (`LICENSE`),
