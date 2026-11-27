@@ -8,7 +8,7 @@ TOOLS = os.path.join(os.path.dirname(__file__), "..", "tools")
 sys.path.insert(0, TOOLS)
 sys.path.insert(0, os.path.dirname(__file__))
 import test_bench_runner as tb  # noqa: E402
-from test_bench_runner import work  # noqa: E402,F401  (the runner's fixture: BLOWFANG_WORK, K6_CABLE)
+from test_bench_runner import work  # noqa: E402,F401  (the runner's fixture: BLOWFANG_WORK, K6_CABLE, UV21_CABLE)
 spec = importlib.util.spec_from_file_location("uv21_kdh", os.path.join(TOOLS, "uv21_kdh.py"))
 kdh = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(kdh)
@@ -35,7 +35,7 @@ def test_console_args(work):
                  {"do": "kdh.console", "background": True}):
         assert tb.problems(tb.job("k", step)), step
     argv, _, bg = br.command(tb.job("c"), {"do": "kdh.console", "args": ["--send", "i"]}, str(work / "rd"))
-    assert argv[2:5] == ["console", "--port", "/dev/k6cable"] and argv[-2:] == ["--send", "i"] and not bg
+    assert argv[2:5] == ["console", "--port", "/dev/uv21cable"] and argv[-2:] == ["--send", "i"] and not bg
 
 
 def test_probe_and_dump_args(work):
@@ -73,7 +73,7 @@ def test_command_lines_keep_the_dump_private(work):
     rd = str(work / "rd")
     j = tb.job("uv21-dump-1")
     argv, _, bg = br.command(j, {"do": "kdh.dump", "args": ["--passes", "2"]}, rd)
-    assert argv[1].endswith("uv21_kdh.py") and argv[2:6] == ["dump", "--port", "/dev/k6cable", "--out"]
+    assert argv[1].endswith("uv21_kdh.py") and argv[2:6] == ["dump", "--port", "/dev/uv21cable", "--out"]
     assert argv[argv.index("--private") + 1] == os.path.join(str(work), "private", "uv21", "uv21-dump-1")
     assert argv[-2:] == ["--passes", "2"] and not bg
     p, h = tb.stage(work, "dumper.bin", APP)
@@ -118,7 +118,7 @@ def test_uv21_module_args(work):
         assert tb.problems(tb.job("m", step)), step
     rd = str(work / "rd")
     argv, cwd, bg = br.command(tb.job("m"), {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_N=8"]}, rd)
-    assert argv[1:5] == ["-m", "modem.uv21mod", "run", "/dev/k6cable"]
+    assert argv[1:5] == ["-m", "modem.uv21mod", "run", "/dev/uv21cable"]
     assert argv[5] == os.path.join(os.path.realpath(tb.REPO), "radios", "uv21", "mod", "regsweep.c")
     assert argv[6:10] == ["-D", "SW_REG=0x1F", "-D", "SW_N=8"]
     assert argv[10:12] == ["--log", os.path.join(rd, "uv21mod.log")] and not bg

@@ -32,6 +32,7 @@ def work(tmp_path, monkeypatch):
     (w / "k").write_text(KEY.hex() + "\n")          # the format k6mod.new_key writes
     monkeypatch.setenv("BLOWFANG_KEY", str(w / "k"))
     monkeypatch.setenv("K6_CABLE", "/dev/k6cable")
+    monkeypatch.setenv("UV21_CABLE", "/dev/uv21cable")
     monkeypatch.setattr(br, "checkout_clean", lambda co: (True, "abc1234"))
     (w / "state").mkdir()
     (w / "state" / "inbox.off").write_text("tests")   # no git, no network (test_bench_inbox has those)
@@ -847,7 +848,7 @@ def test_rt950_cable_found_by_ids_never_the_k6_icom_or_pluto(work, ports, monkey
 def test_rt950_two_cables_with_the_same_ids_refused(work, ports, monkeypatch):
     two = PORTS + [dict(PORTS[2], by_id="usb-1a86_USB_Serial-if00-port1", dev="/dev/ttyUSB0")]
     monkeypatch.setattr(br, "serial_ports", lambda: [dict(p) for p in two])
-    with pytest.raises(br.Refused, match="2 by-id ports"):
+    with pytest.raises(br.Refused, match="2 ports"):
         br.rt950_cable("1a86:7523")
 
 
@@ -973,3 +974,153 @@ def test_soapyfang_radio_picks_the_board(work):
         assert argv[argv.index("--source") + 1] == "pluto" and argv[argv.index("--image") + 1] == img
     bad = {"do": "sim.soapyfang", "args": ["--radio", "k6"] + base}
     assert "--radio k6" in problems(job("s2", bad, freq_mhz="bench", minutes=10))
+
+
+# ---- one K-plug cable per radio on the hub (11-27): cables.json, serial.identify ----
+
+def kplug(dev, path_name, serial=None):
+    return {"by_id": "usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0", "dev": dev,
+            "by_path": path_name, "ids": "067b:2303", "manufacturer": "Prolific Technology Inc.",
+            "product": "USB-Serial Controller", "serial": serial, "shared_id": serial is None}
+
+
+@pytest.fixture
+def hub(work, tmp_path, monkeypatch):
+    """two PL2303 'ttys' (plain files) behind by-path links, no cable env"""
+    monkeypatch.delenv("K6_CABLE")
+    monkeypatch.delenv("UV21_CABLE")
+    devs, links = {}, {}
+    for n, port in (("ttyUSB4", "pci-0000:00:14.0-usb-0:3.1:1.0-port0"), ("ttyUSB5", "pci-0000:00:14.0-usb-0:3.2:1.0-port0")):
+        d = tmp_path / n
+        d.write_text("")
+        ln = tmp_path / port
+        ln.symlink_to(d)
+        devs[n], links[n] = str(d), str(ln)
+    ports = [kplug(devs["ttyUSB4"], os.path.basename(links["ttyUSB4"])),
+             kplug(devs["ttyUSB5"], os.path.basename(links["ttyUSB5"]))]
+    monkeypatch.setattr(br, "serial_ports", lambda: [dict(p) for p in ports])
+    monkeypatch.setattr(br, "usb_info", lambda p: {"dev": os.path.realpath(p), "ids": "067b:2303", "by_id": None})
+    monkeypatch.setattr(br, "port_users", lambda dev: [])
+    return devs, links, ports
+
+
+def save_map(**radios):
+    br.put_json(br.cables_path(), {r: {"link": l, "ids": "067b:2303"} for r, l in radios.items()})
+
+
+def test_two_kplug_cables_and_no_map_refused(hub):
+    for radio in ("k6", "uv21"):
+        with pytest.raises(br.Refused, match="2 PL2303 cables"):
+            br.radio_cable(radio)
+
+
+def test_one_kplug_cable_and_no_map_serves_both_radios(hub, monkeypatch):
+    devs, _, ports = hub
+    monkeypatch.setattr(br, "serial_ports", lambda: [dict(ports[0])])
+    assert br.k6_cable() == br.uv21_cable() == devs["ttyUSB4"]
+
+
+def test_map_keys_each_radio_to_its_port(hub):
+    devs, links, _ = hub
+    save_map(k6=links["ttyUSB5"], uv21=links["ttyUSB4"])
+    assert br.k6_cable() == devs["ttyUSB5"] and br.uv21_cable() == devs["ttyUSB4"]
+    rd = "/tmp/rd"
+    k6 = br.command(job("c"), {"do": "k6.update", "image": "/x.bin"}, rd)[0]
+    assert k6[k6.index("--port") + 1] == devs["ttyUSB5"]
+    for step in ({"do": "kdh.probe"}, {"do": "kplug.read"}, {"do": "logger", "seconds": 5, "radio": "uv21"}):
+        argv = br.command(job("c"), step, rd)[0]
+        assert devs["ttyUSB4"] in argv and devs["ttyUSB5"] not in argv, step
+    lg = br.command(job("c"), {"do": "logger", "seconds": 5}, rd)[0]
+    assert devs["ttyUSB5"] in lg
+
+
+def test_map_refuses_an_empty_port_a_missing_radio_and_a_shared_port(hub):
+    devs, links, _ = hub
+    save_map(k6=links["ttyUSB5"])
+    with pytest.raises(br.Refused, match="not in"):
+        br.uv21_cable()
+    os.remove(links["ttyUSB5"])
+    with pytest.raises(br.Refused, match="nothing in its port"):
+        br.k6_cable()
+    save_map(k6=links["ttyUSB4"], uv21=links["ttyUSB4"])
+    with pytest.raises(br.Refused, match="same port"):
+        br.k6_cable()
+
+
+def test_radio_only_on_the_read_only_cable_steps(work):
+    assert br.check_job(job("r", {"do": "logger", "seconds": 5, "radio": "uv21"})) == []
+    assert br.check_job(job("r", {"do": "kplug.read", "radio": "k6"}, freq_mhz="bench")) == []
+    assert problems(job("r", {"do": "logger", "seconds": 5, "radio": "rt950"}))
+    p, h = stage(work, "k.bin", b"\0" * 50 + KEY + b"\0" * 50)
+    assert problems(job("r", {"do": "k6.update", "image": p, "sha256": h, "commit": "8a78fb5", "radio": "uv21"}))
+    assert br.check_job(job("i", {"do": "serial.identify", "args": ["--save"], "seconds": 30}, freq_mhz="bench")) == []
+    for bad in ({"do": "serial.identify", "args": ["--port", "x"]}, {"do": "serial.identify", "seconds": 600},
+                {"do": "serial.identify", "background": True}):
+        assert problems(job("i", bad, freq_mhz="bench")), bad
+
+
+def test_heard_radio():
+    assert br.heard_radio(b"K6 BOOT build=72b6e3b\r\n") == "k6"
+    assert br.heard_radio(b"alive surf s=000a stk=0974\r\n") == "uv21"
+    assert br.heard_radio(b"") == "silent"
+    assert br.heard_radio(b"\x00\xff junk") == "unknown"
+    assert br.heard_radio(b"K6 x alive") == "unknown"
+    assert br.heard_radio(OSError("gone")) == "error"
+
+
+def identify(work, step):
+    rd = work / "rd"
+    ctx = br.Ctx(job("ident-1", step, freq_mhz="bench"), str(rd), rig=lambda *a: "0")
+    rc = br.serial_identify_step(ctx, step)
+    return rc, json.loads((rd / "identify.json").read_text())
+
+
+def test_identify_saves_the_uv21_heard_and_the_k6_by_elimination(work, hub, monkeypatch):
+    devs, links, _ = hub
+    heard = {devs["ttyUSB4"]: b"", devs["ttyUSB5"]: b"alive surf s=000a\r\n"}
+    monkeypatch.setattr(br, "listen_ro", lambda ds, s: {d: heard[d] for d in ds})
+    rc, out = identify(work, {"do": "serial.identify", "args": ["--save"]})
+    assert rc == (0, None) and out["saved"]
+    m = br.cable_map()
+    assert m["uv21"]["link"].endswith(os.path.basename(links["ttyUSB5"]))
+    assert m["k6"]["link"].endswith(os.path.basename(links["ttyUSB4"])) and "other PL2303" in m["k6"]["how"]
+
+
+def test_identify_without_save_writes_nothing_and_two_uv21s_refuse(work, hub, monkeypatch):
+    devs, _, _ = hub
+    monkeypatch.setattr(br, "listen_ro", lambda ds, s: {d: b"K6 CFG x\r\n" for d in ds})
+    rc, out = identify(work, {"do": "serial.identify", "args": ["--save"]})
+    assert rc[0] == 1 and "2 ports" in rc[1] and not out["saved"] and br.cable_map() == {}
+    monkeypatch.setattr(br, "listen_ro", lambda ds, s: {devs["ttyUSB4"]: b"K6 CFG\r\n", devs["ttyUSB5"]: b"alive\r\n"})
+    rc, out = identify(work, {"do": "serial.identify"})
+    assert rc == (0, None) and set(out["found"]) == {"k6", "uv21"} and br.cable_map() == {}
+
+
+def test_identify_never_listens_to_the_icom_pluto_or_a_busy_port(work, ports, monkeypatch):
+    monkeypatch.delenv("K6_CABLE")
+    monkeypatch.setattr(br, "port_users", lambda dev: [99] if dev == "/dev/ttyUSB1" else [])
+    seen = []
+    monkeypatch.setattr(br, "listen_ro", lambda ds, s: seen.extend(ds) or {d: b"" for d in ds})
+    rc, out = identify(work, {"do": "serial.identify"})
+    assert seen == ["/dev/ttyUSB2"] and rc == (0, None)
+    assert "12345678" not in json.dumps(out)
+
+
+def test_listen_ro_opens_read_only(tmp_path, monkeypatch):
+    flags = []
+    real = os.open
+    monkeypatch.setattr(br.os, "open", lambda p, f, *a: flags.append(f) or real(p, f, *a))
+    f = tmp_path / "f"
+    f.write_text("")
+    got = br.listen_ro([str(f)], 0.1)
+    assert flags and all(fl & os.O_ACCMODE == os.O_RDONLY for fl in flags)
+    assert isinstance(got[str(f)], OSError)       # a plain file is no tty: termios refuses
+
+
+def test_a_logger_on_the_other_cable_does_not_block_a_cable_step(work, monkeypatch):
+    monkeypatch.setattr(kb, "serial_owner", lambda: {"who": "t9", "pid": 7,
+                                                     "cmd": "timeout 60 python -m modem.k6_harness listen --k6 /dev/k6cable --log x"})
+    ctx = br.Ctx(job("f"), str(work / "rd"), rig=lambda *a: "0")
+    br.free_cable(ctx, {"do": "kdh.probe"})                 # the UV-21's cable: no refusal
+    with pytest.raises(br.Refused, match="take_serial"):
+        br.free_cable(ctx, {"do": "k6.update"})
