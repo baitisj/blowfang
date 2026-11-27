@@ -1,0 +1,8 @@
+2026-11-27T21:40:20Z job hubmap-1127b by hubmap, checkout /home/baitisj/blowfang-work/worktrees/inbox-222b2f36eba8 at 222b2f36eba8969aa0b029e7f2d2c26ac3891e26
+2026-11-27T21:40:20Z port usb-1a86_USB_Serial-if00-port0 -> /dev/ttyUSB3 ids 1a86:7523  / USB Serial
+2026-11-27T21:40:20Z port usb-Analog_Devices_Inc._PlutoSDR__ADALM-PLUTO__<serial>-if03 -> /dev/ttyACM0 ids 0456:b673 Analog Devices Inc. / PlutoSDR (ADALM-PLUTO)
+2026-11-27T21:40:20Z port usb-Prolific_Technology_Inc._USB-Serial_Controller-if00-port0 -> /dev/ttyUSB2 ids 067b:2303 Prolific Technology Inc. / USB-Serial Controller
+2026-11-27T21:40:20Z port usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_<serial>-if00-port0 -> /dev/ttyUSB0 ids 10c4:ea60 Silicon Labs / CP2102 USB to UART Bridge Controller
+2026-11-27T21:40:20Z port usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_<serial>-if00-port0 -> /dev/ttyUSB1 ids 10c4:ea60 Silicon Labs / CP2102 USB to UART Bridge Controller
+2026-11-27T21:40:20Z step 1 (serial.list) rc=0
+2026-11-27T21:40:20Z job hubmap-1127b done
