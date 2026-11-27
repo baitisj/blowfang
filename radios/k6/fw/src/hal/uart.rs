@@ -1,6 +1,9 @@
+#[cfg(not(feature = "lean"))]
 use core::cell::RefCell;
+#[cfg(not(feature = "lean"))]
 use cortex_m::interrupt::Mutex;
 use kd32f328_pac::usart1;
+use radio_common::spsc::SpscRing;
 
 const USER_VECTORS_BASE: usize = 0x2000_1000;
 const USER_VECTOR_USART1: usize = 1;
@@ -11,48 +14,8 @@ pub fn install_bootloader_trampoline() {
     unsafe { core::ptr::write_volatile(slot, handler) };
 }
 
-const RX_RING_CAP: usize = 320;
-
-struct RxRing {
-    buf: [u8; RX_RING_CAP],
-    head: usize,
-    tail: usize,
-    len: usize,
-}
-
-impl RxRing {
-    const fn new() -> Self {
-        RxRing {
-            buf: [0; RX_RING_CAP],
-            head: 0,
-            tail: 0,
-            len: 0,
-        }
-    }
-
-    fn push(&mut self, byte: u8) {
-        if self.len == RX_RING_CAP {
-            self.tail = (self.tail + 1) % RX_RING_CAP;
-            self.len -= 1;
-        }
-        self.buf[self.head] = byte;
-        self.head = (self.head + 1) % RX_RING_CAP;
-        self.len += 1;
-    }
-
-    fn pop(&mut self) -> Option<u8> {
-        if self.len == 0 {
-            return None;
-        }
-        let byte = self.buf[self.tail];
-        self.tail = (self.tail + 1) % RX_RING_CAP;
-        self.len -= 1;
-        Some(byte)
-    }
-}
-
 #[link_section = ".ram0"] // hal::ram0
-static RX_RING: Mutex<RefCell<RxRing>> = Mutex::new(RefCell::new(RxRing::new()));
+static RX_RING: SpscRing<256> = SpscRing::new();
 
 // Report lines leave through this ring and the TXE interrupt, not by waiting on TXE for each
 // byte: a `K6 PKT` line is 150-250 characters, 13-22 ms at 115200 baud, and while the pager
@@ -120,7 +83,7 @@ pub unsafe extern "C" fn USART1() {
     }
     if isr.rxne().bit_is_set() {
         let byte = regs.rdr().read().rdr().bits() as u8;
-        cortex_m::interrupt::free(|cs| RX_RING.borrow(cs).borrow_mut().push(byte));
+        RX_RING.push(byte);
     }
     #[cfg(not(feature = "lean"))]
     if isr.txe().bit_is_set() && regs.cr1().read().txeie().bit_is_set() {
@@ -197,7 +160,7 @@ pub fn flush() {
 
 /// Pull one byte received on USART1 since the last call, if any.
 pub fn take_byte() -> Option<u8> {
-    cortex_m::interrupt::free(|cs| RX_RING.borrow(cs).borrow_mut().pop())
+    RX_RING.pop()
 }
 
 pub struct DebugUart<'a> {
