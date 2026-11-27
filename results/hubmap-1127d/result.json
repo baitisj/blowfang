@@ -1,0 +1,12 @@
+{
+ "id": "hubmap-1127d",
+ "status": "queued",
+ "queued": "2026-11-27T22:38:45Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "8eb4031bcb75bf4d464f152a7245f581e6048fc7",
+  "path": "jobs/hubmap-1127d"
+ },
+ "runner_commit": "4eeec3ddb075001b3ea161c352ede93bdff4dcaf",
+ "updated": "2026-11-27T22:38:45Z"
+}
