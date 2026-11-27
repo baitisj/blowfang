@@ -27,7 +27,7 @@ A job is a JSON file: who (the thread, one word), a channel to claim, how long, 
 steps. Every step is one of a fixed set (k6.install, k6.flash, k6.update, k6.upload, pluto,
 ic7100, ic7100.tune, ic7100.power0, ic7100.af, logger, logger.stop, wait, uv380.flash, uv380.cmd,
 uv380.send, uv380.m17, uv380.ysf, uv380.voice, uv380.sotto, uv380.air, pluto.fw, pluto.flash,
-kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console, uv21.mod, serial.list, rt950.info,
+kplug.read, kdh.probe, kdh.dump, kdh.flash, kdh.console, uv21.mod, serial.list, serial.identify, rt950.info,
 rt950.read, rt950.compare, rt950.files, rt950.flash), turned into one
 command of the bench's own tools. There is no step that runs a script: a script could do anything,
 and the point is that the runner checks everything before it keys. The checks, in code:
@@ -45,8 +45,9 @@ and the point is that the runner checks everything before it keys. The checks, i
     pins, region 1 only, and is a local submit only) / the bring-up image's console (kdh.console:
     its read-only commands only) / modem.uv21mod's RAM module upload to the port running SURF
     (uv21.mod: one of the checkout's radios/uv21/mod/*.c with checked -D numbers; the image's
-    receive-only filter takes every register write a module makes), the port found by its by-id name (USB numbering moves on reboot); no job argument may
-    name a /dev path
+    receive-only filter takes every register write a module makes); each radio on its own K-plug
+    cable (the K6's, the UV-21's: state/cables.json, serial.identify), never a guessed tty; no job
+    argument may name a /dev path
   - the RT-950 Pro's programming cable only through rt950_backup.py's info and read (rt950.info,
     rt950.read: the CPS handshake and reads, never a write opcode), its port found by the USB ids
     the job names among the /dev/serial/by-id ports, never the K6 cable (PL2303), the IC-7100, a
@@ -62,6 +63,7 @@ and the point is that the runner checks everything before it keys. The checks, i
     cable as above; a stock image must pass verify first, and the dump-only image (ci-image) only
     goes up while a stock .BTF that passes verify sits in stock/ (the way back)
   - serial.list opens no port: it lists the by-id ports' USB ids and names, serial numbers masked
+  - serial.identify only listens: each candidate port opened O_RDONLY, so nothing can reach a radio
   - Pluto gain at most -30 dB, from a checkout with the keeper fix (note_self_ided)
   - UV-380: only the bench commands (power 0, zero, listen, phy, trim, gain, emph, freq on its two
     channels), each read back; a send only at power 0 (read back first) on 441.850 or 440.850 inside
@@ -125,7 +127,7 @@ STEP_TIMEOUT = {"k6.install": 900, "k6.flash": 600, "k6.update": 600, "k6.upload
                 "kdh.probe": 240, "kdh.dump": 3600, "kdh.flash": 300, "kdh.console": 300,
                 "uv21.mod": 300,
                 "sim.soapyfang": 3600,
-                "serial.list": 30, "rt950.info": 60, "rt950.read": 1800, "rt950.compare": 60,
+                "serial.list": 30, "serial.identify": 90, "rt950.info": 60, "rt950.read": 1800, "rt950.compare": 60,
                 "rt950.files": 300, "rt950.flash": 900}
 CHAN_MAX_S = 1500                  # pluto chan: under the step's 1800 s timeout
 PLUTO_SUBS = ("info", "quiet", "send", "steps", "rx", "measure", "cal", "fsk24", "parrot", "cue", "chan")
@@ -297,15 +299,74 @@ def under(p, rs):
     return any(rp == r or rp.startswith(r + os.sep) for r in rs)
 
 
-def k6_cable():
-    """the K6 cable (PL2303) by its by-id name, or $K6_CABLE"""
-    if os.environ.get("K6_CABLE"):
-        return os.environ["K6_CABLE"]
-    hits = sorted(set(glob.glob("/dev/serial/by-id/*Prolific*") + glob.glob("/dev/serial/by-id/*PL2303*")))
+# ---- the radios' K-plug cables (Jeff 11-27: a USB hub, a cable on each radio, no more moving
+# one cable between the K6 and the UV-21) ----
+#
+# The K-plug cables are Prolific PL2303s, and the K6's has no serial number: two such cables get one
+# shared /dev/serial/by-id name, which points at only one of them. The runner keys each radio to its
+# own port instead: $BLOWFANG_WORK/state/cables.json, which serial.identify writes from what the radios
+# themselves say on their cables (the K6's "K6 ..." report lines, the UV-21 image's "alive" line
+# every 10 s), each entry a by-path name (the hub port) or, for a cable with a serial number of its
+# own, its by-id name. K6_CABLE / UV21_CABLE in the unit override the map. With no map, the one
+# PL2303 on the machine is both radios' cable, as before the hub.
+
+CABLE_ENV = {"k6": "K6_CABLE", "uv21": "UV21_CABLE"}
+CABLE_NAME = {"k6": "the K6 cable", "uv21": "the UV-21 cable"}
+KPLUG_IDS = "067b:"                  # Prolific PL2303: the K-plug cables
+ICOM_IDS = "10c4:ea60"               # the IC-7100's own CP2102 pair (rigctld holds one)
+
+
+def cables_path():
+    return os.path.join(work(), "state", "cables.json")
+
+
+def cable_map():
+    """{radio: {"link": /dev/serial/by-path/... or by-id/..., "ids": "067b:2303", "how", "job", "at"}}"""
+    try:
+        m = json.load(open(cables_path()))
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in m.items() if k in CABLE_ENV and isinstance(v, dict) and v.get("link")} \
+        if isinstance(m, dict) else {}
+
+
+def radio_cable(radio):
+    """the radio's K-plug cable as a /dev/tty path: $K6_CABLE / $UV21_CABLE, else its port in
+    cables.json (refused when that port is empty or holds another kind of adapter), else, with no
+    map, the machine's one PL2303"""
+    name = CABLE_NAME[radio]
+    if os.environ.get(CABLE_ENV[radio]):
+        return os.environ[CABLE_ENV[radio]]
+    m = cable_map()
+    if m:
+        e = m.get(radio)
+        if not e:
+            raise Refused(f"{name}: not in {cables_path()} (a serial.identify job with --save maps it)")
+        if not os.path.exists(e["link"]):
+            raise Refused(f"{name}: nothing in its port {os.path.basename(e['link'])} (unplugged, or moved"
+                          " to another hub port: run serial.identify --save again)")
+        dev = os.path.realpath(e["link"])
+        ids = usb_info(dev)["ids"]
+        if e.get("ids") and ids != e["ids"]:
+            raise Refused(f"{name}: its port {os.path.basename(e['link'])} now holds a {ids} adapter, not"
+                          f" the {e['ids']} cable serial.identify saw (run it again)")
+        for other, o in m.items():
+            if other != radio and os.path.exists(o["link"]) and os.path.realpath(o["link"]) == dev:
+                raise Refused(f"{name}: {CABLE_NAME[other]} has the same port in {cables_path()}")
+        return dev
+    hits = sorted({x["dev"] for x in serial_ports() if (x["ids"] or "").startswith(KPLUG_IDS)})
     if len(hits) != 1:
-        raise Refused(f"the K6 cable: {len(hits)} PL2303 ports under /dev/serial/by-id (want one;"
-                      " set K6_CABLE in the unit)")
-    return os.path.realpath(hits[0])
+        raise Refused(f"{name}: {len(hits)} PL2303 cables and no {cables_path()} (want one cable, or"
+                      f" a serial.identify job with --save to tell them apart; {CABLE_ENV[radio]} in the unit overrides)")
+    return hits[0]
+
+
+def k6_cable():
+    return radio_cable("k6")
+
+
+def uv21_cable():
+    return radio_cable("uv21")
 
 
 def uv380_port():
@@ -627,7 +688,9 @@ def check_step(job, i, step, rs, problems):
         lv = step.get("level")
         if lv != "restore" and not (isinstance(lv, (int, float)) and 0 <= lv <= IC7100_AF_MAX):
             problems.append(f"{what}: level 0..{IC7100_AF_MAX:g}, or \"restore\" (the level before the job's first ic7100.af)")
-    elif do == "logger":
+    if "radio" in step and (do not in CABLE_PICK or step["radio"] not in CABLE_ENV):
+        problems.append(f"{what}: radio (k6 or uv21) only on {' and '.join(CABLE_PICK)}")
+    if do == "logger":
         s = step.get("seconds")
         if not isinstance(s, (int, float)) or not 0 < s <= LOGGER_MAX_S:
             problems.append(f"{what}: seconds 1..{LOGGER_MAX_S}")
@@ -707,6 +770,12 @@ def check_step(job, i, step, rs, problems):
     elif do == "serial.list":
         if args or step.get("background"):
             problems.append(f"{what}: takes no args, never in the background")
+    elif do == "serial.identify":
+        if args not in ([], ["--save"]) or step.get("background"):
+            problems.append(f"{what}: only --save, never in the background")
+        sec = step.get("seconds", IDENTIFY_S)
+        if not isinstance(sec, (int, float)) or isinstance(sec, bool) or not 5 <= sec <= IDENTIFY_MAX_S:
+            problems.append(f"{what}: seconds 5..{IDENTIFY_MAX_S}")
     elif do == "rt950.files":
         if args or step.get("background"):
             problems.append(f"{what}: takes no args, never in the background")
@@ -794,11 +863,12 @@ def check_rt950_args(do, args, what, problems):
                 problems.append(f"{what}: --timeout {v}: 0.5..10 s")
 
 
-def usb_info(by_id):
-    """what sysfs says about a /dev/serial/by-id port: its tty, USB ids, maker, product, serial"""
-    dev = os.path.realpath(by_id)
+def usb_info(port):
+    """what sysfs says about a serial port (a /dev/tty path or a /dev/serial link): its tty, USB
+    ids, maker, product, serial"""
+    dev = os.path.realpath(port)
     usb = os.path.realpath(f"/sys/class/tty/{os.path.basename(dev)}/device")
-    info = {"by_id": os.path.basename(by_id), "dev": dev, "ids": None}
+    info = {"by_id": os.path.basename(port) if "/by-id/" in port else None, "dev": dev, "ids": None}
     for _ in range(4):                  # interface -> device: the first folder with idVendor
         if os.path.exists(os.path.join(usb, "idVendor")):
             break
@@ -821,8 +891,7 @@ def masked(info):
     ser = out.pop("serial", None)
     if ser and len(ser) >= 3:
         for form in (ser, ser.replace(" ", "_")):     # udev's by-id name has _ for spaces
-            out["by_id"] = out["by_id"].replace(form, "<serial>")
-            for k in ("manufacturer", "product"):
+            for k in ("by_id", "manufacturer", "product"):
                 if out.get(k):
                     out[k] = out[k].replace(form, "<serial>")
     out["has_serial"] = bool(ser)
@@ -830,7 +899,34 @@ def masked(info):
 
 
 def serial_ports():
-    return [usb_info(p) for p in sorted(glob.glob("/dev/serial/by-id/*"))]
+    """every USB serial tty (ttyUSB*, ttyACM*) with its by-id and by-path names. Two adapters with
+    the same USB ids and serial number (or none: the K-plug PL2303s) share one by-id name, which
+    udev gives to only one of them, so a by-id glob alone misses the other; shared_id marks them"""
+    links = {}
+    for kind in ("by-id", "by-path"):
+        for p in sorted(glob.glob(f"/dev/serial/{kind}/*")):
+            links.setdefault(os.path.realpath(p), {}).setdefault(kind, p)
+    devs = set(glob.glob("/dev/ttyUSB*") + glob.glob("/dev/ttyACM*")) | set(links)
+    out = []
+    for dev in sorted(devs, key=lambda d: (re.sub(r"\d+$", "", d), int(re.search(r"(\d*)$", d).group(1) or 0))):
+        x = usb_info(dev)
+        ln = links.get(dev, {})
+        x["by_id"] = os.path.basename(ln["by-id"]) if "by-id" in ln else None
+        x["by_path"] = os.path.basename(ln["by-path"]) if "by-path" in ln else None
+        out.append(x)
+    for x in out:
+        x["shared_id"] = sum((y["ids"], y["serial"]) == (x["ids"], x["serial"]) for y in out) > 1
+    return out
+
+
+def stable_link(x):
+    """the name that finds this port again after a reboot: its by-id name when no other adapter
+    shares it, else its by-path name (the hub port)"""
+    if x.get("by_id") and x.get("serial") and not x.get("shared_id"):
+        return "/dev/serial/by-id/" + x["by_id"]
+    if x.get("by_path"):
+        return "/dev/serial/by-path/" + x["by_path"]
+    return None
 
 
 def port_users(dev):
@@ -855,7 +951,7 @@ def rt950_cable(ids):
     else:
         hits = [x for x in serial_ports() if x["ids"] == ids]
     if len({x["dev"] for x in hits}) != 1:
-        raise Refused(f"the RT-950 cable: {len(hits)} by-id ports with USB ids {ids} (want one; serial.list"
+        raise Refused(f"the RT-950 cable: {len(hits)} ports with USB ids {ids} (want one; serial.list"
                       " shows them, RT950_CABLE in the unit overrides)")
     x = hits[0]
     name = " ".join(str(x.get(k) or "") for k in ("by_id", "manufacturer", "product", "serial")).lower()
@@ -863,9 +959,10 @@ def rt950_cable(ids):
         raise Refused(f"the RT-950 cable: {x['dev']} is a ttyACM port (the Pluto, the UV-380), not a cable")
     if (x["ids"] or "").startswith(RT950_NOT) or "prolific" in name or "pl2303" in name:
         raise Refused("the RT-950 cable: that is the K6 cable (PL2303); the CPS handshake never goes there")
-    with contextlib.suppress(Refused):
-        if os.path.realpath(k6_cable()) == x["dev"]:
-            raise Refused("the RT-950 cable: that is the K6 cable")
+    for radio in CABLE_ENV:
+        with contextlib.suppress(Refused):
+            if os.path.realpath(radio_cable(radio)) == x["dev"]:
+                raise Refused(f"the RT-950 cable: that is {CABLE_NAME[radio]}")
     if "ic-7100" in name or "icom" in name:
         raise Refused("the RT-950 cable: that is the IC-7100's port")
     users = port_users(x["dev"])
@@ -940,13 +1037,174 @@ def rt950_private(job_id):
     return os.path.join(work(), "private", "rt950", job_id)
 
 
+def mapped_radio(x, m=None):
+    """which radio cables.json keys to this port (None: none)"""
+    for radio, e in (cable_map() if m is None else m).items():
+        if os.path.exists(e["link"]) and os.path.realpath(e["link"]) == x["dev"]:
+            return radio
+    return None
+
+
+def port_line(x, m):
+    r = mapped_radio(x, m)
+    return (f"port {x['dev']} ids {x['ids']} {x.get('manufacturer') or ''} / {x.get('product') or ''}"
+            f" by-id {x.get('by_id') or '-'} by-path {x.get('by_path') or '-'}"
+            + (" (SHARES its by-id name with another adapter: same ids, same or no serial)" if x.get("shared_id") else "")
+            + (f" = {CABLE_NAME[r]} (cables.json)" if r else ""))
+
+
 def serial_list_step(ctx):
-    ports = [masked(x) for x in serial_ports()]
+    m = cable_map()
+    ports = []
+    for x in serial_ports():
+        y = masked(x)
+        y["cable_for"] = mapped_radio(x, m)
+        ports.append(y)
+        ctx.say(port_line(y, m))
     put_json(os.path.join(ctx.rd, "ports.json"), ports)
-    for x in ports:
-        ctx.say(f"port {x['by_id']} -> {x['dev']} ids {x['ids']} {x.get('manufacturer') or ''} / {x.get('product') or ''}")
     if not ports:
-        ctx.say("no /dev/serial/by-id ports")
+        ctx.say("no USB serial ports")
+    return 0, None
+
+
+IDENTIFY_S = 25                   # serial.identify: the UV-21 image's alive line comes every 10 s
+IDENTIFY_MAX_S = 60
+IDENTIFY_CAP = 65536              # bytes kept per port while listening
+ROLE_BY_IDS = {"0456:b673": "the Pluto's console", "0483:5740": "the UV-380 (OpenRTX)",
+               ICOM_IDS: "the IC-7100 (its CP2102 pair)", "1a86:7523": "a CH340 (the RT-950's Radtel cable is one)"}
+
+
+def listen_ro(devs, seconds):
+    """listen on each port for `seconds`, opened read-only (O_RDONLY: nothing can be written to
+    the radio, so no PTT, no handshake), raw 115200 8N1 as both images report; {dev: bytes or the
+    OSError that stopped the open}"""
+    import select
+    import termios
+    fds, got = {}, {}
+    for d in devs:
+        try:
+            fd = os.open(d, os.O_RDONLY | os.O_NOCTTY | os.O_NONBLOCK)
+        except OSError as e:
+            got[d] = e
+            continue
+        try:
+            t = termios.tcgetattr(fd)
+            t[0], t[1], t[3] = 0, 0, 0                       # raw: no input or line processing
+            t[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
+            t[4] = t[5] = termios.B115200
+            t[6][termios.VMIN], t[6][termios.VTIME] = 0, 0
+            termios.tcsetattr(fd, termios.TCSANOW, t)
+            termios.tcflush(fd, termios.TCIFLUSH)
+        except termios.error as e:
+            os.close(fd)
+            got[d] = OSError(str(e))
+            continue
+        fds[fd], got[d] = d, b""
+    end = time.monotonic() + seconds
+    try:
+        while fds:
+            left = end - time.monotonic()
+            if left <= 0:
+                break
+            ready, _, _ = select.select(list(fds), [], [], min(left, 0.5))
+            for fd in ready:
+                try:
+                    b = os.read(fd, 4096)
+                except BlockingIOError:
+                    continue
+                except OSError as e:                         # unplugged while listening
+                    got[fds[fd]] = e
+                    os.close(fd)
+                    del fds[fd]
+                    continue
+                if len(got[fds[fd]]) < IDENTIFY_CAP:
+                    got[fds[fd]] += b
+    finally:
+        for fd in fds:
+            os.close(fd)
+    return got
+
+
+def heard_radio(data):
+    """what a port's bytes say: k6 (the K6 image's "K6 ..." report lines), uv21 (the UV-21
+    image's "alive" line), silent, unknown, or error"""
+    if isinstance(data, Exception):
+        return "error"
+    k6, uv = b"K6 " in data, b"alive" in data
+    if k6 != uv:
+        return "k6" if k6 else "uv21"
+    return "silent" if not data else "unknown"
+
+
+def serial_identify_step(ctx, step):
+    """serial.identify: which K-plug cable is on which radio, by listening (read-only) to each
+    candidate port; --save writes the answer to cables.json"""
+    args = list(step.get("args", []))
+    seconds = float(step.get("seconds", IDENTIFY_S))
+    ports = serial_ports()
+    old = cable_map()
+    cands = []
+    for x in ports:
+        role = ROLE_BY_IDS.get(x["ids"])
+        x["role"] = role
+        if not os.path.basename(x["dev"]).startswith("ttyUSB") or x["ids"] == ICOM_IDS:
+            x["heard"] = "not listened to" + (f": {role}" if role else "")
+        elif port_users(x["dev"]):
+            x["heard"] = "busy (a process has it open)"
+        else:
+            cands.append(x)
+    ctx.say(f"listening read-only for {seconds:g} s on {', '.join(x['dev'] for x in cands) or 'no port'}")
+    got = listen_ro([x["dev"] for x in cands], seconds)
+    for x in cands:
+        d = got.get(x["dev"], b"")
+        x["heard"] = heard_radio(d)
+        x["bytes"] = None if isinstance(d, Exception) else len(d)
+        if isinstance(d, Exception):
+            x["error"] = str(d)
+    pick, trouble = {}, []
+    for radio in CABLE_ENV:
+        xs = [x for x in cands if x["heard"] == radio]
+        if len(xs) == 1:
+            pick[radio] = (xs[0], "heard")
+        elif xs:
+            trouble.append(f"{CABLE_NAME[radio]}: heard on {len(xs)} ports")
+    kplug = [x for x in cands if (x["ids"] or "").startswith(KPLUG_IDS)]
+    if "k6" not in pick and "uv21" in pick:
+        rest = [x for x in kplug if x is not pick["uv21"][0]]
+        if len(rest) == 1 and rest[0]["heard"] == "silent":   # the K6 says nothing between events
+            pick["k6"] = (rest[0], "the other PL2303 (silent; the UV-21 was heard on its own cable)")
+    for x in ports:
+        y = masked(x)
+        r = next((r for r, (p, _) in pick.items() if p is x), None)
+        ctx.say(port_line(y, old) + f": heard {x['heard']}" + (f" ({x['bytes']} bytes)" if x.get("bytes") else "")
+                + (f" -> {CABLE_NAME[r]}, {pick[r][1]}" if r else ""))
+    out = {"ports": [masked(x) for x in ports], "found": {}, "trouble": trouble, "saved": False}
+    for r, (x, how) in pick.items():
+        out["found"][r] = {"port": masked(x).get("by_id") if (stable_link(x) or "").startswith("/dev/serial/by-id/")
+                           else x.get("by_path"), "dev": x["dev"], "how": how}
+    for t in trouble:
+        ctx.say(t)
+    if "--save" in args and pick and not trouble:
+        m = dict(old)
+        for r, (x, how) in pick.items():
+            link = stable_link(x)
+            if not link:
+                trouble.append(f"{CABLE_NAME[r]}: {x['dev']} has no by-path or unique by-id name to save")
+                continue
+            m = {k: v for k, v in m.items() if v["link"] != link}
+            m[r] = {"link": link, "ids": x["ids"], "how": how, "job": ctx.job["id"], "at": utcnow()}
+        if not trouble:
+            os.makedirs(os.path.dirname(cables_path()), exist_ok=True)
+            put_json(cables_path(), m)
+            out["saved"] = True
+            ctx.say(f"saved {cables_path()}: " + ", ".join(f"{CABLE_NAME[r]} = {os.path.basename(e['link'])}"
+                                                           if "/by-path/" in e["link"] else f"{CABLE_NAME[r]} = its by-id name"
+                                                           for r, e in sorted(m.items())))
+    put_json(os.path.join(ctx.rd, "identify.json"), out)
+    if trouble:
+        return 1, "; ".join(trouble)
+    if "--save" in args and not pick:
+        return 1, "no radio heard on any cable: nothing saved (are they on, and on our images?)"
     return 0, None
 
 
@@ -1225,12 +1483,12 @@ def command(job, step, rd):
     if do == "logger":
         log = os.path.join(rd, step.get("file", "k6.log"))
         return [py(), bench_bin(), "serial-hold", who, "--", "timeout", "-s", "INT", "--kill-after=10",
-                str(int(step["seconds"])), py(), "-m", "modem.k6_harness", "listen", "--k6", k6_cable(),
+                str(int(step["seconds"])), py(), "-m", "modem.k6_harness", "listen", "--k6", step_cable(step),
                 "--log", log], co, True
     if do == "logger.stop":
         return [py(), bench_bin(), "serial-release", who], co, False
     if do == "kplug.read":           # the codeplug (channel list) stays on hamlet, out of the run folder
-        return [py(), tool("bench_kplug.py"), "read", "--port", k6_cable(), "--out", rd,
+        return [py(), tool("bench_kplug.py"), "read", "--port", step_cable(step), "--out", rd,
                 "--private", os.path.join(work(), "private", "kplug", job["id"])] + args, co, False
     if do == "rt950.info":
         return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "info",
@@ -1244,19 +1502,19 @@ def command(job, step, rd):
         return [py(), os.path.join(co, "radios", "rt950", "tools", "rt950_backup.py"), "read",
                 rt950_cable(step["cable"]), rt950_private(job["id"]), "--summary", rd, "-v"] + args, co, False
     if do == "kdh.probe":
-        return [py(), tool("uv21_kdh.py"), "probe", "--port", k6_cable(), "--out", rd] + args, co, False
+        return [py(), tool("uv21_kdh.py"), "probe", "--port", uv21_cable(), "--out", rd] + args, co, False
     if do == "kdh.dump":             # the radio's firmware, unique ID and SPI flash stay on hamlet
-        return [py(), tool("uv21_kdh.py"), "dump", "--port", k6_cable(), "--out", rd,
+        return [py(), tool("uv21_kdh.py"), "dump", "--port", uv21_cable(), "--out", rd,
                 "--private", os.path.join(work(), "private", "uv21", job["id"])] + args, co, False
     if do == "kdh.console":
-        return [py(), tool("uv21_kdh.py"), "console", "--port", k6_cable(), "--out", rd] + args, co, False
+        return [py(), tool("uv21_kdh.py"), "console", "--port", uv21_cable(), "--out", rd] + args, co, False
     if do == "kdh.flash":
-        return [py(), tool("uv21_kdh.py"), "flash", "--port", k6_cable(), "--out", rd,
+        return [py(), tool("uv21_kdh.py"), "flash", "--port", uv21_cable(), "--out", rd,
                 "--image", os.path.realpath(os.path.expanduser(step["image"])),
                 "--sha256", step["sha256"]] + args, co, False
     if do == "uv21.mod":
         defs = [x for d in args[1:] for x in ("-D", d)]
-        return [py(), "-m", "modem.uv21mod", "run", k6_cable(), os.path.join(job_sources(job), *uv21_module(args[0]))] \
+        return [py(), "-m", "modem.uv21mod", "run", uv21_cable(), os.path.join(job_sources(job), *uv21_module(args[0]))] \
             + defs + ["--log", os.path.join(rd, "uv21mod.log"), "--run-timeout", str(UV21_MOD_RUN_S)], co, False
     if do == "sim.soapyfang":       # the page on hamlet only: ssh -L 5058:127.0.0.1:5058 hamlet
         opts = dict(zip(args[0::2], args[1::2]))
@@ -1285,9 +1543,24 @@ def uses_ic7100(step):
     return step["do"] in IC7100_STEPS or step["do"] in ("k6.update", "k6.upload")
 
 
+# which radio's K-plug cable each step uses; "radio" in the step may pick the other one for the
+# read-only steps (a logger on the UV-21's console, a stock clone read on the K6's cable)
+CABLE_STEPS = {"k6.install": "k6", "k6.flash": "k6", "k6.update": "k6", "logger": "k6",
+               "kplug.read": "uv21", "kdh.probe": "uv21", "kdh.dump": "uv21", "kdh.flash": "uv21",
+               "kdh.console": "uv21", "uv21.mod": "uv21"}
+CABLE_PICK = ("logger", "kplug.read")
+
+
+def step_radio(step):
+    return step.get("radio", CABLE_STEPS[step["do"]]) if step["do"] in CABLE_PICK else CABLE_STEPS[step["do"]]
+
+
+def step_cable(step):
+    return radio_cable(step_radio(step))
+
+
 def uses_cable(step):
-    return step["do"] in ("k6.install", "k6.flash", "k6.update", "kplug.read", "kdh.probe", "kdh.dump",
-                          "kdh.flash", "kdh.console", "uv21.mod")
+    return step["do"] in CABLE_STEPS and step["do"] != "logger"
 
 
 # ---- running ----
@@ -1360,6 +1633,11 @@ def free_cable(ctx, step):
     o = kb.serial_owner()
     if o is None:
         return
+    with contextlib.suppress(Refused):        # a logger on the other radio's cable may keep reading
+        dev = step_cable(step)
+        if o.get("cmd") and "--k6" in o["cmd"].split() and dev not in o["cmd"].split():
+            ctx.say(f"{o['who']}'s logger reads the other cable; {dev} is free")
+            return
     if not (step.get("take_serial") or ctx.job.get("take_serial")):
         raise Refused(f"{o['who']} reads the K6 cable (pid {o['pid']}); set take_serial to ask it to let go")
     ctx.say(f"asking {o['who']}'s logger to let go of the cable")
@@ -1615,6 +1893,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                 rc, why = ic7100_af(ctx, step["level"])
             elif step["do"] == "serial.list":
                 rc, why = serial_list_step(ctx)
+            elif step["do"] == "serial.identify":
+                rc, why = serial_identify_step(ctx, step)
             elif step["do"] == "rt950.files":
                 rc, why = rt950_files_step(ctx, env)
             elif step["do"] == "rt950.flash":
@@ -2152,6 +2432,9 @@ def sample_jobs(tmp, co, key):
         ("SoapyFang on a radio it has no board for", J("bad-soapyradio", {"do": "sim.soapyfang", "args": ["--radio", "k6", "--minutes", "30", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=35), False),
         ("SoapyFang from another source", J("bad-soapysrc", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--image", img_plain, "--syms", wav, "--source", "soapy:driver=plutosdr"]}, freq_mhz="bench", minutes=35), False),
         ("list the serial ports", J("ok-ports", {"do": "serial.list"}, freq_mhz="bench"), True),
+        ("tell the K-plug cables apart and save the map", J("ok-ident", {"do": "serial.identify", "args": ["--save"]}, freq_mhz="bench"), True),
+        ("a logger on the UV-21's cable", J("ok-uv21log", {"do": "logger", "seconds": 60, "radio": "uv21"}), True),
+        ("a UV-21 step sent to the K6's cable", J("bad-radio", {"do": "kdh.probe", "radio": "k6"}, freq_mhz="bench"), False),
         ("RT-950 stock read over its cable", J("ok-rt950", {"do": "rt950.info", "cable": "1a86:7523"}, {"do": "rt950.read", "cable": "1a86:7523", "args": ["--addr", "2", "--passes", "2"]}, freq_mhz="bench"), True),
         ("RT-950 cable read against Stage A", J("ok-rt950cmp", {"do": "rt950.compare", "backup": "rt950-read-1125b"}, freq_mhz="bench"), True),
         ("RT-950 stock and dump images listed", J("ok-rt950files", {"do": "rt950.files"}, freq_mhz="bench"), True),
@@ -2175,6 +2458,7 @@ def inbox_samples():
         ("UV-380 M17 from a branch's module, Pluto capture in the run folder", J("in-m17", {"do": "pluto", "args": ["rx", "run:m.cf32", "--hz", "441900000"], "background": True}, {"do": "uv380.m17", "args": ["bert"]}, freq_mhz=441.850, sources_commit="519e64f"), True),
         ("an OTA flash", J("in-flash", {"do": "k6.update", "image": "job:k.bin", "sha256": "0" * 64, "commit": "8a78fb5"}), False),
         ("a Pluto flash", J("in-plutoflash", {"do": "pluto.flash", "args": ["job:r.itb", "run:bk"]}), False),
+        ("the K-plug cable map", J("in-ident", {"do": "serial.identify", "args": ["--save"]}, freq_mhz="bench"), True),
         ("an RT-950 stock backup read", J("in-rt950", {"do": "serial.list"}, {"do": "rt950.read", "cable": "1a86:7523"}, freq_mhz="bench"), True),
         ("an RT-950 upload", J("in-rt950flash", {"do": "rt950.flash", "image": "ci-image/x.BTF", "sha256": "0" * 64, "cable": "1a86:7523"}, freq_mhz="bench"), False),
         ("a Pluto RAM boot of a pushed FIT", J("in-ramboot", {"do": "pluto.fw", "args": ["ramboot", "job:r.itb"]}), True),
@@ -2238,10 +2522,12 @@ def cmd_selftest(a):
         inbox_setup(say)
     else:
         say(None, "bench_inbox.py is not beside the runner: no inbox, no self-update")
-    try:
-        say(True, f"K6 cable {k6_cable()}")
-    except Refused as e:
-        say(None, str(e))
+    for radio in CABLE_ENV:
+        try:
+            say(True, f"{CABLE_NAME[radio]} {radio_cable(radio)}"
+                + (f" ({os.path.basename(cable_map()[radio]['link'])})" if radio in cable_map() else ""))
+        except Refused as e:
+            say(None, str(e))
     try:
         say(True, f"IC-7100 via rigctld: {kb.rig_hz(kb.rigctl())} Hz, RF power {rig_power(kb.rigctl()):.2f}")
     except (OSError, ValueError, SystemExit, subprocess.CalledProcessError) as e:

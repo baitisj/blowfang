@@ -76,7 +76,7 @@ A job (JSON):
 | `wait_bench_min` | how long the job may wait for its channel (60) before it fails |
 | `not_before` | UTC, `2026-11-17T10:00:00Z`: don't start earlier |
 | `repeat` | `{"every_min": 45, "until": "2026-11-17T18:00:00Z"}`: queue itself again (within 24 h) |
-| `take_serial` | a flash may ask the K6 cable's serial-hold logger to let go (else it refuses) |
+| `take_serial` | a cable step may ask the serial-hold logger to let go of its cable (else it refuses); a logger on the other radio's cable keeps reading |
 | `ic7100_power_max` | the IC-7100 RF power the job accepts (0 default, 0.5 at most) |
 
 Steps (`timeout` and `continue_on_error` on any of them):
@@ -94,7 +94,7 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `ic7100.tune` | rigctl `F HZ`, `M PKTFM 12000`, `L RFPOWER 0`, read back | 70 cm in the claim; not while held |
 | `ic7100.power0` | rigctl `L RFPOWER 0`, read back | |
 | `ic7100.af` | rigctl `L AF LEVEL`, read back: the IC-7100's speaker as a sound source at the bench (it plays what it receives); `"level": "restore"` puts back what the job's first `ic7100.af` found, and the job's end does that anyway, even after a failed step | level 0..0.3; not while held |
-| `logger` | `k6_bench.py serial-hold WHO -- timeout -s INT SECONDS python3 -m modem.k6_harness listen --k6 CABLE --log RUNDIR/FILE`, in the background | ≤ 6 h; the cable's one reader |
+| `logger` | `k6_bench.py serial-hold WHO -- timeout -s INT SECONDS python3 -m modem.k6_harness listen --k6 CABLE --log RUNDIR/FILE`, in the background; the K6's cable, or the UV-21's with `"radio": "uv21"` | ≤ 6 h; one serial-hold reader at a time, on either cable |
 | `logger.stop` | `k6_bench.py serial-release WHO` | |
 | `wait` | `seconds`, or until `pattern` (regex) shows in the run folder's `file` (default k6.log) | ≤ 1 h |
 | `uv380.flash` | `uv380_dfu.py flash DEV IMAGE --sha256 … --radio-tool …` | sha256, commit |
@@ -104,10 +104,11 @@ Steps (`timeout` and `continue_on_error` on any of them):
 | `uv380.ysf` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/c6ysftx_PLAN.c` (the checkout's own module, signed by the runner): one YSF (C4FM, Yaesu framing) transmission through the C6000's physical layer mode, tx_tone's Morse ident first (docs/uv380-ysf.md). `echo` = c6ysftx_echo.c, the FTM parrot: it listens on the radio's FM tap for up to 15 min and sends each C4FM call it hears back as it came (up to 3 calls, about 2.5 s each; its lines give counts and the caller's callsign, never voice); give the step `"timeout": 1000` | args: one plan, `dn`, `data` or `echo`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim) |
 | `uv380.voice` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/MODULE` (the checkout's own module, signed by the runner): DMR voice bursts over the C6000's voice port (docs/uv380-c6000-modem.md, "Voice bursts (V0-V2)"). `check` = c6vcheck.c and `dry` = c6dvtx.c never key; `pn`, `live`, `msg` = c6dvtx_pn/live/msg.c send one voice call, tx_tone's Morse ident first | args: one plan, `check`, `dry`, `pn`, `live` or `msg`; the same read-back as `uv380.send` (`pwr=0`, a `freq=` of its two channels inside the claim), for every plan |
 | `uv380.rx` | `uv380_i2sprobe.py mod DEV firmware/uv380-openrtx/mod/MODULE` (the checkout's own module, signed by the runner): a receive-only module (docs/uv380-m17-rx.md). `tap` = c6fmtap.c (the C6000's 8 kHz FM tap as audio lines, 0x34 stepped), `tap1c` = c6fmtap_1c.c (0x34 held at 0x1C, 150 s), `phy` = c6phyrx.c (the chip's own 4FSK demodulator's windows), `m17` = c6m17rx.c (M17 decoded on the radio from the tap: LSF callsigns, SMS, stream frames, BERT errors, 150 s), `m17tap` = c6m17rx_tap.c (the same plus the tap's audio lines), `scan` = atscan.c (an RSSI sweep: the AT1846S's receive frequency stepped across 400-480 MHz and put back; never sets its tx bit), `dmr` = c6dmrrx_long.c (the C6000 as a DMR receiver for 60 s: `b` lines with each burst's sync, data type and payload, for `tools/uv380_dmrburst.py rx`; the K6's DMR stream, docs/k6-c4fm.md); none keys. `"background": true` lets a Pluto `send` come while it listens; the job waits for it before it ends. Its lines go to the run folder's `uv380.log` | args: one plan, `tap`, `tap1c`, `phy`, `m17`, `m17tap`, `scan`, `ysf`, `ysftap`, `dmr`, `m17sotto` or `ysfsotto` |
-| `kplug.read` | `bench_kplug.py read --port CABLE --out RUNDIR --private ~/blowfang-work/private/kplug/ID ARGS`: a read-only clone of a stock Baofeng on the K6 cable that speaks the UV-17 Pro family's programming protocol (UV-21 Pro, UV-17 Pro, UV-5RM, ...): the ident handshake, the F / M / SEND replies, the codeplug as CHIRP reads it, and any `--extra` 64-byte blocks. It sends only the handshake and `R` reads, never a write. It listens first and refuses if it hears the K6's report lines. The codeplug (`clone.img`, CHIRP opens it) holds the channel list, so it stays in the private folder on hamlet; the run folder gets `ident.json`, `summary.json` (channel counts per band, region hashes, strings) and the regions outside the channel memories | only `--ident normal\|color\|gmrs5rh\|f8hppro`, `--model` (CHIRP's tag), `--extra 0xADDR[:0xEND]` (0x40-aligned, ≤ 512 blocks), `--listen-s` ≤ 10; never in the background; the cable's serial-hold logger must let go first (`take_serial`) |
+| `kplug.read` | `bench_kplug.py read --port CABLE --out RUNDIR --private ~/blowfang-work/private/kplug/ID ARGS`: a read-only clone of a stock Baofeng on the UV-21's cable (`"radio": "k6"`: the K6's) that speaks the UV-17 Pro family's programming protocol (UV-21 Pro, UV-17 Pro, UV-5RM, ...): the ident handshake, the F / M / SEND replies, the codeplug as CHIRP reads it, and any `--extra` 64-byte blocks. It sends only the handshake and `R` reads, never a write. It listens first and refuses if it hears the K6's report lines. The codeplug (`clone.img`, CHIRP opens it) holds the channel list, so it stays in the private folder on hamlet; the run folder gets `ident.json`, `summary.json` (channel counts per band, region hashes, strings) and the regions outside the channel memories | only `--ident normal\|color\|gmrs5rh\|f8hppro`, `--model` (CHIRP's tag), `--extra 0xADDR[:0xEND]` (0x40-aligned, ≤ 512 blocks), `--listen-s` ≤ 10; never in the background; the cable's serial-hold logger must let go first (`take_serial`) |
 | `kdh.probe` | `uv21_kdh.py probe --port CABLE --out RUNDIR ARGS`: the UV-21 Pro's KDH bootloader handshake, nothing else (with `--wait-boot-s S` the tool sends command 42 every 50 ms until someone switches the radio off and on, which puts it in flash mode with no keys; proven on the UV-21 Pro). Nothing is erased or written. `probe.json` says whether it answered | only `--listen-s` ≤ 10, `--wait-boot-s` ≤ 200; never in the background; the cable's logger must let go first |
 | `kdh.dump` | `uv21_kdh.py dump --port CABLE --out RUNDIR --private ~/blowfang-work/private/uv21/ID ARGS`: captures what the one-page dumper (`radios/uv21/dumper`) sends: a taste of the SPI flash first (`T`: JEDEC ID and 256 bytes per SPI mode; no chip answering ends the step with exit 4), then passes asked for with `D` until enough complete ones agree. The MCU flash, unique ID and SPI flash stay in the private folder; the run folder gets `summary.json` (sizes, hashes, agreement, the JEDEC ID) | only `--passes 1\|2\|3`, `--timeout-s` 60..3000; never in the background |
-| `serial.list` | the runner itself: every `/dev/serial/by-id` port's tty, USB ids, maker and product into `ports.json` and the log. It opens no port. Serial numbers are masked (`<serial>`), since inbox results land on a public branch | no args; never in the background |
+| `serial.list` | the runner itself: every USB serial tty (`ttyUSB*`, `ttyACM*`) with its USB ids, maker, product, by-id and by-path names, whether it shares its by-id name with another adapter, and the radio `cables.json` keys to it, into `ports.json` and the log. It opens no port. Serial numbers are masked (`<serial>`), since inbox results land on a public branch | no args; never in the background |
+| `serial.identify` | the runner itself: which K-plug cable is on which radio ("The radios' cables" below). It listens to every `ttyUSB` port except the IC-7100's and any port a process has open, `seconds` long (25), opened read-only (`O_RDONLY`, so nothing reaches a radio), raw 115200 8N1: `K6 ` lines are the K6, an `alive` line (every 10 s) the UV-21; with the UV-21 heard and exactly one other PL2303, silent, that one is the K6. `--save` writes the answer to `~/blowfang-work/state/cables.json`; `identify.json` in the run folder has it either way, masked | only `--save`; `seconds` 5..60; never in the background |
 | `rt950.info` | `radios/rt950/tools/rt950_backup.py info PORT ARGS`: the RT-950 Pro's CPS handshake on its programming cable, and its identity and model | `cable` (required): the cable's USB ids, such as `1a86:7523`, from `serial.list`; exactly one by-id port may have them, and the runner refuses the K6 cable (PL2303), the IC-7100, any ttyACM port (Pluto, UV-380) and any port a process has open (`RT950_CABLE` in the unit overrides the lookup). Only `--addr 2\|3`, `--timeout` 0.5-10; never in the background |
 | `rt950.read` | `rt950_backup.py read PORT ~/blowfang-work/private/rt950/ID --summary RUNDIR -v ARGS`: the read-only backup (docs/rt950-backup.md). The tool has no write command and refuses CPS write opcodes; `--addr 2` checks the radio says `RT-950` first, `--addr 3` that it runs the dump-only image. The bytes (Radtel's data, the radio's calibration) stay in the private folder on hamlet; the run folder gets `manifest.json` (identity, each pass's sha256, and the sha256 of each CPS region, calibration included) and `SHA256SUMS` | `cable` as for `rt950.info`; only `--addr 2\|3`, `--passes 1\|2\|3\|4` (1: one pass, for the dump image's 4 MB read at ~95 min a pass: run two jobs and compare their manifests), `--block 16\|32\|64\|128`, `--timeout` 0.5-10, `--cps-regions`; never in the background. Use `"freq_mhz": "bench"` |
 | `rt950.compare` | `rt950_backup.py compare STAGE_A ~/blowfang-work/private/rt950/BACKUP/cps64k.bin --json RUNDIR/compare.json`: an earlier `rt950.read`'s 64 KB against Stage A's Bluetooth read (`~/blowfang-work/rt950/runs/rt950-backup-20261117/stageA/cps64k.bin`), per CPS region and 4 KB page: how many bytes differ and the first and last offset, never the bytes. Opens no port | `backup` (required): the earlier job's id; `against`: another `rt950.read` job's id instead of Stage A; only `--keys` (for each differing region, which pair of CPS session-key indexes, -1 for none, makes the two reads agree: a region the stock firmware sends without the session XOR is scrambled by each read's own key); never in the background |
@@ -127,9 +128,8 @@ its checks and a test.
   k6_update needs the keyed build); modules signed with it (`--key-file` comes from the runner).
 - Never flash acd06ba, a1a86f9 or 35e982f. Every staged file's sha256 is in the job and checked
   again right before its step, so a file restaged after the check is refused.
-- The K6 cable only through k6_install, k6_update and a serial-hold logger, found by its by-id
-  name (`/dev/serial/by-id/*Prolific*`; `K6_CABLE` in the unit overrides). No job argument may
-  name a device.
+- The K-plug cables only through the steps above, each radio's on its own port ("The radios'
+  cables"). No job argument may name a device.
 - UV-380: power 0 only (Jeff 11-16: 0 W bench sends are fine while he's away; anything above
   waits for him), on 441.850 or 440.850 inside the claim, read back from the radio before every
   send. The port is found by its USB ids 0483:5740 (`UV380_DEV` in the unit overrides), never
@@ -147,6 +147,44 @@ its checks and a test.
 
 `pause [WHY]` / `resume`: start no new job. `cancel ID`: a waiting job never starts; the running
 one gets SIGTERM at once.
+
+## The radios' cables
+
+Each radio with a K-plug has its own cable on hamlet's USB hub (11-27; before that one cable moved
+between the K6 and the UV-21). K-plug cables are Prolific PL2303s, often with no serial number:
+two of those get one shared `/dev/serial/by-id` name that points at only one of them, and `ttyUSB`
+numbers move on every reboot. The runner keys each radio to its hub port instead, in
+`~/blowfang-work/state/cables.json`:
+
+```json
+{"k6":   {"link": "/dev/serial/by-path/pci-…-usb-0:3.1:1.0-port0", "ids": "067b:2303", "how": "heard", "job": "…", "at": "…"},
+ "uv21": {"link": "/dev/serial/by-path/pci-…-usb-0:3.2:1.0-port0", "ids": "067b:2303", "how": "heard", "job": "…", "at": "…"}}
+```
+
+A cable with a serial number of its own is saved by its by-id name instead, which follows it to
+any port. A `serial.identify` job with `--save` writes the file from what the radios themselves
+say, so nobody types a port name: inbox or local, `{"id": "cables-1", "who": "me", "freq_mhz":
+"bench", "minutes": 3, "steps": [{"do": "serial.identify", "args": ["--save"]}]}`. Run it again
+after moving a cable to another hub port.
+
+How each step finds its cable:
+
+| | |
+|---|---|
+| the K6's | `k6.install`, `k6.flash`, `k6.update`, `logger` |
+| the UV-21's | `kdh.probe`, `kdh.dump`, `kdh.flash`, `kdh.console`, `uv21.mod`, `kplug.read` |
+| either (`"radio": "k6"` or `"uv21"`) | `logger`, `kplug.read` |
+
+1. `K6_CABLE` / `UV21_CABLE` in the unit, if set.
+2. Else the radio's entry in `cables.json`. Refused when the radio has no entry, when its port is
+   empty (unplugged or moved), when the port now holds a different kind of adapter, or when both
+   radios name the same port.
+3. Else, with no `cables.json` at all, the machine's one PL2303 (counted from `/sys`, not from the
+   by-id names) is both radios' cable, as before the hub; two refuse.
+
+The RT-950 Pro's cable (`rt950.*`, by USB ids) is never either radio's K-plug cable. One
+serial-hold reader runs at a time, on either cable; a cable step frees only its own cable, and a
+logger on the other one keeps reading.
 
 ## The inbox: jobs from cloud threads
 

@@ -11,7 +11,7 @@ TOOLS = os.path.join(os.path.dirname(__file__), "..", "tools")
 sys.path.insert(0, TOOLS)
 sys.path.insert(0, os.path.dirname(__file__))
 import test_bench_runner as tb  # noqa: E402
-from test_bench_runner import work  # noqa: E402,F401  (the runner's fixture: BLOWFANG_WORK, K6_CABLE)
+from test_bench_runner import work  # noqa: E402,F401  (the runner's fixture: BLOWFANG_WORK, K6_CABLE, UV21_CABLE)
 spec = importlib.util.spec_from_file_location("bench_kplug", os.path.join(TOOLS, "bench_kplug.py"))
 kp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(kp)
@@ -203,7 +203,7 @@ def test_runner_checks_kplug_args(work):
 def test_runner_command_keeps_the_codeplug_private(work):
     br = tb.br
     argv, _, bg = br.command(tb.job("kp1"), {"do": "kplug.read", "args": ["--ident", "normal"]}, str(work / "rd"))
-    assert argv[1].endswith("bench_kplug.py") and argv[2:6] == ["read", "--port", "/dev/k6cable", "--out"]
+    assert argv[1].endswith("bench_kplug.py") and argv[2:6] == ["read", "--port", "/dev/uv21cable", "--out"]
     assert argv[argv.index("--private") + 1] == os.path.join(str(work), "private", "kplug", "kp1")
     assert argv[-2:] == ["--ident", "normal"] and not bg
     assert br.uses_cable({"do": "kplug.read"})          # a serial-hold logger must let go first
