@@ -1,0 +1,16 @@
+[
+ {
+  "name": "ports.json",
+  "bytes": 1850,
+  "sha256": "09d0b595c2eebfb072d6d2d969c935325cfb5830ff359040e8c6aafd6663f72d",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/hubmap-1127d/ports.json"
+ },
+ {
+  "name": "identify.json",
+  "bytes": 2602,
+  "sha256": "7fcd035afc00cdddcf543ba210033bd5b5af68502f5b3878ae6974f251c441f1",
+  "returned": true,
+  "hamlet": "/home/baitisj/blowfang-work/runs/queue/hubmap-1127d/identify.json"
+ }
+]
