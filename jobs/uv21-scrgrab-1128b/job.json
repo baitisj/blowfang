@@ -1,0 +1,16 @@
+{
+ "id": "uv21-scrgrab-1128b",
+ "who": "screen",
+ "minutes": 10,
+ "freq_mhz": "bench",
+ "note": "UV-21 screen grab, LZ4-packed scrgrab format (scrdump module, whole screen), no transmit",
+ "sources_commit": "2fe9648007ca271879e5b808148d0e5213696fae",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "scrdump"
+   ]
+  }
+ ]
+}
