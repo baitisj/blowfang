@@ -374,6 +374,21 @@ cards of a screen (a module's own: its MENU name cut to 8 characters, each space
 from the decks in slots 13-15. Help decks are version 2 (packed band by band). The radio passes
 over version 1 decks, so they must be installed again.
 
+## API level 17: the screen tap
+
+Added 2026-11-28 (Jeff: no framebuffer, "something super lightweight that provides hooks for a
+framebuffer if needed for testing"). The ST7565 can't be read back over its serial bus, and the
+voice + EXPLORE image keeps no copy of the screen. It still keeps none. `screen_tap(f, ctx)` has
+`draw_pages` hand `f` each page it sends (0-7, 128 bytes, bit 0 the top row) until the tap is
+removed or the module returns. `redraw()` draws the core's own screen again through the tap:
+VOICE MSG, the MENU or a help card, as it will be when the module returns. It refuses with -2
+over EXPLORE, whose list sits where the module is. With no tap the core pays one load and one
+compare a page. `c/k6/mod/scrgrab.c` (1.8 KB) keeps the 1 KB in its own scratch and prints it in
+`c/common/scrgrab.h`'s lines (format 3, the ST7565's pages, one LZ4 band, CRC-32), each under
+the 60 characters `say` prints. Run `python3 tools/screen_grab.py LOG -o k6.png` on the serial
+log. `tests/test_k6_scrgrab.py` runs it on an emulated M0. Level 16 had no new calls, so the
+module block is the same as level 16's.
+
 ## The SPI module library
 
 Added 2026-11-09 (Jeff approved it 2026-11-08: modules written to SPI once per install).

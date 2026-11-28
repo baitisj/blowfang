@@ -134,3 +134,34 @@ def test_lz4c_blocks_decode_and_keep_the_end_rules(exe, data):
     if len(data) > 13:
         assert len(block) <= len(data) + len(data) // 255 + 16
     assert zlib.crc32(data) == zlib.crc32(lz4.decompress(block, len(data)))
+
+
+def k6_lines(pages, noise_lines=()):
+    """one K6 screen in format 3 (the ST7565's pages), a page a band, raw, each page's 128 bytes
+    in one long "scr d" line (c/k6/mod/scrgrab.c packs it instead; the decoder takes either)"""
+    out, crc = ["scr 1 128 64 3 128 1"], 0
+    for n, p in enumerate(pages):
+        out += [f"scr b {n} 128 0", "scr d " + p.hex()]
+        out += list(noise_lines)
+        crc = zlib.crc32(p, crc)
+    out.append(f"scr e {crc:08x} 8")
+    return "\r\n".join(out) + "\r\n"
+
+
+def test_k6_pages_come_back_as_pixels():
+    rnd = random.Random(7)
+    pages = [bytes(rnd.randrange(256) for _ in range(128)) for _ in range(8)]
+    # another line of the serial report between bands (a K6 MOD line) is skipped
+    w, h, fmt, px = screen_grab.grab(k6_lines(pages, ["K6 MOD ret=0 (0x0) in 3 ms"]))
+    assert (w, h, fmt) == (128, 64, screen_grab.SCR_ST7565)
+    for y in range(64):
+        for x in range(128):
+            lit = pages[y >> 3][x] >> (y & 7) & 1
+            assert px[y][x] == (screen_grab.INK if lit else screen_grab.PAPER)
+
+
+def test_k6_grab_with_a_bad_crc_fails():
+    pages = [bytes([k] * 128) for k in range(8)]
+    text = k6_lines(pages).replace("scr d " + bytes([3] * 128).hex(), "scr d " + bytes([3] * 127 + [4]).hex())
+    with pytest.raises(screen_grab.Bad):
+        screen_grab.grab(text)

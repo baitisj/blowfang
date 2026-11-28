@@ -64,6 +64,10 @@ tools/uv380_i2sprobe.py
 tools/uv380_dmrburst.py
 tests/test_k6*
 tests/k6_live_emu.py
+# the screen grab module (c/k6/mod/scrgrab.c, tests/test_k6_scrgrab.py)
+c/common/lz4c.*
+c/common/scrgrab.*
+tools/screen_grab.py
 tests/k6_web_driver.cjs
 web/k6-installer/
 tests/test_nwr_watch.py
