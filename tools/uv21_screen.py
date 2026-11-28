@@ -5,7 +5,9 @@
 
 The module prints the raw bytes clocked after each row's RAMRD, dummy bits and all, so this finds
 the bit offset itself: the controller sends 18-bit pixels as three bytes with the colour in the
-top six bits, so at the right offset the two low bits of every byte are zero. --ref compares
+top six bits, so at the right offset the two low bits of every byte are zero. On the radio
+(2026-11-28) the pixels start 9 bits in: one dummy clock, then a dummy byte. The low-bit test
+can't tell 1 from 9 (or 17), so the tool takes 9 and says how well the low bits agree. --ref compares
 with another PNG of the same size (an emulator render, say) and prints the rows that differ.
 Standard library only. SPDX-License-Identifier: MIT
 """
@@ -40,15 +42,14 @@ def shifted(raw, bit):
     return (v & ((1 << (8 * len(raw))) - 1)).to_bytes(len(raw), "big")
 
 
-def align(rows):
-    """the bit offset (0-15) at which the most bytes have their two low bits clear"""
-    best = None
-    for bit in range(16):
-        clear = sum(1 for raw in rows.values() for b in shifted(raw, bit)[:3 * W] if not b & 3)
-        if best is None or clear > best[1]:
-            best = (bit, clear)
-    total = sum(min(len(r), 3 * W) for r in rows.values())
-    return best[0], best[1] / max(total, 1)
+DUMMY_BITS = 9      # RAMRD on the radio: a dummy clock and a dummy byte before the first pixel
+
+
+def align(rows, bit=DUMMY_BITS):
+    """(bit, the share of bytes with their two low bits clear there): near 1.0 when the read worked"""
+    clear = sum(1 for raw in rows.values() for b in shifted(raw, bit)[:3 * W] if not b & 3)
+    total = sum(min(len(r) - 2, 3 * W) for r in rows.values())
+    return bit, clear / max(total, 1)
 
 
 def pixels(rows, bit):
