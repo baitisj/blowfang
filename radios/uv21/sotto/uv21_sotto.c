@@ -138,7 +138,7 @@ int uv21_sotto(const um_api_t *api, uint8_t *ram, uint32_t ram_len, uint32_t hz,
 
   uint32_t pk = 0, good = 0, played = 0, late = 0, now = api->ms();
   uint32_t t_last = now, t_quiet_end = now + listen_s * 1000u;
-  int playing = 0, ended = 0, fill = 0, done = 0, gain = 256;
+  int playing = 0, ended = 0, fill = 0, done = 0, gain = 256, played_msg = 0;
   for (;;) {
     now = api->ms();
     if (srx_poll(api, rx)) {
@@ -151,20 +151,25 @@ int uv21_sotto(const um_api_t *api, uint8_t *ram, uint32_t ram_len, uint32_t hz,
       q = um_int(um_put(q, " r="), r);
       um_hex(um_put(q, " seq="), (uint32_t)d[2] << 8 | d[3], 4);
       api->say(t);
-      if (r >= 0) t_last = now, ended = 0;
+      if (r >= 0) t_last = now, ended = 0, t_quiet_end = now + listen_s * 1000u;
+      if (r == SP_NEW) {                 /* a new message: the store dropped the old one */
+        if (playing) pwm_stop(cfgr0, muxh0);
+        playing = 0, played_msg = 0;
+      }
     }
     if (!ended && good && now - t_last > SP_GAP_MS) {
       sp_stream_end();                   /* the sender stopped: play what came */
       ended = 1;
     }
-    if (!playing && good && (sp_stream_ready() || ended)) {
+    if (!playing && !played_msg && good && (sp_stream_ready() || ended)) {
+      for (int i = 0; i < 2 * HALF; i++) ring[i] = TOP / 2;   /* a half no frame fills is silence */
       sp_play_start();
       gain = sp_auto_gain_q8();
       int a = sp_play_pwm(ring, TOP, gain, SO_EMPHASIS);
       int b = a ? sp_play_pwm(ring + HALF, TOP, gain, SO_EMPHASIS) : 0;
       played += (a == 1) + (b == 1);
       pwm_start(ring);
-      playing = 1, fill = 0, done = !b;
+      playing = 1, played_msg = 1, fill = 0, done = !b;
       say2(api, "so play gain=", gain, " frames=", (int32_t)played);
     } else if (playing && pwm_half() != fill) {
       /* the DMA has moved into the other half: the one it left is free */
@@ -175,7 +180,6 @@ int uv21_sotto(const um_api_t *api, uint8_t *ram, uint32_t ram_len, uint32_t hz,
             pwm_stop(cfgr0, muxh0);
             playing = 0;
             t_quiet_end = now + listen_s * 1000u;
-            if (ended) break;
           }
         } else {
           int r = sp_play_pwm(ring + fill * HALF, TOP, gain, SO_EMPHASIS);
@@ -190,8 +194,8 @@ int uv21_sotto(const um_api_t *api, uint8_t *ram, uint32_t ram_len, uint32_t hz,
         fill ^= 1;
       }
     }
-    if (!playing && !good && (int32_t)(now - t_quiet_end) > 0) break;   /* nothing came */
-    if (!playing && ended && (int32_t)(now - t_quiet_end) > 0) break;
+    /* nothing came, or the message has played and nothing more came for listen_s */
+    if (!playing && (int32_t)(now - t_quiet_end) > 0 && (!good || played_msg)) break;
     api->delay_us(300);
   }
   if (playing) pwm_stop(cfgr0, muxh0);

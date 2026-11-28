@@ -1540,7 +1540,7 @@ def command(job, step, rd):
         defs = [x for d in args[1:] for x in ("-D", d)]
         return [py(), "-m", "modem.uv21mod", "run", uv21_cable(), os.path.join(job_sources(job), *uv21_module(args[0]))] \
             + defs + ["--log", os.path.join(rd, "uv21mod.log"), "--run-timeout", str(UV21_MOD_RUN_S)], co, \
-            bool(step.get("background"))
+            bool(step.get("background")) and args[0] in UV21_RX_BG
     if do == "uv21.sotto":
         return [py(), "-m", "modem.uv21mod", "sotto", uv21_cable(), "--hz", args[0], "--seconds", args[1],
                 "--log", os.path.join(rd, "uv21mod.log")], co, bool(step.get("background"))

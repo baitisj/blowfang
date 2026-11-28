@@ -369,9 +369,12 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
         con::nl();
         0
     } else {
+        // one raw pointer for both SURF and wake_now (C writes api.wake_hz through it while
+        // key() may read it), so no Rust reference to api is alive meanwhile
+        let api_p: *mut UvApi = &mut api;
         unsafe {
-            API_P = &api;
-            let c = uv21_surf(&mut api, arena::base(), room);
+            API_P = api_p;
+            let c = uv21_surf(api_p, arena::base(), room);
             API_P = core::ptr::null();
             c
         }
@@ -385,7 +388,10 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
         let lcd = display.as_draw_target();
         lcd.fill_rect(0, 0, 128, 12, 0x0000);
         font55::draw(lcd, 2, 3, "SOTTO RX", 0xFFE0, 0x0000);
+        // SURF switches the speaker amplifier (PB2) off as it leaves: playback needs it on
+        app.radio_mut().set_speaker(true);
         crate::sotto::run(&UM_API, hz, listen_s);
+        app.radio_mut().set_speaker(false);
     }
     unsafe {
         WAKE = api.wake_hz;

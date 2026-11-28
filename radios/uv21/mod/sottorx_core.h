@@ -52,10 +52,16 @@
 #define SRX_CRC_OFF 0x5625u
 #define SRX_FIFO_WORDS 8
 #define SRX_WORD_US (16u * 1000000u / SR_BAUD)
+/* the packet's air time after its sync, ms (569 at 128 bytes, 1800 baud) */
+#define SRX_PKT_MS (SR_LEN * 8u * 1000u / SR_BAUD)
+/* an RX-done sooner than 60 % of that after the sync is the last packet's, late (the K6 pager's
+   STRAY_DONE rule): taken as this one's end it would cut it short */
+#define SRX_STRAY_MS (SRX_PKT_MS * 6u / 10u)
 
 typedef struct {
   int in_pkt, got;                       /* a packet is coming in; its bytes so far */
   uint32_t t_read_ms;                    /* the last FIFO read (ms) */
+  uint32_t t_sync_ms;                    /* the packet's sync interrupt (ms) */
   uint32_t syncs;                        /* sync interrupts seen */
   uint16_t r2b;                          /* REG_2B as set */
   uint8_t raw[SR_LEN];                   /* the packet as the FIFO gave it: first byte on air first */
@@ -116,15 +122,25 @@ static inline int srx_poll(const um_api_t *api, srx_t *s) {
   uint32_t now = api->ms();
   if (f & SRX_IRQ_RX_SYNC) {
     s->syncs++;
-    s->in_pkt = 1, s->got = 0, s->t_read_ms = now;
+    s->in_pkt = 1, s->got = 0, s->t_read_ms = now, s->t_sync_ms = now;
   }
+  if (s->in_pkt && (f & SRX_IRQ_RX_DONE) && now - s->t_sync_ms < SRX_STRAY_MS)
+    f &= (uint16_t)~SRX_IRQ_RX_DONE;
   if (s->in_pkt && (f & SRX_IRQ_RX_FULL)) {
     srx_take(api, s, SR_THR);
     s->t_read_ms = now;
   } else if (s->in_pkt && s->got < SR_LEN &&
              (now - s->t_read_ms) * 1000u > (SR_THR + 1) * SRX_WORD_US) {
-    srx_take(api, s, 1);
+    /* no almost-full for N + 1 word times: the edge was lost with N or more words waiting, and
+       at least N + 1 came since the last read, so N are there to take */
+    srx_take(api, s, SR_THR);
     s->t_read_ms = now;
+  }
+  if (s->in_pkt && s->got < SR_LEN && now - s->t_sync_ms > 2u * SRX_PKT_MS) {
+    int got = s->got;                    /* a sync that never filled a packet: listen again */
+    srx_rearm(api, s);
+    s->got = got;
+    return 1;
   }
   if (s->in_pkt && (f & SRX_IRQ_RX_DONE) && s->got < SR_LEN) srx_take(api, s, SRX_FIFO_WORDS);
   if (s->in_pkt && (s->got >= SR_LEN || (f & SRX_IRQ_RX_DONE))) {
