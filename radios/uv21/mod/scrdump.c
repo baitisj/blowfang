@@ -32,7 +32,9 @@
 #define SD_W 128
 #define SD_BYTES (SD_W * 3 + 4)   /* 18-bit pixels read as 3 bytes, and slack for dummy bits */
 #define SD_DUMMY 9                /* bits before the first pixel */
-#define SD_BAND 8                 /* rows an LZ4 block */
+#ifndef SD_BAND
+#define SD_BAND 8                 /* rows an LZ4 block (RAM: 4 KB a band of 8, packed and not) */
+#endif
 #define SD_PIECE 24                 /* the port's say() prints 64 characters of a line at most */
 
 #define REG(a) (*(volatile uint32_t *)(a))
@@ -57,12 +59,15 @@ static inline void field(uint32_t port, uint32_t off, int pin, uint32_t v) {
   REG(port + off) = (REG(port + off) & ~(3u << (2 * pin))) | (v << (2 * pin));
 }
 
-/* ~80 ns at 60 MHz: half a clock, so reads stay under the controller's 6.6 MHz */
+/* half a clock: 20 cycles, ~170 ns at 120 MHz and ~330 ns at 60, so reads stay well under the
+   controller's 6.6 MHz at either clock (10 cycles read at ~3 MHz on the radio at 60 MHz; at 120 MHz
+   they would have reached ~6 MHz, too close: blowfang opt/opt-clk review, 2026-11-28) */
 static inline void half(void) {
-  __asm__ volatile("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
+  __asm__ volatile("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop"
+                   "\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
 }
 
-static void put_byte(uint32_t b) {
+__attribute__((noinline)) static void put_byte(uint32_t b) {
   for (int i = 7; i >= 0; i--) {
     lo(GPIOB, SCK);
     if ((b >> i) & 1) hi(GPIOB, SDA); else lo(GPIOB, SDA);
@@ -118,10 +123,59 @@ static inline uint32_t sd_six(const uint8_t *raw, unsigned bit) {
 }
 #endif
 
-int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
+/* SPI2's pins as they were, while the module clocks SCK and SDA itself */
+typedef struct sd_pins {
+  uint32_t cfgr, pull;
+} sd_pins_t;
+
+static void sd_take(sd_pins_t *k) {
+  while (REG(SPI2_STS) & SPI_BF) {}          /* the last SPI byte out */
+  k->cfgr = REG(GPIOB + G_CFGR);
+  k->pull = REG(GPIOB + G_PULL);
+  hi(GPIOB, CS);
+  lo(GPIOB, SCK);
+  field(GPIOB, G_CFGR, SCK, 1);              /* SCK and SDA: GPIO outputs while we clock */
+  field(GPIOB, G_CFGR, SDA, 1);
+}
+
+static void sd_give(const sd_pins_t *k) {
+  REG(GPIOB + G_PULL) = k->pull;              /* SPI2 gets its pins back as they were */
+  REG(GPIOB + G_CFGR) = k->cfgr;
+  hi(GPIOB, CS);
+}
+
+/* one panel row's raw RAMRD bytes (SD_BYTES) into raw */
+static void sd_read_raw(int y, uint8_t *raw) {
+  const uint8_t ca[4] = {0, 0, 0, SD_W - 1};
+  const uint8_t ra[4] = {0, (uint8_t)y, 0, (uint8_t)y};
+  cmd(0x2A, ca, 4);                           /* CASET: the whole row */
+  cmd(0x2B, ra, 4);                           /* RASET: this row */
+  read_cmd(0x2E, raw, SD_BYTES);              /* RAMRD */
+}
+
+#ifndef SD_RAW
+/* one panel row as RGB565, big-endian (2 * SD_W bytes into rgb); raw is SD_BYTES of scratch */
+static void sd_read_row(int y, uint8_t *raw, uint8_t *rgb) {
+  sd_read_raw(y, raw);
+  for (unsigned x = 0; x < SD_W; x++) {
+    unsigned b0 = SD_DUMMY + 24 * x;
+    uint32_t c = (sd_six(raw, b0) >> 1) << 11 | sd_six(raw, b0 + 8) << 5 | sd_six(raw, b0 + 16) >> 1;
+    rgb[2 * x] = (uint8_t)(c >> 8);
+    rgb[2 * x + 1] = (uint8_t)c;
+  }
+}
+#endif
+
+/* the entry; another module may include this file with -D SD_ENTRY=its_name to grab the screen
+   from its own code (radios/uv21/mod/clk120.c) */
+#ifndef SD_ENTRY
+#define SD_ENTRY um_main
+#endif
+
+int SD_ENTRY(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   char line[16 + 2 * SD_PIECE];       /* (60 characters) */
   uint8_t *raw = ram;                 /* SD_BYTES of the arena's zeroed RAM */
-  uint32_t cfgr, pull;
+  sd_pins_t pins;
 #ifndef SD_RAW
   uint8_t *rgb = raw + ((SD_BYTES + 3) & ~3u);              /* one RGB565 row */
   uint8_t *band = rgb + 2 * SD_W;
@@ -137,14 +191,7 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   if (ram_len < SD_BYTES) return -1;
 #endif
 
-  while (REG(SPI2_STS) & SPI_BF) {}          /* the last SPI byte out */
-  cfgr = REG(GPIOB + G_CFGR);
-  pull = REG(GPIOB + G_PULL);
-  hi(GPIOB, CS);
-  lo(GPIOB, SCK);
-  field(GPIOB, G_CFGR, SCK, 1);              /* SCK and SDA: GPIO outputs while we clock */
-  field(GPIOB, G_CFGR, SDA, 1);
-
+  sd_take(&pins);
   read_cmd(0x04, raw, 4);                     /* RDDID */
   char *p = um_put(line, "scr id ");
   for (int i = 0; i < 4; i++) p = um_hex(p, raw[i], 2);
@@ -154,20 +201,11 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   scr_begin(&s, SD_W, SD_ROWS, SCR_RGB565, 2 * SD_W, SD_BAND);
 #endif
   for (int y = SD_Y0; y < SD_Y0 + SD_ROWS && y < 160; y++) {
-    const uint8_t ca[4] = {0, 0, 0, SD_W - 1};
-    const uint8_t ra[4] = {0, (uint8_t)y, 0, (uint8_t)y};
-    cmd(0x2A, ca, 4);                         /* CASET: the whole row */
-    cmd(0x2B, ra, 4);                         /* RASET: this row */
-    read_cmd(0x2E, raw, SD_BYTES);            /* RAMRD */
 #ifndef SD_RAW
-    for (unsigned x = 0; x < SD_W; x++) {
-      unsigned b0 = SD_DUMMY + 24 * x;
-      uint32_t c = (sd_six(raw, b0) >> 1) << 11 | sd_six(raw, b0 + 8) << 5 | sd_six(raw, b0 + 16) >> 1;
-      rgb[2 * x] = (uint8_t)(c >> 8);
-      rgb[2 * x + 1] = (uint8_t)c;
-    }
+    sd_read_row(y, raw, rgb);
     scr_row(&s, rgb);
 #else
+    sd_read_raw(y, raw);
     for (int k = 0; k * SD_PIECE < SD_BYTES; k++) {
       p = um_put(line, "scr r ");
       p = um_hex(p, (uint32_t)y, 2);
@@ -182,9 +220,6 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
 #ifndef SD_RAW
   scr_end(&s);
 #endif
-
-  REG(GPIOB + G_PULL) = pull;                 /* SPI2 gets its pins back as they were */
-  REG(GPIOB + G_CFGR) = cfgr;
-  hi(GPIOB, CS);
+  sd_give(&pins);
   return SD_ROWS;
 }

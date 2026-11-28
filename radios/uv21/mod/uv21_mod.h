@@ -34,9 +34,9 @@ static inline int um_rssi2(const um_api_t *api) {
   return radio_rssi2((const radio_api_t *)api);
 }
 
-/* api->delay_us loads SysTick's 24-bit reload once, so at 60 MHz a single call waits at most
-   2^24 cycles (about 279 ms) and a longer one wraps to a short wait; this one waits in 100 ms
-   pieces (found 2026-11-25: 1 s waits in fmstock ran 161 ms) */
+/* api->delay_us loads SysTick's 24-bit reload once, so a single call waits at most 2^24 cycles
+   (about 139 ms at the port's 120 MHz, 279 ms at 60) and a longer one wraps to a short wait; this
+   one waits in 100 ms pieces (found 2026-11-25: 1 s waits in fmstock ran 161 ms) */
 static inline void um_wait_us(const um_api_t *api, uint32_t us) {
   for (; us > 100000u; us -= 100000u) api->delay_us(100000u);
   api->delay_us(us);

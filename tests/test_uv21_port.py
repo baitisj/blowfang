@@ -176,9 +176,9 @@ class Port(bu.Radio):
                 if not self.level(*bu.LCD_CS):
                     self.lcd_byte(value & 0xFF, self.level(*bu.LCD_DC))
             return super().mmio(uc, access, addr, size, value, ud)
-        if addr == 0x40021000:                      # CRM_CTRL: HICK and the PLL lock at once
+        if addr == 0x40021000:                      # CRM_CTRL: HICK and the PLL lock (and unlock) at once
             v = mem()
-            put(v | (v & 1) << 1 | (v >> 24 & 1) << 25)
+            put((v & ~(1 << 1 | 1 << 25)) | (v & 1) << 1 | (v >> 24 & 1) << 25)
         elif addr == 0x40021004:                    # CRM_CFG: the clock switch follows the select
             v = mem()
             put((v & ~0xC) | (v & 3) << 2)
@@ -232,7 +232,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
-    assert "blowfang uv21 port 20 build=" in text
+    assert "blowfang uv21 port 21 build=" in text
     assert "sclk_mhz=78 power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 120 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
@@ -359,7 +359,7 @@ def test_it_says_it_started_before_changing_the_clock(built):
     r.mu.mem_write(0x40021018, struct.pack("<I", 1 << 14))              # APB2EN: USART1 on
     r.mu.mem_write(0x4001380C, struct.pack("<I", 1 << 13 | 1 << 3))    # USART1 CTRL1: UEN, TEN
     out = r.run(until="boot done", limit=300_000_000)
-    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 20 build=")
+    assert out.index("blowfang uv21 port start\r\n") < out.index("blowfang uv21 port 21 build=")
     assert out.count("port start") == 1
 
 
