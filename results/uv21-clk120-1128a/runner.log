@@ -1,0 +1,14 @@
+2026-11-28T11:20:34Z job uv21-clk120-1128a by clk, checkout /home/baitisj/blowfang-work/worktrees/inbox-b2d9c00964f7 at b2d9c00964f7374bd157c692e8b40e4221308c4d, module sources /home/baitisj/blowfang-work/worktrees/src-fa7a456d5b7e at fa7a456d5b7e6ca0bb64939d9c669b16f57ce3c2
+2026-11-28T11:20:34Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB4 /home/baitisj/blowfang-work/worktrees/src-fa7a456d5b7e/radios/uv21/mod/clk120.c --log /home/baitisj/blowfang-work/runs/queue/uv21-clk120-1128a/uv21mod.log --run-timeout 180
+clk home mhz=56 c=0034000a p=1f3 b=0209 s=34c t=176f
+clk refused: not a clock setup this module knows
+um stk=09f8
+um end 00000001
+2026-11-28T11:20:36Z step 1 (uv21.mod) rc=0
+2026-11-28T11:21:36Z step 2 (wait) rc=0
+2026-11-28T11:21:36Z $ /usr/bin/python3 -m modem.uv21mod run /dev/ttyUSB4 /home/baitisj/blowfang-work/worktrees/src-fa7a456d5b7e/radios/uv21/mod/hello.c --log /home/baitisj/blowfang-work/runs/queue/uv21-clk120-1128a/uv21mod.log --run-timeout 180
+hello uv21 rf=4829 ram=2f28
+um stk=09f8
+um end 00004829
+2026-11-28T11:21:37Z step 3 (uv21.mod) rc=0
+2026-11-28T11:21:37Z job uv21-clk120-1128a done

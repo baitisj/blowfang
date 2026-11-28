@@ -1,0 +1,7 @@
+clk home mhz=56 c=0034000a p=1f3 b=0209 s=34c t=176f
+clk refused: not a clock setup this module knows
+um stk=09f8
+um end 00000001
+hello uv21 rf=4829 ram=2f28
+um stk=09f8
+um end 00004829
