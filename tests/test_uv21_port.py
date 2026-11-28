@@ -233,7 +233,7 @@ def test_image_fits_and_passes_the_bootloader_check(built):
 def test_boots_on_the_internal_clock_and_says_so(port):
     text = port.uart.decode("latin-1")
     assert "blowfang uv21 port 20 build=" in text
-    assert "sclk_mhz=3c power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 60 MHz
+    assert "sclk_mhz=78 power_sense_ok=1 rx_only=1 nor_read_only=1" in text   # 120 MHz
     assert "rf id=4829" in text
     assert "calibration applied=0" in text and "boot done" in text
     crm_cfg = [v for a, v in port.writes if a == 0x40021004]
@@ -241,13 +241,17 @@ def test_boots_on_the_internal_clock_and_says_so(port):
     assert all(not (v & 1 << 16) for a, v in port.writes if a == 0x40021000)   # HEXT never enabled
 
 
-def test_the_serial_port_runs_at_115200_on_the_60_mhz_clock(port):
-    # the 5RH's divisor (1042) was for 120 MHz: at 60 MHz it gives 57,600 baud, and then neither
-    # the console nor the bootloader's command-42 reset gets through (port 2 on the radio)
+def test_the_serial_port_runs_at_115200_on_the_120_mhz_clock(port):
+    # 4 MHz (HICK/2) x 30 (PLLMULT = 0b01_1101 = 29) = 120 MHz; USART1 divisor 1042 -> 115,163 baud
     cfg = [v for a, v in port.writes if a == 0x40021004][-1]
     assert cfg & 0x3 == 2 and (cfg >> 11) & 7 < 4                       # PLL; APB2 (USART1) undivided
+    pllmult = (((cfg >> 29) & 0x3) << 4) | ((cfg >> 18) & 0xF)
+    assert pllmult == 0b01_1101, f"expected CRM_PLL_MULT_30 (29), got {pllmult}"
     div = [v for a, v in port.writes if a == 0x40013808][-1] & 0xFFFF   # USART1 BAUDR
-    assert abs(60_000_000 / div - 115_200) < 115_200 * 0.01, (div, 60_000_000 / div)
+    assert abs(120_000_000 / div - 115_200) < 115_200 * 0.01, (div, 120_000_000 / div)
+    # SPI2 (ST7735S LCD) must stay at 15 MHz (PCLK / 8 -> mdiv2_0 = 2) at 120 MHz
+    spi2_ctrl1 = [v for a, v in port.writes if a == 0x40003800][-1]
+    assert (spi2_ctrl1 >> 3) & 0x7 == 2, f"expected SPI2 MDIV=2 (/8 = 15 MHz), got {(spi2_ctrl1 >> 3) & 0x7}"
 
 
 def test_drives_only_the_uv21_pins(port):
