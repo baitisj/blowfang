@@ -1,12 +1,41 @@
 {
  "id": "uv21-clk120-1128b",
- "status": "running",
- "since": "2026-11-28T11:23:47Z",
+ "who": "clk",
+ "started": "2026-11-28T11:23:49Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv21.mod",
+   "started": "2026-11-28T11:23:49Z",
+   "ended": "2026-11-28T11:24:11Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "wait",
+   "started": "2026-11-28T11:24:11Z",
+   "ended": "2026-11-28T11:25:11Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "uv21.mod",
+   "started": "2026-11-28T11:25:11Z",
+   "ended": "2026-11-28T11:25:12Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-b2d9c00964f7",
+ "head": "b2d9c00964f7374bd157c692e8b40e4221308c4d",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-6ddbd4b8d0b3",
+ "sources_head": "6ddbd4b8d0b34406876f0060f9178675f87abb4b",
+ "ended": "2026-11-28T11:25:12Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "090fe4ee235a1346ac8fb27fb41dfae217d1b36e",
   "path": "jobs/uv21-clk120-1128b"
  },
  "runner_commit": "b2d9c00964f7374bd157c692e8b40e4221308c4d",
- "updated": "2026-11-28T11:23:47Z"
+ "updated": "2026-11-28T11:25:12Z"
 }
