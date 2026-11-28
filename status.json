@@ -4,14 +4,10 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": {
-  "id": "uv21-scrdump-1128a",
-  "who": "screen",
-  "since": "2026-11-28T07:03:31Z"
- },
+ "running": null,
  "waiting": [],
  "last_poll": "2026-11-28T07:03:23Z",
  "error": null,
  "update": null,
- "updated": "2026-11-28T07:03:31Z"
+ "updated": "2026-11-28T07:03:50Z"
 }
