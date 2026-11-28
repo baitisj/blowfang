@@ -76,6 +76,8 @@ and the point is that the runner checks everything before it keys. The checks, i
     the image's own M17 / YSF / DMR send (uv380.air: milestone 4's "air" command, tx_tone's ident
     first; only with the FM trim, since the image offsets these sends itself)
   - a Pluto step may run in the background only to receive (rx)
+  - a UV-21 module may run in the background only if it only listens (UV21_RX_BG: sottorx), so a
+    Pluto send can come while it runs; the job waits for it before it ends
   - IC-7100: never while Jeff holds it (hold-ic7100), RF power read back at most the job's limit
     (0 by default, 0.5 at most; the runner only ever lowers it, to 0), rig on 70 cm in the claim
   - one job at a time, under a k6_bench claim (the per-frequency claim other threads see)
@@ -242,6 +244,12 @@ UV21_MOD_RUN_S = 180               # modem.uv21mod --run-timeout: inside the ste
 
 def uv21_module(name):
     return ("radios", "uv21", "mod", name + ".c")
+
+
+# [S12] the UV-21 modules that only listen, and so may run in the background while a Pluto send
+# comes (as uv380.rx does): the job waits for them before it ends, and they hold the UV-21's cable.
+# sottorx arms the RF chip's FSK receiver and counts the K6 pager's sotto packets
+UV21_RX_BG = ("sottorx",)
 
 UV380_READBACK = {"power": "pwr", "zero": "zero", "trim": "trim", "gain": "gain", "emph": "emph",
                   "freq": "freq"}
@@ -769,8 +777,9 @@ def check_step(job, i, step, rs, problems):
             for d in args[1:]:
                 if not UV21_MOD_DEFINE.fullmatch(d):
                     problems.append(f"{what}: {d!r}: NAME=number or NAME=n1,n2,... (hex or decimal)")
-        if step.get("background"):
-            problems.append(f"{what}: never in the background")
+        if step.get("background") and args[:1] != [] and args[0] not in UV21_RX_BG:
+            problems.append(f"{what}: only a receive-only module ({', '.join(UV21_RX_BG)}) may run in"
+                            " the background")
     elif do == "serial.list":
         if args or step.get("background"):
             problems.append(f"{what}: takes no args, never in the background")
@@ -1525,7 +1534,8 @@ def command(job, step, rd):
     if do == "uv21.mod":
         defs = [x for d in args[1:] for x in ("-D", d)]
         return [py(), "-m", "modem.uv21mod", "run", uv21_cable(), os.path.join(job_sources(job), *uv21_module(args[0]))] \
-            + defs + ["--log", os.path.join(rd, "uv21mod.log"), "--run-timeout", str(UV21_MOD_RUN_S)], co, False
+            + defs + ["--log", os.path.join(rd, "uv21mod.log"), "--run-timeout", str(UV21_MOD_RUN_S)], co, \
+            bool(step.get("background"))
     if do == "sim.soapyfang":       # the page on hamlet only: ssh -L 5058:127.0.0.1:5058 hamlet
         opts = dict(zip(args[0::2], args[1::2]))
         mod = SOAPYFANG_RADIOS[opts.pop("--radio", "uv21")]
@@ -1858,7 +1868,7 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
             + (f", module sources {res['sources']} at {res['sources_head']}" if job.get("sources") else ""))
     env = step_env(job)
     deadline = now() + 60 * float(job["minutes"])
-    mine = []                           # this job's background UV-380 receive modules
+    mine = []                           # this job's background receive modules (UV-380, UV-21)
     bgs = []                            # all of this job's background steps: (do, process)
     for i, step in enumerate(job["steps"]):
         sr = {"n": i + 1, "do": step["do"], "started": utcnow()}
@@ -1924,8 +1934,8 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
                                             stderr=subprocess.STDOUT, start_new_session=True)
                     BACKGROUND.append(proc)
                     bgs.append((step["do"], proc))
-                    if step["do"] == "uv380.rx":
-                        mine.append(proc)
+                    if step["do"] in ("uv380.rx", "uv21.mod"):
+                        mine.append((step["do"], proc))
                     time.sleep(2.0)
                     if step["do"] == "logger":     # the logger holds the K6 cable for the job
                         o = kb.serial_owner()
@@ -1948,12 +1958,12 @@ def run_job(job, rd, rig=None, cancelled=lambda: False, now=time.time):
             res.update(status="cancelled" if why == "cancelled" or cancelled() else "failed",
                        reason=f"step {i + 1} ({step['do']}): {why or f'exit {rc}'}")
             break
-    for p in mine:                      # the UV-380's USB port stays the job's until they end
-        end = time.monotonic() + STEP_TIMEOUT["uv380.rx"]
+    for do, p in mine:                  # the radio's port stays the job's until they end
+        end = time.monotonic() + STEP_TIMEOUT[do]
         while p.poll() is None and time.monotonic() < end and not cancelled():
             time.sleep(0.5)
         if p.poll() is None:
-            ctx.say("stopping a background uv380.rx still running at the job's end")
+            ctx.say(f"stopping a background {do} still running at the job's end")
             stop_group(p)
     # a logger holds the K6 cable for its job only, and a failed or cancelled job's other
     # background steps end with it (2026-11-19: a cancelled job's logger, left to its 560 s
@@ -2433,6 +2443,8 @@ def sample_jobs(tmp, co, key):
         ("UV-21 Pro bring-up console: report and RF registers", J("ok-kdhcon", {"do": "kdh.console", "args": ["--send", "ir", "--seconds", "20"]}), True),
         ("UV-21 Pro bring-up console asked to power off", J("bad-kdhcon", {"do": "kdh.console", "args": ["--send", "O"]}), False),
         ("UV-21 Pro RAM module: REG_1F sweep on 439.500", J("ok-uv21mod", {"do": "uv21.mod", "args": ["regsweep", "SW_REG=0x1F", "SW_VALS=0x1657,0xC65A", "SW_HZ=439500000"]}, freq_mhz="bench"), True),
+        ("UV-21 sotto receive module in the background while the Pluto sends", J("ok-uv21rx", {"do": "uv21.mod", "args": ["sottorx", "SR_S=90"], "background": True}, {"do": "wait", "seconds": 5}, {"do": "pluto", "args": ["send", wav, "--gain", "-60"]}, freq_mhz=440.850), True),
+        ("UV-21 module that isn't receive-only, in the background", J("bad-uv21bg", {"do": "uv21.mod", "args": ["regsweep"], "background": True}, freq_mhz="bench"), False),
         ("UV-21 Pro RAM module with a compiler option", J("bad-uv21mod", {"do": "uv21.mod", "args": ["regsweep", "-include/etc/passwd"]}, freq_mhz="bench"), False),
         ("SoapyFang: the UV-21 sim on the live Pluto for 30 min", J("ok-soapy", {"do": "sim.soapyfang", "args": ["--minutes", "30", "--gain", "50", "--image", img_plain, "--syms", wav]}, freq_mhz="bench", minutes=35), True),
         ("SoapyFang without an image (hamlet can't build one)", J("bad-soapyimg", {"do": "sim.soapyfang", "args": ["--minutes", "30"]}, freq_mhz="bench", minutes=35), False),
