@@ -29,6 +29,7 @@ pub(super) fn sync_watching_to_master(app: &mut App, syst: &mut SYST) {
     apply_watching_to_radio(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn step(app: &mut App, syst: &mut SYST, up: bool) {
     let s = &mut app.sides[app.master];
     match s.vfo_chan {
@@ -52,6 +53,7 @@ pub(super) fn step(app: &mut App, syst: &mut SYST, up: bool) {
     sync_watching_to_master(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn find_programmed_channel(app: &mut App, from: u16, up: bool) -> Option<u16> {
     let mut num = from;
     for _ in 0..=MAX_CHANNEL_NUM {
@@ -73,6 +75,7 @@ pub(super) fn find_programmed_channel(app: &mut App, from: u16, up: bool) -> Opt
     None
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn commit_input(app: &mut App, syst: &mut SYST) {
     let value = app.input.entered_value();
     match app.sides[app.master].vfo_chan {
@@ -93,6 +96,7 @@ pub(super) fn commit_input(app: &mut App, syst: &mut SYST) {
     app.input.clear();
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn toggle_vfo_channel(app: &mut App, syst: &mut SYST) {
     let s = &mut app.sides[app.master];
     match s.vfo_chan {
@@ -129,6 +133,7 @@ pub(super) fn toggle_vfo_channel(app: &mut App, syst: &mut SYST) {
     sync_watching_to_master(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn switch_side(app: &mut App, syst: &mut SYST) {
     app.master = 1 - app.master;
     app.input.clear();
@@ -136,6 +141,7 @@ pub(super) fn switch_side(app: &mut App, syst: &mut SYST) {
     sync_watching_to_master(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn toggle_reverse(app: &mut App, syst: &mut SYST) {
     let s = &mut app.sides[app.master];
     s.reversed = !s.reversed;
@@ -143,6 +149,7 @@ pub(super) fn toggle_reverse(app: &mut App, syst: &mut SYST) {
     sync_watching_to_master(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn toggle_power(app: &mut App, syst: &mut SYST) {
     let s = &mut app.sides[app.master];
     s.cfg.power = match s.cfg.power {
@@ -153,12 +160,14 @@ pub(super) fn toggle_power(app: &mut App, syst: &mut SYST) {
     commit_side_change(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn toggle_wide_narrow(app: &mut App, syst: &mut SYST) {
     let s = &mut app.sides[app.master];
     s.cfg.wide_band = !s.cfg.wide_band;
     commit_side_change(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn toggle_modulation(app: &mut App, syst: &mut SYST) {
     if app.cw_tx_active {
         app.radio.enter_rx(syst);
@@ -177,6 +186,7 @@ pub(super) fn toggle_modulation(app: &mut App, syst: &mut SYST) {
     sync_watching_to_master(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn commit_side_change(app: &mut App, syst: &mut SYST) {
     app.sides[app.master].refresh_cfg_freqs();
     if matches!(app.sides[app.master].vfo_chan, ChVfoMode::Vfo) {
@@ -185,12 +195,14 @@ pub(super) fn commit_side_change(app: &mut App, syst: &mut SYST) {
     sync_watching_to_master(app, syst);
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn load_channel_num(app: &mut App, num: u16) {
     let ch = app.storage.read_channel(num);
     app.sides[app.master].load_channel(num, &ch);
     app.ani_target_override = None;
 }
 
+#[cfg(not(feature = "pager-only"))]
 pub(super) fn refresh_channel_display(app: &mut App, num: u16) {
     for i in 0..app.sides.len() {
         let showing =

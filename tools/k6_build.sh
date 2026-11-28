@@ -141,7 +141,8 @@ else
   echo "module loader: no K6_MOD_KEY_FILE, so it refuses every module"
 fi
 $CC $CFLAGS -Oz ${KM:+-DKM_KEY=$KM} -c "$ROOT/c/k6/k6_mod.c" -o "$OUT/k6_mod.o"
-# the SPI module library (k6_lib.h): install / load a module image in its SPI slot
+# the SPI module library (k6_lib.h): install / load a module image in its SPI slot (it #includes
+# c/common/mod_lib.c, so the shared library builds inside it)
 $CC $CFLAGS -Oz -c "$ROOT/c/k6/k6_lib.c" -o "$OUT/k6_lib.o"
 # the LZ4 block decoder (lz4d.h, docs/k6-lz4.md) for packed module images, slots and help cards:
 # -Os, smaller than -Oz here

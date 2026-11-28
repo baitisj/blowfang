@@ -84,6 +84,9 @@ c/*
 c/common/ffsk_tx.*
 c/common/lz4d.*
 c/common/m17_rx.h
+# the portable SPI-flash module library under c/k6/k6_lib.c, and the module header it reads
+c/common/mod_core.h
+c/common/mod_lib.*
 c/common/pager_tx.*
 c/common/radio_api.h
 c/common/range_rx*
@@ -102,8 +105,9 @@ radios/uv380/
 # its tests build the OpenRTX RAM modules, the I2S probe and sotto8k too
 firmware/uv380-openrtx/
 c/common/
-# the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
+# the K6's LZ4 decoder, SPI-flash codebooks and SPI module library: shared C that only the K6 builds so far
 !c/common/lz4d.*
+!c/common/mod_lib.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 # the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it
@@ -155,8 +159,9 @@ tests/test_pager_rx.py
 .github/workflows/uv380-openrtx.yml
 firmware/uv380-openrtx/
 c/common/
-# the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
+# the K6's LZ4 decoder, SPI-flash codebooks and SPI module library: shared C that only the K6 builds so far
 !c/common/lz4d.*
+!c/common/mod_lib.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 # the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it
@@ -178,8 +183,9 @@ radios/uv380/src/board.h
 .github/workflows/rt950.yml
 radios/rt950/
 c/common/
-# the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
+# the K6's LZ4 decoder, SPI-flash codebooks and SPI module library: shared C that only the K6 builds so far
 !c/common/lz4d.*
+!c/common/mod_lib.*
 !c/common/lz4c.*
 !c/common/scrgrab.*
 !c/common/sp_cb.*
