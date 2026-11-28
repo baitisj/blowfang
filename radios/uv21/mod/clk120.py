@@ -55,8 +55,23 @@ def grabs(text):
     return out
 
 
+def run_lines(text):
+    """the last clk120 run in a log: from its "clk home" line to the "um end" after it (a bench
+    job's uv21mod.log holds every module the job ran, such as hello's um end after it)"""
+    lines = text.splitlines()
+    homes = [i for i, ln in enumerate(lines) if (m := STATE.search(ln)) and m.group(1) == "home"]
+    start = homes[-1] if homes else None
+    if start is None:
+        return text
+    for j in range(start, len(lines)):
+        if END.search(lines[j]):
+            return "\n".join(lines[start:j + 1])
+    return "\n".join(lines[start:])
+
+
 def verdict(text, ret=None):
-    """what the run says, and whether it passed"""
+    """what the last clk120 run in the log says, and whether it passed"""
+    text = run_lines(text)
     v = {"states": {}, "checks": {}, "cpu": {}, "adc": {}, "rssi": {}, "problems": []}
     for ln in text.splitlines():
         m = STATE.search(ln)
@@ -128,7 +143,7 @@ def main(argv=None):
     ap.add_argument("--scale", type=int, default=3)
     ap.add_argument("--ref", help="a PNG of SURF at --scale to compare the home grab with")
     a = ap.parse_args(argv)
-    text = open(a.log, errors="replace").read()
+    text = run_lines(open(a.log, errors="replace").read())
     v = verdict(text)
     st = v["states"]
     print(" -> ".join(f"{k} {st[k]['mhz']} MHz" for k in ("home", "new", "back") if k in st) or "no states")

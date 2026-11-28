@@ -148,6 +148,9 @@ def test_60_to_120_mhz_and_back(built):  # noqa: F811
     assert [px[y] for y in range(ROWS)] == [[card(x, Y0 + y) for x in range(128)] for y in range(ROWS)]
     v = uv21_clk.verdict(out, ret)
     assert v["pass"], v
+    # a bench job's log holds the other modules' lines too (job uv21clk1: hello before and after)
+    job_log = "hello uv21 rf=4829\num end 00004829\n" + out + f"\num end {ret:08x}\nhello uv21 rf=4829\num end 00004829\n"
+    assert uv21_clk.verdict(job_log)["pass"]
     # SURF draws its own screen again over the card
     wait(b, 2)
     assert [b.lfb[Y0][x] or 0 for x in range(128)] != [card(x, Y0) for x in range(128)]
