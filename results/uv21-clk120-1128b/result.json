@@ -1,12 +1,12 @@
 {
  "id": "uv21-clk120-1128b",
- "status": "queued",
- "queued": "2026-11-28T11:23:40Z",
+ "status": "running",
+ "since": "2026-11-28T11:23:47Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "090fe4ee235a1346ac8fb27fb41dfae217d1b36e",
   "path": "jobs/uv21-clk120-1128b"
  },
  "runner_commit": "b2d9c00964f7374bd157c692e8b40e4221308c4d",
- "updated": "2026-11-28T11:23:41Z"
+ "updated": "2026-11-28T11:23:47Z"
 }
