@@ -100,8 +100,6 @@ firmware/uv380-openrtx/
 c/common/
 # the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
 !c/common/lz4d.*
-!c/common/lz4c.*
-!c/common/scrgrab.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 # the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it
@@ -122,6 +120,9 @@ tools/uv380_*
 tools/tts_*
 tests/test_uv380*
 tests/c6m17rx_spk_host.c
+# the screen grab module's lines, decoded (tests/test_uv380_ortx_mod.py)
+modem/lz4.py
+tools/screen_grab.py
 tests/test_range_rx.py
 tests/data/uv380/
 tests/c/
@@ -152,8 +153,6 @@ firmware/uv380-openrtx/
 c/common/
 # the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
 !c/common/lz4d.*
-!c/common/lz4c.*
-!c/common/scrgrab.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 # the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it

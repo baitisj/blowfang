@@ -37,6 +37,24 @@ index 6bb1adec..ecb6f812 100644
  
  ##
  ## OpenRTX UI sources
+diff --git a/openrtx/include/core/graphics.h b/openrtx/include/core/graphics.h
+index 7cbf6d5..d535c53 100644
+--- a/openrtx/include/core/graphics.h
++++ b/openrtx/include/core/graphics.h
+@@ -115,6 +115,13 @@ void gfx_renderRows(uint8_t startRow, uint8_t endRow);
+  */
+ void gfx_render();
+ 
++/**
++ * blowfang: the framebuffer itself, read only, for the RAM modules' screen grab
++ * (ortx_mod.h screen): CONFIG_SCREEN_WIDTH x CONFIG_SCREEN_HEIGHT pixels, row
++ * after row, in the target's pixel format.
++ */
++const void *gfx_framebuffer();
++
+ /**
+  * Clears a portion of the screen content
+  * This results in a black screen on color displays
 diff --git a/openrtx/include/core/threads.h b/openrtx/include/core/threads.h
 index a94ea9e6..2d113277 100644
 --- a/openrtx/include/core/threads.h
@@ -174,6 +192,22 @@ index 393659ae..5c31aed8 100644
  };
  
  /**
+diff --git a/openrtx/src/core/graphics.c b/openrtx/src/core/graphics.c
+index 9757fd3..2e5f36d 100644
+--- a/openrtx/src/core/graphics.c
++++ b/openrtx/src/core/graphics.c
+@@ -165,6 +165,11 @@ void gfx_render()
+     display_render(framebuffer);
+ }
+ 
++const void *gfx_framebuffer()
++{
++    return framebuffer;
++}
++
+ void gfx_clearRows(uint8_t startRow, uint8_t endRow)
+ {
+     if (endRow < startRow)
 diff --git a/openrtx/src/core/state.c b/openrtx/src/core/state.c
 index 4e8e0630..76ac8e84 100644
 --- a/openrtx/src/core/state.c
@@ -295,7 +329,7 @@ new file mode 100644
 index 00000000..b2040737
 --- /dev/null
 +++ b/openrtx/src/rtx/OpMode_Pager.cpp
-@@ -0,0 +1,1945 @@
+@@ -0,0 +1,1957 @@
 +/*
 + * SPDX-FileCopyrightText: Copyright 2026 blowfang contributors
 + *
@@ -310,6 +344,8 @@ index 00000000..b2040737
 +#include "core/audio_codec.h"
 +#include "core/threads.h"
 +#include "core/state.h"
++#include "core/graphics.h"
++#include "hwconfig.h"
 +#include "rtx/OpMode_Pager.hpp"
 +#include "rtx/pager.h"
 +#include "rtx/rtx.h"
@@ -1503,11 +1539,21 @@ index 00000000..b2040737
 +    c2Path = -1;
 +}
 +
++// The screen as OpenRTX last drew it (ortx_mod.h screen, level 6): its
++// framebuffer, 160 x 128 RGB565, which the UI thread may be drawing into
++static const uint16_t *omScreen(unsigned *w, unsigned *h)
++{
++    *w = CONFIG_SCREEN_WIDTH;
++    *h = CONFIG_SCREEN_HEIGHT;
++    return (const uint16_t *) gfx_framebuffer();
++}
++
 +static const om_host omHost = {omLine, omWrite, omRead, omNow, omStop,
 +                               omSleep, omC6r, omC6w, omAdc, omRssi,
 +                               omProbe, omEncBegin, omEncPush, omEncEnd,
 +                               omMsg, omPreview, omTxRequest, omTxMic,
-+                               omTxTone, omC2Start, omC2Push, omC2Stop};
++                               omTxTone, omC2Start, omC2Push, omC2Stop,
++                               omScreen};
 +#endif
 +
 +#ifdef BLOWFANG_AIR
@@ -1804,7 +1850,7 @@ index 00000000..b2040737
 +                                  omSleep, omC6r, omC6w, NULL, omRssi,
 +                                  NULL, NULL, NULL, NULL,
 +                                  NULL, NULL, NULL, NULL,
-+                                  NULL, NULL, NULL, NULL};
++                                  NULL, NULL, NULL, NULL, NULL};
 +
 +// One listen in M17 or YSF; false in the other sub-modes (listenStep's turn)
 +static bool airListen()
