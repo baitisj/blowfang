@@ -138,6 +138,19 @@ the runner's `uv21.sotto`) listened on 440.850 while the Pluto sent the 23-packe
 console's 64 characters let it through (the line now splits the hash onto its own `so pcm=` line).
 `late=0`: the DMA never caught up with the decoder. The stack had 1,004 B to spare.
 
+### The speaker check (cable out)
+
+The serial cable mutes the radio's audio while it is in, so the check by ear goes without it, on
+Jeff's next visit:
+
+1. Unplug the UV-21's cable, then hold **0** in SURF until **SOTTO RX** shows at the top: it
+   listens on 440.850 for 60 s.
+2. Say go: job `s12spk1` (`~/blowfang-work/runs/s12-spk1/`) has the Pluto send the PSK31 ident
+   and then the 23-packet message as D/2400, about 20 s in all. The message should play from the
+   speaker as it streams in.
+3. Plug the cable back in: job `s12spk1b` reads the alive line, which is followed by the run's
+   `so last pk= g= f=/ late= pcm=` (kept until power-off) to check against the K6 decoder.
+
 ## Stage B plan
 
 1. The codebook write. Either a one-time writer RAM module (uploaded in pieces, each verified by
