@@ -319,9 +319,13 @@ pub struct Radio {
 
     tx_state: bool,
 
+    #[cfg(not(feature = "pager-only"))]
     ani: AniConfig,
+    #[cfg(not(feature = "pager-only"))]
     dtmf_rx_buf: [u8; DTMF_RX_MAX_DIGITS],
+    #[cfg(not(feature = "pager-only"))]
     dtmf_rx_len: u8,
+    #[cfg(not(feature = "pager-only"))]
     dtmf_rx_timeout: u8,
 
     tx_allowed: FreqRanges,
@@ -337,6 +341,8 @@ impl Radio {
         cfg: ChannelConfig,
         ani: AniConfig,
     ) -> Self {
+        #[cfg(feature = "pager-only")]
+        let _ = ani;
         Radio {
             fd6818,
             gpioa,
@@ -356,9 +362,13 @@ impl Radio {
             rssi_open: false,
             rssi_debounce: 0,
             tx_state: false,
+            #[cfg(not(feature = "pager-only"))]
             ani,
+            #[cfg(not(feature = "pager-only"))]
             dtmf_rx_buf: [0; DTMF_RX_MAX_DIGITS],
+            #[cfg(not(feature = "pager-only"))]
             dtmf_rx_len: 0,
+            #[cfg(not(feature = "pager-only"))]
             dtmf_rx_timeout: 0,
             tx_allowed: FreqRanges::hardware(),
             monitor: false,
@@ -518,6 +528,7 @@ impl Radio {
         self.fd6818.enter_dtmf_mode(syst, false);
     }
 
+    #[cfg(not(feature = "pager-only"))]
     pub fn send_ani(&mut self, syst: &mut SYST, target: [u8; 3]) {
         let digits = [
             target[0],
@@ -531,6 +542,7 @@ impl Radio {
         self.send_dtmf_digits(syst, &digits);
     }
 
+    #[cfg(not(feature = "pager-only"))]
     pub fn poll_dtmf(&mut self, syst: &mut SYST) -> Option<[u8; 3]> {
         if !self.audio_open {
             // The sender usually unkeys right after the last digit, so the
@@ -566,6 +578,7 @@ impl Radio {
         None
     }
 
+    #[cfg(not(feature = "pager-only"))]
     fn finish_dtmf_frame(&mut self) -> Option<[u8; 3]> {
         let len = self.dtmf_rx_len as usize;
         self.dtmf_rx_len = 0;
@@ -901,8 +914,11 @@ impl Radio {
         }
         board::set_speaker_switch(self.gpiob, false);
         self.fd6818.enter_dtmf_mode(syst, false);
-        self.dtmf_rx_len = 0;
-        self.dtmf_rx_timeout = 0;
+        #[cfg(not(feature = "pager-only"))]
+        {
+            self.dtmf_rx_len = 0;
+            self.dtmf_rx_timeout = 0;
+        }
         self.tx_state = false;
     }
 

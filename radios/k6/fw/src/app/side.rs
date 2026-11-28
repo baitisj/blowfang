@@ -2,6 +2,7 @@ use super::{power_from_raw, power_to_raw, subaudio_from_code, subaudio_to_code, 
 use crate::device::radio::{ChannelConfig, Power, SubAudio};
 use crate::flash_map::{self, addr};
 
+#[cfg(not(feature = "pager-only"))]
 #[derive(Clone, Copy)]
 pub(super) struct VfoBackup {
     pub rx_freq_hz: u32,
@@ -32,6 +33,7 @@ pub(super) struct Side {
     /// Raw 12-byte channel name (only meaningful when `vfo_chan ==
     /// Channel`); `[0; 12]` in VFO mode or for an unnamed channel.
     pub name: [u8; 12],
+    #[cfg(not(feature = "pager-only"))]
     pub vfo_backup: VfoBackup,
 }
 
@@ -68,6 +70,8 @@ impl Side {
         self.cfg.power = power_from_raw(vfo.tx_power);
         self.cfg.subaudio_tx = subaudio_from_code(vfo.tx_dcs_cts_num);
         self.cfg.subaudio_rx = subaudio_from_code(vfo.rx_dcs_cts_num);
+        #[cfg(not(feature = "pager-only"))]
+        {
         self.vfo_backup = VfoBackup {
             rx_freq_hz: self.rx_freq_hz,
             freq_dir: self.freq_dir,
@@ -78,6 +82,7 @@ impl Side {
             subaudio_rx: self.cfg.subaudio_rx,
             ani_target: self.ani_target,
         };
+        }
         self.refresh_cfg_freqs();
     }
 
@@ -94,6 +99,7 @@ impl Side {
         vfo.to_bytes()
     }
 
+    #[cfg(not(feature = "pager-only"))]
     pub fn restore_vfo_from_backup(&mut self) {
         let backup = self.vfo_backup;
         self.vfo_chan = ChVfoMode::Vfo;

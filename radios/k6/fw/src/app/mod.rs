@@ -186,30 +186,41 @@ pub struct App {
     transmitting: bool,
     tx_prohibited: bool,
     /// APRS beacon TX in progress, set by `send_beacon`, handled by main loop.
+    #[cfg(not(feature = "pager-only"))]
     aprs_beacon_pending: bool,
     dual_standby: bool,
     dual_hold_ticks: u16,
     tot_ticks: u16,
 
     key_idle_ticks: u16,
+    #[cfg(not(feature = "pager-only"))]
     vox_det_dly: u8,
+    #[cfg(not(feature = "pager-only"))]
     vox_work_dly: u8,
+    #[cfg(not(feature = "pager-only"))]
     vox_active: bool,
+    #[cfg(not(feature = "pager-only"))]
     rtone_sounding: bool,
+    #[cfg(not(feature = "pager-only"))]
     rtone_self_keyed: bool,
 
     /// Electric key state while the master side's modulation is `Cw`/`Cwf`;
     /// `set_ptt` routes to `set_cw_key` instead of the normal voice-PTT
     /// path in that case.
+    #[cfg(not(feature = "pager-only"))]
     cw_key_down: bool,
     /// Whether a CW/CWF carrier is currently keyed up, independent of
     /// `transmitting` (which is voice-PTT specific).
+    #[cfg(not(feature = "pager-only"))]
     cw_tx_active: bool,
     /// BK-IN=Semi hang countdown after the last key release; `poll_cw_hang`
     /// ticks it down and drops back to RX at zero.
+    #[cfg(not(feature = "pager-only"))]
     cw_hang_ticks: u16,
 
+    #[cfg(not(feature = "pager-only"))]
     ani_caller: Option<[u8; 3]>,
+    #[cfg(not(feature = "pager-only"))]
     ani_hold_ticks: u16,
     /// Ticks remaining to show the "NO CHANNELS" overlay after a VFO/Channel
 
@@ -221,6 +232,7 @@ pub struct App {
     /// by a 3-digit manual DTMF dial, cleared whenever the active channel
     /// changes. Falls back to the side's own `ani_target` (a contact-table
     /// index) when `None`.
+    #[cfg(not(feature = "pager-only"))]
     ani_target_override: Option<[u8; 3]>,
     /// `Some` while the standby DTMF dial input box (`*` key) is open;
     /// `None` the rest of the time (normal standby display).
@@ -318,6 +330,7 @@ impl App {
                 ani_target: None,
                 cfg: default_cfg,
                 name: [0; 12],
+                #[cfg(not(feature = "pager-only"))]
                 vfo_backup: side::VfoBackup {
                     rx_freq_hz: default_cfg.freq_hz,
                     freq_dir: 0,
@@ -341,6 +354,7 @@ impl App {
                 ani_target: None,
                 cfg: default_cfg,
                 name: [0; 12],
+                #[cfg(not(feature = "pager-only"))]
                 vfo_backup: side::VfoBackup {
                     rx_freq_hz: default_cfg.freq_hz,
                     freq_dir: 0,
@@ -424,24 +438,36 @@ impl App {
             key_lock: false,
             transmitting: false,
             tx_prohibited: false,
+            #[cfg(not(feature = "pager-only"))]
             aprs_beacon_pending: false,
             flashlight,
             dual_standby: settings.dual_standby,
             dual_hold_ticks: DUAL_STANDBY_HOLD_TICKS,
             tot_ticks: 0,
             key_idle_ticks: settings.key_auto_lock as u16 * 500,
+            #[cfg(not(feature = "pager-only"))]
             vox_det_dly: 0,
+            #[cfg(not(feature = "pager-only"))]
             vox_work_dly: 0,
+            #[cfg(not(feature = "pager-only"))]
             vox_active: false,
+            #[cfg(not(feature = "pager-only"))]
             rtone_sounding: false,
+            #[cfg(not(feature = "pager-only"))]
             rtone_self_keyed: false,
+            #[cfg(not(feature = "pager-only"))]
             cw_key_down: false,
+            #[cfg(not(feature = "pager-only"))]
             cw_tx_active: false,
+            #[cfg(not(feature = "pager-only"))]
             cw_hang_ticks: 0,
+            #[cfg(not(feature = "pager-only"))]
             ani_caller: None,
+            #[cfg(not(feature = "pager-only"))]
             ani_hold_ticks: 0,
             no_channels_ticks: 0,
             blink_phase: 0,
+            #[cfg(not(feature = "pager-only"))]
             ani_target_override: None,
             #[cfg(not(feature = "pager-only"))]
             dtmf_dial: None,
@@ -1327,7 +1353,14 @@ impl App {
         }
     }
     pub fn is_transmitting(&self) -> bool {
-        self.transmitting || self.cw_tx_active
+        #[cfg(not(feature = "pager-only"))]
+        {
+            self.transmitting || self.cw_tx_active
+        }
+        #[cfg(feature = "pager-only")]
+        {
+            self.transmitting
+        }
     }
     #[cfg(not(feature = "pager-only"))]
     pub fn tx_prohibited(&self) -> bool {
