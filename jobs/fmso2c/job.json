@@ -1,0 +1,101 @@
+{
+ "id": "fmso2c",
+ "who": "fmsotto",
+ "freq_mhz": 440.85,
+ "minutes": 15,
+ "steps": [
+  {
+   "do": "logger",
+   "seconds": 800,
+   "file": "k6.log"
+  },
+  {
+   "do": "ic7100.tune",
+   "hz": 440850000
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:wake.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "3000",
+    "--gain",
+    "-30"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 30,
+   "pattern": "VOICE MSG for",
+   "continue_on_error": true
+  },
+  {
+   "do": "k6.upload",
+   "module": "job:fmsotto.bin",
+   "args": [
+    "--via",
+    "pluto",
+    "--pluto-gain",
+    "-40",
+    "--api-level",
+    "16",
+    "--rate",
+    "auto",
+    "--rate-state",
+    "run:k6-rate.json",
+    "--telemetry",
+    "0",
+    "--rounds",
+    "1",
+    "--run-s",
+    "0"
+   ],
+   "continue_on_error": true,
+   "sha256": "4d69a1c515b09f982c2d4c5954e68d42ad333d57566977da168c06e302edf252"
+  },
+  {
+   "do": "wait",
+   "pattern": "fms start",
+   "seconds": 200
+  },
+  {
+   "do": "wait",
+   "seconds": 12
+  },
+  {
+   "do": "pluto",
+   "args": [
+    "send",
+    "job:voices.wav",
+    "--hz",
+    "440850000",
+    "--dev",
+    "6723",
+    "--gain",
+    "-30",
+    "--preemph"
+   ],
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "pattern": "fms end",
+   "seconds": 120,
+   "continue_on_error": true
+  },
+  {
+   "do": "wait",
+   "seconds": 5
+  },
+  {
+   "do": "logger.stop"
+  },
+  {
+   "do": "ic7100.power0"
+  }
+ ]
+}
