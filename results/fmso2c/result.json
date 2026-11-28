@@ -1,0 +1,12 @@
+{
+ "id": "fmso2c",
+ "status": "queued",
+ "queued": "2026-11-28T20:52:36Z",
+ "inbox": {
+  "branch": "claude/bench-jobs",
+  "commit": "d1cfbcd72f8c5c0bdb76094a391f1d217f35ec67",
+  "path": "jobs/fmso2c"
+ },
+ "runner_commit": "1b9b34c02147203dbf6d0c273b81e5a6bc675b7f",
+ "updated": "2026-11-28T20:52:36Z"
+}
