@@ -83,6 +83,8 @@ class Failed(Exception):
 def upload(port, img, log=print, run_timeout=120.0, line_timeout=2.0, tries=3):
     """Sends the image and runs it; returns (the module's lines, its return value). port: an open
     pyserial port at 115200 (the radio in SURF)."""
+    rest = [b""]          # what came after the answer (a module's first lines follow "um run")
+
     def answer(want, timeout):
         end, buf = time.time() + timeout, b""
         while time.time() < end:
@@ -91,6 +93,7 @@ def upload(port, img, log=print, run_timeout=120.0, line_timeout=2.0, tries=3):
                 ln, buf = buf.split(b"\n", 1)
                 t = ln.decode("ascii", "replace").strip()
                 if t.startswith("um "):
+                    rest[0] = buf
                     return t
         return None
 
@@ -108,7 +111,7 @@ def upload(port, img, log=print, run_timeout=120.0, line_timeout=2.0, tries=3):
     got = answer("um ", line_timeout)
     if got != "um run":
         raise Failed(f"run refused: {got}")
-    out, end, buf = [], time.time() + run_timeout, b""
+    out, end, buf = [], time.time() + run_timeout, rest[0]
     while time.time() < end:
         buf += port.read(port.in_waiting or 1)
         while b"\n" in buf:

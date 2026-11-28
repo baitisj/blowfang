@@ -100,6 +100,8 @@ firmware/uv380-openrtx/
 c/common/
 # the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
 !c/common/lz4d.*
+!c/common/lz4c.*
+!c/common/scrgrab.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 # the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it
@@ -150,6 +152,8 @@ firmware/uv380-openrtx/
 c/common/
 # the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
 !c/common/lz4d.*
+!c/common/lz4c.*
+!c/common/scrgrab.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 # the K6 / UV-21 module API's shared head: only K6 and UV-21 modules (and the K6 SURF tests) include it
@@ -173,6 +177,8 @@ radios/rt950/
 c/common/
 # the K6's LZ4 decoder and SPI-flash codebooks: shared C that only the K6 builds so far
 !c/common/lz4d.*
+!c/common/lz4c.*
+!c/common/scrgrab.*
 !c/common/sp_cb.*
 !c/common/sp_vlr.*
 tools/ssb_polar_sweep.py
@@ -221,6 +227,14 @@ sim/soapyfang/pluto.py
 radios/uv21/
 radios/common-rs/
 tools/uv21_kdh.py
+# the shared screen-grab format and its LZ4 packer (c/common/scrgrab.h, lz4c.h), first used by the
+# UV-21's scrdump module, and the tool that turns a grab into a PNG (tests/test_scrgrab.py,
+# tests/test_uv21_scrdump.py)
+c/common/lz4c.*
+c/common/scrgrab.*
+modem/lz4.py
+tools/screen_grab.py
+tests/test_scrgrab.py
 tools/bench_kplug.py
 tests/test_uv21*
 # RAM modules over the cable (radios/uv21/mod, built and uploaded by modem/uv21mod.py on the K6's

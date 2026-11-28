@@ -148,6 +148,24 @@ class Port(bu.Radio):
                 x, y = d["x"][0], y + 1
             d["px"] = (x, y)
 
+    # the same controller read by bit-banging (radios/uv21/mod/scrdump.c): bring-up's bus model,
+    # plus RAMRD (0x2E) answering from the screen as SPI2 drew it: a dummy clock and a dummy byte
+    # (as the radio does, measured 2026-11-28), then each pixel of the CASET/RASET window as three
+    # bytes, its 6-bit R, G, B in the top bits (5-bit R and B widened by repeating their top bit)
+    def lcd_bus(self, lv, rise, fall):
+        d = self.lcd
+        n = len(d["cmds"])
+        super().lcd_bus(lv, rise, fall)
+        if len(d["cmds"]) > n and d["cmds"][-1] == 0x2E:
+            bits = [0] * 9
+            for y in range(d["y"][0], d["y"][1] + 1):
+                for x in range(d["x"][0], d["x"][1] + 1):
+                    c = self.lfb[y][x] if 0 <= y < 160 and 0 <= x < 160 and self.lfb[y][x] is not None else 0
+                    r, g, b = c >> 11 & 31, c >> 5 & 63, c & 31
+                    for v in ((r << 1 | r >> 4) << 2, g << 2, (b << 1 | b >> 4) << 2):
+                        bits += [(v >> (7 - i)) & 1 for i in range(8)]
+            d["read"] = bits
+
     def mmio(self, uc, access, addr, size, value, ud):
         put = lambda v: uc.mem_write(addr, struct.pack("<I", v & 0xFFFFFFFF))  # noqa: E731
         mem = lambda: struct.unpack("<I", uc.mem_read(addr, 4))[0]  # noqa: E731
