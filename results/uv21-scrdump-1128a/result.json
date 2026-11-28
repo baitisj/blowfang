@@ -1,12 +1,12 @@
 {
  "id": "uv21-scrdump-1128a",
- "status": "queued",
- "queued": "2026-11-28T07:03:24Z",
+ "status": "running",
+ "since": "2026-11-28T07:03:31Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "e3366918f3f84b1e8dabacd073d0f8b1cedad007",
   "path": "jobs/uv21-scrdump-1128a"
  },
  "runner_commit": "e44e03955a3f3bc0e435bcaf494bfa00553833ee",
- "updated": "2026-11-28T07:03:24Z"
+ "updated": "2026-11-28T07:03:31Z"
 }
