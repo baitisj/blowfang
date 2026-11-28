@@ -280,7 +280,8 @@ def test_image_listens_in_m17_and_ysf_from_flash():
     assert "            if(airListen() == false)\n#endif\n                listenStep();" in poll
     host = pager[pager.index("static const om_host airLsHost"):]
     host = host[:host.index("};")]
-    assert host.count("NULL") == 13 and "omTxTone" not in host and "omC2" not in host
+    # 14: the level-6 screen call too (ortx_mod.h), which a listen from flash doesn't need
+    assert host.count("NULL") == 14 and "omTxTone" not in host and "omC2" not in host
     assert "airLsRead" in host and "airLsStop" in host and "airLsLine" in host
     ls = pager[pager.index("static bool airListen()"):]
     ls = ls[:ls.index("\n}\n")]
