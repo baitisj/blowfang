@@ -135,6 +135,20 @@ def test_a_receive_only_uv21_module_may_listen_in_the_background(work):
     assert tb.problems(tb.job("m", {"do": "uv21.mod", "args": ["regsweep"], "background": True}))
 
 
+
+def test_the_ports_sotto_receiver_step(work):
+    """[S12] uv21.sotto: the port image's own receiver (`um s`), HZ and SECONDS only, may listen in
+    the background, holds the UV-21's cable"""
+    step = {"do": "uv21.sotto", "args": ["440850000", "60"], "background": True}
+    assert tb.problems(tb.job("m", step)) == ""
+    argv, _, bg = br.command(tb.job("m"), step, str(work / "rd"))
+    assert bg and argv[1:5] == ["-m", "modem.uv21mod", "sotto", "/dev/uv21cable"]
+    assert argv[5:9] == ["--hz", "440850000", "--seconds", "60"] and br.uses_cable(step)
+    for bad in (["440850000"], ["4408e5", "60"], ["900000000", "60"], ["440850000", "601"],
+                ["440850000", "60", "--log"]):
+        assert tb.problems(tb.job("m", {"do": "uv21.sotto", "args": bad})), bad
+
+
 def test_inbox_takes_a_uv21_module_from_a_branch():
     spec = importlib.util.spec_from_file_location("bench_inbox", os.path.join(TOOLS, "bench_inbox.py"))
     bi = importlib.util.module_from_spec(spec)
