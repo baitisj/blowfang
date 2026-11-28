@@ -26,7 +26,7 @@
    fault, a lost lock) resets the radio the same way, with no hands. CK_DEADMAN=0 leaves it off.
 
    Checks, at the image's clock ("home"), at the new one ("new"), and some again back home ("back"):
-     clk rf    ~30 RF-chip setup registers, read twice at home (those that agree), then compared
+     clk rf    29 RF-chip setup registers, read twice at home (those that agree), then compared
      clk fl    CRC-32 of the 60 KB app area of the MCU's flash (the wait states)
      clk cpu   a RAM loop and a call loop into flash, in 100 us ticks (half at twice the clock)
      clk adc   the battery channel, 16 conversions averaged (information only)
@@ -111,10 +111,11 @@
 #define BAUD 115200u
 #define SPIN 200000u                    /* bound on every status wait (~150 ms at 8 MHz; a lock takes ~0.2 ms) */
 
-/* the RF chip's setup registers (stock init, docs/uv21-characteristics.md); live ones left out */
+/* the RF chip's setup registers (stock init, docs/uv21-characteristics.md); live ones left out,
+   and the frequency (0x38, 0x39), which the RSSI check's tuning moves */
 static const uint8_t RF_REGS[] = {0x00, 0x10, 0x11, 0x12, 0x13, 0x14, 0x19, 0x1C, 0x1D, 0x1E,
-                                  0x1F, 0x28, 0x29, 0x2A, 0x2C, 0x2F, 0x36, 0x37, 0x38, 0x39,
-                                  0x3E, 0x43, 0x46, 0x48, 0x49, 0x4F, 0x53, 0x73, 0x77, 0x7B, 0x7D};
+                                  0x1F, 0x28, 0x29, 0x2A, 0x2C, 0x2F, 0x36, 0x37, 0x3E, 0x43,
+                                  0x46, 0x48, 0x49, 0x4F, 0x53, 0x73, 0x77, 0x7B, 0x7D};
 #define NRF (sizeof RF_REGS)
 /* clock harmonics (60 MHz: 420, 480; 120 MHz: 360, 480) and the bench's own channels */
 __attribute__((unused)) static const uint32_t RSSI_HZ[] = {420000000u, 440850000u, 446000000u, 480000000u,
