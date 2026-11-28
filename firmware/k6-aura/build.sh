@@ -458,6 +458,7 @@ samedf         # level 2, the plain FSK receiver as a sampler of NOAA SAME audio
 samerx         # level 2, NOAA SAME headers read in the radio from the plain FSK receiver as a sampler, 162.550 for 2 h, docs/k6-pocsag.md
 samerx_440     # level 2, samerx on 440.850 for the bench: its three sample rates (receive only, docs/k6-pocsag.md)
 scan           # level 2, patched by tools/k6_scan.py
+scrgrab        # level 17, the screen tap: the core redraws its screen through it, sent as scrgrab lines (c/common/scrgrab.h, tools/screen_grab.py)
 settings       # level 10, the radio's settings: the backlight's idle time (hal::light), saved in Aura's settings record
 settle         # level 2
 spksweep
