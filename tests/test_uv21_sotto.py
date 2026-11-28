@@ -73,3 +73,20 @@ def test_it_fits_and_reads_its_codebook_from_spi():
     nm = subprocess.run(["llvm-nm", os.path.join(OUT, "fit.elf")], capture_output=True, text=True).stdout
     assert "fx_cb0" not in nm and "sp_flash_read" in nm
     assert "sp_flash_write" not in nm and "sp_flash_erase4k" not in nm   # (no install path linked)
+
+
+def test_the_receivers_packet_check_reads_the_k6_pagers_packets(tmp_path):
+    """sottorx_core.h's PN9 + CRC check (the sottorx module's and the port's) against modem/pager.py's
+    0xA9 packets: good ones pass, a flipped bit fails, word-swapped bytes are found as such"""
+    exe = tmp_path / "srx"
+    subprocess.run([os.environ.get("CC", "cc"), "-O1", "-std=c99", "-Wall", "-Werror",
+                    "-I" + os.path.join(ROOT, "radios", "uv21", "mod"),
+                    os.path.join(ROOT, "radios", "uv21", "sotto", "srx_check_host.c"), "-o", str(exe)], check=True)
+    pk = bench.packets_of(bench.frames_of(70), "XL")
+    bad = bytearray(pk[1])
+    bad[40] ^= 4
+    sw = bytes(pk[0][i ^ 1] for i in range(len(pk[0])))
+    out = subprocess.run([str(exe)], input=b"".join(pk) + bytes(bad) + sw, capture_output=True,
+                         check=True).stdout.decode().split("\n")
+    assert out[:len(pk)] == ["ok a9"] * len(pk)
+    assert out[len(pk):len(pk) + 2] == ["bad", "swap a9"]

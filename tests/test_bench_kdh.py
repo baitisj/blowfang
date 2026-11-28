@@ -125,6 +125,16 @@ def test_uv21_module_args(work):
     assert cwd == os.path.realpath(tb.REPO) and br.uses_cable({"do": "uv21.mod"})
 
 
+
+def test_a_receive_only_uv21_module_may_listen_in_the_background(work):
+    """[S12] sottorx listens while a Pluto send comes, as uv380.rx does; nothing else may"""
+    step = {"do": "uv21.mod", "args": ["sottorx", "SR_S=90"], "background": True}
+    assert tb.problems(tb.job("m", step)) == ""
+    argv, _, bg = br.command(tb.job("m"), step, str(work / "rd"))
+    assert bg and argv[5].endswith(os.path.join("radios", "uv21", "mod", "sottorx.c"))
+    assert tb.problems(tb.job("m", {"do": "uv21.mod", "args": ["regsweep"], "background": True}))
+
+
 def test_inbox_takes_a_uv21_module_from_a_branch():
     spec = importlib.util.spec_from_file_location("bench_inbox", os.path.join(TOOLS, "bench_inbox.py"))
     bi = importlib.util.module_from_spec(spec)
