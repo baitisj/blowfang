@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "fmso2b",
-   "who": "fmsotto",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "fmso2b",
+  "who": "fmsotto",
+  "since": "2026-11-28T20:46:12Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-28T20:46:05Z",
  "error": null,
  "update": null,
- "updated": "2026-11-28T20:46:05Z"
+ "updated": "2026-11-28T20:46:12Z"
 }
