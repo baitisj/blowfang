@@ -172,8 +172,9 @@ fn code(key: KeyId) -> i32 {
     }) as i32
 }
 
-/// [S12] how long a long 0 listens for a sotto 1200 message on the wake's frequency
-const SOTTO_LISTEN_S: u32 = 30;
+/// [S12] how long a long 0 listens for a sotto 1200 message on the wake's frequency (time to put
+/// the radio down and start the sender, with the cable out for a speaker check)
+const SOTTO_LISTEN_S: u32 = 60;
 
 extern "C" fn key() -> i32 {
     let s = syst();
@@ -310,13 +311,15 @@ extern "C" fn poll() -> i32 {
         con::kv_hex("s", now / 1000, 4);
         con::kv_hex("stk", crate::hal::stackprobe::spare(), 4);
         con::nl();
+        crate::sotto::say_last();
     }
     0
 }
 
 extern "C" fn wake(hz: u32, dbm: i32, floor: i32) {
-    // nothing to wake into yet (the K6 opens its module receiver; the UV-21 has no antenna and
-    // no module loader): the line for the bench, and SURF shows WAKE HEARD
+    // the line for the bench, and SURF shows WAKE HEARD. ([S12] tried: a wake starting a sotto
+    // listen. SURF's state shares the arena with the receiver, so every wake (any carrier on
+    // 440.850, the K6 bench's daily traffic) restarted SURF and dropped its keys; a long 0 does it)
     con::puts("uv21 wake");
     con::kv_hex("hz", hz, 8);
     con::kv_hex("dbm", dbm as u32 & 0xFFFF, 4);
