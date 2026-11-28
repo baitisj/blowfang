@@ -1,12 +1,12 @@
 {
  "id": "uv21-scrgrab-1128b",
- "status": "queued",
- "queued": "2026-11-28T07:12:33Z",
+ "status": "running",
+ "since": "2026-11-28T07:12:40Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "3963866c3fbbe7285e579c7aa72deedf5e771d6d",
   "path": "jobs/uv21-scrgrab-1128b"
  },
  "runner_commit": "e44e03955a3f3bc0e435bcaf494bfa00553833ee",
- "updated": "2026-11-28T07:12:33Z"
+ "updated": "2026-11-28T07:12:40Z"
 }

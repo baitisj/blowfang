@@ -4,16 +4,14 @@
  "autoupdate": true,
  "paused": null,
  "ic7100_held": null,
- "running": null,
- "waiting": [
-  {
-   "id": "uv21-scrgrab-1128b",
-   "who": "screen",
-   "not_before": null
-  }
- ],
+ "running": {
+  "id": "uv21-scrgrab-1128b",
+  "who": "screen",
+  "since": "2026-11-28T07:12:40Z"
+ },
+ "waiting": [],
  "last_poll": "2026-11-28T07:12:33Z",
  "error": null,
  "update": null,
- "updated": "2026-11-28T07:12:33Z"
+ "updated": "2026-11-28T07:12:40Z"
 }
