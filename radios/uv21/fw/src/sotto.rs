@@ -24,6 +24,18 @@ const CB_WINDOW: u32 = 0x8000;
 
 extern "C" {
     fn uv21_sotto(api: *const UmApi, ram: *mut u8, ram_len: u32, hz: u32, listen_s: u32) -> i32;
+    fn uv21_sotto_last(out: *mut u8) -> i32;
+}
+
+/// the last receive's summary line ("so last pk= g= f=/ late= pcm="), after SURF's alive line:
+/// a check made with the cable out reads it once the cable is back
+pub fn say_last() {
+    let mut buf = [0u8; 72];
+    if unsafe { uv21_sotto_last(buf.as_mut_ptr()) } != 0 {
+        let n = buf.iter().position(|&b| b == 0).unwrap_or(0);
+        con::puts(core::str::from_utf8(&buf[..n]).unwrap_or("so last ?"));
+        con::nl();
+    }
 }
 
 /// c/common/sp_cb.h: the library's flash reads. Inside the codebook's window they come from

@@ -63,6 +63,10 @@ def test_listens_with_the_codebook_and_surf_comes_back(built):
     assert (0x58, 0x0000) in w[[i for i, x in enumerate(w) if x == (0x58, 0x00E9)][-1]:]
     assert {v for r, v in b.tx_watch if r == 0x36} <= {0x0022}
     assert not [op for op in b.nor_ops if op[0] in WRITES]
+    # the run's summary follows SURF's alive line from then on (a speaker check is made with the
+    # cable out: the line is there to read once it's back)
+    m, more = until(b, r"alive surf[^\n]*\n+so last pk=0 g=0 f=0/0 late=0 pcm=[0-9a-f]{8}", 12)
+    assert m, more[-300:]
 
 
 def test_without_the_codebook_it_plays_nothing(built):

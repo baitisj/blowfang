@@ -66,6 +66,26 @@
 #define SO_EMPHASIS 0                    /* the K6's RC correction; the UV-21's filter isn't measured */
 #endif
 
+/* the last run's summary, for the port's alive line (uv21_sotto_last): with the cable out (it
+   mutes the radio's audio input, and the speaker check is done by ear) the "so" lines go nowhere,
+   so the port repeats this one after the cable is back */
+static struct {
+  uint32_t runs, pk, good, frames, total, played, late, pcm, n;
+} last;
+
+/* "so last ..." into out (at least 64 bytes); 0 if the receiver hasn't run since boot */
+int uv21_sotto_last(char *out) {
+  if (!last.runs) return 0;
+  char *p = um_put(out, "so last pk=");
+  p = um_int(p, (int32_t)last.pk);
+  p = um_int(um_put(p, " g="), (int32_t)last.good);
+  p = um_int(um_put(p, " f="), (int32_t)last.frames);
+  p = um_int(um_put(p, "/"), (int32_t)last.total);
+  p = um_int(um_put(p, " late="), (int32_t)last.late);
+  um_hex(um_put(p, " pcm="), last.pcm, 8);
+  return 1;
+}
+
 static void say2(const um_api_t *api, const char *a, int32_t x, const char *b, int32_t y) {
   char t[64];
   char *p = um_put(t, a);
@@ -217,6 +237,8 @@ int uv21_sotto(const um_api_t *api, uint8_t *ram, uint32_t ram_len, uint32_t hz,
   p = um_int(um_put(p, " played="), (int32_t)played);
   um_int(um_put(p, " late="), (int32_t)late);
   api->say(t);
+  last.runs++, last.pk = pk, last.good = good, last.frames = st.frames_got, last.total = st.total;
+  last.played = played, last.late = late, last.pcm = h, last.n = n;
   /* its own line: the console takes 64 characters a line (job s12flash1 lost the hash's tail) */
   p = um_hex(um_put(t, "so pcm="), h, 8);
   um_int(um_put(p, " n="), (int32_t)n);
