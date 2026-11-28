@@ -159,7 +159,8 @@ def test_both_parts_fit_the_block_with_their_ram():
     from modem import uv21mod
     for part in (7, 8):
         img = uv21mod.image(*uv21mod.build(SRC, [f"FP_PART={part}"]))
-        assert len(img) + 7 + {7: 380, 8: 240}[part] <= 4096, (part, len(img))   # sc_t, about
+        # sc_t, about; the block is the 12 KB arena since PR #293 (was 4 KB)
+        assert len(img) + 7 + {7: 380, 8: 240}[part] <= uv21mod.ROOM, (part, len(img))
 
 
 @need_clang
