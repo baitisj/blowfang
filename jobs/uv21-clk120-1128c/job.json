@@ -1,0 +1,27 @@
+{
+ "id": "uv21-clk120-1128c",
+ "who": "clk",
+ "minutes": 10,
+ "freq_mhz": "bench",
+ "note": "UV-21 clock test from RAM, no flash, no transmit: clk120 moves the 60 MHz image to 120 MHz, checks serial (60 s soak), RF regs, flash CRC, LCD test card + screen grabs, back to 60; watchdog deadman resets the radio ~26 s after; then hello proves it is back",
+ "sources_commit": "865642c865a8eb4cc61aee09d76b2fd2fec48ff8",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "clk120",
+    "CK_SOAK_S=60"
+   ]
+  },
+  {
+   "do": "wait",
+   "seconds": 60
+  },
+  {
+   "do": "uv21.mod",
+   "args": [
+    "hello"
+   ]
+  }
+ ]
+}
