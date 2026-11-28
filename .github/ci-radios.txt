@@ -292,6 +292,8 @@ tests/test_soapyfang.py
 
 [bench]
 .github/workflows/bench-tools.yml
+# PC-side NATO keyword spotter prototype (runs on a PC or hamlet, never on a radio)
+tools/kws/
 # The Pluto SDR (tools/pluto_bench.py, the on-Pluto channelizer tools/pluto_chan/, the firmware
 # helpers) and the hamlet bench runner and its jobs inbox. These run on hamlet, not on a radio, so
 # a change here runs only bench-tools.yml's Python tests. The wildcard lines place a new
