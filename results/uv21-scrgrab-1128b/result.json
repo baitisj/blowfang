@@ -1,12 +1,27 @@
 {
  "id": "uv21-scrgrab-1128b",
- "status": "running",
- "since": "2026-11-28T07:12:40Z",
+ "who": "screen",
+ "started": "2026-11-28T07:12:42Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "uv21.mod",
+   "started": "2026-11-28T07:12:42Z",
+   "ended": "2026-11-28T07:12:44Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-e44e03955a3f",
+ "head": "e44e03955a3f3bc0e435bcaf494bfa00553833ee",
+ "sources": "/home/baitisj/blowfang-work/worktrees/src-2fe9648007ca",
+ "sources_head": "2fe9648007ca271879e5b808148d0e5213696fae",
+ "ended": "2026-11-28T07:12:44Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "3963866c3fbbe7285e579c7aa72deedf5e771d6d",
   "path": "jobs/uv21-scrgrab-1128b"
  },
  "runner_commit": "e44e03955a3f3bc0e435bcaf494bfa00553833ee",
- "updated": "2026-11-28T07:12:40Z"
+ "updated": "2026-11-28T07:12:44Z"
 }
