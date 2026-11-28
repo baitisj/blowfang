@@ -1,0 +1,16 @@
+{
+ "id": "uv21-scrdump-1128a",
+ "freq_mhz": "bench",
+ "note": "UV-21 screen read-back trial: scrdump RAM module (RDDID + RAMRD of all 160 rows), no transmit",
+ "sources_commit": "5a4e37837dba76b90a6344bf1f464debc9d5d9bc",
+ "steps": [
+  {
+   "do": "uv21.mod",
+   "args": [
+    "scrdump"
+   ]
+  }
+ ],
+ "who": "screen",
+ "minutes": 10
+}
