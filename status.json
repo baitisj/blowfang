@@ -5,9 +5,15 @@
  "paused": null,
  "ic7100_held": null,
  "running": null,
- "waiting": [],
- "last_poll": "2026-11-28T11:21:37Z",
+ "waiting": [
+  {
+   "id": "uv21-clk120-1128b",
+   "who": "clk",
+   "not_before": null
+  }
+ ],
+ "last_poll": "2026-11-28T11:23:40Z",
  "error": null,
  "update": null,
- "updated": "2026-11-28T11:21:37Z"
+ "updated": "2026-11-28T11:23:41Z"
 }
