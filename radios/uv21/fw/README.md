@@ -123,6 +123,13 @@ Build it with `make -C radios/uv21 port` (cargo and the thumbv7em-none-eabi targ
   retune mutes the speaker and the listen opens it again. Fast passes run 3 s after each full
   sweep there, so the waterfall moves while full sweeps crawl, and the strip takes a column
   every 250 ms once any bin was read (was once a pass). HOLD stops the waterfall in every mode.
+- Port 21 (2026-11-28, Neon's opt/opt-clk): the MCU at 120 MHz (HICK/2 x 30, the AT32F421's top;
+  the UV-5RH's clock, from HICK as the UV-21's crystal doesn't start), auto step around the jump to
+  the PLL as Artery's BSP does, ADCDIV /6 (20 MHz; at 60 MHz the ADC ran at 30, over its 28), SPI2
+  /8 so the panel stays at 15 MHz; USART1, TMR14 and SysTick follow SCLK_HZ. Tried first from RAM:
+  `../mod/clk120.c` moves the 60 MHz image's clock to 120 MHz and back and checks the serial line,
+  the panel (a test card read back), the RF chip and the flash there (`radios/uv21/mod/clk120.py` reads
+  its log); docs/uv21-clock-safety.md is the plan.
 - Shared with the K6 firmware (2026-11-27): the debouncer, SysTick delays, wear-leveled storage
   and CRC-16/XMODEM, and the USART1 receive ring live in `radios/common-rs/` (the
   `radio-common` crate). `src/hal/debounce.rs`, `delay.rs` and `wear_leveled.rs` re-export them,

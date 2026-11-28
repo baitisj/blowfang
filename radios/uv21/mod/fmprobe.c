@@ -521,11 +521,11 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
     rwr(c, 0x12, 0x8660);
     rwr(c, 0x16, 0x4400);
     rwr(c, 0x1B, 0x8ADE);
-    api->delay_us(200000);
+    um_wait_us(api, 200000); /* (one delay_us call wraps past 139 ms at 120 MHz) */
     for (i = 0; i < sizeof late; i += 3) rwr(c, late[i], (uint32_t)late[i + 1] << 8 | late[i + 2]);
 #else
     (void)late;
-    api->delay_us(200000);
+    um_wait_us(api, 200000); /* (one delay_us call wraps past 139 ms at 120 MHz) */
 #endif
   }
   id = rreg(c, 0);

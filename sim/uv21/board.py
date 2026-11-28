@@ -46,7 +46,7 @@ from unicorn import UC_HOOK_CODE  # noqa: E402
 from unicorn.arm_const import UC_ARM_REG_LR, UC_ARM_REG_PC, UC_ARM_REG_R0  # noqa: E402
 
 UV21 = tp.UV21
-SCLK = 60_000_000
+SCLK = 120_000_000
 SYST_CSR, SYST_RVR = 0xE000E010, 0xE000E014
 TMR14_CVAL = 0x40002024
 READ_REG_US = 52                # Fd6818::read_reg: 52 waits of BIT_DELAY_US (1 us), fd6818b.rs
@@ -76,7 +76,7 @@ class UV21Board(tp.Port):
         if image is None:
             image, syms = build()
         super().__init__(image, syms)
-        self.cycles = 0                         # the virtual clock, in 60 MHz cycles
+        self.cycles = 0                         # the virtual clock, in 120 MHz cycles
         self.syst_due = 0
         self.regs = {}
         self.band = default_band() if band is None else band
@@ -117,8 +117,8 @@ class UV21Board(tp.Port):
 
     def mmio(self, uc, access, addr, size, value, ud):
         if addr == TMR14_CVAL and access != tp.UC_MEM_WRITE:
-            self.cycles += 600                  # a look at the clock costs 10 us
-            uc.mem_write(addr, struct.pack("<I", (self.cycles // 6000) & 0xFFFF))
+            self.cycles += SCLK // 100_000      # a look at the clock costs 10 us
+            uc.mem_write(addr, struct.pack("<I", (self.cycles // (SCLK // 10_000)) & 0xFFFF))
             return
         return super().mmio(uc, access, addr, size, value, ud)
 
