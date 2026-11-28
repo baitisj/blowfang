@@ -66,8 +66,12 @@ LIBOBJS="$OUT/sotto_pager.o $OUT/sotto_fx_dec.o $OUT/sotto_fx_lr.o $OUT/fx_math.
 # the Cortex-M4 bench's shim.c and divmod.s instead)
 $CC $CFLAGS -fno-builtin -c "$ROOT/c/k6/k6_mem.c" -o "$OUT/k6_mem.o"
 $CC $CFLAGS -c "$ROOT/c/k6/k6_uldiv.c" -o "$OUT/k6_uldiv.o"
+# the port's receiver and player around the library (uv21_sotto.c: the BK4829 packet receiver
+# from radios/uv21/mod/sottorx_core.h, TMR1 CH4 PWM with DMA): in the archive the firmware links,
+# not in the bench, which drives the library directly
+$CC $CFLAGS -I"$ROOT/radios/uv21/mod" -c "$ROOT/radios/uv21/sotto/uv21_sotto.c" -o "$OUT/uv21_sotto.o"
 rm -f "$OUT/libsotto_uv21.a"
-$AR rcs "$OUT/libsotto_uv21.a" $LIBOBJS "$OUT/k6_mem.o" "$OUT/k6_uldiv.o"
+$AR rcs "$OUT/libsotto_uv21.a" $LIBOBJS "$OUT/uv21_sotto.o" "$OUT/k6_mem.o" "$OUT/k6_uldiv.o"
 
 # the bench: the library with the K6 bench's stand-in SPI flash (c/k6/flash_bench.c serves
 # sotto-cb.bin as if it sat at SP_CB_ADDR) and the Cortex-M4 bench's run-time helpers
@@ -104,7 +108,8 @@ printf 'void sp_flash_erase4k(unsigned a) { (void)a; }\n' >> "$OUT/fit_flash.c"
 printf 'void sp_flash_write(unsigned a, const void *b, unsigned n) { (void)a, (void)b, (void)n; }\n' >> "$OUT/fit_flash.c"
 $CC $CFLAGS -c "$OUT/fit_flash.c" -o "$OUT/fit_flash.o"
 FIT="sp_init sp_packet sp_status sp_play_start sp_play_pwm sp_auto_gain_q8 sp_pcm_hash sp_set_yield
-  sp_set_stream sp_stream_ready sp_stream_end sp_cb_setup sp_cb_ready sp_dec_pool sp_dec_need sp_missing"
+  sp_set_stream sp_stream_ready sp_stream_end sp_cb_setup sp_cb_ready sp_dec_pool sp_dec_need sp_missing
+  uv21_sotto"
 UF=$(for s in $FIT; do printf -- '-u %s ' "$s"; done)
 ld.lld -T "$OUT/fit.ld" --gc-sections -e sp_init $UF "$OUT/fit_flash.o" "$OUT/libsotto_uv21.a" "$OUT/rt.o" -o "$OUT/fit.elf"
 FLASH=$(llvm-size -A "$OUT/fit.elf" | awk '$1 == ".text" || $1 == ".data" { s += $2 } END { print s }')

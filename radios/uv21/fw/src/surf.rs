@@ -63,6 +63,18 @@ struct Ctx {
 
 static mut CTX: Option<Ctx> = None;
 static mut WAKE: u32 = WAKE_HZ;
+/// SURF's api while it runs, for its wake frequency (api.wake_hz, which a long MENU moves)
+static mut API_P: *const UvApi = core::ptr::null();
+
+fn wake_now() -> u32 {
+    unsafe {
+        if API_P.is_null() {
+            WAKE
+        } else {
+            core::ptr::read_volatile(core::ptr::addr_of!((*API_P).wake_hz))
+        }
+    }
+}
 
 fn ctx() -> &'static mut Ctx {
     unsafe { (*core::ptr::addr_of_mut!(CTX)).as_mut().unwrap() }
@@ -160,9 +172,18 @@ fn code(key: KeyId) -> i32 {
     }) as i32
 }
 
+/// [S12] how long a long 0 listens for a sotto 1200 message on the wake's frequency
+const SOTTO_LISTEN_S: u32 = 30;
+
 extern "C" fn key() -> i32 {
     let s = syst();
     while let Some(ev) = app().surf_key_event(s) {
+        // [S12] a long 0: listen for sotto 1200 where the wake listens (440.850, or where a long
+        // MENU moved it), and play what comes; SURF leaves at its next poll and comes back after
+        if ev.key == KeyId::Digit0 && matches!(ev.kind, KeyEventKind::Long) {
+            crate::umod::request_sotto(wake_now(), SOTTO_LISTEN_S);
+            continue;
+        }
         let ud = matches!(ev.key, KeyId::Up | KeyId::Down);
         match ev.kind {
             KeyEventKind::Press | KeyEventKind::Repeat if ud => return code(ev.key),
@@ -271,8 +292,8 @@ fn check_power_off() {
 extern "C" fn poll() -> i32 {
     let dp = unsafe { pac::Peripherals::steal() };
     check_power_off();
-    if crate::umod::service(&UM_API) {
-        return 1; // leave SURF: `run` hands the arena to umod::run_session
+    if crate::umod::service(&UM_API) || crate::umod::sotto_requested() {
+        return 1; // leave SURF: `run` hands the arena to umod::run_session or crate::sotto
     }
     let now = ms();
     let c = ctx();
@@ -348,11 +369,23 @@ pub fn run(app: &mut App<'_>, syst: &mut SYST, display: &mut Display<'_>, start_
         con::nl();
         0
     } else {
-        unsafe { uv21_surf(&mut api, arena::base(), room) }
+        unsafe {
+            API_P = &api;
+            let c = uv21_surf(&mut api, arena::base(), room);
+            API_P = core::ptr::null();
+            c
+        }
     };
     if crate::umod::pending() {
         unsafe { MOD_HOME_HZ = if cen != 0 { cen } else { start_hz } };
         crate::umod::run_session(&UM_API, check_power_off);
+    }
+    if let Some((hz, listen_s)) = crate::umod::take_sotto() {
+        unsafe { MOD_HOME_HZ = if cen != 0 { cen } else { start_hz } };
+        let lcd = display.as_draw_target();
+        lcd.fill_rect(0, 0, 128, 12, 0x0000);
+        font55::draw(lcd, 2, 3, "SOTTO RX", 0xFFE0, 0x0000);
+        crate::sotto::run(&UM_API, hz, listen_s);
     }
     unsafe {
         WAKE = api.wake_hz;

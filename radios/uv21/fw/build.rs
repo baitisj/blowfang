@@ -77,6 +77,36 @@ fn build_surf(out: &PathBuf) {
     println!("cargo:rerun-if-env-changed=CC");
 }
 
+/// [S12] sotto 1200 receive and decode (radios/uv21/sotto, MIT C): the K6 voice pager's library and
+/// the fixed-point decoder, the codebook read from SPI flash, and the port's receiver and player
+/// (uv21_sotto.c), built by radios/uv21/sotto/build.sh into one archive (clang, ld.lld, a host cc)
+fn build_sotto(out: &PathBuf) {
+    let dir = out.join("sotto");
+    let status = Command::new("sh")
+        .arg("../sotto/build.sh")
+        .env("UV21_SOTTO_OUT", &dir)
+        .status()
+        .expect("sh for radios/uv21/sotto/build.sh");
+    assert!(status.success(), "sotto 1200 library (radios/uv21/sotto/build.sh) failed");
+    println!("cargo:rustc-link-search=native={}", dir.display());
+    println!("cargo:rustc-link-lib=static=sotto_uv21");
+    for f in [
+        "../sotto/build.sh",
+        "../sotto/uv21_sotto.c",
+        "../mod/sottorx_core.h",
+        "../mod/uv21_mod.h",
+        "../../../c/k6/sotto_pager.c",
+        "../../../c/k6/sotto_pager.h",
+        "../../../c/common/sp_cb.c",
+        "../../../c/common/sp_cb.h",
+        "../../../c/common/radio_api.h",
+        "../../../c/fixed",
+    ] {
+        println!("cargo:rerun-if-changed={f}");
+    }
+    println!("cargo:rerun-if-env-changed=UV21_CC");
+}
+
 fn main() {
     let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
     File::create(out.join("memory.x"))
@@ -88,6 +118,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     build_surf(out);
+    build_sotto(out);
 
     println!("cargo:rustc-env=GIT_VERSION={}", git_version());
     watch_git_dir();
