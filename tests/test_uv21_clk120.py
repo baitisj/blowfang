@@ -34,7 +34,9 @@ FAST = [f"SD_Y0={Y0}", f"SD_ROWS={ROWS}", "CK_SOAK_S=1", "CK_FL_LEN=0x800"]
 
 
 def mult(cfg):
-    return ((cfg >> 29 & 3) << 4 | (cfg >> 18 & 0xF)) + 1
+    """PLLMULT as the AT32F421 codes it: 0..13 = x2..x15, 14 and 15 = x16, 16..63 = x17..x64"""
+    code = (cfg >> 29 & 3) << 4 | (cfg >> 18 & 0xF)
+    return code + 2 if code < 15 else 16 if code == 15 else code + 1
 
 
 def card(x, y):
@@ -80,7 +82,7 @@ def as_60_mhz_port(b):
     """main's 60 MHz clock registers in place of this branch's 120 MHz ones (the emulator times by
     its own clock, so only the module sees them): x15, ADCDIV /2, 521, SPI2 /4, TMR14 5999"""
     cfg = rd(b, CRM_CFG)
-    wr(b, CRM_CFG, (cfg & ~(0xF << 18 | 3 << 29 | 3 << 14 | 1 << 28)) | 14 << 18)
+    wr(b, CRM_CFG, (cfg & ~(0xF << 18 | 3 << 29 | 3 << 14 | 1 << 28)) | 13 << 18)   # 0b00_1101: x15
     wr(b, BAUDR, 521)
     wr(b, SPI2_CTRL1, (rd(b, SPI2_CTRL1) & ~(7 << 3)) | 1 << 3)
     wr(b, TMR14_DIV, 5999)
@@ -111,6 +113,7 @@ def test_60_to_120_mhz_and_back(built):  # noqa: F811
     assert ret == 0, out[-2000:]
     new = line(out, r"clk new mhz=120 c=([0-9a-f]{8}) p=153 b=([0-9a-f]{4}) s=([0-9a-f]{3}) t=([0-9a-f]{4})")
     cfg = int(new.group(1), 16)
+    assert (cfg >> 18 & 0xF, cfg >> 29 & 3) == (0b1101, 0b01)          # CRM_PLL_MULT_30 = 29
     assert mult(cfg) == 30 and cfg & 0xF == 0xA                      # 4 MHz x 30, SCLK on the PLL
     assert (cfg >> 14 & 3) == 2 and not cfg >> 28 & 1                 # ADCDIV /6: 20 MHz
     assert int(new.group(2), 16) == 1042                              # 115,163 baud
@@ -162,6 +165,11 @@ def test_120_mhz_image_down_to_60_and_back(built):  # noqa: F811
     assert int(new.group(2), 16) == 521 and int(new.group(3), 16) >> 3 & 7 == 1
     assert int(new.group(4), 16) == 5999
     assert regs(b) == before
+
+
+def test_reads_the_radios_own_60_mhz_setting():
+    # CRM_CFG as the UV-21 on main's image reads it (job uv21-clk120-1128a, 2026-11-28)
+    assert mult(0x0034000A) == 15 and mult(0x0034000A | 1 << 29) == 30
 
 
 def test_refuses_a_clock_it_does_not_know(built):  # noqa: F811

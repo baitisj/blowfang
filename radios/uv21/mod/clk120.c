@@ -173,9 +173,19 @@ static NI int spin_until(uint32_t addr, uint32_t mask, uint32_t want) {
   return 0;
 }
 
-static uint32_t mult_of(uint32_t cfg) { return ((cfg >> 29 & 3u) << 4 | (cfg >> 18 & 0xFu)) + 1u; }
+/* PLLMULT as the AT32F421 codes it (its BSP's CRM_PLL_MULT_n): 0..13 = x2..x15, 14 and 15 = x16,
+   16..63 = x17..x64. So the 60 MHz port's x15 is 13 (0b00_1101) and x30 is 29 (0b01_1101). (The
+   first cut of this module took every code as n - 1 and read the radio's x15 as x14: the radio
+   refused it, job uv21-clk120-1128a.) */
+static uint32_t mult_of(uint32_t cfg) {
+  uint32_t code = (cfg >> 29 & 3u) << 4 | (cfg >> 18 & 0xFu);
+  return code < 15u ? code + 2u : code == 15u ? 16u : code + 1u;
+}
 
-static uint32_t mult_bits(uint32_t m) { return ((m - 1u) & 0xFu) << 18 | ((m - 1u) >> 4 & 3u) << 29; }
+static uint32_t mult_bits(uint32_t m) {
+  uint32_t code = m <= 16u ? m - 2u : m - 1u;
+  return (code & 0xFu) << 18 | (code >> 4 & 3u) << 29;
+}
 
 /* ADCDIV for ADCCLK <= 28 MHz: /2 (000), /4 (001), /6 (010), /8 (011) */
 static uint32_t adc_bits(uint32_t mhz) {
