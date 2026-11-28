@@ -269,6 +269,22 @@ c/common/surf_core.inc
 sim/band.py
 sim/workbench.py
 sim/uv21/
+# [S12] sotto 1200 receive and decode (radios/uv21/sotto/build.sh): the K6 voice pager's library
+# and the fixed-point decoder in the codec submodule (c/fixed and the c/ headers link into it),
+# built for the Cortex-M4 with the codebook in SPI flash; tests/test_uv21_sotto.py checks it against
+# the K6's x86 build of the same library (make -C c/k6 pager_host_lr)
+sotto
+c/*
+c/k6/Makefile
+c/k6/sotto_pager.*
+c/k6/pager_host.c
+c/k6/flash_host.*
+c/k6/cb_image.c
+c/k6/flash_bench.c
+c/k6/k6_mem.c
+c/k6/k6_uldiv.c
+c/common/sp_cb.*
+c/common/sp_vlr.*
 # SoapyFang: I/Q from an SDR, a SigMF file or the synthetic band, through an emulated BK48xx chip,
 # into the port image on that board (tests/test_soapyfang.py; generated signals only)
 sim/soapyfang/

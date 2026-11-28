@@ -82,7 +82,10 @@ jobs:
     if: needs.scope.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
+      # the sotto submodule: sotto 1200's fixed-point decoder (c/fixed), which radios/uv21/sotto builds
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -95,12 +98,20 @@ jobs:
             llvm
       - run: |
           pip install \
+            capstone \
             numpy \
             pytest \
             pytest-xdist \
             unicorn
       - name: the dumper (1 KB at most) and the bring-up image (the 60 KB app area at most)
         run: make -C radios/uv21
+      # [S12] sotto 1200 receive and decode for the port: the K6 pager's library for the Cortex-M4
+      # with the codebook in SPI flash, its emulator bench ELF (tests/test_uv21_sotto.py), and the
+      # K6's x86 build of the same library that the bench's output must equal
+      - name: the sotto 1200 library and its bench (radios/uv21/sotto)
+        run: |
+          sh radios/uv21/sotto/build.sh
+          make -C c/k6 pager_host_lr
       - name: Rust for the port (fw/rust-toolchain.toml names stable and thumbv7em-none-eabi)
         run: rustup toolchain install stable --profile minimal --target thumbv7em-none-eabi
       - name: the firmware port (the 60 KB app area at most)
@@ -140,5 +151,6 @@ jobs:
             tests/test_uv21_kdh.py \
             tests/test_uv21_mod.py \
             tests/test_uv21_port.py \
+            tests/test_uv21_sotto.py \
             tests/test_uv21_surf.py \
             tests/test_soapyfang.py
