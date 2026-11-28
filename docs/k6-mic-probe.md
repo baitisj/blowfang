@@ -557,7 +557,7 @@ out as hex after the replug, and go to the core's message store, so the K6 plays
   2.1 s burst right after the upload and a weak 5.2 s one (ADC peak 12; the K6's call reads
   63-66). `pluto_bench.py cue` now takes `--min-s`, `--max-s` and `--min-peak`.
 
-**micspi** (`c/k6/mod/micspi.c`, level 15): micsotto writing its superframes into the SPI
+**micspi** (`c/k6/mod/micspi.c`, level 15; level 16 since 2026-11-28, for the slim encoder's joint pick): micsotto writing its superframes into the SPI
 outbox (outbox.h) four at a time as they come, so a take runs up to 60 s; no cue (the screen
 says TALK NOW after the CW call) and any key ends the take. The outbox is erased before the
 first keying; level 15's fl_prog takes an outbox page while keyed with the PA off (the mic is

@@ -375,7 +375,7 @@ fesw           # level 2, the receive front end's band switch as an attenuator: 
 fesw_vhf       # level 2, fesw on fifteen frequencies of the VHF path, 136 to 174 MHz: is the 2 m floor the same everywhere (receive only, docs/k6-fesw.md)
 fmprobe        # level 2, the broadcast FM chip (RDA5807M on PA4/PA12): sweep, station shape, settling, LNA ports, expert tuning, verbose RDS and its clock; patched by tools/k6_fmprobe.py, docs/k6-fm-chip.md
 fmrds          # level 2 (screen at 6, LED at 7, clock at 8), FM RDS: the broadcast stations' names, programme types and radio text, and the time from their clock groups voted across stations (RDA5807M, receive only); patched by tools/k6_fmrds.py, docs/k6-fm-chip.md
-fmsotto        # level 13, FM SOTTO: what the K6 hears on FM, demodulated from the IF in DMA interrupts and coded live as sotto 1200, said as hex (receive only; needs out/fmsotto-cells.bin in a library slot, docs/k6-fm-sotto.md)
+fmsotto        # level 16, FM SOTTO: what the K6 hears on FM, demodulated from the IF in DMA interrupts and coded live as sotto 1200, said as hex (receive only; needs out/fmsotto-cells.bin in a library slot, docs/k6-fm-sotto.md)
 fusoslot       # level 13, FUSOTTO SLOT: fusotx with PC-made frames from library slot 15, for a K6 before level 15 (docs/k6-fm-sotto.md)
 fusotx         # level 15, FUSOTTO TX: sends what FM SOTTO recorded in the outbox as one FuSotto call (C4FM), AG7EW + CW ID (docs/k6-fm-sotto.md)
 fskaprs        # level 2, the chip's FSK modem on AX.25 packets (docs/k6-aprs-clock.md)
@@ -424,8 +424,8 @@ mickey         # level 4, keyed on the bench frequency: its CW ID, then the PA o
 mickrec        # level 13, cable out: 3.2 s of the mic at AF select 4, keyed with the PA off, as IMA ADPCM for tools/k6_micprobe.py (the mic never on the air, docs/k6-mic-probe.md)
 miclvl         # level 4, AF select 4 with the mic ADC and TX DSP on over 48 s of a stepped tone: as is, the mic ADC off, the mic AGC bit flipped (keys nothing, docs/k6-mic-probe.md)
 micout         # level 13, mic64 with the programming cable pulled (it takes the mic out): the screen asks for the pull and the replug, the dump only after (the mic never on the air, docs/k6-mic-probe.md)
-micsotto       # level 13, cable out: the mic coded live as sotto 1200 (PA11's converter in TIM17's interrupt, keyed with the PA off), played back on the speaker and said as hex after the replug (the mic never on the air; needs out/fmsotto-cells.bin in a library slot, docs/k6-mic-probe.md)
-micspi         # level 15, cable out: micsotto with its superframes into the SPI outbox as they come (up to 60 s, any key ends the take; fl_prog keyed with the PA off), the header last so fusotx sends it (docs/k6-mic-probe.md)
+micsotto       # level 16, cable out: the mic coded live as sotto 1200 (PA11's converter in TIM17's interrupt, keyed with the PA off), played back on the speaker and said as hex after the replug (the mic never on the air; needs out/fmsotto-cells.bin in a library slot, docs/k6-mic-probe.md)
+micspi         # level 16, cable out: micsotto with its superframes into the SPI outbox as they come (up to 60 s, any key ends the take; fl_prog keyed with the PA off), the header last so fusotx sends it (docs/k6-mic-probe.md)
 micpin         # level 4, AF select 4 with the mic ADC and TX DSP on in receive, read by PA11 in whole captures: quiet, then a tone (the receiver's baseband, not the mic; keys nothing, docs/k6-mic-probe.md)
 micprobe       # level 4, the mic ADC switched on in receive: what follows a sound at the mic (AF selects by PA11, GP0, registers; keys nothing, docs/k6-mic-probe.md)
 micrec         # level 4, three seconds of that select as IMA ADPCM, for tools/k6_micprobe.py (keys nothing, docs/k6-mic-probe.md)

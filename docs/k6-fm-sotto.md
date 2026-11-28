@@ -2,7 +2,7 @@
 
 Jeff, 2026-11-20: "Well, I guess the next solution is to receive FM audio and then encode." The
 K6 has no path from its mic to the MCU (docs/k6-mic-probe.md, measured), so the voice comes in
-by radio. `c/k6/mod/fmsotto.c` (MENU name FM SOTTO, API level 13) demodulates the FM channel the
+by radio. `c/k6/mod/fmsotto.c` (MENU name FM SOTTO, API level 16 since 2026-11-28, 13 before) demodulates the FM channel the
 K6 is tuned to from the FD6818's low IF and feeds the slim sotto 1200 encoder (sotto
 `c/fixed/sotto_fx_slim.c`, docs/sotto-slim.md there) live. It says the superframes over the
 serial cable; sending them on as FuSotto is the next step.
@@ -49,12 +49,19 @@ a 1 kHz tone at 3 kHz deviation at 13,440 (-7.7 dBFS). The AGC is frozen at its 
 
 | | bytes |
 | --- | --- |
-| code and constants (-Oz) | 10,834 |
+| code and constants (-Oz) | 11,804 |
 | header and tag | 24 |
 | DMA ring | 512 |
-| front end (filters, clock, 320-sample ring) | 768 |
-| slim encoder state | 3,148 |
-| left of level 13's 15,408 | about 100 |
+| front end (filters, clock, 320-sample ring) | 788 |
+| slim encoder state | 3,336 |
+| left of level 16's 16,688 | about 220 |
+
+2026-11-28: sotto's slim encoder picks each A frame's shape with both B frames in view, by
+peak-weighted error (sotto #204: PESQ 2.678 to 2.714 on clean voices; in a blind listening
+round Jeff heard no clear difference). That costs about 650 B of code, 188 B of state, 40 ms
+of delay and about 60 more codebook reads a superframe, so the module moved from level 13
+(15,408 B) to level 16's block; micsotto and micspi moved with it. Before that the table said
+10,834 B of code, 3,148 B of state and about 100 B spare of level 13's block.
 | stack, deepest (k6_main, encode, coder, search; -fstack-usage) | about 1,210 + fl_read + 116 for the handler, of the 2,136 the module gets |
 
 The first build was 13.6 KB of code, 2.7 KB over. Three hooks added to the slim encoder (sotto
@@ -92,15 +99,20 @@ starts to clip the encoder's input; the bench uses 3 kHz.
 ## Lines
 
 ```
-fms start ks=5621 spi=1
+fms start ks=5621 spi=2
 s 0 0123456789ab...                    superframes 0-3, 4 x 6 bytes as hex
-fms 1 sps=8000 pk=13021 skip=0 miss=0 isr=31 rd=15        each second
+fms 1 sps=8000 pk=13021 skip=0 miss=0 isr=31 rd=15 div=2  each second
 fms end n=750 lost=0 miss=0 h=440000 ob=700
 ```
 
 `sps`: 8 kHz samples made in the second (8,000 when the clock is right); `pk`: their largest
 value; `skip`: 10 ms blocks the encoder fell behind on and skipped in the second (`lost` at the
-end: in all); `miss`: DMA halves lost; `isr`: the handler's share of the CPU; `rd`: the SPI reads'. Returns the superframes coded, or -2 (a key before any),
+end: in all); `miss`: DMA halves lost; `isr`: the handler's share of the CPU; `rd`: the SPI reads'. `spi`: 0 the reads go
+through the core's `fl_read`, 1 SPI1 directly at Aura's clock (PCLK / 4, CR1 034f), 2 directly
+and PCLK / 2 also read the cell deck back whole. With `spi=2` the module (`FMS_FAST 2`, the
+default) swaps the two clocks every 10 s and `div=` says which one the second ran at, so one
+run measures both; `FMS_FAST 1` keeps PCLK / 2, 0 never tries it. Aura's CR1 goes back before
+the module returns. Returns the superframes coded, or -2 (a key before any),
 -3, -4, -5, -7, -8, -9 as dmairq, -10 (no cell deck), -11 (the DMA never started).
 
 `python3 tools/k6_fmsotto.py log k6.log out.bit --wav out.wav` turns a run's lines back into a
@@ -112,7 +124,7 @@ sotto 1200 file (gaps as silence) and decodes it with sotto's fixed-point decode
 through the tap model comes out at 8,000 samples a second, 25 dB over the noise; the module's
 SPI reads (codebook, deck, DCT from 21 values) give exactly the superframes sotto's own tables
 give on FM voice; a deck that doesn't add up is refused; the deck holds every vector once; the
-code and scratch fit level 13; a log turns back into superframes.
+code and scratch fit level 16; a log turns back into superframes.
 
 ## On the radio
 

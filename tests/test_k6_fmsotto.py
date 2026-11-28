@@ -133,10 +133,10 @@ def test_the_dct_from_21_values_is_sottos_table():
 
 
 def test_it_fits_the_module_block(tmp_path):
-    """code under the 11,776-byte check in build.sh, and code + scratch inside level 13's 15,408"""
+    """level 16 (the slim encoder's joint pick needs its block): code + scratch inside 16,688"""
     from modem import k6mod
     code, _ = k6mod.build(SRC)
-    assert len(code) + 24 <= 11776
+    assert k6mod.source_level(SRC) == 16
     exe = str(tmp_path / "sizes")
     prog = tmp_path / "sizes.c"
     prog.write_text('#include <stdio.h>\nint main(void);\n#define main fms_main\n#include "%s"\n#undef main\n'
@@ -149,7 +149,7 @@ def test_it_fits_the_module_block(tmp_path):
     fe, enc = map(int, subprocess.run([exe], check=True, capture_output=True, text=True).stdout.split())
     need = 16 + len(code) + 8 + 4 + 512 + (fe + 8) + enc   # the K6's fe_t has two pointers more
     # 64 B to spare at least (the outbox writer, 2026-11-20, took the rest of the old 256)
-    assert need <= k6mod.ARENA_BYTES_13 - 64, need
+    assert need <= k6mod.ARENA_BYTES_16 - 64, need
 
 
 def test_a_log_back_into_superframes(tmp_path):

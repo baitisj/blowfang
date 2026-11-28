@@ -43,10 +43,11 @@
    on the bench frequency), -3 (tx_on refused), -4 (the bench frequency busy), -5 (the PA would not
    go off, or REG_30 did not take the bits), -6 (a key mid-run), -7 (no key), -8 (scratch), -9 (the
    vector copy isn't the bootloader's table), -10 (no cell deck), -11 (no samples: the interrupt
-   never ran), -12 (TIM17 in use), -13 (no sound within WAIT_MS). Level 13.
+   never ran), -12 (TIM17 in use), -13 (no sound within WAIT_MS). Level 16: the slim encoder's
+   joint pick (sotto e892f18) needs level 16's 16,688-byte block.
    SPDX-License-Identifier: MIT */
 #ifndef K6_MODULE_LEVEL
-#define K6_MODULE_LEVEL 13
+#define K6_MODULE_LEVEL 16
 #endif
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
@@ -62,7 +63,7 @@
 K6_MODULE_NAME("MIC SOTTO");
 
 #ifndef MS_SPI
-#define MS_SPI 0 /* 1 (micspi.c, level 15): the superframes into the SPI outbox as they come */
+#define MS_SPI 0 /* 1 (micspi.c): the superframes into the SPI outbox as they come */
 #endif
 #ifndef MS_CUE
 #define MS_CUE !MS_SPI

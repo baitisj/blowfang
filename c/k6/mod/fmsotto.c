@@ -39,7 +39,7 @@
    superframes out.
    SPDX-License-Identifier: MIT */
 #ifndef FMS_HOST
-#define K6_MODULE_LEVEL 13
+#define K6_MODULE_LEVEL 16
 #define K6_MODULE_OPT z
 #include "../k6_mod.h"
 #include "m0rt.h"
@@ -135,7 +135,7 @@ typedef struct {
   uint32_t wi;
   volatile uint32_t pw, pk, halves, miss, quiet, isr;
   uint32_t deck; /* the cell deck's address in SPI flash */
-  uint32_t rdc, spi; /* TIM17 cycles in SPI reads (foreground); 1: read SPI1 directly */
+  uint32_t rdc, spi; /* TIM17 cycles in SPI reads (foreground); 1: read SPI1 directly, 2: at PCLK / 2 too */
   uint32_t rec, obw, obs; /* the outbox: 0 waiting for a carrier, 1 recording, 2 full; bytes, their sum */
 #ifndef FMS_HOST
   const k6_api_t *api;
@@ -559,10 +559,26 @@ static uint32_t say_frames(fe_t *f, char *line, const unsigned char *fr, uint32_
   return n;
 }
 
+/* SPI1's clock. Aura leaves it at PCLK / 4 (BR = 1, CR1 034f, docs/k6-stock-firmware.md); the
+   codebook reads are most of a superframe's bytes, so FMS_FAST tries PCLK / 2 (BR = 0) and keeps
+   it only if the cell deck reads back whole at that speed (find_deck again). FMS_FAST 2 (the
+   default) swaps the two every 10 s so one run shows both (the second's line says div=); 1 keeps
+   PCLK / 2; 0 never tries it.
+   Changed only between reads, SPE off while BR moves; Aura's CR1 goes back at the end. */
+#ifndef FMS_FAST
+#define FMS_FAST 2
+#endif
+static void spi_cr1(uint16_t cr1) {
+  uint32_t k;
+  for (k = 0; (R16(SPI_SR) & 0x80u) && k < SPIN; k++) {
+  }
+  R16(SPI_CR1) = (uint16_t)(cr1 & ~0x40u);
+  R16(SPI_CR1) = cr1;
+}
 int k6_main(const k6_api_t *api) {
   uint32_t room = 0, i, apb2, ahb, cfgr1, acr, v25, v46, t0, now, tsec = 0, sec = 0;
   uint32_t pr = 0, ri = 0, lost = 0, n = 0, nf = 0, pw0 = 0, l0 = 0, r0 = 0, c0 = 0, tq = 0, tc = 0, ob;
-  uint16_t r33, r34, r7e, r13;
+  uint16_t r33, r34, r7e, r13, cr1 = 0, cr1f = 0;
   char line[64], *p;
   unsigned char fr[4 * SLIM_BYTES];
   int16_t x[BLK];
@@ -635,6 +651,15 @@ int k6_main(const k6_api_t *api) {
 #ifndef FMS_API_READS
   f->spi = (R16(SPI_CR1) & 0x44u) == 0x44u; /* SPE and MSTR: as Aura left it */
 #endif
+  cr1 = R16(SPI_CR1);
+  if (FMS_FAST && f->spi && (cr1 & 0x38u) == 0x08u) { /* BR = 1, as Aura left it: try BR = 0, and
+    keep it if the deck is found again through it (the encoder's memory as the buffer, before its init) */
+    spi_cr1((uint16_t)(cr1 & ~0x38u));
+    if (find_deck(f, (uint8_t *)e) == f->deck)
+      cr1f = R16(SPI_CR1), f->spi = 2;
+    else
+      spi_cr1(cr1);
+  }
   slim_enc_init(e);
   /* the handler in: its state, its vector, SRAM at 0, then the DMA with both interrupts */
   wr(SRAM0 + 4u * V_CTX, (uint32_t)f);
@@ -682,9 +707,11 @@ int k6_main(const k6_api_t *api) {
       p = kv(p, " miss=", f->miss);
       p = kv(p, " isr=", (c - c0) / (dt * 960u));
       p = kv(p, " rd=", (f->rdc - r0) / (dt * 960u));
+      if (cr1f) p = kv(p, " div=", R16(SPI_CR1) == cr1f ? 2u : 4u);
       *p = 0;
       api->say(line);
       pw0 = pw, c0 = c, l0 = lost, r0 = f->rdc, tsec = now;
+      if (cr1f && FMS_FAST == 2 && sec % 10u == 0) spi_cr1(R16(SPI_CR1) == cr1f ? cr1 : cr1f);
     }
     if (fe_take(f, &pr, &ri, &lost, x) && slim_encode10(e, x, fr + SLIM_BYTES * nf) && ++nf == 4)
       n = say_frames(f, line, fr, &nf, n);
@@ -704,6 +731,7 @@ int k6_main(const k6_api_t *api) {
   while (slim_flush(e, fr + SLIM_BYTES * nf))
     if (++nf == 4) n = say_frames(f, line, fr, &nf, n);
   wr(SRAM0 + 4u * V_CTX, v46);
+  if (cr1f) spi_cr1(cr1); /* Aura's clock back */
   if (nf) n = say_frames(f, line, fr, &nf, n);
   wr(TIM17 + 0x00, 0);
   wr(TIM17 + 0x0C, 0);

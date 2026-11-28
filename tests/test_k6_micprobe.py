@@ -1359,13 +1359,12 @@ MICSOTTO = os.path.join(ROOT, "c", "k6", "mod", "micsotto.c")
 
 @need_clang
 def test_micsotto_fits_the_radio_with_room_for_its_superframes(tmp_path):
-    """code under build.sh's 11,776-byte check, and in level 13's block: the header, the code, the
-    tag, then st_t, the encoder's state and at least 60 superframes (2.4 s)"""
+    """level 16's block: the header, the code, the tag, then st_t, the encoder's state and at
+    least 60 superframes (2.4 s)"""
     import re
     import subprocess
-    assert k6mod.source_level(MICSOTTO) == 13
+    assert k6mod.source_level(MICSOTTO) == 16
     code = k6mod.build(MICSOTTO)[0]
-    assert len(code) + 24 <= 11_776
     probe = os.path.join(os.path.dirname(MICSOTTO), "_micsotto_sizes.c")
     with open(probe, "w") as f:
         f.write('#include "micsotto.c"\nconst unsigned MS_SIZES[2] = {sizeof(st_t), sizeof(struct slim_enc)};\n')
@@ -1377,7 +1376,7 @@ def test_micsotto_fits_the_radio_with_room_for_its_superframes(tmp_path):
     finally:
         os.remove(probe)
     st, enc = map(int, re.findall(r"\.long\s+(\d+)", asm.split("MS_SIZES:")[1])[:2])
-    room = k6mod.ARENA_BYTES_13 - (16 + len(code) + 8 + 4) - st - enc
+    room = k6mod.ARENA_BYTES_16 - (16 + len(code) + 8 + 4) - st - enc
     assert room // 6 >= 60, (len(code), st, enc, room)
 
 
@@ -1385,13 +1384,13 @@ MICSPI = os.path.join(ROOT, "c", "k6", "mod", "micspi.c")
 
 
 @need_clang
-def test_micspi_is_level_15_and_leaves_room_to_play_20_s():
+def test_micspi_is_level_16_and_leaves_room_to_play_20_s():
     """micspi keeps four superframes in RAM (the rest go to the outbox); after the take the
     encoder's memory holds up to MAX_SF (500, 20 s) read back from the outbox to play"""
-    assert k6mod.source_level(MICSPI) == 15
+    assert k6mod.source_level(MICSPI) == 16
     code = k6mod.build(MICSPI)[0]
-    room = k6mod.arena_bytes(15) - (16 + len(code) + 8 + 4)
-    assert room >= 548 + 3148 + 4 * 6, (len(code), room)
+    room = k6mod.arena_bytes(16) - (16 + len(code) + 8 + 4)
+    assert room >= 548 + 3336 + 4 * 6, (len(code), room)
     assert (room - 548) // 6 >= 500
     src = open(MICSOTTO).read()
     main = src[src.index("int k6_main"):]
