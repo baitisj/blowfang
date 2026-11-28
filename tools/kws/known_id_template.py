@@ -10,13 +10,15 @@ def feat(f):
     x=sosfiltfilt(hp,x); x=(x/(np.max(np.abs(x))+1e-9)*0.5).astype(np.float32)
     return T.cmn(F.norm_sotto(F.sotto(x)),0)[:,2:]   # energy + shape (pitch/voicing dropped)
 def score(Fx,Tm):
-    n=len(Tm)
-    if len(Fx)<n: Fx=np.vstack([Fx,np.zeros((n-len(Fx),Fx.shape[1]))])
-    Tz=(Tm-Tm.mean(0))/(Tm.std(0)+1e-6); best=-1
-    for i in range(len(Fx)-n+1):
-        P=Fx[i:i+n]; Pz=(P-P.mean(0))/(P.std(0)+1e-6); s=(P*0+Pz*Tz).mean()
-        if s>best: best=s; bi=i
-    return best,bi*0.02
+    """best z-scored correlation of Tm over Fx: running sums for window mean/std, per-dimension correlation"""
+    n,d=Tm.shape
+    if len(Fx)<n: Fx=np.vstack([Fx,np.zeros((n-len(Fx),d))])
+    Tz=(Tm-Tm.mean(0))/(Tm.std(0)+1e-6)
+    c=np.vstack([np.zeros((1,d)),np.cumsum(Fx,0)]); c2=np.vstack([np.zeros((1,d)),np.cumsum(Fx*Fx,0)])
+    mu=(c[n:]-c[:-n])/n; sd=np.sqrt(np.maximum((c2[n:]-c2[:-n])/n-mu*mu,0))
+    X=np.stack([np.correlate(Fx[:,j],Tz[:,j],'valid') for j in range(d)],1)
+    s=(X/(sd+1e-6)).sum(1)/(n*d); i=int(np.argmax(s))
+    return s[i],i*0.02
 fs=sorted(glob.glob('/home/user/kws/cont/*/files/b2m/*.flac'))+sorted(glob.glob('/home/user/kws/n70/*/files/c70/*.flac'))
 fs=[f for f in fs if not f.split('/')[-1].startswith(('440.1000','442.3000'))]
 TM={'146.800 VE7RMR':('/home/user/kws/cont/kws-cont-c-r1/files/b2m/146.8000_20261122T1858545Z.flac',1.2,3.6),

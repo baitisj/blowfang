@@ -30,16 +30,20 @@ def feats(x):
     return T.cmn(F.norm_sotto(F.sotto(x)), 0)
 
 def post(f):
-    return np.asarray(jax.nn.log_softmax(fw(P, jnp.asarray(f[None])), -1))[0]
+    """log-softmax posteriorgram; input padded to a 64-frame bucket so jit compiles once per bucket, not per file"""
+    return np.asarray(jax.nn.log_softmax(fw(P, jnp.asarray(T.padded(f))), -1))[0][:int(np.ceil(len(f) / ST))]
 
 def score(Fx, Tm):
-    n = len(Tm)
-    if len(Fx) < n: Fx = np.vstack([Fx, np.zeros((n - len(Fx), Fx.shape[1]))])
-    Tz = (Tm - Tm.mean(0)) / (Tm.std(0) + 1e-6); best, bi = -1, 0
-    for i in range(len(Fx) - n + 1):
-        W = Fx[i:i + n]; s = (((W - W.mean(0)) / (W.std(0) + 1e-6)) * Tz).mean()
-        if s > best: best, bi = s, i
-    return best, bi
+    """best z-scored correlation of template Tm (n, d) over Fx (N, d): running sums for each window's
+    mean and std, one correlation per dimension (the template is zero-mean, so the window mean drops out)"""
+    n, d = Tm.shape
+    if len(Fx) < n: Fx = np.vstack([Fx, np.zeros((n - len(Fx), d))])
+    Tz = (Tm - Tm.mean(0)) / (Tm.std(0) + 1e-6)
+    c = np.vstack([np.zeros((1, d)), np.cumsum(Fx, 0)]); c2 = np.vstack([np.zeros((1, d)), np.cumsum(Fx * Fx, 0)])
+    mu = (c[n:] - c[:-n]) / n; sd = np.sqrt(np.maximum((c2[n:] - c2[:-n]) / n - mu * mu, 0))
+    X = np.stack([np.correlate(Fx[:, j], Tz[:, j], 'valid') for j in range(d)], 1)
+    s = (X / (sd + 1e-6)).sum(1) / (n * d); i = int(np.argmax(s))
+    return s[i], i
 
 def decode(lp):
     pr = np.exp(lp); bl = pr.shape[1] - 1; am = pr.argmax(-1); out = []; last = bl

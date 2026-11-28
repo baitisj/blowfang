@@ -16,11 +16,11 @@ int main(void) {
   short x[SOTTO_LR_SAMPLES_PER_FRAME];
   struct sotto_lr_enc *e = sotto_lr_enc_create();
   size_t r;
-  while ((r = fread(x, 2, SOTTO_LR_SAMPLES_PER_FRAME, stdin)) > 0) {
+  while (n < 99990 && (r = fread(x, 2, SOTTO_LR_SAMPLES_PER_FRAME, stdin)) > 0) {   /* room for the flush */
     if (r < SOTTO_LR_SAMPLES_PER_FRAME) memset(x + r, 0, 2 * (SOTTO_LR_SAMPLES_PER_FRAME - r));
     n += sotto_lr_encode(e, x, sf[n]);
   }
-  while (sotto_lr_enc_flush(e, sf[n])) n++;
+  while (n < 100000 && sotto_lr_enc_flush(e, sf[n])) n++;
   for (int s = 0; s < n; s++) {
     sotto_fparams_t a, b;
     sotto_lr_frames(sf[s], s + 1 < n ? sf[s + 1] : NULL, &a, &b);

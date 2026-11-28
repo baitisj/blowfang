@@ -41,10 +41,12 @@ def fwd(p, x, stride=2):
     dn = ("NWC", "WIO", "NWC")
     h = jax.lax.conv_general_dilated(x, p["c1"], (stride,), "SAME", dimension_numbers=dn) + p["b1"]
     h = jax.nn.relu(h)
-    C = h.shape[-1]
     for i, b in enumerate(p["blk"]):
-        d = jax.lax.conv_general_dilated(h, b["dw"], (1,), "SAME", rhs_dilation=(dil(i),), dimension_numbers=dn,
-                                         feature_group_count=C) + b["db"]
+        # depthwise dilated conv as K shifted multiply-adds: same result as a grouped
+        # conv_general_dilated ("SAME"), about 3x faster forward+backward on XLA CPU
+        K, dr = b["dw"].shape[0], dil(i); pad = dr * (K // 2); T = h.shape[1]
+        hp = jnp.pad(h, ((0, 0), (pad, pad), (0, 0)))
+        d = sum(hp[:, k * dr:k * dr + T] * b["dw"][k, 0] for k in range(K)) + b["db"]
         d = jax.nn.relu(d)
         h = h + jax.nn.relu(d @ b["pw"] + b["pb"])
     if "gh" in p: h = gru(p, h)
@@ -68,7 +70,10 @@ def loss_fn(p, X, XP, Y, YP, stride):
     return jnp.mean(optax.ctc_loss(lg, XP, Y, YP, blank_id=BLANK))
 
 def greedy(lg):
-    a = np.argmax(lg, -1); out = []; prev = -1
+    return greedy_ids(np.argmax(lg, -1))
+
+def greedy_ids(a):
+    out = []; prev = -1
     for t in a:
         if t != prev and t != BLANK: out.append(int(t))
         prev = t
@@ -82,12 +87,26 @@ def edit(a, b):
             pr, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, pr + (a[i - 1] != b[j - 1]))
     return d[len(b)]
 
-def evaluate(p, data, stride, fwdj):
-    """data: list of (feat, lab). Returns TER, utt-exact, false-alarm rate on empty refs."""
+BUCKET = 64                                                # frames; inputs pad to a multiple (one compile per bucket)
+
+def padded(f):
+    """f (T, cin) -> (1, T rounded up to BUCKET, cin) zero-padded, so jit compiles once per bucket, not per length."""
+    T = int(np.ceil(len(f) / BUCKET) * BUCKET); x = np.zeros((1, T, f.shape[1]), np.float32); x[0, :len(f)] = f
+    return x
+
+def evaluate(p, data, stride, fwdj, B=64):
+    """data: list of (feat, lab). Returns TER, utt-exact, false-alarm rate on empty refs.
+    Utterances run in length-bucketed batches of up to B, padded like training batches."""
     E = N = ok = fa = ne = 0; RP = [0, 0, 0]
-    for f, l in data:
-        lg = np.asarray(fwdj(p, f[None]))[0][:int(np.ceil(len(f) / stride))]
-        h = greedy(lg); l = list(l)
+    idx = sorted(range(len(data)), key=lambda i: len(data[i][0])); hyp = {}
+    for s in range(0, len(idx), B):
+        grp = idx[s:s + B]; T = int(np.ceil(len(data[grp[-1]][0]) / BUCKET) * BUCKET)
+        X = np.zeros((B, T, data[grp[0]][0].shape[1]), np.float32)
+        for k, i in enumerate(grp): X[k, :len(data[i][0])] = data[i][0]
+        A = np.asarray(fwdj(p, X)).argmax(-1)
+        for k, i in enumerate(grp): hyp[i] = A[k, :int(np.ceil(len(data[i][0]) / stride))]
+    for i, (f, l) in enumerate(data):
+        h = greedy_ids(hyp[i]); l = list(l)
         if len(l) == 0:
             ne += 1; fa += len(h) > 0; continue
         E += edit(h, l); N += len(l); ok += h == l
@@ -152,7 +171,7 @@ if __name__ == "__main__":
             q = dict(q); q["out"] = o; q["bo"] = bo; print("vocab grew", vo, "->", V, flush=True)
         p = jax.tree_util.tree_map(jnp.asarray, q); print("init from", a.init, flush=True)
     print(f"train {len(tr)} utts, cin {cin}, params {nparams(p)}", flush=True)
-    steps = a.epochs * (len(tr) // 32)
+    steps = a.epochs * int(np.ceil(len(tr) / 32))
     opt = optax.chain(optax.clip_by_global_norm(5.0), optax.adamw(optax.cosine_onecycle_schedule(steps, a.lr), weight_decay=1e-4))
     st = opt.init(p)
     @jax.jit
@@ -161,15 +180,18 @@ if __name__ == "__main__":
         u, st = opt.update(g, st, p); return optax.apply_updates(p, u), st, l
     fwdj = jax.jit(lambda p, x: fwd(p, x, a.stride))
     rng = np.random.default_rng(a.seed)
-    order = np.argsort([len(f) for f, _ in tr])
-    t0 = time.time()
+    lens = np.array([len(f) for f, _ in tr]); t0 = time.time()
     for ep in range(a.epochs):
-        bs = [order[i:i + 32] for i in range(0, len(order) - 31, 32)]; rng.shuffle(bs)
+        # same-bucket utterances share batches (little padding), but who shares a batch changes each epoch,
+        # and the last partial batch is filled from the start so no utterance is dropped
+        order = np.lexsort((rng.random(len(tr)), lens // 64))
+        order = np.concatenate([order, order[:(-len(order)) % 32]])
+        bs = [order[i:i + 32] for i in range(0, len(order), 32)]; rng.shuffle(bs)
         L = []
         for b in bs:
             X, XP, Y, YP = batchify([(augment(tr[i][0], rng), tr[i][1]) for i in b], a.stride)
-            p, st, l = step(p, st, X, XP, Y, YP); L.append(float(l))
-        msg = f"ep {ep} loss {np.mean(L):.3f} {time.time() - t0:.0f}s"
+            p, st, l = step(p, st, X, XP, Y, YP); L.append(l)          # stays on device: no per-step sync
+        msg = f"ep {ep} loss {float(jnp.mean(jnp.stack(L))):.3f} {time.time() - t0:.0f}s"
         if ep % 5 == 4 or ep == a.epochs - 1:
             first = list(tests)[0]; r = evaluate(p, tests[first]["snr20"], a.stride, fwdj)
             msg += f"  [{first.split('/')[-1]} snr20 ter {r['ter']:.3f} utt {r['utt']:.3f} fa {r['fa']:.2f}]"
