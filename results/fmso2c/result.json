@@ -1,12 +1,102 @@
 {
  "id": "fmso2c",
- "status": "running",
- "since": "2026-11-28T20:52:43Z",
+ "who": "fmsotto",
+ "started": "2026-11-28T20:52:45Z",
+ "steps": [
+  {
+   "n": 1,
+   "do": "logger",
+   "started": "2026-11-28T20:52:45Z",
+   "ended": "2026-11-28T20:52:47Z",
+   "rc": 0
+  },
+  {
+   "n": 2,
+   "do": "ic7100.tune",
+   "started": "2026-11-28T20:52:47Z",
+   "ended": "2026-11-28T20:52:50Z",
+   "rc": 0
+  },
+  {
+   "n": 3,
+   "do": "pluto",
+   "started": "2026-11-28T20:52:50Z",
+   "ended": "2026-11-28T20:53:12Z",
+   "rc": 0
+  },
+  {
+   "n": 4,
+   "do": "wait",
+   "started": "2026-11-28T20:53:12Z",
+   "ended": "2026-11-28T20:53:12Z",
+   "rc": 0
+  },
+  {
+   "n": 5,
+   "do": "k6.upload",
+   "started": "2026-11-28T20:53:12Z",
+   "ended": "2026-11-28T20:55:56Z",
+   "rc": 0
+  },
+  {
+   "n": 6,
+   "do": "wait",
+   "started": "2026-11-28T20:55:56Z",
+   "ended": "2026-11-28T20:56:03Z",
+   "rc": 0
+  },
+  {
+   "n": 7,
+   "do": "wait",
+   "started": "2026-11-28T20:56:03Z",
+   "ended": "2026-11-28T20:56:15Z",
+   "rc": 0
+  },
+  {
+   "n": 8,
+   "do": "pluto",
+   "started": "2026-11-28T20:56:15Z",
+   "ended": "2026-11-28T20:57:16Z",
+   "rc": 0
+  },
+  {
+   "n": 9,
+   "do": "wait",
+   "started": "2026-11-28T20:57:16Z",
+   "ended": "2026-11-28T20:57:33Z",
+   "rc": 0
+  },
+  {
+   "n": 10,
+   "do": "wait",
+   "started": "2026-11-28T20:57:33Z",
+   "ended": "2026-11-28T20:57:38Z",
+   "rc": 0
+  },
+  {
+   "n": 11,
+   "do": "logger.stop",
+   "started": "2026-11-28T20:57:38Z",
+   "ended": "2026-11-28T20:57:39Z",
+   "rc": 0
+  },
+  {
+   "n": 12,
+   "do": "ic7100.power0",
+   "started": "2026-11-28T20:57:39Z",
+   "ended": "2026-11-28T20:57:40Z",
+   "rc": 0
+  }
+ ],
+ "status": "done",
+ "checkout": "/home/baitisj/blowfang-work/worktrees/inbox-1b9b34c02147",
+ "head": "1b9b34c02147203dbf6d0c273b81e5a6bc675b7f",
+ "ended": "2026-11-28T20:57:40Z",
  "inbox": {
   "branch": "claude/bench-jobs",
   "commit": "d1cfbcd72f8c5c0bdb76094a391f1d217f35ec67",
   "path": "jobs/fmso2c"
  },
  "runner_commit": "1b9b34c02147203dbf6d0c273b81e5a6bc675b7f",
- "updated": "2026-11-28T20:52:43Z"
+ "updated": "2026-11-28T20:57:40Z"
 }
