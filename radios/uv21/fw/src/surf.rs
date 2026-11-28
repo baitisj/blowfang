@@ -9,7 +9,7 @@ use at32f421_pac as pac;
 use crate::device::display::Display;
 use crate::device::keypad::{KeyEventKind, KeyId};
 use crate::hal::{arena, con, delay, uptime};
-use crate::ui::font55;
+use crate::ui::{font55, mono};
 use cortex_m::peripheral::SYST;
 
 /// radios/uv21/surf/uv21_surf.h's uv_api_t
@@ -227,7 +227,7 @@ extern "C" fn text(x: i32, y: i32, s: *const u8, fg: u16, bg: u16, font: i32) ->
     if font == 0 {
         return font55::draw(lcd, x, y, s, fg, bg);
     }
-    font55::draw_mono(lcd, x, y, s, fg, bg, font)
+    mono::draw(lcd, x, y, s, fg, bg, font)
 }
 
 /// what a RAM module reaches (umod.rs): SURF's own callbacks. The module runs from `run` after
