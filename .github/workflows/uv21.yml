@@ -107,7 +107,8 @@ jobs:
         run: make -C radios/uv21
       # [S12] sotto 1200 receive and decode for the port: the K6 pager's library for the Cortex-M4
       # with the codebook in SPI flash, its emulator bench ELF (tests/test_uv21_sotto.py), and the
-      # K6's x86 build of the same library that the bench's output must equal
+      # K6's x86 build of the same library that the bench's output must equal. The port's build.rs
+      # runs the same script again for the archive it links
       - name: the sotto 1200 library and its bench (radios/uv21/sotto)
         run: |
           sh radios/uv21/sotto/build.sh
@@ -152,5 +153,6 @@ jobs:
             tests/test_uv21_mod.py \
             tests/test_uv21_port.py \
             tests/test_uv21_sotto.py \
+            tests/test_uv21_sottorx.py \
             tests/test_uv21_surf.py \
             tests/test_soapyfang.py

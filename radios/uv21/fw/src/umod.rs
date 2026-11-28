@@ -19,6 +19,7 @@
 //! | `um b LLLL`             | begins an image of LLLL bytes (hex)           | `um ok b`          |
 //! | `um w OOOO HEX.. CCCC`  | bytes at offset OOOO, CRC-16/XMODEM CCCC      | `um ok OOOO`       |
 //! | `um r CCCCCCCC`         | runs it, if whole with that CRC-32            | `um run`, the module's lines, `um stk=SSSS`, `um end rrrrrrrr` |
+//! | `um s HHHHHHHH [SSSS]`  | [S12] listens for sotto 1200 on HHHHHHHH Hz for SSSS s and plays it (crate::sotto) | `um ok s`, the receiver's `so` lines |
 //!
 //! stk= is the stack never touched since boot (hal::stackprobe), in bytes: the margin left.
 //! Anything wrong answers `um bad ...` and changes nothing. A write must start where the last one
@@ -65,6 +66,28 @@ static mut WANT: usize = 0;
 static mut GOT: usize = 0;
 /// the length `um b` asked for while SURF ran: SURF leaves, then `run_session` begins the upload
 static mut PENDING_WANT: usize = 0;
+/// [S12] `um s HHHHHHHH SSSS` (or SURF's long 0): listen for a sotto 1200 message on that
+/// frequency (Hz, hex) and play it; SURF leaves, and `surf::run` hands the arena to crate::sotto
+static mut SOTTO_HZ: u32 = 0;
+static mut SOTTO_S: u32 = 0;
+
+/// asks for a sotto 1200 receive (from SURF's key, or the console's `um s`)
+pub fn request_sotto(hz: u32, listen_s: u32) {
+    unsafe {
+        SOTTO_S = listen_s;
+        SOTTO_HZ = hz;
+    }
+}
+
+pub fn sotto_requested() -> bool {
+    unsafe { SOTTO_HZ != 0 }
+}
+
+/// the receive asked for, once: (Hz, seconds to listen)
+pub fn take_sotto() -> Option<(u32, u32)> {
+    let hz = unsafe { core::mem::replace(&mut *core::ptr::addr_of_mut!(SOTTO_HZ), 0) };
+    (hz != 0).then(|| (hz, unsafe { SOTTO_S }))
+}
 
 fn block() -> &'static mut [u8; ROOM] {
     arena::slice()
@@ -244,6 +267,16 @@ fn handle(api: &UmApi, line: &[u8], in_surf: bool) -> bool {
             _ => bad("len", 0),
         },
         b"w" => handle_write(a, b, c),
+        // [S12] the built-in sotto 1200 receiver: `um s HZ [S]`, both hex; only from SURF
+        b"s" => match (a.and_then(num), b.map_or(Some(30), num)) {
+            (Some(hz), Some(sec)) if in_surf && (136_000_000..=520_000_000).contains(&hz) && sec <= 600 => {
+                request_sotto(hz, sec);
+                con::puts("um ok s");
+                con::nl();
+                return true;
+            }
+            _ => bad("sotto", 0),
+        },
         b"r" => {
             let (want, got) = unsafe { (WANT, GOT) };
             let img = &block()[..want];

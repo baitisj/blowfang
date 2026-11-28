@@ -7,6 +7,7 @@ mod device;
 mod drivers;
 mod flash_map;
 mod hal;
+mod sotto;
 mod surf;
 mod ui;
 mod umod;

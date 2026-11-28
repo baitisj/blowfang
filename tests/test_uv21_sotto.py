@@ -26,9 +26,9 @@ pytestmark = pytest.mark.skipif(
 
 import bench_uv21 as bench  # noqa: E402
 
-# the flash the port pays for the library (codebook in SPI): port 21 is 26,104 B of the 61,440 B
-# app area, and the firmware's own glue (FSK receive, PWM and DMA, the screen) needs room too
-FLASH_BUDGET = 16 * 1024
+# the flash the port pays for the library and its receiver and player (uv21_sotto.c), codebook in
+# SPI: 16,787 B on 2026-11-28; port 21 was 26,104 B of the 61,440 B app area
+FLASH_BUDGET = 18 * 1024
 
 
 def host_pcm(packets, xl):

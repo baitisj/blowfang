@@ -91,7 +91,25 @@ SPI1's speed they are tens of microseconds a slot.
 the 40 % budget, the yield gap, the 16 KB flash budget, and that the build links no codebook and
 no SPI write or erase.
 
-## Stage B: the firmware (after Jeff's decision)
+## Stage B status (2026-11-28)
+
+- Codebook: in the SPI flash at 0x1F0000 (job s12cb2, `radios/uv21/mod/cbspi.c`), read-back CRC
+  de7d1e93 and header verified.
+- Receive check: `radios/uv21/mod/sottorx.c` on `radios/uv21/mod/sottorx_core.h` (the K6 pager's
+  F/1800 XL setup), staged as job s12rx1 (the Pluto sends a 23-packet sotto 1200 message on
+  440.850, CW ID AG7EW); it runs in the background, which the runner allows from PR #310.
+- Speaker path: `radios/uv21/mod/pwmtone.c` (TMR1 CH4 on PA11, AF2, 48 kHz carrier, 8 kHz
+  samples), to run with someone listening.
+- Firmware: `radios/uv21/fw/src/sotto.rs` and `radios/uv21/sotto/uv21_sotto.c`. **Long 0** in SURF
+  (or `um s HHHHHHHH SSSS` on the cable) listens for sotto 1200 on the wake's frequency (440.850,
+  or where a long MENU moved it) for 30 s, plays the message through TMR1 CH4 PWM with DMA1
+  channel 5 as it streams in, and returns to SURF. The console's `so end ... pcm=` is the K6's
+  PCM hash, so a bench run can be checked against `c/k6/pager_host_lr` with no one listening.
+  Port image 42,144 B of 61,440 (local build). `tests/test_uv21_sottorx.py` runs it in the
+  emulated radio: with the codebook it checks it and arms the receiver as specified, without it
+  it plays nothing, and neither path writes the SPI flash or a transmit register.
+
+## Stage B plan
 
 1. The codebook write. Either a one-time writer RAM module (uploaded in pieces, each verified by
    read-back against `sotto-cb.bin`'s CRC), or a narrow write window in `norflash` for that range
