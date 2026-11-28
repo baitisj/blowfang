@@ -124,10 +124,7 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
         for page in 0..8u8 {
             buf.iter_mut().for_each(|b| *b = 0);
             draw(page, &mut buf);
-            lcd.set_page(page).ok();
-            lcd.set_column(col).ok();
-            lcd.write_pixel_data(&buf).ok();
-            grab::page(page, &buf);
+            send_page(lcd, col, page, &buf);
         }
     }
 
@@ -146,6 +143,18 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
         }
         self.lcd = Some(detached.attach_display_interface(interface));
     }
+}
+
+/// One page out to the panel, then to the screen tap (if a module set one). Out of line, so
+/// the drawing loop it is called from keeps its registers: inline, the tap's call cost about
+/// 70 bytes of spills in draw_pager_only.
+#[cfg(banded)]
+#[inline(never)]
+fn send_page<DI: WriteOnlyDataCommand>(lcd: &mut Lcd<'_, DI>, col: u8, page: u8, buf: &[u8; 128]) {
+    lcd.set_page(page).ok();
+    lcd.set_column(col).ok();
+    lcd.write_pixel_data(buf).ok();
+    grab::page(page, buf);
 }
 
 /// The ST7565 page buffer (1,120 bytes with its dirty marks) of the images that play voice from
