@@ -22,7 +22,8 @@
      so start hz=.. cb=r store=frames pool=bytes
      so pk n=N r=R seq=SSSS                    each packet, R sp_packet's result (-1 bad CRC ...)
      so play gain=G                            playback starts
-     so end pk=N good=N frames=got/total played=N late=N pcm=HHHHHHHH n=samples
+     so end pk=N good=N frames=got/total played=N late=N
+     so pcm=HHHHHHHH n=samples
    pcm= is the FNV-1a hash of the samples played (sp_pcm_hash): c/k6/pager_host_lr prints the
    same hash for the same packets, so a bench run checks playback without anyone listening.
    Returns the frames played, or a negative number (-1: no codebook in SPI flash, -2: no room).
@@ -214,8 +215,10 @@ int uv21_sotto(const um_api_t *api, uint8_t *ram, uint32_t ram_len, uint32_t hz,
   p = um_int(um_put(p, " frames="), st.frames_got);
   p = um_int(um_put(p, "/"), st.total);
   p = um_int(um_put(p, " played="), (int32_t)played);
-  p = um_int(um_put(p, " late="), (int32_t)late);
-  p = um_hex(um_put(p, " pcm="), h, 8);
+  um_int(um_put(p, " late="), (int32_t)late);
+  api->say(t);
+  /* its own line: the console takes 64 characters a line (job s12flash1 lost the hash's tail) */
+  p = um_hex(um_put(t, "so pcm="), h, 8);
   um_int(um_put(p, " n="), (int32_t)n);
   api->say(t);
   return (int)played;
