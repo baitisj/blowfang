@@ -26,7 +26,12 @@
 #ifndef SR_THR
 #define SR_THR 3                         /* words an almost-full interrupt */
 #endif
-#define SR_BAUD 1800u
+#ifndef SR_BAUD
+#define SR_BAUD 1800u                    /* what SR_72 sets: the word timing (stall rule, stray RX-done) */
+#endif
+#ifndef SR_2B_OR
+#define SR_2B_OR 0x0000u                 /* bits ORed into REG_2B: 0x0400 the RX 300 Hz HPF off (D/2400) */
+#endif
 
 #define SRX_REG_IRQ_FLAGS 0x02
 #define SRX_REG_STATUS 0x0C
@@ -86,7 +91,7 @@ static inline void srx_rearm(const um_api_t *api, srx_t *s) {
 /* tunes to hz and arms the receiver */
 static inline void srx_arm(const um_api_t *api, srx_t *s, uint32_t hz) {
   api->tune(hz, 1);
-  s->r2b = api->fd_read(SRX_REG_AF_FILT) & (uint16_t)~SRX_AF_DC_CANCEL;
+  s->r2b = (uint16_t)((api->fd_read(SRX_REG_AF_FILT) & (uint16_t)~SRX_AF_DC_CANCEL) | SR_2B_OR);
   srx_wr(api, SRX_REG_AF_FILT, s->r2b);
   srx_wr(api, SRX_REG_IRQ_EN, 0);
   srx_wr(api, SRX_REG_FSK_CFG, SR_58);
