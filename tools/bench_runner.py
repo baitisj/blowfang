@@ -196,6 +196,9 @@ UV380_RX_PLANS = {
     "dmr": "c6dmrrx_long.c",
     "m17sotto": "c6sottorx_m17.c",
     "ysfsotto": "c6sottorx_ysf.c",
+    # the screen as OpenRTX drew it (module API level 6), in c/common/scrgrab.h's lines for
+    # tools/screen_grab.py: reads RAM only
+    "screen": "scrgrab.c",
 }
 UV380_RX_RUN_S = 200                           # Ctrl-C to a receive module still going after this
 
