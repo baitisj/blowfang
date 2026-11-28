@@ -9,13 +9,8 @@ use at32f421_pac as pac;
 use crate::device::display::Display;
 use crate::device::keypad::{KeyEventKind, KeyId};
 use crate::hal::{arena, con, delay, uptime};
-use crate::ui::font55;
+use crate::ui::{font55, mono};
 use cortex_m::peripheral::SYST;
-use embedded_graphics::mono_font::{ascii::{FONT_10X20, FONT_6X10}, MonoTextStyleBuilder};
-use embedded_graphics::pixelcolor::{raw::RawU16, Rgb565};
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Rectangle;
-use embedded_graphics::text::{Baseline, Text};
 
 /// radios/uv21/surf/uv21_surf.h's uv_api_t
 #[repr(C)]
@@ -199,16 +194,11 @@ extern "C" fn say(line: *const u8) {
     con::nl();
 }
 
-fn rgb(c: u16) -> Rgb565 {
-    Rgb565::from(RawU16::new(c))
-}
-
 extern "C" fn fill(x: i32, y: i32, w: i32, h: i32, c: u16) {
     if w <= 0 || h <= 0 {
         return;
     }
-    let r = Rectangle::new(Point::new(x, y), Size::new(w as u32, h as u32));
-    display().as_draw_target().fill_solid(&r, rgb(c)).ok();
+    display().as_draw_target().fill_rect(x, y, w, h, c);
 }
 
 /// a block of pixels in one window (uv21_surf.h): SURF's history strip; SURF keeps it on screen
@@ -235,17 +225,9 @@ extern "C" fn text(x: i32, y: i32, s: *const u8, fg: u16, bg: u16, font: i32) ->
     let s = cstr(s);
     let lcd = display().as_draw_target();
     if font == 0 {
-        return font55::draw(lcd, x, y, s, rgb(fg), rgb(bg));
+        return font55::draw(lcd, x, y, s, fg, bg);
     }
-    let style = MonoTextStyleBuilder::new()
-        .font(if font == 2 { &FONT_10X20 } else { &FONT_6X10 })
-        .text_color(rgb(fg))
-        .background_color(rgb(bg))
-        .build();
-    Text::with_baseline(s, Point::new(x, y), style, Baseline::Top)
-        .draw(lcd)
-        .map(|p| p.x - x)
-        .unwrap_or(0)
+    mono::draw(lcd, x, y, s, fg, bg, font)
 }
 
 /// what a RAM module reaches (umod.rs): SURF's own callbacks. The module runs from `run` after

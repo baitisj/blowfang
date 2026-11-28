@@ -1,16 +1,7 @@
 //! UV-21: the 5RH's splash (header, welcome lines, battery, logo) is gone; boot only clears.
 use super::{SCREEN_H, SCREEN_W};
-use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
+use crate::drivers::st7735::St7735;
 
-pub fn clear<D>(lcd: &mut D)
-where
-    D: DrawTarget<Color = Rgb565>,
-{
-    Rectangle::new(Point::zero(), Size::new(SCREEN_W as u32, SCREEN_H as u32))
-        .into_styled(PrimitiveStyle::with_fill(Rgb565::BLACK))
-        .draw(lcd)
-        .ok();
+pub fn clear(lcd: &mut St7735) {
+    lcd.fill_rect(0, 0, SCREEN_W, SCREEN_H, 0x0000);
 }

@@ -6,9 +6,7 @@
 //!
 //! There is no frame buffer (16 KB of RAM), so each pixel row of a line goes straight to the
 //! panel, blended between the foreground and background colours.
-use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Rectangle;
+use crate::drivers::st7735::St7735;
 
 pub const CHAR_W: i32 = 4;
 pub const LINE_H: i32 = 6;
@@ -129,33 +127,36 @@ fn bit(cov: &[u8; (MAX_PX * 3 + 4 + 7) / 8], i: usize) -> u8 {
 }
 
 /// Draws `s` with its top-left corner at (x, y), all six rows of the line (so it overwrites what
-/// was there), clipped at the right edge of the screen. Returns the width drawn. One window for
-/// the whole line, each pixel filtered on the fly from a 49-byte 1-bit coverage row.
-pub fn draw<D>(lcd: &mut D, x: i32, y: i32, s: &str, fg: Rgb565, bg: Rgb565) -> i32
-where
-    D: DrawTarget<Color = Rgb565>,
-{
+/// was there), clipped to the screen. Returns the width drawn. One window for the whole line,
+/// each pixel filtered on the fly from a 49-byte 1-bit coverage row.
+pub fn draw(lcd: &mut St7735, x: i32, y: i32, s: &str, fg: u16, bg: u16) -> i32 {
     let w = width(s).min(super::SCREEN_W - x);
     if w <= 0 || s.is_empty() {
         return 0;
     }
-    let wp = w as usize;
+    let x0 = x.max(0);
+    let y0 = y.max(0);
+    let x1 = (x + w).min(super::SCREEN_W);
+    let y1 = (y + LINE_H).min(super::SCREEN_H);
+    if x1 <= x0 || y1 <= y0 {
+        return w;
+    }
+    let (fr, fg_c, fb) = (((fg >> 11) & 0x1F) as u8, ((fg >> 5) & 0x3F) as u8, (fg & 0x1F) as u8);
+    let (br, bg_c, bb) = (((bg >> 11) & 0x1F) as u8, ((bg >> 5) & 0x3F) as u8, (bg & 0x1F) as u8);
     let bytes = s.as_bytes();
     let mut cov = [0u8; (MAX_PX * 3 + 4 + 7) / 8];
-    let (mut r, mut p) = (0usize, wp);
-    let pixels = core::iter::from_fn(|| {
-        if p == wp {
-            if r == LINE_H as usize {
-                return None;
+    lcd.begin(x0 as u16, y0 as u16, (x1 - x0) as u16, (y1 - y0) as u16);
+    for py in y0..y1 {
+        let r = (py - y) as usize;
+        if r >= 5 {
+            for _ in x0..x1 {
+                lcd.stream_px(bg);
             }
-            pack_cov(bytes, r, &mut cov);
-            r += 1;
-            p = 0;
+            continue;
         }
-        let px = if r == LINE_H as usize {
-            bg
-        } else {
-            let base = 3 * p + 2;
+        pack_cov(bytes, r, &mut cov);
+        for px_x in x0..x1 {
+            let base = 3 * (px_x - x) as usize + 2;
             let mut f = [0u8; 3];
             for (k, fk) in f.iter_mut().enumerate() {
                 let i = base + k;
@@ -165,16 +166,12 @@ where
                     + 2 * bit(&cov, i + 1)
                     + bit(&cov, i + 2);
             }
-            Rgb565::new(
-                mix(bg.r(), fg.r(), GAMMA[f[0] as usize]),
-                mix(bg.g(), fg.g(), GAMMA[f[1] as usize]),
-                mix(bg.b(), fg.b(), GAMMA[f[2] as usize]),
-            )
-        };
-        p += 1;
-        Some(px)
-    });
-    let area = Rectangle::new(Point::new(x, y), Size::new(w as u32, LINE_H as u32));
-    lcd.fill_contiguous(&area, pixels).ok();
+            let r5 = mix(br, fr, GAMMA[f[0] as usize]) as u16;
+            let g6 = mix(bg_c, fg_c, GAMMA[f[1] as usize]) as u16;
+            let b5 = mix(bb, fb, GAMMA[f[2] as usize]) as u16;
+            lcd.stream_px((r5 << 11) | (g6 << 5) | b5);
+        }
+    }
+    lcd.end();
     w
 }

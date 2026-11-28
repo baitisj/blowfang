@@ -14,7 +14,6 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-bus",
  "kd32f328-pac",
- "panic-halt",
  "profont",
  "radio-common",
  "st7565",
@@ -233,12 +232,6 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
 ]
-
-[[package]]
-name = "panic-halt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de96540e0ebde571dc55c73d60ef407c653844e6f9a1e2fdbd40c07b9252d812"
 
 [[package]]
 name = "proc-macro2"

@@ -2,14 +2,6 @@ use crate::board;
 use crate::hal::delay;
 use at32f421_pac as pac;
 use cortex_m::peripheral::SYST;
-use embedded_graphics::{
-    draw_target::DrawTarget,
-    geometry::{OriginDimensions, Size},
-    pixelcolor::{raw::RawU16, Rgb565},
-    prelude::*,
-    primitives::Rectangle,
-    Pixel,
-};
 
 pub const WIDTH: u16 = 128;
 pub const HEIGHT: u16 = 160;
@@ -69,10 +61,31 @@ impl<'a> St7735<'a> {
         ); // RASET
     }
 
-    fn stream_pixel(&self, color: Rgb565) {
-        let raw: u16 = RawU16::from(color).into_inner();
+    #[inline]
+    pub fn stream_px(&self, raw: u16) {
         self.spi_write_byte((raw >> 8) as u8);
         self.spi_write_byte(raw as u8);
+    }
+
+    /// Clips and fills an axis-aligned rectangle in one ST7735S RAMWR window.
+    pub fn fill_rect(&self, x: i32, y: i32, w: i32, h: i32, color: u16) {
+        let x0 = x.max(0);
+        let y0 = y.max(0);
+        let x1 = (x + w).min(WIDTH as i32);
+        let y1 = (y + h).min(HEIGHT as i32);
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        let rw = (x1 - x0) as u16;
+        let rh = (y1 - y0) as u16;
+        self.begin(x0 as u16, y0 as u16, rw, rh);
+        let hi = (color >> 8) as u8;
+        let lo = color as u8;
+        for _ in 0..(rw as u32 * rh as u32) {
+            self.spi_write_byte(hi);
+            self.spi_write_byte(lo);
+        }
+        self.end();
     }
 
     /// Opens a w x h window at (x, y) for `stream`: its pixels go left to right, then down,
@@ -139,64 +152,3 @@ impl<'a> St7735<'a> {
     }
 }
 
-impl<'a> OriginDimensions for St7735<'a> {
-    fn size(&self) -> Size {
-        Size::new(WIDTH as u32, HEIGHT as u32)
-    }
-}
-
-impl<'a> DrawTarget for St7735<'a> {
-    type Color = Rgb565;
-    type Error = core::convert::Infallible;
-
-    fn fill_contiguous<I>(
-        &mut self,
-        area: &Rectangle,
-        colors: I,
-    ) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = Self::Color>,
-    {
-        let area = area.intersection(&self.bounding_box());
-        if area.size.width == 0 || area.size.height == 0 {
-            return Ok(());
-        }
-        let x0 = area.top_left.x as u16;
-        let y0 = area.top_left.y as u16;
-        let x1 = x0 + area.size.width as u16 - 1;
-        let y1 = y0 + area.size.height as u16 - 1;
-        self.set_window(x0, y0, x1, y1);
-        self.write_command(0x2C); // RAMWR
-        board::set_lcd_dc(self.gpiob, true);
-        board::set_lcd_cs(self.gpiob, false);
-        let n = area.size.width as usize * area.size.height as usize;
-        for color in colors.into_iter().take(n) {
-            self.stream_pixel(color);
-        }
-        self.spi_wait_idle();
-        board::set_lcd_cs(self.gpiob, true);
-        Ok(())
-    }
-
-    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = Pixel<Self::Color>>,
-    {
-        let bb = self.bounding_box();
-        for Pixel(coord, color) in pixels {
-            if !bb.contains(coord) {
-                continue;
-            }
-            let x = coord.x as u16;
-            let y = coord.y as u16;
-            self.set_window(x, y, x, y);
-            self.write_command(0x2C); // RAMWR
-            board::set_lcd_dc(self.gpiob, true);
-            board::set_lcd_cs(self.gpiob, false);
-            self.stream_pixel(color);
-            self.spi_wait_idle();
-            board::set_lcd_cs(self.gpiob, true);
-        }
-        Ok(())
-    }
-}
