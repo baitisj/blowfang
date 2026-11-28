@@ -24,7 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modem import lz4  # noqa: E402
 
 W, H = 128, 160        # the UV-21's raw RAMRD lines
-SCR_RGB565, SCR_MONO = 1, 2
+SCR_RGB565, SCR_MONO, SCR_ST7565 = 1, 2, 3
+INK, PAPER = 0x0000, 0xFFFF    # formats 2 and 3: a set bit is a lit, dark pixel
 HDR = re.compile(r"scr 1 (\d+) (\d+) (\d+) (\d+) (\d+)")
 BAND = re.compile(r"scr b (\d+) (\d+) (\d+)")
 DATA = re.compile(r"scr d ([0-9a-f]+)")
@@ -91,15 +92,20 @@ def grab(text):
             data += b
     if zlib.crc32(bytes(data)) & 0xFFFFFFFF != crc:
         raise Bad(f"CRC {zlib.crc32(bytes(data)) & 0xFFFFFFFF:08x}, the radio said {crc:08x}")
-    if len(data) != row_bytes * h:
-        raise Bad(f"{len(data)} bytes for {h} rows of {row_bytes}")
+    rows = (h + 7) // 8 if fmt == SCR_ST7565 else h
+    if len(data) != row_bytes * rows:
+        raise Bad(f"{len(data)} bytes for {rows} rows of {row_bytes}")
     px = {}
     for y in range(h):
+        if fmt == SCR_ST7565:
+            r = data[(y >> 3) * row_bytes:((y >> 3) + 1) * row_bytes]
+            px[y] = [INK if r[x] >> (y & 7) & 1 else PAPER for x in range(w)]
+            continue
         r = data[y * row_bytes:(y + 1) * row_bytes]
         if fmt == SCR_RGB565:
             px[y] = [r[2 * x] << 8 | r[2 * x + 1] for x in range(w)]
         elif fmt == SCR_MONO:
-            px[y] = [0xFFFF if r[x >> 3] >> (7 - (x & 7)) & 1 else 0 for x in range(w)]
+            px[y] = [INK if r[x >> 3] >> (7 - (x & 7)) & 1 else PAPER for x in range(w)]
         else:
             raise Bad(f"format {fmt}")
     return w, h, fmt, px

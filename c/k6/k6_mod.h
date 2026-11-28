@@ -55,7 +55,7 @@ extern "C" {
 #define KM_HDR 16
 #define KM_TAG 8
 #define KM_ABI 1
-#define KM_LEVEL 16
+#define KM_LEVEL 17
 
 typedef struct k6_api {
   /* The shared BK48xx/FD6818 prefix (c/common/radio_api.h), the K6's ABI-1 layout as it was:
@@ -226,6 +226,19 @@ typedef struct k6_api {
      at its next lcd_flush. A module that must also run on older images reads api->level at run
      time and calls it only when it is 15 or more. */
   int (*help)(const char *name);
+  /* level 17 (2026-11-28, Jeff: "something super lightweight that provides hooks for a framebuffer
+     if needed for testing"): the screen tap. The ST7565 can't be read back and the voice + EXPLORE
+     image keeps no copy of the screen, so the core keeps none for this either: screen_tap(f, ctx)
+     has it call f(page, bytes, ctx) with each page (0-7, 128 bytes, bit 0 the top row) it sends
+     to the display, until screen_tap(NULL, 0) or the module returns. redraw() then draws the
+     core's own screen again (VOICE MSG, the MENU, a help card: what comes back when the module
+     returns), 8 pages through the tap, and returns 8; lcd_flush sends the module's own screen
+     through it too. Both return -1 in an image that doesn't draw a page at a time (only voice +
+     EXPLORE does), and redraw -2 while EXPLORE is on (its list is where the module now is).
+     c/k6/mod/scrgrab.c keeps the 1 KB in its scratch and prints it in c/common/scrgrab.h's lines
+     (format 3, SCR_ST7565). */
+  int (*screen_tap)(void (*f)(int page, const uint8_t *bytes, void *ctx), void *ctx);
+  int (*redraw)(void);
 } k6_api_t;
 
 /* A packed image (KM_F_LZ4): the header's code length (bytes 4-5) counts the packed body, which

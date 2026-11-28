@@ -353,6 +353,9 @@ mod ffi {
         pub msg_mem: unsafe extern "C" fn(*mut u32) -> *mut u8,
         // level 15: a module's help cards (and packed images, k6_lib.h KM_F_LZ4)
         pub help: unsafe extern "C" fn(*const u8) -> i32,
+        // level 17: the screen tap (a hook that sees each page sent) and a redraw of the core's screen
+        pub screen_tap: unsafe extern "C" fn(Option<crate::device::display::Hook>, *mut u8) -> i32,
+        pub redraw: unsafe extern "C" fn() -> i32,
     }
     /// c/k6/k6_lib.h kl_flash_t and kl_info_t
     #[repr(C)]
@@ -398,7 +401,7 @@ const KM_READY: i32 = 3;
 /// through MOD_CTX, set only while a module runs.
 static MOD_API: ffi::K6Api = ffi::K6Api {
     abi: 1,
-    level: 15,
+    level: 17,
     say: mod_say,
     ticks: mod_ticks,
     fd_read: mod_fd_read,
@@ -430,6 +433,8 @@ static MOD_API: ffi::K6Api = ffi::K6Api {
     sotto_play: mod_sotto_play,
     msg_mem: mod_msg_mem,
     help: mod_help,
+    screen_tap: mod_screen_tap,
+    redraw: mod_redraw,
 };
 
 // ---- level 11: a sotto receiver's message played (Jeff 2026-11-19, "proceed with playback") ----
@@ -3462,6 +3467,8 @@ fn run_module(app: &mut App, syst: &mut SYST) -> bool {
     }
     mod_screen_clear();
     let ret = unsafe { ffi::km_run(arena::base(), &MOD_API) };
+    #[cfg(banded)]
+    crate::device::display::grab::set(None); // the tap was in the module's memory
     unsafe { mod_tx_off() }; // a module that left the transmitter on
     // a key held to stop the module: let it go first (up to 3 s), so its release isn't a press
     // here (side key 1 would run the module again; * would clear)
@@ -3818,6 +3825,46 @@ unsafe extern "C" fn mod_help(name: *const u8) -> i32 {
 #[cfg(not(banded))]
 unsafe extern "C" fn mod_help(_name: *const u8) -> i32 {
     -1
+}
+
+// level 17 (Jeff 2026-11-28: no framebuffer, "something super lightweight that provides hooks
+// for a framebuffer if needed for testing"): screen_tap(f, ctx) has draw_pages hand f each page
+// it sends (f(page, 128 bytes, ctx)); NULL removes it, and so does the module's return. redraw()
+// draws the core's screen again (VOICE MSG, the MENU, a help card), as it will be when the
+// module returns: 8 pages through the tap. -2 while EXPLORE is on (its list sits where the
+// module is), -1 in an image that doesn't draw a page at a time.
+
+#[cfg(banded)]
+unsafe extern "C" fn mod_screen_tap(f: Option<crate::device::display::Hook>, ctx: *mut u8) -> i32 {
+    crate::device::display::grab::set(f.map(|f| (f, ctx)));
+    0
+}
+
+#[cfg(not(banded))]
+unsafe extern "C" fn mod_screen_tap(_f: Option<crate::device::display::Hook>, _ctx: *mut u8) -> i32 {
+    -1
+}
+
+static mut MOD_REDRAW: Option<unsafe fn(&App)> = None;
+
+/// main.rs (ui::hook_mod_screen): the function that draws the core's screen
+#[cfg(banded)]
+pub fn set_mod_redraw(f: unsafe fn(&App)) {
+    unsafe { *addr_of_mut!(MOD_REDRAW) = Some(f) };
+}
+
+unsafe extern "C" fn mod_redraw() -> i32 {
+    mod_tx_guard();
+    let app = unsafe { (*addr_of!(MOD_CTX)).app };
+    match unsafe { *addr_of!(MOD_REDRAW) } {
+        _ if app.is_null() || !cfg!(banded) => -1,
+        _ if unsafe { (*app).exploring() } => -2,
+        Some(f) => {
+            unsafe { f(&*app) };
+            8
+        }
+        None => -1,
+    }
 }
 
 /// A key while a card is up, or MENU held to show one: true when help took the key

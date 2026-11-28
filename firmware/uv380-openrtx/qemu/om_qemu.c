@@ -165,9 +165,23 @@ static void q_c2_stop(void) {
     q_line(q_c2 ? "c2 stop (frames)" : "c2 stop (none)");
 }
 
+/* a test screen, 160 wide as the radio's but 64 rows (128 don't fit in the board's RAM beside
+   in.txt): a dark title bar, a pattern under it (tests/test_uv380_ortx_mod.py draws the same) */
+#define Q_FB_H 64
+static uint16_t q_fb[160 * Q_FB_H];
+
+static const uint16_t *q_screen(unsigned *w, unsigned *h) {
+    for (unsigned y = 0; y < Q_FB_H; y++)
+        for (unsigned x = 0; x < 160; x++)
+            q_fb[y * 160 + x] = y < 16 ? 0x18C3 : (((x / 8 + y / 10) % 5) == 0 ? 0xFFE0 : (uint16_t)(x * 0x0841 >> 2));
+    *w = 160;
+    *h = Q_FB_H;
+    return q_fb;
+}
+
 static const om_host host = {q_line, q_write, q_read, q_now, q_stop, q_sleep, q_c6r, q_c6w, NULL, q_rssi,
                              q_probe, q_enc_begin, q_enc_push, q_enc_end, q_msg, q_preview,
-                             q_tx_request, NULL, NULL, q_c2_start, q_c2_push, q_c2_stop};
+                             q_tx_request, NULL, NULL, q_c2_start, q_c2_push, q_c2_stop, q_screen};
 
 int main(void) {
     int n = host_read_file("in.txt", (uint8_t *)in, sizeof in - 1);

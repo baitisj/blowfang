@@ -178,6 +178,13 @@ static int api_c2_push(const uint8_t *frame) {
     return H->c2_push ? H->c2_push(frame) : -1;
 }
 
+static const uint16_t *api_screen(unsigned *w, unsigned *h) {
+    if (H->screen)
+        return H->screen(w, h);
+    *w = *h = 0;
+    return 0;
+}
+
 static void api_c2_stop(void) {
     if (H->c2_stop)
         H->c2_stop();
@@ -212,6 +219,7 @@ static const ortx_api_t api = {
     .c2_start = api_c2_start,
     .c2_push = api_c2_push,
     .c2_stop = api_c2_stop,
+    .screen = api_screen,
 };
 
 int om_idle(void) {

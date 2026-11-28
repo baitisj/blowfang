@@ -8,11 +8,16 @@ static char *scr_hex(char *p, uint32_t v, int digits) {
   return p;
 }
 
+/* no division: the K6's M0 has no divide instruction and its modules no libraries */
 static char *scr_dec(char *p, uint32_t v) {
-  char t[10];
-  int n = 0;
-  do t[n++] = (char)('0' + v % 10); while ((v /= 10) && n < 10);
-  while (n) *p++ = t[--n];
+  static const uint32_t ten[] = {1000000000u, 100000000u, 10000000u, 1000000u, 100000u, 10000u, 1000u,
+                                 100u, 10u, 1u};
+  int lead = 1;
+  for (int i = 0; i < 10; i++) {
+    char d = '0';
+    while (v >= ten[i]) v -= ten[i], d++;
+    if (d != '0' || !lead || i == 9) *p++ = d, lead = 0;
+  }
   *p = 0;
   return p;
 }

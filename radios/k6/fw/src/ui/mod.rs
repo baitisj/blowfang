@@ -129,6 +129,15 @@ unsafe fn mod_flush<DI: WriteOnlyDataCommand + 'static>() -> i32 {
 pub fn hook_mod_screen<DI: WriteOnlyDataCommand + 'static>(display: &mut Display<'_, DI>) {
     unsafe { *core::ptr::addr_of_mut!(MOD_DISPLAY) = display as *mut Display<'_, DI> as *mut () };
     app::pager::set_mod_lcd(mod_flush::<DI>);
+    #[cfg(all(banded, feature = "pager-only"))]
+    app::pager::set_mod_redraw(mod_redraw::<DI>);
+}
+
+/// module API level 17, redraw: the core's own screen again, through the screen tap
+#[cfg(all(banded, feature = "pager-only", not(feature = "lean")))]
+unsafe fn mod_redraw<DI: WriteOnlyDataCommand + 'static>(app: &app::App) {
+    let d = unsafe { &mut *(*core::ptr::addr_of!(MOD_DISPLAY) as *mut Display<'static, DI>) };
+    draw_pager_only(d, app);
 }
 
 #[cfg(feature = "lean")]

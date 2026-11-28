@@ -9,7 +9,7 @@
  * UV-21 Pro adopts this prefix at UM_ABI 2.
  *
  * What portable code may count on, on both radios:
- *   abi, level  each radio's own numbers (K6: KM_ABI 1, KM_LEVEL 16; UV-21: UM_ABI 2, UM_LEVEL 1).
+ *   abi, level  each radio's own numbers (K6: KM_ABI 1, KM_LEVEL 17; UV-21: UM_ABI 2, UM_LEVEL 1).
  *               A level on one radio says nothing about the other, so portable code doesn't test
  *               it: the radio's own module builder already refuses a module its image can't run.
  *   ticks       100 us ticks. The K6 gives 16 bits (wraps every 6.5536 s), the UV-21 32: portable

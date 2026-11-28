@@ -124,9 +124,7 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
         for page in 0..8u8 {
             buf.iter_mut().for_each(|b| *b = 0);
             draw(page, &mut buf);
-            lcd.set_page(page).ok();
-            lcd.set_column(col).ok();
-            lcd.write_pixel_data(&buf).ok();
+            send_page(lcd, col, page, &buf);
         }
     }
 
@@ -145,6 +143,18 @@ impl<'a, DI: WriteOnlyDataCommand> Display<'a, DI> {
         }
         self.lcd = Some(detached.attach_display_interface(interface));
     }
+}
+
+/// One page out to the panel, then to the screen tap (if a module set one). Out of line, so
+/// the drawing loop it is called from keeps its registers: inline, the tap's call cost about
+/// 70 bytes of spills in draw_pager_only.
+#[cfg(banded)]
+#[inline(never)]
+fn send_page<DI: WriteOnlyDataCommand>(lcd: &mut Lcd<'_, DI>, col: u8, page: u8, buf: &[u8; 128]) {
+    lcd.set_page(page).ok();
+    lcd.set_column(col).ok();
+    lcd.write_pixel_data(buf).ok();
+    grab::page(page, buf);
 }
 
 /// The ST7565 page buffer (1,120 bytes with its dirty marks) of the images that play voice from
@@ -178,5 +188,31 @@ impl Backlight {
 
     pub fn off(&self) {
         board::set_lcd_backlight(self.gpiof, false);
+    }
+}
+
+/// a screen tap: page (0-7), its 128 bytes as sent (bit 0 the top row), the module's context
+pub type Hook = unsafe extern "C" fn(i32, *const u8, *mut u8);
+
+/// The screen-grab hook (module API level 17, 2026-11-28; Jeff: "something super lightweight that
+/// provides hooks for a framebuffer if needed for testing"): no copy of the screen, only a
+/// function that sees each page draw_pages sends, set by a RAM module while it runs
+/// (app::pager mod_screen) and cleared when it returns. c/k6/mod/scrgrab.c keeps the 1 KB in its
+/// own scratch and prints it in c/common/scrgrab.h's lines.
+#[cfg(banded)]
+pub mod grab {
+    use core::ptr::{addr_of, addr_of_mut};
+    pub type Hook = super::Hook;
+    static mut HOOK: Option<(Hook, *mut u8)> = None;
+
+    pub fn set(h: Option<(Hook, *mut u8)>) {
+        unsafe { *addr_of_mut!(HOOK) = h };
+    }
+
+    #[inline(never)]
+    pub fn page(page: u8, buf: &[u8; 128]) {
+        if let Some((f, ctx)) = unsafe { *addr_of!(HOOK) } {
+            unsafe { f(page as i32, buf.as_ptr(), ctx) };
+        }
     }
 }

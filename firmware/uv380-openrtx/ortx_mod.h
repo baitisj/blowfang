@@ -46,11 +46,12 @@ extern "C" {
 #endif
 
 #define OM_MAGIC "U3R"
-#define OM_LEVEL 5                      /* 2: sotto 1200 encoder, the message, send (11-13);
+#define OM_LEVEL 6                      /* 2: sotto 1200 encoder, the message, send (11-13);
                                            3: tx_tone (11-14);
                                            4: tx_mic and tx_tone send the ident first, under
                                               the image's transmit guard (11-16);
-                                           5: Codec2 3200 to the speaker (11-18) */
+                                           5: Codec2 3200 to the speaker (11-18);
+                                           6: screen, the framebuffer (11-28) */
 #define OM_ARENA 16384                  /* module image plus scratch (half if the heap is short) */
 #define OM_HEX_MAX 128                  /* image bytes in one "mod hex" line */
 #define OM_LINE 320                     /* the longest command line the image reads */
@@ -114,6 +115,15 @@ typedef struct ortx_api {
     int (*c2_start)(void);
     int (*c2_push)(const uint8_t *frame);
     void (*c2_stop)(void);
+    /* level 6 (2026-11-28, Jeff: "add this to a common ABI for all our devices ... automated
+       tests easy"): the screen. screen(&w, &h) returns OpenRTX's framebuffer (gfx_framebuffer),
+       w x h RGB565 pixels row after row, each a little-endian uint16_t (red in the top 5 bits),
+       which the panel is sent from: what the UI drew last. It is read only, and the UI thread
+       may be drawing into it meanwhile, so a grab can catch a redraw half done (grab twice to
+       be sure). NULL, and w = h = 0, in an image without one. mod/scrgrab.c prints it in
+       c/common/scrgrab.h's lines, LZ4 packed, for tools/screen_grab.py. Check api->level >= 6
+       before calling it. */
+    const uint16_t *(*screen)(unsigned *w, unsigned *h);
 } ortx_api_t;
 
 /* the image's side: what the loader needs from OpenRTX (all of it, or NULL where noted) */
@@ -143,6 +153,8 @@ typedef struct {
     int (*c2_start)(void);
     int (*c2_push)(const uint8_t *frame);
     void (*c2_stop)(void);
+    /* level 6 (NULL: screen returns NULL) */
+    const uint16_t *(*screen)(unsigned *w, unsigned *h);
 } om_host;
 
 /* One "mod ..." command; args is what follows "mod". Returns 0, or -1 after an "err" line. */

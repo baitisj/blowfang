@@ -79,8 +79,8 @@ def test_images_name_their_table(hello):
     assert uv380mod.image(code, entry, 1, KEY, table="openrtx")[:4] == b"U3R\x01"
     assert uv380mod.image(code, entry, 1, KEY)[:4] == b"U3M\x01"
     with pytest.raises(ValueError):
-        uv380mod.image(code, entry, 1, KEY, level=6, table="openrtx")
-    assert uv380mod.image(code, entry, 1, KEY, level=5, table="openrtx")[:4] == b"U3R\x01"
+        uv380mod.image(code, entry, 1, KEY, level=7, table="openrtx")
+    assert uv380mod.image(code, entry, 1, KEY, level=6, table="openrtx")[:4] == b"U3R\x01"
 
 
 def test_mod_lines():
@@ -98,7 +98,7 @@ def test_mod_lines():
 @emu
 def test_hello_runs(elf, hello):
     out = run(elf, ["mod info"] + tool.mod_lines(img(hello)) + ["mod info"])
-    assert re.fullmatch(r"ok mod info magic=U3R level=5 arena=2[0-9a-f]{7} size=16384 loaded=0/0 "
+    assert re.fullmatch(r"ok mod info magic=U3R level=6 arena=2[0-9a-f]{7} size=16384 loaded=0/0 "
                         r"key=yes serial=0", out[0]), out
     say = [ln[8:] for ln in out if ln.startswith("mod say ")]
     assert re.fullmatch(r"hello world from RAM at 0x2[0-9a-f]{7}", say[0])
@@ -137,7 +137,7 @@ def test_refusals(elf, hello):
     code, entry = hello
     assert refused(run(elf, tool.mod_lines(img(hello, key=secrets.token_bytes(16))))) == [-4]
     assert refused(run(elf, tool.mod_lines(img(hello, magic=b"U3M")))) == [-3]
-    assert refused(run(elf, tool.mod_lines(img(hello, level=6)))) == [-3]
+    assert refused(run(elf, tool.mod_lines(img(hello, level=7)))) == [-3]
     bad = bytearray(img(hello))
     bad[40] ^= 1
     assert refused(run(elf, tool.mod_lines(bytes(bad)))) == [-4]
@@ -369,3 +369,23 @@ def test_rxrec_and_rangerx_fit():
         code, entry = uv380mod.build(os.path.join(MOD, name))
         assert entry == 0 and len(code) < most, (name, len(code))
         assert uv380mod.source_table(os.path.join(MOD, name)) == "openrtx"
+
+
+@emu
+def test_scrgrab_sends_the_framebuffer(elf):
+    """mod/scrgrab.c (level 6, screen): om_qemu's 160 x 64 test framebuffer comes back through
+    the shared screen-grab lines, LZ4 packed, pixel for pixel"""
+    import screen_grab
+    src = os.path.join(MOD, "scrgrab.c")
+    assert uv380mod.source_level(src) == 6
+    out = run(elf, tool.mod_lines(img(uv380mod.build(src), level=6)))
+    say = "\n".join(ln[8:] for ln in out if ln.startswith("mod say "))
+    assert all(len(ln) <= 200 for ln in say.splitlines())
+    w, h, fmt, px = screen_grab.grab(say)
+    assert (w, h, fmt) == (160, 64, screen_grab.SCR_RGB565)
+    for y in range(h):
+        want = [0x18C3 if y < 16 else (0xFFE0 if (x // 8 + y // 10) % 5 == 0 else (x * 0x0841 >> 2) & 0xFFFF)
+                for x in range(w)]
+        assert px[y] == want, y
+    assert any(re.search(r"scr b \d+ 2560 [1-9]", ln) for ln in say.splitlines())   # packed
+    assert "ok mod run ret=64" in " ".join(out)
