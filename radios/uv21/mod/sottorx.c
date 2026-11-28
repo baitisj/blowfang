@@ -9,8 +9,11 @@
                                                      each packet (seq and total from its header)
      sr end syncs=N pk=N ok=N a9=N bad=N short=N    the totals; returns ok (good packets)
 
-   Settings: SR_HZ (440850000: the K6 pager's channel), SR_S (60), and sottorx_core.h's SR_LEN
-   (128; 64 for profile L), SR_58, SR_72, SR_THR. Writes only the RF chip's receive registers (each
+   Settings: SR_HZ (440850000: the K6 pager's channel), SR_S (60), SR_DIAG (1: a status line a
+   second, "sr t=S DBM 0c= 0b= 59= 02= s=SYNCS"), and sottorx_core.h's SR_LEN
+   (128; 64 for profile L), SR_58, SR_72, SR_BAUD, SR_2B_OR, SR_THR. The K6 pager's D/2400 rung
+   (direct 2-FSK, which the RT-950's BK4829 decodes; it never decoded FFSK, docs/rt950-
+   characteristics.md): SR_58=0x00E9 SR_72=0x60CB SR_BAUD=2400 SR_2B_OR=0x0400. Writes only the RF chip's receive registers (each
    through the API's receive-only filter); it leaves the FSK modem off at the end, and SURF retunes
    when the module returns. */
 #include "sottorx_core.h"
@@ -20,6 +23,9 @@
 #endif
 #ifndef SR_S
 #define SR_S 60
+#endif
+#ifndef SR_DIAG
+#define SR_DIAG 1
 #endif
 
 typedef struct {
@@ -75,9 +81,26 @@ int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   um_hex(um_put(p, " 2b="), s->r2b, 4);
   api->say(t);
 
-  uint32_t t_end = api->ms() + (uint32_t)SR_S * 1000u;
+  uint32_t t0 = api->ms(), t_end = t0 + (uint32_t)SR_S * 1000u, t_diag = t0;
   while ((int32_t)(api->ms() - t_end) < 0) {
     if (srx_poll(api, s)) report(api, &c, s, tmp);
+#if SR_DIAG
+    /* once a second: the level, the chip's status and IRQ registers, the FSK setup as it reads
+       back (SR_DIAG=0 leaves it out) */
+    if (api->ms() - t_diag >= 1000u) {
+      t_diag = api->ms();
+      /* (the console takes 64 characters a line) */
+      p = um_put(t, "sr t=");
+      p = um_int(p, (int32_t)((t_diag - t0) / 1000u));
+      p = um_half_db(um_put(p, " "), um_rssi2(api));
+      p = um_hex(um_put(p, " 0c="), api->fd_read(0x0C), 4);
+      p = um_hex(um_put(p, " 0b="), api->fd_read(0x0B), 4);
+      p = um_hex(um_put(p, " 59="), api->fd_read(0x59), 4);
+      p = um_hex(um_put(p, " 02="), api->fd_read(0x02), 4);
+      um_int(um_put(p, " s="), (int32_t)s->syncs);
+      api->say(t);
+    }
+#endif
     api->delay_us(500);
   }
   srx_off(api);

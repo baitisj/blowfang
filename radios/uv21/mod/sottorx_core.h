@@ -26,7 +26,18 @@
 #ifndef SR_THR
 #define SR_THR 3                         /* words an almost-full interrupt */
 #endif
-#define SR_BAUD 1800u
+#ifndef SR_BAUD
+#define SR_BAUD 1800u                    /* what SR_72 sets: the word timing (stall rule, stray RX-done) */
+#endif
+#ifndef SR_SWAP
+/* the BK4829 hands each FIFO word over with the first byte on air in its low half (the RT-950's
+   notes; on the UV-21, job s12rx3: 41 of 44 D/2400 packets checked only with the bytes swapped),
+   the K6's FD6818 in its high half: 1 takes the low byte first, so the packet is in air order */
+#define SR_SWAP 1
+#endif
+#ifndef SR_2B_OR
+#define SR_2B_OR 0x0000u                 /* bits ORed into REG_2B: 0x0400 the RX 300 Hz HPF off (D/2400) */
+#endif
 
 #define SRX_REG_IRQ_FLAGS 0x02
 #define SRX_REG_STATUS 0x0C
@@ -52,10 +63,16 @@
 #define SRX_CRC_OFF 0x5625u
 #define SRX_FIFO_WORDS 8
 #define SRX_WORD_US (16u * 1000000u / SR_BAUD)
+/* the packet's air time after its sync, ms (569 at 128 bytes, 1800 baud) */
+#define SRX_PKT_MS (SR_LEN * 8u * 1000u / SR_BAUD)
+/* an RX-done sooner than 60 % of that after the sync is the last packet's, late (the K6 pager's
+   STRAY_DONE rule): taken as this one's end it would cut it short */
+#define SRX_STRAY_MS (SRX_PKT_MS * 6u / 10u)
 
 typedef struct {
   int in_pkt, got;                       /* a packet is coming in; its bytes so far */
   uint32_t t_read_ms;                    /* the last FIFO read (ms) */
+  uint32_t t_sync_ms;                    /* the packet's sync interrupt (ms) */
   uint32_t syncs;                        /* sync interrupts seen */
   uint16_t r2b;                          /* REG_2B as set */
   uint8_t raw[SR_LEN];                   /* the packet as the FIFO gave it: first byte on air first */
@@ -80,7 +97,7 @@ static inline void srx_rearm(const um_api_t *api, srx_t *s) {
 /* tunes to hz and arms the receiver */
 static inline void srx_arm(const um_api_t *api, srx_t *s, uint32_t hz) {
   api->tune(hz, 1);
-  s->r2b = api->fd_read(SRX_REG_AF_FILT) & (uint16_t)~SRX_AF_DC_CANCEL;
+  s->r2b = (uint16_t)((api->fd_read(SRX_REG_AF_FILT) & (uint16_t)~SRX_AF_DC_CANCEL) | SR_2B_OR);
   srx_wr(api, SRX_REG_AF_FILT, s->r2b);
   srx_wr(api, SRX_REG_IRQ_EN, 0);
   srx_wr(api, SRX_REG_FSK_CFG, SR_58);
@@ -105,6 +122,7 @@ static inline void srx_off(const um_api_t *api) {
 static inline void srx_take(const um_api_t *api, srx_t *s, int n) {
   for (; n > 0 && s->got < SR_LEN; n--, s->got += 2) {
     uint16_t w = api->fd_read(SRX_REG_FIFO);
+    if (SR_SWAP) w = (uint16_t)(w << 8 | w >> 8);
     s->raw[s->got] = (uint8_t)(w >> 8), s->raw[s->got + 1] = (uint8_t)w;
   }
 }
@@ -116,15 +134,25 @@ static inline int srx_poll(const um_api_t *api, srx_t *s) {
   uint32_t now = api->ms();
   if (f & SRX_IRQ_RX_SYNC) {
     s->syncs++;
-    s->in_pkt = 1, s->got = 0, s->t_read_ms = now;
+    s->in_pkt = 1, s->got = 0, s->t_read_ms = now, s->t_sync_ms = now;
   }
+  if (s->in_pkt && (f & SRX_IRQ_RX_DONE) && now - s->t_sync_ms < SRX_STRAY_MS)
+    f &= (uint16_t)~SRX_IRQ_RX_DONE;
   if (s->in_pkt && (f & SRX_IRQ_RX_FULL)) {
     srx_take(api, s, SR_THR);
     s->t_read_ms = now;
   } else if (s->in_pkt && s->got < SR_LEN &&
              (now - s->t_read_ms) * 1000u > (SR_THR + 1) * SRX_WORD_US) {
-    srx_take(api, s, 1);
+    /* no almost-full for N + 1 word times: the edge was lost with N or more words waiting, and
+       at least N + 1 came since the last read, so N are there to take */
+    srx_take(api, s, SR_THR);
     s->t_read_ms = now;
+  }
+  if (s->in_pkt && s->got < SR_LEN && now - s->t_sync_ms > 2u * SRX_PKT_MS) {
+    int got = s->got;                    /* a sync that never filled a packet: listen again */
+    srx_rearm(api, s);
+    s->got = got;
+    return 1;
   }
   if (s->in_pkt && (f & SRX_IRQ_RX_DONE) && s->got < SR_LEN) srx_take(api, s, SRX_FIFO_WORDS);
   if (s->in_pkt && (s->got >= SR_LEN || (f & SRX_IRQ_RX_DONE))) {

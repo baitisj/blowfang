@@ -109,6 +109,19 @@ no SPI write or erase.
   emulated radio: with the codebook it checks it and arms the receiver as specified, without it
   it plays nothing, and neither path writes the SPI flash or a transmit register.
 
+### On air (2026-11-28, Pluto on 440.850, module sottorx, no flash)
+
+| Job | PHY sent / set | Level at the UV-21 | Result |
+|---|---|---|---|
+| s12rx1 | F/1800 FFSK (the K6's default), Pluto -40 / -55 dB | (not logged) | 0 syncs |
+| s12rx2b | F/1800, Pluto -40 / -30 dB | -76.5 / -66 dBm | 0 syncs, REG_0C bit 0 never set |
+| s12rx3 | **D/2400** direct 2-FSK (REG_58 0x00E9, REG_72 0x60CB, RX HPF off), Pluto -45 / -55 dB, flat FM, 3 kHz | -81.5 / -91.5 dBm | **41 of 44 packets good, all 0xA9**, 22 of 23 heard each pass (packet 0 missed both times), 1 CRC fail each pass |
+
+So the UV-21 receives the K6 pager's D/2400 rung, not its FFSK, as the RT-950's BK4829 did. Its
+FIFO words carry the first byte on air in the low half (the K6's FD6818: the high half), so
+`sottorx_core.h` swaps them (SR_SWAP). The port's receiver is built for D/2400; send with
+`python -m modem.k6 tx MSG.sot OUT.wav --phy D --baud 2400 --payload XL --codec 1200`.
+
 ## Stage B plan
 
 1. The codebook write. Either a one-time writer RAM module (uploaded in pieces, each verified by

@@ -5,6 +5,8 @@
   python -m modem.uv21mod build radios/uv21/mod/regsweep.c -D SW_REG=0x1F -D SW_VALS=0x1657,0xC65A \\
       -D SW_HZ=439500000 -o sweep.um21
   python -m modem.uv21mod run /dev/ttyUSB2 radios/uv21/mod/hello.c --log run.txt
+  python -m modem.uv21mod sotto /dev/ttyUSB2 --hz 440850000 --seconds 60 --log so.txt   ([S12] the
+      port's built-in sotto 1200 receiver: `um s`, then its "so" lines)
 
 Built with clang for the Cortex-M4 without FPU, -fropi, and checked position-independent the
 same way as the K6's and the UV-380's (linked at two addresses, the bytes must match). Unsigned:
@@ -125,6 +127,30 @@ def upload(port, img, log=print, run_timeout=120.0, line_timeout=2.0, tries=3):
     raise Failed(f"no 'um end' in {run_timeout} s")
 
 
+def sotto(port, hz, seconds, log=print, slack=60.0):
+    """[S12] the port's built-in sotto 1200 receiver (radios/uv21/fw/src/sotto.rs): `um s` from SURF,
+    then its "so" lines until "so ret"; returns them. port: an open pyserial port at 115200"""
+    if not 136_000_000 <= hz <= 520_000_000 or not 1 <= seconds <= 600:
+        raise Failed(f"um s {hz} {seconds}: 136-520 MHz and 1-600 s")
+    port.write(f"um s {hz:08x} {seconds:04x}\n".encode())
+    out, end, buf, seen = [], time.time() + seconds + slack, b"", False
+    while time.time() < end:
+        buf += port.read(port.in_waiting or 1)
+        while b"\n" in buf:
+            ln, buf = buf.split(b"\n", 1)
+            t = ln.decode("ascii", "replace").strip()
+            if t.startswith("um bad"):
+                raise Failed(f"refused: {t}")
+            if t == "um ok s":
+                seen = True
+            if t.startswith("so "):
+                out.append(t)
+                log(t)
+                if t.startswith("so ret"):
+                    return out
+    raise Failed("no 'so ret'" + ("" if seen else " (and no 'um ok s': is the image's SURF running?)"))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -138,7 +164,25 @@ def main(argv=None):
     r.add_argument("-D", dest="defines", action="append", default=[])
     r.add_argument("--log")
     r.add_argument("--run-timeout", type=float, default=120.0)
+    so = sub.add_parser("sotto", help="[S12] the port's sotto 1200 receiver: listen on --hz, play, log")
+    so.add_argument("port")
+    so.add_argument("--hz", type=int, default=440_850_000)
+    so.add_argument("--seconds", type=int, default=60)
+    so.add_argument("--log")
     a = ap.parse_args(argv)
+    if a.cmd == "sotto":
+        import serial
+        lg = open(a.log, "a") if a.log else None
+
+        def say_so(t):
+            print(t)
+            if lg:
+                lg.write(t + "\n")
+                lg.flush()
+        with serial.Serial(a.port, 115200, timeout=0.1) as port:
+            port.reset_input_buffer()
+            sotto(port, a.hz, a.seconds, log=say_so)
+        return 0
     if a.source.endswith(".um21"):
         img = open(a.source, "rb").read()
     else:

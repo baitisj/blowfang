@@ -115,7 +115,8 @@ static void say_kv(const um_api_t *api, const char *head, uint32_t v, int digits
 }
 
 #if CB_OP != 0
-static int in_window(uint32_t a, uint32_t n) { return a >= CB_BASE && n <= CB_END - a; }
+/* a .. a + n inside the window (a above CB_END would make CB_END - a wrap: checked first) */
+static int in_window(uint32_t a, uint32_t n) { return a >= CB_BASE && a <= CB_END && n <= CB_END - a; }
 #endif
 
 #if CB_OP != 0
@@ -148,7 +149,7 @@ static int erase4k(const um_api_t *api, uint32_t a) {
 #if CB_OP == 2
 /* n bytes at SPI address a, inside one 256-byte page, onto erased flash; read back */
 static int prog_page(const um_api_t *api, uint32_t a, const uint8_t *p, uint32_t n, uint8_t *tmp) {
-  if (!in_window(a, n) || ((a & 255u) + n) > 256u) return F_RANGE;
+  if (n == 0 || n > 256u || !in_window(a, n) || ((a & 255u) + n) > 256u) return F_RANGE;
   rd(a, tmp, n);
   for (uint32_t i = 0; i < n; i++)
     if (tmp[i] != 0xFF) return F_PROG;
@@ -180,7 +181,7 @@ static int prog(const um_api_t *api, uint32_t a, const uint8_t *p, uint32_t n, u
 int um_main(const um_api_t *api, uint8_t *ram, uint32_t ram_len) {
   int f = 0;
   char t[64];
-  (void)ram_len;
+  if (ram_len < 512) return F_SET;      /* the 256-byte page buffer and the header's copy */
   cs(0);
   cs(1);
   spi(0x9F);
