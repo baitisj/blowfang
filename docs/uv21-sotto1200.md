@@ -122,6 +122,22 @@ FIFO words carry the first byte on air in the low half (the K6's FD6818: the hig
 `sottorx_core.h` swaps them (SR_SWAP). The port's receiver is built for D/2400; send with
 `python -m modem.k6 tx MSG.sot OUT.wav --phy D --baud 2400 --payload XL --codec 1200`.
 
+### First playback on the radio (job s12flash1, 2026-11-28 16:32Z, Jeff's GO)
+
+PR #312's CI image (45804ef, 42,224 B) went on hands-free. Then the port's own receiver (`um s`,
+the runner's `uv21.sotto`) listened on 440.850 while the Pluto sent the 23-packet message as D/2400:
+
+    so start hz=440850000 cb=1 store=992 pool=3232
+    so pk n=1 r=2 seq=0001 ... so pk n=22 r=1 seq=2016     (21 good, 1 bad CRC, packet 0 unheard)
+    so play gain=632 frames=2                              (playback began as the message streamed)
+    so end pk=22 good=21 frames=415/455 played=1000 late=0 pcm=30670
+    so ret r=000003e8 stk=03ec
+
+`c/k6/pager_host_lr` on the same 21 packets gives `got=415 total=455 pcm=30670a16 samples=160000`
+(1,000 calls of 160 samples). The UV-21's frame counts match, and so does its hash as far as the
+console's 64 characters let it through (the line now splits the hash onto its own `so pcm=` line).
+`late=0`: the DMA never caught up with the decoder. The stack had 1,004 B to spare.
+
 ## Stage B plan
 
 1. The codebook write. Either a one-time writer RAM module (uploaded in pieces, each verified by

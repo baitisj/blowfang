@@ -53,7 +53,7 @@ def test_listens_with_the_codebook_and_surf_comes_back(built):
     out = listen(b, 2)
     assert "um ok s" in out and "so begin hz=1a46d650" in out
     assert "so start hz=440850000 cb=1" in out, out[-800:]         # the codebook checks
-    assert "so end pk=0 good=0" in out and "so ret r=00000000 stk=" in out
+    assert "so end pk=0 good=0" in out and "so pcm=" in out and "so ret r=00000000 stk=" in out
     # it armed the FSK receiver as the K6 pager's D/2400 rung (direct 2-FSK, the one the BK4829
     # decodes on air: job s12rx3), with its sync words and XL length, then turned it off again;
     # the PA register only ever got its off value
