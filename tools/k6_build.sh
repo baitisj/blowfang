@@ -141,8 +141,8 @@ else
   echo "module loader: no K6_MOD_KEY_FILE, so it refuses every module"
 fi
 $CC $CFLAGS -Oz ${KM:+-DKM_KEY=$KM} -c "$ROOT/c/k6/k6_mod.c" -o "$OUT/k6_mod.o"
-# the SPI module library (k6_lib.h): install / load a module image in its SPI slot
-$CC $CFLAGS -Oz -c "$ROOT/c/common/mod_lib.c" -o "$OUT/mod_lib.o"
+# the SPI module library (k6_lib.h): install / load a module image in its SPI slot (it #includes
+# c/common/mod_lib.c, so the shared library builds inside it)
 $CC $CFLAGS -Oz -c "$ROOT/c/k6/k6_lib.c" -o "$OUT/k6_lib.o"
 # the LZ4 block decoder (lz4d.h, docs/k6-lz4.md) for packed module images, slots and help cards:
 # -Os, smaller than -Oz here
@@ -183,7 +183,7 @@ $CC $CFLAGS -DKP_PAGE=KP_TABLE -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_table.o"
 $CC $CFLAGS -DKP_PAGE=KP_EDIT -c "$ROOT/c/k6/kp_tab.c" -o "$OUT/kp_edit.o"
 LIBOBJS="$OUT/sotto_pager.o $OUT/k6_mod.o $OUT/sotto_fx_dec.o $OUT/sp_cb.o $OUT/sp_vlr.o $OUT/fx_math.o $OUT/fx_tables.o $OUT/ifpager.o
   $OUT/xscan.o $OUT/xlisten.o $OUT/xdmr.o $OUT/explore.o $OUT/cwid.o $OUT/k6_rt.o $OUT/sted.o"
-LIBOBJS="$LIBOBJS $OUT/mod_lib.o $OUT/k6_lib.o $OUT/lz4d.o $OUT/k6_rate.o"
+LIBOBJS="$LIBOBJS $OUT/k6_lib.o $OUT/lz4d.o $OUT/k6_rate.o"
 if [ -n "$LR" ]; then     # not hot (field unpacking and shape sums once per 40 ms): -Oz
   $CC $CFLAGS -Oz -Dcalloc=sp_calloc -Dfree=sp_free -c "$ROOT/c/fixed/sotto_fx_lr.c" -o "$OUT/sotto_fx_lr.o"
   LIBOBJS="$LIBOBJS $OUT/sotto_fx_lr.o"

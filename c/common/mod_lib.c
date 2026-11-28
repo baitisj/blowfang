@@ -21,7 +21,7 @@ static unsigned hdr_len(const ml_cfg_t *cfg, const uint8_t *a) {
   return total;
 }
 
-int ml_install(const ml_cfg_t *cfg, const uint8_t *img, const ml_flash_t *fl) {
+ML_API int ml_install(const ml_cfg_t *cfg, const uint8_t *img, const ml_flash_t *fl) {
   unsigned total = hdr_len(cfg, img), slot = img[15], off, n;
   uint32_t base;
   uint8_t back[64];
@@ -45,7 +45,7 @@ int ml_install(const ml_cfg_t *cfg, const uint8_t *img, const ml_flash_t *fl) {
   return (int)total;
 }
 
-int ml_info(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl, ml_info_t *out) {
+ML_API int ml_info(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl, ml_info_t *out) {
   uint8_t h[MC_HDR + 32], c[4 + ML_NAME], *n = h + MC_HDR;
   unsigned i, blank = 1, named;
   if (slot < 0 || slot >= cfg->slots) return ML_SLOT;
@@ -73,7 +73,7 @@ int ml_info(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl, ml_info_t *out)
   return 0;
 }
 
-int ml_load(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl,
+ML_API int ml_load(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl,
             uint8_t *dst, unsigned cap, unsigned is_page) {
   ml_info_t inf;
   unsigned total, code;

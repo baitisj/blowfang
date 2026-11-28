@@ -35,10 +35,10 @@ km_host: host/km_host.o host/k6_mod_test.o host/lz4d.o $(OBJS)
 lz4d_host: host/lz4d_host.o host/lz4d.o
 	$(CC) -o $@ $^
 host/lz4d_host.o host/lz4d.o: ../common/lz4d.h
-kl_host: host/kl_host.o host/k6_lib.o host/mod_lib.o host/k6_mod_test.o host/lz4d.o $(OBJS)
+kl_host: host/kl_host.o host/k6_lib.o host/k6_mod_test.o host/lz4d.o $(OBJS)
 	$(CC) -o $@ $^
-host/kl_host.o host/k6_lib.o: k6_lib.h ../common/mod_lib.h k6_mod.h ../common/lz4d.h
-host/mod_lib.o: ../common/mod_lib.h ../common/mod_core.h ../common/lz4d.h
+host/kl_host.o host/k6_lib.o: k6_lib.h ../common/mod_lib.h ../common/mod_core.h k6_mod.h ../common/lz4d.h
+host/k6_lib.o: ../common/mod_lib.c
 host/k6_mod_test.o: k6_mod.c k6_mod.h k6_lib.h ../common/lz4d.h sotto_pager.h
 	@mkdir -p host
 	$(CC) $(CFLAGS) $(K6FLAGS) -DKM_KEY=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 -c -o $@ $<

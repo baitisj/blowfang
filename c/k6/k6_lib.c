@@ -1,6 +1,9 @@
 /* k6_lib: the K6's SPI module library (thin wrapper over c/common/mod_lib.c).
  * SPDX-License-Identifier: MIT */
+/* the shared library in this file, its calls static, so K6_CFG folds into them (mod_lib.h ML_API) */
+#define ML_API static
 #include "k6_lib.h"
+#include "../common/mod_lib.c"
 
 static const ml_cfg_t K6_CFG = {
   KL_BASE,

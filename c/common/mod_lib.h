@@ -13,6 +13,14 @@
 #define MOD_LIB_H
 #include <stdint.h>
 #include "mod_core.h"
+
+/* ML_API: empty by default (the calls below link from mod_lib.o). A radio's wrapper may instead
+ * define it static and #include "mod_lib.c" in its own file, so the compiler folds that radio's
+ * one const ml_cfg_t into the code: on the K6 (c/k6/k6_lib.c) 822 bytes against 974 linked
+ * separately, and 814 before the library was shared. */
+#ifndef ML_API
+#define ML_API
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -71,17 +79,17 @@ static inline uint32_t ml_slot_addr(const ml_cfg_t *cfg, int slot) {
 
 /* Write the checked image at img (flag ML_F_LIB, slot in byte 15) to flash and verify.
  * Returns total image length in bytes, or ML_*. */
-int ml_install(const ml_cfg_t *cfg, const uint8_t *img, const ml_flash_t *fl);
+ML_API int ml_install(const ml_cfg_t *cfg, const uint8_t *img, const ml_flash_t *fl);
 
 /* Inspect slot header and optional name block without checking the tag.
  * Returns 0 on success, or ML_*. */
-int ml_info(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl, ml_info_t *out);
+ML_API int ml_info(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl, ml_info_t *out);
 
 /* Read slot into dst (cap bytes), verify header and tag, and unpack if ML_F_LZ4.
  * is_page=0 loads a runnable module (refuses ML_F_PAGE); is_page=1 loads a code page
  * (refuses non-pages). Always refuses ML_F_CARDS.
  * Returns unpacked code length (>0), or ML_*. */
-int ml_load(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl,
+ML_API int ml_load(const ml_cfg_t *cfg, int slot, const ml_flash_t *fl,
             uint8_t *dst, unsigned cap, unsigned is_page);
 
 #ifdef __cplusplus
