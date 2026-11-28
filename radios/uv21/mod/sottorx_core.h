@@ -29,6 +29,12 @@
 #ifndef SR_BAUD
 #define SR_BAUD 1800u                    /* what SR_72 sets: the word timing (stall rule, stray RX-done) */
 #endif
+#ifndef SR_SWAP
+/* the BK4829 hands each FIFO word over with the first byte on air in its low half (the RT-950's
+   notes; on the UV-21, job s12rx3: 41 of 44 D/2400 packets checked only with the bytes swapped),
+   the K6's FD6818 in its high half: 1 takes the low byte first, so the packet is in air order */
+#define SR_SWAP 1
+#endif
 #ifndef SR_2B_OR
 #define SR_2B_OR 0x0000u                 /* bits ORed into REG_2B: 0x0400 the RX 300 Hz HPF off (D/2400) */
 #endif
@@ -116,6 +122,7 @@ static inline void srx_off(const um_api_t *api) {
 static inline void srx_take(const um_api_t *api, srx_t *s, int n) {
   for (; n > 0 && s->got < SR_LEN; n--, s->got += 2) {
     uint16_t w = api->fd_read(SRX_REG_FIFO);
+    if (SR_SWAP) w = (uint16_t)(w << 8 | w >> 8);
     s->raw[s->got] = (uint8_t)(w >> 8), s->raw[s->got + 1] = (uint8_t)w;
   }
 }

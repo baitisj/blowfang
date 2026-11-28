@@ -69,7 +69,11 @@ $CC $CFLAGS -c "$ROOT/c/k6/k6_uldiv.c" -o "$OUT/k6_uldiv.o"
 # the port's receiver and player around the library (uv21_sotto.c: the BK4829 packet receiver
 # from radios/uv21/mod/sottorx_core.h, TMR1 CH4 PWM with DMA): in the archive the firmware links,
 # not in the bench, which drives the library directly
-$CC $CFLAGS -I"$ROOT/radios/uv21/mod" -c "$ROOT/radios/uv21/sotto/uv21_sotto.c" -o "$OUT/uv21_sotto.o"
+# its PHY: the K6 pager's D/2400 rung (direct 2-FSK, REG_58 0x00E9, REG_72 0x60CB, RX HPF off),
+# the one the BK4829 decodes: job s12rx3 got 41 of 44 packets from the Pluto at -81 and -91 dBm,
+# where F/1800 (FFSK, the K6's default) never synced (s12rx2b)
+RXPHY="-DSR_58=0x00E9 -DSR_72=0x60CB -DSR_BAUD=2400 -DSR_2B_OR=0x0400"
+$CC $CFLAGS $RXPHY -I"$ROOT/radios/uv21/mod" -c "$ROOT/radios/uv21/sotto/uv21_sotto.c" -o "$OUT/uv21_sotto.o"
 rm -f "$OUT/libsotto_uv21.a"
 $AR rcs "$OUT/libsotto_uv21.a" $LIBOBJS "$OUT/uv21_sotto.o" "$OUT/k6_mem.o" "$OUT/k6_uldiv.o"
 

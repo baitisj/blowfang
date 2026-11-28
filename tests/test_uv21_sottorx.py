@@ -54,11 +54,13 @@ def test_listens_with_the_codebook_and_surf_comes_back(built):
     assert "um ok s" in out and "so begin hz=1a46d650" in out
     assert "so start hz=440850000 cb=1" in out, out[-800:]         # the codebook checks
     assert "so end pk=0 good=0" in out and "so ret r=00000000 stk=" in out
-    # it armed the FSK receiver as the K6 pager does (F/1800, sync words, XL length), then turned
-    # it off again; the PA register only ever got its off value
+    # it armed the FSK receiver as the K6 pager's D/2400 rung (direct 2-FSK, the one the BK4829
+    # decodes on air: job s12rx3), with its sync words and XL length, then turned it off again;
+    # the PA register only ever got its off value
     w = b.rf_writes()
-    assert (0x58, 0x3F01) in w and (0x72, 0x4898) in w and (0x5D, 0x7F00) in w and (0x5A, 0x076B) in w
-    assert (0x58, 0x0000) in w[[i for i, x in enumerate(w) if x == (0x58, 0x3F01)][-1]:]
+    assert (0x58, 0x00E9) in w and (0x72, 0x60CB) in w and (0x5D, 0x7F00) in w and (0x5A, 0x076B) in w
+    assert any(r == 0x2B and v & 0x0400 and not v & 0x4000 for r, v in w)   # RX HPF and DC cancel off
+    assert (0x58, 0x0000) in w[[i for i, x in enumerate(w) if x == (0x58, 0x00E9)][-1]:]
     assert {v for r, v in b.tx_watch if r == 0x36} <= {0x0022}
     assert not [op for op in b.nor_ops if op[0] in WRITES]
 

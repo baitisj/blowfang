@@ -3,7 +3,9 @@
    whole 12 KB arena while SURF is paused, through the same um_api_t, and returns to SURF.
 
      receive  the K6 voice pager's packets (radios/uv21/mod/sottorx_core.h, which the sottorx
-              module checks on the radio): F/1800, profile XL, 0xA9 sotto 1200 voice packets
+              module checks on the radio) at its D/2400 rung, direct 2-FSK (build.sh's RXPHY):
+              the BK4829 never syncs on the K6's default F/1800 FFSK. Profile XL, 0xA9 sotto
+              1200 voice packets; send with `python -m modem.k6 tx ... --phy D --baud 2400`
      store    c/k6/sotto_pager.c (-DSP_LR, stream mode): each 6-byte slot in its place, lost
               ones concealed; the decoder's pool in the arena (SP_DEC_POOL)
      decode   the fixed-point sotto 1200 decoder, the codebook read from SPI flash at 0x1F0000
